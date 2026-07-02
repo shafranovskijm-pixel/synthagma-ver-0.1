@@ -239,7 +239,9 @@ export function describeNovofonError(error: unknown): string {
     }
     if (error.mnemonic === "ip_not_whitelisted") return "IP backend-функции не добавлен в белый список Novofon API.";
     if (error.mnemonic === "component_disabled" || error.mnemonic === "method_component_disabled") return "В Novofon не подключён нужный компонент Call API/Data API.";
-    if (error.mnemonic === "access_token_invalid" || error.mnemonic === "access_token_expired" || error.mnemonic === "access_token_blocked" || error.mnemonic === "auth_error") return "Неверный или просроченный токен/логин Novofon API.";
+    if (error.mnemonic === "access_token_invalid" || error.mnemonic === "access_token_expired" || error.mnemonic === "access_token_blocked" || error.mnemonic === "auth_error") {
+      return "Novofon не принял ключ Call API: нужен постоянный Call API ключ или логин/пароль пользователя АТС с включённым API-доступом.";
+    }
     if (error.mnemonic === "virtual_phone_number_not_found") return "Купленный номер не найден среди виртуальных номеров аккаунта Novofon.";
     if (error.mnemonic === "own_virtual_phone_number_not_allowed") return "Novofon запрещает звонить на собственный виртуальный номер — укажите внешний тестовый номер.";
   }

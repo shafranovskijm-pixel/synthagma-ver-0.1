@@ -91,7 +91,7 @@ serve(async (req) => {
       label: "Call API авторизация",
       ok: hasCallApiCredentials() || canUseClassicFallback(),
       message: hasCallApiCredentials()
-        ? "Call API токен или login/password найдены"
+        ? "Ключ/логин Novofon найден — сейчас проверим, принимает ли его Call API"
         : canUseClassicFallback()
           ? "Включён резервный Novofon callback по API Key + Secret"
           : "Нет Call API доступа или резервного API Key + Secret",
