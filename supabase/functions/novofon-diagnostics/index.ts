@@ -116,9 +116,9 @@ serve(async (req) => {
       steps.push({
         key: "virtual_number",
         label: "Номер в аккаунте Novofon",
-        ok: false,
+        ok: canUseClassicFallback(),
         message: describeNovofonError(error),
-        details: errorDetails(error),
+        details: { ...errorDetails(error), classic_fallback_enabled: canUseClassicFallback() },
       });
     }
 

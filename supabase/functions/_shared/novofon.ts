@@ -247,7 +247,7 @@ export async function novofonClassicRequest<T = unknown>(
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: `${key}:${signature}`,
+      Authorization: `${key.trim()}:${signature}`,
       Accept: "application/json",
       ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },
