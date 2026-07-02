@@ -52,6 +52,8 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "content", label: "Контент", icon: FileText, color: "text-teal-500" },
   { key: "ai", label: "ИИ-провайдеры", icon: Bot, color: "text-purple-500" },
   { key: "devtools", label: "Developer Tools", icon: Terminal, color: "text-primary" },
+  { key: "email-pool", label: "Пул email-отправителей", icon: Mail, color: "text-blue-500" },
+
 ];
 
 export function AdminSettings() {
