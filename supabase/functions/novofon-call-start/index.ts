@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { novofonRpc } from "../_shared/novofon.ts";
+import { novofonClassicRequest, novofonRpc } from "../_shared/novofon.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +9,13 @@ const corsHeaders = {
 
 interface CallStartResponse {
   call_session_id?: number;
+}
+
+interface ClassicCallbackResponse {
+  status?: string;
+  from?: string | number;
+  to?: string | number;
+  time?: number;
 }
 
 function normalizePhone(raw: string): string {
@@ -70,18 +77,34 @@ serve(async (req) => {
       });
     }
 
-    // Novofon Call API v4.0: сначала звоним оператору/менеджеру,
-    // после ответа соединяем с контактом. Для теста operator = contact.
-    const nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
-      first_call: "operator",
-      switch_at_once: true,
-      show_virtual_phone_number: true,
-      virtual_phone_number: callerId,
-      direction: "in",
-      contact: to,
-      operator,
-      external_id: lead_id || `test-${Date.now()}`,
-    });
+    let nfRes: CallStartResponse | ClassicCallbackResponse;
+    let providerCallId: string | null = null;
+    let usedApi: "call_api" | "classic_callback" = "call_api";
+
+    if (Deno.env.get("NOVOFON_ACCESS_TOKEN")) {
+      // Novofon Call API v4.0: сначала звоним оператору/менеджеру,
+      // после ответа соединяем с контактом. Для теста operator = contact.
+      nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
+        first_call: "operator",
+        switch_at_once: true,
+        show_virtual_phone_number: true,
+        virtual_phone_number: callerId,
+        direction: "in",
+        contact: to,
+        operator,
+        external_id: lead_id || `test-${Date.now()}`,
+      });
+      providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
+    } else {
+      // Classic Novofon/Zadarma callback API: works with API key + secret.
+      usedApi = "classic_callback";
+      nfRes = await novofonClassicRequest<ClassicCallbackResponse>("POST", "/v1/request/callback/", {
+        from: operator,
+        to,
+        ...(from_sip ? { sip: from_sip } : {}),
+      });
+      providerCallId = nfRes.time ? String(nfRes.time) : null;
+    }
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -101,7 +124,7 @@ serve(async (req) => {
         lead_id: lead_id ?? null,
         status: "dialing",
         provider: "novofon",
-        novofon_call_id: nfRes.call_session_id ? String(nfRes.call_session_id) : null,
+        novofon_call_id: providerCallId,
         notes: is_test ? '__test_call__' : null,
       })
       .select("id")
@@ -111,7 +134,8 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        ok: Boolean(nfRes.call_session_id),
+        ok: usedApi === "classic_callback" ? nfRes.status === "success" : Boolean((nfRes as CallStartResponse).call_session_id),
+        api: usedApi,
         novofon: nfRes,
         call_log_id: log?.id ?? null,
       }),
