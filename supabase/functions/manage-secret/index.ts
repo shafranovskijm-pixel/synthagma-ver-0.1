@@ -63,6 +63,13 @@ serve(async (req) => {
       "LIVEKIT_API_KEY",
       "LIVEKIT_API_SECRET",
       "LIVEKIT_WS_URL",
+      "NOVOFON_LOGIN",
+      "NOVOFON_PASSWORD",
+      "NOVOFON_CALLER_ID",
+      "NOVOFON_OPERATOR_NUMBER",
+      "NOVOFON_EMPLOYEE_ID",
+      "NOVOFON_SIP_LOGIN",
+      "NOVOFON_SIP_PASSWORD",
     ];
 
     if (!ALLOWED_SECRETS.includes(name)) {
