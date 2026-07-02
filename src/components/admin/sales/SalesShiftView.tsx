@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
 import { buildShiftQueue, parseDailyPlan, planForManager } from '@/utils/salesShiftQueue';
+import { toast } from 'sonner';
+
 
 const PAGE_SIZE = 10;
 
