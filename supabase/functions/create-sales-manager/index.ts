@@ -129,7 +129,10 @@ Deno.serve(async (req) => {
 
     await adminClient.from('user_roles').update({ role: 'sales_manager' }).eq('user_id', userId);
     await adminClient.from('sales_managers').insert({ user_id: userId, full_name, phone });
-    await adminClient.from('profiles').update({ full_name }).eq('user_id', userId);
+    await adminClient.from('profiles').update({
+      full_name, email, login: email, generated_password: password,
+    }).eq('user_id', userId);
+
 
     return new Response(
       JSON.stringify({ success: true, user_id: userId, email, password, generated: auto }),
