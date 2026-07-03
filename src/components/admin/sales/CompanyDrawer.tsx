@@ -128,16 +128,17 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     [lead?.org_name, lead?.phone, managerName, directorName, openingOverride],
   );
 
+  const extraPhones = useMemo(
+    () => extractExtraPhones(notes, lead?.phone),
+    [notes, lead?.phone],
+  );
+
   if (!lead) return null;
 
   const localTime = getRegionLocalTime(lead.region);
   const okHours = isBusinessHours(lead.region);
   const st = LEAD_STATUS_MAP[status] || LEAD_STATUS_MAP.new;
 
-  const extraPhones = useMemo(
-    () => extractExtraPhones(notes, lead?.phone),
-    [notes, lead?.phone],
-  );
 
   const handleQuickCall = async (overrideNumber?: string) => {
     const dial = overrideNumber || lead.phone;
