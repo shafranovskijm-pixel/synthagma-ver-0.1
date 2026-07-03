@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3, KeyRound } from 'lucide-react';
+import { Plus, UserCheck, UserX, Phone, Link2, Copy, Send, Wand2, Mail, MessageCircle, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,11 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useSalesManager } from '@/hooks/useSalesManager';
+import { useSalesManager, type SalesManager } from '@/hooks/useSalesManager';
 import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
 import { setAdminSalesView } from '@/utils/adminViewMode';
 import { AssignTaskDialog } from './AssignTaskDialog';
-import { ManagerStatsDialog } from './ManagerStatsDialog';
+import { ManagerProfileDrawer } from './ManagerProfileDrawer';
 
 
 interface CreatedCreds { email: string; password: string; generated: boolean; fullName: string }
@@ -29,7 +29,7 @@ export function SalesManagersList() {
   const [phone, setPhone] = useState('');
   const [created, setCreated] = useState<CreatedCreds | null>(null);
   const [taskFor, setTaskFor] = useState<{ id: string; full_name: string; user_id: string } | null>(null);
-  const [statsFor, setStatsFor] = useState<{ id: string; full_name: string } | null>(null);
+  const [profileFor, setProfileFor] = useState<SalesManager | null>(null);
   const navigate = useNavigate();
 
   const handleImpersonate = (m: { id: string; user_id: string; full_name: string }) => {
@@ -182,9 +182,9 @@ export function SalesManagersList() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}
+                    onClick={() => setProfileFor(m)}
                     className="flex-1 min-w-[200px] text-left hover:opacity-80 transition"
-                    title="Открыть историю активностей"
+                    title="Открыть карточку менеджера"
                   >
                     <div className="flex items-center gap-2">
                       <p className="font-medium underline-offset-4 hover:underline">{m.full_name}</p>
@@ -198,6 +198,9 @@ export function SalesManagersList() {
                       <span>КП: {stats.proposalsCount}</span>
                     </div>
                   </button>
+                  <Button size="sm" onClick={() => setProfileFor(m)}>
+                    <Settings2 className="w-4 h-4 mr-1" />Открыть карточку
+                  </Button>
                 </div>
 
                 {/* Логин / пароль / ссылка входа */}
@@ -249,34 +252,8 @@ export function SalesManagersList() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <Button variant="outline" size="sm" onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}>
-                    <BarChart3 className="w-4 h-4 mr-1" />История
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setTaskFor({ id: m.id, full_name: m.full_name, user_id: m.user_id })}>
-                    <ListTodo className="w-4 h-4 mr-1" />Поставить задачу
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleImpersonate(m)}>
-                    <Eye className="w-4 h-4 mr-1" />Войти как
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!confirm(`Сбросить пароль для ${m.full_name}? Старый пароль перестанет работать.`)) return;
-                      const res = await resetManagerPassword(m.id);
-                      if (res) setCreated({ email: res.email, password: res.password, generated: true, fullName: res.full_name });
-                    }}
-                  >
-                    <KeyRound className="w-4 h-4 mr-1" />Сбросить пароль
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleManagerActive(m.id, !m.is_active)}
-                  >
-                    {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
-                  </Button>
+                <div className="text-[11px] text-muted-foreground">
+                  Все инструменты менеджера (доступ, SMTP-ящики, скрипт, статистика) — в карточке.
                 </div>
               </CardContent>
             </Card>
@@ -292,10 +269,20 @@ export function SalesManagersList() {
         manager={taskFor}
       />
 
-      <ManagerStatsDialog
-        open={!!statsFor}
-        onOpenChange={(v) => !v && setStatsFor(null)}
-        manager={statsFor}
+      <ManagerProfileDrawer
+        manager={profileFor}
+        open={!!profileFor}
+        onOpenChange={(v) => !v && setProfileFor(null)}
+        onResetPassword={async (m) => {
+          if (!confirm(`Сбросить пароль для ${m.full_name}? Старый пароль перестанет работать.`)) return;
+          const res = await resetManagerPassword(m.id);
+          if (res) setCreated({ email: res.email, password: res.password, generated: true, fullName: res.full_name });
+        }}
+        onToggleActive={async (m) => {
+          await toggleManagerActive(m.id, !m.is_active);
+          setProfileFor(null);
+        }}
+        onAssignTask={(m) => setTaskFor({ id: m.id, full_name: m.full_name, user_id: m.user_id })}
       />
 
     </div>

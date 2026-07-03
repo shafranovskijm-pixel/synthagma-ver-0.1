@@ -58,6 +58,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [isCalling, setIsCalling] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
+  const [openingOverride, setOpeningOverride] = useState<string | null>(null);
 
   // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
@@ -95,6 +96,20 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       });
   }, [open]);
 
+  // Персональный вступительный монолог менеджера (если задан в его карточке)
+  useEffect(() => {
+    if (!user) return;
+    (supabase as any)
+      .from('sales_managers')
+      .select('script_overrides')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        const ov = data?.script_overrides?.opening;
+        setOpeningOverride(typeof ov === 'string' && ov.trim() ? ov : null);
+      });
+  }, [user?.id]);
+
   // Останавливаем караоке когда закрывается диалог результата
   useEffect(() => {
     if (!resultOpen) setIsCalling(false);
@@ -104,13 +119,13 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const calls = leadActs.filter(a => a.activity_type === 'call');
 
   const monolog = useMemo(
-    () => fillScriptTemplate(openingMonolog, {
+    () => fillScriptTemplate(openingOverride || openingMonolog, {
       companyName: lead?.org_name,
       managerName,
       contactName: directorName ?? undefined,
       phone: lead?.phone ?? undefined,
     }),
-    [lead?.org_name, lead?.phone, managerName, directorName],
+    [lead?.org_name, lead?.phone, managerName, directorName, openingOverride],
   );
 
   if (!lead) return null;
