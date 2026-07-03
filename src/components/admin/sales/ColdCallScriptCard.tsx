@@ -128,7 +128,7 @@ export function ColdCallScriptCard({
 
         {coldCallScript.map(tab => (
           <TabsContent key={tab.key} value={tab.key} className="mt-3 space-y-2">
-            {tab.key === 'objections'
+            {tab.items.some(it => (it.followUps?.length || 0) > 0)
               ? tab.items.map((it, i) => {
                 const open = openObj === i;
                 return (
