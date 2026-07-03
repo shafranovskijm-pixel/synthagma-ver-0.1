@@ -112,12 +112,29 @@ export function SalesAdminView() {
   return (
     <div className="space-y-6">
       {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Users className="w-4 h-4" />} label="Менеджеров активно" value={activeManagers.length} />
         <KpiCard icon={<Database className="w-4 h-4" />} label="Лидов в базе" value={leadsStats.total} sub={`свободно ${leadsStats.free} · назначено ${leadsStats.assigned}`} />
         <KpiCard icon={<PhoneCall className="w-4 h-4" />} label="Дозвонов сегодня" value={callsToday} sub={`≥ 15 сек — реальные разговоры`} />
         <KpiCard icon={<FileText className="w-4 h-4" />} label="КП за неделю" value={proposalsThisWeek} />
+        <KpiCard icon={<Mic className="w-4 h-4" />} label="Записей за 7 дней" value={recordingsWeek} sub="прослушивание в разделе ниже" />
       </div>
+
+      {/* Диагностика Novofon */}
+      {(!lastWebhookAt || Date.now() - new Date(lastWebhookAt).getTime() > 24 * 3600 * 1000) && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 flex items-start gap-2 text-xs">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-medium text-amber-700 dark:text-amber-400">
+              Novofon-webhook не присылал события {lastWebhookAt ? 'более 24 часов' : 'ни разу'}
+            </div>
+            <div className="text-muted-foreground mt-0.5">
+              Проверьте, что в кабинете Novofon URL webhook указан на функцию <code>novofon-webhook</code> и включены уведомления NOTIFY_START / NOTIFY_ANSWER / NOTIFY_END / NOTIFY_RECORD.
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* План дозвонов */}
       <Card>
