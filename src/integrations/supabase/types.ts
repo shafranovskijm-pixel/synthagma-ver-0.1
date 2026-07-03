@@ -3171,6 +3171,7 @@ export type Database = {
       email_sender_pool: {
         Row: {
           app_password: string | null
+          assigned_manager_id: string | null
           created_at: string
           daily_limit: number
           email: string
@@ -3191,6 +3192,7 @@ export type Database = {
         }
         Insert: {
           app_password?: string | null
+          assigned_manager_id?: string | null
           created_at?: string
           daily_limit?: number
           email: string
@@ -3211,6 +3213,7 @@ export type Database = {
         }
         Update: {
           app_password?: string | null
+          assigned_manager_id?: string | null
           created_at?: string
           daily_limit?: number
           email?: string
@@ -3229,7 +3232,15 @@ export type Database = {
           sends_today?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_sender_pool_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_suppressions: {
         Row: {
@@ -7947,26 +7958,32 @@ export type Database = {
       sales_managers: {
         Row: {
           created_at: string
+          email_sender_mode: string
           full_name: string
           id: string
           is_active: boolean
           phone: string | null
+          script_overrides: Json | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          email_sender_mode?: string
           full_name: string
           id?: string
           is_active?: boolean
           phone?: string | null
+          script_overrides?: Json | null
           user_id: string
         }
         Update: {
           created_at?: string
+          email_sender_mode?: string
           full_name?: string
           id?: string
           is_active?: boolean
           phone?: string | null
+          script_overrides?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -10540,18 +10557,31 @@ export type Database = {
         Args: { _role: string }
         Returns: string[]
       }
-      pick_next_email_sender: {
-        Args: never
-        Returns: {
-          app_password: string
-          email: string
-          encryption: string
-          from_name: string
-          host: string
-          id: string
-          port: number
-        }[]
-      }
+      pick_next_email_sender:
+        | {
+            Args: never
+            Returns: {
+              app_password: string
+              email: string
+              encryption: string
+              from_name: string
+              host: string
+              id: string
+              port: number
+            }[]
+          }
+        | {
+            Args: { p_manager_id: string }
+            Returns: {
+              app_password: string
+              email: string
+              encryption: string
+              from_name: string
+              host: string
+              id: string
+              port: number
+            }[]
+          }
       public_get_organization_by_slug: {
         Args: { p_slug: string }
         Returns: {
