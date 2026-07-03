@@ -218,6 +218,10 @@ export function SalesAdminView() {
         </CardContent>
       </Card>
 
+      {/* Записи звонков */}
+      <CallRecordingsAdminList />
+
+
       <Sheet open={leadsSheetOpen} onOpenChange={setLeadsSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-6xl overflow-y-auto">
           <SheetHeader className="mb-4">
