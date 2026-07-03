@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Download, Phone, PhoneIncoming, PhoneOutgoing, Loader2 } from 'lucide-react';
+import { PhoneIncoming, PhoneOutgoing, Loader2, Mic } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { toast } from 'sonner';
+import { CallPlayer } from './CallPlayer';
 
 interface CallLog {
   id: string;
@@ -47,8 +46,6 @@ function fmtDuration(s: number | null): string {
 export function CallLogsList({ leadId, companyInn }: Props) {
   const [logs, setLogs] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -67,24 +64,6 @@ export function CallLogsList({ leadId, companyInn }: Props) {
     return () => { cancel = true; };
   }, [leadId, companyInn]);
 
-  const listen = async (log: CallLog) => {
-    if (playingId === log.id) { setPlayingId(null); setAudioUrl(null); return; }
-    try {
-      const { data, error } = await supabase.functions.invoke('novofon-recording-url', {
-        body: { call_log_id: log.id },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        setAudioUrl(data.url);
-        setPlayingId(log.id);
-      } else {
-        toast.info('Запись пока недоступна');
-      }
-    } catch (e) {
-      toast.error('Не удалось получить запись', { description: e instanceof Error ? e.message : String(e) });
-    }
-  };
-
   if (loading) return <div className="text-sm text-muted-foreground p-4 text-center"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Загружаем…</div>;
   if (logs.length === 0) return <div className="text-sm text-muted-foreground p-4 text-center">Звонков пока нет</div>;
 
@@ -93,13 +72,17 @@ export function CallLogsList({ leadId, companyInn }: Props) {
       {logs.map((log) => {
         const st = STATUS[log.status] ?? { label: log.status, cls: 'bg-muted' };
         const Icon = log.direction === 'outbound' ? PhoneOutgoing : PhoneIncoming;
-        const isPlaying = playingId === log.id;
         return (
           <div key={log.id} className="rounded-lg border bg-muted/20 p-2.5">
             <div className="flex items-center gap-2 flex-wrap">
               <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <span className="text-sm font-medium">{log.to_number || log.from_number || '—'}</span>
               <Badge className={st.cls + ' text-[10px]'}>{st.label}</Badge>
+              {log.has_recording && (
+                <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px]">
+                  <Mic className="w-3 h-3 mr-1" />запись
+                </Badge>
+              )}
               <span className="text-[11px] text-muted-foreground ml-auto">
                 {format(new Date(log.started_at), 'd MMM HH:mm', { locale: ru })} · {fmtDuration(log.duration_sec)}
               </span>
@@ -107,15 +90,7 @@ export function CallLogsList({ leadId, companyInn }: Props) {
             {log.notes && <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{log.notes}</div>}
             {log.has_recording && (
               <div className="mt-2">
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => listen(log)}>
-                  <Play className="w-3 h-3 mr-1" />
-                  {isPlaying ? 'Скрыть' : 'Прослушать'}
-                </Button>
-                {isPlaying && audioUrl && (
-                  <div className="mt-2">
-                    <audio src={audioUrl} controls className="w-full h-8" controlsList="nodownload" />
-                  </div>
-                )}
+                <CallPlayer callLogId={log.id} />
               </div>
             )}
           </div>
@@ -124,3 +99,4 @@ export function CallLogsList({ leadId, companyInn }: Props) {
     </div>
   );
 }
+
