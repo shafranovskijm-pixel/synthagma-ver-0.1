@@ -182,9 +182,9 @@ export function SalesManagersList() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}
+                    onClick={() => setProfileFor(m)}
                     className="flex-1 min-w-[200px] text-left hover:opacity-80 transition"
-                    title="Открыть историю активностей"
+                    title="Открыть карточку менеджера"
                   >
                     <div className="flex items-center gap-2">
                       <p className="font-medium underline-offset-4 hover:underline">{m.full_name}</p>
@@ -198,6 +198,9 @@ export function SalesManagersList() {
                       <span>КП: {stats.proposalsCount}</span>
                     </div>
                   </button>
+                  <Button size="sm" onClick={() => setProfileFor(m)}>
+                    <Settings2 className="w-4 h-4 mr-1" />Открыть карточку
+                  </Button>
                 </div>
 
                 {/* Логин / пароль / ссылка входа */}
