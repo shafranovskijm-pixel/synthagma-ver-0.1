@@ -8,20 +8,47 @@ export interface ScriptItem {
 }
 
 export interface ScriptTab {
-  key: 'start' | 'questions' | 'objections' | 'closing';
+  key: 'lpr' | 'start' | 'questions' | 'objections' | 'closing';
   title: string;
   items: ScriptItem[];
 }
 
 // Основной монолог, который менеджер говорит в первые 30–40 секунд.
-// Используется и в скрипте, и в караоке-подсветке при звонке.
+// Если известны имя и отчество ЛПР — обращаемся по ним ({contact_greeting}).
 export const openingMonolog =
-  'Здравствуйте! Меня зовут {manager_name}, компания «Синтагма». ' +
+  'Здравствуйте{contact_greeting}! Меня зовут {manager_name}, компания «Синтагма». ' +
   'Я коротко, буквально 30 секунд, и если будет неактуально — не буду отвлекать. ' +
   'Мы помогаем учебным центрам и организациям дополнительного профессионального образования запускать дистанционное обучение и вести все учебные документы в одной системе: курсы, слушатели, договоры, коммерческие предложения, журналы, ФИС ФРДО и часть повседневной рутины. ' +
   'Подскажите, вы дистанционно обучаете? Есть ли у вас сейчас платформа дистанционного обучения, или обучение ведёте без отдельной системы?';
 
 export const coldCallScript: ScriptTab[] = [
+  {
+    key: 'lpr',
+    title: 'Выход на ЛПР',
+    items: [
+      {
+        title: 'Если ФИО директора известно',
+        text: 'Здравствуйте! Соедините, пожалуйста, с {contact_first_patronymic} — я по вопросу дистанционного обучения и учебных документов для {company_name}.',
+        followUps: [
+          { title: 'Если спросят «по какому вопросу»', text: 'Компания «Синтагма», платформа дистанционного обучения и учебные документы для образовательных организаций. Хочу коротко уточнить у {contact_first_patronymic} пару моментов — минуты на две, не больше.' },
+          { title: 'Если «его сейчас нет»', text: 'Подскажите, когда {contact_first_patronymic} удобнее перезвонить — в первой или во второй половине дня? И на этот же номер набирать?' },
+          { title: 'Если «пришлите на почту»', text: 'Хорошо, отправлю. Уточните, пожалуйста, почту {contact_first_patronymic} — чтобы письмо попало ему лично, а не в общий ящик. И как правильно указать его должность в теме?' },
+        ],
+      },
+      {
+        title: 'Если ФИО ЛПР неизвестно',
+        text: 'Здравствуйте! Подскажите, пожалуйста, кто у вас в {company_name} отвечает за обучение и дистанционные курсы — руководитель учебного центра или директор? Как к нему обращаться, имя-отчество?',
+        followUps: [
+          { title: 'Дальше — соединить', text: 'Спасибо. А можно с ним сейчас коротко переговорить, буквально 2 минуты — по платформе дистанционного обучения и учебным документам?' },
+          { title: 'Если секретарь фильтрует', text: 'Понимаю, у вас порядок. Я не продажами занимаюсь, а показываю, как учебному центру закрыть в одной системе: курсы, слушателей, договоры, журналы и ФИС ФРДО. Руководителю это интересно — точно стоит соединить.' },
+        ],
+      },
+      {
+        title: 'Прямой выход на ЛПР (сразу трубку взял он)',
+        text: '{contact_first_patronymic}, здравствуйте! Меня зовут {manager_name}, компания «Синтагма». Удобно 30 секунд — по дистанционному обучению и учебным документам? Если не актуально, сразу отпущу.',
+      },
+    ],
+  },
   {
     key: 'start',
     title: 'Старт',
@@ -155,17 +182,33 @@ export interface ScriptContext {
   leadName?: string;
 }
 
+/** Разбирает "Иванов Иван Иванович" → { last, first, patronymic }. */
+function parseFio(full?: string) {
+  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  return { last: parts[0] || '', first: parts[1] || '', patronymic: parts[2] || '' };
+}
+
 export function fillScriptTemplate(text: string, ctx: ScriptContext = {}): string {
   const company = ctx.companyName || ctx.leadName || 'компания';
   const manager = ctx.managerName || '[ваше имя]';
-  const contact = ctx.contactName?.trim()
-    ? ctx.contactName.trim()
+  const rawContact = ctx.contactName?.trim() || '';
+  const { first, patronymic } = parseFio(rawContact);
+  const firstPatronymic = [first, patronymic].filter(Boolean).join(' ');
+  // Обращение для приветствия: ", Иван Иванович" или "" если ФИО неизвестно
+  const greeting = firstPatronymic ? `, ${firstPatronymic}` : '';
+  const contact = rawContact
+    ? (firstPatronymic || rawContact)
     : `представителя ООО «${company}»`;
   const phone = ctx.phone || '';
   return text
     .replace(/\{company_name\}/g, company)
     .replace(/\{manager_name\}/g, manager)
     .replace(/\{contact_name\}/g, contact)
+    .replace(/\{contact_full_name\}/g, rawContact || contact)
+    .replace(/\{contact_first_name\}/g, first || contact)
+    .replace(/\{contact_patronymic\}/g, patronymic || '')
+    .replace(/\{contact_first_patronymic\}/g, firstPatronymic || contact)
+    .replace(/\{contact_greeting\}/g, greeting)
     .replace(/\{phone\}/g, phone)
     .replace(/\[Имя\]/g, contact)
     .replace(/\[Менеджер\]/g, manager);

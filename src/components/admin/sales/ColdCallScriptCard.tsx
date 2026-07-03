@@ -96,18 +96,31 @@ export function ColdCallScriptCard({
     { key: 'blacklist',      label: 'Чёрный список',        variant: 'outline' },
   ];
 
+  const contactFio = (contactName || '').trim();
+
   return (
     <div className="border rounded-xl bg-card">
-      <div className="flex items-center justify-between p-3 border-b">
-        <div className="text-sm font-semibold">Скрипт звонка</div>
-        <Button size="sm" variant="ghost" onClick={handleCopyAll} className="h-8">
+      <div className="flex items-center justify-between gap-2 p-3 border-b">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold">Скрипт звонка</div>
+          {contactFio ? (
+            <div className="text-[11px] text-muted-foreground truncate">
+              ЛПР: <span className="text-foreground font-medium">{contactFio}</span>
+            </div>
+          ) : (
+            <div className="text-[11px] text-amber-600">
+              ФИО ЛПР не указано — уточните у секретаря
+            </div>
+          )}
+        </div>
+        <Button size="sm" variant="ghost" onClick={handleCopyAll} className="h-8 shrink-0">
           {copiedAll ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
           Скопировать весь скрипт
         </Button>
       </div>
 
-      <Tabs defaultValue="start" className="p-3">
-        <TabsList className="w-full grid grid-cols-4 h-9">
+      <Tabs defaultValue="lpr" className="p-3">
+        <TabsList className="w-full grid grid-cols-5 h-9">
           {coldCallScript.map(t => (
             <TabsTrigger key={t.key} value={t.key} className="text-xs">{t.title}</TabsTrigger>
           ))}
@@ -115,7 +128,7 @@ export function ColdCallScriptCard({
 
         {coldCallScript.map(tab => (
           <TabsContent key={tab.key} value={tab.key} className="mt-3 space-y-2">
-            {tab.key === 'objections'
+            {tab.items.some(it => (it.followUps?.length || 0) > 0)
               ? tab.items.map((it, i) => {
                 const open = openObj === i;
                 return (
