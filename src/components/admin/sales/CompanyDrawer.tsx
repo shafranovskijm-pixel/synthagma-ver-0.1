@@ -119,13 +119,13 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const calls = leadActs.filter(a => a.activity_type === 'call');
 
   const monolog = useMemo(
-    () => fillScriptTemplate(openingMonolog, {
+    () => fillScriptTemplate(openingOverride || openingMonolog, {
       companyName: lead?.org_name,
       managerName,
       contactName: directorName ?? undefined,
       phone: lead?.phone ?? undefined,
     }),
-    [lead?.org_name, lead?.phone, managerName, directorName],
+    [lead?.org_name, lead?.phone, managerName, directorName, openingOverride],
   );
 
   if (!lead) return null;
