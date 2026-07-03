@@ -1,74 +1,70 @@
 
-## Что делаем
+## Что сейчас работает (проверено)
 
-Превращаем строку менеджера в админке в полноценную **карточку менеджера** с его личными инструментами. Плюс отвечаю про статус рассылки.
+- **Клик по карточке лида в кабинете менеджера** — работает: `SalesShiftView.openLead` открывает `CompanyDrawer` с табами Сводка/Скрипт/Звонки/Тайм-лайн/Документы. Звонок инициируется через Edge-функцию `novofon-call-start` и запись сохраняется в `call_logs`.
+- **Webhook `novofon-webhook`** апдейтит `status`, `duration_sec`, `has_recording`, `recording_url` при событиях START/ANSWER/END/RECORD от Novofon.
+- **RLS**: у админа доступ ко всем `call_logs` (`has_role(admin)`), у менеджера — только к своим. Realtime на `call_logs` включён.
+- **Плеер записи** есть только внутри `CallLogsList`, а он подключается лишь в `CompanyDrawer` (по одному лиду/ИНН). Ссылка достаётся через `novofon-recording-url` (signed URL, аудит в `call_log_listens`).
 
----
+## Что не хватает / болит
 
-## 1. Клик по менеджеру → большая карточка (Sheet)
+1. **Админ не видит записи как отдельный раздел.** В `SalesAdminView` есть только счётчик «Дозвонов сегодня». Чтобы прослушать запись — нужно открыть менеджера → лида → вкладку «Звонки». Это неудобно для контроля.
+2. **Нет фильтров и поиска** по записям: по менеджеру, дате, длительности, статусу, «есть запись», номеру телефона, ИНН.
+3. **Нет «отметок» на записях** — важная / пример / спорная / жалоба; нет заметок ревьюера.
+4. **В ленте кабинета менеджера** на карточке лида не видно, что по нему уже были звонки/записи. Приходится открывать дровер, чтобы это увидеть.
+5. **Записи Novofon по webhook сейчас поступают редко** — в базе 0 строк. Нужно быстро проверить: URL webhook в кабинете Novofon указан на `novofon-webhook`, и Novofon действительно шлёт `RECORD`-события (иногда включено, но нужно поле `call_recording`/`link`).
 
-В `SalesManagersList` добавляю кнопку **«Открыть карточку»** (или клик по имени). Открывается правый Sheet `ManagerProfileDrawer` с вкладками:
+## Что делаю (реализация)
 
-### Вкладка «Доступ»
-То, что сейчас в карточке: логин, пароль, ссылка входа, кнопки Copy / Telegram / WhatsApp / Email / Сбросить пароль / Войти как / Деактивировать.
+### 1. Новая вкладка «Записи звонков» в админке `SalesAdminView`
 
-### Вкладка «Рассылка (SMTP)»
-- Личный переключатель: **режим отправки** — «общий пул» (по умолчанию) / «мои ящики».
-- Таблица закреплённых за менеджером ящиков из `email_sender_pool` (фильтр по новому полю `assigned_manager_id`). Кнопки: закрепить свободный ящик, открепить, включить/выключить, вставить app-password, дневной лимит.
-- Кнопка **«Проверить SMTP»** — прогоняет тест-отправку через существующий edge `send-smtp-test` для выбранного ящика и показывает результат (host/port/auth).
-- Мини-статистика: отправлено сегодня / лимит / последняя ошибка.
+Компонент `CallRecordingsAdminList.tsx`:
 
-### Вкладка «Скрипт звонка»
-- Полный редактор скрипта холодного звонка **по менеджеру** (переопределяет общий из `src/constants/coldCallScript.ts`).
-- Секции: Вступительный монолог, Вопросы, Возражения (с follow-ups), Закрытие.
-- Каждый пункт — inline-редактор (title + text + список followUps).
-- Кнопки: «Сохранить», «Сбросить к дефолту», «Скопировать из общего».
-- Хранение: новая колонка `sales_managers.script_overrides jsonb` (структура повторяет `ScriptTab[]`). `CompanyDrawer` при загрузке подмешивает override текущего менеджера в `openingMonolog` / `coldCallScript`.
+- Таблица звонков (реалтайм подписка на `call_logs`), сверху фильтры:
+  - Менеджер (`select` из `sales_managers`)
+  - Период (сегодня / 7 дней / 30 дней / произвольный)
+  - Статус (все / завершён / без ответа / ошибка)
+  - Длительность (все / ≥ 15 сек / ≥ 60 сек)
+  - Только с записью (toggle)
+  - Поиск по номеру / ИНН / названию
+- Строка звонка: менеджер · компания · направление · номер · статус · длительность · дата · бейдж «🎙️ запись».
+- **Встроенный плеер** прямо в строке (аккордеон): `<audio controls>` c signed URL из `novofon-recording-url`, скорость 1x/1.25x/1.5x/2x, кнопка «Скачать» (только для admin), кнопка «Открыть карточку компании» (переходит в Deals360 по ИНН).
+- **Отметки на записи**: миграция добавит колонки `review_flag` (`none|important|example|dispute|complaint`), `review_note`, `reviewed_by`, `reviewed_at`. Быстрые кнопки-«шеврон» в строке.
+- Экспорт CSV по фильтру.
 
-### Вкладка «Статистика»
-Переносим сюда содержимое `ManagerStatsDialog` (звонки, КП, конверсия за период).
+### 2. Улучшения ленты в кабинете менеджера
 
----
+- В `SalesShiftView` в карточке лида показывать бейдж «📞 N · 🎙️ M» (сколько звонков и сколько записей за 30 дней), считать одним запросом `select lead_id, count, sum(has_recording::int) group by lead_id`.
+- Добавить в `CallLogsList` мини-транскрипт-заглушку («Транскрипция скоро») — с фичфлагом, чтобы позже подключить STT (SaluteSpeech).
 
-## 2. БД (одна миграция)
+### 3. KPI в админке
 
-```sql
-alter table public.sales_managers
-  add column if not exists script_overrides jsonb,
-  add column if not exists email_sender_mode text not null default 'pool'
-    check (email_sender_mode in ('pool','personal'));
+- В сетку KPI `SalesAdminView` добавить карточку **«Записей за неделю»** (count `call_logs` с `has_recording=true, started_at >= now()-7d`).
+- Быстрая ссылка «Открыть записи» → скроллит к новой секции.
 
-alter table public.email_sender_pool
-  add column if not exists assigned_manager_id uuid references public.sales_managers(id) on delete set null;
+### 4. Диагностика Novofon-записей
 
-create index if not exists email_sender_pool_assigned_manager_idx
-  on public.email_sender_pool(assigned_manager_id);
-```
-RLS/GRANT-ы у обеих таблиц уже настроены — просто расширяем существующие политики (админ пишет всё, менеджер видит только своё).
+- В `SalesAdminView` небольшая плашка «Novofon webhook: OK/предупреждение», если за 24 часа не пришло ни одного webhook-события — жёлтая метка + подсказка «Проверьте URL webhook в кабинете Novofon: `.../functions/v1/novofon-webhook`».
+- Проверяю руками, что Novofon-webhook правильно принимает `call_id_with_rec` и обновляет `has_recording` (в текущем коде уже поддержано).
 
-`pick_next_email_sender` дополняю необязательным аргументом `p_manager_id`: если у менеджера `email_sender_mode='personal'` — берём LRU только среди `assigned_manager_id = p_manager_id`, иначе фолбэк на общий пул.
+## Что НЕ трогаю
 
----
-
-## 3. Ответ по текущей рассылке (сразу в чате, без кода)
-
-Сейчас в `email_sender_pool` **20 ящиков `@yi.mannni.com` загружены с app-паролями**, но **все `is_active = false`** и **0 отправок**. То есть пароли, которые вы прислали, сохранены, но пул не включён — рассылка не идёт. В админке в разделе «Пул отправителей» их можно включить тумблером; и я добавлю в новой карточке менеджера кнопку «Проверить SMTP» на каждый ящик, чтобы автоматически убедиться, что Google Workspace принимает app-password, и только валидные включать. Если хотите — сразу после карточки прогоню автопроверку и включу те, что прошли.
-
----
+- Логику самого звонка (`novofon-call-start`) и подпись webhook — рабочая.
+- Флоу скрипта звонка (только что улучшили).
+- Тарифы, продажи, лиды — вне запроса.
 
 ## Файлы
 
-**Новые**
-- `src/components/admin/sales/ManagerProfileDrawer.tsx` — Sheet с вкладками
-- `src/components/admin/sales/ManagerScriptEditor.tsx` — редактор скрипта
-- `src/components/admin/sales/ManagerSmtpTab.tsx` — SMTP-вкладка (использует `EmailSenderPoolManager` в отфильтрованном режиме)
-- `supabase/migrations/<ts>_manager_script_and_smtp.sql`
+Изменяю:
+- `src/components/admin/sales/SalesAdminView.tsx` — добавляю вкладку «Записи», ещё один KPI, диагностическую плашку.
+- `src/components/admin/sales/CallLogsList.tsx` — общий плеер выносим в отдельный `<CallPlayer />`, чтобы переиспользовать.
+- `src/components/admin/sales/SalesShiftView.tsx` — бейдж «📞/🎙️» на карточке.
 
-**Правки**
-- `src/components/admin/sales/SalesManagersList.tsx` — кнопка «Открыть карточку», рендер Drawer
-- `src/hooks/useSalesManager.ts` — типы `script_overrides`, `email_sender_mode`, метод `updateManagerScript`
-- `src/components/admin/sales/CompanyDrawer.tsx` — при монтировании подмешивает `script_overrides` менеджера в текст скрипта и караоке
-- `src/constants/coldCallScript.ts` — экспорт хелпера `mergeScriptOverrides(base, overrides)`
-- `supabase/functions/send-smtp-test/index.ts` — уже есть, вызываем; при отсутствии — добавляю аналогичный маленький edge
+Создаю:
+- `src/components/admin/sales/CallRecordingsAdminList.tsx`
+- `src/components/admin/sales/CallPlayer.tsx`
+- `supabase/migrations/<ts>_call_logs_review.sql` — колонки `review_flag`, `review_note`, `reviewed_by`, `reviewed_at`, индекс.
 
-Клик «Войти как», «История», «Сбросить пароль» переезжают внутрь Drawer как отдельные кнопки — старые внешние кнопки убираем, чтобы список был компактнее.
+Итого: 3 новых файла + 1 миграция + 3 правки. Займёт 1 итерацию.
+
+Одобрите план — начну реализацию.
