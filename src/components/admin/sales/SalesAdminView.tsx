@@ -50,18 +50,26 @@ export function SalesAdminView() {
     })();
   }, []);
 
-  // Дозвоны за сегодня
+  // Дозвоны за сегодня + записей за 7 дней + последний webhook
   useEffect(() => {
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const { count } = await (supabase as any)
-        .from('call_logs').select('id', { count: 'exact', head: true })
-        .gte('started_at', startOfDay.toISOString())
-        .gte('duration_sec', 15)
-        .or('notes.is.null,notes.neq.__test_call__');
-      setCallsToday(count || 0);
+      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const [{ count: dz }, { count: rec }, { data: lastRec }] = await Promise.all([
+        (supabase as any).from('call_logs').select('id', { count: 'exact', head: true })
+          .gte('started_at', startOfDay.toISOString()).gte('duration_sec', 15)
+          .or('notes.is.null,notes.neq.__test_call__'),
+        (supabase as any).from('call_logs').select('id', { count: 'exact', head: true })
+          .eq('has_recording', true).gte('started_at', weekAgo),
+        (supabase as any).from('call_logs').select('updated_at')
+          .order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      setCallsToday(dz || 0);
+      setRecordingsWeek(rec || 0);
+      setLastWebhookAt(lastRec?.updated_at ?? null);
     })();
   }, []);
+
 
   const activeManagers = useMemo(() => managers.filter(m => m.is_active), [managers]);
 
