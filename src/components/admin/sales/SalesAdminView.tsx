@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, PhoneCall, FileText, Database, Save } from 'lucide-react';
+import { Users, PhoneCall, FileText, Database, Save, Mic, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesManagersList } from './SalesManagersList';
 import { LeadsManager } from './LeadsManager';
+import { CallRecordingsAdminList } from './CallRecordingsAdminList';
 import { useSalesManager } from '@/hooks/useSalesManager';
 import { parseDailyPlan, planForManager, type DailyPlanConfig } from '@/utils/salesShiftQueue';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+
 
 /**
  * Простой админский экран «Продажи» для /admin.
