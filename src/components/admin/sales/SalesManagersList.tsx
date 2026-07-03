@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3, KeyRound } from 'lucide-react';
+import { Plus, UserCheck, UserX, Phone, Link2, Copy, Send, Wand2, Mail, MessageCircle, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,11 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useSalesManager } from '@/hooks/useSalesManager';
+import { useSalesManager, type SalesManager } from '@/hooks/useSalesManager';
 import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
 import { setAdminSalesView } from '@/utils/adminViewMode';
 import { AssignTaskDialog } from './AssignTaskDialog';
-import { ManagerStatsDialog } from './ManagerStatsDialog';
+import { ManagerProfileDrawer } from './ManagerProfileDrawer';
 
 
 interface CreatedCreds { email: string; password: string; generated: boolean; fullName: string }
