@@ -31,7 +31,10 @@ export function SalesAdminView() {
   const [perManagerInput, setPerManagerInput] = useState<Record<string, string>>({});
   const [savingPlan, setSavingPlan] = useState(false);
   const [callsToday, setCallsToday] = useState(0);
+  const [recordingsWeek, setRecordingsWeek] = useState(0);
+  const [lastWebhookAt, setLastWebhookAt] = useState<string | null>(null);
   const [leadsSheetOpen, setLeadsSheetOpen] = useState(false);
+
 
   useEffect(() => { fetchManagers(); fetchLeads(); fetchProposals(); }, [fetchManagers, fetchLeads, fetchProposals]);
 
