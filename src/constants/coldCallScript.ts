@@ -182,17 +182,33 @@ export interface ScriptContext {
   leadName?: string;
 }
 
+/** Разбирает "Иванов Иван Иванович" → { last, first, patronymic }. */
+function parseFio(full?: string) {
+  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  return { last: parts[0] || '', first: parts[1] || '', patronymic: parts[2] || '' };
+}
+
 export function fillScriptTemplate(text: string, ctx: ScriptContext = {}): string {
   const company = ctx.companyName || ctx.leadName || 'компания';
   const manager = ctx.managerName || '[ваше имя]';
-  const contact = ctx.contactName?.trim()
-    ? ctx.contactName.trim()
+  const rawContact = ctx.contactName?.trim() || '';
+  const { first, patronymic } = parseFio(rawContact);
+  const firstPatronymic = [first, patronymic].filter(Boolean).join(' ');
+  // Обращение для приветствия: ", Иван Иванович" или "" если ФИО неизвестно
+  const greeting = firstPatronymic ? `, ${firstPatronymic}` : '';
+  const contact = rawContact
+    ? (firstPatronymic || rawContact)
     : `представителя ООО «${company}»`;
   const phone = ctx.phone || '';
   return text
     .replace(/\{company_name\}/g, company)
     .replace(/\{manager_name\}/g, manager)
     .replace(/\{contact_name\}/g, contact)
+    .replace(/\{contact_full_name\}/g, rawContact || contact)
+    .replace(/\{contact_first_name\}/g, first || contact)
+    .replace(/\{contact_patronymic\}/g, patronymic || '')
+    .replace(/\{contact_first_patronymic\}/g, firstPatronymic || contact)
+    .replace(/\{contact_greeting\}/g, greeting)
     .replace(/\{phone\}/g, phone)
     .replace(/\[Имя\]/g, contact)
     .replace(/\[Менеджер\]/g, manager);
