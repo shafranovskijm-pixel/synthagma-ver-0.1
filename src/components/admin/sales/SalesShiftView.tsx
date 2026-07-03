@@ -226,15 +226,6 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-full h-8"
-                onClick={() => setTestCallOpen(true)}
-              >
-                <Stethoscope className="w-3.5 h-3.5 mr-1" />
-                Проверить Novofon
-              </Button>
               <Badge variant="secondary" className="rounded-full text-xs">
                 <Sparkles className="w-3 h-3 mr-1" /> Смена
               </Badge>
