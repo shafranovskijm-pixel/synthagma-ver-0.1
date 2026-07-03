@@ -657,6 +657,10 @@ export type Database = {
           provider: string
           recording_duration_sec: number | null
           recording_url: string | null
+          review_flag: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           started_at: string
           status: string
           to_number: string
@@ -684,6 +688,10 @@ export type Database = {
           provider?: string
           recording_duration_sec?: number | null
           recording_url?: string | null
+          review_flag?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           started_at?: string
           status?: string
           to_number: string
@@ -711,6 +719,10 @@ export type Database = {
           provider?: string
           recording_duration_sec?: number | null
           recording_url?: string | null
+          review_flag?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           started_at?: string
           status?: string
           to_number?: string

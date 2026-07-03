@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, PhoneCall, FileText, Database, Save } from 'lucide-react';
+import { Users, PhoneCall, FileText, Database, Save, Mic, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesManagersList } from './SalesManagersList';
 import { LeadsManager } from './LeadsManager';
+import { CallRecordingsAdminList } from './CallRecordingsAdminList';
 import { useSalesManager } from '@/hooks/useSalesManager';
 import { parseDailyPlan, planForManager, type DailyPlanConfig } from '@/utils/salesShiftQueue';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+
 
 /**
  * Простой админский экран «Продажи» для /admin.
@@ -29,7 +31,10 @@ export function SalesAdminView() {
   const [perManagerInput, setPerManagerInput] = useState<Record<string, string>>({});
   const [savingPlan, setSavingPlan] = useState(false);
   const [callsToday, setCallsToday] = useState(0);
+  const [recordingsWeek, setRecordingsWeek] = useState(0);
+  const [lastWebhookAt, setLastWebhookAt] = useState<string | null>(null);
   const [leadsSheetOpen, setLeadsSheetOpen] = useState(false);
+
 
   useEffect(() => { fetchManagers(); fetchLeads(); fetchProposals(); }, [fetchManagers, fetchLeads, fetchProposals]);
 
@@ -45,18 +50,26 @@ export function SalesAdminView() {
     })();
   }, []);
 
-  // Дозвоны за сегодня
+  // Дозвоны за сегодня + записей за 7 дней + последний webhook
   useEffect(() => {
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const { count } = await (supabase as any)
-        .from('call_logs').select('id', { count: 'exact', head: true })
-        .gte('started_at', startOfDay.toISOString())
-        .gte('duration_sec', 15)
-        .or('notes.is.null,notes.neq.__test_call__');
-      setCallsToday(count || 0);
+      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const [{ count: dz }, { count: rec }, { data: lastRec }] = await Promise.all([
+        (supabase as any).from('call_logs').select('id', { count: 'exact', head: true })
+          .gte('started_at', startOfDay.toISOString()).gte('duration_sec', 15)
+          .or('notes.is.null,notes.neq.__test_call__'),
+        (supabase as any).from('call_logs').select('id', { count: 'exact', head: true })
+          .eq('has_recording', true).gte('started_at', weekAgo),
+        (supabase as any).from('call_logs').select('updated_at')
+          .order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      setCallsToday(dz || 0);
+      setRecordingsWeek(rec || 0);
+      setLastWebhookAt(lastRec?.updated_at ?? null);
     })();
   }, []);
+
 
   const activeManagers = useMemo(() => managers.filter(m => m.is_active), [managers]);
 
@@ -99,12 +112,29 @@ export function SalesAdminView() {
   return (
     <div className="space-y-6">
       {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Users className="w-4 h-4" />} label="Менеджеров активно" value={activeManagers.length} />
         <KpiCard icon={<Database className="w-4 h-4" />} label="Лидов в базе" value={leadsStats.total} sub={`свободно ${leadsStats.free} · назначено ${leadsStats.assigned}`} />
         <KpiCard icon={<PhoneCall className="w-4 h-4" />} label="Дозвонов сегодня" value={callsToday} sub={`≥ 15 сек — реальные разговоры`} />
         <KpiCard icon={<FileText className="w-4 h-4" />} label="КП за неделю" value={proposalsThisWeek} />
+        <KpiCard icon={<Mic className="w-4 h-4" />} label="Записей за 7 дней" value={recordingsWeek} sub="прослушивание в разделе ниже" />
       </div>
+
+      {/* Диагностика Novofon */}
+      {(!lastWebhookAt || Date.now() - new Date(lastWebhookAt).getTime() > 24 * 3600 * 1000) && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 flex items-start gap-2 text-xs">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-medium text-amber-700 dark:text-amber-400">
+              Novofon-webhook не присылал события {lastWebhookAt ? 'более 24 часов' : 'ни разу'}
+            </div>
+            <div className="text-muted-foreground mt-0.5">
+              Проверьте, что в кабинете Novofon URL webhook указан на функцию <code>novofon-webhook</code> и включены уведомления NOTIFY_START / NOTIFY_ANSWER / NOTIFY_END / NOTIFY_RECORD.
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* План дозвонов */}
       <Card>
@@ -187,6 +217,10 @@ export function SalesAdminView() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Записи звонков */}
+      <CallRecordingsAdminList />
+
 
       <Sheet open={leadsSheetOpen} onOpenChange={setLeadsSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-6xl overflow-y-auto">
