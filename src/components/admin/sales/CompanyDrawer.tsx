@@ -96,6 +96,20 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       });
   }, [open]);
 
+  // Персональный вступительный монолог менеджера (если задан в его карточке)
+  useEffect(() => {
+    if (!user) return;
+    (supabase as any)
+      .from('sales_managers')
+      .select('script_overrides')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        const ov = data?.script_overrides?.opening;
+        setOpeningOverride(typeof ov === 'string' && ov.trim() ? ov : null);
+      });
+  }, [user?.id]);
+
   // Останавливаем караоке когда закрывается диалог результата
   useEffect(() => {
     if (!resultOpen) setIsCalling(false);
