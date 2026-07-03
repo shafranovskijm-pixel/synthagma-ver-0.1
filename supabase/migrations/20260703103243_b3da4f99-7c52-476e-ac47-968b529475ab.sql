@@ -1,0 +1,1 @@
+UPDATE public.email_sender_pool SET is_active = true, last_error = NULL, last_error_at = NULL WHERE id = '0f3265d5-51e2-47e0-ac3c-8ba05ecef00d';
