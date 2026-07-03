@@ -29,7 +29,7 @@ export function SalesManagersList() {
   const [phone, setPhone] = useState('');
   const [created, setCreated] = useState<CreatedCreds | null>(null);
   const [taskFor, setTaskFor] = useState<{ id: string; full_name: string; user_id: string } | null>(null);
-  const [statsFor, setStatsFor] = useState<{ id: string; full_name: string } | null>(null);
+  const [profileFor, setProfileFor] = useState<SalesManager | null>(null);
   const navigate = useNavigate();
 
   const handleImpersonate = (m: { id: string; user_id: string; full_name: string }) => {
