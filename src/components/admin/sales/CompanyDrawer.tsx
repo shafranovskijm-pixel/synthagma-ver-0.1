@@ -58,6 +58,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [isCalling, setIsCalling] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
+  const [openingOverride, setOpeningOverride] = useState<string | null>(null);
 
   // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
