@@ -252,34 +252,8 @@ export function SalesManagersList() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <Button variant="outline" size="sm" onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}>
-                    <BarChart3 className="w-4 h-4 mr-1" />История
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setTaskFor({ id: m.id, full_name: m.full_name, user_id: m.user_id })}>
-                    <ListTodo className="w-4 h-4 mr-1" />Поставить задачу
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleImpersonate(m)}>
-                    <Eye className="w-4 h-4 mr-1" />Войти как
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!confirm(`Сбросить пароль для ${m.full_name}? Старый пароль перестанет работать.`)) return;
-                      const res = await resetManagerPassword(m.id);
-                      if (res) setCreated({ email: res.email, password: res.password, generated: true, fullName: res.full_name });
-                    }}
-                  >
-                    <KeyRound className="w-4 h-4 mr-1" />Сбросить пароль
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleManagerActive(m.id, !m.is_active)}
-                  >
-                    {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
-                  </Button>
+                <div className="text-[11px] text-muted-foreground">
+                  Все инструменты менеджера (доступ, SMTP-ящики, скрипт, статистика) — в карточке.
                 </div>
               </CardContent>
             </Card>
@@ -295,10 +269,20 @@ export function SalesManagersList() {
         manager={taskFor}
       />
 
-      <ManagerStatsDialog
-        open={!!statsFor}
-        onOpenChange={(v) => !v && setStatsFor(null)}
-        manager={statsFor}
+      <ManagerProfileDrawer
+        manager={profileFor}
+        open={!!profileFor}
+        onOpenChange={(v) => !v && setProfileFor(null)}
+        onResetPassword={async (m) => {
+          if (!confirm(`Сбросить пароль для ${m.full_name}? Старый пароль перестанет работать.`)) return;
+          const res = await resetManagerPassword(m.id);
+          if (res) setCreated({ email: res.email, password: res.password, generated: true, fullName: res.full_name });
+        }}
+        onToggleActive={async (m) => {
+          await toggleManagerActive(m.id, !m.is_active);
+          setProfileFor(null);
+        }}
+        onAssignTask={(m) => setTaskFor({ id: m.id, full_name: m.full_name, user_id: m.user_id })}
       />
 
     </div>
