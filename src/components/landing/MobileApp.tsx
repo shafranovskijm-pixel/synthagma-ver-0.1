@@ -112,12 +112,12 @@ export function MobileApp() {
               Мобильное приложение
             </span>
             <h3 className="font-display text-3xl md:text-4xl font-medium mb-6 tracking-tight">
-              Обучение в кармане
+              Устанавливается прямо из браузера
             </h3>
             <div className="w-12 h-px bg-accent mb-6" />
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Ученики могут проходить курсы где угодно.
-              Приложение синхронизируется с веб-версией в реальном времени.
+              Работает на iPhone и Android — без App Store и Google Play.
+              Синхронизация с веб-версией в реальном времени.
             </p>
 
             {/* Mobile features */}
@@ -133,7 +133,7 @@ export function MobileApp() {
               ))}
             </div>
 
-            {/* Install app buttons */}
+            {/* Install app button */}
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/install"
@@ -142,15 +142,6 @@ export function MobileApp() {
                 <Download className="w-5 h-5" />
                 <span className="text-sm font-medium">Установить приложение</span>
               </Link>
-              <button
-                onClick={() => {
-                  import('sonner').then(({ toast }) => toast.info('В разработке, скоро будет доступно'));
-                }}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-lg border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors"
-              >
-                <Download className="w-5 h-5" />
-                <span className="text-sm font-medium">Скачать APK</span>
-              </button>
             </div>
           </motion.div>
 
