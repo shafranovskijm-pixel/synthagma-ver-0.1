@@ -89,9 +89,14 @@ export default function Install() {
             <h1 className="font-display text-4xl md:text-5xl font-medium mb-4 tracking-tight">
               Установите приложение
             </h1>
-            <p className="text-lg text-muted-foreground mb-12 max-w-md mx-auto">
+            <p className="text-lg text-muted-foreground mb-6 max-w-md mx-auto">
               Получите быстрый доступ к платформе СИНТАГМА прямо с главного экрана вашего устройства
             </p>
+            <div className="mb-12 max-w-md mx-auto text-xs text-muted-foreground bg-secondary/40 border border-border/40 rounded-lg px-4 py-3">
+              <Globe className="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" />
+              Работает на <b>синтагма.рф</b> и <b>sintagma.com.ru</b>. Устанавливайте с того домена,
+              которым пользуетесь обычно — иначе на телефоне появятся две иконки (это ограничение браузеров, не наше).
+            </div>
           </motion.div>
 
           {isInstalled ? (
