@@ -212,23 +212,8 @@ export function SendProposalDialog({
           </div>
         </DialogHeader>
 
-        {previewId ? (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex items-center justify-between px-5 py-2 border-b bg-muted/30">
-              <Button variant="ghost" size="sm" onClick={() => setPreviewId(null)} className="gap-1.5">
-                <ArrowLeft className="w-4 h-4" /> Назад к списку
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => window.open(`/proposal/${previewId}`, '_blank')} className="gap-1.5">
-                <ExternalLink className="w-3.5 h-3.5" /> В новой вкладке
-              </Button>
-            </div>
-            <iframe
-              src={`/proposal/${previewId}`}
-              className="flex-1 w-full bg-white"
-              title="Предпросмотр КП"
-            />
-          </div>
-        ) : (
+        {(
+
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
