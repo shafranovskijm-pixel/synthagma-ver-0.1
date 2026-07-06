@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Mail, Send, Inbox, Users, BarChart3, Settings, Megaphone, Flame, ShieldCheck, Building2 } from "lucide-react";
+import { Mail, Send, Inbox, Users, BarChart3, Settings, Megaphone, Flame, ShieldCheck, Building2, MessagesSquare } from "lucide-react";
 import { SenderInboxesTable } from "./SenderInboxesTable";
 import { CampaignsManager } from "./CampaignsManager";
 import { DripCampaignsManager } from "./DripCampaignsManager";
@@ -8,12 +8,14 @@ import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesM
 import { SuppressionListManager } from "./SuppressionListManager";
 import { DomainReputationCheck } from "./DomainReputationCheck";
 import { BroadcastCompaniesDb } from "./BroadcastCompaniesDb";
+import { InboxUnibox } from "./InboxUnibox";
 
-type Section = "inboxes" | "campaigns" | "drip" | "templates" | "companies" | "suppressed" | "domain";
+type Section = "inboxes" | "campaigns" | "unibox" | "drip" | "templates" | "companies" | "suppressed" | "domain";
 
 const NAV: { id: Section; label: string; icon: any }[] = [
+  { id: "campaigns", label: "Рассылки", icon: Send },
+  { id: "unibox", label: "Переписки", icon: MessagesSquare },
   { id: "inboxes", label: "Ящики", icon: Mail },
-  { id: "campaigns", label: "Кампании", icon: Send },
   { id: "drip", label: "Drip-цепочки", icon: Flame },
   { id: "templates", label: "Шаблоны", icon: Inbox },
   { id: "companies", label: "База компаний", icon: Building2 },
@@ -21,8 +23,9 @@ const NAV: { id: Section; label: string; icon: any }[] = [
   { id: "domain", label: "Репутация домена", icon: ShieldCheck },
 ];
 
+
 export function ColdyMailingLayout() {
-  const [section, setSection] = useState<Section>("inboxes");
+  const [section, setSection] = useState<Section>("campaigns");
 
   return (
     <div className="flex gap-4 min-h-[70vh]">
@@ -59,7 +62,8 @@ export function ColdyMailingLayout() {
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               {section === "inboxes" && "Пул отправителей: прогрев, репутация, лимиты"}
-              {section === "campaigns" && "Все email-кампании: черновики, запущенные, завершённые"}
+              {section === "campaigns" && "Все email-рассылки: черновики, запущенные, завершённые"}
+              {section === "unibox" && "Единый инбокс: ответы с ваших ящиков и переписка с клиентами прямо из CRM"}
               {section === "drip" && "Автоматические цепочки писем по расписанию"}
               {section === "templates" && "Шаблоны для быстрого запуска рассылок"}
               {section === "companies" && "Компании, которым уже отправлялись письма — рассылки будут их пропускать"}
@@ -71,12 +75,14 @@ export function ColdyMailingLayout() {
         <div>
           {section === "inboxes" && <SenderInboxesTable />}
           {section === "campaigns" && <CampaignsManager scope="platform" organizationId={null} />}
+          {section === "unibox" && <InboxUnibox />}
           {section === "drip" && <DripCampaignsManager />}
           {section === "templates" && <EmailTemplatesManager scope="platform" organizationId={null} />}
           {section === "companies" && <BroadcastCompaniesDb />}
           {section === "suppressed" && <SuppressionListManager scope="platform" organizationId={null} />}
           {section === "domain" && <DomainReputationCheck />}
         </div>
+
       </div>
     </div>
   );

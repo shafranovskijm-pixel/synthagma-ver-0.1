@@ -3053,6 +3053,65 @@ export type Database = {
           },
         ]
       }
+      email_conversations: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          id: string
+          last_direction: string
+          last_message_at: string
+          last_snippet: string | null
+          lead_id: string | null
+          remote_email: string
+          remote_name: string | null
+          sender_id: string
+          status: string
+          subject: string | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          last_direction?: string
+          last_message_at?: string
+          last_snippet?: string | null
+          lead_id?: string | null
+          remote_email: string
+          remote_name?: string | null
+          sender_id: string
+          status?: string
+          subject?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          last_direction?: string
+          last_message_at?: string
+          last_snippet?: string | null
+          lead_id?: string | null
+          remote_email?: string
+          remote_name?: string | null
+          sender_id?: string
+          status?: string
+          subject?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_conversations_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "email_sender_pool"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_drip_sends: {
         Row: {
           error: string | null
@@ -3225,6 +3284,74 @@ export type Database = {
           },
         ]
       }
+      email_messages: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          from_email: string
+          from_name: string | null
+          headers_raw: string | null
+          id: string
+          in_reply_to: string | null
+          is_read: boolean
+          message_id: string | null
+          received_at: string
+          references_ids: string | null
+          send_error: string | null
+          subject: string | null
+          to_email: string
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          from_email: string
+          from_name?: string | null
+          headers_raw?: string | null
+          id?: string
+          in_reply_to?: string | null
+          is_read?: boolean
+          message_id?: string | null
+          received_at?: string
+          references_ids?: string | null
+          send_error?: string | null
+          subject?: string | null
+          to_email: string
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          from_email?: string
+          from_name?: string | null
+          headers_raw?: string | null
+          id?: string
+          in_reply_to?: string | null
+          is_read?: boolean
+          message_id?: string | null
+          received_at?: string
+          references_ids?: string | null
+          send_error?: string | null
+          subject?: string | null
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "email_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_sender_pool: {
         Row: {
           app_password: string | null
@@ -3238,6 +3365,8 @@ export type Database = {
           id: string
           imap_encryption: string
           imap_host: string | null
+          imap_last_scan_at: string | null
+          imap_last_uid: number
           imap_port: number
           is_active: boolean
           last_error: string | null
@@ -3269,6 +3398,8 @@ export type Database = {
           id?: string
           imap_encryption?: string
           imap_host?: string | null
+          imap_last_scan_at?: string | null
+          imap_last_uid?: number
           imap_port?: number
           is_active?: boolean
           last_error?: string | null
@@ -3300,6 +3431,8 @@ export type Database = {
           id?: string
           imap_encryption?: string
           imap_host?: string | null
+          imap_last_scan_at?: string | null
+          imap_last_uid?: number
           imap_port?: number
           is_active?: boolean
           last_error?: string | null
