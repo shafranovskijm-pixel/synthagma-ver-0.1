@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ExternalLink, CheckCircle2, Loader2, Search, Mail } from 'lucide-react';
+import { Send, Eye, ArrowLeft, CheckCircle2, Loader2, Search, Mail, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/handleSupabaseError';
@@ -79,6 +79,7 @@ export function SendProposalDialog({
   const [activeCat, setActiveCat] = useState<CategoryKey>('all');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   useEffect(() => { setEmail(defaultEmail || ''); }, [defaultEmail, open]);
 
@@ -205,6 +206,23 @@ export function SendProposalDialog({
           </div>
         </DialogHeader>
 
+        {previewId ? (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex items-center justify-between px-5 py-2 border-b bg-muted/30">
+              <Button variant="ghost" size="sm" onClick={() => setPreviewId(null)} className="gap-1.5">
+                <ArrowLeft className="w-4 h-4" /> Назад к списку
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.open(`/proposal/${previewId}`, '_blank')} className="gap-1.5">
+                <ExternalLink className="w-3.5 h-3.5" /> В новой вкладке
+              </Button>
+            </div>
+            <iframe
+              src={`/proposal/${previewId}`}
+              className="flex-1 w-full bg-white"
+              title="Предпросмотр КП"
+            />
+          </div>
+        ) : (
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
@@ -267,7 +285,7 @@ export function SendProposalDialog({
                       <div>
                         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Итого</div>
                         <div className="text-lg font-bold text-primary tabular-nums">
-                          {formatMoney(tpl.total_amount)}
+                          {formatMoney(tpl.services.reduce((s, x) => s + Number(x.price) * Number(x.quantity || 1), 0) || tpl.total_amount)}
                         </div>
                       </div>
                       <div className="flex gap-1.5">
@@ -275,10 +293,10 @@ export function SendProposalDialog({
                           size="sm"
                           variant="outline"
                           className="h-8 px-2"
-                          onClick={() => window.open(`/proposal/${tpl.id}`, '_blank')}
+                          onClick={() => setPreviewId(tpl.id)}
                           title="Открыть предпросмотр"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           size="sm"
@@ -300,6 +318,7 @@ export function SendProposalDialog({
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
