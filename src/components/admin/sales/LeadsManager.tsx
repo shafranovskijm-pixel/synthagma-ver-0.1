@@ -429,8 +429,10 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
       </Sheet>
 
       <LeadsImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      </div>
 
       <CompanyDrawer
+
         lead={detailLead}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
