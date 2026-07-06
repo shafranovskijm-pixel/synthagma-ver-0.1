@@ -91,6 +91,15 @@ export function SendProposalDialog({
 
   useEffect(() => {
     if (!open) return;
+    const t = setTimeout(() => {
+      document.getElementById('inline-send-proposal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [open]);
+
+
+  useEffect(() => {
+    if (!open) return;
     setLoading(true);
     (async () => {
       const { data: props } = await supabase
