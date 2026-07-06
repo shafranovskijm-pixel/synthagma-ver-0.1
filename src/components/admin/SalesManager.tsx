@@ -162,56 +162,72 @@ export function SalesManager() {
   };
 
 
+  const isBroadcast = activeTab === 'broadcast';
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Верхняя горизонтальная навигация — «Рассылка» первой */}
-      <div className="flex items-center gap-2">
-        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl gap-2 shrink-0"
-              aria-label="Все разделы продаж"
-              title="Все разделы (включая КП, Договоры, Подписание, Сделки, Задачи, Отчёт)"
-            >
-              <Menu className="w-4 h-4" />
-              <span className="hidden sm:inline">Ещё</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 overflow-y-auto">
-            <SheetHeader className="mb-4">
-              <SheetTitle>Все разделы продаж</SheetTitle>
-            </SheetHeader>
-            <SalesSidebarContent
-              activeTab={activeTab}
-              onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
-            />
-          </SheetContent>
-        </Sheet>
 
-        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto pb-1">
-          {topNav.map(item => {
-            const Icon = item.icon;
-            const active = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap shrink-0",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
+      {/* Верхняя горизонтальная навигация — скрыта в «Рассылке» для Coldy-вида */}
+      {!isBroadcast && (
+        <div className="flex items-center gap-2">
+          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-2 shrink-0"
+                aria-label="Все разделы продаж"
+                title="Все разделы (включая КП, Договоры, Подписание, Сделки, Задачи, Отчёт)"
               >
-                <Icon className="w-4 h-4" />
-                {item.label}
-              </button>
-            );
-          })}
+                <Menu className="w-4 h-4" />
+                <span className="hidden sm:inline">Ещё</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 overflow-y-auto">
+              <SheetHeader className="mb-4">
+                <SheetTitle>Все разделы продаж</SheetTitle>
+              </SheetHeader>
+              <SalesSidebarContent
+                activeTab={activeTab}
+                onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
+              />
+            </SheetContent>
+          </Sheet>
+
+          <div className="flex-1 flex items-center gap-1.5 overflow-x-auto pb-1">
+            {topNav.map(item => {
+              const Icon = item.icon;
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap shrink-0",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Кнопка «назад» когда в Coldy-виде */}
+      {isBroadcast && (
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="self-start text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted transition-colors"
+        >
+          ← Выйти из рассылки
+        </button>
+      )}
+
 
       <div className="flex-1 min-w-0">
         {TABS[activeTab]}
