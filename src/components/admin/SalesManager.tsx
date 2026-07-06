@@ -151,10 +151,6 @@ export function SalesManager() {
     comparison: <CompetitorComparison />,
   };
 
-  const currentItem = salesMenuGroups
-    .flatMap(g => g.items)
-    .find(i => i.id === activeTab) ?? salesMenuGroups[0].items[0];
-  const CurrentIcon = currentItem.icon;
 
   return (
     <div className="flex flex-col gap-4">
