@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { X, Download, Link2, Printer } from 'lucide-react';
+import { X, Download, Link2, Printer, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { getBaseUrl } from '@/utils/getBaseUrl';
@@ -9,6 +9,8 @@ import type { CommercialProposal, ProposalServiceItem } from '@/hooks/useSalesMa
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
 import { toast } from "sonner";
 import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
+import proposalHero from "@/assets/proposal-hero-premium.jpg";
+
 
 interface Props {
   open: boolean;
