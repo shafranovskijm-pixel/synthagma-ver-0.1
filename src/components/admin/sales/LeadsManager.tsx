@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Upload, Search, Phone, MoreHorizontal, Filter as FilterIcon, X, MessageSquare, Inbox, ChevronDown } from 'lucide-react';
+import { Upload, Download, Search, Phone, MoreHorizontal, Filter as FilterIcon, X, MessageSquare, Inbox, ChevronDown } from 'lucide-react';
+import { exportToExcel } from '@/utils/xlsxHelper';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -197,6 +199,33 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
         </div>
         <Button size="sm" variant="outline" className="h-9" onClick={() => setAdvancedOpen(true)}>
           <FilterIcon className="w-3.5 h-3.5 mr-1" />Фильтры
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9"
+          onClick={async () => {
+            if (filtered.length === 0) { toast.error('Нет данных для экспорта'); return; }
+            const managerName = (id?: string | null) =>
+              id ? (managers.find(m => m.id === id)?.full_name || '—') : '—';
+            const data = filtered.map(l => ({
+              Компания: l.org_name || '',
+              ИНН: l.inn || '',
+              Телефон: l.phone || '',
+              Email: l.email || '',
+              Регион: l.region || '',
+              Статус: LEAD_STATUS_MAP[l.status]?.label || l.status,
+              Менеджер: managerName(l.assigned_manager_id),
+              'Последний контакт': l.last_contact_at ? new Date(l.last_contact_at).toLocaleDateString('ru-RU') : '',
+              Создан: new Date(l.created_at).toLocaleDateString('ru-RU'),
+            }));
+            await exportToExcel(data, 'Лиды', `leads-${new Date().toISOString().slice(0,10)}.xlsx`, [
+              { wch: 40 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 14 },
+            ]);
+            toast.success(`Экспортировано: ${data.length}`);
+          }}
+        >
+          <Download className="w-3.5 h-3.5 mr-1" />Экспорт
         </Button>
         <Button size="sm" className="h-9" onClick={() => setImportOpen(true)}>
           <Upload className="w-3.5 h-3.5 mr-1" />Импорт из Excel
