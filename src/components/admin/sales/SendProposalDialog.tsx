@@ -79,6 +79,7 @@ export function SendProposalDialog({
   const [activeCat, setActiveCat] = useState<CategoryKey>('all');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   useEffect(() => { setEmail(defaultEmail || ''); }, [defaultEmail, open]);
 
