@@ -100,7 +100,7 @@ export function PhoneDialerWidget() {
         aria-label="Открыть звонилку"
         onClick={() => setOpen(v => !v)}
         className={cn(
-          'fixed z-40 bottom-5 right-5 h-12 w-12 rounded-full shadow-lg',
+          'fixed z-40 bottom-6 right-24 h-12 w-12 rounded-full shadow-lg',
           'bg-primary text-primary-foreground flex items-center justify-center',
           'hover:scale-105 transition-transform',
         )}
@@ -109,7 +109,7 @@ export function PhoneDialerWidget() {
       </button>
 
       {open && (
-        <div className="fixed z-50 bottom-20 right-5 w-[300px] rounded-2xl border bg-background shadow-2xl overflow-hidden">
+        <div className="fixed z-50 bottom-24 right-24 w-[300px] rounded-2xl border bg-background shadow-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/40">
             <div className="flex items-center gap-2 text-sm font-medium">
               <PhoneCall className="w-4 h-4 text-primary" /> Звонилка
