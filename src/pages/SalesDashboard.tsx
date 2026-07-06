@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Eye, ArrowLeft } from 'lucide-react';
 import { SalesManager } from '@/components/admin/SalesManager';
+import { PhoneDialerWidget } from '@/components/admin/sales/PhoneDialerWidget';
 import { SalesDashboardHeader } from '@/components/admin/sales/SalesDashboardHeader';
 import { SalesDashboardFooter } from '@/components/admin/sales/SalesDashboardFooter';
 import { getAdminSalesView, clearAdminSalesView } from '@/utils/adminViewMode';
