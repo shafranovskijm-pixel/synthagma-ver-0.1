@@ -212,8 +212,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     <>
       <div
         id="inline-lead-card"
-        className="relative w-full bg-background rounded-2xl border shadow-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-2 my-4"
+        className={`relative w-full bg-background rounded-2xl border shadow-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-2 my-4 ${proposalPopoverOpen ? 'hidden' : ''}`}
       >
+
         <button
           type="button"
           onClick={() => onOpenChange(false)}
