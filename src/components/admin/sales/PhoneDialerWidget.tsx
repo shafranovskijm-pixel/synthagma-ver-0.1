@@ -239,6 +239,8 @@ export function PhoneDialerWidget() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
       )}
     </>
   );
