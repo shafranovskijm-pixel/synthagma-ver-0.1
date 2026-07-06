@@ -1,17 +1,20 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Eye, ArrowLeft } from 'lucide-react';
 import { SalesManager } from '@/components/admin/SalesManager';
 import { PhoneDialerWidget } from '@/components/admin/sales/PhoneDialerWidget';
 import { SalesDashboardHeader } from '@/components/admin/sales/SalesDashboardHeader';
 import { SalesDashboardFooter } from '@/components/admin/sales/SalesDashboardFooter';
+import { InlineProposalPreview } from '@/components/admin/sales/InlineProposalPreview';
 import { getAdminSalesView, clearAdminSalesView } from '@/utils/adminViewMode';
 
 const SalesDashboard = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const viewAs = getAdminSalesView();
+  const proposalPreviewId = searchParams.get('proposalPreview');
 
   const handleSignOut = async () => {
     await signOut();
@@ -22,6 +25,11 @@ const SalesDashboard = () => {
     const back = viewAs?.returnTo || '/admin';
     clearAdminSalesView();
     navigate(back);
+  };
+
+  const closePreview = () => {
+    searchParams.delete('proposalPreview');
+    setSearchParams(searchParams, { replace: true });
   };
 
   return (
@@ -43,7 +51,11 @@ const SalesDashboard = () => {
       <SalesDashboardHeader activeLabel="Компании" onSignOut={handleSignOut} />
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-8">
-        <SalesManager />
+        {proposalPreviewId ? (
+          <InlineProposalPreview proposalId={proposalPreviewId} onBack={closePreview} />
+        ) : (
+          <SalesManager />
+        )}
       </main>
 
       <SalesDashboardFooter />
@@ -54,3 +66,4 @@ const SalesDashboard = () => {
 };
 
 export default SalesDashboard;
+
