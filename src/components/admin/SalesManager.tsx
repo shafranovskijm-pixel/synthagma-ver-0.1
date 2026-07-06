@@ -34,8 +34,20 @@ export function SalesManager() {
   // Админ без активного «просмотра от лица менеджера» видит СПИСОК менеджеров
   // (логины/пароли/история/войти как), а не персональную смену продажника.
   const isAdminView = userRole === 'admin' && !getAdminSalesView();
-  const [activeTab, setActiveTab] = useState(isAdminView ? 'managers' : 'shift');
+  const [activeTab, setActiveTab] = useState(isAdminView ? 'broadcast' : 'shift');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Верхняя горизонтальная навигация (запрос: «Рассылка» первой)
+  const topNav: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'broadcast', label: 'Рассылка', icon: Send },
+    { id: 'overview', label: 'Обзор', icon: Target },
+    { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
+    { id: 'managers', label: 'Менеджеры', icon: Users },
+    { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
+    { id: 'services', label: 'Услуги', icon: Package },
+    { id: 'settings', label: 'Настройки / SMTP', icon: SettingsIcon },
+  ];
 
 
   // Контекст компании, прокинутой из «Сделок 360°»
