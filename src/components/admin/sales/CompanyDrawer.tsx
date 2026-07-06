@@ -161,30 +161,13 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const handleQuickCall = async (overrideNumber?: string) => {
     const dial = overrideNumber || lead.phone;
     if (!dial) return;
-    setIsCalling(true); // включаем караоке сразу
-    try {
-      const { data, error } = await supabase.functions.invoke('novofon-call-start', {
-        body: {
-          to_number: dial,
-          lead_id: lead.id,
-          company_inn: lead.inn ?? null,
-          company_name: lead.org_name ?? null,
-          operator_number: managerPhone ?? undefined,
-        },
-      });
-      if (error) throw error;
-      if (data?.ok) {
-        toast.success('Звоним через Novofon', { description: `Набираем ${formatRuPhone(dial)} — ответьте на своём телефоне.` });
-      } else {
-        toast.error('Не удалось запустить звонок', { description: data?.message || data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon' });
-      }
-    } catch (e) {
-      toast.error('Ошибка звонка', { description: e instanceof Error ? e.message : String(e) });
-    }
-    await addActivity(lead.id, null, 'call', `Исходящий звонок Novofon: ${dial}`);
-    setPresetResult(undefined);
-    setResultOpen(true);
+    // Звоним из браузера через WebRTC-софтфон (гарнитура). Никакого дозвона на мобильный.
+    window.dispatchEvent(new CustomEvent('softphone:call', { detail: { number: dial } }));
+    toast.success('Звоним через браузер', { description: `Набираем ${formatRuPhone(dial) || dial}. Скрипт начнётся, когда возьмут трубку.` });
+    await addActivity(lead.id, null, 'call', `Исходящий звонок (браузер): ${dial}`);
+    // Караоке и модалка результата откроются автоматически по событиям софтфона
   };
+
 
 
   const handleQuickResult = (key: CallResultKey) => {
