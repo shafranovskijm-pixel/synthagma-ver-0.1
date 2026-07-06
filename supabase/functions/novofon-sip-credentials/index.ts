@@ -1,10 +1,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { novofonClassicRequest } from "../_shared/novofon.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const VERSION = "webrtc-domain-normalized-v2";
+
+interface WebrtcKeyResponse {
+  status?: string;
+  key?: string;
+  message?: string;
+}
+
+interface WebphoneDataResponse {
+  domain?: string;
+  username?: string;
+  pass?: string;
+  datacenter?: string;
+  error?: { content?: string } | string;
+}
 
 /**
  * Возвращает SIP-креды для WebRTC-софтфона.
@@ -28,16 +45,56 @@ serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "invalid auth" }, 401);
 
-    const login = Deno.env.get("NOVOFON_SIP_LOGIN");
-    const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
-    const domain = Deno.env.get("NOVOFON_SIP_DOMAIN") || "sip.novofon.ru";
-    const wss = Deno.env.get("NOVOFON_SIP_WSS_URL") || "wss://webrtc.novofon.com:443/webrtc";
+    const login = Deno.env.get("NOVOFON_WEBRTC_SIP_LOGIN")?.trim() || buildConfiguredSipLogin();
+    const password = Deno.env.get("NOVOFON_WEBRTC_SIP_PASSWORD") || Deno.env.get("NOVOFON_SIP_PASSWORD");
 
-    if (!login || !password) {
-      return json({ error: "sip_not_configured", message: "NOVOFON_SIP_LOGIN / NOVOFON_SIP_PASSWORD не заданы" }, 200);
+    if (!login) {
+      return json({ error: "sip_not_configured", message: "SIP-логин Novofon не задан" }, 200);
     }
 
-    return json({ ok: true, login, password, domain, wss });
+    const domain = pickSipDomain(login);
+    const wss = pickSipWss(domain);
+
+    if (password) {
+      return json({ ok: true, version: VERSION, login, password, domain, wss });
+    }
+
+    try {
+      const keyResponse = await novofonClassicRequest<WebrtcKeyResponse>("GET", "/v1/webrtc/get_key/", { sip: login });
+      const key = keyResponse?.key;
+      if (!key || keyResponse?.status === "error") {
+        throw new Error(keyResponse?.message || "Novofon не вернул WebRTC-ключ");
+      }
+
+      const webphoneData = await fetchWebphoneData(key, login);
+      if (webphoneData?.error) {
+        const message = typeof webphoneData.error === "string" ? webphoneData.error : webphoneData.error.content;
+        throw new Error(message || "Novofon не вернул WebRTC-параметры");
+      }
+      if (!webphoneData?.domain || !webphoneData?.username || !webphoneData?.pass) {
+        throw new Error("Novofon вернул неполные WebRTC-параметры");
+      }
+
+      const normalizedDomain = normalizeWebrtcDomain(webphoneData.domain, webphoneData.username || login);
+      return json({
+        ok: true,
+        version: VERSION,
+        login: webphoneData.username,
+        password: webphoneData.pass,
+        domain: normalizedDomain,
+        wss: `wss://${normalizedDomain}:4443`,
+      });
+    } catch (webrtcError) {
+      // Резерв для ручной SIP/WSS-конфигурации, если временный ключ недоступен.
+      if (!password || !wss) {
+        return json({
+          error: "webrtc_not_available",
+          message: webrtcError instanceof Error ? webrtcError.message : String(webrtcError),
+        }, 200);
+      }
+    }
+
+    return json({ ok: true, version: VERSION, login, password, domain, wss });
   } catch (e) {
     return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);
   }
@@ -48,4 +105,69 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function pickSipDomain(login: string): string {
+  const configured = Deno.env.get("NOVOFON_SIP_LINE_SERVER")
+    || Deno.env.get("NOVOFON_WEBRTC_SIP_DOMAIN")
+    || Deno.env.get("NOVOFON_SIP_DOMAIN")
+    || Deno.env.get("NOVOFON_SIP_SERVER")
+    || "";
+  const normalized = configured
+    .replace(/^sips?:\/\//i, "")
+    .replace(/:\d+$/i, "")
+    .trim();
+
+  // Логин вида 0076627-100 — это внутренняя линия АТС, для неё Zadarma/Novofon
+  // в официальных инструкциях использует PBX-домен, а не sip.novofon.ru.
+  if (normalized.includes("novofon.ru")) {
+    return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
+  }
+  if (normalized) return normalized;
+  return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
+}
+
+function buildConfiguredSipLogin(): string {
+  const explicit = (Deno.env.get("NOVOFON_SIP_LOGIN") || Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || "").trim();
+  if (!explicit) return "";
+  if (explicit.includes("-")) return explicit;
+  const extension = (Deno.env.get("NOVOFON_VATS_EXTENSION") || "").trim();
+  return extension ? `${explicit}-${extension}` : explicit;
+}
+
+function pickSipWss(domain: string): string {
+  const configured = Deno.env.get("NOVOFON_SIP_WSS_URL")?.trim() || "";
+  // Старое значение было введено ошибочно: DNS-имя не существует и даёт «Не подключено».
+  if (configured && !configured.includes("webrtc.novofon.com")) return configured;
+  return `wss://${domain}:4443`;
+}
+
+function normalizeWebrtcDomain(domain: string, login: string): string {
+  // Novofon отдаёт брендовый домен sip.novofon.ru, но его WebRTC-порт 4443
+  // не отвечает стабильно. Под капотом это Zadarma, рабочие WSS-шлюзы — zadarma.com.
+  const normalized = domain.trim().toLowerCase();
+  if (normalized.includes("novofon.ru")) return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
+  return normalized;
+}
+
+async function fetchWebphoneData(key: string, sip: string): Promise<WebphoneDataResponse> {
+  const callback = "sintagmaWebrtc";
+  const url = new URL("https://api.zadarma.com/sys/webrtc/get_webphone_data.php");
+  url.searchParams.set("jsonpCallback", callback);
+  url.searchParams.set("integrationType", "CRM");
+  url.searchParams.set("key", key);
+  url.searchParams.set("sipId", sip);
+  url.searchParams.set("language", "ru");
+
+  const res = await fetch(url.toString(), { headers: { Accept: "application/javascript" } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Novofon WebRTC HTTP ${res.status}`);
+
+  const trimmed = text.trim();
+  const prefix = `${callback}(`;
+  if (!trimmed.startsWith(prefix) || !trimmed.endsWith(")")) {
+    throw new Error("Novofon вернул некорректный WebRTC-ответ");
+  }
+
+  return JSON.parse(trimmed.slice(prefix.length, -1)) as WebphoneDataResponse;
 }

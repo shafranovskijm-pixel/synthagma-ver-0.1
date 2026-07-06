@@ -18,6 +18,7 @@ export function PhoneDialerWidget() {
   const pendingDialRef = useRef<string | null>(null);
   const lastNumberRef = useRef<string | null>(null);
   const prevStatusRef = useRef(sip.status);
+  const autoConnectAttemptedRef = useRef(false);
 
   // Открываем виджет по глобальному событию (можно вызывать из карточек лида)
   useEffect(() => {
@@ -53,8 +54,15 @@ export function PhoneDialerWidget() {
 
   // Автоподключение при открытии
   useEffect(() => {
-    if (open && sip.status === 'idle') sip.connect();
-  }, [open, sip]);
+    if (!open) {
+      autoConnectAttemptedRef.current = false;
+      return;
+    }
+    if (!autoConnectAttemptedRef.current && sip.status === 'idle') {
+      autoConnectAttemptedRef.current = true;
+      sip.connect();
+    }
+  }, [open, sip.status, sip.connect]);
 
   // Как только зарегистрировались — набираем отложенный номер
   useEffect(() => {
@@ -93,7 +101,24 @@ export function PhoneDialerWidget() {
 
   const handleCall = () => {
     if (!normalized) { toast.error('Введите номер (10 цифр после +7)'); return; }
-    if (sip.status !== 'registered') { toast.error('Софтфон не готов', { description: 'Подождите подключения к Novofon…' }); return; }
+    lastNumberRef.current = normalized;
+    pendingDialRef.current = normalized.replace(/^\+/, '');
+    if (sip.status === 'registered') {
+      const n = pendingDialRef.current;
+      pendingDialRef.current = null;
+      sip.call(n);
+      return;
+    }
+    if (sip.status === 'connecting') {
+      toast.message('Подключаем софтфон', { description: 'Звонок начнётся автоматически после регистрации SIP.' });
+      return;
+    }
+    sip.connect();
+    toast.message('Подключаем софтфон', { description: 'Звонок начнётся автоматически после регистрации SIP.' });
+  };
+
+  const handleRegisteredCall = () => {
+    if (!normalized) return;
     lastNumberRef.current = normalized;
     // Novofon набор: 7XXXXXXXXXX (без +)
     sip.call(normalized.replace(/^\+/, ''));
@@ -207,11 +232,11 @@ export function PhoneDialerWidget() {
             ) : (
               <Button
                 className="w-full h-10 rounded-lg gap-2"
-                onClick={handleCall}
-                disabled={!normalized || sip.status !== 'registered'}
+                onClick={sip.status === 'registered' ? handleRegisteredCall : handleCall}
+                disabled={!normalized || sip.status === 'connecting'}
               >
-                <PhoneCall className="w-4 h-4" />
-                Позвонить
+                {sip.status === 'connecting' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PhoneCall className="w-4 h-4" />}
+                {sip.status === 'connecting' ? 'Подключаем…' : 'Позвонить'}
               </Button>
             )}
 

@@ -28,6 +28,7 @@ export function useSoftphone() {
   const uaRef = useRef<JsSIP.UA | null>(null);
   const sessionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastCredsRef = useRef<SipCreds | null>(null);
   const [status, setStatus] = useState<SoftphoneStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [remoteNumber, setRemoteNumber] = useState<string | null>(null);
@@ -66,7 +67,11 @@ export function useSoftphone() {
   }, [ensureAudioEl]);
 
   const connect = useCallback(async () => {
-    if (uaRef.current) return; // уже подключены
+    if (uaRef.current?.isRegistered?.()) return; // уже подключены
+    if (uaRef.current) {
+      try { uaRef.current.stop(); } catch { /* noop */ }
+      uaRef.current = null;
+    }
     setStatus('connecting');
     setError(null);
     try {
@@ -74,6 +79,7 @@ export function useSoftphone() {
       if (fnErr) throw fnErr;
       if (!data?.ok) throw new Error(data?.message || data?.error || 'sip credentials unavailable');
       const creds = data as SipCreds & { ok: true };
+      lastCredsRef.current = creds;
 
       const socket = new JsSIP.WebSocketInterface(creds.wss);
       const ua = new JsSIP.UA({
@@ -86,12 +92,21 @@ export function useSoftphone() {
       });
       uaRef.current = ua;
 
-      ua.on('registered', () => setStatus('registered'));
+      ua.on('registered', () => {
+        setError(null);
+        setStatus('registered');
+      });
       ua.on('registrationFailed', (e: any) => {
+        try { ua.stop(); } catch { /* noop */ }
+        if (uaRef.current === ua) uaRef.current = null;
         setStatus('failed');
-        setError(e?.cause || 'registrationFailed');
+        const statusCode = e?.response?.status_code;
+        const reason = e?.response?.reason_phrase;
+        const cause = e?.cause || reason || 'registrationFailed';
+        setError(statusCode === 401 ? 'Novofon отклонил SIP логин/пароль' : cause);
       });
       ua.on('disconnected', () => {
+        if (uaRef.current === ua) uaRef.current = null;
         if (!sessionRef.current) setStatus('idle');
       });
       ua.on('newRTCSession', (e: any) => {
@@ -105,6 +120,7 @@ export function useSoftphone() {
 
       ua.start();
     } catch (e) {
+      uaRef.current = null;
       setStatus('failed');
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -128,7 +144,8 @@ export function useSoftphone() {
     setRemoteNumber(number);
     setStatus('calling');
     // Всегда набираем через тот же SIP-домен
-    const target = `sip:${number.replace(/[^\d+]/g, '')}@${(ua as any).configuration.uri.host}`;
+    const host = lastCredsRef.current?.domain || (ua as any).configuration.uri.host;
+    const target = `sip:${number.replace(/[^\d+]/g, '')}@${host}`;
     const session = ua.call(target, {
       mediaConstraints: { audio: true, video: false },
       rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
