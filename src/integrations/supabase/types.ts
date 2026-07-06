@@ -602,6 +602,51 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcast_companies_db: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          email: string
+          extra: Json
+          first_name: string | null
+          id: string
+          last_campaign_id: string | null
+          last_name: string | null
+          last_sent_at: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          email: string
+          extra?: Json
+          first_name?: string | null
+          id?: string
+          last_campaign_id?: string | null
+          last_name?: string | null
+          last_sent_at?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          extra?: Json
+          first_name?: string | null
+          id?: string
+          last_campaign_id?: string | null
+          last_name?: string | null
+          last_sent_at?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       call_log_listens: {
         Row: {
           call_log_id: string
