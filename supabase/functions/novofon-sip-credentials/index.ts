@@ -45,7 +45,7 @@ serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "invalid auth" }, 401);
 
-    const login = Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || Deno.env.get("NOVOFON_SIP_LOGIN");
+    const login = buildConfiguredSipLogin();
     const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
 
     if (!login) {
@@ -54,6 +54,10 @@ serve(async (req) => {
 
     const domain = pickSipDomain(login);
     const wss = pickSipWss(domain);
+
+    if (password) {
+      return json({ ok: true, version: VERSION, login, password, domain, wss });
+    }
 
     try {
       const keyResponse = await novofonClassicRequest<WebrtcKeyResponse>("GET", "/v1/webrtc/get_key/", { sip: login });
@@ -120,6 +124,14 @@ function pickSipDomain(login: string): string {
   }
   if (normalized) return normalized;
   return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
+}
+
+function buildConfiguredSipLogin(): string {
+  const explicit = (Deno.env.get("NOVOFON_SIP_LOGIN") || Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || "").trim();
+  if (!explicit) return "";
+  if (explicit.includes("-")) return explicit;
+  const extension = (Deno.env.get("NOVOFON_SIP_LINE_PORT") || Deno.env.get("NOVOFON_VATS_EXTENSION") || "").trim();
+  return extension ? `${explicit}-${extension}` : explicit;
 }
 
 function pickSipWss(domain: string): string {
