@@ -45,12 +45,13 @@ serve(async (req) => {
 
     const login = Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || Deno.env.get("NOVOFON_SIP_LOGIN");
     const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
-    const domain = pickSipDomain(login);
-    const wss = pickSipWss(domain);
 
     if (!login) {
       return json({ error: "sip_not_configured", message: "SIP-логин Novofon не задан" }, 200);
     }
+
+    const domain = pickSipDomain(login);
+    const wss = pickSipWss(domain);
 
     try {
       const keyResponse = await novofonClassicRequest<WebrtcKeyResponse>("GET", "/v1/webrtc/get_key/", { sip: login });
