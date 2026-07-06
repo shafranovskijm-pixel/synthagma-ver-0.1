@@ -264,10 +264,13 @@ export function SendProposalDialog({
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загружаем шаблоны…
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground text-sm">Нет шаблонов по фильтру</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.length === 0 && (
+                <div className="md:col-span-2 xl:col-span-3 text-center py-4 text-muted-foreground text-sm">
+                  Нет шаблонов по фильтру
+                </div>
+              )}
               {/* Tile: create own KP */}
               <button
                 type="button"
