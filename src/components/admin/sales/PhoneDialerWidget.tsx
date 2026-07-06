@@ -19,20 +19,33 @@ export function PhoneDialerWidget() {
   const [open, setOpen] = useState(false);
   const [raw, setRaw] = useState('');
   const [managerPhone, setManagerPhone] = useState<string>('');
+  const [managerId, setManagerId] = useState<string | null>(null);
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
   const [calling, setCalling] = useState(false);
 
-  // Загружаем телефон менеджера один раз
+  // Загружаем телефон менеджера (fallback: profiles.phone)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const viewAs = getAdminSalesView();
-      const q = supabase.from('sales_managers').select('phone');
-      const query = viewAs?.managerId
-        ? q.eq('id', viewAs.managerId)
-        : user?.id ? q.eq('user_id', user.id) : null;
-      if (!query) return;
-      const { data } = await query.maybeSingle();
-      if (!cancelled && data?.phone) setManagerPhone(data.phone);
+      const targetUserId = viewAs?.userId || user?.id;
+      const [mgrR, profR] = await Promise.all([
+        viewAs?.managerId
+          ? (supabase as any).from('sales_managers').select('id, phone').eq('id', viewAs.managerId).maybeSingle()
+          : (user?.id ? (supabase as any).from('sales_managers').select('id, phone').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null })),
+        targetUserId
+          ? (supabase as any).from('profiles').select('phone').eq('user_id', targetUserId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      if (cancelled) return;
+      const mgr: any = mgrR?.data;
+      const prof: any = profR?.data;
+      if (mgr?.id) setManagerId(mgr.id);
+      const phone = mgr?.phone || prof?.phone || '';
+      setManagerPhone(phone);
+      setPhoneDraft(phone);
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -47,6 +60,33 @@ export function PhoneDialerWidget() {
     window.addEventListener('open-phone-dialer', handler);
     return () => window.removeEventListener('open-phone-dialer', handler);
   }, []);
+
+  const savePhone = async () => {
+    const normalizedPhone = normalizeRuPhone(phoneDraft);
+    if (!normalizedPhone) {
+      toast.error('Введите корректный номер (10 цифр после +7)');
+      return;
+    }
+    setSavingPhone(true);
+    try {
+      if (managerId) {
+        const { error } = await (supabase as any).from('sales_managers').update({ phone: normalizedPhone }).eq('id', managerId);
+        if (error) throw error;
+      } else if (user?.id) {
+        const { error } = await (supabase as any).from('profiles').update({ phone: normalizedPhone }).eq('user_id', user.id);
+        if (error) throw error;
+      }
+      setManagerPhone(normalizedPhone);
+      setEditingPhone(false);
+      toast.success('Телефон сохранён');
+    } catch (e) {
+      toast.error('Не удалось сохранить телефон', {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSavingPhone(false);
+    }
+  };
 
   const normalized = useMemo(() => normalizeRuPhone(raw), [raw]);
   const pretty = normalized ? formatRuPhone(normalized) : raw;
@@ -158,9 +198,45 @@ export function PhoneDialerWidget() {
               <PhoneCall className="w-4 h-4" />
               {calling ? 'Звоним…' : 'Позвонить'}
             </Button>
-            {!managerPhone && (
-              <div className="text-[11px] text-amber-600 text-center">
-                Укажите свой рабочий телефон в профиле менеджера, иначе Novofon не сможет соединить звонок.
+            {managerPhone && !editingPhone ? (
+              <div className="text-[11px] text-center text-muted-foreground">
+                Ваш телефон: <span className="font-medium text-foreground">{formatRuPhone(managerPhone) || managerPhone}</span>
+                {' '}·{' '}
+                <button
+                  type="button"
+                  onClick={() => { setPhoneDraft(managerPhone); setEditingPhone(true); }}
+                  className="underline hover:text-primary"
+                >
+                  изменить
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2">
+                <div className="text-[11px] text-amber-700 text-center">
+                  Укажите свой рабочий телефон, иначе Novofon не соединит звонок.
+                </div>
+                <div className="flex gap-1.5">
+                  <Input
+                    value={phoneDraft}
+                    onChange={e => setPhoneDraft(e.target.value)}
+                    placeholder="+7 (___) ___-__-__"
+                    className="h-8 text-sm"
+                    inputMode="tel"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    onClick={savePhone}
+                    disabled={savingPhone || !phoneDraft}
+                  >
+                    {savingPhone ? '…' : 'OK'}
+                  </Button>
+                  {managerPhone && (
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingPhone(false)}>
+                      ✕
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </div>
