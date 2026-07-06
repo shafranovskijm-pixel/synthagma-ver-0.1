@@ -45,8 +45,8 @@ serve(async (req) => {
 
     const login = Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || Deno.env.get("NOVOFON_SIP_LOGIN");
     const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
-    const domain = Deno.env.get("NOVOFON_SIP_DOMAIN") || Deno.env.get("NOVOFON_SIP_SERVER") || "sip.novofon.ru";
-    const wss = Deno.env.get("NOVOFON_SIP_WSS_URL") || "";
+    const domain = pickSipDomain(login);
+    const wss = pickSipWss(domain);
 
     if (!login) {
       return json({ error: "sip_not_configured", message: "SIP-логин Novofon не задан" }, 200);
@@ -96,6 +96,29 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function pickSipDomain(login: string): string {
+  const configured = Deno.env.get("NOVOFON_SIP_LINE_SERVER")
+    || Deno.env.get("NOVOFON_SIP_DOMAIN")
+    || Deno.env.get("NOVOFON_SIP_SERVER")
+    || "";
+  const normalized = configured
+    .replace(/^sips?:\/\//i, "")
+    .replace(/:\d+$/i, "")
+    .trim();
+
+  if (normalized) return normalized;
+  // Логин вида 0076627-100 — это внутренняя линия АТС, для неё Zadarma/Novofon
+  // в официальных инструкциях использует PBX-домен, а не sip.novofon.ru.
+  return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
+}
+
+function pickSipWss(domain: string): string {
+  const configured = Deno.env.get("NOVOFON_SIP_WSS_URL")?.trim() || "";
+  // Старое значение было введено ошибочно: DNS-имя не существует и даёт «Не подключено».
+  if (configured && !configured.includes("webrtc.novofon.com")) return configured;
+  return `wss://${domain}:4443`;
 }
 
 async function fetchWebphoneData(key: string, sip: string): Promise<WebphoneDataResponse> {
