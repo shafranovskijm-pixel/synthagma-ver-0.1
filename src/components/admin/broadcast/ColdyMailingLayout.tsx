@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Mail, Send, Inbox, Users, BarChart3, Settings, Megaphone, Flame, ShieldCheck, Building2 } from "lucide-react";
+import { Mail, Send, Inbox, Users, BarChart3, Settings, Megaphone, Flame, ShieldCheck, Building2, MessagesSquare } from "lucide-react";
 import { SenderInboxesTable } from "./SenderInboxesTable";
 import { CampaignsManager } from "./CampaignsManager";
 import { DripCampaignsManager } from "./DripCampaignsManager";
@@ -8,18 +8,21 @@ import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesM
 import { SuppressionListManager } from "./SuppressionListManager";
 import { DomainReputationCheck } from "./DomainReputationCheck";
 import { BroadcastCompaniesDb } from "./BroadcastCompaniesDb";
+import { InboxUnibox } from "./InboxUnibox";
 
-type Section = "inboxes" | "campaigns" | "drip" | "templates" | "companies" | "suppressed" | "domain";
+type Section = "inboxes" | "campaigns" | "unibox" | "drip" | "templates" | "companies" | "suppressed" | "domain";
 
 const NAV: { id: Section; label: string; icon: any }[] = [
+  { id: "campaigns", label: "Рассылки", icon: Send },
+  { id: "unibox", label: "Переписки", icon: MessagesSquare },
   { id: "inboxes", label: "Ящики", icon: Mail },
-  { id: "campaigns", label: "Кампании", icon: Send },
   { id: "drip", label: "Drip-цепочки", icon: Flame },
   { id: "templates", label: "Шаблоны", icon: Inbox },
   { id: "companies", label: "База компаний", icon: Building2 },
   { id: "suppressed", label: "Отписавшиеся", icon: Users },
   { id: "domain", label: "Репутация домена", icon: ShieldCheck },
 ];
+
 
 export function ColdyMailingLayout() {
   const [section, setSection] = useState<Section>("inboxes");
