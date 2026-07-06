@@ -129,6 +129,18 @@ export function CommercialProposals({ prefillCompany, onPrefillConsumed }: Comme
 
   useEffect(() => { fetchProposals(); fetchManagers(); }, [fetchProposals, fetchManagers]);
 
+  // Открытие редактора «Своё КП» из галереи отправки
+  useEffect(() => {
+    const handler = () => {
+      setEditingProposal(null);
+      setEditingServices([]);
+      setPrefillForEditor(null);
+      setEditorOpen(true);
+    };
+    window.addEventListener('sales-create-proposal', handler);
+    return () => window.removeEventListener('sales-create-proposal', handler);
+  }, []);
+
   // Открыть редактор с предзаполненной компанией, если задано
   useEffect(() => {
     if (prefillCompany?.name) {

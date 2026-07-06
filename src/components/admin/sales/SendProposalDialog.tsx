@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Eye, ArrowLeft, CheckCircle2, Loader2, Search, Mail, ExternalLink } from 'lucide-react';
+import { Send, Eye, ArrowLeft, CheckCircle2, Loader2, Search, Mail, ExternalLink, Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/handleSupabaseError';
@@ -98,34 +98,57 @@ export function SendProposalDialog({
   }, [open]);
 
 
+  const loadTemplates = async () => {
+    setLoading(true);
+    const { data: props } = await supabase
+      .from('commercial_proposals')
+      .select('id, company_name, total_amount, intro_html')
+      .eq('is_template', true)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+    const ids = (props || []).map((p: any) => p.id);
+    const { data: svcs } = ids.length
+      ? await supabase.from('commercial_proposal_services').select('*').in('proposal_id', ids)
+      : { data: [] as any[] };
+    const map: Record<string, Service[]> = {};
+    (svcs || []).forEach((s: any) => {
+      (map[s.proposal_id] ||= []).push(s);
+    });
+    const tpls: Template[] = (props || []).map((p: any) => ({
+      id: p.id,
+      company_name: p.company_name,
+      total_amount: Number(p.total_amount || 0),
+      intro_html: p.intro_html,
+      services: (map[p.id] || []).sort((a, b) => a.sort_order - b.sort_order),
+    }));
+    setTemplates(tpls);
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    (async () => {
-      const { data: props } = await supabase
-        .from('commercial_proposals')
-        .select('id, company_name, total_amount, intro_html')
-        .eq('is_template', true)
-        .order('created_at', { ascending: false });
-      const ids = (props || []).map((p: any) => p.id);
-      const { data: svcs } = ids.length
-        ? await supabase.from('commercial_proposal_services').select('*').in('proposal_id', ids)
-        : { data: [] as any[] };
-      const map: Record<string, Service[]> = {};
-      (svcs || []).forEach((s: any) => {
-        (map[s.proposal_id] ||= []).push(s);
-      });
-      const tpls: Template[] = (props || []).map((p: any) => ({
-        id: p.id,
-        company_name: p.company_name,
-        total_amount: Number(p.total_amount || 0),
-        intro_html: p.intro_html,
-        services: (map[p.id] || []).sort((a, b) => a.sort_order - b.sort_order),
-      }));
-      setTemplates(tpls);
-      setLoading(false);
-    })();
+    loadTemplates();
   }, [open]);
+
+  const handleDeleteTemplate = async (tpl: Template) => {
+    if (!confirm(`Удалить шаблон «${tpl.company_name}»? Это скроет его из галереи КП.`)) return;
+    const { error } = await supabase
+      .from('commercial_proposals')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+      .eq('id', tpl.id);
+    if (error) {
+      toast.error('Не удалось удалить шаблон', { description: getErrorMessage(error) });
+      return;
+    }
+    toast.success(`Шаблон «${tpl.company_name}» удалён`);
+    setTemplates((prev) => prev.filter((t) => t.id !== tpl.id));
+  };
+
+  const handleCreateOwn = () => {
+    onOpenChange(false);
+    window.dispatchEvent(new CustomEvent('sales-nav', { detail: 'proposals' }));
+    window.dispatchEvent(new CustomEvent('sales-create-proposal'));
+  };
 
   const filtered = useMemo(() => {
     return templates.filter((t) => {
@@ -241,10 +264,28 @@ export function SendProposalDialog({
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загружаем шаблоны…
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground text-sm">Нет шаблонов по фильтру</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.length === 0 && (
+                <div className="md:col-span-2 xl:col-span-3 text-center py-4 text-muted-foreground text-sm">
+                  Нет шаблонов по фильтру
+                </div>
+              )}
+              {/* Tile: create own KP */}
+              <button
+                type="button"
+                onClick={handleCreateOwn}
+                className="group relative border-2 border-dashed border-primary/30 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[220px] bg-primary/[0.03] hover:bg-primary/[0.06] hover:border-primary/60 transition text-primary"
+                title="Создать своё КП в конструкторе"
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-105 transition">
+                  <Plus className="w-6 h-6" />
+                </div>
+                <div className="font-semibold text-sm">Своё КП</div>
+                <div className="text-[11px] text-muted-foreground text-center max-w-[220px]">
+                  Открыть конструктор и собрать индивидуальное предложение под клиента
+                </div>
+              </button>
               {filtered.map((tpl) => {
                 const cat = CATEGORIES.find((c) => c.key === detectCategory(tpl.company_name))!;
                 const desc = stripHtml(tpl.intro_html).slice(0, 180);
@@ -258,6 +299,14 @@ export function SendProposalDialog({
                       isSent && 'border-emerald-500/50 bg-emerald-500/5',
                     )}
                   >
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tpl); }}
+                      className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition"
+                      title="Удалить шаблон"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                     <div className="flex items-start justify-between gap-2">
                       <Badge variant="outline" className={cn('text-[10px] font-medium', cat.color, 'border-transparent')}>
                         {cat.label}
