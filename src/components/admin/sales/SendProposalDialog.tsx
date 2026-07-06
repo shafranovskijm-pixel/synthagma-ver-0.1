@@ -160,13 +160,8 @@ export function SendProposalDialog({
     open ? (
     <>
       <div
-        className="fixed inset-x-0 bottom-0 z-40 bg-black/40 backdrop-blur-[2px] animate-in fade-in-0"
-        style={{ top: '3.5rem' }}
-        onClick={() => onOpenChange(false)}
-      />
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 bg-background shadow-2xl border-t flex flex-col animate-in slide-in-from-bottom-4"
-        style={{ top: '3.5rem' }}
+        id="inline-send-proposal"
+        className="relative w-full bg-background rounded-2xl border shadow-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-2 my-4"
       >
         <button
           type="button"
@@ -176,6 +171,7 @@ export function SendProposalDialog({
         >
           ✕
         </button>
+
         <div className="p-5 pb-3 border-b space-y-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold pr-10">
             <Send className="w-4 h-4 text-primary" />
