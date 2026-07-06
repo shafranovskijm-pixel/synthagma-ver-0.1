@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const VERSION = "webrtc-domain-normalized-v2";
+
 interface WebrtcKeyResponse {
   status?: string;
   key?: string;
@@ -72,6 +74,7 @@ serve(async (req) => {
       const normalizedDomain = normalizeWebrtcDomain(webphoneData.domain, webphoneData.username || login);
       return json({
         ok: true,
+        version: VERSION,
         login: webphoneData.username,
         password: webphoneData.pass,
         domain: normalizedDomain,
