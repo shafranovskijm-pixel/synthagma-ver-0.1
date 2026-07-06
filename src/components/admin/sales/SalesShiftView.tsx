@@ -206,7 +206,9 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className={cn(drawerOpen && 'hidden')}>
       {/* Приветствие + план */}
+
       <Card className="rounded-2xl border-primary/10 bg-gradient-to-br from-primary/5 via-transparent to-transparent">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
