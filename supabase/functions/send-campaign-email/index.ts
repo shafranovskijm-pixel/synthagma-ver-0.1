@@ -309,6 +309,18 @@ serve(async (req: Request) => {
       error: null,
     }).eq("id", recipientId);
 
+    // Записываем в базу компаний рассылок (чтобы повторно не слать)
+    try {
+      await admin.from("broadcast_companies_db").upsert({
+        email: (recipient.email as string).toLowerCase(),
+        company_name: recipient.recipient_name || null,
+        last_sent_at: new Date().toISOString(),
+        last_campaign_id: campaignId,
+        source: campaign.scope === "platform" ? "platform_campaign" : "org_campaign",
+        status: "sent",
+      }, { onConflict: "email" });
+    } catch (e) { console.warn("broadcast_companies_db upsert failed", (e as Error).message); }
+
     // Инкрементируем sent_count в кампании
     const { data: c2 } = await admin.from("email_campaigns")
       .select("sent_count").eq("id", campaignId).single();
