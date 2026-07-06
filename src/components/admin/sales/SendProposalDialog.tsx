@@ -205,7 +205,7 @@ export function SendProposalDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 p-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загружаем шаблоны…
@@ -299,7 +299,7 @@ export function SendProposalDialog({
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
