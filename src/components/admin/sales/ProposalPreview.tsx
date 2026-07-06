@@ -138,8 +138,7 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
   const total = subtotal - discountAmount;
   
   const displayName = senderName || 'СИНТАГМА';
-  const displayEmail = senderEmail || 'support@sintagma.com.ru';
-  const displayWebsite = senderWebsite || 'https://sintagma.com.ru/';
+  const displayWebsite = senderWebsite || 'https://sintagma.com.ru';
 
   return (
     <div
@@ -170,7 +169,7 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
           </div>
           <div className="text-right text-[12px] text-cyan-50/80 leading-relaxed">
             <div>{displayWebsite}</div>
-            <div>{displayEmail}</div>
+            <div>синтагма.рф</div>
           </div>
         </div>
 
