@@ -171,6 +171,28 @@ export function SenderInboxesTable() {
     load();
   };
 
+  const saveWarmupCfg = async () => {
+    if (!warmupCfg) return;
+    const target = Math.max(1, Math.min(50, Number(warmupCfg.target) || 20));
+    const start = Math.max(1, Math.min(target, Number(warmupCfg.start) || 1));
+    const patch: any = {
+      warmup_daily_target: target,
+      warmup_start_count: start,
+      warmup_enabled: true,
+      is_active: true,
+    };
+    const q = supabase.from("email_sender_pool").update(patch as any);
+    const { error } = warmupCfg.applyAll
+      ? await (q as any).not("id", "is", null)
+      : await q.eq("id", warmupCfg.row.id);
+    if (error) return toast.error(error.message);
+    setWarmupCfg(null);
+    toast.success(warmupCfg.applyAll ? "Настройки применены ко всем ящикам" : "Настройки прогрева сохранены");
+    load();
+  };
+
+
+
   const allChecked = filtered.length > 0 && filtered.every(r => selected.has(r.id));
 
   return (
