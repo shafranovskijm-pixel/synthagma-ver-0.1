@@ -57,6 +57,16 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       onOpenChange(false);
     }
   }, [searchParams, open, onOpenChange]);
+
+  // Прокручиваем к встроенной карточке лида при открытии
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      document.getElementById('inline-lead-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [open, lead?.id]);
+
   const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
@@ -200,15 +210,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
 
   return (
     <>
-      {/* Полу-прозрачный фон, начинается ниже шапки — верхнее меню остаётся видимым и кликабельным */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 bg-black/40 backdrop-blur-[2px] animate-in fade-in-0"
-        style={{ top: '3.5rem' }}
-        onClick={() => onOpenChange(false)}
-      />
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 bg-background shadow-2xl border-t flex flex-col animate-in slide-in-from-bottom-4"
-        style={{ top: '3.5rem' }}
+        id="inline-lead-card"
+        className="relative w-full bg-background rounded-2xl border shadow-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-2 my-4"
       >
         <button
           type="button"
@@ -218,9 +222,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         >
           ✕
         </button>
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-
-
+        <div className="flex flex-col">
           <div className="p-4 border-b space-y-2">
             <h2 className="text-base leading-tight pr-8 font-semibold">{lead.org_name}</h2>
             <div className="flex items-center gap-2 flex-wrap">
@@ -273,7 +275,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div>
             {isCalling && (
               <div className="p-4 border-b bg-primary/5">
                 <KaraokeScript text={monolog} active={isCalling} />
@@ -287,7 +289,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                 <TabsTrigger value="timeline" className="text-xs">История</TabsTrigger>
                 <TabsTrigger value="docs" className="text-xs">Документы</TabsTrigger>
               </TabsList>
-
 
               <TabsContent value="summary" className="p-4 space-y-3 text-sm">
                 {lead.inn && <Row icon={Building2} label="ИНН" value={lead.inn} />}
@@ -335,7 +336,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                 <CallLogsList leadId={lead.id} companyInn={lead.inn ?? undefined} />
               </TabsContent>
 
-
               <TabsContent value="timeline" className="p-4 space-y-2">
                 {leadActs.length === 0 ? (
                   <div className="text-sm text-muted-foreground text-center py-6">Пока нет активности</div>
@@ -371,6 +371,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
           </div>
         </div>
       </div>
+
+
+
 
 
       <CallResultModal
