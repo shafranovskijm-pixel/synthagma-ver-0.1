@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, Send, Target, Users, PhoneCall, Package, FileCode, Settings as SettingsIcon, Database, Sparkles, FileText, ScrollText, PenTool, ListTodo, LineChart, GitCompareArrows, Headphones, BarChart3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
@@ -19,6 +20,9 @@ import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
 import { SalesReport } from './sales/SalesReport';
 import { SalesShiftView } from './sales/SalesShiftView';
+import { LeadsManager } from './sales/LeadsManager';
+import { CallRecordingsAdminList } from './sales/CallRecordingsAdminList';
+import { EmailTemplatesManager } from '@/components/shared/sales/EmailTemplatesManager';
 import { useAuth } from '@/hooks/useAuth';
 import { getAdminSalesView } from '@/utils/adminViewMode';
 
