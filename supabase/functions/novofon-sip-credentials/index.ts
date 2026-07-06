@@ -73,8 +73,8 @@ serve(async (req) => {
         ok: true,
         login: webphoneData.username,
         password: webphoneData.pass,
-        domain: webphoneData.domain,
-        wss: `wss://${webphoneData.domain}:4443`,
+        domain: normalizeWebrtcDomain(webphoneData.domain, webphoneData.username || login),
+        wss: `wss://${normalizeWebrtcDomain(webphoneData.domain, webphoneData.username || login)}:4443`,
       });
     } catch (webrtcError) {
       // Резерв для ручной SIP/WSS-конфигурации, если временный ключ недоступен.
@@ -123,6 +123,13 @@ function pickSipWss(domain: string): string {
   // Старое значение было введено ошибочно: DNS-имя не существует и даёт «Не подключено».
   if (configured && !configured.includes("webrtc.novofon.com")) return configured;
   return `wss://${domain}:4443`;
+}
+
+function normalizeWebrtcDomain(domain: string, login: string): string {
+  // Novofon отдаёт брендовый домен sip.novofon.ru, но его WebRTC-порт 4443
+  // не отвечает стабильно. Под капотом это Zadarma, рабочие WSS-шлюзы — zadarma.com.
+  if (domain === "sip.novofon.ru") return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
+  return domain;
 }
 
 async function fetchWebphoneData(key: string, sip: string): Promise<WebphoneDataResponse> {
