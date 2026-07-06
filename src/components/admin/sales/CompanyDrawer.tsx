@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { SendProposalDialog } from './SendProposalDialog';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,14 @@ interface ProposalTpl { id: string; company_name: string; total_amount: number }
 
 export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPhone, onCreateProposal, onCreateContract, onSaveAndNext }: Props) {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  // Если открылся предпросмотр КП в родительском окне — закрываем шторку лида
+  useEffect(() => {
+    if (searchParams.get('proposalPreview') && open) {
+      onOpenChange(false);
+    }
+  }, [searchParams, open, onOpenChange]);
   const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
@@ -178,7 +187,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-[520px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-full sm:max-w-full md:max-w-full p-0 flex flex-col">
           <SheetHeader className="p-4 border-b space-y-2">
             <SheetTitle className="text-base leading-tight pr-8">{lead.org_name}</SheetTitle>
             <div className="flex items-center gap-2 flex-wrap">
