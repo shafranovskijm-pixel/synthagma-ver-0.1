@@ -284,7 +284,7 @@ export function SendProposalDialog({
                           size="sm"
                           variant="outline"
                           className="h-8 px-2"
-                          onClick={() => setPreviewId(tpl.id)}
+                          onClick={() => openPreview(tpl.id)}
                           title="Открыть предпросмотр"
                         >
                           <Eye className="w-3.5 h-3.5" />
