@@ -50,6 +50,14 @@ interface ProposalTpl { id: string; company_name: string; total_amount: number }
 
 export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPhone, onCreateProposal, onCreateContract, onSaveAndNext }: Props) {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  // Если открылся предпросмотр КП в родительском окне — закрываем шторку лида
+  useEffect(() => {
+    if (searchParams.get('proposalPreview') && open) {
+      onOpenChange(false);
+    }
+  }, [searchParams, open, onOpenChange]);
   const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
