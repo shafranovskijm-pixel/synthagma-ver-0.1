@@ -10288,6 +10288,10 @@ export type Database = {
             Args: { p_accepted_terms?: boolean; p_referred_by?: string }
             Returns: string
           }
+      bulk_import_broadcast_companies: {
+        Args: { p_rows: Json }
+        Returns: number
+      }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -10627,6 +10631,7 @@ export type Database = {
         Returns: undefined
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
+      is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
         Args: { p_email: string; p_scope: string }
         Returns: boolean
