@@ -1,10 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { novofonClassicRequest } from "../_shared/novofon.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+interface WebrtcKeyResponse {
+  status?: string;
+  key?: string;
+  message?: string;
+}
+
+interface WebphoneDataResponse {
+  domain?: string;
+  username?: string;
+  pass?: string;
+  datacenter?: string;
+  error?: { content?: string } | string;
+}
 
 /**
  * Возвращает SIP-креды для WebRTC-софтфона.
@@ -28,13 +43,46 @@ serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "invalid auth" }, 401);
 
-    const login = Deno.env.get("NOVOFON_SIP_LOGIN");
+    const login = Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || Deno.env.get("NOVOFON_SIP_LOGIN");
     const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
-    const domain = Deno.env.get("NOVOFON_SIP_DOMAIN") || "sip.novofon.ru";
-    const wss = Deno.env.get("NOVOFON_SIP_WSS_URL") || "wss://webrtc.novofon.com:443/webrtc";
+    const domain = Deno.env.get("NOVOFON_SIP_DOMAIN") || Deno.env.get("NOVOFON_SIP_SERVER") || "sip.novofon.ru";
+    const wss = Deno.env.get("NOVOFON_SIP_WSS_URL") || "";
 
-    if (!login || !password) {
-      return json({ error: "sip_not_configured", message: "NOVOFON_SIP_LOGIN / NOVOFON_SIP_PASSWORD не заданы" }, 200);
+    if (!login) {
+      return json({ error: "sip_not_configured", message: "SIP-логин Novofon не задан" }, 200);
+    }
+
+    try {
+      const keyResponse = await novofonClassicRequest<WebrtcKeyResponse>("GET", "/v1/webrtc/get_key/", { sip: login });
+      const key = keyResponse?.key;
+      if (!key || keyResponse?.status === "error") {
+        throw new Error(keyResponse?.message || "Novofon не вернул WebRTC-ключ");
+      }
+
+      const webphoneData = await fetchWebphoneData(key, login);
+      if (webphoneData?.error) {
+        const message = typeof webphoneData.error === "string" ? webphoneData.error : webphoneData.error.content;
+        throw new Error(message || "Novofon не вернул WebRTC-параметры");
+      }
+      if (!webphoneData?.domain || !webphoneData?.username || !webphoneData?.pass) {
+        throw new Error("Novofon вернул неполные WebRTC-параметры");
+      }
+
+      return json({
+        ok: true,
+        login: webphoneData.username,
+        password: webphoneData.pass,
+        domain: webphoneData.domain,
+        wss: `wss://${webphoneData.domain}:4443`,
+      });
+    } catch (webrtcError) {
+      // Резерв для ручной SIP/WSS-конфигурации, если временный ключ недоступен.
+      if (!password || !wss) {
+        return json({
+          error: "webrtc_not_available",
+          message: webrtcError instanceof Error ? webrtcError.message : String(webrtcError),
+        }, 200);
+      }
     }
 
     return json({ ok: true, login, password, domain, wss });
@@ -48,4 +96,26 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function fetchWebphoneData(key: string, sip: string): Promise<WebphoneDataResponse> {
+  const callback = "sintagmaWebrtc";
+  const url = new URL("https://api.zadarma.com/sys/webrtc/get_webphone_data.php");
+  url.searchParams.set("jsonpCallback", callback);
+  url.searchParams.set("integrationType", "CRM");
+  url.searchParams.set("key", key);
+  url.searchParams.set("sipId", sip);
+  url.searchParams.set("language", "ru");
+
+  const res = await fetch(url.toString(), { headers: { Accept: "application/javascript" } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Novofon WebRTC HTTP ${res.status}`);
+
+  const trimmed = text.trim();
+  const prefix = `${callback}(`;
+  if (!trimmed.startsWith(prefix) || !trimmed.endsWith(")")) {
+    throw new Error("Novofon вернул некорректный WebRTC-ответ");
+  }
+
+  return JSON.parse(trimmed.slice(prefix.length, -1)) as WebphoneDataResponse;
 }
