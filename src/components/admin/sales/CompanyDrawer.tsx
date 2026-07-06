@@ -178,7 +178,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-[520px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-full sm:max-w-full md:max-w-full p-0 flex flex-col">
           <SheetHeader className="p-4 border-b space-y-2">
             <SheetTitle className="text-base leading-tight pr-8">{lead.org_name}</SheetTitle>
             <div className="flex items-center gap-2 flex-wrap">
