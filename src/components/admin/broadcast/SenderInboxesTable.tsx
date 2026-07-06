@@ -411,6 +411,66 @@ export function SenderInboxesTable() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Warmup settings dialog */}
+      <Dialog open={!!warmupCfg} onOpenChange={(o) => !o && setWarmupCfg(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Настройки прогрева</DialogTitle></DialogHeader>
+          {warmupCfg && (
+            <div className="space-y-5">
+              <p className="text-sm text-muted-foreground">
+                Прогрев автоматически повышает репутацию ваших почт.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold">Лимит прогрева в день (максимум 50)</label>
+                <p className="text-xs text-muted-foreground">
+                  Мы автоматом будем повышать количество писем в день до выбранного числа для плавного прогрева почты.
+                </p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={warmupCfg.target}
+                  onChange={(e) => setWarmupCfg({ ...warmupCfg, target: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold">Стартовое число прогрева (максимум {warmupCfg.target})</label>
+                <p className="text-xs text-muted-foreground">
+                  Меняйте эту настройку только если мигрируете из другого софта для прогрева почт.
+                </p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={warmupCfg.target}
+                  value={warmupCfg.start}
+                  onChange={(e) => setWarmupCfg({ ...warmupCfg, start: Number(e.target.value) })}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={warmupCfg.applyAll}
+                  onCheckedChange={(v) => setWarmupCfg({ ...warmupCfg, applyAll: !!v })}
+                />
+                <span>Применить настройки на другие почты</span>
+                <Info className="w-3.5 h-3.5 text-muted-foreground" />
+              </label>
+
+              <div className="text-xs text-muted-foreground border-t pt-3">
+                Ящик: <span className="font-medium text-foreground">{warmupCfg.row.email}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarmupCfg(null)}>Отменить</Button>
+            <Button onClick={saveWarmupCfg}>Включить прогрев</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
