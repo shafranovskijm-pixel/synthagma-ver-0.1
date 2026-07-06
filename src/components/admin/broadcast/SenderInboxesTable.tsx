@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Search, Filter, TerminalSquare, Plus, Trash2, KeyRound, Mail } from "lucide-react";
+import { Loader2, Search, Filter, TerminalSquare, Plus, Trash2, KeyRound, Mail, Settings2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Sender = {
@@ -24,7 +24,10 @@ type Sender = {
   total_sent: number;
   last_error: string | null;
   last_error_at: string | null;
+  warmup_daily_target: number;
+  warmup_start_count: number;
 };
+
 
 const providerIcon = (email: string) => {
   const domain = (email.split("@")[1] || "").toLowerCase();
@@ -67,6 +70,8 @@ export function SenderInboxesTable() {
   const [newPass, setNewPass] = useState("");
   const [checking, setChecking] = useState(false);
   const [editing, setEditing] = useState<Sender | null>(null);
+  const [warmupCfg, setWarmupCfg] = useState<{ row: Sender; target: number; start: number; applyAll: boolean } | null>(null);
+
 
   const load = async () => {
     setLoading(true);
@@ -166,6 +171,28 @@ export function SenderInboxesTable() {
     load();
   };
 
+  const saveWarmupCfg = async () => {
+    if (!warmupCfg) return;
+    const target = Math.max(1, Math.min(50, Number(warmupCfg.target) || 20));
+    const start = Math.max(1, Math.min(target, Number(warmupCfg.start) || 1));
+    const patch: any = {
+      warmup_daily_target: target,
+      warmup_start_count: start,
+      warmup_enabled: true,
+      is_active: true,
+    };
+    const q = supabase.from("email_sender_pool").update(patch as any);
+    const { error } = warmupCfg.applyAll
+      ? await (q as any).not("id", "is", null)
+      : await q.eq("id", warmupCfg.row.id);
+    if (error) return toast.error(error.message);
+    setWarmupCfg(null);
+    toast.success(warmupCfg.applyAll ? "Настройки применены ко всем ящикам" : "Настройки прогрева сохранены");
+    load();
+  };
+
+
+
   const allChecked = filtered.length > 0 && filtered.every(r => selected.has(r.id));
 
   return (
@@ -263,16 +290,33 @@ export function SenderInboxesTable() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <Switch checked={r.warmup_enabled && r.is_active} onCheckedChange={v => toggleWarmup(r, v)} />
-                        <div>
+                        <div className="min-w-0">
                           <div className={cn("text-sm font-medium", r.warmup_enabled && r.is_active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
                             {r.warmup_enabled && r.is_active ? "Включен" : "Выключен"}
                           </div>
                           {r.warmup_enabled && r.is_active && (
-                            <div className="text-xs text-muted-foreground">{r.sends_today} из {r.daily_limit}/день</div>
+                            <div className="text-xs text-muted-foreground">
+                              {r.sends_today} из {r.warmup_daily_target ?? 20}/день · старт {r.warmup_start_count ?? 1}
+                            </div>
                           )}
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 ml-1 text-muted-foreground hover:text-primary"
+                          title="Настройки прогрева"
+                          onClick={() => setWarmupCfg({
+                            row: r,
+                            target: r.warmup_daily_target ?? 20,
+                            start: r.warmup_start_count ?? 1,
+                            applyAll: false,
+                          })}
+                        >
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </td>
+
                     <td className="p-3">
                       <span className={cn("inline-flex items-center px-2.5 py-1 rounded-md font-semibold text-xs", reputationTone(score))}>
                         {score === null ? "N/A" : `${score}%`}
@@ -367,6 +411,66 @@ export function SenderInboxesTable() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Warmup settings dialog */}
+      <Dialog open={!!warmupCfg} onOpenChange={(o) => !o && setWarmupCfg(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Настройки прогрева</DialogTitle></DialogHeader>
+          {warmupCfg && (
+            <div className="space-y-5">
+              <p className="text-sm text-muted-foreground">
+                Прогрев автоматически повышает репутацию ваших почт.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold">Лимит прогрева в день (максимум 50)</label>
+                <p className="text-xs text-muted-foreground">
+                  Мы автоматом будем повышать количество писем в день до выбранного числа для плавного прогрева почты.
+                </p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={warmupCfg.target}
+                  onChange={(e) => setWarmupCfg({ ...warmupCfg, target: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold">Стартовое число прогрева (максимум {warmupCfg.target})</label>
+                <p className="text-xs text-muted-foreground">
+                  Меняйте эту настройку только если мигрируете из другого софта для прогрева почт.
+                </p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={warmupCfg.target}
+                  value={warmupCfg.start}
+                  onChange={(e) => setWarmupCfg({ ...warmupCfg, start: Number(e.target.value) })}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={warmupCfg.applyAll}
+                  onCheckedChange={(v) => setWarmupCfg({ ...warmupCfg, applyAll: !!v })}
+                />
+                <span>Применить настройки на другие почты</span>
+                <Info className="w-3.5 h-3.5 text-muted-foreground" />
+              </label>
+
+              <div className="text-xs text-muted-foreground border-t pt-3">
+                Ящик: <span className="font-medium text-foreground">{warmupCfg.row.email}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarmupCfg(null)}>Отменить</Button>
+            <Button onClick={saveWarmupCfg}>Включить прогрев</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
