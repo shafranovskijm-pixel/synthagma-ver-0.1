@@ -225,7 +225,7 @@ export function PhoneDialerWidget() {
               <Button
                 className="w-full h-10 rounded-lg gap-2"
                 onClick={sip.status === 'registered' ? handleRegisteredCall : handleCall}
-                disabled={!normalized || sip.status === 'calling' || sip.status === 'ringing' || sip.status === 'in_call'}
+                disabled={!normalized || sip.status === 'connecting'}
               >
                 {sip.status === 'connecting' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PhoneCall className="w-4 h-4" />}
                 {sip.status === 'connecting' ? 'Подключаем…' : 'Позвонить'}
