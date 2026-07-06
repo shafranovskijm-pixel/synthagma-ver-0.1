@@ -3191,6 +3191,9 @@ export type Database = {
           from_name: string | null
           host: string
           id: string
+          imap_encryption: string
+          imap_host: string | null
+          imap_port: number
           is_active: boolean
           last_error: string | null
           last_error_at: string | null
@@ -3207,6 +3210,7 @@ export type Database = {
           warmup_inbox_count: number
           warmup_spam_count: number
           warmup_start_count: number
+          warmup_started_at: string | null
         }
         Insert: {
           app_password?: string | null
@@ -3218,6 +3222,9 @@ export type Database = {
           from_name?: string | null
           host?: string
           id?: string
+          imap_encryption?: string
+          imap_host?: string | null
+          imap_port?: number
           is_active?: boolean
           last_error?: string | null
           last_error_at?: string | null
@@ -3234,6 +3241,7 @@ export type Database = {
           warmup_inbox_count?: number
           warmup_spam_count?: number
           warmup_start_count?: number
+          warmup_started_at?: string | null
         }
         Update: {
           app_password?: string | null
@@ -3245,6 +3253,9 @@ export type Database = {
           from_name?: string | null
           host?: string
           id?: string
+          imap_encryption?: string
+          imap_host?: string | null
+          imap_port?: number
           is_active?: boolean
           last_error?: string | null
           last_error_at?: string | null
@@ -3261,6 +3272,7 @@ export type Database = {
           warmup_inbox_count?: number
           warmup_spam_count?: number
           warmup_start_count?: number
+          warmup_started_at?: string | null
         }
         Relationships: [
           {
@@ -3365,6 +3377,60 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_warmup_pings: {
+        Row: {
+          attempts: number
+          checked_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          placement: string | null
+          recipient_id: string
+          sender_id: string
+          sent_at: string
+          warmup_id: string
+        }
+        Insert: {
+          attempts?: number
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          placement?: string | null
+          recipient_id: string
+          sender_id: string
+          sent_at?: string
+          warmup_id: string
+        }
+        Update: {
+          attempts?: number
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          placement?: string | null
+          recipient_id?: string
+          sender_id?: string
+          sent_at?: string
+          warmup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_warmup_pings_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_sender_pool"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_warmup_pings_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "email_sender_pool"
             referencedColumns: ["id"]
           },
         ]
