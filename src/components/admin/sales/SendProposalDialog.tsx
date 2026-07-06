@@ -285,7 +285,7 @@ export function SendProposalDialog({
                       <div>
                         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Итого</div>
                         <div className="text-lg font-bold text-primary tabular-nums">
-                          {formatMoney(tpl.total_amount)}
+                          {formatMoney(tpl.services.reduce((s, x) => s + Number(x.price) * Number(x.quantity || 1), 0) || tpl.total_amount)}
                         </div>
                       </div>
                       <div className="flex gap-1.5">
@@ -293,10 +293,10 @@ export function SendProposalDialog({
                           size="sm"
                           variant="outline"
                           className="h-8 px-2"
-                          onClick={() => window.open(`/proposal/${tpl.id}`, '_blank')}
+                          onClick={() => setPreviewId(tpl.id)}
                           title="Открыть предпросмотр"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           size="sm"
@@ -318,6 +318,7 @@ export function SendProposalDialog({
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
