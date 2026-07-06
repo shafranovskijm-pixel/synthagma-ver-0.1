@@ -10,11 +10,12 @@ import { InlineProposalPreview } from '@/components/admin/sales/InlineProposalPr
 import { getAdminSalesView, clearAdminSalesView } from '@/utils/adminViewMode';
 
 const SalesDashboard = () => {
-  const { signOut } = useAuth();
+  const { signOut, userRole } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewAs = getAdminSalesView();
   const proposalPreviewId = searchParams.get('proposalPreview');
+  const isAdmin = userRole === 'admin';
 
   const handleSignOut = async () => {
     await signOut();
@@ -34,7 +35,7 @@ const SalesDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {viewAs && (
+      {viewAs ? (
         <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-900 dark:text-amber-200">
           <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center justify-between gap-3 text-sm">
             <span className="flex items-center gap-2 truncate">
@@ -46,7 +47,17 @@ const SalesDashboard = () => {
             </Button>
           </div>
         </div>
+      ) : isAdmin && (
+        <div className="bg-primary/10 border-b border-primary/20 text-foreground">
+          <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground truncate">Вы в кабинете менеджера как админ</span>
+            <Button size="sm" variant="outline" onClick={() => navigate('/admin')} className="rounded-lg gap-1.5 shrink-0">
+              <ArrowLeft className="w-3.5 h-3.5" /> Вернуться в админку
+            </Button>
+          </div>
+        </div>
       )}
+
 
       <SalesDashboardHeader activeLabel="Компании" onSignOut={handleSignOut} />
 
