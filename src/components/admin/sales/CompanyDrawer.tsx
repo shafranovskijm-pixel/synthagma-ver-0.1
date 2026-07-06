@@ -57,6 +57,16 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       onOpenChange(false);
     }
   }, [searchParams, open, onOpenChange]);
+
+  // Прокручиваем к встроенной карточке лида при открытии
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      document.getElementById('inline-lead-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [open, lead?.id]);
+
   const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
