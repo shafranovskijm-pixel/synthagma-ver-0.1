@@ -100,7 +100,10 @@ export function useSoftphone() {
         try { ua.stop(); } catch { /* noop */ }
         if (uaRef.current === ua) uaRef.current = null;
         setStatus('failed');
-        setError(e?.cause || 'registrationFailed');
+        const statusCode = e?.response?.status_code;
+        const reason = e?.response?.reason_phrase;
+        const cause = e?.cause || reason || 'registrationFailed';
+        setError(statusCode === 401 ? 'Novofon отклонил SIP логин/пароль' : cause);
       });
       ua.on('disconnected', () => {
         if (uaRef.current === ua) uaRef.current = null;
