@@ -3200,7 +3200,9 @@ export type Database = {
           priority: number
           sends_reset_at: string
           sends_today: number
+          total_sent: number
           updated_at: string
+          warmup_enabled: boolean
         }
         Insert: {
           app_password?: string | null
@@ -3221,7 +3223,9 @@ export type Database = {
           priority?: number
           sends_reset_at?: string
           sends_today?: number
+          total_sent?: number
           updated_at?: string
+          warmup_enabled?: boolean
         }
         Update: {
           app_password?: string | null
@@ -3242,7 +3246,9 @@ export type Database = {
           priority?: number
           sends_reset_at?: string
           sends_today?: number
+          total_sent?: number
           updated_at?: string
+          warmup_enabled?: boolean
         }
         Relationships: [
           {
