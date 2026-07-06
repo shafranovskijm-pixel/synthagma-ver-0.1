@@ -88,6 +88,9 @@ export function BroadcastCompaniesDb() {
             Всего: <b className="text-foreground">{rows.length}</b>
             {q && <> · найдено: <b className="text-foreground">{filtered.length}</b></>}
           </div>
+          <Button size="sm" variant="outline" onClick={exportXlsx} disabled={loading || filtered.length === 0}>
+            <Download className="w-4 h-4 mr-1.5" /> Экспорт
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           В эту базу попадают все компании, которым уже была отправлена рассылка. Новые кампании автоматически пропускают эти адреса.
