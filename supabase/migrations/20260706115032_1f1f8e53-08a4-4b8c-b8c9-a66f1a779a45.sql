@@ -1,0 +1,1 @@
+DELETE FROM public.email_sender_pool WHERE host ILIKE '%gmail%';
