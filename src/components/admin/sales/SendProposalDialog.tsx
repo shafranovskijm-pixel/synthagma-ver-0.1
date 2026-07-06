@@ -152,7 +152,7 @@ export function SendProposalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 flex flex-col">
+      <DialogContent className="!max-w-none w-screen h-screen sm:h-[100dvh] p-0 gap-0 flex flex-col rounded-none border-0 sm:rounded-none">
         <DialogHeader className="p-5 pb-3 border-b space-y-3">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Send className="w-4 h-4 text-primary" />
