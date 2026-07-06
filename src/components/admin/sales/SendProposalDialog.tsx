@@ -299,6 +299,14 @@ export function SendProposalDialog({
                       isSent && 'border-emerald-500/50 bg-emerald-500/5',
                     )}
                   >
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tpl); }}
+                      className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition"
+                      title="Удалить шаблон"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                     <div className="flex items-start justify-between gap-2">
                       <Badge variant="outline" className={cn('text-[10px] font-medium', cat.color, 'border-transparent')}>
                         {cat.label}
