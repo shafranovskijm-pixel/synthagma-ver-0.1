@@ -34,8 +34,18 @@ export function SalesManager() {
   // Админ без активного «просмотра от лица менеджера» видит СПИСОК менеджеров
   // (логины/пароли/история/войти как), а не персональную смену продажника.
   const isAdminView = userRole === 'admin' && !getAdminSalesView();
-  const [activeTab, setActiveTab] = useState(isAdminView ? 'broadcast' : 'shift');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sales_initial_tab');
+      if (stored) {
+        localStorage.removeItem('sales_initial_tab');
+        return stored;
+      }
+    } catch {}
+    return isAdminView ? 'broadcast' : 'shift';
+  });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
 
   // Верхняя горизонтальная навигация (запрос: «Рассылка» первой)
   const topNav: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [

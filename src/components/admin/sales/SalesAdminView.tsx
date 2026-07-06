@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, PhoneCall, FileText, Database, Save, Mic, AlertTriangle } from 'lucide-react';
+import { Users, PhoneCall, FileText, Database, Save, Mic, AlertTriangle, Send, Target, Package, FileCode, Settings as SettingsIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { SalesManagersList } from './SalesManagersList';
 import { LeadsManager } from './LeadsManager';
 import { CallRecordingsAdminList } from './CallRecordingsAdminList';
 import { useSalesManager } from '@/hooks/useSalesManager';
 import { parseDailyPlan, planForManager, type DailyPlanConfig } from '@/utils/salesShiftQueue';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+
 
 
 /**
@@ -109,8 +112,44 @@ export function SalesAdminView() {
     }
   };
 
+  const navigate = useNavigate();
+  const topNav = [
+    { id: 'broadcast', label: 'Рассылка', icon: Send },
+    { id: 'overview', label: 'Обзор', icon: Target },
+    { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
+    { id: 'managers', label: 'Менеджеры', icon: Users },
+    { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
+    { id: 'services', label: 'Услуги', icon: Package },
+    { id: 'settings', label: 'Настройки / SMTP', icon: SettingsIcon },
+  ];
+  const openSales = (tab: string) => {
+    try { localStorage.setItem('sales_initial_tab', tab); } catch {}
+    navigate('/sales');
+  };
+
   return (
     <div className="space-y-6">
+      {/* Верхние кнопки навигации по разделам продаж */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        {topNav.map(item => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => openSales(item.id)}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap shrink-0",
+                "bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-md"
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Users className="w-4 h-4" />} label="Менеджеров активно" value={activeManagers.length} />
@@ -119,6 +158,7 @@ export function SalesAdminView() {
         <KpiCard icon={<FileText className="w-4 h-4" />} label="КП за неделю" value={proposalsThisWeek} />
         <KpiCard icon={<Mic className="w-4 h-4" />} label="Записей за 7 дней" value={recordingsWeek} sub="прослушивание в разделе ниже" />
       </div>
+
 
       {/* Диагностика Novofon */}
       {(!lastWebhookAt || Date.now() - new Date(lastWebhookAt).getTime() > 24 * 3600 * 1000) && (
