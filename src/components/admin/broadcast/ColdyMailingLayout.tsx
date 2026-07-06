@@ -25,7 +25,7 @@ const NAV: { id: Section; label: string; icon: any }[] = [
 
 
 export function ColdyMailingLayout() {
-  const [section, setSection] = useState<Section>("inboxes");
+  const [section, setSection] = useState<Section>("campaigns");
 
   return (
     <div className="flex gap-4 min-h-[70vh]">
