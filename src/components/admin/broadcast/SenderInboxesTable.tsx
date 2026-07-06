@@ -290,16 +290,33 @@ export function SenderInboxesTable() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <Switch checked={r.warmup_enabled && r.is_active} onCheckedChange={v => toggleWarmup(r, v)} />
-                        <div>
+                        <div className="min-w-0">
                           <div className={cn("text-sm font-medium", r.warmup_enabled && r.is_active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
                             {r.warmup_enabled && r.is_active ? "Включен" : "Выключен"}
                           </div>
                           {r.warmup_enabled && r.is_active && (
-                            <div className="text-xs text-muted-foreground">{r.sends_today} из {r.daily_limit}/день</div>
+                            <div className="text-xs text-muted-foreground">
+                              {r.sends_today} из {r.warmup_daily_target ?? 20}/день · старт {r.warmup_start_count ?? 1}
+                            </div>
                           )}
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 ml-1 text-muted-foreground hover:text-primary"
+                          title="Настройки прогрева"
+                          onClick={() => setWarmupCfg({
+                            row: r,
+                            target: r.warmup_daily_target ?? 20,
+                            start: r.warmup_start_count ?? 1,
+                            applyAll: false,
+                          })}
+                        >
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </td>
+
                     <td className="p-3">
                       <span className={cn("inline-flex items-center px-2.5 py-1 rounded-md font-semibold text-xs", reputationTone(score))}>
                         {score === null ? "N/A" : `${score}%`}
