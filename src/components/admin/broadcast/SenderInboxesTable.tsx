@@ -70,6 +70,8 @@ export function SenderInboxesTable() {
   const [newPass, setNewPass] = useState("");
   const [checking, setChecking] = useState(false);
   const [editing, setEditing] = useState<Sender | null>(null);
+  const [warmupCfg, setWarmupCfg] = useState<{ row: Sender; target: number; start: number; applyAll: boolean } | null>(null);
+
 
   const load = async () => {
     setLoading(true);
