@@ -19,20 +19,33 @@ export function PhoneDialerWidget() {
   const [open, setOpen] = useState(false);
   const [raw, setRaw] = useState('');
   const [managerPhone, setManagerPhone] = useState<string>('');
+  const [managerId, setManagerId] = useState<string | null>(null);
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
   const [calling, setCalling] = useState(false);
 
-  // Загружаем телефон менеджера один раз
+  // Загружаем телефон менеджера (fallback: profiles.phone)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const viewAs = getAdminSalesView();
-      const q = supabase.from('sales_managers').select('phone');
-      const query = viewAs?.managerId
-        ? q.eq('id', viewAs.managerId)
-        : user?.id ? q.eq('user_id', user.id) : null;
-      if (!query) return;
-      const { data } = await query.maybeSingle();
-      if (!cancelled && data?.phone) setManagerPhone(data.phone);
+      const targetUserId = viewAs?.userId || user?.id;
+      const [mgrR, profR] = await Promise.all([
+        viewAs?.managerId
+          ? (supabase as any).from('sales_managers').select('id, phone').eq('id', viewAs.managerId).maybeSingle()
+          : (user?.id ? (supabase as any).from('sales_managers').select('id, phone').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null })),
+        targetUserId
+          ? (supabase as any).from('profiles').select('phone').eq('user_id', targetUserId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      if (cancelled) return;
+      const mgr: any = mgrR?.data;
+      const prof: any = profR?.data;
+      if (mgr?.id) setManagerId(mgr.id);
+      const phone = mgr?.phone || prof?.phone || '';
+      setManagerPhone(phone);
+      setPhoneDraft(phone);
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -47,6 +60,33 @@ export function PhoneDialerWidget() {
     window.addEventListener('open-phone-dialer', handler);
     return () => window.removeEventListener('open-phone-dialer', handler);
   }, []);
+
+  const savePhone = async () => {
+    const normalizedPhone = normalizeRuPhone(phoneDraft);
+    if (!normalizedPhone) {
+      toast.error('Введите корректный номер (10 цифр после +7)');
+      return;
+    }
+    setSavingPhone(true);
+    try {
+      if (managerId) {
+        const { error } = await (supabase as any).from('sales_managers').update({ phone: normalizedPhone }).eq('id', managerId);
+        if (error) throw error;
+      } else if (user?.id) {
+        const { error } = await (supabase as any).from('profiles').update({ phone: normalizedPhone }).eq('user_id', user.id);
+        if (error) throw error;
+      }
+      setManagerPhone(normalizedPhone);
+      setEditingPhone(false);
+      toast.success('Телефон сохранён');
+    } catch (e) {
+      toast.error('Не удалось сохранить телефон', {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSavingPhone(false);
+    }
+  };
 
   const normalized = useMemo(() => normalizeRuPhone(raw), [raw]);
   const pretty = normalized ? formatRuPhone(normalized) : raw;
