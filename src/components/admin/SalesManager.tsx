@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, Send, Target, Users, PhoneCall, Package, FileCode, Settings as SettingsIcon, Database } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
@@ -19,6 +20,9 @@ import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
 import { SalesReport } from './sales/SalesReport';
 import { SalesShiftView } from './sales/SalesShiftView';
+import { LeadsManager } from './sales/LeadsManager';
+import { CallRecordingsAdminList } from './sales/CallRecordingsAdminList';
+import { EmailTemplatesManager } from '@/components/shared/sales/EmailTemplatesManager';
 import { useAuth } from '@/hooks/useAuth';
 import { getAdminSalesView } from '@/utils/adminViewMode';
 
@@ -30,8 +34,20 @@ export function SalesManager() {
   // Админ без активного «просмотра от лица менеджера» видит СПИСОК менеджеров
   // (логины/пароли/история/войти как), а не персональную смену продажника.
   const isAdminView = userRole === 'admin' && !getAdminSalesView();
-  const [activeTab, setActiveTab] = useState(isAdminView ? 'managers' : 'shift');
+  const [activeTab, setActiveTab] = useState(isAdminView ? 'broadcast' : 'shift');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Верхняя горизонтальная навигация (запрос: «Рассылка» первой)
+  const topNav: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'broadcast', label: 'Рассылка', icon: Send },
+    { id: 'overview', label: 'Обзор', icon: Target },
+    { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
+    { id: 'managers', label: 'Менеджеры', icon: Users },
+    { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
+    { id: 'services', label: 'Услуги', icon: Package },
+    { id: 'settings', label: 'Настройки / SMTP', icon: SettingsIcon },
+  ];
 
 
   // Контекст компании, прокинутой из «Сделок 360°»
@@ -120,6 +136,9 @@ export function SalesManager() {
     broadcast: <BroadcastManager />,
     services: <SalesServices />,
     managers: <SalesManagersList />,
+    leads: <LeadsManager />,
+    recordings: <CallRecordingsAdminList />,
+    templates: <EmailTemplatesManager scope="platform" organizationId={null} />,
     contracts: (
       <SalesContracts
         prefillCompany={contractPrefill}
@@ -132,46 +151,62 @@ export function SalesManager() {
     comparison: <CompetitorComparison />,
   };
 
-  const currentItem = salesMenuGroups
-    .flatMap(g => g.items)
-    .find(i => i.id === activeTab) ?? salesMenuGroups[0].items[0];
-  const CurrentIcon = currentItem.icon;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Единая кнопка «меню» — раскрывает список разделов слева */}
-      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <div className="flex items-center gap-2">
+      {/* Верхняя горизонтальная навигация — «Рассылка» первой */}
+      <div className="flex items-center gap-2">
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger asChild>
             <Button
               variant="outline"
               size="sm"
               className="rounded-xl gap-2 shrink-0"
-              aria-label="Открыть меню продаж"
+              aria-label="Все разделы продаж"
+              title="Все разделы (включая КП, Договоры, Подписание, Сделки, Задачи, Отчёт)"
             >
               <Menu className="w-4 h-4" />
-              <span className="hidden sm:inline">Меню</span>
+              <span className="hidden sm:inline">Ещё</span>
             </Button>
           </SheetTrigger>
-          <div className="flex items-center gap-2 min-w-0">
-            <CurrentIcon className="w-4 h-4 text-primary shrink-0" />
-            <span className="font-medium text-sm truncate">{currentItem.label}</span>
-          </div>
+          <SheetContent side="left" className="w-72 overflow-y-auto">
+            <SheetHeader className="mb-4">
+              <SheetTitle>Все разделы продаж</SheetTitle>
+            </SheetHeader>
+            <SalesSidebarContent
+              activeTab={activeTab}
+              onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
+            />
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto pb-1">
+          {topNav.map(item => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap shrink-0",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-        <SheetContent side="left" className="w-72 overflow-y-auto">
-          <SheetHeader className="mb-4">
-            <SheetTitle>Разделы продаж</SheetTitle>
-          </SheetHeader>
-          <SalesSidebarContent
-            activeTab={activeTab}
-            onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
-          />
-        </SheetContent>
-      </Sheet>
+      </div>
 
       <div className="flex-1 min-w-0">
         {TABS[activeTab]}
       </div>
+
 
 
       {/* Универсальный диалог звонок/заметка */}
