@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Search, Filter, TerminalSquare, Plus, Trash2, KeyRound, Mail } from "lucide-react";
+import { Loader2, Search, Filter, TerminalSquare, Plus, Trash2, KeyRound, Mail, Settings2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Sender = {
@@ -24,7 +24,10 @@ type Sender = {
   total_sent: number;
   last_error: string | null;
   last_error_at: string | null;
+  warmup_daily_target: number;
+  warmup_start_count: number;
 };
+
 
 const providerIcon = (email: string) => {
   const domain = (email.split("@")[1] || "").toLowerCase();
