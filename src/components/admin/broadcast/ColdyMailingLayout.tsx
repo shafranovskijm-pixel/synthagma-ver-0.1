@@ -1,20 +1,22 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Mail, Send, Inbox, Users, BarChart3, Settings, Megaphone, Flame, ShieldCheck } from "lucide-react";
+import { Mail, Send, Inbox, Users, BarChart3, Settings, Megaphone, Flame, ShieldCheck, Building2 } from "lucide-react";
 import { SenderInboxesTable } from "./SenderInboxesTable";
 import { CampaignsManager } from "./CampaignsManager";
 import { DripCampaignsManager } from "./DripCampaignsManager";
 import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
 import { SuppressionListManager } from "./SuppressionListManager";
 import { DomainReputationCheck } from "./DomainReputationCheck";
+import { BroadcastCompaniesDb } from "./BroadcastCompaniesDb";
 
-type Section = "inboxes" | "campaigns" | "drip" | "templates" | "suppressed" | "domain";
+type Section = "inboxes" | "campaigns" | "drip" | "templates" | "companies" | "suppressed" | "domain";
 
 const NAV: { id: Section; label: string; icon: any }[] = [
   { id: "inboxes", label: "Ящики", icon: Mail },
   { id: "campaigns", label: "Кампании", icon: Send },
   { id: "drip", label: "Drip-цепочки", icon: Flame },
   { id: "templates", label: "Шаблоны", icon: Inbox },
+  { id: "companies", label: "База компаний", icon: Building2 },
   { id: "suppressed", label: "Отписавшиеся", icon: Users },
   { id: "domain", label: "Репутация домена", icon: ShieldCheck },
 ];
@@ -60,6 +62,7 @@ export function ColdyMailingLayout() {
               {section === "campaigns" && "Все email-кампании: черновики, запущенные, завершённые"}
               {section === "drip" && "Автоматические цепочки писем по расписанию"}
               {section === "templates" && "Шаблоны для быстрого запуска рассылок"}
+              {section === "companies" && "Компании, которым уже отправлялись письма — рассылки будут их пропускать"}
               {section === "suppressed" && "Отписавшиеся, жалобы, bounce-адреса"}
               {section === "domain" && "SPF / DKIM / DMARC — проверка репутации домена"}
             </p>
@@ -70,6 +73,7 @@ export function ColdyMailingLayout() {
           {section === "campaigns" && <CampaignsManager scope="platform" organizationId={null} />}
           {section === "drip" && <DripCampaignsManager />}
           {section === "templates" && <EmailTemplatesManager scope="platform" organizationId={null} />}
+          {section === "companies" && <BroadcastCompaniesDb />}
           {section === "suppressed" && <SuppressionListManager scope="platform" organizationId={null} />}
           {section === "domain" && <DomainReputationCheck />}
         </div>

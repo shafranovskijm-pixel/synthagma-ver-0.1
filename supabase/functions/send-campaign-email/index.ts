@@ -60,6 +60,29 @@ serve(async (req: Request) => {
       });
     }
 
+    // ============ Broadcast companies db check (не отправляем повторно) ============
+    {
+      const { data: alreadySent } = await admin
+        .from("broadcast_companies_db")
+        .select("email")
+        .eq("email", (recipient.email as string).toLowerCase())
+        .maybeSingle();
+      if (alreadySent) {
+        await admin.from("email_campaign_recipients").update({
+          status: "failed",
+          error: "Уже был в базе компаний рассылок",
+        }).eq("id", recipientId);
+        const { data: c2 } = await admin.from("email_campaigns")
+          .select("failed_count").eq("id", campaignId).single();
+        await admin.from("email_campaigns").update({
+          failed_count: (c2?.failed_count || 0) + 1,
+        }).eq("id", campaignId);
+        return new Response(JSON.stringify({ success: false, alreadyInBroadcastDb: true }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Получаем SMTP-конфигурацию
     let smtp: SmtpConfig;
     if (campaign.scope === "platform") {
@@ -285,6 +308,18 @@ serve(async (req: Request) => {
       sent_at: new Date().toISOString(),
       error: null,
     }).eq("id", recipientId);
+
+    // Записываем в базу компаний рассылок (чтобы повторно не слать)
+    try {
+      await admin.from("broadcast_companies_db").upsert({
+        email: (recipient.email as string).toLowerCase(),
+        company_name: recipient.recipient_name || null,
+        last_sent_at: new Date().toISOString(),
+        last_campaign_id: campaignId,
+        source: campaign.scope === "platform" ? "platform_campaign" : "org_campaign",
+        status: "sent",
+      }, { onConflict: "email" });
+    } catch (e) { console.warn("broadcast_companies_db upsert failed", (e as Error).message); }
 
     // Инкрементируем sent_count в кампании
     const { data: c2 } = await admin.from("email_campaigns")
