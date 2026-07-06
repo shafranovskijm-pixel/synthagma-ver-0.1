@@ -162,12 +162,11 @@ export function SalesManager() {
   };
 
 
-  return (
-    <div className="flex flex-col gap-4">
   const isBroadcast = activeTab === 'broadcast';
 
   return (
     <div className="flex flex-col gap-4">
+
       {/* Верхняя горизонтальная навигация — скрыта в «Рассылке» для Coldy-вида */}
       {!isBroadcast && (
         <div className="flex items-center gap-2">
