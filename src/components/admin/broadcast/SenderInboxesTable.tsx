@@ -322,10 +322,18 @@ export function SenderInboxesTable() {
                     </td>
 
                     <td className="p-3">
-                      <span className={cn("inline-flex items-center px-2.5 py-1 rounded-md font-semibold text-xs", reputationTone(score))}>
-                        {score === null ? "N/A" : `${score}%`}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className={cn("inline-flex items-center px-2.5 py-1 rounded-md font-semibold text-xs w-fit", reputationTone(score))}>
+                          {score === null ? "N/A" : `${score}%`}
+                        </span>
+                        {(r.warmup_inbox_count > 0 || r.warmup_spam_count > 0) && (
+                          <span className="text-[11px] text-muted-foreground tabular-nums">
+                            входящие {r.warmup_inbox_count} · спам {r.warmup_spam_count}
+                          </span>
+                        )}
+                      </div>
                     </td>
+
                     <td className="p-3 tabular-nums">
                       <span className="font-medium">{r.sends_today}</span>
                       <span className="text-muted-foreground"> /{r.daily_limit}</span>
