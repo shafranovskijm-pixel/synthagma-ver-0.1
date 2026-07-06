@@ -45,7 +45,7 @@ serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "invalid auth" }, 401);
 
-    const login = Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || Deno.env.get("NOVOFON_SIP_LOGIN");
+    const login = Deno.env.get("NOVOFON_SIP_LOGIN") || Deno.env.get("NOVOFON_SIP_LINE_LOGIN");
     const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
 
     if (!login) {
@@ -115,8 +115,8 @@ function pickSipDomain(login: string): string {
 
   // Логин вида 0076627-100 — это внутренняя линия АТС, для неё Zadarma/Novofon
   // в официальных инструкциях использует PBX-домен, а не sip.novofon.ru.
-  if (login.includes("-") && (!normalized || normalized === "sip.novofon.ru" || normalized === "sip.zadarma.com")) {
-    return "pbx.zadarma.com";
+  if (normalized.includes("novofon.ru")) {
+    return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
   }
   if (normalized) return normalized;
   return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
