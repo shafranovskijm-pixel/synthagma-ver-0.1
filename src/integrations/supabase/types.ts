@@ -3204,6 +3204,8 @@ export type Database = {
           updated_at: string
           warmup_daily_target: number
           warmup_enabled: boolean
+          warmup_inbox_count: number
+          warmup_spam_count: number
           warmup_start_count: number
         }
         Insert: {
@@ -3229,6 +3231,8 @@ export type Database = {
           updated_at?: string
           warmup_daily_target?: number
           warmup_enabled?: boolean
+          warmup_inbox_count?: number
+          warmup_spam_count?: number
           warmup_start_count?: number
         }
         Update: {
@@ -3254,6 +3258,8 @@ export type Database = {
           updated_at?: string
           warmup_daily_target?: number
           warmup_enabled?: boolean
+          warmup_inbox_count?: number
+          warmup_spam_count?: number
           warmup_start_count?: number
         }
         Relationships: [
