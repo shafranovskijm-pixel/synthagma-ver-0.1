@@ -227,7 +227,7 @@ export function SendProposalDialog({
               );
             })}
           </div>
-        </DialogHeader>
+        </div>
 
         {(
 
