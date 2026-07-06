@@ -26,7 +26,10 @@ type Sender = {
   last_error_at: string | null;
   warmup_daily_target: number;
   warmup_start_count: number;
+  warmup_inbox_count: number;
+  warmup_spam_count: number;
 };
+
 
 
 const providerIcon = (email: string) => {
