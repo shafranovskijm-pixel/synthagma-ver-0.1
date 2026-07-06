@@ -62,6 +62,7 @@ export function ColdyMailingLayout() {
               {section === "campaigns" && "Все email-кампании: черновики, запущенные, завершённые"}
               {section === "drip" && "Автоматические цепочки писем по расписанию"}
               {section === "templates" && "Шаблоны для быстрого запуска рассылок"}
+              {section === "companies" && "Компании, которым уже отправлялись письма — рассылки будут их пропускать"}
               {section === "suppressed" && "Отписавшиеся, жалобы, bounce-адреса"}
               {section === "domain" && "SPF / DKIM / DMARC — проверка репутации домена"}
             </p>
@@ -72,6 +73,7 @@ export function ColdyMailingLayout() {
           {section === "campaigns" && <CampaignsManager scope="platform" organizationId={null} />}
           {section === "drip" && <DripCampaignsManager />}
           {section === "templates" && <EmailTemplatesManager scope="platform" organizationId={null} />}
+          {section === "companies" && <BroadcastCompaniesDb />}
           {section === "suppressed" && <SuppressionListManager scope="platform" organizationId={null} />}
           {section === "domain" && <DomainReputationCheck />}
         </div>
