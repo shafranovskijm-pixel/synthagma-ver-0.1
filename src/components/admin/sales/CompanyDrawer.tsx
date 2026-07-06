@@ -370,8 +370,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               </TabsContent>
             </Tabs>
           </div>
-        </SheetContent>
-      </Sheet>
+        </div>
+      </div>
+
 
       <CallResultModal
         open={resultOpen}
