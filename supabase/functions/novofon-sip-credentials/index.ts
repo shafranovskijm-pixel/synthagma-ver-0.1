@@ -109,9 +109,12 @@ function pickSipDomain(login: string): string {
     .replace(/:\d+$/i, "")
     .trim();
 
-  if (normalized) return normalized;
   // Логин вида 0076627-100 — это внутренняя линия АТС, для неё Zadarma/Novofon
   // в официальных инструкциях использует PBX-домен, а не sip.novofon.ru.
+  if (login.includes("-") && (!normalized || normalized === "sip.novofon.ru" || normalized === "sip.zadarma.com")) {
+    return "pbx.zadarma.com";
+  }
+  if (normalized) return normalized;
   return login.includes("-") ? "pbx.zadarma.com" : "sip.zadarma.com";
 }
 
