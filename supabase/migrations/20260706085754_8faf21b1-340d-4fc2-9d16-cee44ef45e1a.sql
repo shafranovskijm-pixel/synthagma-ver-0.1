@@ -1,0 +1,2 @@
+UPDATE email_sender_pool SET imap_host = 'imap.timeweb.ru', imap_port = 993, imap_encryption = 'ssl' WHERE host = 'smtp.timeweb.ru' AND imap_host IS NULL;
+UPDATE email_sender_pool SET imap_host = 'imap.gmail.com', imap_port = 993, imap_encryption = 'ssl' WHERE host = 'smtp.gmail.com' AND imap_host IS NULL;
