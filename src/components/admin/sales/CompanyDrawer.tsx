@@ -200,15 +200,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
 
   return (
     <>
-      {/* Полу-прозрачный фон, начинается ниже шапки — верхнее меню остаётся видимым и кликабельным */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 bg-black/40 backdrop-blur-[2px] animate-in fade-in-0"
-        style={{ top: '3.5rem' }}
-        onClick={() => onOpenChange(false)}
-      />
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 bg-background shadow-2xl border-t flex flex-col animate-in slide-in-from-bottom-4"
-        style={{ top: '3.5rem' }}
+        id="inline-lead-card"
+        className="relative w-full bg-background rounded-2xl border shadow-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-2 my-4"
       >
         <button
           type="button"
@@ -218,159 +212,8 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         >
           ✕
         </button>
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex flex-col">
 
-
-          <div className="p-4 border-b space-y-2">
-            <h2 className="text-base leading-tight pr-8 font-semibold">{lead.org_name}</h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge className={st.color}>{st.label}</Badge>
-              {localTime && (
-                <Badge variant="outline" className={okHours ? 'text-emerald-700 border-emerald-500/40' : 'text-amber-700 border-amber-500/40'}>
-                  🕐 {localTime.time} · {lead.region}
-                </Badge>
-              )}
-            </div>
-            <div className="flex gap-2 pt-1 flex-wrap">
-              <Button size="sm" className="flex-1 min-w-[140px] h-8" disabled={!lead.phone} onClick={() => handleQuickCall()}>
-                <Phone className="w-3.5 h-3.5 mr-1" />Позвонить{lead.phone ? ` ${formatRuPhone(lead.phone) || lead.phone}` : ''}
-              </Button>
-              <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); }}>
-                Результат
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8"
-                disabled={proposalTemplates.length === 0}
-                onClick={() => setProposalPopoverOpen(true)}
-              >
-                <Send className="w-3.5 h-3.5 mr-1" />Отправить КП
-                {proposalTemplates.length > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
-                )}
-              </Button>
-            </div>
-            {extraPhones.length > 0 && (
-              <div className="pt-1">
-                <div className="text-[11px] text-muted-foreground mb-1">Доп. телефоны из заметок ({extraPhones.length})</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {extraPhones.map(p => (
-                    <Button
-                      key={p}
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => handleQuickCall(p)}
-                      title={`Позвонить на ${p}`}
-                    >
-                      <Phone className="w-3 h-3 mr-1" />
-                      {formatRuPhone(p)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {isCalling && (
-              <div className="p-4 border-b bg-primary/5">
-                <KaraokeScript text={monolog} active={isCalling} />
-              </div>
-            )}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full grid grid-cols-5 rounded-none border-b h-9 bg-transparent">
-                <TabsTrigger value="summary" className="text-xs">Сводка</TabsTrigger>
-                <TabsTrigger value="script" className="text-xs">Скрипт</TabsTrigger>
-                <TabsTrigger value="calls" className="text-xs">Звонки</TabsTrigger>
-                <TabsTrigger value="timeline" className="text-xs">История</TabsTrigger>
-                <TabsTrigger value="docs" className="text-xs">Документы</TabsTrigger>
-              </TabsList>
-
-
-              <TabsContent value="summary" className="p-4 space-y-3 text-sm">
-                {lead.inn && <Row icon={Building2} label="ИНН" value={lead.inn} />}
-                {directorName && <Row icon={Building2} label="Руководитель" value={directorName} />}
-                {lead.ogrn && <Row icon={Building2} label="ОГРН" value={lead.ogrn} />}
-                {lead.address && <Row icon={MapPin} label="Адрес" value={lead.address} />}
-                {lead.phone && <Row icon={Phone} label="Телефон" value={lead.phone} />}
-                {lead.email && <Row icon={Mail} label="Email" value={lead.email} />}
-                {lead.website && <Row icon={Globe} label="Сайт" value={lead.website} />}
-
-                <div className="pt-2">
-                  <div className="text-xs text-muted-foreground mb-1">Статус</div>
-                  <Select value={status} onValueChange={v => { setStatus(v); updateLeadStatus(lead.id, v); }}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(LEAD_STATUS_MAP).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Заметки</div>
-                  <Textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    onBlur={() => updateLeadNotes(lead.id, notes)}
-                    rows={4}
-                    placeholder="Комментарии, договорённости, боль клиента…"
-                  />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="script" className="p-4 space-y-3">
-                {!isCalling && <KaraokeScript text={monolog} active={false} />}
-                <ColdCallScriptCard
-                  leadName={lead.org_name}
-                  managerName={managerName}
-                  contactName={directorName ?? undefined}
-                  onQuickResult={handleQuickResult}
-                />
-              </TabsContent>
-              <TabsContent value="calls" className="p-4">
-                <CallLogsList leadId={lead.id} companyInn={lead.inn ?? undefined} />
-              </TabsContent>
-
-
-              <TabsContent value="timeline" className="p-4 space-y-2">
-                {leadActs.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-6">Пока нет активности</div>
-                ) : leadActs.map(a => (
-                  <ActivityRow key={a.id} a={a} />
-                ))}
-              </TabsContent>
-
-              <TabsContent value="docs" className="p-4 space-y-3">
-                <Button
-                  className="w-full justify-start"
-                  onClick={() => setProposalPopoverOpen(true)}
-                  disabled={proposalTemplates.length === 0}
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Отправить готовое КП
-                  {proposalTemplates.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
-                  )}
-                </Button>
-
-                <Button variant="outline" className="w-full justify-start" onClick={() => onCreateProposal?.(lead)}>
-                  <FileText className="w-4 h-4 mr-2" />Создать своё КП
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => onCreateContract?.(lead)}>
-                  <ScrollText className="w-4 h-4 mr-2" />Создать договор
-                </Button>
-                <div className="text-xs text-muted-foreground pt-2">
-                  Звонков: {calls.length} · Заметок: {leadActs.filter(a => a.activity_type === 'note').length}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-      </div>
 
 
       <CallResultModal
