@@ -16,7 +16,7 @@ const SupportRequestsManager = lazyWithRetry(() => import("@/components/admin/Su
 const AdminSettings = lazyWithRetry(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
 const BlogManager = lazyWithRetry(() => import("@/components/admin/BlogManager").then(m => ({ default: m.BlogManager })));
 const DevToolsPanel = lazyWithRetry(() => import("@/components/admin/DevToolsPanel").then(m => ({ default: m.DevToolsPanel })));
-const SalesAdminView = lazyWithRetry(() => import("@/components/admin/sales/SalesAdminView").then(m => ({ default: m.SalesAdminView })));
+const SalesAdminView = lazyWithRetry(() => import("@/components/admin/SalesManager").then(m => ({ default: m.SalesManager })));
 const AISettingsManager = lazyWithRetry(() => import("@/components/admin/AISettingsManager").then(m => ({ default: m.AISettingsManager })));
 const BroadcastManager = lazyWithRetry(() => import("@/components/admin/BroadcastManager").then(m => ({ default: m.BroadcastManager })));
 const AdminChatsManager = lazyWithRetry(() => import("@/components/admin/AdminChatsManager").then(m => ({ default: m.AdminChatsManager })));
