@@ -98,34 +98,57 @@ export function SendProposalDialog({
   }, [open]);
 
 
+  const loadTemplates = async () => {
+    setLoading(true);
+    const { data: props } = await supabase
+      .from('commercial_proposals')
+      .select('id, company_name, total_amount, intro_html')
+      .eq('is_template', true)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+    const ids = (props || []).map((p: any) => p.id);
+    const { data: svcs } = ids.length
+      ? await supabase.from('commercial_proposal_services').select('*').in('proposal_id', ids)
+      : { data: [] as any[] };
+    const map: Record<string, Service[]> = {};
+    (svcs || []).forEach((s: any) => {
+      (map[s.proposal_id] ||= []).push(s);
+    });
+    const tpls: Template[] = (props || []).map((p: any) => ({
+      id: p.id,
+      company_name: p.company_name,
+      total_amount: Number(p.total_amount || 0),
+      intro_html: p.intro_html,
+      services: (map[p.id] || []).sort((a, b) => a.sort_order - b.sort_order),
+    }));
+    setTemplates(tpls);
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    (async () => {
-      const { data: props } = await supabase
-        .from('commercial_proposals')
-        .select('id, company_name, total_amount, intro_html')
-        .eq('is_template', true)
-        .order('created_at', { ascending: false });
-      const ids = (props || []).map((p: any) => p.id);
-      const { data: svcs } = ids.length
-        ? await supabase.from('commercial_proposal_services').select('*').in('proposal_id', ids)
-        : { data: [] as any[] };
-      const map: Record<string, Service[]> = {};
-      (svcs || []).forEach((s: any) => {
-        (map[s.proposal_id] ||= []).push(s);
-      });
-      const tpls: Template[] = (props || []).map((p: any) => ({
-        id: p.id,
-        company_name: p.company_name,
-        total_amount: Number(p.total_amount || 0),
-        intro_html: p.intro_html,
-        services: (map[p.id] || []).sort((a, b) => a.sort_order - b.sort_order),
-      }));
-      setTemplates(tpls);
-      setLoading(false);
-    })();
+    loadTemplates();
   }, [open]);
+
+  const handleDeleteTemplate = async (tpl: Template) => {
+    if (!confirm(`Удалить шаблон «${tpl.company_name}»? Это скроет его из галереи КП.`)) return;
+    const { error } = await supabase
+      .from('commercial_proposals')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+      .eq('id', tpl.id);
+    if (error) {
+      toast.error('Не удалось удалить шаблон', { description: getErrorMessage(error) });
+      return;
+    }
+    toast.success(`Шаблон «${tpl.company_name}» удалён`);
+    setTemplates((prev) => prev.filter((t) => t.id !== tpl.id));
+  };
+
+  const handleCreateOwn = () => {
+    onOpenChange(false);
+    window.dispatchEvent(new CustomEvent('sales-nav', { detail: 'proposals' }));
+    window.dispatchEvent(new CustomEvent('sales-create-proposal'));
+  };
 
   const filtered = useMemo(() => {
     return templates.filter((t) => {
