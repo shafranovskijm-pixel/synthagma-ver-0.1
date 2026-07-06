@@ -81,6 +81,8 @@ export function useSoftphone() {
       const creds = data as SipCreds & { ok: true };
       lastCredsRef.current = creds;
 
+      console.log('[softphone] connecting', { wss: creds.wss, domain: creds.domain, login: creds.login });
+
       const socket = new JsSIP.WebSocketInterface(creds.wss);
       const ua = new JsSIP.UA({
         sockets: [socket],
@@ -91,10 +93,15 @@ export function useSoftphone() {
         session_timers: false,
       });
       uaRef.current = ua;
+      let registered = false;
 
+      ua.on('connecting', () => console.log('[softphone] ws connecting'));
+      ua.on('connected', () => console.log('[softphone] ws connected'));
       ua.on('registered', () => {
+        registered = true;
         setError(null);
         setStatus('registered');
+        console.log('[softphone] registered');
       });
       ua.on('registrationFailed', (e: any) => {
         try { ua.stop(); } catch { /* noop */ }
@@ -103,11 +110,22 @@ export function useSoftphone() {
         const statusCode = e?.response?.status_code;
         const reason = e?.response?.reason_phrase;
         const cause = e?.cause || reason || 'registrationFailed';
+        console.warn('[softphone] registrationFailed', { statusCode, reason, cause, e });
         setError(statusCode === 401 ? 'Novofon отклонил SIP логин/пароль' : cause);
       });
-      ua.on('disconnected', () => {
+      ua.on('disconnected', (e: any) => {
         if (uaRef.current === ua) uaRef.current = null;
-        if (!sessionRef.current) setStatus('idle');
+        const code = e?.code;
+        const reason = e?.reason;
+        console.warn('[softphone] disconnected', { code, reason, registered, e });
+        if (sessionRef.current) return;
+        if (!registered) {
+          // WSS не поднялся — покажем понятную ошибку, а не «idle»
+          setStatus('failed');
+          setError(`WebSocket не подключился к ${creds.wss}${code ? ` (код ${code}${reason ? ': ' + reason : ''})` : ''}`);
+        } else {
+          setStatus('idle');
+        }
       });
       ua.on('newRTCSession', (e: any) => {
         const session = e.session;
@@ -119,6 +137,7 @@ export function useSoftphone() {
       });
 
       ua.start();
+
     } catch (e) {
       uaRef.current = null;
       setStatus('failed');
