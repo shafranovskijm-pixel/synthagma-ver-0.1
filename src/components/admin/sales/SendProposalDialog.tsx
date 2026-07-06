@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,7 @@ export function SendProposalDialog({
   open, onOpenChange, companyName, contactPerson, defaultEmail, leadId, managerName, onSent,
 }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(defaultEmail || '');
@@ -79,7 +81,11 @@ export function SendProposalDialog({
   const [activeCat, setActiveCat] = useState<CategoryKey>('all');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
-  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  const openPreview = (id: string) => {
+    onOpenChange(false);
+    navigate(`/sales?proposalPreview=${id}`);
+  };
 
   useEffect(() => { setEmail(defaultEmail || ''); }, [defaultEmail, open]);
 
@@ -152,7 +158,7 @@ export function SendProposalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!max-w-none w-screen h-screen sm:h-[100dvh] p-0 gap-0 flex flex-col rounded-none border-0 sm:rounded-none">
+      <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 flex flex-col">
         <DialogHeader className="p-5 pb-3 border-b space-y-3">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Send className="w-4 h-4 text-primary" />
@@ -206,23 +212,8 @@ export function SendProposalDialog({
           </div>
         </DialogHeader>
 
-        {previewId ? (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex items-center justify-between px-5 py-2 border-b bg-muted/30">
-              <Button variant="ghost" size="sm" onClick={() => setPreviewId(null)} className="gap-1.5">
-                <ArrowLeft className="w-4 h-4" /> Назад к списку
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => window.open(`/proposal/${previewId}`, '_blank')} className="gap-1.5">
-                <ExternalLink className="w-3.5 h-3.5" /> В новой вкладке
-              </Button>
-            </div>
-            <iframe
-              src={`/proposal/${previewId}`}
-              className="flex-1 w-full bg-white"
-              title="Предпросмотр КП"
-            />
-          </div>
-        ) : (
+        {(
+
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
@@ -293,7 +284,7 @@ export function SendProposalDialog({
                           size="sm"
                           variant="outline"
                           className="h-8 px-2"
-                          onClick={() => setPreviewId(tpl.id)}
+                          onClick={() => openPreview(tpl.id)}
                           title="Открыть предпросмотр"
                         >
                           <Eye className="w-3.5 h-3.5" />
