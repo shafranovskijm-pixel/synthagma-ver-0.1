@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Search, Loader2 } from "lucide-react";
+import { Trash2, Search, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
+import { exportToExcel } from "@/utils/xlsxHelper";
 
 interface Row {
   id: string;
