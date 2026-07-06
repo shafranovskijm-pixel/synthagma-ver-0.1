@@ -90,7 +90,7 @@ serve(async (req) => {
       }
     }
 
-    return json({ ok: true, login, password, domain, wss });
+    return json({ ok: true, version: VERSION, login, password, domain, wss });
   } catch (e) {
     return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);
   }
