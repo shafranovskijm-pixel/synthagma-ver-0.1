@@ -222,8 +222,8 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 
 
-          <SheetHeader className="p-4 border-b space-y-2">
-            <SheetTitle className="text-base leading-tight pr-8">{lead.org_name}</SheetTitle>
+          <div className="p-4 border-b space-y-2">
+            <h2 className="text-base leading-tight pr-8 font-semibold">{lead.org_name}</h2>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge className={st.color}>{st.label}</Badge>
               {localTime && (
