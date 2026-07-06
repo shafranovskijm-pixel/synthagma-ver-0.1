@@ -465,8 +465,11 @@ export async function novofonClassicRequest<T = unknown>(
   const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
   const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
   const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
-  const classicKey = explicitKey || (!isAppId(key) ? key : undefined);
-  const classicSecret = explicitSecret || (!isAppId(key) ? secret : undefined);
+  // Classic REST API v1 (including /v1/webrtc/get_key/) uses
+  // Authorization: user_key:signature. In the current Novofon/Zadarma cabinet
+  // the user_key can be displayed as appid_..., so do not filter it out here.
+  const classicKey = explicitKey || key;
+  const classicSecret = explicitSecret || secret;
   if (!classicKey || !classicSecret) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
 
   const requestParams = { ...params, format: "json" };
