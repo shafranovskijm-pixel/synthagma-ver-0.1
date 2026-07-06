@@ -171,7 +171,12 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
     const mine = managerId
       ? leads.filter(l => !l.assigned_manager_id || l.assigned_manager_id === managerId)
       : leads;
-    return buildShiftQueue(mine);
+    const built = buildShiftQueue(mine);
+    // Тестовые карточки закрепляем в самом верху очереди
+    const isTest = (name?: string | null) => !!name && /\(тест\)/i.test(name);
+    const pinned = built.filter(q => isTest(q.lead.org_name));
+    const rest = built.filter(q => !isTest(q.lead.org_name));
+    return [...pinned, ...rest];
   }, [leads, managerId, tick]);
 
   const isProcessed = useCallback((l: SalesLead) => {
