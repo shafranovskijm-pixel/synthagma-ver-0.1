@@ -73,6 +73,7 @@ export function SendProposalDialog({
   open, onOpenChange, companyName, contactPerson, defaultEmail, leadId, managerName, onSent,
 }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(defaultEmail || '');
@@ -80,7 +81,11 @@ export function SendProposalDialog({
   const [activeCat, setActiveCat] = useState<CategoryKey>('all');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
-  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  const openPreview = (id: string) => {
+    onOpenChange(false);
+    navigate(`/sales?proposalPreview=${id}`);
+  };
 
   useEffect(() => { setEmail(defaultEmail || ''); }, [defaultEmail, open]);
 
