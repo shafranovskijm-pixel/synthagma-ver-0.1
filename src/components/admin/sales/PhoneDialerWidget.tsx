@@ -99,6 +99,19 @@ export function PhoneDialerWidget() {
       toast.error('Введите корректный номер (10 цифр после +7)');
       return;
     }
+    if (!managerPhone) {
+      toast.error('Сначала укажите свой рабочий телефон', {
+        description: 'Novofon сначала перезванивает на телефон менеджера, а потом соединяет с клиентом.',
+      });
+      setEditingPhone(true);
+      return;
+    }
+    if (normalizeRuPhone(managerPhone) === normalized) {
+      toast.error('Нельзя звонить самому себе', {
+        description: 'Ваш рабочий телефон совпадает с набираемым номером. Novofon не сможет соединить звонок.',
+      });
+      return;
+    }
     setCalling(true);
     try {
       const { data, error } = await supabase.functions.invoke('novofon-call-start', {
