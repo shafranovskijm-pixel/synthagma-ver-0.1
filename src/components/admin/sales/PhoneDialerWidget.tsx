@@ -1,54 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Phone, PhoneCall, X, Delete } from 'lucide-react';
+import { Phone, PhoneCall, PhoneOff, X, Delete, Mic, MicOff, Loader2, Wifi, WifiOff, PhoneIncoming } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
-import { getAdminSalesView } from '@/utils/adminViewMode';
 import { formatRuPhone, normalizeRuPhone } from '@/utils/phoneParser';
 import { cn } from '@/lib/utils';
+import { useSoftphone } from '@/hooks/useSoftphone';
 
 /**
- * Плавающий виджет-звонилка: позволяет менеджеру набрать любой номер
- * (в т.ч. продиктованный клиентом) и позвонить через Novofon.
- * Открывается по клику на плавающей кнопке в правом нижнем углу.
+ * Плавающая браузерная звонилка: WebRTC-софтфон Novofon через JsSIP.
+ * Микрофон/динамики — гарнитура. Никакого дозвона на мобильный.
  */
 export function PhoneDialerWidget() {
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [raw, setRaw] = useState('');
-  const [managerPhone, setManagerPhone] = useState<string>('');
-  const [managerId, setManagerId] = useState<string | null>(null);
-  const [editingPhone, setEditingPhone] = useState(false);
-  const [phoneDraft, setPhoneDraft] = useState('');
-  const [savingPhone, setSavingPhone] = useState(false);
-  const [calling, setCalling] = useState(false);
-
-  // Загружаем телефон менеджера (fallback: profiles.phone)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const viewAs = getAdminSalesView();
-      const targetUserId = viewAs?.userId || user?.id;
-      const [mgrR, profR] = await Promise.all([
-        viewAs?.managerId
-          ? (supabase as any).from('sales_managers').select('id, phone').eq('id', viewAs.managerId).maybeSingle()
-          : (user?.id ? (supabase as any).from('sales_managers').select('id, phone').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null })),
-        targetUserId
-          ? (supabase as any).from('profiles').select('phone').eq('user_id', targetUserId).maybeSingle()
-          : Promise.resolve({ data: null }),
-      ]);
-      if (cancelled) return;
-      const mgr: any = mgrR?.data;
-      const prof: any = profR?.data;
-      if (mgr?.id) setManagerId(mgr.id);
-      const phone = mgr?.phone || prof?.phone || '';
-      setManagerPhone(phone);
-      setPhoneDraft(phone);
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id]);
+  const sip = useSoftphone();
 
   // Открываем виджет по глобальному событию (можно вызывать из карточек лида)
   useEffect(() => {
@@ -61,89 +27,30 @@ export function PhoneDialerWidget() {
     return () => window.removeEventListener('open-phone-dialer', handler);
   }, []);
 
-  const savePhone = async () => {
-    const normalizedPhone = normalizeRuPhone(phoneDraft);
-    if (!normalizedPhone) {
-      toast.error('Введите корректный номер (10 цифр после +7)');
-      return;
-    }
-    setSavingPhone(true);
-    try {
-      if (managerId) {
-        const { error } = await (supabase as any).from('sales_managers').update({ phone: normalizedPhone }).eq('id', managerId);
-        if (error) throw error;
-      } else if (user?.id) {
-        const { error } = await (supabase as any).from('profiles').update({ phone: normalizedPhone }).eq('user_id', user.id);
-        if (error) throw error;
-      }
-      setManagerPhone(normalizedPhone);
-      setEditingPhone(false);
-      toast.success('Телефон сохранён');
-    } catch (e) {
-      toast.error('Не удалось сохранить телефон', {
-        description: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setSavingPhone(false);
-    }
-  };
+  // Автоподключение при открытии
+  useEffect(() => {
+    if (open && sip.status === 'idle') sip.connect();
+  }, [open, sip]);
 
   const normalized = useMemo(() => normalizeRuPhone(raw), [raw]);
   const pretty = normalized ? formatRuPhone(normalized) : raw;
 
-  const addDigit = (d: string) => setRaw(prev => prev + d);
+  const addDigit = (d: string) => {
+    setRaw(prev => prev + d);
+    if (sip.status === 'in_call') sip.sendDtmf(d);
+  };
   const backspace = () => setRaw(prev => prev.slice(0, -1));
 
-  const handleCall = async () => {
-    if (!normalized) {
-      toast.error('Введите корректный номер (10 цифр после +7)');
-      return;
-    }
-    if (!managerPhone) {
-      toast.error('Сначала укажите свой рабочий телефон', {
-        description: 'Novofon сначала перезванивает на телефон менеджера, а потом соединяет с клиентом.',
-      });
-      setEditingPhone(true);
-      return;
-    }
-    if (normalizeRuPhone(managerPhone) === normalized) {
-      toast.error('Нельзя звонить самому себе', {
-        description: 'Ваш рабочий телефон совпадает с набираемым номером. Novofon не сможет соединить звонок.',
-      });
-      return;
-    }
-    setCalling(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('novofon-call-start', {
-        body: {
-          to_number: normalized,
-          lead_id: null,
-          company_inn: null,
-          company_name: null,
-          operator_number: managerPhone || undefined,
-        },
-      });
-      if (error) throw error;
-      if (data?.ok) {
-        toast.success('Звоним через Novofon', {
-          description: `Набираем ${formatRuPhone(normalized)} — ответьте на своём телефоне.`,
-        });
-        setOpen(false);
-      } else {
-        toast.error('Не удалось запустить звонок', {
-          description: data?.message || data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon',
-        });
-      }
-    } catch (e) {
-      toast.error('Ошибка звонка', {
-        description: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setCalling(false);
-    }
+  const handleCall = () => {
+    if (!normalized) { toast.error('Введите номер (10 цифр после +7)'); return; }
+    if (sip.status !== 'registered') { toast.error('Софтфон не готов', { description: 'Подождите подключения к Novofon…' }); return; }
+    // Novofon набор: 7XXXXXXXXXX (без +)
+    sip.call(normalized.replace(/^\+/, ''));
   };
 
-  const KEYS = ['1','2','3','4','5','6','7','8','9','+','0','⌫'];
+  const KEYS = ['1','2','3','4','5','6','7','8','9','*','0','#'];
+
+  const inCall = sip.status === 'in_call' || sip.status === 'calling' || sip.status === 'ringing';
 
   return (
     <>
@@ -153,29 +60,42 @@ export function PhoneDialerWidget() {
         aria-label="Открыть звонилку"
         onClick={() => setOpen(v => !v)}
         className={cn(
-          'fixed z-40 bottom-6 right-24 h-12 w-12 rounded-full shadow-lg',
-          'bg-primary text-primary-foreground flex items-center justify-center',
-          'hover:scale-105 transition-transform',
+          'fixed z-40 bottom-6 right-24 h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105',
+          inCall ? 'bg-emerald-500 text-white animate-pulse' : 'bg-primary text-primary-foreground',
         )}
       >
         <Phone className="w-5 h-5" />
       </button>
 
       {open && (
-        <div className="fixed z-50 bottom-24 right-24 w-[300px] rounded-2xl border bg-background shadow-2xl overflow-hidden">
+        <div className="fixed z-50 bottom-24 right-24 w-[320px] rounded-2xl border bg-background shadow-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/40">
             <div className="flex items-center gap-2 text-sm font-medium">
               <PhoneCall className="w-4 h-4 text-primary" /> Звонилка
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="p-1 rounded-md hover:bg-muted"
-              aria-label="Закрыть"
-            >
+            <button type="button" onClick={() => setOpen(false)} className="p-1 rounded-md hover:bg-muted" aria-label="Закрыть">
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Статус подключения */}
+          <div className={cn(
+            'flex items-center gap-2 px-4 py-2 text-[11px] border-b',
+            sip.status === 'registered' && 'bg-emerald-50 text-emerald-700 border-emerald-100',
+            sip.status === 'connecting' && 'bg-amber-50 text-amber-700 border-amber-100',
+            (sip.status === 'failed' || sip.status === 'idle') && 'bg-muted/40 text-muted-foreground',
+            inCall && 'bg-primary/5 text-primary border-primary/10',
+          )}>
+            {sip.status === 'connecting' && <><Loader2 className="w-3 h-3 animate-spin" /> Подключение к Novofon…</>}
+            {sip.status === 'registered' && <><Wifi className="w-3 h-3" /> Готов · звук идёт в гарнитуру</>}
+            {sip.status === 'idle' && <><WifiOff className="w-3 h-3" /> Не подключено</>}
+            {sip.status === 'calling' && <><Loader2 className="w-3 h-3 animate-spin" /> Идёт вызов {sip.remoteNumber && `· ${formatRuPhone('+' + sip.remoteNumber)}`}</>}
+            {sip.status === 'ringing' && <><PhoneIncoming className="w-3 h-3" /> Входящий {sip.remoteNumber && `от ${sip.remoteNumber}`}</>}
+            {sip.status === 'in_call' && <><PhoneCall className="w-3 h-3" /> Разговор · {sip.remoteNumber}</>}
+            {sip.status === 'failed' && <><WifiOff className="w-3 h-3" /> Ошибка: {sip.error || 'не удалось подключиться'}</>}
+            {sip.status === 'ended' && <>Звонок завершён</>}
+          </div>
+
           <div className="p-4 space-y-3">
             <Input
               autoFocus
@@ -184,73 +104,70 @@ export function PhoneDialerWidget() {
               placeholder="+7 (___) ___-__-__"
               className="text-center text-lg tracking-wider h-11 tabular-nums"
               inputMode="tel"
+              disabled={inCall}
             />
-            <div className={cn(
-              'text-xs text-center',
-              normalized ? 'text-emerald-600' : 'text-muted-foreground',
-            )}>
-              {normalized ? pretty : 'Введите номер (можно продиктованный клиентом)'}
+            <div className={cn('text-xs text-center', normalized ? 'text-emerald-600' : 'text-muted-foreground')}>
+              {normalized ? pretty : 'Введите номер (в разговоре — тональный набор)'}
             </div>
+
             <div className="grid grid-cols-3 gap-1.5">
               {KEYS.map(k => (
                 <button
                   key={k}
                   type="button"
-                  onClick={() => k === '⌫' ? backspace() : addDigit(k)}
+                  onClick={() => addDigit(k)}
                   className="h-10 rounded-lg border bg-background hover:bg-muted font-medium tabular-nums flex items-center justify-center"
                 >
-                  {k === '⌫' ? <Delete className="w-4 h-4" /> : k}
+                  {k}
                 </button>
               ))}
+              <button type="button" onClick={() => setRaw(prev => prev + '+')} className="h-10 rounded-lg border bg-background hover:bg-muted font-medium">+</button>
+              <button type="button" onClick={backspace} className="h-10 rounded-lg border bg-background hover:bg-muted flex items-center justify-center">
+                <Delete className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={sip.toggleMute}
+                disabled={sip.status !== 'in_call'}
+                className={cn(
+                  'h-10 rounded-lg border font-medium flex items-center justify-center',
+                  sip.muted ? 'bg-amber-500 text-white' : 'bg-background hover:bg-muted',
+                  sip.status !== 'in_call' && 'opacity-40 cursor-not-allowed',
+                )}
+                title="Микрофон"
+              >
+                {sip.muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
             </div>
-            <Button
-              className="w-full h-10 rounded-lg gap-2"
-              onClick={handleCall}
-              disabled={!normalized || calling}
-            >
-              <PhoneCall className="w-4 h-4" />
-              {calling ? 'Звоним…' : 'Позвонить'}
-            </Button>
-            {managerPhone && !editingPhone ? (
-              <div className="text-[11px] text-center text-muted-foreground">
-                Ваш телефон: <span className="font-medium text-foreground">{formatRuPhone(managerPhone) || managerPhone}</span>
-                {' '}·{' '}
-                <button
-                  type="button"
-                  onClick={() => { setPhoneDraft(managerPhone); setEditingPhone(true); }}
-                  className="underline hover:text-primary"
-                >
-                  изменить
-                </button>
+
+            {sip.status === 'ringing' ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button className="h-10 rounded-lg gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={sip.answer}>
+                  <PhoneCall className="w-4 h-4" /> Ответить
+                </Button>
+                <Button className="h-10 rounded-lg gap-2" variant="destructive" onClick={sip.hangup}>
+                  <PhoneOff className="w-4 h-4" /> Отклонить
+                </Button>
               </div>
+            ) : inCall ? (
+              <Button className="w-full h-10 rounded-lg gap-2" variant="destructive" onClick={sip.hangup}>
+                <PhoneOff className="w-4 h-4" /> Завершить
+              </Button>
             ) : (
-              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2">
-                <div className="text-[11px] text-amber-700 text-center">
-                  Укажите свой рабочий телефон, иначе Novofon не соединит звонок.
-                </div>
-                <div className="flex gap-1.5">
-                  <Input
-                    value={phoneDraft}
-                    onChange={e => setPhoneDraft(e.target.value)}
-                    placeholder="+7 (___) ___-__-__"
-                    className="h-8 text-sm"
-                    inputMode="tel"
-                  />
-                  <Button
-                    size="sm"
-                    className="h-8"
-                    onClick={savePhone}
-                    disabled={savingPhone || !phoneDraft}
-                  >
-                    {savingPhone ? '…' : 'OK'}
-                  </Button>
-                  {managerPhone && (
-                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingPhone(false)}>
-                      ✕
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <Button
+                className="w-full h-10 rounded-lg gap-2"
+                onClick={handleCall}
+                disabled={!normalized || sip.status !== 'registered'}
+              >
+                <PhoneCall className="w-4 h-4" />
+                Позвонить
+              </Button>
+            )}
+
+            {sip.status === 'failed' && (
+              <Button size="sm" variant="outline" className="w-full h-8" onClick={sip.connect}>
+                Переподключиться
+              </Button>
             )}
           </div>
         </div>
