@@ -268,6 +268,21 @@ export function SendProposalDialog({
             <div className="text-center py-16 text-muted-foreground text-sm">Нет шаблонов по фильтру</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {/* Tile: create own KP */}
+              <button
+                type="button"
+                onClick={handleCreateOwn}
+                className="group relative border-2 border-dashed border-primary/30 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[220px] bg-primary/[0.03] hover:bg-primary/[0.06] hover:border-primary/60 transition text-primary"
+                title="Создать своё КП в конструкторе"
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-105 transition">
+                  <Plus className="w-6 h-6" />
+                </div>
+                <div className="font-semibold text-sm">Своё КП</div>
+                <div className="text-[11px] text-muted-foreground text-center max-w-[220px]">
+                  Открыть конструктор и собрать индивидуальное предложение под клиента
+                </div>
+              </button>
               {filtered.map((tpl) => {
                 const cat = CATEGORIES.find((c) => c.key === detectCategory(tpl.company_name))!;
                 const desc = stripHtml(tpl.intro_html).slice(0, 180);
