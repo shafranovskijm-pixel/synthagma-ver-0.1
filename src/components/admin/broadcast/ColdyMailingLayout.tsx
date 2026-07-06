@@ -62,7 +62,8 @@ export function ColdyMailingLayout() {
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               {section === "inboxes" && "Пул отправителей: прогрев, репутация, лимиты"}
-              {section === "campaigns" && "Все email-кампании: черновики, запущенные, завершённые"}
+              {section === "campaigns" && "Все email-рассылки: черновики, запущенные, завершённые"}
+              {section === "unibox" && "Единый инбокс: ответы с ваших ящиков и переписка с клиентами прямо из CRM"}
               {section === "drip" && "Автоматические цепочки писем по расписанию"}
               {section === "templates" && "Шаблоны для быстрого запуска рассылок"}
               {section === "companies" && "Компании, которым уже отправлялись письма — рассылки будут их пропускать"}
@@ -74,12 +75,14 @@ export function ColdyMailingLayout() {
         <div>
           {section === "inboxes" && <SenderInboxesTable />}
           {section === "campaigns" && <CampaignsManager scope="platform" organizationId={null} />}
+          {section === "unibox" && <InboxUnibox />}
           {section === "drip" && <DripCampaignsManager />}
           {section === "templates" && <EmailTemplatesManager scope="platform" organizationId={null} />}
           {section === "companies" && <BroadcastCompaniesDb />}
           {section === "suppressed" && <SuppressionListManager scope="platform" organizationId={null} />}
           {section === "domain" && <DomainReputationCheck />}
         </div>
+
       </div>
     </div>
   );
