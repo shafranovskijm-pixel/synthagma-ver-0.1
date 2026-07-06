@@ -54,6 +54,23 @@ export function BroadcastCompaniesDb() {
     setRows(prev => prev.filter(r => r.id !== id));
   };
 
+  const exportXlsx = async () => {
+    const data = filtered.map(r => ({
+      Email: r.email,
+      Компания: r.company_name || "",
+      Имя: r.first_name || "",
+      Фамилия: r.last_name || "",
+      Статус: r.status,
+      "Отправлено": r.last_sent_at ? new Date(r.last_sent_at).toLocaleDateString("ru-RU") : "",
+      Источник: r.source || "",
+    }));
+    if (data.length === 0) return toast.error("Нет данных для экспорта");
+    await exportToExcel(data, "Компании", `broadcast-companies-${new Date().toISOString().slice(0,10)}.xlsx`, [
+      { wch: 32 }, { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 16 },
+    ]);
+    toast.success(`Экспортировано: ${data.length}`);
+  };
+
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
