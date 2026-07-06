@@ -7,6 +7,7 @@ import { crypto as stdCrypto } from "https://deno.land/std@0.224.0/crypto/mod.ts
 const CALL_API_BASE = "https://callapi-jsonrpc.novofon.ru/v4.0";
 const DATA_API_BASE = "https://dataapi-jsonrpc.novofon.ru/v2.0";
 const CLASSIC_API_BASE = "https://api.novofon.com";
+const CLASSIC_API_FALLBACK_BASE = "https://api.zadarma.com";
 
 export interface NovofonJsonRpcError {
   code?: number;
@@ -479,35 +480,37 @@ export async function novofonClassicRequest<T = unknown>(
 
   const requestParams = { ...params, format: "json" };
   const paramsStr = buildParamsString(requestParams);
-  const url = method === "GET" && paramsStr
-    ? `${CLASSIC_API_BASE}${path}?${paramsStr}`
-    : `${CLASSIC_API_BASE}${path}`;
-
   let lastError: Error | null = null;
-  for (const candidate of candidates) {
-    const md5 = await md5Hex(paramsStr);
-    const hex = await hmacSha1Hex(candidate.secret, `${path}${paramsStr}${md5}`);
-    const signature = encodeBase64(new TextEncoder().encode(hex));
+  for (const baseUrl of [CLASSIC_API_BASE, CLASSIC_API_FALLBACK_BASE]) {
+    const url = method === "GET" && paramsStr
+      ? `${baseUrl}${path}?${paramsStr}`
+      : `${baseUrl}${path}`;
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `${candidate.key}:${signature}`,
-        Accept: "application/json",
-        ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-      },
-      body: method === "POST" ? paramsStr : undefined,
-    });
+    for (const candidate of candidates) {
+      const md5 = await md5Hex(paramsStr);
+      const hex = await hmacSha1Hex(candidate.secret, `${path}${paramsStr}${md5}`);
+      const signature = encodeBase64(new TextEncoder().encode(hex));
 
-    const text = await res.text();
-    let json: any;
-    try { json = JSON.parse(text); } catch { json = { raw: text }; }
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `${candidate.key}:${signature}`,
+          Accept: "application/json",
+          ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+        },
+        body: method === "POST" ? paramsStr : undefined,
+      });
 
-    if (res.ok && json?.status !== "error") return json as T;
+      const text = await res.text();
+      let json: any;
+      try { json = JSON.parse(text); } catch { json = { raw: text }; }
 
-    const message = json?.message || text || `HTTP ${res.status}`;
-    lastError = new Error(`Novofon ${candidate.label} HTTP ${res.status}: ${message}`);
-    if (!isClassicAuthFailure(res.status, message)) throw lastError;
+      if (res.ok && json?.status !== "error") return json as T;
+
+      const message = json?.message || text || `HTTP ${res.status}`;
+      lastError = new Error(`Novofon ${candidate.label} ${new URL(baseUrl).hostname} HTTP ${res.status}: ${message}`);
+      if (!isClassicRecoverableFailure(res.status, message)) throw lastError;
+    }
   }
 
   throw lastError || new Error("Novofon classic API request failed");
@@ -526,9 +529,14 @@ function addClassicCandidate(
   candidates.push({ key: normalizedKey, secret: normalizedSecret, label });
 }
 
-function isClassicAuthFailure(status: number, message: string): boolean {
+function isClassicRecoverableFailure(status: number, message: string): boolean {
   const normalized = message.toLowerCase();
-  return status === 401 || normalized.includes("not_authorized") || normalized.includes("unauthorized");
+  return status === 401
+    || status === 404
+    || status === 501
+    || normalized.includes("not_authorized")
+    || normalized.includes("unauthorized")
+    || normalized.includes("method not implemented");
 }
 
 // Backwards-compatible alias for classic Zadarma/Novofon REST callers.
