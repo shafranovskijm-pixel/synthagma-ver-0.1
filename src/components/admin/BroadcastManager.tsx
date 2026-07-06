@@ -19,6 +19,8 @@ import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesM
 import { SuppressionListManager } from "./broadcast/SuppressionListManager";
 import { DomainReputationCheck } from "./broadcast/DomainReputationCheck";
 import { DripCampaignsManager } from "./broadcast/DripCampaignsManager";
+import { ColdyMailingLayout } from "./broadcast/ColdyMailingLayout";
+
 
 interface Announcement {
   id: string;
@@ -240,30 +242,15 @@ export function BroadcastManager() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="campaigns" className="w-full">
+      <Tabs defaultValue="coldy" className="w-full">
         <TabsList>
-          <TabsTrigger value="campaigns">Email-кампании</TabsTrigger>
-          <TabsTrigger value="drip">Drip-цепочки</TabsTrigger>
-          <TabsTrigger value="templates">Шаблоны писем</TabsTrigger>
-          <TabsTrigger value="suppression">Отписавшиеся</TabsTrigger>
-          <TabsTrigger value="domain">Репутация домена</TabsTrigger>
+          <TabsTrigger value="coldy">Рассылка</TabsTrigger>
           <TabsTrigger value="legacy">Уведомления и быстрые письма</TabsTrigger>
         </TabsList>
-        <TabsContent value="campaigns" className="mt-4">
-          <CampaignsManager scope="platform" organizationId={null} />
+        <TabsContent value="coldy" className="mt-4">
+          <ColdyMailingLayout />
         </TabsContent>
-        <TabsContent value="drip" className="mt-4">
-          <DripCampaignsManager />
-        </TabsContent>
-        <TabsContent value="templates" className="mt-4">
-          <EmailTemplatesManager scope="platform" organizationId={null} />
-        </TabsContent>
-        <TabsContent value="suppression" className="mt-4">
-          <SuppressionListManager scope="platform" organizationId={null} />
-        </TabsContent>
-        <TabsContent value="domain" className="mt-4">
-          <DomainReputationCheck />
-        </TabsContent>
+
         <TabsContent value="legacy" className="mt-4 space-y-6">
       {/* Original announcements section */}
       <Card>
