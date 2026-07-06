@@ -94,6 +94,7 @@ export function useSoftphone() {
       });
       uaRef.current = ua;
       let registered = false;
+      let registrationFailed = false;
 
       ua.on('connecting', () => console.log('[softphone] ws connecting'));
       ua.on('connected', () => console.log('[softphone] ws connected'));
@@ -104,6 +105,7 @@ export function useSoftphone() {
         console.log('[softphone] registered');
       });
       ua.on('registrationFailed', (e: any) => {
+        registrationFailed = true;
         try { ua.stop(); } catch { /* noop */ }
         if (uaRef.current === ua) uaRef.current = null;
         setStatus('failed');
@@ -119,6 +121,7 @@ export function useSoftphone() {
         const reason = e?.reason;
         console.warn('[softphone] disconnected', { code, reason, registered, e });
         if (sessionRef.current) return;
+        if (registrationFailed) return;
         if (!registered) {
           // WSS не поднялся — покажем понятную ошибку, а не «idle»
           setStatus('failed');

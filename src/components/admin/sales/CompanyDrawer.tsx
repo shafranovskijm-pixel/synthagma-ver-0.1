@@ -178,11 +178,17 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const handleQuickCall = async (overrideNumber?: string) => {
     const dial = overrideNumber || lead.phone;
     if (!dial) return;
-    // Звоним из браузера через WebRTC-софтфон (гарнитура). Никакого дозвона на мобильный.
-    window.dispatchEvent(new CustomEvent('softphone:call', { detail: { number: dial } }));
-    toast.success('Звоним через браузер', { description: `Набираем ${formatRuPhone(dial) || dial}. Скрипт начнётся, когда возьмут трубку.` });
-    await addActivity(lead.id, null, 'call', `Исходящий звонок (браузер): ${dial}`);
-    // Караоке и модалка результата откроются автоматически по событиям софтфона
+    window.dispatchEvent(new CustomEvent('softphone:call', {
+      detail: {
+        number: dial,
+        lead_id: lead.id,
+        company_inn: lead.inn,
+        company_name: lead.org_name,
+        operator_number: managerPhone || undefined,
+      },
+    }));
+    toast.message('Запускаем звонок', { description: `Novofon наберёт менеджера и соединит с ${formatRuPhone(dial) || dial}.` });
+    await addActivity(lead.id, null, 'call', `Исходящий звонок Novofon: ${dial}`);
   };
 
 

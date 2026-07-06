@@ -1,26 +1,81 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Phone, PhoneCall, PhoneOff, X, Delete, Mic, MicOff, Loader2, Wifi, WifiOff, PhoneIncoming } from 'lucide-react';
+import { Phone, PhoneCall, PhoneOff, X, Delete, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { formatRuPhone, normalizeRuPhone } from '@/utils/phoneParser';
 import { cn } from '@/lib/utils';
-import { useSoftphone } from '@/hooks/useSoftphone';
+import { supabase } from '@/integrations/supabase/client';
+
+type DialerStatus = 'idle' | 'dialing' | 'started' | 'failed';
+
+interface CallDetail {
+  number?: string;
+  lead_id?: string | null;
+  company_inn?: string | null;
+  company_name?: string | null;
+  operator_number?: string | null;
+}
 
 /**
- * Плавающая браузерная звонилка: WebRTC-софтфон Novofon через JsSIP.
- * Микрофон/динамики — гарнитура. Никакого дозвона на мобильный.
+ * Плавающая звонилка: рабочий серверный дозвон через Novofon Call API.
+ * Backend сначала звонит менеджеру, после ответа соединяет с клиентом.
  */
 export function PhoneDialerWidget() {
   const [open, setOpen] = useState(false);
   const [raw, setRaw] = useState('');
-  const sip = useSoftphone();
-  const pendingDialRef = useRef<string | null>(null);
-  const lastNumberRef = useRef<string | null>(null);
-  const prevStatusRef = useRef(sip.status);
-  const autoConnectAttemptedRef = useRef(false);
+  const [status, setStatus] = useState<DialerStatus>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [lastNumber, setLastNumber] = useState<string | null>(null);
+  const pendingDetailRef = useRef<CallDetail | null>(null);
 
-  // Открываем виджет по глобальному событию (можно вызывать из карточек лида)
+  const normalized = useMemo(() => normalizeRuPhone(raw), [raw]);
+  const pretty = normalized ? formatRuPhone(normalized) : raw;
+  const busy = status === 'dialing';
+
+  const startBackendCall = async (detail?: CallDetail) => {
+    const number = normalizeRuPhone(detail?.number || raw);
+    if (!number) {
+      toast.error('Введите номер (10 цифр после +7)');
+      return;
+    }
+
+    setOpen(true);
+    setRaw(number);
+    setLastNumber(number);
+    setStatus('dialing');
+    setError(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('novofon-call-start', {
+        body: {
+          to_number: number,
+          lead_id: detail?.lead_id ?? undefined,
+          company_inn: detail?.company_inn ?? undefined,
+          company_name: detail?.company_name ?? undefined,
+          operator_number: detail?.operator_number ?? undefined,
+        },
+      });
+
+      if (fnError) throw fnError;
+      if (!data?.ok) {
+        throw new Error(data?.message || data?.error || data?.novofon?.message || 'Novofon не запустил звонок');
+      }
+
+      setStatus('started');
+      toast.success('Звонок запущен', {
+        description: 'Сначала звонок поступит менеджеру, после ответа Novofon соединит с клиентом.',
+      });
+      window.dispatchEvent(new CustomEvent('softphone:answered', { detail: { number, backend: true } }));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setStatus('failed');
+      setError(message);
+      toast.error('Не удалось запустить звонок', { description: message });
+      window.dispatchEvent(new CustomEvent('softphone:ended', { detail: { number, answered: false, reason: 'failed' } }));
+    }
+  };
+
   useEffect(() => {
     const openHandler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -28,21 +83,10 @@ export function PhoneDialerWidget() {
       setOpen(true);
     };
     const callHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { number?: string } | string | undefined;
-      const number = typeof detail === 'string' ? detail : detail?.number;
-      if (!number) return;
-      const norm = normalizeRuPhone(number);
-      if (!norm) { toast.error('Некорректный номер для звонка'); return; }
-      setRaw(norm);
-      setOpen(true);
-      pendingDialRef.current = norm.replace(/^\+/, '');
-      lastNumberRef.current = norm;
-      if (sip.status === 'registered') {
-        sip.call(pendingDialRef.current);
-        pendingDialRef.current = null;
-      } else if (sip.status === 'idle') {
-        sip.connect();
-      }
+      const detail = (e as CustomEvent).detail as CallDetail | string | undefined;
+      const nextDetail: CallDetail = typeof detail === 'string' ? { number: detail } : (detail || {});
+      pendingDetailRef.current = nextDetail;
+      void startBackendCall(nextDetail);
     };
     window.addEventListener('open-phone-dialer', openHandler);
     window.addEventListener('softphone:call', callHandler);
@@ -50,94 +94,29 @@ export function PhoneDialerWidget() {
       window.removeEventListener('open-phone-dialer', openHandler);
       window.removeEventListener('softphone:call', callHandler);
     };
-  }, [sip]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw]);
 
-  // Автоподключение при открытии
-  useEffect(() => {
-    if (!open) {
-      autoConnectAttemptedRef.current = false;
-      return;
-    }
-    if (!autoConnectAttemptedRef.current && sip.status === 'idle') {
-      autoConnectAttemptedRef.current = true;
-      sip.connect();
-    }
-  }, [open, sip.status, sip.connect]);
-
-  // Как только зарегистрировались — набираем отложенный номер
-  useEffect(() => {
-    if (sip.status === 'registered' && pendingDialRef.current) {
-      const n = pendingDialRef.current;
-      pendingDialRef.current = null;
-      sip.call(n);
-    }
-  }, [sip.status, sip]);
-
-  // Событийная шина: старт разговора и завершение
-  useEffect(() => {
-    const prev = prevStatusRef.current;
-    const cur = sip.status;
-    if (prev !== 'in_call' && cur === 'in_call') {
-      window.dispatchEvent(new CustomEvent('softphone:answered', { detail: { number: lastNumberRef.current } }));
-    }
-    const wasActive = prev === 'calling' || prev === 'ringing' || prev === 'in_call';
-    const isDone = cur === 'ended' || cur === 'failed' || cur === 'registered' || cur === 'idle';
-    if (wasActive && isDone) {
-      window.dispatchEvent(new CustomEvent('softphone:ended', {
-        detail: { number: lastNumberRef.current, answered: prev === 'in_call', reason: cur },
-      }));
-    }
-    prevStatusRef.current = cur;
-  }, [sip.status]);
-
-  const normalized = useMemo(() => normalizeRuPhone(raw), [raw]);
-  const pretty = normalized ? formatRuPhone(normalized) : raw;
-
-  const addDigit = (d: string) => {
-    setRaw(prev => prev + d);
-    if (sip.status === 'in_call') sip.sendDtmf(d);
-  };
+  const addDigit = (d: string) => setRaw(prev => prev + d);
   const backspace = () => setRaw(prev => prev.slice(0, -1));
-
-  const handleCall = () => {
-    if (!normalized) { toast.error('Введите номер (10 цифр после +7)'); return; }
-    lastNumberRef.current = normalized;
-    pendingDialRef.current = normalized.replace(/^\+/, '');
-    if (sip.status === 'registered') {
-      const n = pendingDialRef.current;
-      pendingDialRef.current = null;
-      sip.call(n);
-      return;
-    }
-    if (sip.status === 'connecting') {
-      toast.message('Подключаем софтфон', { description: 'Звонок начнётся автоматически после регистрации SIP.' });
-      return;
-    }
-    sip.connect();
-    toast.message('Подключаем софтфон', { description: 'Звонок начнётся автоматически после регистрации SIP.' });
-  };
-
-  const handleRegisteredCall = () => {
-    if (!normalized) return;
-    lastNumberRef.current = normalized;
-    // Novofon набор: 7XXXXXXXXXX (без +)
-    sip.call(normalized.replace(/^\+/, ''));
+  const reset = () => {
+    setStatus('idle');
+    setError(null);
+    pendingDetailRef.current = null;
+    if (lastNumber) window.dispatchEvent(new CustomEvent('softphone:ended', { detail: { number: lastNumber, answered: status === 'started', reason: 'manual' } }));
   };
 
   const KEYS = ['1','2','3','4','5','6','7','8','9','*','0','#'];
 
-  const inCall = sip.status === 'in_call' || sip.status === 'calling' || sip.status === 'ringing';
-
   return (
     <>
-      {/* Плавающая кнопка */}
       <button
         type="button"
         aria-label="Открыть звонилку"
         onClick={() => setOpen(v => !v)}
         className={cn(
-          'fixed z-40 bottom-6 right-24 h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105',
-          inCall ? 'bg-emerald-500 text-white animate-pulse' : 'bg-primary text-primary-foreground',
+          'fixed z-40 bottom-6 right-24 h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 bg-primary text-primary-foreground',
+          status === 'dialing' && 'animate-pulse',
         )}
       >
         <Phone className="w-5 h-5" />
@@ -154,22 +133,17 @@ export function PhoneDialerWidget() {
             </button>
           </div>
 
-          {/* Статус подключения */}
           <div className={cn(
             'flex items-center gap-2 px-4 py-2 text-[11px] border-b',
-            sip.status === 'registered' && 'bg-emerald-50 text-emerald-700 border-emerald-100',
-            sip.status === 'connecting' && 'bg-amber-50 text-amber-700 border-amber-100',
-            (sip.status === 'failed' || sip.status === 'idle') && 'bg-muted/40 text-muted-foreground',
-            inCall && 'bg-primary/5 text-primary border-primary/10',
+            status === 'started' && 'bg-emerald-50 text-emerald-700 border-emerald-100',
+            status === 'dialing' && 'bg-amber-50 text-amber-700 border-amber-100',
+            status === 'failed' && 'bg-destructive/10 text-destructive border-destructive/20',
+            status === 'idle' && 'bg-muted/40 text-muted-foreground',
           )}>
-            {sip.status === 'connecting' && <><Loader2 className="w-3 h-3 animate-spin" /> Подключение к Novofon…</>}
-            {sip.status === 'registered' && <><Wifi className="w-3 h-3" /> Готов · звук идёт в гарнитуру</>}
-            {sip.status === 'idle' && <><WifiOff className="w-3 h-3" /> Не подключено</>}
-            {sip.status === 'calling' && <><Loader2 className="w-3 h-3 animate-spin" /> Идёт вызов {sip.remoteNumber && `· ${formatRuPhone('+' + sip.remoteNumber)}`}</>}
-            {sip.status === 'ringing' && <><PhoneIncoming className="w-3 h-3" /> Входящий {sip.remoteNumber && `от ${sip.remoteNumber}`}</>}
-            {sip.status === 'in_call' && <><PhoneCall className="w-3 h-3" /> Разговор · {sip.remoteNumber}</>}
-            {sip.status === 'failed' && <><WifiOff className="w-3 h-3" /> Ошибка: {sip.error || 'не удалось подключиться'}</>}
-            {sip.status === 'ended' && <>Звонок завершён</>}
+            {status === 'idle' && <><PhoneOff className="w-3 h-3" /> Готов к звонку через Novofon</>}
+            {status === 'dialing' && <><Loader2 className="w-3 h-3 animate-spin" /> Запускаем звонок…</>}
+            {status === 'started' && <><CheckCircle2 className="w-3 h-3" /> Звонок запущен · ждите входящий</>}
+            {status === 'failed' && <><AlertCircle className="w-3 h-3" /> Ошибка: {error || 'не удалось запустить звонок'}</>}
           </div>
 
           <div className="p-4 space-y-3">
@@ -180,10 +154,10 @@ export function PhoneDialerWidget() {
               placeholder="+7 (___) ___-__-__"
               className="text-center text-lg tracking-wider h-11 tabular-nums"
               inputMode="tel"
-              disabled={inCall}
+              disabled={busy}
             />
             <div className={cn('text-xs text-center', normalized ? 'text-emerald-600' : 'text-muted-foreground')}>
-              {normalized ? pretty : 'Введите номер (в разговоре — тональный набор)'}
+              {normalized ? pretty : 'Введите номер клиента'}
             </div>
 
             <div className="grid grid-cols-3 gap-1.5">
@@ -192,59 +166,29 @@ export function PhoneDialerWidget() {
                   key={k}
                   type="button"
                   onClick={() => addDigit(k)}
-                  className="h-10 rounded-lg border bg-background hover:bg-muted font-medium tabular-nums flex items-center justify-center"
+                  disabled={busy}
+                  className="h-10 rounded-lg border bg-background hover:bg-muted font-medium tabular-nums flex items-center justify-center disabled:opacity-40"
                 >
                   {k}
                 </button>
               ))}
-              <button type="button" onClick={() => setRaw(prev => prev + '+')} className="h-10 rounded-lg border bg-background hover:bg-muted font-medium">+</button>
-              <button type="button" onClick={backspace} className="h-10 rounded-lg border bg-background hover:bg-muted flex items-center justify-center">
+              <button type="button" onClick={() => setRaw(prev => prev + '+')} disabled={busy} className="h-10 rounded-lg border bg-background hover:bg-muted font-medium disabled:opacity-40">+</button>
+              <button type="button" onClick={backspace} disabled={busy} className="h-10 rounded-lg border bg-background hover:bg-muted flex items-center justify-center disabled:opacity-40">
                 <Delete className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={sip.toggleMute}
-                disabled={sip.status !== 'in_call'}
-                className={cn(
-                  'h-10 rounded-lg border font-medium flex items-center justify-center',
-                  sip.muted ? 'bg-amber-500 text-white' : 'bg-background hover:bg-muted',
-                  sip.status !== 'in_call' && 'opacity-40 cursor-not-allowed',
-                )}
-                title="Микрофон"
-              >
-                {sip.muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              <button type="button" onClick={reset} className="h-10 rounded-lg border bg-background hover:bg-muted flex items-center justify-center">
+                <PhoneOff className="w-4 h-4" />
               </button>
             </div>
 
-            {sip.status === 'ringing' ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Button className="h-10 rounded-lg gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={sip.answer}>
-                  <PhoneCall className="w-4 h-4" /> Ответить
-                </Button>
-                <Button className="h-10 rounded-lg gap-2" variant="destructive" onClick={sip.hangup}>
-                  <PhoneOff className="w-4 h-4" /> Отклонить
-                </Button>
-              </div>
-            ) : inCall ? (
-              <Button className="w-full h-10 rounded-lg gap-2" variant="destructive" onClick={sip.hangup}>
-                <PhoneOff className="w-4 h-4" /> Завершить
-              </Button>
-            ) : (
-              <Button
-                className="w-full h-10 rounded-lg gap-2"
-                onClick={sip.status === 'registered' ? handleRegisteredCall : handleCall}
-                disabled={!normalized || sip.status === 'connecting'}
-              >
-                {sip.status === 'connecting' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PhoneCall className="w-4 h-4" />}
-                {sip.status === 'connecting' ? 'Подключаем…' : 'Позвонить'}
-              </Button>
-            )}
-
-            {sip.status === 'failed' && (
-              <Button size="sm" variant="outline" className="w-full h-8" onClick={sip.connect}>
-                Переподключиться
-              </Button>
-            )}
+            <Button
+              className="w-full h-10 rounded-lg gap-2"
+              onClick={() => startBackendCall(pendingDetailRef.current || undefined)}
+              disabled={!normalized || busy}
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PhoneCall className="w-4 h-4" />}
+              {busy ? 'Запускаем…' : 'Позвонить'}
+            </Button>
           </div>
         </div>
       )}

@@ -1,13 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { novofonClassicRequest } from "../_shared/novofon.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const VERSION = "webrtc-domain-normalized-v2";
+const VERSION = "webrtc-official-first-v3";
 
 interface WebrtcKeyResponse {
   status?: string;
@@ -46,17 +42,10 @@ serve(async (req) => {
     if (error || !user) return json({ error: "invalid auth" }, 401);
 
     const login = Deno.env.get("NOVOFON_WEBRTC_SIP_LOGIN")?.trim() || buildConfiguredSipLogin();
-    const password = Deno.env.get("NOVOFON_WEBRTC_SIP_PASSWORD") || Deno.env.get("NOVOFON_SIP_PASSWORD");
+    const fallbackPassword = Deno.env.get("NOVOFON_WEBRTC_SIP_PASSWORD") || Deno.env.get("NOVOFON_SIP_PASSWORD");
 
     if (!login) {
       return json({ error: "sip_not_configured", message: "SIP-логин Novofon не задан" }, 200);
-    }
-
-    const domain = pickSipDomain(login);
-    const wss = pickSipWss(domain);
-
-    if (password) {
-      return json({ ok: true, version: VERSION, login, password, domain, wss });
     }
 
     try {
@@ -79,22 +68,34 @@ serve(async (req) => {
       return json({
         ok: true,
         version: VERSION,
+        source: "webrtc_key",
         login: webphoneData.username,
         password: webphoneData.pass,
         domain: normalizedDomain,
         wss: `wss://${normalizedDomain}:4443`,
       });
     } catch (webrtcError) {
-      // Резерв для ручной SIP/WSS-конфигурации, если временный ключ недоступен.
-      if (!password || !wss) {
+      // Резерв для ручной SIP/WSS-конфигурации, если официальный WebRTC-ключ недоступен.
+      const domain = pickSipDomain(login);
+      const wss = pickSipWss(domain);
+      if (!fallbackPassword || !wss) {
         return json({
           error: "webrtc_not_available",
           message: webrtcError instanceof Error ? webrtcError.message : String(webrtcError),
         }, 200);
       }
-    }
 
-    return json({ ok: true, version: VERSION, login, password, domain, wss });
+      return json({
+        ok: true,
+        version: VERSION,
+        source: "static_fallback",
+        login,
+        password: fallbackPassword,
+        domain,
+        wss,
+        warning: webrtcError instanceof Error ? webrtcError.message : String(webrtcError),
+      });
+    }
   } catch (e) {
     return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);
   }
