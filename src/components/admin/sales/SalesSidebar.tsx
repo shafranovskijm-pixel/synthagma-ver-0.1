@@ -1,4 +1,4 @@
-import { Target, FileText, Building2, ScrollText, PenTool, Sparkles, Send, ListTodo, Package, BarChart3, GitCompareArrows, Users, LineChart, Headphones } from 'lucide-react';
+import { Target, FileText, Building2, ScrollText, PenTool, Sparkles, Send, ListTodo, Package, BarChart3, GitCompareArrows, Users, LineChart, Headphones, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -52,6 +52,7 @@ const railGroups: MenuGroup[] = [
 export const salesExtraItems: MenuItem[] = [
   { id: 'services', label: 'Услуги', icon: Package },
   { id: 'control', label: 'Контроль', icon: BarChart3 },
+  { id: 'settings', label: 'Настройки', icon: Settings },
   { id: 'comparison', label: 'Сравнение', icon: GitCompareArrows },
 ];
 
