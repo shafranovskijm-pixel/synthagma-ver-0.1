@@ -24,9 +24,8 @@ function buildTariffDescription(plan: SubscriptionPlan): string {
   const parts: string[] = [];
   if (p.limits.maxCourses === -1) parts.push('Безлимит курсов');
   else parts.push(`До ${p.limits.maxCourses} курсов`);
-  if (p.limits.maxStudents === -1) parts.push('Безлимит учеников');
-  else parts.push(`До ${p.limits.maxStudents} учеников`);
-  parts.push(`Хранилище ${formatStorageSize(p.limits.storageBytes)}`);
+  if (p.limits.maxStudents === -1) parts.push('Безлимит учеников в месяц');
+  else parts.push(`До ${p.limits.maxStudents} учеников в месяц`);
   return parts.join(', ');
 }
 
@@ -34,9 +33,8 @@ function buildFeaturesList(plan: SubscriptionPlan): string[] {
   const p = SUBSCRIPTION_PLANS[plan];
   const f: string[] = [];
   f.push(`Курсы: ${p.limits.maxCourses === -1 ? '∞' : p.limits.maxCourses}`);
-  f.push(`Ученики: ${p.limits.maxStudents === -1 ? '∞' : p.limits.maxStudents}`);
+  f.push(`Учеников в месяц: ${p.limits.maxStudents === -1 ? '∞' : p.limits.maxStudents}`);
   f.push(`Обученных/мес: ${p.limits.maxTrainedPerMonth === -1 ? '∞' : p.limits.maxTrainedPerMonth}`);
-  f.push(`Хранилище: ${formatStorageSize(p.limits.storageBytes)}`);
   if (p.limits.courseSettings) f.push('Настройки курсов');
   if (p.limits.documentChecklist) f.push('Чек-лист документов');
   if (p.limits.videoIdentification) f.push('Видеоидентификация');
