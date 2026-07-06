@@ -182,7 +182,9 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
 
   return (
     <div className="space-y-4">
+      <div className={cn(drawerOpen && 'hidden')}>
       {/* Компактная шапка */}
+
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -427,8 +429,10 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
       </Sheet>
 
       <LeadsImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      </div>
 
       <CompanyDrawer
+
         lead={detailLead}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
