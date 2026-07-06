@@ -227,7 +227,7 @@ export function SendProposalDialog({
 
         {(
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5">
+        <div className="p-5">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загружаем шаблоны…
