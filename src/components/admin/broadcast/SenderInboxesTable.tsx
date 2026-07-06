@@ -45,14 +45,15 @@ const providerIcon = (email: string) => {
 
 const reputationScore = (r: Sender): number | null => {
   if (!r.app_password || !r.is_active) return null;
-  const total = r.total_sent || 0;
-  if (total === 0) return r.last_error ? 60 : 99;
-  // Simple heuristic: full 100% until first error, then 90% + slow recovery
-  if (!r.last_error) return 100;
-  const ageDays = r.last_error_at ? (Date.now() - new Date(r.last_error_at).getTime()) / 86_400_000 : 30;
-  const recovery = Math.min(30, Math.floor(ageDays));
-  return Math.max(50, 70 + recovery);
+  const inbox = r.warmup_inbox_count ?? 0;
+  const spam = r.warmup_spam_count ?? 0;
+  const total = inbox + spam;
+  // Нет данных о размещении — репутация ещё не измерена
+  if (total === 0) return null;
+  // Доля писем во «Входящих» = репутация
+  return Math.round((inbox / total) * 100);
 };
+
 
 const reputationTone = (score: number | null) => {
   if (score === null) return "bg-muted text-muted-foreground";
