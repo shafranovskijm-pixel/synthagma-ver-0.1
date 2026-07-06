@@ -272,7 +272,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                 </div>
               </div>
             )}
-          </SheetHeader>
+          </div>
 
           <div className="flex-1 overflow-y-auto">
             {isCalling && (
