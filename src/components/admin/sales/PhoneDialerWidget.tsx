@@ -18,6 +18,7 @@ export function PhoneDialerWidget() {
   const pendingDialRef = useRef<string | null>(null);
   const lastNumberRef = useRef<string | null>(null);
   const prevStatusRef = useRef(sip.status);
+  const autoConnectAttemptedRef = useRef(false);
 
   // Открываем виджет по глобальному событию (можно вызывать из карточек лида)
   useEffect(() => {
@@ -53,8 +54,15 @@ export function PhoneDialerWidget() {
 
   // Автоподключение при открытии
   useEffect(() => {
-    if (open && sip.status === 'idle') sip.connect();
-  }, [open, sip]);
+    if (!open) {
+      autoConnectAttemptedRef.current = false;
+      return;
+    }
+    if (!autoConnectAttemptedRef.current && sip.status === 'idle') {
+      autoConnectAttemptedRef.current = true;
+      sip.connect();
+    }
+  }, [open, sip.status, sip.connect]);
 
   // Как только зарегистрировались — набираем отложенный номер
   useEffect(() => {
