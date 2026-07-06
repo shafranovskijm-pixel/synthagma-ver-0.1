@@ -6,6 +6,7 @@ import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
 import { SalesManagersList } from './sales/SalesManagersList';
 import { SalesControlPanel } from './sales/SalesControlPanel';
+import { SalesSettings } from './sales/SalesSettings';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { DocumentSigning } from './sales/DocumentSigning';
@@ -127,6 +128,7 @@ export function SalesManager() {
     ),
     signing: <DocumentSigning />,
     control: <SalesControlPanel />,
+    settings: <SalesSettings />,
     comparison: <CompetitorComparison />,
   };
 

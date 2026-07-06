@@ -131,9 +131,7 @@ function pickSipDomain(login: string): string {
 function buildConfiguredSipLogin(): string {
   const explicit = (Deno.env.get("NOVOFON_SIP_LOGIN") || Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || "").trim();
   if (!explicit) return "";
-  if (explicit.includes("-")) return explicit;
-  const extension = (Deno.env.get("NOVOFON_VATS_EXTENSION") || "").trim();
-  return extension ? `${explicit}-${extension}` : explicit;
+  return explicit;
 }
 
 function pickSipWss(domain: string): string {
