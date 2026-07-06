@@ -198,13 +198,47 @@ export function PhoneDialerWidget() {
               <PhoneCall className="w-4 h-4" />
               {calling ? 'Звоним…' : 'Позвонить'}
             </Button>
-            {!managerPhone && (
-              <div className="text-[11px] text-amber-600 text-center">
-                Укажите свой рабочий телефон в профиле менеджера, иначе Novofon не сможет соединить звонок.
+            {managerPhone && !editingPhone ? (
+              <div className="text-[11px] text-center text-muted-foreground">
+                Ваш телефон: <span className="font-medium text-foreground">{formatRuPhone(managerPhone) || managerPhone}</span>
+                {' '}·{' '}
+                <button
+                  type="button"
+                  onClick={() => { setPhoneDraft(managerPhone); setEditingPhone(true); }}
+                  className="underline hover:text-primary"
+                >
+                  изменить
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2">
+                <div className="text-[11px] text-amber-700 text-center">
+                  Укажите свой рабочий телефон, иначе Novofon не соединит звонок.
+                </div>
+                <div className="flex gap-1.5">
+                  <Input
+                    value={phoneDraft}
+                    onChange={e => setPhoneDraft(e.target.value)}
+                    placeholder="+7 (___) ___-__-__"
+                    className="h-8 text-sm"
+                    inputMode="tel"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    onClick={savePhone}
+                    disabled={savingPhone || !phoneDraft}
+                  >
+                    {savingPhone ? '…' : 'OK'}
+                  </Button>
+                  {managerPhone && (
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingPhone(false)}>
+                      ✕
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
-          </div>
-        </div>
       )}
     </>
   );
