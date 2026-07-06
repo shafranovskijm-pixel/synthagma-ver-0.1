@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Eye, ArrowLeft } from 'lucide-react';
 import { SalesManager } from '@/components/admin/SalesManager';
-import { PhoneDialerWidget } from '@/components/admin/sales/PhoneDialerWidget';
+// PhoneDialerWidget убран из /admin — плавашка мешала; SIP-звонки доступны в разделе «Настройки» продаж
 import { SalesDashboardHeader } from '@/components/admin/sales/SalesDashboardHeader';
 import { SalesDashboardFooter } from '@/components/admin/sales/SalesDashboardFooter';
 import { InlineProposalPreview } from '@/components/admin/sales/InlineProposalPreview';
