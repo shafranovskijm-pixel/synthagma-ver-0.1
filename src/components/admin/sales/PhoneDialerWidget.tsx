@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Phone, PhoneCall, PhoneOff, X, Delete, Mic, MicOff, Loader2, Wifi, WifiOff, PhoneIncoming } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,22 +15,72 @@ export function PhoneDialerWidget() {
   const [open, setOpen] = useState(false);
   const [raw, setRaw] = useState('');
   const sip = useSoftphone();
+  const pendingDialRef = useRef<string | null>(null);
+  const lastNumberRef = useRef<string | null>(null);
+  const prevStatusRef = useRef(sip.status);
 
   // Открываем виджет по глобальному событию (можно вызывать из карточек лида)
   useEffect(() => {
-    const handler = (e: Event) => {
+    const openHandler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (typeof detail === 'string' && detail) setRaw(detail);
       setOpen(true);
     };
-    window.addEventListener('open-phone-dialer', handler);
-    return () => window.removeEventListener('open-phone-dialer', handler);
-  }, []);
+    const callHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { number?: string } | string | undefined;
+      const number = typeof detail === 'string' ? detail : detail?.number;
+      if (!number) return;
+      const norm = normalizeRuPhone(number);
+      if (!norm) { toast.error('Некорректный номер для звонка'); return; }
+      setRaw(norm);
+      setOpen(true);
+      pendingDialRef.current = norm.replace(/^\+/, '');
+      lastNumberRef.current = norm;
+      if (sip.status === 'registered') {
+        sip.call(pendingDialRef.current);
+        pendingDialRef.current = null;
+      } else if (sip.status === 'idle') {
+        sip.connect();
+      }
+    };
+    window.addEventListener('open-phone-dialer', openHandler);
+    window.addEventListener('softphone:call', callHandler);
+    return () => {
+      window.removeEventListener('open-phone-dialer', openHandler);
+      window.removeEventListener('softphone:call', callHandler);
+    };
+  }, [sip]);
 
   // Автоподключение при открытии
   useEffect(() => {
     if (open && sip.status === 'idle') sip.connect();
   }, [open, sip]);
+
+  // Как только зарегистрировались — набираем отложенный номер
+  useEffect(() => {
+    if (sip.status === 'registered' && pendingDialRef.current) {
+      const n = pendingDialRef.current;
+      pendingDialRef.current = null;
+      sip.call(n);
+    }
+  }, [sip.status, sip]);
+
+  // Событийная шина: старт разговора и завершение
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    const cur = sip.status;
+    if (prev !== 'in_call' && cur === 'in_call') {
+      window.dispatchEvent(new CustomEvent('softphone:answered', { detail: { number: lastNumberRef.current } }));
+    }
+    const wasActive = prev === 'calling' || prev === 'ringing' || prev === 'in_call';
+    const isDone = cur === 'ended' || cur === 'failed' || cur === 'registered' || cur === 'idle';
+    if (wasActive && isDone) {
+      window.dispatchEvent(new CustomEvent('softphone:ended', {
+        detail: { number: lastNumberRef.current, answered: prev === 'in_call', reason: cur },
+      }));
+    }
+    prevStatusRef.current = cur;
+  }, [sip.status]);
 
   const normalized = useMemo(() => normalizeRuPhone(raw), [raw]);
   const pretty = normalized ? formatRuPhone(normalized) : raw;
@@ -44,6 +94,7 @@ export function PhoneDialerWidget() {
   const handleCall = () => {
     if (!normalized) { toast.error('Введите номер (10 цифр после +7)'); return; }
     if (sip.status !== 'registered') { toast.error('Софтфон не готов', { description: 'Подождите подключения к Novofon…' }); return; }
+    lastNumberRef.current = normalized;
     // Novofon набор: 7XXXXXXXXXX (без +)
     sip.call(normalized.replace(/^\+/, ''));
   };
