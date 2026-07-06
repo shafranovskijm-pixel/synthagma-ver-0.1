@@ -32,7 +32,7 @@ const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professiona
 
 const featureRows: { label: string; getValue: (p: SubscriptionPlan) => string | boolean }[] = [
   { label: "Курсы", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxCourses === -1 ? "∞" : String(l.maxCourses); }},
-  { label: "Ученики", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxStudents === -1 ? "∞" : String(l.maxStudents); }},
+  { label: "Учеников в месяц", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxStudents === -1 ? "∞" : String(l.maxStudents); }},
   { label: "Настройки курсов", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.courseSettings },
   { label: "Магазин курсов", getValue: () => true },
   { label: "Чек-лист документов", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.documentChecklist },
@@ -138,8 +138,7 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
   const total = subtotal - discountAmount;
   
   const displayName = senderName || 'СИНТАГМА';
-  const displayEmail = senderEmail || 'support@sintagma.com.ru';
-  const displayWebsite = senderWebsite || 'https://sintagma.com.ru/';
+  const displayWebsite = senderWebsite || 'https://sintagma.com.ru';
 
   return (
     <div
@@ -170,7 +169,7 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
           </div>
           <div className="text-right text-[12px] text-cyan-50/80 leading-relaxed">
             <div>{displayWebsite}</div>
-            <div>{displayEmail}</div>
+            <div>синтагма.рф</div>
           </div>
         </div>
 
@@ -317,7 +316,7 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
             )}
           </div>
           <div>
-            Дата: {format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}
+            Дата: {format(new Date(), 'dd MMMM yyyy', { locale: ru })}
           </div>
         </div>
 
