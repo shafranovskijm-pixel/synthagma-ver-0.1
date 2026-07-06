@@ -1,4 +1,4 @@
-import { SUBSCRIPTION_PLANS, formatStorageSize, type SubscriptionPlan } from './subscriptionPlans';
+import { SUBSCRIPTION_PLANS, formatStorageSize, YEARLY_DISCOUNT, type SubscriptionPlan } from './subscriptionPlans';
 
 export interface ProposalTemplateLine {
   custom_name: string;
@@ -14,6 +14,9 @@ export interface ProposalTemplate {
   tariffPlan: SubscriptionPlan | '';
   serviceLines: ProposalTemplateLine[];
   features: string[];
+  /** Визуальный акцент для карточки шаблона */
+  tier?: 'basic' | 'standard' | 'pro' | 'premium';
+  badge?: string;
 }
 
 function buildTariffDescription(plan: SubscriptionPlan): string {
@@ -40,7 +43,36 @@ function buildFeaturesList(plan: SubscriptionPlan): string[] {
   if (p.limits.branding) f.push('Брендирование');
   if (p.limits.aiEnabled) f.push('ИИ-генерация');
   if (p.limits.aiAudioEnabled) f.push('ИИ-озвучка');
+  if (p.limits.webinarsEnabled) f.push('Вебинары');
+  if (p.limits.trainersEnabled) f.push('3D-тренажёры');
+  if (p.limits.emailCampaignsEnabled) f.push('Email-рассылки');
+  if (p.limits.salesCrmEnabled) f.push('CRM и продажи');
+  f.push('Настройка платформы — бесплатно');
+  f.push('Приоритетная техподдержка — 12 месяцев');
   return f;
+}
+
+/** Годовая цена со скидкой 15%, округлённая до сотен рублей */
+function yearlyPrice(plan: SubscriptionPlan): number {
+  const monthly = SUBSCRIPTION_PLANS[plan].price;
+  const raw = monthly * 12 * (1 - YEARLY_DISCOUNT);
+  return Math.round(raw / 100) * 100;
+}
+
+function planLine(plan: SubscriptionPlan): ProposalTemplateLine {
+  const p = SUBSCRIPTION_PLANS[plan];
+  const monthlyYear = p.price * 12;
+  const yearly = yearlyPrice(plan);
+  const saving = monthlyYear - yearly;
+  return {
+    custom_name: `Тариф «${p.name}» — годовая подписка`,
+    custom_description:
+      `${buildTariffDescription(plan)}. ` +
+      `Оплата за 12 месяцев со скидкой 15% (экономия ${saving.toLocaleString('ru-RU')} ₽). ` +
+      `Эквивалент ${Math.round(yearly / 12).toLocaleString('ru-RU')} ₽/мес вместо ${p.price.toLocaleString('ru-RU')} ₽/мес.`,
+    price: yearly,
+    quantity: 1,
+  };
 }
 
 export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
@@ -49,115 +81,60 @@ export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
     name: 'Старт',
     description: 'Для начинающих организаций',
     tariffPlan: 'start',
+    tier: 'basic',
     features: buildFeaturesList('start'),
-    serviceLines: [
-      {
-        custom_name: `Тариф "${SUBSCRIPTION_PLANS.start.name}"`,
-        custom_description: buildTariffDescription('start'),
-        price: SUBSCRIPTION_PLANS.start.price,
-        quantity: 12,
-      },
-      {
-        custom_name: 'Настройка платформы',
-        custom_description: 'Первичная настройка: создание курсов, импорт учеников',
-        price: 5000,
-        quantity: 1,
-      },
-      {
-        custom_name: 'Техническая поддержка',
-        custom_description: 'Консультации по работе с платформой (12 мес)',
-        price: 0,
-        quantity: 1,
-      },
-    ],
+    serviceLines: [planLine('start')],
   },
   {
     id: 'standard',
     name: 'Стандарт',
     description: 'Для активных организаций',
     tariffPlan: 'standard',
+    tier: 'standard',
+    badge: 'Популярный',
     features: buildFeaturesList('standard'),
-    serviceLines: [
-      {
-        custom_name: `Тариф "${SUBSCRIPTION_PLANS.standard.name}"`,
-        custom_description: buildTariffDescription('standard'),
-        price: SUBSCRIPTION_PLANS.standard.price,
-        quantity: 12,
-      },
-      {
-        custom_name: 'Настройка платформы',
-        custom_description: 'Первичная настройка: курсы, ученики, компании',
-        price: 5000,
-        quantity: 1,
-      },
-      {
-        custom_name: 'Брендирование',
-        custom_description: 'Настройка логотипа, цветов и страницы входа',
-        price: 3000,
-        quantity: 1,
-      },
-      {
-        custom_name: 'Техническая поддержка',
-        custom_description: 'Приоритетные консультации (12 мес)',
-        price: 0,
-        quantity: 1,
-      },
-    ],
+    serviceLines: [planLine('standard')],
   },
   {
     id: 'professional',
     name: 'Профессиональный',
     description: 'Для крупных организаций',
     tariffPlan: 'professional',
+    tier: 'pro',
+    badge: 'Рекомендуем',
     features: buildFeaturesList('professional'),
-    serviceLines: [
-      {
-        custom_name: `Тариф "${SUBSCRIPTION_PLANS.professional.name}"`,
-        custom_description: buildTariffDescription('professional'),
-        price: SUBSCRIPTION_PLANS.professional.price,
-        quantity: 12,
-      },
-      {
-        custom_name: 'Настройка платформы',
-        custom_description: 'Полная настройка: курсы, журналы, документы',
-        price: 10000,
-        quantity: 1,
-      },
-      {
-        custom_name: 'Брендирование',
-        custom_description: 'Настройка логотипа, цветов и страницы входа',
-        price: 3000,
-        quantity: 1,
-      },
-      {
-        custom_name: 'Генерация документов',
-        custom_description: 'Настройка шаблонов документов организации',
-        price: 5000,
-        quantity: 1,
-      },
-      {
-        custom_name: 'Техническая поддержка',
-        custom_description: 'Приоритетная поддержка с менеджером (12 мес)',
-        price: 0,
-        quantity: 1,
-      },
-    ],
+    serviceLines: [planLine('professional')],
+  },
+  {
+    id: 'maximum',
+    name: 'Максимальный',
+    description: 'Полный доступ ко всем возможностям платформы',
+    tariffPlan: 'maximum',
+    tier: 'premium',
+    badge: 'Премиум',
+    features: buildFeaturesList('maximum'),
+    serviceLines: [planLine('maximum')],
   },
   {
     id: 'boxed',
     name: 'Коробочная версия',
     description: 'On-premise установка на ваш сервер',
     tariffPlan: '',
+    tier: 'premium',
+    badge: 'Enterprise',
     features: [
-      'Возможность доработки под ваши требования',
-      'Установка на ваш сервер',
       'Бессрочная неисключительная лицензия',
-      '3 месяца поддержки и помощь с интеграцией ваших документов',
+      'Установка на ваш сервер / контур заказчика',
+      'Возможность доработки под ваши требования',
+      '3 месяца поддержки и интеграция ваших документов',
+      'Соответствие требованиям информационной безопасности',
     ],
     serviceLines: [
       {
         custom_name: 'Коробочная версия СИНТАГМА',
-        custom_description: 'Неисключительная бессрочная лицензия с возможностью доработки и установки на ваш сервер. 3 месяца поддержки в стоимости.',
+        custom_description:
+          'Неисключительная бессрочная лицензия с возможностью доработки и установки на ваш сервер. ' +
+          '3 месяца поддержки и помощь с интеграцией документов в стоимости.',
         price: 540000,
         quantity: 1,
       },
@@ -168,16 +145,19 @@ export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
     name: 'Сайт под ключ',
     description: 'Разработка сайта для образовательной организации',
     tariffPlan: '',
+    tier: 'pro',
     features: [
       'Соответствие требованиям Минобрнауки',
       'Адаптивный дизайн под все устройства',
-      'Формы заявок и интеграции',
+      'Каталог курсов и формы заявок',
       'Запуск под ключ за 1 неделю',
     ],
     serviceLines: [
       {
         custom_name: 'Разработка сайта образовательной организации под ключ',
-        custom_description: 'Профессиональный сайт учебного центра: адаптивный дизайн, каталог курсов, формы заявок, управление контентом. Фиксированная стоимость.',
+        custom_description:
+          'Профессиональный сайт учебного центра: адаптивный дизайн, каталог курсов, ' +
+          'формы заявок, панель управления контентом. Фиксированная стоимость.',
         price: 55000,
         quantity: 1,
       },
@@ -188,6 +168,7 @@ export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
     name: 'Индивидуальный',
     description: 'Свободное заполнение',
     tariffPlan: '',
+    tier: 'basic',
     features: ['Ручной подбор услуг', 'Индивидуальные условия'],
     serviceLines: [],
   },

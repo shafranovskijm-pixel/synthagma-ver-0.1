@@ -230,31 +230,60 @@ export function ProposalEditor({ onClose, editProposal, editServices, prefillCom
               <Label className="text-base font-semibold mb-2 block">
                 <Sparkles className="w-4 h-4 inline mr-1" />Выберите шаблон
               </Label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                 {PROPOSAL_TEMPLATES.map(t => {
                   const isSelected = selectedTemplate === t.id;
                   const yearlyTotal = t.serviceLines.reduce((s, l) => s + l.price * l.quantity, 0);
+                  const tierRing: Record<string, string> = {
+                    basic: 'from-slate-200/60 to-slate-100/40',
+                    standard: 'from-primary/30 to-primary/10',
+                    pro: 'from-primary/50 via-cyan-400/40 to-primary/20',
+                    premium: 'from-amber-400/60 via-primary/40 to-cyan-500/40',
+                  };
+                  const badgeStyle: Record<string, string> = {
+                    basic: 'bg-slate-100 text-slate-700 border-slate-200',
+                    standard: 'bg-primary/10 text-primary border-primary/20',
+                    pro: 'bg-gradient-to-r from-primary/15 to-cyan-500/15 text-primary border-primary/30',
+                    premium: 'bg-gradient-to-r from-amber-500/15 to-primary/15 text-amber-700 border-amber-400/40',
+                  };
+                  const tier = t.tier ?? 'basic';
                   return (
                     <button
                       key={t.id}
                       onClick={() => applyTemplate(t)}
-                      className={`text-left p-3 rounded-lg border-2 transition-all hover:shadow-md ${
-                        isSelected
-                          ? 'border-primary bg-primary/5 shadow-sm'
-                          : 'border-border hover:border-primary/50'
+                      className={`group relative text-left rounded-2xl p-[1.5px] bg-gradient-to-br ${tierRing[tier]} transition-all hover:shadow-xl hover:-translate-y-0.5 ${
+                        isSelected ? 'shadow-xl ring-2 ring-primary/40' : ''
                       }`}
                     >
-                      <div className="font-semibold text-sm">{t.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{t.description}</div>
-                      {yearlyTotal > 0 && (
-                        <Badge variant="secondary" className="mt-1.5 text-xs">
-                          {yearlyTotal.toLocaleString('ru-RU')} ₽
-                        </Badge>
-                      )}
+                      <div className={`rounded-[calc(1rem-1.5px)] bg-background p-4 h-full flex flex-col gap-2 ${isSelected ? 'bg-primary/[0.03]' : ''}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-semibold text-sm tracking-tight">{t.name}</div>
+                          {t.badge && (
+                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${badgeStyle[tier]}`}>
+                              {t.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground leading-snug min-h-[2.2em]">{t.description}</div>
+                        {yearlyTotal > 0 ? (
+                          <div className="mt-auto pt-2 border-t border-border/50">
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Итого за год</div>
+                            <div className="text-base font-semibold tabular-nums">
+                              {yearlyTotal.toLocaleString('ru-RU')} <span className="text-xs font-normal text-muted-foreground">₽</span>
+                            </div>
+                            {t.tariffPlan && (
+                              <div className="text-[10px] text-emerald-600 font-medium">−15% годовая скидка</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-auto pt-2 text-xs text-muted-foreground italic">Расчёт индивидуально</div>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
               </div>
+
             </div>
           )}
 
