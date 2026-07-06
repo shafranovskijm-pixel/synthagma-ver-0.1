@@ -44,8 +44,8 @@ export function ProposalEditor({ onClose, editProposal, editServices, prefillCom
   const [customNote, setCustomNote] = useState(editProposal?.custom_note || '');
   const [validUntil, setValidUntil] = useState(editProposal?.valid_until || '');
   const [senderName, setSenderName] = useState(editProposal?.sender_name || 'СИНТАГМА');
-  const [senderEmail, setSenderEmail] = useState(editProposal?.sender_email || 'support@sintagma.com.ru');
-  const [senderWebsite, setSenderWebsite] = useState(editProposal?.sender_website || 'https://sintagma.com.ru/');
+  const [senderEmail, setSenderEmail] = useState(editProposal?.sender_email || '');
+  const [senderWebsite, setSenderWebsite] = useState(editProposal?.sender_website || 'https://sintagma.com.ru · синтагма.рф');
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(
     editServices?.map(s => ({
       custom_name: s.custom_name,
