@@ -316,7 +316,7 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
             )}
           </div>
           <div>
-            Дата: {format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}
+            Дата: {format(new Date(), 'dd MMMM yyyy', { locale: ru })}
           </div>
         </div>
 
