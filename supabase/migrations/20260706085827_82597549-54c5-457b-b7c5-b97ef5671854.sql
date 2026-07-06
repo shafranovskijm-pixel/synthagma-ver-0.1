@@ -1,0 +1,1 @@
+UPDATE email_warmup_pings SET sent_at = now() - interval '5 minutes' WHERE placement IS NULL;
