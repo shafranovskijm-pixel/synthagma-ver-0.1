@@ -157,17 +157,34 @@ export function SendProposalDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 flex flex-col">
-        <DialogHeader className="p-5 pb-3 border-b space-y-3">
-          <DialogTitle className="flex items-center gap-2 text-lg">
+    open ? (
+    <>
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 bg-black/40 backdrop-blur-[2px] animate-in fade-in-0"
+        style={{ top: '3.5rem' }}
+        onClick={() => onOpenChange(false)}
+      />
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 bg-background shadow-2xl border-t flex flex-col animate-in slide-in-from-bottom-4"
+        style={{ top: '3.5rem' }}
+      >
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          aria-label="Закрыть"
+          className="absolute top-3 right-3 z-10 rounded-full p-2 hover:bg-muted text-muted-foreground"
+        >
+          ✕
+        </button>
+        <div className="p-5 pb-3 border-b space-y-3">
+          <h2 className="flex items-center gap-2 text-lg font-semibold pr-10">
             <Send className="w-4 h-4 text-primary" />
             Отправить коммерческое предложение
-          </DialogTitle>
-          <DialogDescription className="text-sm">
+          </h2>
+          <p className="text-sm text-muted-foreground">
             Компания: <span className="font-medium text-foreground">{companyName}</span>
             {contactPerson ? <> · Контакт: <span className="font-medium text-foreground">{contactPerson}</span></> : null}
-          </DialogDescription>
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-2 pt-1">
             <div className="relative">
               <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
