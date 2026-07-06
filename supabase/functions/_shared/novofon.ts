@@ -461,42 +461,74 @@ export async function novofonClassicRequest<T = unknown>(
   path: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
-  const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
-  const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
-  const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
+  const candidates: Array<{ key: string; secret: string; label: string }> = [];
+  addClassicCandidate(candidates, Deno.env.get("NOVOFON_CLASSIC_API_KEY"), Deno.env.get("NOVOFON_CLASSIC_API_SECRET"), "classic");
+  addClassicCandidate(candidates, Deno.env.get("NOVOFON_API_KEY"), Deno.env.get("NOVOFON_API_SECRET"), "api_key");
+
   // Classic REST API v1 (including /v1/webrtc/get_key/) uses
   // Authorization: user_key:signature. In the current Novofon/Zadarma cabinet
-  // the user_key can be displayed as appid_..., so do not filter it out here.
-  const classicKey = explicitKey || key;
-  const classicSecret = explicitSecret || secret;
-  if (!classicKey || !classicSecret) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
+  // the user_key can be displayed as appid_..., so it is still valid here.
+  if (isAppId(Deno.env.get("NOVOFON_LOGIN"))) {
+    addClassicCandidate(candidates, Deno.env.get("NOVOFON_LOGIN"), Deno.env.get("NOVOFON_PASSWORD"), "login_appid");
+  }
+  if (isAppId(Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"))) {
+    addClassicCandidate(candidates, Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"), Deno.env.get("NOVOFON_PASSWORD"), "employee_appid");
+  }
+
+  if (!candidates.length) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
 
   const requestParams = { ...params, format: "json" };
   const paramsStr = buildParamsString(requestParams);
-  const md5 = await md5Hex(paramsStr);
-  const hex = await hmacSha1Hex(classicSecret, `${path}${paramsStr}${md5}`);
-  const signature = encodeBase64(new TextEncoder().encode(hex));
   const url = method === "GET" && paramsStr
     ? `${CLASSIC_API_BASE}${path}?${paramsStr}`
     : `${CLASSIC_API_BASE}${path}`;
 
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `${classicKey}:${signature}`,
-      Accept: "application/json",
-      ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-    },
-    body: method === "POST" ? paramsStr : undefined,
-  });
+  let lastError: Error | null = null;
+  for (const candidate of candidates) {
+    const md5 = await md5Hex(paramsStr);
+    const hex = await hmacSha1Hex(candidate.secret, `${path}${paramsStr}${md5}`);
+    const signature = encodeBase64(new TextEncoder().encode(hex));
 
-  const text = await res.text();
-  let json: any;
-  try { json = JSON.parse(text); } catch { json = { raw: text }; }
-  if (!res.ok) throw new Error(`Novofon HTTP ${res.status}: ${text}`);
-  if (json?.status === "error") throw new Error(`Novofon: ${json.message || "unknown_error"}`);
-  return json as T;
+    const res = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `${candidate.key}:${signature}`,
+        Accept: "application/json",
+        ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      },
+      body: method === "POST" ? paramsStr : undefined,
+    });
+
+    const text = await res.text();
+    let json: any;
+    try { json = JSON.parse(text); } catch { json = { raw: text }; }
+
+    if (res.ok && json?.status !== "error") return json as T;
+
+    const message = json?.message || text || `HTTP ${res.status}`;
+    lastError = new Error(`Novofon ${candidate.label} HTTP ${res.status}: ${message}`);
+    if (!isClassicAuthFailure(res.status, message)) throw lastError;
+  }
+
+  throw lastError || new Error("Novofon classic API request failed");
+}
+
+function addClassicCandidate(
+  candidates: Array<{ key: string; secret: string; label: string }>,
+  key?: string | null,
+  secret?: string | null,
+  label = "api",
+) {
+  const normalizedKey = key?.trim();
+  const normalizedSecret = secret?.trim();
+  if (!normalizedKey || !normalizedSecret) return;
+  if (candidates.some((candidate) => candidate.key === normalizedKey && candidate.secret === normalizedSecret)) return;
+  candidates.push({ key: normalizedKey, secret: normalizedSecret, label });
+}
+
+function isClassicAuthFailure(status: number, message: string): boolean {
+  const normalized = message.toLowerCase();
+  return status === 401 || normalized.includes("not_authorized") || normalized.includes("unauthorized");
 }
 
 // Backwards-compatible alias for classic Zadarma/Novofon REST callers.
