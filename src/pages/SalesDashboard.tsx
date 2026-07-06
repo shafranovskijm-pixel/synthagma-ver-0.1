@@ -47,7 +47,9 @@ const SalesDashboard = () => {
       </main>
 
       <SalesDashboardFooter />
+      <PhoneDialerWidget />
     </div>
+
   );
 };
 
