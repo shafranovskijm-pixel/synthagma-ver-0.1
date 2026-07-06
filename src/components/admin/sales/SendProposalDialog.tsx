@@ -299,7 +299,7 @@ export function SendProposalDialog({
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
