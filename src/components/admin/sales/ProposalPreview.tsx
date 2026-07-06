@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { X, Download, Link2, Printer } from 'lucide-react';
+import { X, Download, Link2, Printer, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { getBaseUrl } from '@/utils/getBaseUrl';
@@ -9,6 +9,8 @@ import type { CommercialProposal, ProposalServiceItem } from '@/hooks/useSalesMa
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
 import { toast } from "sonner";
 import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
+import proposalHero from "@/assets/proposal-hero-premium.jpg";
+
 
 interface Props {
   open: boolean;
@@ -140,125 +142,192 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
   const displayWebsite = senderWebsite || 'https://sintagma.com.ru/';
 
   return (
-    <div className="proposal-print-content bg-white text-black p-8 max-w-[800px] mx-auto" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between border-b-2 border-black pb-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-black text-white flex items-center justify-center rounded-lg text-2xl font-medium">
-            Σ
+    <div
+      className="proposal-print-content bg-white text-slate-900 max-w-[820px] mx-auto"
+      style={{ fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif" }}
+    >
+      {/* Premium hero header */}
+      <div
+        className="relative overflow-hidden text-white px-10 pt-10 pb-14"
+        style={{
+          backgroundImage: `linear-gradient(120deg, rgba(8,25,35,0.92) 0%, rgba(15,48,60,0.88) 55%, rgba(20,80,90,0.85) 100%), url(${proposalHero})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 flex items-center justify-center rounded-xl text-3xl font-serif"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0ea5b7)', boxShadow: '0 8px 24px rgba(20,184,166,0.35)' }}
+            >
+              Σ
+            </div>
+            <div>
+              <div className="text-2xl font-semibold tracking-tight leading-tight">{displayName}</div>
+              <div className="text-[13px] text-cyan-100/70 mt-0.5">Платформа дистанционного обучения</div>
+            </div>
+          </div>
+          <div className="text-right text-[12px] text-cyan-50/80 leading-relaxed">
+            <div>{displayWebsite}</div>
+            <div>{displayEmail}</div>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/70">Commercial Proposal · № {proposal.id.slice(0, 8).toUpperCase()}</div>
+          <h1
+            className="text-4xl font-semibold tracking-tight mt-3"
+            style={{ fontFamily: "'Playfair Display', 'Georgia', serif" }}
+          >
+            Коммерческое предложение
+          </h1>
+          <div className="mt-2 text-cyan-50/80 text-sm">
+            для <span className="font-medium text-white">{proposal.company_name}</span>
+            {proposal.contact_person && <> · вниманию <span className="font-medium text-white">{proposal.contact_person}</span></>}
+          </div>
+        </div>
+
+        {/* Decorative gold line */}
+        <div className="absolute right-0 top-0 h-full w-[2px]" style={{ background: 'linear-gradient(180deg, transparent, #d4a853, transparent)' }} />
+      </div>
+
+      {/* Content padding */}
+      <div className="px-10 py-8">
+        {/* Intro (from preset) */}
+        {(proposal as any).intro_html && (
+          <div
+            className="mb-6 text-[14px] leading-relaxed text-slate-700 [&_p]:mb-2 [&_strong]:text-slate-900"
+            dangerouslySetInnerHTML={{ __html: (proposal as any).intro_html }}
+          />
+        )}
+
+        {/* Client info card */}
+        <div
+          className="rounded-xl p-5 mb-8"
+          style={{ background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', border: '1px solid #e2e8f0' }}
+        >
+          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-3 font-semibold">Реквизиты клиента</div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+            <div><span className="text-slate-500">Компания:</span> <strong className="text-slate-900">{proposal.company_name}</strong></div>
+            {proposal.company_inn && <div><span className="text-slate-500">ИНН:</span> <span className="font-medium">{proposal.company_inn}</span></div>}
+            {proposal.contact_person && <div><span className="text-slate-500">Контакт:</span> <span className="font-medium">{proposal.contact_person}</span></div>}
+            {proposal.company_email && <div><span className="text-slate-500">Email:</span> <span className="font-medium">{proposal.company_email}</span></div>}
+            {proposal.company_phone && <div><span className="text-slate-500">Телефон:</span> <span className="font-medium">{proposal.company_phone}</span></div>}
+            {proposal.tariff_plan && <div><span className="text-slate-500">Тариф:</span> <span className="font-medium" style={{ color: '#0d9488' }}>{proposal.tariff_plan}</span></div>}
+          </div>
+        </div>
+
+        {/* Section title */}
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="text-[13px] uppercase tracking-[0.22em] font-semibold text-slate-500">Состав предложения</h2>
+          <div className="h-px flex-1 mx-4" style={{ background: 'linear-gradient(90deg, #e2e8f0, transparent)' }} />
+        </div>
+
+        {/* Services table */}
+        <table className="w-full border-collapse mb-6 text-[13px]">
+          <thead>
+            <tr style={{ background: 'linear-gradient(135deg, #0f172a, #134e4a)' }} className="text-white">
+              <th className="p-3 text-left w-10 font-medium text-[11px] uppercase tracking-wider">№</th>
+              <th className="p-3 text-left font-medium text-[11px] uppercase tracking-wider">Наименование</th>
+              <th className="p-3 text-right w-28 font-medium text-[11px] uppercase tracking-wider">Цена, ₽</th>
+              <th className="p-3 text-center w-14 font-medium text-[11px] uppercase tracking-wider">Кол.</th>
+              <th className="p-3 text-right w-32 font-medium text-[11px] uppercase tracking-wider">Сумма, ₽</th>
+            </tr>
+          </thead>
+          <tbody>
+            {services.map((line, idx) => (
+              <tr key={line.id || idx} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                <td className="p-3 text-slate-400 tabular-nums align-top pt-4">{String(idx + 1).padStart(2, '0')}</td>
+                <td className="p-3 align-top">
+                  <div className="font-medium text-slate-900 leading-snug">{line.custom_name}</div>
+                  {line.custom_description && (
+                    <div className="text-[12px] text-slate-500 mt-1 leading-relaxed">{line.custom_description}</div>
+                  )}
+                </td>
+                <td className="p-3 text-right tabular-nums align-top pt-4 text-slate-700">{formatMoney(line.price)}</td>
+                <td className="p-3 text-center tabular-nums align-top pt-4 text-slate-700">{line.quantity}</td>
+                <td className="p-3 text-right tabular-nums align-top pt-4 font-semibold text-slate-900">{formatMoney(line.price * line.quantity)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            {discountPercent > 0 && (
+              <>
+                <tr>
+                  <td colSpan={4} className="p-2 pr-3 text-right text-slate-500">Подытог:</td>
+                  <td className="p-2 text-right tabular-nums text-slate-700">{formatMoney(subtotal)} ₽</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="p-2 pr-3 text-right font-medium" style={{ color: '#0d9488' }}>Скидка {discountPercent}%:</td>
+                  <td className="p-2 text-right tabular-nums font-medium" style={{ color: '#0d9488' }}>−{formatMoney(discountAmount)} ₽</td>
+                </tr>
+              </>
+            )}
+            <tr style={{ background: 'linear-gradient(135deg, #0f172a, #134e4a)' }} className="text-white">
+              <td colSpan={4} className="p-4 text-right text-[11px] uppercase tracking-[0.2em]">Итого к оплате</td>
+              <td className="p-4 text-right tabular-nums text-2xl font-semibold">
+                {formatMoney(total)} <span className="text-sm font-normal text-cyan-200">₽</span>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {/* Value proposition */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          {[
+            { title: 'Настройка бесплатно', desc: 'Первичный запуск, миграция контента, обучение персонала' },
+            { title: 'Приоритетная поддержка', desc: 'Персональный менеджер и техподдержка 12 месяцев' },
+            { title: 'Годовая скидка 15%', desc: 'Экономия при годовой оплате уже включена в стоимость' },
+          ].map((b) => (
+            <div key={b.title} className="rounded-lg p-3 border border-slate-200 bg-white">
+              <div className="flex items-center gap-2 mb-1">
+                <CheckCircle2 className="w-4 h-4" style={{ color: '#0d9488' }} />
+                <div className="text-[12px] font-semibold text-slate-900">{b.title}</div>
+              </div>
+              <div className="text-[11px] text-slate-500 leading-snug">{b.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tariff comparison */}
+        <TariffComparisonTable />
+
+        {/* Note */}
+        {proposal.custom_note && (
+          <div className="rounded-lg p-4 mb-6 text-sm" style={{ background: '#fef7ec', borderLeft: '3px solid #d4a853' }}>
+            <div className="font-semibold mb-1 text-slate-900">Примечание:</div>
+            <div className="whitespace-pre-wrap text-slate-700">{proposal.custom_note}</div>
+          </div>
+        )}
+
+        {/* Outro marketing block (from preset) */}
+        {(proposal as any).outro_html && (
+          <div
+            className="mb-6 text-[13px] leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: (proposal as any).outro_html }}
+          />
+        )}
+
+        {/* Validity + date */}
+        <div className="flex justify-between items-end text-[12px] text-slate-500 border-t border-slate-200 pt-4">
+          <div>
+            {proposal.valid_until && (
+              <div>Действительно до: <strong className="text-slate-800">{format(new Date(proposal.valid_until), 'dd MMMM yyyy', { locale: ru })}</strong></div>
+            )}
           </div>
           <div>
-            <div className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Inter', sans-serif" }}>{displayName}</div>
-            <div className="text-xs text-gray-500" style={{ fontFamily: "'Inter', sans-serif" }}>Платформа дистанционного обучения</div>
+            Дата: {format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}
           </div>
         </div>
-        <div className="text-right text-sm text-gray-600" style={{ fontFamily: "'Inter', sans-serif" }}>
-          <div>{displayWebsite}</div>
-          <div>{displayEmail}</div>
-        </div>
+
+        {/* Signature & stamp */}
+        <SignatureStampBlock />
       </div>
-
-      {/* Title */}
-      <h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-wide">
-        Коммерческое предложение
-      </h1>
-
-      {/* Client info */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div><span className="text-gray-500">Кому:</span> <strong>{proposal.company_name}</strong></div>
-          {proposal.company_inn && <div><span className="text-gray-500">ИНН:</span> {proposal.company_inn}</div>}
-          {proposal.contact_person && <div><span className="text-gray-500">Контакт:</span> {proposal.contact_person}</div>}
-          {proposal.company_email && <div><span className="text-gray-500">Email:</span> {proposal.company_email}</div>}
-          {proposal.company_phone && <div><span className="text-gray-500">Телефон:</span> {proposal.company_phone}</div>}
-          {proposal.tariff_plan && <div><span className="text-gray-500">Тариф:</span> {proposal.tariff_plan}</div>}
-        </div>
-      </div>
-
-      {/* Services table */}
-      <table className="w-full border-collapse mb-6 text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <thead>
-          <tr className="bg-black text-white">
-            <th className="p-2 text-left w-10">№</th>
-            <th className="p-2 text-left">Наименование</th>
-            <th className="p-2 text-right w-24">Цена, ₽</th>
-            <th className="p-2 text-center w-16">Кол.</th>
-            <th className="p-2 text-right w-28">Сумма, ₽</th>
-          </tr>
-        </thead>
-        <tbody>
-          {services.map((line, idx) => (
-            <tr key={line.id || idx} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-              <td className="p-2 border-b border-gray-200">{idx + 1}</td>
-              <td className="p-2 border-b border-gray-200">
-                <div className="font-medium">{line.custom_name}</div>
-                {line.custom_description && (
-                  <div className="text-xs text-gray-500 mt-0.5">{line.custom_description}</div>
-                )}
-              </td>
-              <td className="p-2 border-b border-gray-200 text-right">{formatMoney(line.price)}</td>
-              <td className="p-2 border-b border-gray-200 text-center">{line.quantity}</td>
-              <td className="p-2 border-b border-gray-200 text-right font-medium">{formatMoney(line.price * line.quantity)}</td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          {discountPercent > 0 && (
-            <>
-              <tr className="bg-gray-100 font-medium">
-                <td colSpan={4} className="p-2 text-right">Подытог:</td>
-                <td className="p-2 text-right">{formatMoney(subtotal)} ₽</td>
-              </tr>
-              <tr className="bg-gray-100 font-medium" style={{ color: '#c0392b' }}>
-                <td colSpan={4} className="p-2 text-right">Скидка {discountPercent}%:</td>
-                <td className="p-2 text-right">−{formatMoney(discountAmount)} ₽</td>
-              </tr>
-            </>
-          )}
-          <tr className="bg-black text-white font-bold">
-            <td colSpan={4} className="p-2 text-right">ИТОГО:</td>
-            <td className="p-2 text-right">{formatMoney(total)} ₽</td>
-          </tr>
-        </tfoot>
-      </table>
-
-      {/* Tariff comparison */}
-      <TariffComparisonTable />
-
-      {/* Note */}
-      {proposal.custom_note && (
-        <div className="bg-gray-50 border-l-4 border-black p-4 mb-6 text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>
-          <div className="font-semibold mb-1">Примечание:</div>
-          <div className="whitespace-pre-wrap">{proposal.custom_note}</div>
-        </div>
-      )}
-
-      {/* Outro marketing block (from preset) */}
-      {(proposal as any).outro_html && (
-        <div
-          className="mb-6"
-          style={{ fontFamily: "'Inter', sans-serif" }}
-          dangerouslySetInnerHTML={{ __html: (proposal as any).outro_html }}
-        />
-      )}
-
-      {/* Validity + date */}
-      <div className="flex justify-between items-end text-sm text-gray-600 border-t border-gray-200 pt-4" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div>
-          {proposal.valid_until && (
-            <div>Действительно до: <strong>{format(new Date(proposal.valid_until), 'dd MMMM yyyy', { locale: ru })}</strong></div>
-          )}
-        </div>
-        <div>
-          Дата: {format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}
-        </div>
-      </div>
-
-      {/* Signature & stamp — обязательно для тендеров */}
-      <SignatureStampBlock />
     </div>
   );
 }
+
 
 export function ProposalPreview({ open, onClose, proposal, services, showActions = true, discountPercent = 0, senderName, senderEmail, senderWebsite }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
