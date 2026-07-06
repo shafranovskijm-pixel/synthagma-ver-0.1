@@ -158,39 +158,59 @@ export function SalesManager() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Единая кнопка «меню» — раскрывает список разделов слева */}
-      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <div className="flex items-center gap-2">
+      {/* Верхняя горизонтальная навигация — «Рассылка» первой */}
+      <div className="flex items-center gap-2">
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger asChild>
             <Button
               variant="outline"
               size="sm"
               className="rounded-xl gap-2 shrink-0"
-              aria-label="Открыть меню продаж"
+              aria-label="Все разделы продаж"
+              title="Все разделы (включая КП, Договоры, Подписание, Сделки, Задачи, Отчёт)"
             >
               <Menu className="w-4 h-4" />
-              <span className="hidden sm:inline">Меню</span>
+              <span className="hidden sm:inline">Ещё</span>
             </Button>
           </SheetTrigger>
-          <div className="flex items-center gap-2 min-w-0">
-            <CurrentIcon className="w-4 h-4 text-primary shrink-0" />
-            <span className="font-medium text-sm truncate">{currentItem.label}</span>
-          </div>
+          <SheetContent side="left" className="w-72 overflow-y-auto">
+            <SheetHeader className="mb-4">
+              <SheetTitle>Все разделы продаж</SheetTitle>
+            </SheetHeader>
+            <SalesSidebarContent
+              activeTab={activeTab}
+              onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
+            />
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto pb-1">
+          {topNav.map(item => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap shrink-0",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-        <SheetContent side="left" className="w-72 overflow-y-auto">
-          <SheetHeader className="mb-4">
-            <SheetTitle>Разделы продаж</SheetTitle>
-          </SheetHeader>
-          <SalesSidebarContent
-            activeTab={activeTab}
-            onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
-          />
-        </SheetContent>
-      </Sheet>
+      </div>
 
       <div className="flex-1 min-w-0">
         {TABS[activeTab]}
       </div>
+
 
 
       {/* Универсальный диалог звонок/заметка */}
