@@ -3202,7 +3202,9 @@ export type Database = {
           sends_today: number
           total_sent: number
           updated_at: string
+          warmup_daily_target: number
           warmup_enabled: boolean
+          warmup_start_count: number
         }
         Insert: {
           app_password?: string | null
@@ -3225,7 +3227,9 @@ export type Database = {
           sends_today?: number
           total_sent?: number
           updated_at?: string
+          warmup_daily_target?: number
           warmup_enabled?: boolean
+          warmup_start_count?: number
         }
         Update: {
           app_password?: string | null
@@ -3248,7 +3252,9 @@ export type Database = {
           sends_today?: number
           total_sent?: number
           updated_at?: string
+          warmup_daily_target?: number
           warmup_enabled?: boolean
+          warmup_start_count?: number
         }
         Relationships: [
           {
