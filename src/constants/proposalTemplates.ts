@@ -1,4 +1,4 @@
-import { SUBSCRIPTION_PLANS, formatStorageSize, YEARLY_DISCOUNT, type SubscriptionPlan } from './subscriptionPlans';
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from './subscriptionPlans';
 
 export interface ProposalTemplateLine {
   custom_name: string;
