@@ -45,8 +45,8 @@ serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "invalid auth" }, 401);
 
-    const login = buildConfiguredSipLogin();
-    const password = Deno.env.get("NOVOFON_SIP_PASSWORD");
+    const login = Deno.env.get("NOVOFON_WEBRTC_SIP_LOGIN")?.trim() || buildConfiguredSipLogin();
+    const password = Deno.env.get("NOVOFON_WEBRTC_SIP_PASSWORD") || Deno.env.get("NOVOFON_SIP_PASSWORD");
 
     if (!login) {
       return json({ error: "sip_not_configured", message: "SIP-логин Novofon не задан" }, 200);
@@ -109,6 +109,7 @@ function json(body: unknown, status = 200) {
 
 function pickSipDomain(login: string): string {
   const configured = Deno.env.get("NOVOFON_SIP_LINE_SERVER")
+    || Deno.env.get("NOVOFON_WEBRTC_SIP_DOMAIN")
     || Deno.env.get("NOVOFON_SIP_DOMAIN")
     || Deno.env.get("NOVOFON_SIP_SERVER")
     || "";
