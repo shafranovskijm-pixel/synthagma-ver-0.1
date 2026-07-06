@@ -136,6 +136,9 @@ export function SalesManager() {
     broadcast: <BroadcastManager />,
     services: <SalesServices />,
     managers: <SalesManagersList />,
+    leads: <LeadsManager />,
+    recordings: <CallRecordingsAdminList />,
+    templates: <EmailTemplatesManager scope="platform" organizationId={null} />,
     contracts: (
       <SalesContracts
         prefillCompany={contractPrefill}
