@@ -184,14 +184,43 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   };
 
 
+  if (!open) {
+    return (
+      <>
+        <CallResultModal
+          open={resultOpen}
+          onOpenChange={setResultOpen}
+          lead={lead}
+          initialResult={presetResult}
+          onSaved={() => lead && fetchActivities(lead.id)}
+          onSaveAndNext={onSaveAndNext}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-full md:max-w-full p-0 flex flex-col shadow-2xl border-l"
-          style={{ top: '3.5rem', height: 'calc(100vh - 3.5rem)' }}
+      {/* Полу-прозрачный фон, начинается ниже шапки — верхнее меню остаётся видимым и кликабельным */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 bg-black/40 backdrop-blur-[2px] animate-in fade-in-0"
+        style={{ top: '3.5rem' }}
+        onClick={() => onOpenChange(false)}
+      />
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 bg-background shadow-2xl border-t flex flex-col animate-in slide-in-from-bottom-4"
+        style={{ top: '3.5rem' }}
+      >
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          aria-label="Закрыть"
+          className="absolute top-3 right-3 z-10 rounded-full p-2 hover:bg-muted text-muted-foreground"
         >
+          ✕
+        </button>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+
 
           <SheetHeader className="p-4 border-b space-y-2">
             <SheetTitle className="text-base leading-tight pr-8">{lead.org_name}</SheetTitle>
