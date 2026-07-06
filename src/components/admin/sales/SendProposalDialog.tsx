@@ -327,7 +327,8 @@ export function SendProposalDialog({
           )}
         </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
+    ) : null
   );
 }
