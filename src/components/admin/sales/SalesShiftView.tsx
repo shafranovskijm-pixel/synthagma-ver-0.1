@@ -381,8 +381,10 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <CompanyDrawer
+
         lead={selected}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
