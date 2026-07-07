@@ -13,9 +13,8 @@ import { ru } from 'date-fns/locale';
 import { useSalesManager, type SalesLead, type LeadActivity } from '@/hooks/useSalesManager';
 import { getRegionLocalTime, isBusinessHours } from '@/utils/regionTimezones';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
-import { CallResultModal } from './CallResultModal';
+import { CallResultForm } from './CallResultForm';
 import { CallLogsList } from './CallLogsList';
-import { KaraokeScript } from './KaraokeScript';
 import { openingMonolog, fillScriptTemplate } from '@/constants/coldCallScript';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -128,27 +127,20 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       });
   }, [user?.id]);
 
-  // Останавливаем караоке когда закрывается диалог результата
-  useEffect(() => {
-    if (!resultOpen) setIsCalling(false);
-  }, [resultOpen]);
-
-  // Слушаем события браузерного софтфона: караоке — по факту ответа, модалка — по завершении звонка
+  // Слушаем события браузерного софтфона: завершение звонка открывает панель «Итог» внутри карточки лида
   useEffect(() => {
     if (!lead) return;
-    const onAnswered = () => setIsCalling(true);
     const onEnded = () => {
-      setIsCalling(false);
       setPresetResult(undefined);
       setResultOpen(true);
+      setActiveTab('result');
+      if (!open) onOpenChange(true);
     };
-    window.addEventListener('softphone:answered', onAnswered);
     window.addEventListener('softphone:ended', onEnded);
     return () => {
-      window.removeEventListener('softphone:answered', onAnswered);
       window.removeEventListener('softphone:ended', onEnded);
     };
-  }, [lead?.id]);
+  }, [lead?.id, open, onOpenChange]);
 
   const leadActs = useMemo(() => activities.filter(a => lead && a.lead_id === lead.id), [activities, lead]);
   const calls = leadActs.filter(a => a.activity_type === 'call');
@@ -199,20 +191,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   };
 
 
-  if (!open) {
-    return (
-      <>
-        <CallResultModal
-          open={resultOpen}
-          onOpenChange={setResultOpen}
-          lead={lead}
-          initialResult={presetResult}
-          onSaved={() => lead && fetchActivities(lead.id)}
-          onSaveAndNext={onSaveAndNext}
-        />
-      </>
-    );
-  }
+  if (!open) return null;
 
   return (
     <>
@@ -244,7 +223,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               <Button size="sm" className="flex-1 min-w-[140px] h-8" disabled={!lead.phone} onClick={() => handleQuickCall()}>
                 <Phone className="w-3.5 h-3.5 mr-1" />Позвонить{lead.phone ? ` ${formatRuPhone(lead.phone) || lead.phone}` : ''}
               </Button>
-              <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); }}>
+              <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); setActiveTab('result'); }}>
                 Результат
               </Button>
               <Button
@@ -283,15 +262,11 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
           </div>
 
           <div>
-            {isCalling && (
-              <div className="p-4 border-b bg-primary/5">
-                <KaraokeScript text={monolog} active={isCalling} />
-              </div>
-            )}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full grid grid-cols-5 rounded-none border-b h-9 bg-transparent">
+              <TabsList className="w-full grid grid-cols-6 rounded-none border-b h-9 bg-transparent">
                 <TabsTrigger value="summary" className="text-xs">Сводка</TabsTrigger>
                 <TabsTrigger value="script" className="text-xs">Скрипт</TabsTrigger>
+                <TabsTrigger value="result" className="text-xs">Итог</TabsTrigger>
                 <TabsTrigger value="calls" className="text-xs">Звонки</TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs">История</TabsTrigger>
                 <TabsTrigger value="docs" className="text-xs">Документы</TabsTrigger>
@@ -331,7 +306,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               </TabsContent>
 
               <TabsContent value="script" className="p-4 space-y-3">
-                {!isCalling && <KaraokeScript text={monolog} active={false} />}
                 <ColdCallScriptCard
                   leadName={lead.org_name}
                   managerName={managerName}
@@ -339,6 +313,18 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                   onQuickResult={handleQuickResult}
                 />
               </TabsContent>
+
+              <TabsContent value="result" className="p-4">
+                <CallResultForm
+                  lead={lead}
+                  initialResult={presetResult}
+                  resetKey={resultOpen ? `${lead.id}-open` : `${lead.id}-closed`}
+                  onSaved={() => { fetchActivities(lead.id); setResultOpen(false); }}
+                  onSaveAndNext={onSaveAndNext ? () => { onSaveAndNext(); setResultOpen(false); } : undefined}
+                  onCancel={() => { setResultOpen(false); setActiveTab('summary'); }}
+                />
+              </TabsContent>
+
               <TabsContent value="calls" className="p-4">
                 <CallLogsList leadId={lead.id} companyInn={lead.inn ?? undefined} />
               </TabsContent>
@@ -382,15 +368,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
 
 
 
-
-      <CallResultModal
-        open={resultOpen}
-        onOpenChange={setResultOpen}
-        lead={lead}
-        initialResult={presetResult}
-        onSaved={() => fetchActivities(lead.id)}
-        onSaveAndNext={onSaveAndNext}
-      />
 
       <SendProposalDialog
         open={proposalPopoverOpen}
