@@ -10764,6 +10764,7 @@ export type Database = {
         Returns: undefined
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
+      is_active_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
         Args: { p_email: string; p_scope: string }
