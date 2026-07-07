@@ -113,17 +113,15 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
     startOfDay.setHours(0, 0, 0, 0);
     const iso = startOfDay.toISOString();
 
-    let calls = 0;
-    if (mid) {
-      const { count } = await (supabase as any)
-        .from('sales_lead_activities')
-        .select('id', { count: 'exact', head: true })
-        .eq('manager_id', mid)
-        .eq('activity_type', 'call')
-        .gte('created_at', iso);
-      calls = count || 0;
-    }
-    setCallsToday(calls);
+    // Кол-во инициированных звонков за день считаем по call_logs (без тестовых).
+    // Раньше считали по sales_lead_activities → задвоения от ручных заметок в диалоге «Результат звонка».
+    const { count: callsCount } = await (supabase as any)
+      .from('call_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('manager_user_id', uid)
+      .gte('started_at', iso)
+      .or('notes.is.null,notes.neq.__test_call__');
+    setCallsToday(callsCount || 0);
 
     const { count: dz } = await (supabase as any)
       .from('call_logs')
