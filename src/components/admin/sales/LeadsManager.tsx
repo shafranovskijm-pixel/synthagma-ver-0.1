@@ -227,6 +227,52 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
         >
           <Download className="w-3.5 h-3.5 mr-1" />Экспорт
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9"
+          onClick={() => {
+            if (filtered.length === 0) { toast.error('Нет данных для экспорта'); return; }
+            const header = ['first_name','last_name','patronymic','email','phone','personal_manager_id','comment','error'];
+            const esc = (v: string) => {
+              const s = (v ?? '').toString().replace(/"/g, '""');
+              return /[";\n\r]/.test(s) ? `"${s}"` : s;
+            };
+            let skipped = 0;
+            const lines = [header.join(';')];
+            for (const l of filtered) {
+              const digits = (l.phone || '').replace(/\D/g, '');
+              if (digits.length < 6) { skipped++; continue; }
+              const commentParts = [
+                l.org_name,
+                l.inn ? `ИНН ${l.inn}` : null,
+                l.region || null,
+                LEAD_STATUS_MAP[l.status]?.label ? `Статус: ${LEAD_STATUS_MAP[l.status].label}` : null,
+              ].filter(Boolean).join(' • ');
+              lines.push([
+                esc(l.org_name || ''), // first_name — покажется в звонке
+                '',                     // last_name
+                '',                     // patronymic
+                esc(l.email || ''),
+                esc(digits),
+                '',                     // personal_manager_id (Novofon internal)
+                esc(commentParts),
+                '',                     // error
+              ].join(';'));
+            }
+            const csv = '\ufeff' + lines.join('\r\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `novofon-leads-${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+            toast.success(`Экспорт для Новофона: ${lines.length - 1}${skipped ? ` (пропущено без телефона: ${skipped})` : ''}`);
+          }}
+        >
+          <Download className="w-3.5 h-3.5 mr-1" />Новофон CSV
+        </Button>
         <Button size="sm" className="h-9" onClick={() => setImportOpen(true)}>
           <Upload className="w-3.5 h-3.5 mr-1" />Импорт из Excel
         </Button>
