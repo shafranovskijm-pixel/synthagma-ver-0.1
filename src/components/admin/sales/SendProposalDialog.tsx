@@ -214,26 +214,52 @@ export function SendProposalDialog({
             Компания: <span className="font-medium text-foreground">{companyName}</span>
             {contactPerson ? <> · Контакт: <span className="font-medium text-foreground">{contactPerson}</span></> : null}
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-2 pt-1">
-            <div className="relative">
-              <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email получателя"
-                className="h-9 pl-8"
-              />
+          <div className="space-y-2 pt-1">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-2">
+              <div className="relative">
+                <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email получателя (можно вписать вручную)"
+                  className="h-9 pl-8"
+                />
+              </div>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Поиск по названию КП"
+                  className="h-9 pl-8"
+                />
+              </div>
             </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск по названию КП"
-                className="h-9 pl-8"
-              />
-            </div>
+            {knownEmails && knownEmails.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] text-muted-foreground">Из лида:</span>
+                {knownEmails.map((e) => {
+                  const active = email.trim().toLowerCase() === e.toLowerCase();
+                  return (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => setEmail(e)}
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[11px] font-medium border transition',
+                        active
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background hover:bg-muted border-border text-foreground',
+                      )}
+                      title="Подставить в поле получателя"
+                    >
+                      {e}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="flex gap-1.5 flex-wrap pt-1">
             {CATEGORIES.map((c) => {
