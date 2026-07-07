@@ -27,6 +27,33 @@ function getPlatformSmtp(): SmtpConfig {
   };
 }
 
+/**
+ * Пробуем взять активный ящик из email_sender_pool (LRU). Если пул пуст
+ * или недоступен — вернём null, и вызывающий код использует глобальные SMTP_* секреты.
+ */
+async function pickSenderFromPool(admin: any): Promise<{ senderId: string; smtp: SmtpConfig } | null> {
+  try {
+    const { data, error } = await admin.rpc("pick_next_email_sender");
+    if (error || !data || !data.length) return null;
+    const row = data[0];
+    if (!row?.host || !row?.email || !row?.app_password) return null;
+    return {
+      senderId: row.id as string,
+      smtp: {
+        host: row.host,
+        port: Number(row.port || 465),
+        username: row.email,
+        password: row.app_password,
+        encryption: (row.encryption as string) || (Number(row.port) === 465 ? "ssl" : "starttls"),
+        from_email: row.email,
+        from_name: row.from_name || "СИНТАГМА",
+      },
+    };
+  } catch (_e) {
+    return null;
+  }
+}
+
 function render(html: string, vars: Record<string, string>): string {
   let h = html || "";
   for (const [k, v] of Object.entries(vars)) {
@@ -144,22 +171,50 @@ serve(async (req: Request) => {
       ? render(emailTpl.subject, vars)
       : `Коммерческое предложение от СИНТАГМА — ${company_name}`;
 
-    // 4. Send via platform SMTP with 25s hard timeout
-    const smtp = getPlatformSmtp();
-    const smtpDeadline = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("SMTP timeout (25s)")), 25_000)
-    );
+    // 4. Send: сначала пробуем пул отправителей (LRU), затем fallback на глобальные SMTP_* секреты.
+    const pooled = await pickSenderFromPool(admin);
+    const attempts: Array<{ smtp: SmtpConfig; senderId: string | null; label: string }> = [];
+    if (pooled) attempts.push({ smtp: pooled.smtp, senderId: pooled.senderId, label: `pool:${pooled.smtp.username}` });
     try {
-      await Promise.race([
-        sendSmtpEmail(smtp, { to: recipient_email, subject, html }),
-        smtpDeadline,
-      ]);
-    } catch (smtpErr) {
-      // mark as failed so we don't report "sent" when it wasn't
-      await admin.from("commercial_proposals")
-        .update({ status: "draft" })
-        .eq("id", newProposal.id);
-      throw new Error("SMTP: " + (smtpErr as Error).message);
+      const fallback = getPlatformSmtp();
+      attempts.push({ smtp: fallback, senderId: null, label: `env:${fallback.username}` });
+    } catch (_e) {
+      // если пула нет и env не настроен — упадём ниже
+    }
+    if (!attempts.length) {
+      await admin.from("commercial_proposals").update({ status: "draft" }).eq("id", newProposal.id);
+      throw new Error("Не настроен ни один SMTP-отправитель (нет активных ящиков в пуле и нет секретов SMTP_*)");
+    }
+
+    let sendError: string | null = null;
+    let sent = false;
+    for (const attempt of attempts) {
+      const deadline = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("SMTP timeout (25s)")), 25_000),
+      );
+      try {
+        await Promise.race([
+          sendSmtpEmail(attempt.smtp, { to: recipient_email, subject, html }),
+          deadline,
+        ]);
+        if (attempt.senderId) {
+          await admin.rpc("mark_email_sender_result", { _sender_id: attempt.senderId, _error: null }).catch(() => {});
+        }
+        sent = true;
+        console.log("send-platform-proposal ok via", attempt.label);
+        break;
+      } catch (err) {
+        const msg = (err as Error).message;
+        sendError = `${attempt.label}: ${msg}`;
+        console.error("send-platform-proposal failed", attempt.label, msg);
+        if (attempt.senderId) {
+          await admin.rpc("mark_email_sender_result", { _sender_id: attempt.senderId, _error: msg }).catch(() => {});
+        }
+      }
+    }
+    if (!sent) {
+      await admin.from("commercial_proposals").update({ status: "draft" }).eq("id", newProposal.id);
+      throw new Error("SMTP: " + (sendError || "неизвестная ошибка"));
     }
 
     // mark as sent only on real success
