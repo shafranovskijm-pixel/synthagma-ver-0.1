@@ -27,31 +27,120 @@ function getPlatformSmtp(): SmtpConfig {
   };
 }
 
+type SmtpAttempt = {
+  smtp: SmtpConfig;
+  senderId: string | null;
+  label: string;
+  counters?: { sendsToday: number; totalSent: number };
+};
+
+function poolRowToAttempt(row: any): SmtpAttempt | null {
+  if (!row?.id || !row?.host || !row?.email || !row?.app_password) return null;
+  const port = Number(row.port || 465);
+  return {
+    senderId: row.id as string,
+    label: `pool:${row.email}`,
+    counters: {
+      sendsToday: Number(row.sends_today || 0),
+      totalSent: Number(row.total_sent || 0),
+    },
+    smtp: {
+      host: row.host,
+      port,
+      username: row.email,
+      password: row.app_password,
+      encryption: (row.encryption as string) || (port === 465 ? "ssl" : "starttls"),
+      from_email: row.email,
+      from_name: row.from_name || "СИНТАГМА",
+    },
+  };
+}
+
+async function resetSenderPoolDailyCounters(admin: any) {
+  const today = new Date().toISOString().slice(0, 10);
+  await admin
+    .from("email_sender_pool")
+    .update({ sends_today: 0, sends_reset_at: today })
+    .lt("sends_reset_at", today);
+}
+
 /**
- * Пробуем взять активный ящик из email_sender_pool (LRU). Если пул пуст
- * или недоступен — вернём null, и вызывающий код использует глобальные SMTP_* секреты.
+ * Берём все рабочие SMTP-настройки из пула рассылок: сначала личные ящики
+ * менеджера (если включён персональный режим), затем общий пул. Так КП не
+ * упирается в один env SMTP и пробует следующий ящик при таймауте.
  */
-async function pickSenderFromPool(admin: any): Promise<{ senderId: string; smtp: SmtpConfig } | null> {
-  try {
-    const { data, error } = await admin.rpc("pick_next_email_sender");
-    if (error || !data || !data.length) return null;
-    const row = data[0];
-    if (!row?.host || !row?.email || !row?.app_password) return null;
-    return {
-      senderId: row.id as string,
-      smtp: {
-        host: row.host,
-        port: Number(row.port || 465),
-        username: row.email,
-        password: row.app_password,
-        encryption: (row.encryption as string) || (Number(row.port) === 465 ? "ssl" : "starttls"),
-        from_email: row.email,
-        from_name: row.from_name || "СИНТАГМА",
-      },
-    };
-  } catch (_e) {
-    return null;
+async function loadSenderPoolAttempts(admin: any, managerId: string | null): Promise<SmtpAttempt[]> {
+  await resetSenderPoolDailyCounters(admin);
+
+  let mode: string | null = null;
+  if (managerId) {
+    const { data } = await admin
+      .from("sales_managers")
+      .select("email_sender_mode")
+      .eq("id", managerId)
+      .maybeSingle();
+    mode = data?.email_sender_mode || null;
   }
+
+  const attempts: SmtpAttempt[] = [];
+  const seen = new Set<string>();
+
+  async function addRows(scope: "personal" | "pool") {
+    let q = admin
+      .from("email_sender_pool")
+      .select("id,email,app_password,host,port,encryption,from_name,priority,daily_limit,sends_today,total_sent,last_used_at,assigned_manager_id")
+      .eq("is_active", true)
+      .not("app_password", "is", null)
+      .neq("app_password", "")
+      .order("priority", { ascending: true })
+      .order("last_used_at", { ascending: true, nullsFirst: true })
+      .order("id", { ascending: true })
+      .limit(12);
+
+    if (scope === "personal" && managerId) {
+      q = q.eq("assigned_manager_id", managerId);
+    } else {
+      q = q.is("assigned_manager_id", null);
+    }
+
+    const { data, error } = await q;
+    if (error) {
+      console.warn("send-platform-proposal sender pool query failed", scope, error.message);
+      return;
+    }
+
+    for (const row of data || []) {
+      if (Number(row.sends_today || 0) >= Number(row.daily_limit || 0)) continue;
+      const attempt = poolRowToAttempt(row);
+      if (!attempt || seen.has(attempt.senderId!)) continue;
+      attempts.push(attempt);
+      seen.add(attempt.senderId!);
+    }
+  }
+
+  if (mode === "personal") await addRows("personal");
+  await addRows("pool");
+
+  return attempts;
+}
+
+async function markPoolSenderSuccess(admin: any, attempt: SmtpAttempt) {
+  if (!attempt.senderId) return;
+  await admin.from("email_sender_pool").update({
+    sends_today: (attempt.counters?.sendsToday || 0) + 1,
+    total_sent: (attempt.counters?.totalSent || 0) + 1,
+    last_used_at: new Date().toISOString(),
+    last_error: null,
+    last_error_at: null,
+  }).eq("id", attempt.senderId);
+}
+
+async function markPoolSenderError(admin: any, attempt: SmtpAttempt, message: string) {
+  if (!attempt.senderId) return;
+  await admin.from("email_sender_pool").update({
+    last_error: message.slice(0, 500),
+    last_error_at: new Date().toISOString(),
+  }).eq("id", attempt.senderId);
 }
 
 function render(html: string, vars: Record<string, string>): string {
@@ -96,6 +185,22 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Не авторизован" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    let managerId: string | null = null;
+    const { data: existingManager } = await admin
+      .from("sales_managers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existingManager?.id) {
+      managerId = existingManager.id;
+    } else {
+      const { data: newManager } = await admin.from("sales_managers")
+        .insert({ user_id: user.id, full_name: sender_name || "Менеджер СИНТАГМА", is_active: true })
+        .select("id")
+        .single();
+      managerId = newManager?.id || null;
     }
 
     // 1. Load template proposal + services
@@ -171,10 +276,8 @@ serve(async (req: Request) => {
       ? render(emailTpl.subject, vars)
       : `Коммерческое предложение от СИНТАГМА — ${company_name}`;
 
-    // 4. Send: сначала пробуем пул отправителей (LRU), затем fallback на глобальные SMTP_* секреты.
-    const pooled = await pickSenderFromPool(admin);
-    const attempts: Array<{ smtp: SmtpConfig; senderId: string | null; label: string }> = [];
-    if (pooled) attempts.push({ smtp: pooled.smtp, senderId: pooled.senderId, label: `pool:${pooled.smtp.username}` });
+    // 4. Send: сначала пробуем все активные ящики из пула рассылок, затем fallback на глобальные SMTP_* секреты.
+    const attempts: SmtpAttempt[] = await loadSenderPoolAttempts(admin, managerId);
     try {
       const fallback = getPlatformSmtp();
       attempts.push({ smtp: fallback, senderId: null, label: `env:${fallback.username}` });
@@ -197,9 +300,7 @@ serve(async (req: Request) => {
           sendSmtpEmail(attempt.smtp, { to: recipient_email, subject, html }),
           deadline,
         ]);
-        if (attempt.senderId) {
-          await admin.rpc("mark_email_sender_result", { _sender_id: attempt.senderId, _error: null }).catch(() => {});
-        }
+        await markPoolSenderSuccess(admin, attempt).catch(() => {});
         sent = true;
         console.log("send-platform-proposal ok via", attempt.label);
         break;
@@ -207,9 +308,7 @@ serve(async (req: Request) => {
         const msg = (err as Error).message;
         sendError = `${attempt.label}: ${msg}`;
         console.error("send-platform-proposal failed", attempt.label, msg);
-        if (attempt.senderId) {
-          await admin.rpc("mark_email_sender_result", { _sender_id: attempt.senderId, _error: msg }).catch(() => {});
-        }
+        await markPoolSenderError(admin, attempt, msg).catch(() => {});
       }
     }
     if (!sent) {
@@ -225,17 +324,6 @@ serve(async (req: Request) => {
 
     // 5. Log activity if lead provided
     if (lead_id) {
-      // get or create manager
-      let managerId: string | null = null;
-      const { data: m } = await admin.from("sales_managers").select("id").eq("user_id", user.id).maybeSingle();
-      if (m?.id) {
-        managerId = m.id;
-      } else {
-        const { data: nm } = await admin.from("sales_managers")
-          .insert({ user_id: user.id, full_name: vars.sender_name, is_active: true })
-          .select("id").single();
-        managerId = nm?.id || null;
-      }
       if (managerId) {
         await admin.from("sales_lead_activities").insert({
           lead_id,
