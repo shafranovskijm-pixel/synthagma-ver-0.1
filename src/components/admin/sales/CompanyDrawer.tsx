@@ -369,15 +369,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
 
 
 
-      <CallResultModal
-        open={resultOpen}
-        onOpenChange={setResultOpen}
-        lead={lead}
-        initialResult={presetResult}
-        onSaved={() => fetchActivities(lead.id)}
-        onSaveAndNext={onSaveAndNext}
-      />
-
       <SendProposalDialog
         open={proposalPopoverOpen}
         onOpenChange={setProposalPopoverOpen}
