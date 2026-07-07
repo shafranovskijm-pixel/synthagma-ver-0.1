@@ -127,27 +127,20 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       });
   }, [user?.id]);
 
-  // Останавливаем караоке когда закрывается диалог результата
-  useEffect(() => {
-    if (!resultOpen) setIsCalling(false);
-  }, [resultOpen]);
-
-  // Слушаем события браузерного софтфона: караоке — по факту ответа, модалка — по завершении звонка
+  // Слушаем события браузерного софтфона: завершение звонка открывает панель «Итог» внутри карточки лида
   useEffect(() => {
     if (!lead) return;
-    const onAnswered = () => setIsCalling(true);
     const onEnded = () => {
-      setIsCalling(false);
       setPresetResult(undefined);
       setResultOpen(true);
+      setActiveTab('result');
+      if (!open) onOpenChange(true);
     };
-    window.addEventListener('softphone:answered', onAnswered);
     window.addEventListener('softphone:ended', onEnded);
     return () => {
-      window.removeEventListener('softphone:answered', onAnswered);
       window.removeEventListener('softphone:ended', onEnded);
     };
-  }, [lead?.id]);
+  }, [lead?.id, open, onOpenChange]);
 
   const leadActs = useMemo(() => activities.filter(a => lead && a.lead_id === lead.id), [activities, lead]);
   const calls = leadActs.filter(a => a.activity_type === 'call');
