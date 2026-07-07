@@ -71,7 +71,7 @@ const formatMoney = (v: number) =>
   new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
 
 export function SendProposalDialog({
-  open, onOpenChange, companyName, contactPerson, defaultEmail, leadId, managerName, onSent,
+  open, onOpenChange, companyName, contactPerson, defaultEmail, knownEmails, leadId, managerName, onSent,
 }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
