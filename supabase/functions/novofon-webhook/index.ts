@@ -63,32 +63,48 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    const event = String(params.event || params.notification_type || "").toUpperCase();
-    const callId = params.pbx_call_id || params.call_id || params.call_id_with_rec;
+    // Debug: логируем полный payload — Novofon шлёт разные форматы в разных событиях,
+    // без этого невозможно понять, какие поля реально приходят.
+    console.log("novofon-webhook payload:", JSON.stringify(params));
+
+    const event = String(params.event || params.notification_type || params.type || "").toUpperCase();
+    const callId = params.pbx_call_id || params.call_id || params.call_id_with_rec || params.call_session_id;
 
     if (!callId) {
+      console.warn("novofon-webhook: no call id in payload");
       return new Response("no call id", { status: 200, headers: corsHeaders });
     }
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    if (event.includes("START")) {
+    const isStart = event.includes("START") || event.includes("NOTIFY_START");
+    const isAnswer = event.includes("ANSWER");
+    // Явные события завершения: NOTIFY_END, NOTIFY_INTERNAL, HANGUP, END.
+    const isEnd = event.includes("END") || event.includes("HANGUP") || event.includes("NOTIFY_INTERNAL");
+    const hasRecording = event.includes("RECORD") || !!params.call_recording || !!params.link || !!params.record_link;
+    // Иногда финальный статус приходит только с записью (RECORD-событие).
+    const durationRaw = params.duration ?? params.billsec ?? params.talk_duration ?? params.call_duration;
+    const parsedDuration = durationRaw != null ? (parseInt(String(durationRaw), 10) || null) : null;
+
+    if (isStart) {
       patch.status = "ringing";
       patch.novofon_call_id = callId;
     }
-    if (event.includes("ANSWER")) {
+    if (isAnswer) {
       patch.status = "answered";
       patch.answered_at = new Date().toISOString();
     }
-    if (event.includes("END")) {
-      const status = params.disposition || params.status || "completed";
-      patch.status = String(status).toLowerCase().includes("answer") ? "completed" : (String(status).toLowerCase() as string);
+    if (isEnd || (hasRecording && parsedDuration !== null)) {
+      const rawStatus = String(params.disposition || params.status || "").toLowerCase();
+      // ANSWER/ANSWERED → completed, иначе оставляем как есть (busy, no_answer, cancel, failed).
+      patch.status = rawStatus.includes("answer") || (!rawStatus && parsedDuration && parsedDuration > 0)
+        ? "completed"
+        : (rawStatus || "completed");
       patch.ended_at = new Date().toISOString();
-      if (params.duration) patch.duration_sec = parseInt(String(params.duration), 10) || null;
-      if (params.billsec) patch.duration_sec = parseInt(String(params.billsec), 10) || null;
+      if (parsedDuration !== null) patch.duration_sec = parsedDuration;
     }
-    if (event.includes("RECORD") || params.call_recording || params.link) {
-      patch.recording_url = params.call_recording || params.link;
+    if (hasRecording) {
+      patch.recording_url = params.call_recording || params.link || params.record_link;
       patch.has_recording = true;
     }
 
