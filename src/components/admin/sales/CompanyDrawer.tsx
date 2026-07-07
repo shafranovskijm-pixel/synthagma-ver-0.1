@@ -80,6 +80,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
   const [sendEmail, setSendEmail] = useState('');
+  const [leadEmails, setLeadEmails] = useState<string[]>([]);
 
   useEffect(() => {
     if (lead) {
@@ -88,14 +89,23 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       setStatus(lead.status);
       setDirectorName(null);
       setSendEmail(lead.email || '');
+      setLeadEmails(lead.email ? [lead.email] : []);
       setIsCalling(false);
       if (lead.inn) {
         supabase
           .from('sales_companies_db')
-          .select('director')
+          .select('director, email, emails')
           .eq('inn', lead.inn)
           .maybeSingle()
-          .then(({ data }) => setDirectorName(data?.director ?? null));
+          .then(({ data }) => {
+            setDirectorName((data as any)?.director ?? null);
+            const collected = new Set<string>();
+            if (lead.email) collected.add(lead.email.trim().toLowerCase());
+            if ((data as any)?.email) collected.add(String((data as any).email).trim().toLowerCase());
+            const arr = (data as any)?.emails;
+            if (Array.isArray(arr)) arr.forEach((e: any) => { if (e) collected.add(String(e).trim().toLowerCase()); });
+            setLeadEmails(Array.from(collected).filter(e => /^\S+@\S+\.\S+$/.test(e)));
+          });
       }
     }
   }, [lead, fetchActivities]);
@@ -375,6 +385,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         companyName={lead.org_name}
         contactPerson={directorName}
         defaultEmail={sendEmail || lead.email || ''}
+        knownEmails={leadEmails}
         leadId={lead.id}
         managerName={managerName}
         onSent={(name) => {
