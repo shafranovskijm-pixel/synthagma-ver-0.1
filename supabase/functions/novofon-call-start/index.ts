@@ -122,11 +122,31 @@ serve(async (req) => {
     let employeeInfo: Record<string, unknown> | null = null;
     const ringTestNumberDirectly = Boolean(is_test && operator === to);
 
-    if (hasCallApiCredentials()) {
-      // Novofon Call API v4.0: поддержка подтвердила, что для звонков CRM
-      // можно использовать сотрудника «Администратор» и Secret как access_token.
-      // Поэтому основной сценарий — start.employee_call по employee_id из
-      // get.employees; simple_call оставляем только резервом.
+    // Официальная документация Novofon рекомендует /v1/request/callback/ —
+    // Novofon сначала звонит менеджеру (from), после ответа соединяет с клиентом (to).
+    // Это самый надёжный сценарий, поэтому он используется по умолчанию.
+    if (canUseClassicFallback()) {
+      try {
+        usedApi = "classic_callback";
+        nfRes = await startClassicCallback(operator, to, from_sip || getConfiguredSipLogin() || undefined);
+        providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
+      } catch (classicError) {
+        if (!hasCallApiCredentials()) throw classicError;
+        console.warn("Classic callback failed, falling back to Call API:", describeNovofonError(classicError));
+        usedApi = "call_api";
+        nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
+          first_call: "operator",
+          switch_at_once: true,
+          show_virtual_phone_number: true,
+          virtual_phone_number: callerId,
+          direction: "in",
+          contact: to,
+          operator,
+          external_id: lead_id || `test-${Date.now()}`,
+        });
+        providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
+      }
+    } else if (hasCallApiCredentials()) {
       try {
         if (ringTestNumberDirectly) {
           usedApi = "call_api";
@@ -158,45 +178,24 @@ serve(async (req) => {
           };
         }
       } catch (error) {
-        if (ringTestNumberDirectly) {
-          if (!canUseClassicFallback() || !shouldFallbackToClassic(error)) throw error;
-          usedApi = "classic_callback";
-          nfRes = await startClassicCallback(operator, to, from_sip || getConfiguredSipLogin() || undefined);
-          providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
-        } else {
-        try {
-          usedApi = "call_api";
-          nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
-            first_call: "operator",
-            switch_at_once: true,
-            show_virtual_phone_number: true,
-            virtual_phone_number: callerId,
-            direction: "in",
-            contact: to,
-            operator,
-            external_id: lead_id || `test-${Date.now()}`,
-          });
-          providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
-        } catch (simpleError) {
-          console.warn("Simple Call API fallback failed:", describeNovofonError(simpleError));
-          if (!canUseClassicFallback() || !shouldFallbackToClassic(error)) throw error;
-          console.warn("Call API failed, using classic callback fallback:", describeNovofonError(error));
-          usedApi = "classic_callback";
-          nfRes = await startClassicCallback(operator, to, from_sip || getConfiguredSipLogin() || undefined);
-          providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
-        }
-        }
+        usedApi = "call_api";
+        nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
+          first_call: "operator",
+          switch_at_once: true,
+          show_virtual_phone_number: true,
+          virtual_phone_number: callerId,
+          direction: "in",
+          contact: to,
+          operator,
+          external_id: lead_id || `test-${Date.now()}`,
+        });
+        providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
       }
-    } else if (canUseClassicFallback()) {
-      // Classic Novofon/Zadarma callback API: works with API key + secret.
-      usedApi = "classic_callback";
-      nfRes = await startClassicCallback(operator, to, from_sip || getConfiguredSipLogin() || undefined);
-      providerCallId = nfRes.time ? String(nfRes.time) : null;
     } else {
       return new Response(JSON.stringify({
         ok: false,
         error: "call_api_credentials_missing",
-        message: "Не задан Call API токен Novofon и нет NOVOFON_API_KEY/NOVOFON_API_SECRET для резервного callback.",
+        message: "Не задан NOVOFON_API_KEY/NOVOFON_API_SECRET (Classic API) и нет Call API токена.",
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
