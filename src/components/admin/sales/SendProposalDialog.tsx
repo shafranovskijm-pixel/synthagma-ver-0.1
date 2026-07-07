@@ -35,6 +35,7 @@ interface Props {
   companyName: string;
   contactPerson?: string | null;
   defaultEmail?: string;
+  knownEmails?: string[];
   leadId?: string | null;
   managerName?: string;
   onSent?: (templateName: string) => void;
