@@ -41,12 +41,13 @@ interface Props {
   onSent?: (templateName: string) => void;
 }
 
-type CategoryKey = 'all' | 'platform' | 'services' | 'corporate' | 'sites' | 'box' | 'subscription';
+type CategoryKey = 'all' | 'platform' | 'services' | 'corporate' | 'sites' | 'box' | 'subscription' | 'licensing';
 
 const CATEGORIES: { key: CategoryKey; label: string; keywords: string[]; color: string }[] = [
   { key: 'all', label: 'Все', keywords: [], color: 'bg-primary/10 text-primary' },
   { key: 'platform', label: 'Платформа', keywords: ['платформ', 'сдо', 'каталог'], color: 'bg-teal-500/10 text-teal-600' },
   { key: 'subscription', label: 'Подписка', keywords: ['абонемент', 'подписк'], color: 'bg-sky-500/10 text-sky-600' },
+  { key: 'licensing', label: 'Лицензирование', keywords: ['лицензи', 'рособрнадзор'], color: 'bg-yellow-500/10 text-yellow-700' },
   { key: 'services', label: 'ФРДО / услуги', keywords: ['фрдо', 'общие услуги', 'документац'], color: 'bg-amber-500/10 text-amber-600' },
   { key: 'corporate', label: 'Корпоратив', keywords: ['корпоратив', 'группы'], color: 'bg-purple-500/10 text-purple-600' },
   { key: 'sites', label: 'Сайты', keywords: ['сайт'], color: 'bg-emerald-500/10 text-emerald-600' },
