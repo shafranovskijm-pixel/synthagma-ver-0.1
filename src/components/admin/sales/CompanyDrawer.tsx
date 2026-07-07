@@ -385,6 +385,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         companyName={lead.org_name}
         contactPerson={directorName}
         defaultEmail={sendEmail || lead.email || ''}
+        knownEmails={leadEmails}
         leadId={lead.id}
         managerName={managerName}
         onSent={(name) => {
