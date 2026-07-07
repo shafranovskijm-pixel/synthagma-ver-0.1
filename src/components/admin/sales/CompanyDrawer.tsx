@@ -191,20 +191,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   };
 
 
-  if (!open) {
-    return (
-      <>
-        <CallResultModal
-          open={resultOpen}
-          onOpenChange={setResultOpen}
-          lead={lead}
-          initialResult={presetResult}
-          onSaved={() => lead && fetchActivities(lead.id)}
-          onSaveAndNext={onSaveAndNext}
-        />
-      </>
-    );
-  }
+  if (!open) return null;
 
   return (
     <>
