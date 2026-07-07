@@ -306,7 +306,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               </TabsContent>
 
               <TabsContent value="script" className="p-4 space-y-3">
-                {!isCalling && <KaraokeScript text={monolog} active={false} />}
                 <ColdCallScriptCard
                   leadName={lead.org_name}
                   managerName={managerName}
@@ -314,6 +313,18 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                   onQuickResult={handleQuickResult}
                 />
               </TabsContent>
+
+              <TabsContent value="result" className="p-4">
+                <CallResultForm
+                  lead={lead}
+                  initialResult={presetResult}
+                  resetKey={resultOpen ? `${lead.id}-open` : `${lead.id}-closed`}
+                  onSaved={() => { fetchActivities(lead.id); setResultOpen(false); }}
+                  onSaveAndNext={onSaveAndNext ? () => { onSaveAndNext(); setResultOpen(false); } : undefined}
+                  onCancel={() => { setResultOpen(false); setActiveTab('summary'); }}
+                />
+              </TabsContent>
+
               <TabsContent value="calls" className="p-4">
                 <CallLogsList leadId={lead.id} companyInn={lead.inn ?? undefined} />
               </TabsContent>
