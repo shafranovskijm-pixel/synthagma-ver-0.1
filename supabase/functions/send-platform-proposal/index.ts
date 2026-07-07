@@ -27,6 +27,33 @@ function getPlatformSmtp(): SmtpConfig {
   };
 }
 
+/**
+ * Пробуем взять активный ящик из email_sender_pool (LRU). Если пул пуст
+ * или недоступен — вернём null, и вызывающий код использует глобальные SMTP_* секреты.
+ */
+async function pickSenderFromPool(admin: any): Promise<{ senderId: string; smtp: SmtpConfig } | null> {
+  try {
+    const { data, error } = await admin.rpc("pick_next_email_sender");
+    if (error || !data || !data.length) return null;
+    const row = data[0];
+    if (!row?.host || !row?.email || !row?.app_password) return null;
+    return {
+      senderId: row.id as string,
+      smtp: {
+        host: row.host,
+        port: Number(row.port || 465),
+        username: row.email,
+        password: row.app_password,
+        encryption: (row.encryption as string) || (Number(row.port) === 465 ? "ssl" : "starttls"),
+        from_email: row.email,
+        from_name: row.from_name || "СИНТАГМА",
+      },
+    };
+  } catch (_e) {
+    return null;
+  }
+}
+
 function render(html: string, vars: Record<string, string>): string {
   let h = html || "";
   for (const [k, v] of Object.entries(vars)) {
