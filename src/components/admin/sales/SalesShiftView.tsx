@@ -135,55 +135,20 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
 
   const loadProcessed = useCallback(async (mid: string | null) => {
     if (!mid) { setProcessedIds(new Set()); return; }
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Тянем ВСЕ активности менеджера (не только за сегодня),
+    // чтобы во вкладке «Обработано» были видны ранее отработанные лиды.
     const { data } = await (supabase as any)
       .from('sales_lead_activities')
       .select('lead_id')
       .eq('manager_id', mid)
-      .gte('created_at', startOfDay.toISOString());
+      .limit(5000);
     setProcessedIds(new Set((data || []).map((r: any) => r.lead_id).filter(Boolean)));
   }, []);
-
-  // Realtime
-  useEffect(() => {
-    if (!effectiveUserId) return;
-    const ch = supabase
-      .channel(`sales-shift-counters-${effectiveUserId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'call_logs', filter: `manager_user_id=eq.${effectiveUserId}` },
-        () => refreshCounters(managerId, effectiveUserId))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales_lead_activities' },
-        () => { refreshCounters(managerId, effectiveUserId); loadProcessed(managerId); })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [effectiveUserId, managerId, loadProcessed]);
-
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setTick(x => x + 1), 60 * 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const queue = useMemo(() => {
-    void tick;
-    const mine = managerId
-      ? leads.filter(l => !l.assigned_manager_id || l.assigned_manager_id === managerId)
-      : leads;
-    const built = buildShiftQueue(mine);
-    // Тестовые карточки закрепляем в самом верху очереди
-    const isTest = (name?: string | null) => !!name && /\(тест\)/i.test(name);
-    const pinned = built.filter(q => isTest(q.lead.org_name));
-    const rest = built.filter(q => !isTest(q.lead.org_name));
-    return [...pinned, ...rest];
-  }, [leads, managerId, tick]);
-
+...
   const isProcessed = useCallback((l: SalesLead) => {
     if (processedIds.has(l.id)) return true;
-    if (PROCESSED_STATUSES.has(l.status) && l.updated_at) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      return new Date(l.updated_at).getTime() >= startOfDay.getTime();
-    }
+    // Финальные статусы считаем обработанными независимо от даты
+    if (PROCESSED_STATUSES.has(l.status)) return true;
     return false;
   }, [processedIds]);
 
