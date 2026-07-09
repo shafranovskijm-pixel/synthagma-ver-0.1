@@ -332,7 +332,10 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
                         {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : (currentPage - 1) * PAGE_SIZE + idx + 1}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">{lead.org_name}</div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="font-medium truncate">{lead.org_name}</div>
+                          <TouchDots touches={touchHistory.get(lead.id)} />
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                           {lead.region && (
                             <span className="flex items-center gap-1 truncate max-w-[200px]">
