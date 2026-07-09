@@ -127,7 +127,8 @@ const BrandedLogin = () => {
       }
       
       // Always use standardized email format for login-based auth
-      signInEmail = `${cleanLogin}@student.local`;
+      const { buildAuthEmail } = await import("@/utils/authEmail");
+      signInEmail = await buildAuthEmail(cleanLogin);
     }
     
     const { error } = await signIn(signInEmail, cleanPassword);

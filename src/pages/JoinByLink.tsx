@@ -204,8 +204,9 @@ const JoinByLink = () => {
       if (registerError) throw registerError;
       if (result?.error) throw new Error(result.error);
 
-      // Sign in using the auth email (login@student.local) returned by the edge function
-      const authEmail = result?.login ? `${result.login}@student.local` : email;
+      // Sign in using the auth email derived from the login returned by the edge function
+      const { buildAuthEmail } = await import("@/utils/authEmail");
+      const authEmail = result?.login ? await buildAuthEmail(result.login) : email;
       const authPassword = result?.password || password;
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: authEmail,
