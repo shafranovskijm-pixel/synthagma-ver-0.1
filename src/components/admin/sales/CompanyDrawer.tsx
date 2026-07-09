@@ -255,7 +255,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
 
         <button
           type="button"
-          onClick={() => onOpenChange(false)}
+          onClick={requestClose}
           aria-label="Закрыть"
           className="absolute top-3 right-3 z-10 rounded-full p-2 hover:bg-muted text-muted-foreground"
         >
