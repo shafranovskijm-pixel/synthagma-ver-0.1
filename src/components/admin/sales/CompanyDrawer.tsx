@@ -22,6 +22,9 @@ import { getErrorMessage } from '@/utils/handleSupabaseError';
 import { useAuth } from '@/hooks/useAuth';
 import type { CallResultKey } from '@/constants/coldCallScript';
 import { extractExtraPhones, formatRuPhone } from '@/utils/phoneParser';
+import { useSalesTasks } from '@/hooks/useSalesTasks';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
 
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -66,7 +69,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     return () => clearTimeout(t);
   }, [open, lead?.id]);
 
-  const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
+  const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity, ensureCurrentManagerId } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
   const [resultOpen, setResultOpen] = useState(false);
@@ -76,6 +79,46 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [activeTab, setActiveTab] = useState('summary');
   const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
   const [openingOverride, setOpeningOverride] = useState<string | null>(null);
+  const [resultLogged, setResultLogged] = useState(false);
+  const [callbackPromptOpen, setCallbackPromptOpen] = useState(false);
+  const [callbackDate, setCallbackDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0, 0);
+    return d.toISOString().slice(0, 16);
+  });
+  const { create: createTask } = useSalesTasks();
+  
+
+  const requestClose = () => {
+    if (resultLogged) { onOpenChange(false); return; }
+    setCallbackPromptOpen(true);
+  };
+
+  const scheduleCallbackAndClose = async () => {
+    if (!lead) { setCallbackPromptOpen(false); onOpenChange(false); return; }
+    try {
+      const mid = await ensureCurrentManagerId();
+      const { data: u } = await supabase.auth.getUser();
+      await createTask.mutateAsync({
+        lead_id: lead.id,
+        manager_id: mid,
+        assigned_user_id: u.user?.id || null,
+        due_date: new Date(callbackDate).toISOString(),
+        title: `Перезвонить: ${lead.org_name}`,
+        description: null,
+        status: 'pending',
+        type: 'call',
+      });
+      await addActivity(lead.id, null, 'call', `Запланирован обратный звонок на ${new Date(callbackDate).toLocaleString('ru-RU')}`);
+      toast.success('Перезвон запланирован');
+    } catch (e: any) {
+      toast.error('Не удалось запланировать', { description: e?.message });
+    } finally {
+      setCallbackPromptOpen(false);
+      onOpenChange(false);
+    }
+  };
 
   // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
@@ -85,6 +128,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   useEffect(() => {
     if (lead) {
       fetchActivities(lead.id);
+      setResultLogged(false);
       setNotes(lead.notes || '');
       setStatus(lead.status);
       setDirectorName(null);
@@ -212,7 +256,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
 
         <button
           type="button"
-          onClick={() => onOpenChange(false)}
+          onClick={requestClose}
           aria-label="Закрыть"
           className="absolute top-3 right-3 z-10 rounded-full p-2 hover:bg-muted text-muted-foreground"
         >
@@ -329,8 +373,8 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                   lead={lead}
                   initialResult={presetResult}
                   resetKey={resultOpen ? `${lead.id}-open` : `${lead.id}-closed`}
-                  onSaved={() => { fetchActivities(lead.id); setResultOpen(false); }}
-                  onSaveAndNext={onSaveAndNext ? () => { onSaveAndNext(); setResultOpen(false); } : undefined}
+                  onSaved={() => { fetchActivities(lead.id); setResultOpen(false); setResultLogged(true); }}
+                  onSaveAndNext={onSaveAndNext ? () => { onSaveAndNext(); setResultOpen(false); setResultLogged(true); } : undefined}
                   onCancel={() => { setResultOpen(false); setActiveTab('summary'); }}
                 />
               </TabsContent>
@@ -392,6 +436,32 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
           addActivity(lead.id, null, 'email', `Отправлено КП «${name}» на ${sendEmail || lead.email}`);
         }}
       />
+
+      <AlertDialog open={callbackPromptOpen} onOpenChange={setCallbackPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Когда связаться с {lead.org_name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              По этому лиду ещё не сохранён итог звонка. Запланируем обратный звонок?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Дата и время перезвона</Label>
+            <Input
+              type="datetime-local"
+              value={callbackDate}
+              onChange={(e) => setCallbackDate(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <Button variant="ghost" onClick={() => { setCallbackPromptOpen(false); onOpenChange(false); }}>
+              Закрыть без задачи
+            </Button>
+            <AlertDialogCancel>Остаться</AlertDialogCancel>
+            <AlertDialogAction onClick={scheduleCallbackAndClose}>Запланировать</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
