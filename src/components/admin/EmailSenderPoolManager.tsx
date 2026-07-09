@@ -288,8 +288,94 @@ export function EmailSenderPoolManager() {
           </table>
         </div>
       )}
+
+      <Dialog open={addOpen} onOpenChange={(v) => (v ? setAddOpen(true) : closeAdd())}>
+        <DialogContent className="max-w-lg">
+          {!provider ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Подключить почту</DialogTitle>
+                <DialogDescription>Выберите вашего провайдера — SMTP-настройки подставятся автоматически.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-2">
+                {(Object.keys(PROVIDERS) as ProviderKey[]).map((k) => {
+                  const cfg = PROVIDERS[k];
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => pickProvider(k)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border hover:border-primary hover:bg-primary/5 transition text-left"
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${cfg.logoBg}`}>
+                        {cfg.logoText}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">{cfg.label}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {cfg.host ? `${cfg.host}:${cfg.port} (${cfg.encryption.toUpperCase()})` : "ручная настройка"}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={backToPicker}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div>
+                    <DialogTitle>{PROVIDERS[provider].label}</DialogTitle>
+                    <DialogDescription className="text-xs">{PROVIDERS[provider].hint}</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Email</label>
+                  <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={PROVIDERS[provider].emailPlaceholder} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Пароль</label>
+                  <Input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder={PROVIDERS[provider].passHint} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Имя отправителя</label>
+                  <Input value={newFromName} onChange={(e) => setNewFromName(e.target.value)} />
+                </div>
+                {provider === "other" && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <label className="text-xs text-muted-foreground">SMTP host</label>
+                      <Input value={newHost} onChange={(e) => setNewHost(e.target.value)} placeholder="smtp.example.com" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Порт</label>
+                      <Input type="number" value={newPort} onChange={(e) => setNewPort(Number(e.target.value))} />
+                    </div>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground rounded-lg bg-muted/40 p-2 flex items-center gap-2">
+                  <Mail className="w-3 h-3" />
+                  {newHost || "—"}:{newPort} ({newEnc.toUpperCase()})
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeAdd}>Отмена</Button>
+                <Button onClick={submitAdd} disabled={adding}>
+                  {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Подключить"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
 
 function StatCard({ label, value, tone }: { label: string; value: number; tone?: "ok" | "err" }) {
