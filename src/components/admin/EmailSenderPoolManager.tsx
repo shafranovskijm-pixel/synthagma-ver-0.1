@@ -4,8 +4,64 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Save, Trash2, AlertTriangle, CheckCircle2, KeyRound, Plus } from "lucide-react";
+import { Loader2, Save, Trash2, AlertTriangle, CheckCircle2, KeyRound, Plus, ChevronLeft, Mail } from "lucide-react";
+
+type ProviderKey = "yandex" | "mailru" | "timeweb" | "gmail" | "other";
+const PROVIDERS: Record<ProviderKey, {
+  label: string;
+  hint: string;
+  host: string;
+  port: number;
+  encryption: string;
+  emailPlaceholder: string;
+  passHint: string;
+  logoBg: string;
+  logoText: string;
+  icon?: string;
+}> = {
+  yandex: {
+    label: "Yandex 360 / Яндекс.Почта",
+    hint: "smtp.yandex.ru:465 (SSL). Нужен пароль приложения (id.yandex.ru → Безопасность → Пароли приложений → Почта).",
+    host: "smtp.yandex.ru", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@yandex.ru или name@ваш-домен.ru",
+    passHint: "Пароль приложения (не пароль от аккаунта)",
+    logoBg: "bg-red-500", logoText: "Я",
+  },
+  mailru: {
+    label: "VK WorkSpace / Mail.ru",
+    hint: "smtp.mail.ru:465 (SSL). Нужен пароль для внешних приложений (id.mail.ru → Безопасность → Пароли для внешних приложений).",
+    host: "smtp.mail.ru", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@mail.ru / bk.ru / list.ru / inbox.ru",
+    passHint: "Пароль для внешнего приложения",
+    logoBg: "bg-sky-500", logoText: "@",
+  },
+  timeweb: {
+    label: "Timeweb (корпоративная почта)",
+    hint: "smtp.timeweb.ru:465 (SSL). Обычный пароль от ящика.",
+    host: "smtp.timeweb.ru", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@ваш-домен.ru",
+    passHint: "Пароль от почтового ящика Timeweb",
+    logoBg: "bg-emerald-600", logoText: "T",
+  },
+  gmail: {
+    label: "Google Workspace (Gmail)",
+    hint: "smtp.gmail.com:465 (SSL). Нужен app-пароль (myaccount.google.com → Security → 2-Step Verification → App passwords).",
+    host: "smtp.gmail.com", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@gmail.com или домен на Google Workspace",
+    passHint: "App-пароль (16 символов без пробелов)",
+    logoBg: "bg-white border", logoText: "G",
+  },
+  other: {
+    label: "Другой провайдер",
+    hint: "Укажите host / port / шифрование вручную.",
+    host: "", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@domain.com",
+    passHint: "SMTP-пароль",
+    logoBg: "bg-slate-500", logoText: "?",
+  },
+};
 
 type Sender = {
   id: string;
