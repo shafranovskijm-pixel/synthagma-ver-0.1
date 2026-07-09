@@ -88,7 +88,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     return d.toISOString().slice(0, 16);
   });
   const { create: createTask } = useSalesTasks();
-  const { ensureCurrentManagerId } = useSalesManager();
+  
 
   const requestClose = () => {
     if (resultLogged) { onOpenChange(false); return; }
