@@ -207,6 +207,13 @@ serve(async (req) => {
     if (!isExisting) {
       // Use custom login if provided, otherwise generate one
       if (custom_login) {
+        // Only ASCII letters, digits, dot, underscore, hyphen — needed for auth email
+        if (!/^[a-zA-Z0-9._-]+$/.test(custom_login)) {
+          return new Response(
+            JSON.stringify({ error: `Логин может содержать только латинские буквы, цифры и знаки . _ -` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         // Check uniqueness of custom login
         const { data: existingLogin } = await supabaseAdmin
           .from("profiles")
@@ -224,6 +231,12 @@ serve(async (req) => {
         generatedLogin = await generateLogin();
       }
       generatedPassword = custom_password || password || generatePassword();
+      if (generatedPassword.length < 6) {
+        return new Response(
+          JSON.stringify({ error: `Пароль должен быть не короче 6 символов` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       const authEmail = `${generatedLogin}@student.local`;
       
       const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
