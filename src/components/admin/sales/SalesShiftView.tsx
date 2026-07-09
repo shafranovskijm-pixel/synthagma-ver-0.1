@@ -46,6 +46,7 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const [dozvonyToday, setDozvonyToday] = useState<number>(0);
   const [callsToday, setCallsToday] = useState<number>(0);
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
+  const [touchHistory, setTouchHistory] = useState<Map<string, Array<{ type: string; desc: string; at: string }>>>(new Map());
   const [testCallOpen, setTestCallOpen] = useState(false);
   const [tab, setTab] = useState<'active' | 'done'>('done');
   const [page, setPage] = useState(1);
@@ -134,15 +135,24 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   };
 
   const loadProcessed = useCallback(async (mid: string | null) => {
-    if (!mid) { setProcessedIds(new Set()); return; }
-    // Тянем ВСЕ активности менеджера (не только за сегодня),
-    // чтобы во вкладке «Обработано» были видны ранее отработанные лиды.
+    if (!mid) { setProcessedIds(new Set()); setTouchHistory(new Map()); return; }
     const { data } = await (supabase as any)
       .from('sales_lead_activities')
-      .select('lead_id')
+      .select('lead_id, activity_type, description, created_at')
       .eq('manager_id', mid)
+      .order('created_at', { ascending: false })
       .limit(5000);
-    setProcessedIds(new Set((data || []).map((r: any) => r.lead_id).filter(Boolean)));
+    const ids = new Set<string>();
+    const map = new Map<string, Array<{ type: string; desc: string; at: string }>>();
+    (data || []).forEach((r: any) => {
+      if (!r.lead_id) return;
+      ids.add(r.lead_id);
+      const list = map.get(r.lead_id) || [];
+      if (list.length < 8) list.push({ type: r.activity_type, desc: r.description || '', at: r.created_at });
+      map.set(r.lead_id, list);
+    });
+    setProcessedIds(ids);
+    setTouchHistory(map);
   }, []);
 
   // Realtime
@@ -322,7 +332,10 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
                         {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : (currentPage - 1) * PAGE_SIZE + idx + 1}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">{lead.org_name}</div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="font-medium truncate">{lead.org_name}</div>
+                          <TouchDots touches={touchHistory.get(lead.id)} />
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                           {lead.region && (
                             <span className="flex items-center gap-1 truncate max-w-[200px]">
@@ -414,6 +427,39 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
           }
         }}
       />
+    </div>
+  );
+}
+
+// Цветные точки истории касаний: показывают последние активности по лиду.
+// Зелёный — интерес/КП, красный — отказ, янтарный — перезвон/no_answer,
+// синий — отправка КП/письмо, серый — прочее.
+function touchColor(t: { type: string; desc: string }): string {
+  const d = (t.desc || '').toLowerCase();
+  if (t.type === 'email') return 'bg-sky-500';
+  if (/отказ|не интересно|blacklist/.test(d)) return 'bg-rose-500';
+  if (/интерес|демо|встреч/.test(d)) return 'bg-emerald-500';
+  if (/кп|коммерч|proposal|предложен/.test(d)) return 'bg-emerald-500';
+  if (/перезвон|callback|не берут|не ответ|автоответ|гейткип|секрет/.test(d)) return 'bg-amber-500';
+  if (t.type === 'call') return 'bg-slate-400';
+  return 'bg-muted-foreground/40';
+}
+
+function TouchDots({ touches }: { touches?: Array<{ type: string; desc: string; at: string }> }) {
+  if (!touches || touches.length === 0) return null;
+  const shown = touches.slice(0, 6);
+  return (
+    <div className="flex items-center gap-1 shrink-0" title={`Касаний: ${touches.length}`}>
+      {shown.map((t, i) => (
+        <span
+          key={i}
+          className={cn('w-2 h-2 rounded-full', touchColor(t))}
+          title={`${new Date(t.at).toLocaleString('ru-RU')} — ${t.desc.slice(0, 80) || t.type}`}
+        />
+      ))}
+      {touches.length > shown.length && (
+        <span className="text-[10px] text-muted-foreground ml-0.5">+{touches.length - shown.length}</span>
+      )}
     </div>
   );
 }
