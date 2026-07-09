@@ -128,6 +128,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   useEffect(() => {
     if (lead) {
       fetchActivities(lead.id);
+      setResultLogged(false);
       setNotes(lead.notes || '');
       setStatus(lead.status);
       setDirectorName(null);
