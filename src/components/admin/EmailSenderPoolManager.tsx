@@ -86,8 +86,6 @@ export function EmailSenderPoolManager() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Partial<Sender>>>({});
-  const [newEmail, setNewEmail] = useState("");
-  const [newPass, setNewPass] = useState("");
 
   const load = async () => {
     setLoading(true);
