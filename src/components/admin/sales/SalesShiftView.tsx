@@ -135,15 +135,24 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   };
 
   const loadProcessed = useCallback(async (mid: string | null) => {
-    if (!mid) { setProcessedIds(new Set()); return; }
-    // Тянем ВСЕ активности менеджера (не только за сегодня),
-    // чтобы во вкладке «Обработано» были видны ранее отработанные лиды.
+    if (!mid) { setProcessedIds(new Set()); setTouchHistory(new Map()); return; }
     const { data } = await (supabase as any)
       .from('sales_lead_activities')
-      .select('lead_id')
+      .select('lead_id, activity_type, description, created_at')
       .eq('manager_id', mid)
+      .order('created_at', { ascending: false })
       .limit(5000);
-    setProcessedIds(new Set((data || []).map((r: any) => r.lead_id).filter(Boolean)));
+    const ids = new Set<string>();
+    const map = new Map<string, Array<{ type: string; desc: string; at: string }>>();
+    (data || []).forEach((r: any) => {
+      if (!r.lead_id) return;
+      ids.add(r.lead_id);
+      const list = map.get(r.lead_id) || [];
+      if (list.length < 8) list.push({ type: r.activity_type, desc: r.description || '', at: r.created_at });
+      map.set(r.lead_id, list);
+    });
+    setProcessedIds(ids);
+    setTouchHistory(map);
   }, []);
 
   // Realtime
