@@ -79,6 +79,46 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [activeTab, setActiveTab] = useState('summary');
   const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
   const [openingOverride, setOpeningOverride] = useState<string | null>(null);
+  const [resultLogged, setResultLogged] = useState(false);
+  const [callbackPromptOpen, setCallbackPromptOpen] = useState(false);
+  const [callbackDate, setCallbackDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0, 0);
+    return d.toISOString().slice(0, 16);
+  });
+  const { create: createTask } = useSalesTasks();
+  const { ensureCurrentManagerId } = useSalesManager();
+
+  const requestClose = () => {
+    if (resultLogged) { onOpenChange(false); return; }
+    setCallbackPromptOpen(true);
+  };
+
+  const scheduleCallbackAndClose = async () => {
+    if (!lead) { setCallbackPromptOpen(false); onOpenChange(false); return; }
+    try {
+      const mid = await ensureCurrentManagerId();
+      const { data: u } = await supabase.auth.getUser();
+      await createTask.mutateAsync({
+        lead_id: lead.id,
+        manager_id: mid,
+        assigned_user_id: u.user?.id || null,
+        due_date: new Date(callbackDate).toISOString(),
+        title: `Перезвонить: ${lead.org_name}`,
+        description: null,
+        status: 'pending',
+        type: 'call',
+      });
+      await addActivity(lead.id, null, 'call', `Запланирован обратный звонок на ${new Date(callbackDate).toLocaleString('ru-RU')}`);
+      toast.success('Перезвон запланирован');
+    } catch (e: any) {
+      toast.error('Не удалось запланировать', { description: e?.message });
+    } finally {
+      setCallbackPromptOpen(false);
+      onOpenChange(false);
+    }
+  };
 
   // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
