@@ -15,6 +15,7 @@ export type AdminTabType =
   | "analytics" 
   | "organizations" 
   | "users"
+  | "companies"
   | "content"
   | "marketplace"
   | "sales"
