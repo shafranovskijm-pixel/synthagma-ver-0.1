@@ -141,13 +141,44 @@ export function EmailSenderPoolManager() {
     load();
   };
 
-  const addNew = async () => {
-    if (!newEmail) return;
+  const [newEmail, setNewEmail] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [newHost, setNewHost] = useState("");
+  const [newPort, setNewPort] = useState<number>(465);
+  const [newEnc, setNewEnc] = useState<string>("ssl");
+  const [newFromName, setNewFromName] = useState("Синтагма");
+  const [addOpen, setAddOpen] = useState(false);
+  const [provider, setProvider] = useState<ProviderKey | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const openAdd = () => { setAddOpen(true); setProvider(null); };
+  const pickProvider = (p: ProviderKey) => {
+    const cfg = PROVIDERS[p];
+    setProvider(p);
+    setNewEmail(""); setNewPass("");
+    setNewHost(cfg.host); setNewPort(cfg.port); setNewEnc(cfg.encryption);
+    setNewFromName("Синтагма");
+  };
+  const backToPicker = () => setProvider(null);
+  const closeAdd = () => { setAddOpen(false); setProvider(null); };
+
+  const submitAdd = async () => {
+    if (!newEmail.trim()) return toast.error("Укажите email");
+    if (!newHost.trim()) return toast.error("Укажите SMTP host");
+    setAdding(true);
     const { error } = await supabase.from("email_sender_pool").insert({
       email: newEmail.trim(),
       app_password: newPass.trim() || null,
-      host: "smtp.gmail.com", port: 465, encryption: "ssl",
-      from_name: "Синтагма",
+      host: newHost.trim(), port: newPort, encryption: newEnc,
+      from_name: newFromName.trim() || "Синтагма",
+      is_active: !!newPass.trim(),
+    });
+    setAdding(false);
+    if (error) return toast.error(error.message);
+    toast.success("Ящик добавлен");
+    closeAdd();
+    load();
+  };
       is_active: !!newPass.trim(),
     });
     if (error) return toast.error(error.message);
