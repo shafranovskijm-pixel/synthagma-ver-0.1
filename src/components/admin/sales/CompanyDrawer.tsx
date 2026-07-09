@@ -69,7 +69,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     return () => clearTimeout(t);
   }, [open, lead?.id]);
 
-  const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
+  const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity, ensureCurrentManagerId } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
   const [resultOpen, setResultOpen] = useState(false);
