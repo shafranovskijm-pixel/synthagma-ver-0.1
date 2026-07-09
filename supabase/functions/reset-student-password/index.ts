@@ -105,7 +105,15 @@ serve(async (req) => {
     })();
 
     // Determine if we need to update email to login-based format
-    const emailToUpdate = new_email || (targetProfile.login ? `${targetProfile.login}@student.local` : undefined);
+    const buildAuthEmail = async (login: string): Promise<string> => {
+      const clean = login.trim().toLowerCase();
+      if (/^[a-z0-9._-]+$/.test(clean)) return `${clean}@student.local`;
+      const bytes = new TextEncoder().encode(clean);
+      const hash = await crypto.subtle.digest("SHA-256", bytes);
+      const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      return `u_${hex.slice(0, 24)}@student.local`;
+    };
+    const emailToUpdate = new_email || (targetProfile.login ? await buildAuthEmail(targetProfile.login) : undefined);
 
     // Update password (and optionally email) in auth.users
     const updateData: { password: string; email?: string; email_confirm?: boolean } = { password };
