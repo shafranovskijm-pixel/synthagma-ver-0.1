@@ -46,6 +46,7 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const [dozvonyToday, setDozvonyToday] = useState<number>(0);
   const [callsToday, setCallsToday] = useState<number>(0);
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
+  const [touchHistory, setTouchHistory] = useState<Map<string, Array<{ type: string; desc: string; at: string }>>>(new Map());
   const [testCallOpen, setTestCallOpen] = useState(false);
   const [tab, setTab] = useState<'active' | 'done'>('done');
   const [page, setPage] = useState(1);
