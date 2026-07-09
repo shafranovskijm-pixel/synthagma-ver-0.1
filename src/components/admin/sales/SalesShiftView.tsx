@@ -47,7 +47,7 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const [callsToday, setCallsToday] = useState<number>(0);
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const [testCallOpen, setTestCallOpen] = useState(false);
-  const [tab, setTab] = useState<'active' | 'done'>('active');
+  const [tab, setTab] = useState<'active' | 'done'>('done');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<SalesLead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
