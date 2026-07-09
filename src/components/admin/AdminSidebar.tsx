@@ -86,6 +86,7 @@ export function AdminSidebar({
   const allNavItems: NavItem[] = [
     { id: "organizations", icon: Building2, label: "Организации" },
     { id: "users", icon: Users, label: "Пользователи" },
+    { id: "companies", icon: Database, label: "База компаний" },
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
     { id: "webinars-admin", icon: Radio, label: "Вебинары" },
