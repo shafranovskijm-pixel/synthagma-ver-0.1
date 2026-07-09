@@ -22,6 +22,9 @@ import { getErrorMessage } from '@/utils/handleSupabaseError';
 import { useAuth } from '@/hooks/useAuth';
 import type { CallResultKey } from '@/constants/coldCallScript';
 import { extractExtraPhones, formatRuPhone } from '@/utils/phoneParser';
+import { useSalesTasks } from '@/hooks/useSalesTasks';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
 
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
