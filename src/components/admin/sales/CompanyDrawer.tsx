@@ -436,6 +436,32 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
           addActivity(lead.id, null, 'email', `Отправлено КП «${name}» на ${sendEmail || lead.email}`);
         }}
       />
+
+      <AlertDialog open={callbackPromptOpen} onOpenChange={setCallbackPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Когда связаться с {lead.org_name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              По этому лиду ещё не сохранён итог звонка. Запланируем обратный звонок?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Дата и время перезвона</Label>
+            <Input
+              type="datetime-local"
+              value={callbackDate}
+              onChange={(e) => setCallbackDate(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <Button variant="ghost" onClick={() => { setCallbackPromptOpen(false); onOpenChange(false); }}>
+              Закрыть без задачи
+            </Button>
+            <AlertDialogCancel>Остаться</AlertDialogCancel>
+            <AlertDialogAction onClick={scheduleCallbackAndClose}>Запланировать</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
