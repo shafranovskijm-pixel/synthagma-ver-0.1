@@ -177,13 +177,6 @@ export function EmailSenderPoolManager() {
     closeAdd();
     load();
   };
-      is_active: !!newPass.trim(),
-    });
-    if (error) return toast.error(error.message);
-    setNewEmail(""); setNewPass("");
-    toast.success("Добавлено");
-    load();
-  };
 
   return (
     <div className="space-y-6">
@@ -191,11 +184,10 @@ export function EmailSenderPoolManager() {
         <div className="flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
           <div>
-            <div className="font-medium mb-1">Gmail SMTP требует app-пароли (16 символов без пробелов)</div>
+            <div className="font-medium mb-1">Совет по паролям</div>
             <div className="text-muted-foreground">
-              Обычные пароли Google по SMTP не принимаются (BadCredentials).
-              Для каждого ящика: <b>myaccount.google.com → Security → 2-Step Verification → App passwords</b>,
-              создайте пароль «Mail» и вставьте сюда. После этого включите переключатель.
+              Для Gmail и Яндекса нужен <b>пароль приложения</b>, а не пароль от аккаунта.
+              Для Timeweb и Mail.ru — обычно достаточно пароля от ящика (или пароля для внешних приложений).
             </div>
           </div>
         </div>
@@ -208,17 +200,10 @@ export function EmailSenderPoolManager() {
         <StatCard label="Отправлено сегодня" value={stats.sendsToday} />
       </div>
 
-      <div className="rounded-xl border p-3 flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-xs text-muted-foreground">Новый email</label>
-          <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@yi.mannni.com" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-xs text-muted-foreground">App-пароль (опционально)</label>
-          <Input value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
-        </div>
-        <Button onClick={addNew} className="gap-1"><Plus className="w-4 h-4" />Добавить</Button>
+      <div className="flex justify-end">
+        <Button onClick={openAdd} className="gap-1"><Plus className="w-4 h-4" />Добавить ящик</Button>
       </div>
+
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
