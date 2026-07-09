@@ -4,8 +4,64 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Save, Trash2, AlertTriangle, CheckCircle2, KeyRound, Plus } from "lucide-react";
+import { Loader2, Save, Trash2, AlertTriangle, CheckCircle2, KeyRound, Plus, ChevronLeft, Mail } from "lucide-react";
+
+type ProviderKey = "yandex" | "mailru" | "timeweb" | "gmail" | "other";
+const PROVIDERS: Record<ProviderKey, {
+  label: string;
+  hint: string;
+  host: string;
+  port: number;
+  encryption: string;
+  emailPlaceholder: string;
+  passHint: string;
+  logoBg: string;
+  logoText: string;
+  icon?: string;
+}> = {
+  yandex: {
+    label: "Yandex 360 / Яндекс.Почта",
+    hint: "smtp.yandex.ru:465 (SSL). Нужен пароль приложения (id.yandex.ru → Безопасность → Пароли приложений → Почта).",
+    host: "smtp.yandex.ru", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@yandex.ru или name@ваш-домен.ru",
+    passHint: "Пароль приложения (не пароль от аккаунта)",
+    logoBg: "bg-red-500", logoText: "Я",
+  },
+  mailru: {
+    label: "VK WorkSpace / Mail.ru",
+    hint: "smtp.mail.ru:465 (SSL). Нужен пароль для внешних приложений (id.mail.ru → Безопасность → Пароли для внешних приложений).",
+    host: "smtp.mail.ru", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@mail.ru / bk.ru / list.ru / inbox.ru",
+    passHint: "Пароль для внешнего приложения",
+    logoBg: "bg-sky-500", logoText: "@",
+  },
+  timeweb: {
+    label: "Timeweb (корпоративная почта)",
+    hint: "smtp.timeweb.ru:465 (SSL). Обычный пароль от ящика.",
+    host: "smtp.timeweb.ru", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@ваш-домен.ru",
+    passHint: "Пароль от почтового ящика Timeweb",
+    logoBg: "bg-emerald-600", logoText: "T",
+  },
+  gmail: {
+    label: "Google Workspace (Gmail)",
+    hint: "smtp.gmail.com:465 (SSL). Нужен app-пароль (myaccount.google.com → Security → 2-Step Verification → App passwords).",
+    host: "smtp.gmail.com", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@gmail.com или домен на Google Workspace",
+    passHint: "App-пароль (16 символов без пробелов)",
+    logoBg: "bg-white border", logoText: "G",
+  },
+  other: {
+    label: "Другой провайдер",
+    hint: "Укажите host / port / шифрование вручную.",
+    host: "", port: 465, encryption: "ssl",
+    emailPlaceholder: "name@domain.com",
+    passHint: "SMTP-пароль",
+    logoBg: "bg-slate-500", logoText: "?",
+  },
+};
 
 type Sender = {
   id: string;
@@ -30,8 +86,6 @@ export function EmailSenderPoolManager() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Partial<Sender>>>({});
-  const [newEmail, setNewEmail] = useState("");
-  const [newPass, setNewPass] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -85,18 +139,42 @@ export function EmailSenderPoolManager() {
     load();
   };
 
-  const addNew = async () => {
-    if (!newEmail) return;
+  const [newEmail, setNewEmail] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [newHost, setNewHost] = useState("");
+  const [newPort, setNewPort] = useState<number>(465);
+  const [newEnc, setNewEnc] = useState<string>("ssl");
+  const [newFromName, setNewFromName] = useState("Синтагма");
+  const [addOpen, setAddOpen] = useState(false);
+  const [provider, setProvider] = useState<ProviderKey | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const openAdd = () => { setAddOpen(true); setProvider(null); };
+  const pickProvider = (p: ProviderKey) => {
+    const cfg = PROVIDERS[p];
+    setProvider(p);
+    setNewEmail(""); setNewPass("");
+    setNewHost(cfg.host); setNewPort(cfg.port); setNewEnc(cfg.encryption);
+    setNewFromName("Синтагма");
+  };
+  const backToPicker = () => setProvider(null);
+  const closeAdd = () => { setAddOpen(false); setProvider(null); };
+
+  const submitAdd = async () => {
+    if (!newEmail.trim()) return toast.error("Укажите email");
+    if (!newHost.trim()) return toast.error("Укажите SMTP host");
+    setAdding(true);
     const { error } = await supabase.from("email_sender_pool").insert({
       email: newEmail.trim(),
       app_password: newPass.trim() || null,
-      host: "smtp.gmail.com", port: 465, encryption: "ssl",
-      from_name: "Синтагма",
+      host: newHost.trim(), port: newPort, encryption: newEnc,
+      from_name: newFromName.trim() || "Синтагма",
       is_active: !!newPass.trim(),
     });
+    setAdding(false);
     if (error) return toast.error(error.message);
-    setNewEmail(""); setNewPass("");
-    toast.success("Добавлено");
+    toast.success("Ящик добавлен");
+    closeAdd();
     load();
   };
 
@@ -106,11 +184,10 @@ export function EmailSenderPoolManager() {
         <div className="flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
           <div>
-            <div className="font-medium mb-1">Gmail SMTP требует app-пароли (16 символов без пробелов)</div>
+            <div className="font-medium mb-1">Совет по паролям</div>
             <div className="text-muted-foreground">
-              Обычные пароли Google по SMTP не принимаются (BadCredentials).
-              Для каждого ящика: <b>myaccount.google.com → Security → 2-Step Verification → App passwords</b>,
-              создайте пароль «Mail» и вставьте сюда. После этого включите переключатель.
+              Для Gmail и Яндекса нужен <b>пароль приложения</b>, а не пароль от аккаунта.
+              Для Timeweb и Mail.ru — обычно достаточно пароля от ящика (или пароля для внешних приложений).
             </div>
           </div>
         </div>
@@ -123,17 +200,10 @@ export function EmailSenderPoolManager() {
         <StatCard label="Отправлено сегодня" value={stats.sendsToday} />
       </div>
 
-      <div className="rounded-xl border p-3 flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-xs text-muted-foreground">Новый email</label>
-          <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@yi.mannni.com" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-xs text-muted-foreground">App-пароль (опционально)</label>
-          <Input value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
-        </div>
-        <Button onClick={addNew} className="gap-1"><Plus className="w-4 h-4" />Добавить</Button>
+      <div className="flex justify-end">
+        <Button onClick={openAdd} className="gap-1"><Plus className="w-4 h-4" />Добавить ящик</Button>
       </div>
+
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -218,8 +288,94 @@ export function EmailSenderPoolManager() {
           </table>
         </div>
       )}
+
+      <Dialog open={addOpen} onOpenChange={(v) => (v ? setAddOpen(true) : closeAdd())}>
+        <DialogContent className="max-w-lg">
+          {!provider ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Подключить почту</DialogTitle>
+                <DialogDescription>Выберите вашего провайдера — SMTP-настройки подставятся автоматически.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-2">
+                {(Object.keys(PROVIDERS) as ProviderKey[]).map((k) => {
+                  const cfg = PROVIDERS[k];
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => pickProvider(k)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border hover:border-primary hover:bg-primary/5 transition text-left"
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${cfg.logoBg}`}>
+                        {cfg.logoText}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">{cfg.label}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {cfg.host ? `${cfg.host}:${cfg.port} (${cfg.encryption.toUpperCase()})` : "ручная настройка"}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={backToPicker}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div>
+                    <DialogTitle>{PROVIDERS[provider].label}</DialogTitle>
+                    <DialogDescription className="text-xs">{PROVIDERS[provider].hint}</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Email</label>
+                  <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={PROVIDERS[provider].emailPlaceholder} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Пароль</label>
+                  <Input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder={PROVIDERS[provider].passHint} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Имя отправителя</label>
+                  <Input value={newFromName} onChange={(e) => setNewFromName(e.target.value)} />
+                </div>
+                {provider === "other" && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <label className="text-xs text-muted-foreground">SMTP host</label>
+                      <Input value={newHost} onChange={(e) => setNewHost(e.target.value)} placeholder="smtp.example.com" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Порт</label>
+                      <Input type="number" value={newPort} onChange={(e) => setNewPort(Number(e.target.value))} />
+                    </div>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground rounded-lg bg-muted/40 p-2 flex items-center gap-2">
+                  <Mail className="w-3 h-3" />
+                  {newHost || "—"}:{newPort} ({newEnc.toUpperCase()})
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeAdd}>Отмена</Button>
+                <Button onClick={submitAdd} disabled={adding}>
+                  {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Подключить"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
 
 function StatCard({ label, value, tone }: { label: string; value: number; tone?: "ok" | "err" }) {
