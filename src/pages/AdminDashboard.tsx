@@ -26,6 +26,7 @@ const AdminBillingOverview = lazyWithRetry(() => import("@/components/admin/Admi
 const AdminFinanceOverview = lazyWithRetry(() => import("@/components/admin/AdminFinanceOverview").then(m => ({ default: m.AdminFinanceOverview })));
 const AdminWebinarsOverview = lazyWithRetry(() => import("@/components/admin/AdminWebinarsOverview").then(m => ({ default: m.AdminWebinarsOverview })));
 const AdminClientErrorsTab = lazyWithRetry(() => import("@/components/admin/AdminClientErrorsTab").then(m => ({ default: m.AdminClientErrorsTab })));
+const AdminCompaniesTab = lazyWithRetry(() => import("@/components/admin/AdminCompaniesTab").then(m => ({ default: m.AdminCompaniesTab })));
 
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
@@ -184,6 +185,9 @@ const AdminDashboard = () => {
           {/* Eager: дефолтные «Организации» и «Пользователи» — открываются часто */}
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "users" && <UsersManager />}
+          {activeTab === "companies" && (
+            <Suspense fallback={<LazyLoadFallback />}><AdminCompaniesTab /></Suspense>
+          )}
 
           {/* Lazy-вкладки: грузим JS только при открытии */}
           <Suspense fallback={<LazyLoadFallback />}>

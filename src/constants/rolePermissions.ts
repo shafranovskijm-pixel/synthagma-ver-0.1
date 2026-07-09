@@ -127,7 +127,7 @@ export const ORG_ROLE_PERMISSIONS: Record<OrgStaffRole, Permission[]> = {
 // Действует поверх глобальной роли user_roles.role='admin'.
 // Sales-разделы и финансы доступны только super_admin/admin/sales_manager.
 const ADMIN_SECTIONS_FULL = [
-  'organizations', 'users', 'marketplace', 'sales', 'finance',
+  'organizations', 'users', 'companies', 'marketplace', 'sales', 'finance',
   'webinars-admin', 'chats', 'billing', 'broadcast', 'support-chats',
   'referrals', 'support', 'devtools', 'updates', 'staff', 'settings',
   'analytics', 'content', 'ai', 'client-errors',
@@ -138,17 +138,17 @@ export type AdminSection = typeof ADMIN_SECTIONS_FULL[number];
 export const ADMIN_ROLE_SECTIONS: Record<AdminStaffRole, AdminSection[]> = {
   super_admin: [...ADMIN_SECTIONS_FULL],
   admin: [
-    'organizations', 'users', 'marketplace', 'sales', 'finance',
+    'organizations', 'users', 'companies', 'marketplace', 'sales', 'finance',
     'webinars-admin', 'chats', 'billing', 'broadcast', 'support-chats',
     'referrals', 'support', 'updates', 'staff', 'settings',
     'analytics', 'content', 'ai', 'client-errors',
   ],
   sales_manager: [
-    'sales', 'marketplace', 'finance', 'billing',
+    'sales', 'companies', 'marketplace', 'finance', 'billing',
     'support-chats', 'chats', 'analytics',
   ],
   viewer: [
-    'organizations', 'users', 'analytics', 'support-chats', 'chats',
+    'organizations', 'users', 'companies', 'analytics', 'support-chats', 'chats',
   ],
 };
 
