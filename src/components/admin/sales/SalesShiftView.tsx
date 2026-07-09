@@ -184,7 +184,17 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   }, [processedIds]);
 
   const activeQueue = useMemo(() => queue.filter(q => !isProcessed(q.lead)), [queue, isProcessed]);
-  const doneQueue = useMemo(() => queue.filter(q => isProcessed(q.lead)), [queue, isProcessed]);
+  // Обработанные показываем из ВСЕХ моих лидов (не ограничиваясь рабочим окном 09–18),
+  // чтобы после перезахода менеджер видел ранее отработанные компании.
+  const doneQueue = useMemo(() => {
+    const mine = managerId
+      ? leads.filter(l => !l.assigned_manager_id || l.assigned_manager_id === managerId)
+      : leads;
+    return mine
+      .filter(l => isProcessed(l))
+      .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+      .map(l => ({ lead: l, localTime: null, mskLabel: null, minutesUntilClose: Infinity, hasTimezone: false }));
+  }, [leads, managerId, isProcessed]);
 
   const currentList = tab === 'active' ? activeQueue : doneQueue;
   const totalPages = Math.max(1, Math.ceil(currentList.length / PAGE_SIZE));
