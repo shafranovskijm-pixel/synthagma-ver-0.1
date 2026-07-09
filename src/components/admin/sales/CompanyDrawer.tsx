@@ -373,8 +373,8 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                   lead={lead}
                   initialResult={presetResult}
                   resetKey={resultOpen ? `${lead.id}-open` : `${lead.id}-closed`}
-                  onSaved={() => { fetchActivities(lead.id); setResultOpen(false); }}
-                  onSaveAndNext={onSaveAndNext ? () => { onSaveAndNext(); setResultOpen(false); } : undefined}
+                  onSaved={() => { fetchActivities(lead.id); setResultOpen(false); setResultLogged(true); }}
+                  onSaveAndNext={onSaveAndNext ? () => { onSaveAndNext(); setResultOpen(false); setResultLogged(true); } : undefined}
                   onCancel={() => { setResultOpen(false); setActiveTab('summary'); }}
                 />
               </TabsContent>
