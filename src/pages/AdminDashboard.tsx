@@ -185,6 +185,9 @@ const AdminDashboard = () => {
           {/* Eager: дефолтные «Организации» и «Пользователи» — открываются часто */}
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "users" && <UsersManager />}
+          {activeTab === "companies" && (
+            <Suspense fallback={<LazyLoadFallback />}><AdminCompaniesTab /></Suspense>
+          )}
 
           {/* Lazy-вкладки: грузим JS только при открытии */}
           <Suspense fallback={<LazyLoadFallback />}>
