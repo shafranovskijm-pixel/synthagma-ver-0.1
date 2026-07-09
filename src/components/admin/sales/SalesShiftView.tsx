@@ -135,13 +135,13 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
 
   const loadProcessed = useCallback(async (mid: string | null) => {
     if (!mid) { setProcessedIds(new Set()); return; }
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Тянем ВСЕ активности менеджера (не только за сегодня),
+    // чтобы во вкладке «Обработано» были видны ранее отработанные лиды.
     const { data } = await (supabase as any)
       .from('sales_lead_activities')
       .select('lead_id')
       .eq('manager_id', mid)
-      .gte('created_at', startOfDay.toISOString());
+      .limit(5000);
     setProcessedIds(new Set((data || []).map((r: any) => r.lead_id).filter(Boolean)));
   }, []);
 
@@ -170,7 +170,6 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
       ? leads.filter(l => !l.assigned_manager_id || l.assigned_manager_id === managerId)
       : leads;
     const built = buildShiftQueue(mine);
-    // Тестовые карточки закрепляем в самом верху очереди
     const isTest = (name?: string | null) => !!name && /\(тест\)/i.test(name);
     const pinned = built.filter(q => isTest(q.lead.org_name));
     const rest = built.filter(q => !isTest(q.lead.org_name));
@@ -179,16 +178,23 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
 
   const isProcessed = useCallback((l: SalesLead) => {
     if (processedIds.has(l.id)) return true;
-    if (PROCESSED_STATUSES.has(l.status) && l.updated_at) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      return new Date(l.updated_at).getTime() >= startOfDay.getTime();
-    }
+    // Финальные статусы считаем обработанными независимо от даты
+    if (PROCESSED_STATUSES.has(l.status)) return true;
     return false;
   }, [processedIds]);
 
   const activeQueue = useMemo(() => queue.filter(q => !isProcessed(q.lead)), [queue, isProcessed]);
-  const doneQueue = useMemo(() => queue.filter(q => isProcessed(q.lead)), [queue, isProcessed]);
+  // Обработанные показываем из ВСЕХ моих лидов (не ограничиваясь рабочим окном 09–18),
+  // чтобы после перезахода менеджер видел ранее отработанные компании.
+  const doneQueue = useMemo(() => {
+    const mine = managerId
+      ? leads.filter(l => !l.assigned_manager_id || l.assigned_manager_id === managerId)
+      : leads;
+    return mine
+      .filter(l => isProcessed(l))
+      .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+      .map(l => ({ lead: l, localTime: null, mskLabel: null, minutesUntilClose: Infinity, hasTimezone: false }));
+  }, [leads, managerId, isProcessed]);
 
   const currentList = tab === 'active' ? activeQueue : doneQueue;
   const totalPages = Math.max(1, Math.ceil(currentList.length / PAGE_SIZE));
