@@ -85,6 +85,7 @@ export const publicRoutes = (
     <Route path="/feature/sales-crm" element={<FeatureSalesCRM />} />
     <Route path="/roadmap" element={<RoadmapPage />} />
     <Route path="/rostechnadzor-courses" element={<RostechnadzorCoursesPage />} />
+    <Route path="/courses/fire-safety" element={<FireSafetyCoursesPage />} />
     <Route path="/public-offer" element={<PublicOffer />} />
     <Route path="/student-agreement" element={<StudentAgreement />} />
     <Route path="/privacy" element={<PrivacyPolicy />} />
