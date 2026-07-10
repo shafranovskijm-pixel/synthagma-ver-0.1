@@ -27,12 +27,13 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { template_id, to_email, scope, organization_id } = await req.json();
+    const { template_id, to_email, scope, organization_id, mode, variables, to_name } = await req.json();
     if (!template_id || !to_email) {
       return new Response(JSON.stringify({ error: "template_id и to_email обязательны" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const isSingle = mode === "single";
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -70,8 +71,19 @@ serve(async (req: Request) => {
       };
     }
 
-    const html = render(tpl.html_body, { ...SAMPLE, "{{email}}": to_email });
-    const subject = "[ТЕСТ] " + render(tpl.subject, SAMPLE);
+    const userVars: Record<string, string> = {};
+    if (variables && typeof variables === "object") {
+      for (const [k, v] of Object.entries(variables)) {
+        if (v == null) continue;
+        userVars[`{{${k}}}`] = String(v);
+      }
+    }
+    if (to_name) userVars["{{name}}"] = String(to_name);
+    userVars["{{email}}"] = to_email;
+
+    const varMap = isSingle ? userVars : { ...SAMPLE, ...userVars };
+    const html = render(tpl.html_body, varMap);
+    const subject = (isSingle ? "" : "[ТЕСТ] ") + render(tpl.subject, varMap);
 
     await sendSmtpEmail(smtp, { to: to_email, subject, html });
 
