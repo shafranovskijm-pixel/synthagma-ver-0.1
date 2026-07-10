@@ -102,7 +102,22 @@ serve(async (req: Request) => {
     const subject = (isSingle ? "" : "[ТЕСТ] ") + render(tpl.subject, varMap);
 
     console.log("send-test-email smtp start", { from: smtp.from_email, host: smtp.host, port: smtp.port, to: to_email });
-    await sendSmtpEmail(smtp, { to: to_email, subject, html });
+    const OVERALL_TIMEOUT_MS = 60_000;
+    let overallTimer: number | undefined;
+    const overallTimeout = new Promise<never>((_, reject) => {
+      overallTimer = setTimeout(
+        () => reject(new Error(`SMTP overall timeout (${OVERALL_TIMEOUT_MS / 1000}s) — сервер ${smtp.host}:${smtp.port} не отвечает`)),
+        OVERALL_TIMEOUT_MS,
+      );
+    });
+    try {
+      await Promise.race([
+        sendSmtpEmail(smtp, { to: to_email, subject, html }),
+        overallTimeout,
+      ]);
+    } finally {
+      if (overallTimer !== undefined) clearTimeout(overallTimer);
+    }
     console.log("send-test-email smtp ok", { from: smtp.from_email, to: to_email });
 
     if (senderPoolEmail) {
