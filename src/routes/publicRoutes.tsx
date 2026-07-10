@@ -25,6 +25,7 @@ const FeatureEmailCampaigns = lazyWithRetry(() => import("@/pages/FeatureEmailCa
 const FeatureSalesCRM = lazyWithRetry(() => import("@/pages/FeatureSalesCRM"));
 const RoadmapPage = lazyWithRetry(() => import("@/pages/RoadmapPage"));
 const RostechnadzorCoursesPage = lazyWithRetry(() => import("@/pages/RostechnadzorCoursesPage"));
+const FireSafetyCoursesPage = lazyWithRetry(() => import("@/pages/FireSafetyCoursesPage"));
 const PublicOffer = lazyWithRetry(() => import("@/pages/PublicOffer"));
 const StudentAgreement = lazyWithRetry(() => import("@/pages/StudentAgreement"));
 const PrivacyPolicy = lazyWithRetry(() => import("@/pages/PrivacyPolicy"));
@@ -84,6 +85,7 @@ export const publicRoutes = (
     <Route path="/feature/sales-crm" element={<FeatureSalesCRM />} />
     <Route path="/roadmap" element={<RoadmapPage />} />
     <Route path="/rostechnadzor-courses" element={<RostechnadzorCoursesPage />} />
+    <Route path="/courses/fire-safety" element={<FireSafetyCoursesPage />} />
     <Route path="/public-offer" element={<PublicOffer />} />
     <Route path="/student-agreement" element={<StudentAgreement />} />
     <Route path="/privacy" element={<PrivacyPolicy />} />
