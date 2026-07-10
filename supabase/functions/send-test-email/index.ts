@@ -23,17 +23,6 @@ function render(html: string, vars: Record<string, string>): string {
   return h;
 }
 
-async function sendWithTimeout(smtp: SmtpConfig, opts: { to: string; subject: string; html: string }, timeoutMs = 25_000) {
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(`SMTP timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs);
-  });
-
-  await Promise.race([
-    sendSmtpEmail(smtp, opts),
-    timeout,
-  ]);
-}
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -113,7 +102,7 @@ serve(async (req: Request) => {
     const subject = (isSingle ? "" : "[ТЕСТ] ") + render(tpl.subject, varMap);
 
     console.log("send-test-email smtp start", { from: smtp.from_email, host: smtp.host, port: smtp.port, to: to_email });
-    await sendWithTimeout(smtp, { to: to_email, subject, html });
+    await sendSmtpEmail(smtp, { to: to_email, subject, html });
     console.log("send-test-email smtp ok", { from: smtp.from_email, to: to_email });
 
     if (senderPoolEmail) {
