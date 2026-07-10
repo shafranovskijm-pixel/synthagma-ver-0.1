@@ -134,10 +134,10 @@ const RostechnadzorCoursesPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>300+ готовых курсов для обучения сотрудников — 14 направлений | СИНТАГМА</title>
-        <meta name="description" content="300+ готовых курсов по 14 направлениям: электробезопасность, энергетика, охрана труда, пожарная безопасность, медицина, рабочие профессии. Подключите к организации за 5 минут." />
-        <meta property="og:title" content="300+ готовых курсов для обучения — СИНТАГМА" />
-        <meta property="og:description" content="Библиотека готовых курсов по 14 направлениям. Подключите к организации — не нужно разрабатывать контент с нуля." />
+        <title>250+ готовых курсов для обучения сотрудников | СИНТАГМА</title>
+        <meta name="description" content="Готовые курсы по электробезопасности, энергетике, охране труда, пожарной безопасности, медицине и промбезопасности. Подключите к организации за 5 минут." />
+        <meta property="og:title" content="250+ готовых курсов для обучения — СИНТАГМА" />
+        <meta property="og:description" content="Библиотека готовых курсов по ключевым направлениям обучения. Подключите к организации — не нужно разрабатывать контент с нуля." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://sintagma.com.ru/rostechnadzor-courses" />
         <link rel="canonical" href="https://sintagma.com.ru/rostechnadzor-courses" />
@@ -145,7 +145,7 @@ const RostechnadzorCoursesPage = () => {
           "@context": "https://schema.org",
           "@type": "ItemList",
           "name": "Каталог готовых курсов СИНТАГМА",
-          "description": "300+ готовых курсов по 14 направлениям обучения",
+          "description": "Готовые курсы по ключевым направлениям обучения",
           "numberOfItems": totalCount || undefined,
           "itemListElement": jsonLdItems
         })}</script>
