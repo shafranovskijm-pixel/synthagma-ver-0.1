@@ -81,7 +81,7 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
         const cfg = parseDailyPlan(planR?.data?.setting_value);
         setDailyPlan(planForManager(cfg, viewAs.managerId));
         await refreshCounters(viewAs.managerId, viewAs.userId || user.id);
-        await loadProcessed(viewAs.managerId);
+        await loadProcessed(viewAs.managerId, viewAs.userId || user.id);
         return;
       }
 
