@@ -264,46 +264,58 @@ const RostechnadzorCoursesPage = () => {
 
 
             <div className="grid gap-5">
-              {categories.map((cat, i) => (
-                <motion.div
-                  key={cat.title}
-                  variants={fadeUp}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.04 }}
-                >
-                  <Card className="relative border-border/60 bg-card/80 backdrop-blur-sm hover:border-accent/30 transition-all duration-300 overflow-hidden group">
-                    {/* Hover glow */}
-                    <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                      <div className="absolute top-0 left-1/4 w-1/2 h-20 bg-accent/5 blur-2xl" />
-                    </div>
-                    <CardContent className="p-6 md:p-8 relative z-10">
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className={`w-12 h-12 rounded-xl ${cat.bgColor} flex items-center justify-center shrink-0`}>
-                          <cat.icon className={`w-6 h-6 ${cat.color}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <h3 className="font-display text-xl font-medium">{cat.title}</h3>
-                            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
-                              {cat.count} {cat.count >= 5 ? "курсов" : cat.count >= 2 ? "курса" : "курс"}
-                            </span>
+              {catalogLoading && (
+                <div className="text-center text-muted-foreground py-8">Загружаем актуальный каталог…</div>
+              )}
+              {!catalogLoading && (fullCatalog ?? []).map((cat, i) => {
+                const style = CATEGORY_STYLE[cat.title] ?? DEFAULT_STYLE;
+                const Icon = style.icon;
+                const preview = cat.courses.slice(0, 6);
+                return (
+                  <motion.div
+                    key={cat.title}
+                    variants={fadeUp}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.04 }}
+                  >
+                    <Card className="relative border-border/60 bg-card/80 backdrop-blur-sm hover:border-accent/30 transition-all duration-300 overflow-hidden group">
+                      <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <div className="absolute top-0 left-1/4 w-1/2 h-20 bg-accent/5 blur-2xl" />
+                      </div>
+                      <CardContent className="p-6 md:p-8 relative z-10">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className={`w-12 h-12 rounded-xl ${style.bgColor} flex items-center justify-center shrink-0`}>
+                            <Icon className={`w-6 h-6 ${style.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <h3 className="font-display text-xl font-medium">{cat.title}</h3>
+                              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
+                                {cat.count} {cat.count >= 5 ? "курсов" : cat.count >= 2 ? "курса" : "курс"}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 pl-0 md:pl-16">
-                        {cat.courses.map((course) => (
-                          <div key={course} className="flex items-start gap-2 py-1">
-                            <CheckCircle2 className="w-4 h-4 text-accent/60 shrink-0 mt-0.5" />
-                            <span className="text-sm text-foreground/70">{course}</span>
+                        <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 pl-0 md:pl-16">
+                          {preview.map((course) => (
+                            <div key={course.title} className="flex items-start gap-2 py-1">
+                              <CheckCircle2 className="w-4 h-4 text-accent/60 shrink-0 mt-0.5" />
+                              <span className="text-sm text-foreground/70">{course.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {cat.count > preview.length && (
+                          <div className="pl-0 md:pl-16 mt-2 text-xs text-muted-foreground">
+                            и ещё {cat.count - preview.length} курс{(cat.count - preview.length) >= 5 ? "ов" : (cat.count - preview.length) >= 2 ? "а" : ""} в этом направлении
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         </div>
