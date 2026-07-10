@@ -146,7 +146,7 @@ const RostechnadzorCoursesPage = () => {
           "@type": "ItemList",
           "name": "Каталог готовых курсов СИНТАГМА",
           "description": "300+ готовых курсов по 14 направлениям обучения",
-          "numberOfItems": 303,
+          "numberOfItems": totalCount || undefined,
           "itemListElement": jsonLdItems
         })}</script>
       </Helmet>
