@@ -127,6 +127,9 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
                     <Button size="icon" variant="ghost" onClick={() => setPreviewing(t)} title="Посмотреть письмо">
                       <Eye className="w-4 h-4" />
                     </Button>
+                    <Button size="icon" variant="ghost" onClick={() => { setSingleSend(t); setSingleTo(""); setSingleName(""); setSingleRegUrl(""); }} title="Отправить одному получателю">
+                      <UserPlus className="w-4 h-4 text-primary" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => setCampaignFromTemplate(t)} title="Запустить рассылку из шаблона">
                       <Send className="w-4 h-4 text-primary" />
                     </Button>
