@@ -174,21 +174,11 @@ serve(async (req) => {
      passwordToUse = decryptedPw || effectiveProfile.generated_password;
    }
 
-    // Deterministic ASCII auth-email; Cyrillic/non-ASCII logins get a hash-based localpart.
-    const buildAuthEmail = async (login: string): Promise<string> => {
-      const clean = login.trim().toLowerCase();
-      if (/^[a-z0-9._-]+$/.test(clean)) return `${clean}@student.local`;
-      const bytes = new TextEncoder().encode(clean);
-      const hash = await crypto.subtle.digest("SHA-256", bytes);
-      const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
-      return `u_${hex.slice(0, 24)}@student.local`;
-    };
-
     // Update auth.users - email is based on login, password is the actual password
     const authUpdateData: { email?: string; email_confirm?: boolean; password?: string } = {};
     
     if (new_login) {
-      authUpdateData.email = await buildAuthEmail(new_login);
+      authUpdateData.email = `${new_login}@student.local`;
       authUpdateData.email_confirm = true;
     }
     

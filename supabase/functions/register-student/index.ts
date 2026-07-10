@@ -204,23 +204,13 @@ serve(async (req) => {
         }, { onConflict: "user_id,organization_id" });
     };
 
-    // Build a deterministic ASCII auth-email; Cyrillic/other logins get a hash-based localpart.
-    const buildAuthEmail = async (login: string): Promise<string> => {
-      const clean = login.trim().toLowerCase();
-      if (/^[a-z0-9._-]+$/.test(clean)) return `${clean}@student.local`;
-      const bytes = new TextEncoder().encode(clean);
-      const hash = await crypto.subtle.digest("SHA-256", bytes);
-      const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
-      return `u_${hex.slice(0, 24)}@student.local`;
-    };
-
     if (!isExisting) {
       // Use custom login if provided, otherwise generate one
       if (custom_login) {
-        // Disallow control chars, spaces, @ and quotes; anything else (incl. Cyrillic) is OK.
-        if (!/^[^\s@'"`\\\/]+$/.test(custom_login)) {
+        // Only ASCII letters, digits, dot, underscore, hyphen — needed for auth email
+        if (!/^[a-zA-Z0-9._-]+$/.test(custom_login)) {
           return new Response(
-            JSON.stringify({ error: `Логин не должен содержать пробелов и символов @ ' " \\ /` }),
+            JSON.stringify({ error: `Логин может содержать только латинские буквы, цифры и знаки . _ -` }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
@@ -247,7 +237,7 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const authEmail = await buildAuthEmail(generatedLogin);
+      const authEmail = `${generatedLogin}@student.local`;
       
       const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
         email: authEmail,

@@ -59,8 +59,8 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
   };
 
   const handleSubmit = () => {
-    if (login && /[\s@'"`\\/]/.test(login)) {
-      alert("Логин не должен содержать пробелов и символов @ ' \" \\ /");
+    if (login && !/^[a-zA-Z0-9._-]+$/.test(login)) {
+      alert("Логин может содержать только латинские буквы, цифры и знаки . _ -");
       return;
     }
     if (password && password.length < 6) {

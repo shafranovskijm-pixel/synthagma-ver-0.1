@@ -111,8 +111,7 @@ const Login = () => {
         }
 
         // For login-based students, use the standardized email format
-        const { buildAuthEmail } = await import("@/utils/authEmail");
-        signInEmail = await buildAuthEmail(cleanLogin);
+        signInEmail = `${cleanLogin}@student.local`;
       }
 
       const { error } = await signIn(signInEmail, cleanPassword);
