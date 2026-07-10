@@ -191,8 +191,8 @@ const RostechnadzorCoursesPage = () => {
             {/* Stats row */}
             <motion.div variants={fadeUp} className="grid grid-cols-3 gap-4 max-w-lg mx-auto mt-14">
               {[
-                { value: "303", label: "курса" },
-                { value: "14", label: "направлений" },
+                { value: totalCount ? String(totalCount) : "—", label: "курсов" },
+                { value: directionsCount ? String(directionsCount) : "—", label: "направлений" },
                 { value: "5 мин", label: "на подключение" },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
