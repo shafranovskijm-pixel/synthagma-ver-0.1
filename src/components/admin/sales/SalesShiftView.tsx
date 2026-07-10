@@ -305,6 +305,13 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
                 {pageItems.map(({ lead, localTime, mskLabel, minutesUntilClose, hasTimezone }, idx) => {
                   const isHot = tab === 'active' && hasTimezone && minutesUntilClose <= 90;
                   const done = tab === 'done';
+                  const touches = touchHistory.get(lead.id);
+                  const callTouches = (touches || []).filter(t => (t.type || '').toLowerCase().includes('call'));
+                  const wasCalled = callTouches.length > 0;
+                  const lastCallAt = callTouches[0]?.at ? new Date(callTouches[0].at) : null;
+                  const lastCallLabel = lastCallAt
+                    ? lastCallAt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                    : null;
                   return (
                     <div
                       key={lead.id}
@@ -322,19 +329,33 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
                         'hover:bg-muted/50 hover:border-primary/40 hover:shadow-sm',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                         isHot && 'border-amber-500/40 bg-amber-500/5',
+                        !isHot && !done && wasCalled && 'border-sky-500/40 bg-sky-500/5',
                         done && 'opacity-80'
                       )}
                     >
                       <div className={cn(
                         'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-medium shrink-0',
-                        done ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
+                        done
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                          : wasCalled
+                            ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                            : 'bg-muted text-muted-foreground'
                       )}>
                         {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : (currentPage - 1) * PAGE_SIZE + idx + 1}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
                           <div className="font-medium truncate">{lead.org_name}</div>
-                          <TouchDots touches={touchHistory.get(lead.id)} />
+                          {!done && wasCalled && (
+                            <Badge
+                              variant="secondary"
+                              className="rounded-full h-5 px-2 text-[10px] font-medium bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 shrink-0"
+                            >
+                              Уже звонили{callTouches.length > 1 ? ` · ${callTouches.length}` : ''}
+                              {lastCallLabel ? ` · ${lastCallLabel}` : ''}
+                            </Badge>
+                          )}
+                          <TouchDots touches={touches} />
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                           {lead.region && (
