@@ -115,12 +115,6 @@ const advantages = [
   },
 ];
 
-const jsonLdItems = categories.map((cat, i) => ({
-  "@type": "ListItem",
-  position: i + 1,
-  name: cat.title,
-  description: `${cat.count} курсов`,
-}));
 
 const RostechnadzorCoursesPage = () => {
   const { data: fullCatalog, isLoading: catalogLoading } = useQuery({
