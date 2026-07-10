@@ -134,6 +134,22 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
           }}
         />
       )}
+      {previewing && (
+        <Dialog open onOpenChange={() => setPreviewing(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="truncate">{previewing.name}</DialogTitle>
+              <p className="text-sm text-muted-foreground truncate">Тема: {previewing.subject}</p>
+            </DialogHeader>
+            <iframe
+              title="preview"
+              srcDoc={previewing.html_body}
+              sandbox=""
+              className="w-full flex-1 min-h-[60vh] rounded border bg-white"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
