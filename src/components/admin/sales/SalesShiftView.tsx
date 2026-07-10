@@ -192,7 +192,9 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'call_logs', filter: `manager_user_id=eq.${effectiveUserId}` },
         () => refreshCounters(managerId, effectiveUserId))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales_lead_activities' },
-        () => { refreshCounters(managerId, effectiveUserId); loadProcessed(managerId); })
+        () => { refreshCounters(managerId, effectiveUserId); loadProcessed(managerId, effectiveUserId); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_logs', filter: `manager_user_id=eq.${effectiveUserId}` },
+        () => { loadProcessed(managerId, effectiveUserId); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [effectiveUserId, managerId, loadProcessed]);
