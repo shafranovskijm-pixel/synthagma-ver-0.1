@@ -119,7 +119,6 @@ serve(async (req: Request) => {
         last_error: null,
         last_error_at: null,
         last_used_at: new Date().toISOString(),
-        sends_today: (sender_email ? undefined : undefined),
       }).eq("email", senderPoolEmail);
     }
 
