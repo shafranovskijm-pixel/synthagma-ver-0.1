@@ -45,6 +45,14 @@ const features = [
 
 const slots = ["Вт 10:00", "Вт 14:00", "Ср 11:00", "Ср 16:00", "Чт 12:00", "Чт 17:00"];
 
+// Kinescope video ID = часть URL после https://kinescope.io/
+// Замените "" на ваш ID после загрузки видео в личном кабинете kinescope.io
+const demoVideos: { title: string; text: string; kinescopeId: string }[] = [
+  { title: "Создание курса", text: "Собираем курс из блоков за несколько минут — видео, лонгриды, тесты, файлы.", kinescopeId: "" },
+  { title: "Добавление ученика", text: "Приглашение, автозачисление на программу и контроль прогресса.", kinescopeId: "" },
+  { title: "Выдача документов", text: "Формирование удостоверений и протоколов из шаблонов.", kinescopeId: "" },
+];
+
 export default function DemonstrationPage() {
   const [name, setName] = useState("");
   const [org, setOrg] = useState("");
@@ -235,6 +243,52 @@ export default function DemonstrationPage() {
                 <div className="p-5">
                   <div className="font-semibold mb-2">{f.title}</div>
                   <div className="text-sm text-muted-foreground leading-relaxed">{f.text}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* VIDEOS */}
+      <section id="videos" className="py-16 md:py-24">
+        <div className="container mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-medium tracking-tight mb-4">
+              Короткие видео о платформе
+            </h2>
+            <p className="text-muted-foreground">
+              Посмотрите, как выглядят ключевые сценарии работы в СИНТАГМА.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {demoVideos.map((v, i) => (
+              <motion.div
+                key={v.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.05 }}
+                className="rounded-2xl overflow-hidden border border-border bg-card"
+              >
+                <div className="aspect-video bg-black">
+                  {v.kinescopeId ? (
+                    <iframe
+                      src={`https://kinescope.io/embed/${v.kinescopeId}`}
+                      className="w-full h-full"
+                      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen
+                      title={v.title}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                      Видео скоро появится
+                    </div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <div className="font-semibold mb-2">{v.title}</div>
+                  <div className="text-sm text-muted-foreground leading-relaxed">{v.text}</div>
                 </div>
               </motion.div>
             ))}
