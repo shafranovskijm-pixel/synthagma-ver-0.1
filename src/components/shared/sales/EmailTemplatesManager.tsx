@@ -192,6 +192,38 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
           </DialogContent>
         </Dialog>
       )}
+      {singleSend && (
+        <Dialog open onOpenChange={(o) => !o && setSingleSend(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Отправить одному получателю</DialogTitle>
+              <p className="text-sm text-muted-foreground truncate">Шаблон: {singleSend.name}</p>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Email получателя *</Label>
+                <Input type="email" value={singleTo} onChange={(e) => setSingleTo(e.target.value)} placeholder="client@example.com" />
+              </div>
+              <div>
+                <Label>Имя получателя</Label>
+                <Input value={singleName} onChange={(e) => setSingleName(e.target.value)} placeholder="Иван" />
+                <p className="text-[11px] text-muted-foreground mt-1">Подставится в {`{{name}}`}</p>
+              </div>
+              <div>
+                <Label>Ссылка для регистрации</Label>
+                <Input value={singleRegUrl} onChange={(e) => setSingleRegUrl(e.target.value)} placeholder="https://sintagma.com.ru/register?token=..." />
+                <p className="text-[11px] text-muted-foreground mt-1">Подставится в {`{{registration_url}}`} (если есть в шаблоне)</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSingleSend(null)} disabled={singleSending}>Отмена</Button>
+              <Button onClick={sendSingle} disabled={singleSending || !singleTo}>
+                {singleSending ? "Отправляем..." : "Отправить"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
