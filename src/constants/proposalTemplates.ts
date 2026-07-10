@@ -94,6 +94,30 @@ export const PROPOSAL_TEMPLATES: ProposalTemplate[] = [
     serviceLines: [planLine('standard')],
   },
   {
+    id: 'standard_special_35k',
+    name: 'Стандарт — спецусловия 35 000 ₽/год',
+    description: 'Специальные условия: тариф «Стандарт» за 35 000 ₽ в год. Актуально до 31 июля 2026 г.',
+    tariffPlan: 'standard',
+    tier: 'standard',
+    badge: 'Спецпредложение',
+    features: [
+      ...buildFeaturesList('standard'),
+      'Специальная цена — 35 000 ₽ за 12 месяцев',
+      'Предложение действует до 31 июля 2026 г.',
+    ],
+    serviceLines: [
+      {
+        custom_name: 'Тариф «Стандарт» — годовая подписка (спецусловия)',
+        custom_description:
+          `${buildTariffDescription('standard')}. ` +
+          'Специальная цена за 12 месяцев — 35 000 ₽ (эквивалент ~2 917 ₽/мес). ' +
+          'Предложение действительно до 31 июля 2026 г. включительно.',
+        price: 35000,
+        quantity: 1,
+      },
+    ],
+  },
+  {
     id: 'professional',
     name: 'Профессиональный',
     description: 'Для крупных организаций',
