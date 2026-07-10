@@ -27,7 +27,7 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { template_id, to_email, scope, organization_id, mode, variables, to_name } = await req.json();
+    const { template_id, to_email, scope, organization_id, mode, variables, to_name, sender_email } = await req.json();
     if (!template_id || !to_email) {
       return new Response(JSON.stringify({ error: "template_id и to_email обязательны" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -44,7 +44,19 @@ serve(async (req: Request) => {
     if (tErr || !tpl) throw new Error("Шаблон не найден");
 
     let smtp: SmtpConfig;
-    if (scope === "org" && organization_id) {
+    if (sender_email) {
+      const { data: s, error: se } = await admin
+        .from("email_sender_pool")
+        .select("email,app_password,host,port,encryption,from_name,is_active")
+        .eq("email", sender_email)
+        .maybeSingle();
+      if (se || !s) throw new Error("Отправитель не найден в пуле: " + sender_email);
+      if (!s.is_active) throw new Error("Отправитель отключён: " + sender_email);
+      smtp = {
+        host: s.host, port: s.port, username: s.email, password: s.app_password,
+        encryption: s.encryption, from_email: s.email, from_name: s.from_name || "Синтагма",
+      };
+    } else if (scope === "org" && organization_id) {
       const { data: smtpRow, error: smErr } = await admin.rpc("get_decrypted_org_smtp", {
         p_organization_id: organization_id,
       });
