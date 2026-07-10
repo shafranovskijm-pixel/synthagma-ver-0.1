@@ -31,6 +31,25 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const [singleName, setSingleName] = useState("");
   const [singleRegUrl, setSingleRegUrl] = useState("");
   const [singleSending, setSingleSending] = useState(false);
+  const [senderPool, setSenderPool] = useState<{ email: string; from_name: string | null }[]>([]);
+  const [singleSender, setSingleSender] = useState<string>("");
+
+  useEffect(() => {
+    if (!singleSend) return;
+    supabase
+      .from("email_sender_pool")
+      .select("email,from_name")
+      .eq("is_active", true)
+      .order("email")
+      .then(({ data }) => {
+        const list = (data || []) as { email: string; from_name: string | null }[];
+        setSenderPool(list);
+        if (!singleSender && list.length) {
+          const preferred = list.find(s => s.email === "sintagma@sintagma.online");
+          setSingleSender(preferred?.email || list[0].email);
+        }
+      });
+  }, [singleSend]);
 
   const sendSingle = async () => {
     if (!singleSend || !singleTo) return;
@@ -44,6 +63,7 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
           mode: "single",
           scope,
           organization_id: scope === "org" ? organizationId : null,
+          sender_email: singleSender || undefined,
           variables: {
             name: singleName || "",
             registration_url: singleRegUrl || "",
