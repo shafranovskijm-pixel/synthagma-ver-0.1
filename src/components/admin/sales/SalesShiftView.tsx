@@ -134,23 +134,52 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
     setDozvonyToday(dz || 0);
   };
 
-  const loadProcessed = useCallback(async (mid: string | null) => {
+  const loadProcessed = useCallback(async (mid: string | null, uid?: string | null) => {
     if (!mid) { setProcessedIds(new Set()); setTouchHistory(new Map()); return; }
-    const { data } = await (supabase as any)
-      .from('sales_lead_activities')
-      .select('lead_id, activity_type, description, created_at')
-      .eq('manager_id', mid)
-      .order('created_at', { ascending: false })
-      .limit(5000);
+    const [actR, logsR] = await Promise.all([
+      (supabase as any)
+        .from('sales_lead_activities')
+        .select('lead_id, activity_type, description, created_at')
+        .eq('manager_id', mid)
+        .order('created_at', { ascending: false })
+        .limit(5000),
+      uid
+        ? (supabase as any)
+            .from('call_logs')
+            .select('lead_id, started_at, duration_sec, notes')
+            .eq('manager_user_id', uid)
+            .not('lead_id', 'is', null)
+            .order('started_at', { ascending: false })
+            .limit(5000)
+        : Promise.resolve({ data: [] }),
+    ]);
     const ids = new Set<string>();
     const map = new Map<string, Array<{ type: string; desc: string; at: string }>>();
-    (data || []).forEach((r: any) => {
+    (actR?.data || []).forEach((r: any) => {
       if (!r.lead_id) return;
       ids.add(r.lead_id);
       const list = map.get(r.lead_id) || [];
       if (list.length < 8) list.push({ type: r.activity_type, desc: r.description || '', at: r.created_at });
       map.set(r.lead_id, list);
     });
+    (logsR?.data || []).forEach((r: any) => {
+      if (!r.lead_id) return;
+      if (r.notes === '__test_call__') return;
+      // Не добавляем повторно если уже есть активность-звонок в ту же минуту
+      const list = map.get(r.lead_id) || [];
+      const dupe = list.some(t => (t.type || '').toLowerCase().includes('call')
+        && Math.abs(new Date(t.at).getTime() - new Date(r.started_at).getTime()) < 60_000);
+      if (!dupe) {
+        list.unshift({ type: 'call', desc: `Звонок${r.duration_sec ? ` · ${r.duration_sec} сек` : ''}`, at: r.started_at });
+        list.splice(8);
+        map.set(r.lead_id, list);
+      }
+    });
+    // Сортируем touches по дате desc, чтобы lastCallAt был корректным
+    for (const [k, v] of map) {
+      v.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+      map.set(k, v);
+    }
     setProcessedIds(ids);
     setTouchHistory(map);
   }, []);
