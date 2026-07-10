@@ -21,6 +21,7 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const [editing, setEditing] = useState<Partial<EmailTemplate> | null>(null);
   const [campaignFromTemplate, setCampaignFromTemplate] = useState<EmailTemplate | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(true);
+  const [previewing, setPreviewing] = useState<EmailTemplate | null>(null);
 
   const filtered = filterCat === "all" ? templates : templates.filter(t => t.category === filterCat);
 
