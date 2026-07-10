@@ -26,6 +26,9 @@ function render(html: string, vars: Record<string, string>): string {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let admin: ReturnType<typeof createClient> | null = null;
+  let senderPoolEmail: string | null = null;
+
   try {
     const { template_id, to_email, scope, organization_id, mode, variables, to_name, sender_email } = await req.json();
     if (!template_id || !to_email) {
@@ -37,7 +40,7 @@ serve(async (req: Request) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: tpl, error: tErr } = await admin
       .from("email_templates").select("*").eq("id", template_id).single();
@@ -56,6 +59,7 @@ serve(async (req: Request) => {
         host: s.host, port: s.port, username: s.email, password: s.app_password,
         encryption: s.encryption, from_email: s.email, from_name: s.from_name || "Синтагма",
       };
+      senderPoolEmail = s.email;
     } else if (scope === "org" && organization_id) {
       const { data: smtpRow, error: smErr } = await admin.rpc("get_decrypted_org_smtp", {
         p_organization_id: organization_id,
@@ -97,7 +101,17 @@ serve(async (req: Request) => {
     const html = render(tpl.html_body, varMap);
     const subject = (isSingle ? "" : "[ТЕСТ] ") + render(tpl.subject, varMap);
 
+    console.log("send-test-email smtp start", { from: smtp.from_email, host: smtp.host, port: smtp.port, to: to_email });
     await sendSmtpEmail(smtp, { to: to_email, subject, html });
+    console.log("send-test-email smtp ok", { from: smtp.from_email, to: to_email });
+
+    if (senderPoolEmail) {
+      await admin.from("email_sender_pool").update({
+        last_error: null,
+        last_error_at: null,
+        last_used_at: new Date().toISOString(),
+      }).eq("email", senderPoolEmail);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -105,6 +119,14 @@ serve(async (req: Request) => {
   } catch (e) {
     const msg = (e as Error).message;
     console.error("send-test-email error", msg);
+    if (admin && senderPoolEmail) {
+      try {
+        await admin.from("email_sender_pool").update({
+          last_error: msg,
+          last_error_at: new Date().toISOString(),
+        }).eq("email", senderPoolEmail);
+      } catch (_) { /* ignore status update failures */ }
+    }
     return new Response(JSON.stringify({ error: msg }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
