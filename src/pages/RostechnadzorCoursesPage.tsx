@@ -70,183 +70,27 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.06 } },
 };
 
-const categories = [
-  {
-    icon: Zap,
-    title: "Электробезопасность",
-    count: 121,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-    courses: [
-      "Группы допуска II–V до и выше 1000 В",
-      "ЭБ 100 — Электробезопасность для потребителей",
-      "ЭБ 200 — Электробезопасность для генерации",
-      "ЭБ 300 — Электробезопасность для электросетей",
-      "Допуск к обслуживанию электроустановок",
-    ],
-  },
-  {
-    icon: Flame,
-    title: "Энергетика",
-    count: 64,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-    courses: [
-      "Г.1 — Эксплуатация электроустановок",
-      "Г.2 — Тепловые энергоустановки и тепловые сети",
-      "Г.3 — Эксплуатация гидроэлектростанций",
-      "Тепловые электрические станции",
-      "Электрические станции и сети",
-    ],
-  },
-  {
-    icon: HardHat,
-    title: "Рабочие профессии",
-    count: 21,
-    color: "text-amber-600",
-    bgColor: "bg-amber-600/10",
-    courses: [
-      "Стропальщик",
-      "Электрогазосварщик",
-      "Оператор котельной",
-      "Лифтёр",
-      "Крановщик",
-    ],
-  },
-  {
-    icon: Heart,
-    title: "Медицина",
-    count: 20,
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10",
-    courses: [
-      "Оказание первой помощи",
-      "Медицинская подготовка персонала",
-      "Охрана здоровья работников",
-      "Санитарно-гигиенические требования",
-    ],
-  },
-  {
-    icon: Shield,
-    title: "Охрана труда",
-    count: 18,
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10",
-    courses: [
-      "Общие вопросы охраны труда",
-      "Охрана труда для руководителей",
-      "Охрана труда для специалистов",
-      "Специальная оценка условий труда (СОУТ)",
-    ],
-  },
-  {
-    icon: Flame,
-    title: "Пожарная безопасность",
-    count: 14,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    courses: [
-      "Пожарно-технический минимум",
-      "Пожарная безопасность для руководителей",
-      "Пожарная безопасность объектов",
-      "Обучение мерам пожарной безопасности",
-    ],
-  },
-  {
-    icon: Building2,
-    title: "Строительные специальности",
-    count: 10,
-    color: "text-sky-500",
-    bgColor: "bg-sky-500/10",
-    courses: [
-      "Строительные машины и механизмы",
-      "Монтажные и демонтажные работы",
-      "Промышленная безопасность при строительстве",
-    ],
-  },
-  {
-    icon: Wrench,
-    title: "Слесари",
-    count: 8,
-    color: "text-zinc-500",
-    bgColor: "bg-zinc-500/10",
-    courses: [
-      "Слесарь-ремонтник",
-      "Слесарь по КИПиА",
-      "Слесарь-сантехник",
-    ],
-  },
-  {
-    icon: Factory,
-    title: "Промышленная безопасность",
-    count: 8,
-    color: "text-violet-500",
-    bgColor: "bg-violet-500/10",
-    courses: [
-      "А.1 — Общие требования промышленной безопасности",
-      "Б.1–Б.12 — Отраслевые направления",
-      "Опасные производственные объекты",
-    ],
-  },
-  {
-    icon: Layers,
-    title: "Разное",
-    count: 7,
-    color: "text-slate-500",
-    bgColor: "bg-slate-500/10",
-    courses: [
-      "Работа на высоте",
-      "Работа в ограниченных пространствах",
-      "Безопасность при работе с инструментом",
-    ],
-  },
-  {
-    icon: Car,
-    title: "Машинист",
-    count: 5,
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-500/10",
-    courses: [
-      "Машинист крана",
-      "Машинист компрессорных установок",
-      "Машинист буровых установок",
-    ],
-  },
-  {
-    icon: Leaf,
-    title: "Экологическая безопасность",
-    count: 3,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-    courses: [
-      "Обращение с отходами I–IV класса",
-      "Экологическая безопасность для руководителей",
-      "Экологическая безопасность для специалистов",
-    ],
-  },
-  {
-    icon: Settings,
-    title: "Строительный контроль",
-    count: 2,
-    color: "text-accent",
-    bgColor: "bg-accent/10",
-    courses: [
-      "Строительный контроль заказчика и подрядчика",
-      "Техническое обследование зданий и сооружений",
-    ],
-  },
-  {
-    icon: GraduationCap,
-    title: "Профессиональная переподготовка",
-    count: 2,
-    color: "text-cyan-500",
-    bgColor: "bg-cyan-500/10",
-    courses: [
-      "Программы профессиональной переподготовки",
-      "Повышение квалификации специалистов",
-    ],
-  },
-];
+// Иконка и цвет по названию категории (данные о курсах берутся из БД в fetchFullCatalog)
+const CATEGORY_STYLE: Record<string, { icon: typeof Shield; color: string; bgColor: string }> = {
+  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
+  "Пожарная безопасность": { icon: Flame, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  "Медицина": { icon: Heart, color: "text-pink-500", bgColor: "bg-pink-500/10" },
+  "Охрана труда": { icon: Shield, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+  "Промышленная безопасность": { icon: Factory, color: "text-violet-500", bgColor: "bg-violet-500/10" },
+  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
+  "Строительный контроль": { icon: Settings, color: "text-accent", bgColor: "bg-accent/10" },
+  "Строительные специальности": { icon: Building2, color: "text-sky-500", bgColor: "bg-sky-500/10" },
+  "Рабочие профессии": { icon: HardHat, color: "text-amber-600", bgColor: "bg-amber-600/10" },
+  "Слесари": { icon: Wrench, color: "text-zinc-500", bgColor: "bg-zinc-500/10" },
+  "Машинист": { icon: Car, color: "text-indigo-500", bgColor: "bg-indigo-500/10" },
+  "Профессиональная переподготовка": { icon: GraduationCap, color: "text-cyan-500", bgColor: "bg-cyan-500/10" },
+  "Психология": { icon: Heart, color: "text-rose-500", bgColor: "bg-rose-500/10" },
+  "Менеджмент": { icon: Briefcase, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  "Государственное и муниципальное управление": { icon: Briefcase, color: "text-slate-500", bgColor: "bg-slate-500/10" },
+};
+
+const DEFAULT_STYLE = { icon: Layers, color: "text-slate-500", bgColor: "bg-slate-500/10" };
 
 const advantages = [
   {
