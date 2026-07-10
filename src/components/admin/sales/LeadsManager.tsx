@@ -29,13 +29,14 @@ const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const CHIP_FILTERS: Array<{ key: string; label: string }> = [
-  { key: 'all', label: 'Все' },
+  { key: 'all', label: 'Активные' },
   { key: 'new', label: 'Новые' },
   { key: 'in_progress', label: 'В работе' },
   { key: 'callback_today', label: 'Перезвон сегодня' },
   { key: 'overdue', label: 'Просрочено' },
   { key: 'no_answer', label: 'Без ответа' },
   { key: 'interested', label: 'Есть интерес' },
+  { key: 'not_interested', label: 'Отказы' },
 ];
 
 interface LeadsManagerProps {
@@ -138,11 +139,14 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
       if (regionFilter !== 'all' && (l.region || 'Без региона') !== regionFilter) return false;
       if (managerFilter !== 'all' && l.assigned_manager_id !== managerFilter) return false;
 
+      // Скрываем «Отказы» из общего списка — показываем только по явному фильтру
+      if (l.status === 'not_interested' && chip !== 'not_interested') return false;
+
       if (chip !== 'all') {
         if (chip === 'callback_today' && !isCallbackToday(l.id)) return false;
         else if (chip === 'overdue' && !isOverdue(l.id)) return false;
         else if (chip === 'no_answer' && l.status !== 'contacted' && l.status !== 'new') return false;
-        else if (['new', 'in_progress', 'interested'].includes(chip) && l.status !== chip) return false;
+        else if (['new', 'in_progress', 'interested', 'not_interested'].includes(chip) && l.status !== chip) return false;
       }
 
       if (priority) {
@@ -377,6 +381,7 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
                     className={cn(
                       'border-t cursor-pointer hover:bg-muted/30',
                       overdue && 'border-l-2 border-l-rose-500',
+                      lead.status === 'not_interested' && 'bg-rose-500/5 hover:bg-rose-500/10 border-l-2 border-l-rose-500 text-rose-900 dark:text-rose-200 line-through decoration-rose-500/40',
                     )}
                   >
                     <td className="px-3 py-2">
