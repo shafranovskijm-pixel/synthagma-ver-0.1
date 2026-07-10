@@ -23,6 +23,17 @@ function render(html: string, vars: Record<string, string>): string {
   return h;
 }
 
+async function sendWithTimeout(smtp: SmtpConfig, opts: { to: string; subject: string; html: string }, timeoutMs = 25_000) {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`SMTP timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs);
+  });
+
+  await Promise.race([
+    sendSmtpEmail(smtp, opts),
+    timeout,
+  ]);
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -44,6 +55,7 @@ serve(async (req: Request) => {
     if (tErr || !tpl) throw new Error("Шаблон не найден");
 
     let smtp: SmtpConfig;
+    let senderPoolEmail: string | null = null;
     if (sender_email) {
       const { data: s, error: se } = await admin
         .from("email_sender_pool")
@@ -56,6 +68,7 @@ serve(async (req: Request) => {
         host: s.host, port: s.port, username: s.email, password: s.app_password,
         encryption: s.encryption, from_email: s.email, from_name: s.from_name || "Синтагма",
       };
+      senderPoolEmail = s.email;
     } else if (scope === "org" && organization_id) {
       const { data: smtpRow, error: smErr } = await admin.rpc("get_decrypted_org_smtp", {
         p_organization_id: organization_id,
@@ -97,7 +110,18 @@ serve(async (req: Request) => {
     const html = render(tpl.html_body, varMap);
     const subject = (isSingle ? "" : "[ТЕСТ] ") + render(tpl.subject, varMap);
 
-    await sendSmtpEmail(smtp, { to: to_email, subject, html });
+    console.log("send-test-email smtp start", { from: smtp.from_email, host: smtp.host, port: smtp.port, to: to_email });
+    await sendWithTimeout(smtp, { to: to_email, subject, html });
+    console.log("send-test-email smtp ok", { from: smtp.from_email, to: to_email });
+
+    if (senderPoolEmail) {
+      await admin.from("email_sender_pool").update({
+        last_error: null,
+        last_error_at: null,
+        last_used_at: new Date().toISOString(),
+        sends_today: (sender_email ? undefined : undefined),
+      }).eq("email", senderPoolEmail);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
