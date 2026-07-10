@@ -26,6 +26,41 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const [campaignFromTemplate, setCampaignFromTemplate] = useState<EmailTemplate | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(true);
   const [previewing, setPreviewing] = useState<EmailTemplate | null>(null);
+  const [singleSend, setSingleSend] = useState<EmailTemplate | null>(null);
+  const [singleTo, setSingleTo] = useState("");
+  const [singleName, setSingleName] = useState("");
+  const [singleRegUrl, setSingleRegUrl] = useState("");
+  const [singleSending, setSingleSending] = useState(false);
+
+  const sendSingle = async () => {
+    if (!singleSend || !singleTo) return;
+    setSingleSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-test-email", {
+        body: {
+          template_id: singleSend.id,
+          to_email: singleTo,
+          to_name: singleName || undefined,
+          mode: "single",
+          scope,
+          organization_id: scope === "org" ? organizationId : null,
+          variables: {
+            name: singleName || "",
+            registration_url: singleRegUrl || "",
+          },
+        },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Письмо отправлено на " + singleTo);
+      setSingleSend(null);
+      setSingleTo(""); setSingleName(""); setSingleRegUrl("");
+    } catch (e: any) {
+      toast.error("Не удалось отправить: " + e.message);
+    } finally {
+      setSingleSending(false);
+    }
+  };
 
   const filtered = filterCat === "all" ? templates : templates.filter(t => t.category === filterCat);
 
