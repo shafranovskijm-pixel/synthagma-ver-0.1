@@ -212,7 +212,7 @@ const RostechnadzorCoursesPage = () => {
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-5xl mx-auto">
             <motion.div variants={fadeUp} className="text-center mb-8">
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-                14 направлений обучения
+                {directionsCount ? `${directionsCount} направлений обучения` : "Направления обучения"}
               </h2>
               <p className="text-muted-foreground max-w-xl mx-auto mb-6">
                 Электробезопасность, энергетика, охрана труда, медицина, пожарная безопасность и многое другое
