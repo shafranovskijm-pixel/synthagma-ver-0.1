@@ -164,13 +164,13 @@ const RostechnadzorCoursesPage = () => {
               <span className="text-sm font-medium text-white/80">Библиотека{totalCount ? ` · ${totalCount} курсов` : ""}{directionsCount ? ` · ${directionsCount} направлений` : ""}</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
-              300+ готовых курсов{" "}
+              {totalCount ? `${totalCount}+ готовых курсов` : "Готовые курсы"}{" "}
               <br className="hidden sm:block" />
               <span className="text-white/50">для вашей организации</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Ваши клиенты хотят обучение, но разработка программ занимает месяцы? 
-              У нас уже всё готово — подключите библиотеку курсов по 14 направлениям 
+              Ваши клиенты хотят обучение, но разработка программ занимает месяцы?
+              У нас уже всё готово — подключите библиотеку курсов{directionsCount ? ` по ${directionsCount} направлениям` : ""}
               и начните обучение прямо сейчас.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
