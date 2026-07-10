@@ -220,6 +220,19 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
               <p className="text-sm text-muted-foreground truncate">Шаблон: {singleSend.name}</p>
             </DialogHeader>
             <div className="space-y-4">
+              {senderPool.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Отправить с почты</Label>
+                  <Select value={singleSender} onValueChange={setSingleSender}>
+                    <SelectTrigger><SelectValue placeholder="Выберите отправителя" /></SelectTrigger>
+                    <SelectContent>
+                      {senderPool.map(s => (
+                        <SelectItem key={s.email} value={s.email}>{s.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Email получателя *</Label>
                 <Input type="email" value={singleTo} onChange={(e) => setSingleTo(e.target.value)} placeholder="client@example.com" />
