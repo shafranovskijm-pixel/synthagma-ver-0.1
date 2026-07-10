@@ -49,6 +49,8 @@ interface Props {
 
 interface ProposalTpl { id: string; company_name: string; total_amount: number }
 
+const SPECIAL_PROPOSAL_NAME = 'Спецусловия — Стандарт 35 000 ₽/год';
+
 export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPhone, onCreateProposal, onCreateContract, onSaveAndNext }: Props) {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -163,7 +165,10 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       .eq('is_template', true)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setProposalTemplates((data || []) as ProposalTpl[]);
+        const list = ((data || []) as ProposalTpl[]).sort(
+          (a, b) => Number(b.company_name === SPECIAL_PROPOSAL_NAME) - Number(a.company_name === SPECIAL_PROPOSAL_NAME)
+        );
+        setProposalTemplates(list);
       });
   }, [open]);
 
@@ -392,6 +397,21 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               </TabsContent>
 
               <TabsContent value="docs" className="p-4 space-y-3">
+                {proposalTemplates.some(t => t.company_name === SPECIAL_PROPOSAL_NAME) && (
+                  <button
+                    type="button"
+                    onClick={() => setProposalPopoverOpen(true)}
+                    className="w-full rounded-xl border border-primary/25 bg-primary/5 p-3 text-left transition hover:bg-primary/10"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-primary truncate">{SPECIAL_PROPOSAL_NAME}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">Первое в списке КП · актуально до 31 июля</div>
+                      </div>
+                      <Badge className="bg-primary text-primary-foreground shrink-0">35 000 ₽</Badge>
+                    </div>
+                  </button>
+                )}
                 <Button
                   className="w-full justify-start"
                   onClick={() => setProposalPopoverOpen(true)}

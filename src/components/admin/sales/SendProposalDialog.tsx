@@ -29,6 +29,8 @@ interface Template {
   services: Service[];
 }
 
+const SPECIAL_PROPOSAL_NAME = 'Спецусловия — Стандарт 35 000 ₽/год';
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -116,13 +118,15 @@ export function SendProposalDialog({
     (svcs || []).forEach((s: any) => {
       (map[s.proposal_id] ||= []).push(s);
     });
-    const tpls: Template[] = (props || []).map((p: any) => ({
-      id: p.id,
-      company_name: p.company_name,
-      total_amount: Number(p.total_amount || 0),
-      intro_html: p.intro_html,
-      services: (map[p.id] || []).sort((a, b) => a.sort_order - b.sort_order),
-    }));
+    const tpls: Template[] = (props || [])
+      .map((p: any) => ({
+        id: p.id,
+        company_name: p.company_name,
+        total_amount: Number(p.total_amount || 0),
+        intro_html: p.intro_html,
+        services: (map[p.id] || []).sort((a, b) => a.sort_order - b.sort_order),
+      }))
+      .sort((a, b) => Number(b.company_name === SPECIAL_PROPOSAL_NAME) - Number(a.company_name === SPECIAL_PROPOSAL_NAME));
     setTemplates(tpls);
     setLoading(false);
   };
@@ -339,6 +343,11 @@ export function SendProposalDialog({
                       <Badge variant="outline" className={cn('text-[10px] font-medium', cat.color, 'border-transparent')}>
                         {cat.label}
                       </Badge>
+                      {tpl.company_name === SPECIAL_PROPOSAL_NAME && (
+                        <Badge className="text-[10px] bg-primary text-primary-foreground border-primary shrink-0">
+                          Спецусловия
+                        </Badge>
+                      )}
                       {isSent && (
                         <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Отправлено
