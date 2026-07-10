@@ -56,6 +56,8 @@ export function LogActivityDialog({
   const [proposalEmail, setProposalEmail] = useState<string>('');
   const [sendingProposal, setSendingProposal] = useState(false);
 
+  const specialProposalName = 'Спецусловия — Стандарт 35 000 ₽/год';
+
   useEffect(() => { setType(defaultType); }, [defaultType, open]);
   useEffect(() => {
     if (!open) {
@@ -75,7 +77,12 @@ export function LogActivityDialog({
       .eq('is_template', true)
       .eq('scope', 'platform')
       .order('total_amount', { ascending: true })
-      .then(({ data }) => setTemplates((data || []) as ProposalTemplate[]));
+      .then(({ data }) => {
+        const list = ((data || []) as ProposalTemplate[]).sort(
+          (a, b) => Number(b.company_name === specialProposalName) - Number(a.company_name === specialProposalName)
+        );
+        setTemplates(list);
+      });
   }, [open]);
 
   const safeInn = (inn && inn !== '—') ? inn.trim() : null;
@@ -345,7 +352,12 @@ export function LogActivityDialog({
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-medium leading-tight">{t.company_name}</span>
+                          <span className="text-xs font-medium leading-tight">
+                            {t.company_name}
+                            {t.company_name === specialProposalName && (
+                              <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">Спецусловия</span>
+                            )}
+                          </span>
                           <span className="text-xs font-bold text-primary whitespace-nowrap">
                             {Number(t.total_amount || 0).toLocaleString('ru-RU')} ₽
                           </span>
