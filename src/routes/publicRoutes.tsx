@@ -25,6 +25,7 @@ const FeatureEmailCampaigns = lazyWithRetry(() => import("@/pages/FeatureEmailCa
 const FeatureSalesCRM = lazyWithRetry(() => import("@/pages/FeatureSalesCRM"));
 const RoadmapPage = lazyWithRetry(() => import("@/pages/RoadmapPage"));
 const RostechnadzorCoursesPage = lazyWithRetry(() => import("@/pages/RostechnadzorCoursesPage"));
+const FireSafetyCoursesPage = lazyWithRetry(() => import("@/pages/FireSafetyCoursesPage"));
 const PublicOffer = lazyWithRetry(() => import("@/pages/PublicOffer"));
 const StudentAgreement = lazyWithRetry(() => import("@/pages/StudentAgreement"));
 const PrivacyPolicy = lazyWithRetry(() => import("@/pages/PrivacyPolicy"));
