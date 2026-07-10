@@ -238,9 +238,18 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
       )}
 
       {showDate && (
-        <div>
-          <Label>Дата и время</Label>
-          <Input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <Label className="text-sm font-medium">
+            {result === 'proposal_sent' || result === 'send_proposal' || nextStep === 'send_info'
+              ? 'Когда перезвонить по обратной связи ?'
+              : result === 'demo_scheduled' || nextStep === 'demo'
+                ? 'Дата и время демо'
+                : 'Когда перезвонить клиенту ?'}
+          </Label>
+          <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+            Обязательно — по этой дате в задачах появится напоминание.
+          </p>
+          <Input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} required />
         </div>
       )}
 
