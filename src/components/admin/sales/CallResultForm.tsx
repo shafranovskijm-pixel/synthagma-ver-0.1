@@ -28,9 +28,18 @@ interface Props {
   compact?: boolean;
 }
 
-function tomorrow10(): string {
+function suggestDueDate(result: CallResultKey): string {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
+  // «КП отправлено» / «отправить материалы» — перезвон через 3 дня
+  // «Перезвонить позже» — через 3 дня
+  // остальное (интересно, демо и т.п.) — завтра
+  const addDays =
+    result === 'proposal_sent' || result === 'send_proposal' || result === 'send_info'
+      ? 3
+      : result === 'callback_later'
+        ? 3
+        : 1;
+  d.setDate(d.getDate() + addDays);
   d.setHours(10, 0, 0, 0);
   return d.toISOString().slice(0, 16);
 }
@@ -66,7 +75,7 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
   const [pain, setPain] = useState<string>('');
   const [painCustom, setPainCustom] = useState('');
   const [nextStep, setNextStep] = useState<NextActionKey>(suggestNextStep(initialResult || 'interested'));
-  const [dueDate, setDueDate] = useState<string>(tomorrow10());
+  const [dueDate, setDueDate] = useState<string>(suggestDueDate(initialResult || 'interested'));
   const [channel, setChannel] = useState<SendInfoChannel>('whatsapp');
   const [handoverTo, setHandoverTo] = useState('');
   const [saving, setSaving] = useState(false);
@@ -78,7 +87,7 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
     setPain('');
     setPainCustom('');
     setNextStep(suggestNextStep(initial));
-    setDueDate(tomorrow10());
+    setDueDate(suggestDueDate(initial));
     setChannel('whatsapp');
     setHandoverTo('');
   }, [initialResult, resetKey, lead?.id]);
@@ -87,6 +96,17 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
 
   const save = async (openNext: boolean) => {
     if (!lead) return;
+    const requiresDate =
+      result === 'interested' ||
+      result === 'proposal_sent' ||
+      result === 'send_proposal' ||
+      result === 'send_info' ||
+      result === 'callback_later' ||
+      result === 'demo_scheduled';
+    if (requiresDate && !dueDate) {
+      toast.error('Укажите дату следующего касания');
+      return;
+    }
     setSaving(true);
     try {
       const resultMeta = CALL_RESULTS.find(r => r.key === result);
@@ -218,9 +238,18 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
       )}
 
       {showDate && (
-        <div>
-          <Label>Дата и время</Label>
-          <Input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <Label className="text-sm font-medium">
+            {result === 'proposal_sent' || result === 'send_proposal' || nextStep === 'send_info'
+              ? 'Когда перезвонить по обратной связи ?'
+              : result === 'demo_scheduled' || nextStep === 'demo'
+                ? 'Дата и время демо'
+                : 'Когда перезвонить клиенту ?'}
+          </Label>
+          <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+            Обязательно — по этой дате в задачах появится напоминание.
+          </p>
+          <Input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} required />
         </div>
       )}
 
