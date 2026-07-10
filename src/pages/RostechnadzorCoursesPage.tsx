@@ -123,6 +123,13 @@ const RostechnadzorCoursesPage = () => {
     staleTime: 5 * 60 * 1000,
   });
   const totalCount = fullCatalog?.reduce((s, g) => s + g.count, 0) ?? 0;
+  const directionsCount = fullCatalog?.length ?? 0;
+  const jsonLdItems = (fullCatalog ?? []).map((cat, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: cat.title,
+    description: `${cat.count} курсов`,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
