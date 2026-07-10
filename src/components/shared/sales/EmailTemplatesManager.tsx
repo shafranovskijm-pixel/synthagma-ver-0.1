@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEmailTemplates, TEMPLATE_CATEGORIES, type EmailTemplate } from "@/hooks/useEmailTemplates";
 import { EmailTemplateEditor } from "./EmailTemplateEditor";
 import { EmailTemplateGallery } from "./EmailTemplateGallery";
@@ -20,6 +21,7 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const [editing, setEditing] = useState<Partial<EmailTemplate> | null>(null);
   const [campaignFromTemplate, setCampaignFromTemplate] = useState<EmailTemplate | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(true);
+  const [previewing, setPreviewing] = useState<EmailTemplate | null>(null);
 
   const filtered = filterCat === "all" ? templates : templates.filter(t => t.category === filterCat);
 
@@ -83,6 +85,9 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
                     {cat && <Badge variant="outline" className="text-[10px] mt-1">{cat.label}</Badge>}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" onClick={() => setPreviewing(t)} title="Посмотреть письмо">
+                      <Eye className="w-4 h-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => setCampaignFromTemplate(t)} title="Запустить рассылку из шаблона">
                       <Send className="w-4 h-4 text-primary" />
                     </Button>
@@ -128,6 +133,22 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
             html: campaignFromTemplate.html_body,
           }}
         />
+      )}
+      {previewing && (
+        <Dialog open onOpenChange={() => setPreviewing(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="truncate">{previewing.name}</DialogTitle>
+              <p className="text-sm text-muted-foreground truncate">Тема: {previewing.subject}</p>
+            </DialogHeader>
+            <iframe
+              title="preview"
+              srcDoc={previewing.html_body}
+              sandbox=""
+              className="w-full flex-1 min-h-[60vh] rounded border bg-white"
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
