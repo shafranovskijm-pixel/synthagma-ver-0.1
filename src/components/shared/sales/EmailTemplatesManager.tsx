@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,25 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const [singleName, setSingleName] = useState("");
   const [singleRegUrl, setSingleRegUrl] = useState("");
   const [singleSending, setSingleSending] = useState(false);
+  const [senderPool, setSenderPool] = useState<{ email: string; from_name: string | null }[]>([]);
+  const [singleSender, setSingleSender] = useState<string>("");
+
+  useEffect(() => {
+    if (!singleSend) return;
+    supabase
+      .from("email_sender_pool")
+      .select("email,from_name")
+      .eq("is_active", true)
+      .order("email")
+      .then(({ data }) => {
+        const list = (data || []) as { email: string; from_name: string | null }[];
+        setSenderPool(list);
+        if (!singleSender && list.length) {
+          const preferred = list.find(s => s.email === "sintagma@sintagma.online");
+          setSingleSender(preferred?.email || list[0].email);
+        }
+      });
+  }, [singleSend]);
 
   const sendSingle = async () => {
     if (!singleSend || !singleTo) return;
@@ -44,6 +63,7 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
           mode: "single",
           scope,
           organization_id: scope === "org" ? organizationId : null,
+          sender_email: singleSender || undefined,
           variables: {
             name: singleName || "",
             registration_url: singleRegUrl || "",
@@ -200,6 +220,19 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
               <p className="text-sm text-muted-foreground truncate">Шаблон: {singleSend.name}</p>
             </DialogHeader>
             <div className="space-y-4">
+              {senderPool.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Отправить с почты</Label>
+                  <Select value={singleSender} onValueChange={setSingleSender}>
+                    <SelectTrigger><SelectValue placeholder="Выберите отправителя" /></SelectTrigger>
+                    <SelectContent>
+                      {senderPool.map(s => (
+                        <SelectItem key={s.email} value={s.email}>{s.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Email получателя *</Label>
                 <Input type="email" value={singleTo} onChange={(e) => setSingleTo(e.target.value)} placeholder="client@example.com" />
