@@ -211,6 +211,15 @@ serve(async (req: Request) => {
     const { data: tplServices } = await admin
       .from("commercial_proposal_services").select("*").eq("proposal_id", template_proposal_id).order("sort_order");
 
+    // Prepare placeholders: {{name}} = директор (contact_person) или название компании,
+    // {{company}} = компания, {{contact}} = контактное лицо.
+    const displayName = (contact_person && String(contact_person).trim()) || company_name;
+    const tplVars: Record<string, string> = {
+      name: displayName,
+      company: company_name,
+      contact: contact_person || "",
+    };
+
     // 2. Clone proposal for this lead
     const cloned = {
       created_by: user.id,
@@ -225,12 +234,13 @@ serve(async (req: Request) => {
       sender_name: tpl.sender_name,
       sender_email: tpl.sender_email,
       sender_website: tpl.sender_website,
-      intro_html: tpl.intro_html,
-      outro_html: tpl.outro_html,
-      custom_note: tpl.custom_note,
+      intro_html: render(tpl.intro_html || "", tplVars),
+      outro_html: render(tpl.outro_html || "", tplVars),
+      custom_note: render(tpl.custom_note || "", tplVars),
       tariff_plan: tpl.tariff_plan,
       template_id: PROPOSAL_EMAIL_TEMPLATE_ID,
     };
+
     const { data: newProposal, error: cloneErr } = await admin
       .from("commercial_proposals").insert(cloned).select("id").single();
     if (cloneErr) throw new Error("Не удалось клонировать КП: " + cloneErr.message);
@@ -255,12 +265,12 @@ serve(async (req: Request) => {
       .from("email_templates").select("subject, html_body").eq("id", PROPOSAL_EMAIL_TEMPLATE_ID).maybeSingle();
 
     const vars = {
-      company: company_name,
-      contact: contact_person || "",
+      ...tplVars,
       proposal_url: proposalUrl,
       sender_name: sender_name || "Менеджер СИНТАГМА",
       proposal_title: tpl.company_name, // template's name acts as title
     };
+
 
     const fallbackHtml = `
       <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:640px;margin:0 auto;padding:24px">
