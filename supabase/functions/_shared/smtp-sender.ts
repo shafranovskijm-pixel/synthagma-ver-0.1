@@ -43,6 +43,24 @@ export interface SendOptions {
   extraHeaders?: Record<string, string>; // дополнительные заголовки (List-Unsubscribe, etc.)
 }
 
+const SMTP_STEP_TIMEOUT_MS = 25_000;
+
+async function withSmtpTimeout<T>(operation: Promise<T>, context: string, close?: () => void): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      try { close?.(); } catch (_) { /* ignore close errors */ }
+      reject(new Error(`SMTP timeout (${Math.round(SMTP_STEP_TIMEOUT_MS / 1000)}s): ${context}`));
+    }, SMTP_STEP_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Отправляет письмо через SMTP (TLS/SSL).
  * Бросает Error при неуспехе.
@@ -112,9 +130,12 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
 
   // Подключение: TLS сразу для 465; для 587/2525 — STARTTLS.
   const useImplicitTls = cfg.port === 465 || cfg.encryption === "ssl";
-  const conn: Deno.Conn = useImplicitTls
-    ? await Deno.connectTls({ hostname: cfg.host, port: cfg.port })
-    : await Deno.connect({ hostname: cfg.host, port: cfg.port });
+  const conn: Deno.Conn = await withSmtpTimeout(
+    useImplicitTls
+      ? Deno.connectTls({ hostname: cfg.host, port: cfg.port })
+      : Deno.connect({ hostname: cfg.host, port: cfg.port }),
+    `connect ${cfg.host}:${cfg.port}`,
+  );
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -123,13 +144,21 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
 
   async function readResponse(): Promise<string> {
     const buffer = new Uint8Array(4096);
-    const n = await activeConn.read(buffer);
+    const n = await withSmtpTimeout(
+      activeConn.read(buffer),
+      "read SMTP response",
+      () => activeConn.close(),
+    );
     if (n === null) return "";
     return decoder.decode(buffer.subarray(0, n));
   }
 
   async function sendCommand(cmd: string): Promise<string> {
-    await activeConn.write(encoder.encode(cmd + "\r\n"));
+    await withSmtpTimeout(
+      activeConn.write(encoder.encode(cmd + "\r\n")),
+      `write SMTP command ${cmd.split(" ")[0]}`,
+      () => activeConn.close(),
+    );
     return await readResponse();
   }
 
@@ -151,7 +180,11 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     if (!useImplicitTls) {
       resp = await sendCommand("STARTTLS");
       checkOk(resp, "STARTTLS");
-      activeConn = await Deno.startTls(activeConn as Deno.TcpConn, { hostname: cfg.host });
+      activeConn = await withSmtpTimeout(
+        Deno.startTls(activeConn as Deno.TcpConn, { hostname: cfg.host }),
+        `STARTTLS ${cfg.host}`,
+        () => activeConn.close(),
+      );
       // повторный EHLO после TLS
       resp = await sendCommand("EHLO localhost");
       checkOk(resp, "EHLO after STARTTLS");
@@ -176,7 +209,11 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     resp = await sendCommand("DATA");
     if (!resp.startsWith("354")) checkOk(resp, "DATA");
 
-    await activeConn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
+    await withSmtpTimeout(
+      activeConn.write(encoder.encode(rawEmail + "\r\n.\r\n")),
+      "write SMTP DATA body",
+      () => activeConn.close(),
+    );
     resp = await readResponse();
     checkOk(resp, "DATA body");
 
