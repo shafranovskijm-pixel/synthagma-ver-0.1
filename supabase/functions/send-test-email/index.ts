@@ -131,10 +131,12 @@ serve(async (req: Request) => {
     const msg = (e as Error).message;
     console.error("send-test-email error", msg);
     if (admin && senderPoolEmail) {
-      await admin.from("email_sender_pool").update({
-        last_error: msg,
-        last_error_at: new Date().toISOString(),
-      }).eq("email", senderPoolEmail);
+      try {
+        await admin.from("email_sender_pool").update({
+          last_error: msg,
+          last_error_at: new Date().toISOString(),
+        }).eq("email", senderPoolEmail);
+      } catch (_) { /* ignore status update failures */ }
     }
     return new Response(JSON.stringify({ error: msg }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
