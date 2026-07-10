@@ -265,12 +265,12 @@ serve(async (req: Request) => {
       .from("email_templates").select("subject, html_body").eq("id", PROPOSAL_EMAIL_TEMPLATE_ID).maybeSingle();
 
     const vars = {
-      company: company_name,
-      contact: contact_person || "",
+      ...tplVars,
       proposal_url: proposalUrl,
       sender_name: sender_name || "Менеджер СИНТАГМА",
       proposal_title: tpl.company_name, // template's name acts as title
     };
+
 
     const fallbackHtml = `
       <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:640px;margin:0 auto;padding:24px">
