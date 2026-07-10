@@ -37,6 +37,9 @@ async function sendWithTimeout(smtp: SmtpConfig, opts: { to: string; subject: st
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let admin: ReturnType<typeof createClient> | null = null;
+  let senderPoolEmail: string | null = null;
+
   try {
     const { template_id, to_email, scope, organization_id, mode, variables, to_name, sender_email } = await req.json();
     if (!template_id || !to_email) {
@@ -48,14 +51,13 @@ serve(async (req: Request) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: tpl, error: tErr } = await admin
       .from("email_templates").select("*").eq("id", template_id).single();
     if (tErr || !tpl) throw new Error("Шаблон не найден");
 
     let smtp: SmtpConfig;
-    let senderPoolEmail: string | null = null;
     if (sender_email) {
       const { data: s, error: se } = await admin
         .from("email_sender_pool")
@@ -128,6 +130,12 @@ serve(async (req: Request) => {
   } catch (e) {
     const msg = (e as Error).message;
     console.error("send-test-email error", msg);
+    if (admin && senderPoolEmail) {
+      await admin.from("email_sender_pool").update({
+        last_error: msg,
+        last_error_at: new Date().toISOString(),
+      }).eq("email", senderPoolEmail);
+    }
     return new Response(JSON.stringify({ error: msg }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
