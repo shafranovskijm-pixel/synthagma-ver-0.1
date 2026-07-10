@@ -28,9 +28,18 @@ interface Props {
   compact?: boolean;
 }
 
-function tomorrow10(): string {
+function suggestDueDate(result: CallResultKey): string {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
+  // «КП отправлено» / «отправить материалы» — перезвон через 3 дня
+  // «Перезвонить позже» — через 3 дня
+  // остальное (интересно, демо и т.п.) — завтра
+  const addDays =
+    result === 'proposal_sent' || result === 'send_proposal' || result === 'send_info'
+      ? 3
+      : result === 'callback_later'
+        ? 3
+        : 1;
+  d.setDate(d.getDate() + addDays);
   d.setHours(10, 0, 0, 0);
   return d.toISOString().slice(0, 16);
 }
