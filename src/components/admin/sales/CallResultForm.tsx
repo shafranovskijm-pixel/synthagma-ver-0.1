@@ -96,6 +96,17 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
 
   const save = async (openNext: boolean) => {
     if (!lead) return;
+    const requiresDate =
+      result === 'interested' ||
+      result === 'proposal_sent' ||
+      result === 'send_proposal' ||
+      result === 'send_info' ||
+      result === 'callback_later' ||
+      result === 'demo_scheduled';
+    if (requiresDate && !dueDate) {
+      toast.error('Укажите дату следующего касания');
+      return;
+    }
     setSaving(true);
     try {
       const resultMeta = CALL_RESULTS.find(r => r.key === result);
