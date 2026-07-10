@@ -85,6 +85,9 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
                     {cat && <Badge variant="outline" className="text-[10px] mt-1">{cat.label}</Badge>}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" onClick={() => setPreviewing(t)} title="Посмотреть письмо">
+                      <Eye className="w-4 h-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => setCampaignFromTemplate(t)} title="Запустить рассылку из шаблона">
                       <Send className="w-4 h-4 text-primary" />
                     </Button>
