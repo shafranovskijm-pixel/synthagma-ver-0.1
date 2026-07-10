@@ -161,7 +161,7 @@ const RostechnadzorCoursesPage = () => {
           <motion.div initial="hidden" animate="visible" variants={stagger} className="max-w-4xl mx-auto text-center">
             <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/20 mb-6">
               <BookOpen className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-white/80">Библиотека · 303 курса · 14 направлений</span>
+              <span className="text-sm font-medium text-white/80">Библиотека{totalCount ? ` · ${totalCount} курсов` : ""}{directionsCount ? ` · ${directionsCount} направлений` : ""}</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
               300+ готовых курсов{" "}
