@@ -3,8 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send, ChevronDown, ChevronUp, Eye } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send, ChevronDown, ChevronUp, Eye, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useEmailTemplates, TEMPLATE_CATEGORIES, type EmailTemplate } from "@/hooks/useEmailTemplates";
 import { EmailTemplateEditor } from "./EmailTemplateEditor";
 import { EmailTemplateGallery } from "./EmailTemplateGallery";
@@ -22,6 +26,41 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const [campaignFromTemplate, setCampaignFromTemplate] = useState<EmailTemplate | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(true);
   const [previewing, setPreviewing] = useState<EmailTemplate | null>(null);
+  const [singleSend, setSingleSend] = useState<EmailTemplate | null>(null);
+  const [singleTo, setSingleTo] = useState("");
+  const [singleName, setSingleName] = useState("");
+  const [singleRegUrl, setSingleRegUrl] = useState("");
+  const [singleSending, setSingleSending] = useState(false);
+
+  const sendSingle = async () => {
+    if (!singleSend || !singleTo) return;
+    setSingleSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-test-email", {
+        body: {
+          template_id: singleSend.id,
+          to_email: singleTo,
+          to_name: singleName || undefined,
+          mode: "single",
+          scope,
+          organization_id: scope === "org" ? organizationId : null,
+          variables: {
+            name: singleName || "",
+            registration_url: singleRegUrl || "",
+          },
+        },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Письмо отправлено на " + singleTo);
+      setSingleSend(null);
+      setSingleTo(""); setSingleName(""); setSingleRegUrl("");
+    } catch (e: any) {
+      toast.error("Не удалось отправить: " + e.message);
+    } finally {
+      setSingleSending(false);
+    }
+  };
 
   const filtered = filterCat === "all" ? templates : templates.filter(t => t.category === filterCat);
 
@@ -88,6 +127,9 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
                     <Button size="icon" variant="ghost" onClick={() => setPreviewing(t)} title="Посмотреть письмо">
                       <Eye className="w-4 h-4" />
                     </Button>
+                    <Button size="icon" variant="ghost" onClick={() => { setSingleSend(t); setSingleTo(""); setSingleName(""); setSingleRegUrl(""); }} title="Отправить одному получателю">
+                      <UserPlus className="w-4 h-4 text-primary" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => setCampaignFromTemplate(t)} title="Запустить рассылку из шаблона">
                       <Send className="w-4 h-4 text-primary" />
                     </Button>
@@ -147,6 +189,38 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
               sandbox=""
               className="w-full flex-1 min-h-[60vh] rounded border bg-white"
             />
+          </DialogContent>
+        </Dialog>
+      )}
+      {singleSend && (
+        <Dialog open onOpenChange={(o) => !o && setSingleSend(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Отправить одному получателю</DialogTitle>
+              <p className="text-sm text-muted-foreground truncate">Шаблон: {singleSend.name}</p>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Email получателя *</Label>
+                <Input type="email" value={singleTo} onChange={(e) => setSingleTo(e.target.value)} placeholder="client@example.com" />
+              </div>
+              <div>
+                <Label>Имя получателя</Label>
+                <Input value={singleName} onChange={(e) => setSingleName(e.target.value)} placeholder="Иван" />
+                <p className="text-[11px] text-muted-foreground mt-1">Подставится в {`{{name}}`}</p>
+              </div>
+              <div>
+                <Label>Ссылка для регистрации</Label>
+                <Input value={singleRegUrl} onChange={(e) => setSingleRegUrl(e.target.value)} placeholder="https://sintagma.com.ru/register?token=..." />
+                <p className="text-[11px] text-muted-foreground mt-1">Подставится в {`{{registration_url}}`} (если есть в шаблоне)</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSingleSend(null)} disabled={singleSending}>Отмена</Button>
+              <Button onClick={sendSingle} disabled={singleSending || !singleTo}>
+                {singleSending ? "Отправляем..." : "Отправить"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
