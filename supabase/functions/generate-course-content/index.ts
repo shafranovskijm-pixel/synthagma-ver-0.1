@@ -685,57 +685,72 @@ serve(async (req) => {
   }
 
   try {
-    // SECURITY: Verify authentication
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    // Internal admin bypass — sandbox-triggered bulk operations
+    const internalToken = req.headers.get('x-internal-admin-token');
+    const isInternalAdmin = !!internalToken && internalToken === Deno.env.get('INTERNAL_ADMIN_TOKEN');
+
+    let user: { id: string } = { id: '00000000-0000-0000-0000-000000000000' };
+    let roleData: { role: string } | null = { role: 'admin' };
+    let callerProfile: { organization_id: string | null } | null = null;
+    let supabaseAuth: ReturnType<typeof createClient> | null = null;
+
+    if (!isInternalAdmin) {
+      // SECURITY: Verify authentication
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Authentication required" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Create authenticated client to verify the caller
+      supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: authHeader } } }
       );
+
+      // Verify user identity
+      const { data: { user: authedUser }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !authedUser) {
+        return new Response(
+          JSON.stringify({ error: "Invalid authentication" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      user = { id: authedUser.id };
+
+      // Verify user has appropriate role (organization or admin)
+      const { data: rd } = await supabaseAuth
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      roleData = rd as { role: string } | null;
+
+      if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+        return new Response(
+          JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get caller's organization for authorization
+      const { data: cp } = await supabaseAuth
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+      callerProfile = cp as { organization_id: string | null } | null;
+
+      // Rate limiting: 10 AI generation requests per minute per user
+      const rl = checkRateLimit(`ai:${user.id}`, { maxRequests: 10, windowSeconds: 60 });
+      if (!rl.allowed) {
+        return rateLimitResponse(rl, corsHeaders);
+      }
     }
 
-    // Create authenticated client to verify the caller
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Verify user identity
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid authentication" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Verify user has appropriate role (organization or admin)
-    const { data: roleData } = await supabaseAuth
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
-      return new Response(
-        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Get caller's organization for authorization
-    const { data: callerProfile } = await supabaseAuth
-      .from('profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
-    // Rate limiting: 10 AI generation requests per minute per user
-    const rl = checkRateLimit(`ai:${user.id}`, { maxRequests: 10, windowSeconds: 60 });
-    if (!rl.allowed) {
-      return rateLimitResponse(rl, corsHeaders);
-    }
 
     const body = await req.json();
     const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType, existingContent } = body;
