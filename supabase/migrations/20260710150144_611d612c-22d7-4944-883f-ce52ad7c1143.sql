@@ -1,0 +1,1 @@
+UPDATE public.email_sender_pool SET port=587, encryption='starttls', last_error=NULL, last_error_at=NULL WHERE email IN ('sintagma@sintagma.online','support@sintagma.com.ru');
