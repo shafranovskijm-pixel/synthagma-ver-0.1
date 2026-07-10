@@ -75,7 +75,7 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
   const [pain, setPain] = useState<string>('');
   const [painCustom, setPainCustom] = useState('');
   const [nextStep, setNextStep] = useState<NextActionKey>(suggestNextStep(initialResult || 'interested'));
-  const [dueDate, setDueDate] = useState<string>(tomorrow10());
+  const [dueDate, setDueDate] = useState<string>(suggestDueDate(initial));
   const [channel, setChannel] = useState<SendInfoChannel>('whatsapp');
   const [handoverTo, setHandoverTo] = useState('');
   const [saving, setSaving] = useState(false);
@@ -87,7 +87,7 @@ export function CallResultForm({ lead, initialResult, resetKey, onSaved, onSaveA
     setPain('');
     setPainCustom('');
     setNextStep(suggestNextStep(initial));
-    setDueDate(tomorrow10());
+    setDueDate(suggestDueDate(initial));
     setChannel('whatsapp');
     setHandoverTo('');
   }, [initialResult, resetKey, lead?.id]);
