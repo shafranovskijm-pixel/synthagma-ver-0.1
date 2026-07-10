@@ -363,7 +363,7 @@ const RostechnadzorCoursesPage = () => {
         <div className="container mx-auto px-6 text-center relative z-10">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
             <motion.h2 variants={fadeUp} className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-              Подключите 300+ курсов <span className="text-accent">бесплатно</span>
+              Подключите каталог курсов <span className="text-accent">бесплатно</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
               Зарегистрируйте организацию и получите доступ ко всей библиотеке курсов. 
