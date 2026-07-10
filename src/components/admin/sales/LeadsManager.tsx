@@ -381,6 +381,7 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
                     className={cn(
                       'border-t cursor-pointer hover:bg-muted/30',
                       overdue && 'border-l-2 border-l-rose-500',
+                      lead.status === 'not_interested' && 'bg-rose-500/5 hover:bg-rose-500/10 border-l-2 border-l-rose-500 text-rose-900 dark:text-rose-200 line-through decoration-rose-500/40',
                     )}
                   >
                     <td className="px-3 py-2">
