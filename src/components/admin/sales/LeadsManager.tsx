@@ -29,13 +29,14 @@ const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const CHIP_FILTERS: Array<{ key: string; label: string }> = [
-  { key: 'all', label: 'Все' },
+  { key: 'all', label: 'Активные' },
   { key: 'new', label: 'Новые' },
   { key: 'in_progress', label: 'В работе' },
   { key: 'callback_today', label: 'Перезвон сегодня' },
   { key: 'overdue', label: 'Просрочено' },
   { key: 'no_answer', label: 'Без ответа' },
   { key: 'interested', label: 'Есть интерес' },
+  { key: 'not_interested', label: 'Отказы' },
 ];
 
 interface LeadsManagerProps {
