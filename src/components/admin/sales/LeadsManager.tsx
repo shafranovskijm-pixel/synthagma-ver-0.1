@@ -139,11 +139,14 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
       if (regionFilter !== 'all' && (l.region || 'Без региона') !== regionFilter) return false;
       if (managerFilter !== 'all' && l.assigned_manager_id !== managerFilter) return false;
 
+      // Скрываем «Отказы» из общего списка — показываем только по явному фильтру
+      if (l.status === 'not_interested' && chip !== 'not_interested') return false;
+
       if (chip !== 'all') {
         if (chip === 'callback_today' && !isCallbackToday(l.id)) return false;
         else if (chip === 'overdue' && !isOverdue(l.id)) return false;
         else if (chip === 'no_answer' && l.status !== 'contacted' && l.status !== 'new') return false;
-        else if (['new', 'in_progress', 'interested'].includes(chip) && l.status !== chip) return false;
+        else if (['new', 'in_progress', 'interested', 'not_interested'].includes(chip) && l.status !== chip) return false;
       }
 
       if (priority) {
