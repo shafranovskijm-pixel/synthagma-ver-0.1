@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import {
   isBlockedBySecuritySoftware,
@@ -54,8 +55,21 @@ export async function safeInvoke<T = unknown>(
           console.warn(`[safeInvoke] ${functionName} blocked (attempt ${attempt + 1}):`, blockCheck.technicalReason);
           continue; // retry
         }
-        // HTTP error (4xx, 5xx) — do NOT retry, return immediately
-        return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
+        // HTTP error (4xx, 5xx) — try to extract server-side error message from body
+        let friendlyMessage: string | null = null;
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const body: any = await error.context.clone().json();
+            friendlyMessage = body?.error || body?.message || body?.msg || null;
+          } catch {
+            try {
+              const text = await error.context.clone().text();
+              if (text && text.length < 500) friendlyMessage = text;
+            } catch { /* ignore */ }
+          }
+        }
+        const finalMsg = friendlyMessage || (error instanceof Error ? error.message : String(error));
+        return { data: null, error: new Error(finalMsg) };
       }
 
       return { data: data as T, error: null };
