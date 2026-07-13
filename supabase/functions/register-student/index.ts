@@ -372,9 +372,9 @@ serve(async (req) => {
 
       const { error: roleInsertError } = await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: userId, role: "student" });
+        .upsert({ user_id: userId, role: "student" }, { onConflict: "user_id,role" });
       if (roleInsertError) {
-        console.error("[register-student] Role insert error:", roleInsertError);
+        console.error("[register-student] Role upsert error:", roleInsertError);
       }
 
       try {
