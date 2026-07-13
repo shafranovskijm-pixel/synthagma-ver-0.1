@@ -290,24 +290,56 @@ serve(async (req) => {
         );
       }
       const authEmail = `${generatedLogin}@student.local`;
-      
-      const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+
+      console.log(`[register-student] creating auth user for login=${generatedLogin}`);
+      const createUserPromise = supabaseAdmin.auth.admin.createUser({
         email: authEmail,
         password: generatedPassword,
         email_confirm: true,
         user_metadata: { full_name }
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AUTH_TIMEOUT")), 20000)
+      );
 
-      if (createAuthError) {
-        console.error("Auth error:", createAuthError);
+      let authData: any;
+      try {
+        const result: any = await Promise.race([createUserPromise, timeoutPromise]);
+        if (result.error) {
+          console.error("[register-student] Auth error:", result.error);
+          const msg = String(result.error.message || "");
+          let friendly = "Не удалось создать учётную запись: " + msg;
+          if (/already been registered|already exists|duplicate/i.test(msg)) {
+            friendly = "Ученик с таким логином/email уже существует";
+          } else if (/password/i.test(msg)) {
+            friendly = "Пароль не соответствует требованиям: " + msg;
+          } else if (/email/i.test(msg) && /invalid|not valid/i.test(msg)) {
+            friendly = "Некорректный внутренний email для логина. Попробуйте другой логин";
+          }
+          return new Response(
+            JSON.stringify({ error: friendly }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        authData = result.data;
+      } catch (e) {
+        const msg = (e as Error).message;
+        console.error("[register-student] createUser exception:", msg);
+        if (msg === "AUTH_TIMEOUT") {
+          return new Response(
+            JSON.stringify({ error: "Сервис авторизации не отвечает. Попробуйте через минуту." }),
+            { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response(
-          JSON.stringify({ error: "Ошибка создания пользователя: " + createAuthError.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Ошибка создания пользователя: " + msg }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       userId = authData.user.id;
-      
+      console.log(`[register-student] auth user created id=${userId}`);
+
       const { error: profileInsertError } = await supabaseAdmin
         .from("profiles")
         .upsert({
@@ -322,21 +354,38 @@ serve(async (req) => {
         }, { onConflict: "user_id" });
 
       if (profileInsertError) {
-        console.error("Profile error:", profileInsertError);
+        console.error("[register-student] Profile error:", profileInsertError);
+        // rollback auth user so admin can retry
+        try { await supabaseAdmin.auth.admin.deleteUser(userId); } catch { /* ignore */ }
+        const pmsg = String(profileInsertError.message || "");
+        let friendly = "Ошибка создания профиля: " + pmsg;
+        if (/duplicate key.*profiles_email/i.test(pmsg) || /profiles_email_key/i.test(pmsg)) {
+          friendly = `Ученик с email «${email}» уже существует в системе`;
+        } else if (/duplicate key.*login/i.test(pmsg)) {
+          friendly = `Логин «${generatedLogin}» уже занят`;
+        }
         return new Response(
-          JSON.stringify({ error: "Ошибка создания профиля: " + profileInsertError.message }),
+          JSON.stringify({ error: friendly }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      await supabaseAdmin
+      const { error: roleInsertError } = await supabaseAdmin
         .from("user_roles")
         .insert({ user_id: userId, role: "student" });
+      if (roleInsertError) {
+        console.error("[register-student] Role insert error:", roleInsertError);
+      }
 
-      await createFrdoData(userId);
+      try {
+        await createFrdoData(userId);
+      } catch (frdoErr) {
+        console.error("[register-student] FRDO data error (non-fatal):", frdoErr);
+      }
 
-      console.log(`Created student: ${full_name}, login: ${generatedLogin}`);
+      console.log(`[register-student] Created student: ${full_name}, login: ${generatedLogin}`);
     }
+
 
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
