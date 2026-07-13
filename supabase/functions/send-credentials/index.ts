@@ -155,15 +155,58 @@ const handler = async (req: Request): Promise<Response> => {
       ? `Ваши данные для входа - ${organizationName}`
       : 'Ваши данные для входа';
 
-    const result = await sendPlatformEmail({
-      to: email,
-      subject: subjectText,
-      html: htmlBody,
-    });
+    // Try sender pool first (LRU round-robin), fall back to platform SMTP
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
 
-    if (!result.ok) {
-      throw new Error(result.error || "send failed");
+    let sent = false;
+    let lastError = "";
+    let usedSender = "platform";
+
+    try {
+      const { data: pickData, error: pickError } = await supabaseAdmin.rpc("pick_next_email_sender");
+      const sender = Array.isArray(pickData) ? pickData[0] : null;
+      if (!pickError && sender) {
+        try {
+          await sendSmtpEmail(
+            {
+              host: sender.host,
+              port: sender.port,
+              username: sender.email,
+              password: sender.app_password,
+              encryption: sender.encryption,
+              from_email: sender.email,
+              from_name: sender.from_name || "Синтагма",
+            },
+            { to: email, subject: subjectText, html: htmlBody },
+          );
+          sent = true;
+          usedSender = sender.email;
+          await supabaseAdmin.rpc("mark_email_sender_result", { p_sender_id: sender.id, p_ok: true, p_error: null }).catch(() => {});
+        } catch (poolErr) {
+          lastError = (poolErr as Error).message;
+          console.warn(`Pool sender ${sender.email} failed: ${lastError}. Falling back to platform SMTP.`);
+          await supabaseAdmin.rpc("mark_email_sender_result", { p_sender_id: sender.id, p_ok: false, p_error: lastError }).catch(() => {});
+        }
+      } else if (pickError) {
+        console.warn("pick_next_email_sender error:", pickError.message);
+      }
+    } catch (e) {
+      console.warn("Sender pool selection exception:", (e as Error).message);
     }
+
+    if (!sent) {
+      const result = await sendPlatformEmail({ to: email, subject: subjectText, html: htmlBody });
+      if (!result.ok) {
+        throw new Error(`Не удалось отправить письмо (пул: ${lastError || "недоступен"}; платформа: ${result.error || "ошибка"})`);
+      }
+      usedSender = "platform SMTP";
+    }
+
+    console.log(`Credentials email sent to ${email} via ${usedSender} by user ${user.id}`);
 
     console.log("Credentials email sent successfully to:", email, "by user:", user.id);
 
