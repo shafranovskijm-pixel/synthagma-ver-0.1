@@ -73,9 +73,37 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password, student_group_id } = await req.json();
+    let payload: any;
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Некорректный запрос: не удалось прочитать данные формы" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}`);
+    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password, student_group_id } = payload || {};
+
+    console.log(`[register-student] request:`, {
+      hasFullName: !!full_name,
+      hasEmail: !!email,
+      hasOrg: !!organization_id,
+      hasCustomLogin: !!custom_login,
+      hasCustomPassword: !!custom_password,
+      callerRole: roleData.role,
+    });
+
+    // ── Field-level validation ──
+    const missing: string[] = [];
+    if (!full_name || typeof full_name !== "string" || !full_name.trim()) missing.push("ФИО");
+    if (roleData.role !== "company" && !organization_id) missing.push("Организация");
+    if (missing.length > 0) {
+      return new Response(
+        JSON.stringify({ error: `Не заполнены обязательные поля: ${missing.join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Determine effective org/company based on caller role
     let effectiveOrgId = organization_id;
@@ -90,7 +118,7 @@ serve(async (req) => {
 
       if (!companyData) {
         return new Response(
-          JSON.stringify({ error: "Company not found for this user" }),
+          JSON.stringify({ error: "Компания не найдена для текущего пользователя" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -99,28 +127,44 @@ serve(async (req) => {
       effectiveCompanyId = companyData.id;
     } else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
       return new Response(
-        JSON.stringify({ error: "You can only register students in your own organization" }),
+        JSON.stringify({ error: "Вы можете создавать учеников только в своей организации" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!full_name || !effectiveOrgId) {
+    if (!effectiveOrgId) {
       return new Response(
-        JSON.stringify({ error: "Заполните все обязательные поля" }),
+        JSON.stringify({ error: "Не удалось определить организацию для ученика" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[register-student] Registering student: ${full_name} (${email || 'no email'}) → org ${effectiveOrgId}`);
 
     // ── Student limit check ──
     const planLimits: Record<string, number> = {
       free: 10, start: 100, standard: 200, professional: 1000, maximum: -1
     };
 
-    const { data: orgData } = await supabaseAdmin
+    const { data: orgData, error: orgLookupError } = await supabaseAdmin
       .from('organizations')
       .select('subscription_plan, custom_max_students')
       .eq('id', effectiveOrgId)
-      .single();
+      .maybeSingle();
+
+    if (orgLookupError) {
+      console.error("[register-student] Org lookup error:", orgLookupError);
+      return new Response(
+        JSON.stringify({ error: "Не удалось проверить тариф организации: " + orgLookupError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!orgData) {
+      return new Response(
+        JSON.stringify({ error: "Организация не найдена" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const plan = orgData?.subscription_plan || 'free';
     const customMax = (orgData as any)?.custom_max_students;
@@ -128,7 +172,14 @@ serve(async (req) => {
     const maxStudents = customMax != null ? customMax : (planLimits[plan] ?? 10);
 
     if (maxStudents !== -1) {
-      const { data: countResult } = await supabaseAdmin.rpc('count_org_students', { org_id: effectiveOrgId });
+      const { data: countResult, error: countError } = await supabaseAdmin.rpc('count_org_students', { org_id: effectiveOrgId });
+      if (countError) {
+        console.error("[register-student] count_org_students error:", countError);
+        return new Response(
+          JSON.stringify({ error: "Не удалось посчитать количество учеников: " + countError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       const currentCount = Number(countResult) || 0;
 
       if (currentCount >= maxStudents) {
@@ -146,11 +197,12 @@ serve(async (req) => {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {
         return new Response(
-          JSON.stringify({ error: "Неверный формат email. Используйте только латинские буквы." }),
+          JSON.stringify({ error: `Неверный формат email «${email}». Используйте только латинские буквы.` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
+
 
     let userId: string = "";
     let isExisting = false;
@@ -238,24 +290,56 @@ serve(async (req) => {
         );
       }
       const authEmail = `${generatedLogin}@student.local`;
-      
-      const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+
+      console.log(`[register-student] creating auth user for login=${generatedLogin}`);
+      const createUserPromise = supabaseAdmin.auth.admin.createUser({
         email: authEmail,
         password: generatedPassword,
         email_confirm: true,
         user_metadata: { full_name }
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AUTH_TIMEOUT")), 20000)
+      );
 
-      if (createAuthError) {
-        console.error("Auth error:", createAuthError);
+      let authData: any;
+      try {
+        const result: any = await Promise.race([createUserPromise, timeoutPromise]);
+        if (result.error) {
+          console.error("[register-student] Auth error:", result.error);
+          const msg = String(result.error.message || "");
+          let friendly = "Не удалось создать учётную запись: " + msg;
+          if (/already been registered|already exists|duplicate/i.test(msg)) {
+            friendly = "Ученик с таким логином/email уже существует";
+          } else if (/password/i.test(msg)) {
+            friendly = "Пароль не соответствует требованиям: " + msg;
+          } else if (/email/i.test(msg) && /invalid|not valid/i.test(msg)) {
+            friendly = "Некорректный внутренний email для логина. Попробуйте другой логин";
+          }
+          return new Response(
+            JSON.stringify({ error: friendly }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        authData = result.data;
+      } catch (e) {
+        const msg = (e as Error).message;
+        console.error("[register-student] createUser exception:", msg);
+        if (msg === "AUTH_TIMEOUT") {
+          return new Response(
+            JSON.stringify({ error: "Сервис авторизации не отвечает. Попробуйте через минуту." }),
+            { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response(
-          JSON.stringify({ error: "Ошибка создания пользователя: " + createAuthError.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Ошибка создания пользователя: " + msg }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       userId = authData.user.id;
-      
+      console.log(`[register-student] auth user created id=${userId}`);
+
       const { error: profileInsertError } = await supabaseAdmin
         .from("profiles")
         .upsert({
@@ -270,21 +354,38 @@ serve(async (req) => {
         }, { onConflict: "user_id" });
 
       if (profileInsertError) {
-        console.error("Profile error:", profileInsertError);
+        console.error("[register-student] Profile error:", profileInsertError);
+        // rollback auth user so admin can retry
+        try { await supabaseAdmin.auth.admin.deleteUser(userId); } catch { /* ignore */ }
+        const pmsg = String(profileInsertError.message || "");
+        let friendly = "Ошибка создания профиля: " + pmsg;
+        if (/duplicate key.*profiles_email/i.test(pmsg) || /profiles_email_key/i.test(pmsg)) {
+          friendly = `Ученик с email «${email}» уже существует в системе`;
+        } else if (/duplicate key.*login/i.test(pmsg)) {
+          friendly = `Логин «${generatedLogin}» уже занят`;
+        }
         return new Response(
-          JSON.stringify({ error: "Ошибка создания профиля: " + profileInsertError.message }),
+          JSON.stringify({ error: friendly }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      await supabaseAdmin
+      const { error: roleInsertError } = await supabaseAdmin
         .from("user_roles")
         .insert({ user_id: userId, role: "student" });
+      if (roleInsertError) {
+        console.error("[register-student] Role insert error:", roleInsertError);
+      }
 
-      await createFrdoData(userId);
+      try {
+        await createFrdoData(userId);
+      } catch (frdoErr) {
+        console.error("[register-student] FRDO data error (non-fatal):", frdoErr);
+      }
 
-      console.log(`Created student: ${full_name}, login: ${generatedLogin}`);
+      console.log(`[register-student] Created student: ${full_name}, login: ${generatedLogin}`);
     }
+
 
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
