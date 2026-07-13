@@ -1,11 +1,12 @@
 /**
- * Returns the base URL for generating links.
- * In production, always returns the primary domain to ensure
- * all links are consistent regardless of which domain the admin uses.
+ * Returns the base URL for generating links (login, invites, etc).
+ * In production, always returns синтагма.рф (punycode) — sintagma.com.ru
+ * is not reachable in RU without VPN.
  */
 export const getBaseUrl = (): string => {
   if (import.meta.env.DEV) {
     return window.location.origin;
   }
-  return 'https://sintagma.com.ru';
+  // https://синтагма.рф в punycode — работает в РФ без VPN.
+  return 'https://xn--80aaiswd0ak.xn--p1ai';
 };
