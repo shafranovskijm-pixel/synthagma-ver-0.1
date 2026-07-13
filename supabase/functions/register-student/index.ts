@@ -73,9 +73,37 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password, student_group_id } = await req.json();
+    let payload: any;
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Некорректный запрос: не удалось прочитать данные формы" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}`);
+    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password, student_group_id } = payload || {};
+
+    console.log(`[register-student] request:`, {
+      hasFullName: !!full_name,
+      hasEmail: !!email,
+      hasOrg: !!organization_id,
+      hasCustomLogin: !!custom_login,
+      hasCustomPassword: !!custom_password,
+      callerRole: roleData.role,
+    });
+
+    // ── Field-level validation ──
+    const missing: string[] = [];
+    if (!full_name || typeof full_name !== "string" || !full_name.trim()) missing.push("ФИО");
+    if (roleData.role !== "company" && !organization_id) missing.push("Организация");
+    if (missing.length > 0) {
+      return new Response(
+        JSON.stringify({ error: `Не заполнены обязательные поля: ${missing.join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Determine effective org/company based on caller role
     let effectiveOrgId = organization_id;
@@ -90,7 +118,7 @@ serve(async (req) => {
 
       if (!companyData) {
         return new Response(
-          JSON.stringify({ error: "Company not found for this user" }),
+          JSON.stringify({ error: "Компания не найдена для текущего пользователя" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -99,28 +127,44 @@ serve(async (req) => {
       effectiveCompanyId = companyData.id;
     } else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
       return new Response(
-        JSON.stringify({ error: "You can only register students in your own organization" }),
+        JSON.stringify({ error: "Вы можете создавать учеников только в своей организации" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!full_name || !effectiveOrgId) {
+    if (!effectiveOrgId) {
       return new Response(
-        JSON.stringify({ error: "Заполните все обязательные поля" }),
+        JSON.stringify({ error: "Не удалось определить организацию для ученика" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[register-student] Registering student: ${full_name} (${email || 'no email'}) → org ${effectiveOrgId}`);
 
     // ── Student limit check ──
     const planLimits: Record<string, number> = {
       free: 10, start: 100, standard: 200, professional: 1000, maximum: -1
     };
 
-    const { data: orgData } = await supabaseAdmin
+    const { data: orgData, error: orgLookupError } = await supabaseAdmin
       .from('organizations')
       .select('subscription_plan, custom_max_students')
       .eq('id', effectiveOrgId)
-      .single();
+      .maybeSingle();
+
+    if (orgLookupError) {
+      console.error("[register-student] Org lookup error:", orgLookupError);
+      return new Response(
+        JSON.stringify({ error: "Не удалось проверить тариф организации: " + orgLookupError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!orgData) {
+      return new Response(
+        JSON.stringify({ error: "Организация не найдена" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const plan = orgData?.subscription_plan || 'free';
     const customMax = (orgData as any)?.custom_max_students;
@@ -128,7 +172,14 @@ serve(async (req) => {
     const maxStudents = customMax != null ? customMax : (planLimits[plan] ?? 10);
 
     if (maxStudents !== -1) {
-      const { data: countResult } = await supabaseAdmin.rpc('count_org_students', { org_id: effectiveOrgId });
+      const { data: countResult, error: countError } = await supabaseAdmin.rpc('count_org_students', { org_id: effectiveOrgId });
+      if (countError) {
+        console.error("[register-student] count_org_students error:", countError);
+        return new Response(
+          JSON.stringify({ error: "Не удалось посчитать количество учеников: " + countError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       const currentCount = Number(countResult) || 0;
 
       if (currentCount >= maxStudents) {
@@ -146,11 +197,12 @@ serve(async (req) => {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {
         return new Response(
-          JSON.stringify({ error: "Неверный формат email. Используйте только латинские буквы." }),
+          JSON.stringify({ error: `Неверный формат email «${email}». Используйте только латинские буквы.` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
+
 
     let userId: string = "";
     let isExisting = false;
