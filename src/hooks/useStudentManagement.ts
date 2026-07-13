@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
 import { generateLogin, generateSimplePassword, generateStrongPassword, isValidEmail } from "@/utils/credentials";
 import { logStudentDeletion } from "@/utils/logStudentDeletion";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 
 interface UseStudentManagementProps {
   organizationId: string | null;
