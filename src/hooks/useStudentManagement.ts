@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
 import { generateLogin, generateSimplePassword, generateStrongPassword, isValidEmail } from "@/utils/credentials";
 import { logStudentDeletion } from "@/utils/logStudentDeletion";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 
 interface UseStudentManagementProps {
   organizationId: string | null;
@@ -113,6 +114,30 @@ export function useStudentManagement({
         toast.success(data.message || "Ученик зачислен на курс");
       } else {
         toast.success(`Ученик создан. Логин: ${displayLogin}, Пароль: ${displayPassword}`);
+      }
+
+      // Auto-send credentials by email if email provided
+      if (!data.is_existing && effectiveEmail && effectiveEmail.trim() && displayLogin && displayPassword) {
+        try {
+          const { error: mailError } = await safeInvoke<any>("send-credentials", {
+            body: {
+              email: effectiveEmail.trim(),
+              name: effectiveName,
+              login: displayLogin,
+              password: displayPassword,
+              loginUrl: `${getBaseUrl()}/login`,
+            }
+          });
+          if (mailError) {
+            console.error("Auto send-credentials failed:", mailError);
+            toast.warning(`Ученик создан, но письмо не отправлено: ${mailError.message || "неизвестная ошибка"}`);
+          } else {
+            toast.success(`Данные для входа отправлены на ${effectiveEmail}`);
+          }
+        } catch (mailErr: any) {
+          console.error("Auto send-credentials exception:", mailErr);
+          toast.warning(`Ученик создан, но письмо не отправлено: ${mailErr?.message || "ошибка"}`);
+        }
       }
 
       // Add or update student in the list
