@@ -55,6 +55,23 @@
       (function(){
         var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
 
+        function removeLegacyProxyBadge() {
+          try {
+            var nodes = document.querySelectorAll('body *');
+            for (var i = 0; i < nodes.length; i += 1) {
+              var node = nodes[i];
+              if (node && node.textContent && node.textContent.trim() === 'Резервный канал') {
+                var badge = node.closest('[class*="fixed"][class*="bottom-"]');
+                if (badge) badge.remove();
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (!isPreview) {
+          setInterval(removeLegacyProxyBadge, 1000);
+        }
+
         function purgeAll() {
           var tasks = [];
           if ('serviceWorker' in navigator) {
