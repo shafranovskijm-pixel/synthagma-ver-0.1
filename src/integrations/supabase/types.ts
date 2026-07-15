@@ -4393,6 +4393,63 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_popups: {
+        Row: {
+          badge_text: string
+          created_at: string
+          cta_text: string
+          delay_seconds: number
+          description: string
+          enabled: boolean
+          id: string
+          image_url: string | null
+          name: string
+          show_for_authenticated: boolean
+          sort_order: number
+          source_tag: string
+          storage_key: string
+          subtitle: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge_text?: string
+          created_at?: string
+          cta_text?: string
+          delay_seconds?: number
+          description?: string
+          enabled?: boolean
+          id?: string
+          image_url?: string | null
+          name: string
+          show_for_authenticated?: boolean
+          sort_order?: number
+          source_tag?: string
+          storage_key?: string
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          badge_text?: string
+          created_at?: string
+          cta_text?: string
+          delay_seconds?: number
+          description?: string
+          enabled?: boolean
+          id?: string
+          image_url?: string | null
+          name?: string
+          show_for_authenticated?: boolean
+          sort_order?: number
+          source_tag?: string
+          storage_key?: string
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lesson_attachments: {
         Row: {
           category: string
