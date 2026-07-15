@@ -204,8 +204,19 @@ serve(async (req) => {
       });
     }
 
-    // Build accept URL
-    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, '') || "https://sintagma.com.ru";
+    // Build accept URL — по умолчанию синтагма.рф (punycode), т.к. sintagma.com.ru не работает в РФ без VPN.
+    const rawOrigin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, '') || "";
+    const allowedOriginPatterns = [
+      /^https:\/\/xn--80aaiswd0ak\.xn--p1ai$/,
+      /^https:\/\/синтагма\.рф$/,
+      /^http:\/\/localhost(:\d+)?$/,
+      /^https:\/\/[a-z0-9-]+\.lovable\.(app|dev)$/,
+      /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.lovable\.app$/,
+      /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
+    ];
+    const origin = allowedOriginPatterns.some((r) => r.test(rawOrigin))
+      ? rawOrigin
+      : "https://xn--80aaiswd0ak.xn--p1ai";
     const acceptUrl = `${origin}/accept-invitation?token=${token}`;
 
     const html = buildHtml({
@@ -218,11 +229,19 @@ serve(async (req) => {
     });
     const subject = `Приглашение в ${invitation_type === 'admin' ? 'команду платформы' : invitation_type === 'organization' ? `организацию «${organizationName}»` : invitation_type === 'sales' ? 'команду продаж Синтагмы' : `компанию «${organizationName}»`}`;
 
-    const sent = skipEmail ? false : await sendSmtp(email.trim().toLowerCase(), subject, html);
+    const sendResult = skipEmail
+      ? { ok: false as const, error: undefined as string | undefined }
+      : await sendSmtp(admin, email.trim().toLowerCase(), subject, html);
 
-    return new Response(JSON.stringify({ success: true, sent, accept_url: acceptUrl }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        sent: sendResult.ok,
+        email_error: skipEmail ? null : (sendResult.ok ? null : (sendResult.error || "Не удалось отправить письмо")),
+        accept_url: acceptUrl,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e: any) {
     console.error("send-staff-invitation error:", e);
     return new Response(JSON.stringify({ error: e?.message || "Internal error" }), {
