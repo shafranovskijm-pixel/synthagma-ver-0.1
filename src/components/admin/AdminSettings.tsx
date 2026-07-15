@@ -229,6 +229,8 @@ export function AdminSettings() {
 
       case "promo": return <PromoCodesManager />;
       case "popups": return <LandingPopupsManager />;
+      case "proxy-badge": return <ProxyBadgeToggle />;
+
 
       case "notifications":
         return (
