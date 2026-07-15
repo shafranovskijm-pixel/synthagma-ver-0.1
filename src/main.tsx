@@ -1,10 +1,15 @@
 import "./index.css";
 import { installProxyFetch } from "./utils/proxyFetch";
+import { installLegacyProxyBadgeKiller } from "./utils/legacyProxyBadgeKiller";
 import { installErrorReporter } from "./utils/errorReporter";
 
 // Перехватчик fetch для обхода корпоративных блокировок Supabase-доменов
 // через резервные субдомены (api/functions/storage.sintagma.com.ru)
 installProxyFetch();
+
+// Удаляет старую плавающую плашку «Резервный канал» даже если хостинг
+// отдаёт старый HTML, но свежий JS-бандл уже загружен.
+installLegacyProxyBadgeKiller();
 
 // Автологирование сетевых ошибок (CORS, 4xx/5xx, network failures) в БД,
 // чтобы админ мог диагностировать проблемы клиентов без скриншотов.

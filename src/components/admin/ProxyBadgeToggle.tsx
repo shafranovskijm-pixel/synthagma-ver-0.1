@@ -49,6 +49,7 @@ export function ProxyBadgeToggle() {
       // Мгновенно применяем на текущей вкладке
       try {
         localStorage.setItem(LS_KEY, next ? "true" : "false");
+        window.dispatchEvent(new CustomEvent("sintagma:proxy-badge-visibility", { detail: { hide: next } }));
       } catch {}
 
       setHide(next);

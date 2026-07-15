@@ -5,7 +5,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-const pwaCacheVersion = "sintagma-1.0.76";
+const pwaCacheVersion = "sintagma-1.0.77";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
