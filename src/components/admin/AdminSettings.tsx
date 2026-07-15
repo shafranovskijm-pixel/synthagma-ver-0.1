@@ -223,6 +223,7 @@ export function AdminSettings() {
         );
 
       case "promo": return <PromoCodesManager />;
+      case "popups": return <LandingPopupsManager />;
 
       case "notifications":
         return (
