@@ -2,6 +2,7 @@ import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 interface CourseCardNewProps {
   id: string;
