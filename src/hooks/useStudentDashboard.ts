@@ -193,6 +193,7 @@ export function useStudentDashboard() {
         completedLessons: Number(e.completed_lessons) || 0,
         status: (e.status === "completed" ? "completed" : "in_progress") as StudentCourse["status"],
         skip_video_identification: e.skip_video_identification || false,
+        cover_image_url: e.cover_image_url ?? null,
       }));
       setCourses(mapped);
       setTotalCompletedLessons(mapped.reduce((sum, c) => sum + c.completedLessons, 0));
