@@ -37,6 +37,7 @@ interface CourseCatalogProps {
     completedLessons: number;
     status: "in_progress" | "completed" | "locked";
     skip_video_identification?: boolean;
+    cover_image_url?: string | null;
   }[];
   isVideoIdentified?: boolean;
   totalProgress?: number;
@@ -115,6 +116,7 @@ export function CourseCatalog({
                 id={course.id}
                 title={course.title}
                 description={course.description}
+                coverImageUrl={course.cover_image_url}
                 duration={course.duration}
                 progress={course.progress}
                 totalLessons={course.totalLessons}
