@@ -422,7 +422,7 @@ const CourseLearning = () => {
       </main>
 
       {/* AI Chat */}
-      <Button onClick={() => setIsChatOpen(true)} className={cn("fixed shadow-lg z-40 bg-gradient-to-r from-primary to-primary/80 transition-transform hover:scale-105 rounded-full", isMobile ? "bottom-20 right-4 w-12 h-12" : "bottom-24 right-6 w-14 h-14", isChatOpen && "hidden")}><MessageCircle className={cn(isMobile ? "w-5 h-5" : "w-6 h-6")} /></Button>
+      <Button onClick={() => setIsChatOpen(true)} className={cn("fixed shadow-lg z-40 bg-gradient-to-r from-primary to-primary/80 transition-all duration-300 hover:scale-105 rounded-full", isMobile ? "bottom-24 right-3 w-11 h-11" : "bottom-24 right-6 w-14 h-14", isChatOpen && "hidden", isMobile && !chatBtnVisible && "opacity-0 pointer-events-none translate-y-4")}><MessageCircle className={cn(isMobile ? "w-5 h-5" : "w-6 h-6")} /></Button>
       {isChatOpen && <AiChatPanel isMobile={!!isMobile} chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} isChatLoading={isChatLoading} chatScrollRef={chatScrollRef} sendChatMessage={sendChatMessage} onClose={() => setIsChatOpen(false)} />}
 
       <TTSSettingsDialog open={ttsSettingsOpen} onOpenChange={setTtsSettingsOpen} settings={ttsSettings} onSettingsChange={setTtsSettings} />
