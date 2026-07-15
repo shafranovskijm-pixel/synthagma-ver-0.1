@@ -58,6 +58,7 @@ export function StudentLibrary({
               id={course.id}
               title={course.title}
               description={course.description}
+              coverImageUrl={course.cover_image_url}
               duration={course.duration}
               progress={course.progress}
               totalLessons={course.totalLessons}
