@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="СИНТАГМА" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="/manifest.webmanifest?v=1.0.76" />
     
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -54,6 +54,23 @@
     <script>
       (function(){
         var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
+
+        function removeLegacyProxyBadge() {
+          try {
+            var nodes = document.querySelectorAll('body *');
+            for (var i = 0; i < nodes.length; i += 1) {
+              var node = nodes[i];
+              if (node && node.textContent && node.textContent.trim() === 'Резервный канал') {
+                var badge = node.closest('[class*="fixed"][class*="bottom-"]');
+                if (badge) badge.remove();
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (!isPreview) {
+          setInterval(removeLegacyProxyBadge, 1000);
+        }
 
         function purgeAll() {
           var tasks = [];

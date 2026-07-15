@@ -5,6 +5,8 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+const pwaCacheVersion = "sintagma-1.0.76";
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',
@@ -17,6 +19,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: null,
       devOptions: { enabled: false },
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
@@ -49,18 +52,22 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        cacheId: pwaCacheVersion,
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
         navigateFallbackDenylist: [/^\/~oauth/],
+        additionalManifestEntries: [
+          { url: "/manifest.webmanifest", revision: pwaCacheVersion },
+        ],
         runtimeCaching: [
           {
             urlPattern: ({request}) => request.mode === 'navigate',
             handler: "NetworkFirst",
             options: {
-              cacheName: "pages-cache",
+              cacheName: `${pwaCacheVersion}-pages-cache`,
               expiration: { maxAgeSeconds: 60 * 60 },
             },
           },
@@ -68,7 +75,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /^https:\/\/.*supabase.*\/.*/i,
             handler: "NetworkFirst",
             options: {
-              cacheName: "api-cache",
+              cacheName: `${pwaCacheVersion}-api-cache`,
               expiration: { maxEntries: 50, maxAgeSeconds: 600 },
             },
           },
@@ -76,7 +83,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
             handler: "CacheFirst",
             options: {
-              cacheName: "images-cache",
+              cacheName: `${pwaCacheVersion}-images-cache`,
               expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
@@ -84,7 +91,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /\.(?:js|css|woff2?)$/i,
             handler: "NetworkFirst",
             options: {
-              cacheName: "static-cache",
+              cacheName: `${pwaCacheVersion}-static-cache`,
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
             },
           },
@@ -92,7 +99,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
             options: {
-              cacheName: "google-fonts-cache",
+              cacheName: `${pwaCacheVersion}-google-fonts-cache`,
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
