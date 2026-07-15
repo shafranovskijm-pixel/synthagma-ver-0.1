@@ -414,11 +414,8 @@ export function installProxyFetch() {
     };
   }
 
-  if (isForcedProxyHost()) {
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
-    }, 0);
-  }
+  // На форсированном домене прокси — штатный транспорт, не показываем
+  // пользователю отдельную плашку/событие о резервном канале.
 }
 
 async function probeDirectChannel(force = false) {
