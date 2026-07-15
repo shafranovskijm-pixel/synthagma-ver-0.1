@@ -59,6 +59,30 @@ const CourseLearning = () => {
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
+  const [chatBtnVisible, setChatBtnVisible] = useReactState(true);
+
+  // Auto-hide floating AI chat button while scrolling the lesson content on mobile,
+  // so it doesn't overlap the "Отправить"/pagination controls in tests.
+  useEffect(() => {
+    if (!isMobile) { setChatBtnVisible(true); return; }
+    const el = contentRef?.current as HTMLElement | null;
+    if (!el) return;
+    let lastY = el.scrollTop;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      const y = el.scrollTop;
+      if (y > lastY + 6) setChatBtnVisible(false);
+      else if (y < lastY - 6) setChatBtnVisible(true);
+      lastY = y;
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setChatBtnVisible(true), 1200);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [isMobile, contentRef, currentLesson?.id]);
 
   // Reset native-tracking flag whenever the lesson changes; VideoPlayerInline re-reports
   useEffect(() => { setHasNativeVideoTracking(false); }, [currentLesson?.id]);
