@@ -89,17 +89,28 @@ function detectDeviceType(ua: string): 'Desktop' | 'Mobile' | 'Tablet' {
 
 async function fetchIpInfo(): Promise<{ country: string; region: string; org: string; asn: string; vpn: boolean }> {
   const fallback = { country: 'недоступно', region: '—', org: '—', asn: '—', vpn: false };
+  // Идём через нашу edge-функцию `get-client-ip?geo=1`: сервер сам достаёт IP из
+  // заголовков и делает серверный geo-lookup. Это обходит блокировки ipapi.co у
+  // российских провайдеров и корпоративных firewall.
   try {
+    const base = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+    const key = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+    if (!base) return fallback;
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4000);
-    const resp = await fetch('https://ipapi.co/json/', { signal: ctrl.signal, cache: 'no-store' });
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const resp = await fetch(`${base.replace(/\/$/, '')}/functions/v1/get-client-ip?geo=1`, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: key ? { apikey: key, Authorization: `Bearer ${key}` } : {},
+    });
     clearTimeout(t);
     if (!resp.ok) return fallback;
     const data: any = await resp.json();
-    const country = data.country_code || data.country || '—';
-    const region = [data.region, data.city].filter(Boolean).join(', ') || '—';
-    const org = data.org || data.org_name || '—';
+    const country = data.country || '—';
+    const region = data.region || '—';
+    const org = data.org || '—';
     const asn = data.asn || '—';
+    if (country === '—' && region === '—' && org === '—') return fallback;
     const vpn = country !== 'RU' || /vpn|proxy|hosting|datacenter|cloud/i.test(`${org} ${asn}`);
     return { country, region, org, asn, vpn };
   } catch {
