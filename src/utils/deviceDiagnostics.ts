@@ -89,22 +89,62 @@ function detectDeviceType(ua: string): 'Desktop' | 'Mobile' | 'Tablet' {
 
 async function fetchIpInfo(): Promise<{ country: string; region: string; org: string; asn: string; vpn: boolean }> {
   const fallback = { country: 'недоступно', region: '—', org: '—', asn: '—', vpn: false };
+  // Идём через нашу edge-функцию: сервер сам достаёт IP из заголовков и делает
+  // серверный geo-lookup. Это обходит блокировки ipapi.co у российских провайдеров
+  // и корпоративных firewall.
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4000);
-    const resp = await fetch('https://ipapi.co/json/', { signal: ctrl.signal, cache: 'no-store' });
-    clearTimeout(t);
-    if (!resp.ok) return fallback;
-    const data: any = await resp.json();
-    const country = data.country_code || data.country || '—';
-    const region = [data.region, data.city].filter(Boolean).join(', ') || '—';
-    const org = data.org || data.org_name || '—';
-    const asn = data.asn || '—';
-    const vpn = country !== 'RU' || /vpn|proxy|hosting|datacenter|cloud/i.test(`${org} ${asn}`);
-    return { country, region, org, asn, vpn };
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data, error } = await supabase.functions.invoke('get-client-ip', {
+      method: 'GET',
+      // @ts-ignore — invoke принимает query через body для GET в свежих версиях, но проще fetch:
+    });
+    if (!error && data) {
+      const country = (data as any).country || '—';
+      const region = (data as any).region || '—';
+      const org = (data as any).org || '—';
+      const asn = (data as any).asn || '—';
+      // Если гео пустое — запросим ещё раз с geo=1 напрямую через fetch (invoke не пробрасывает query).
+      if (country === '—') {
+        const { supabase: sb } = await import('@/integrations/supabase/client');
+        const url = `${(sb as any).functionsUrl || ''}`.replace(/\/$/, '');
+        // fallback ниже
+      } else {
+        const vpn = country !== 'RU' || /vpn|proxy|hosting|datacenter|cloud/i.test(`${org} ${asn}`);
+        return { country, region, org, asn, vpn };
+      }
+    }
   } catch {
-    return fallback;
+    // ignore
   }
+  // Прямой вызов edge-функции с ?geo=1 (invoke не пробрасывает query-параметры)
+  try {
+    const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } = await import('@/integrations/supabase/client') as any;
+    const base = SUPABASE_URL || (import.meta as any).env?.VITE_SUPABASE_URL;
+    const key = SUPABASE_PUBLISHABLE_KEY || (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+    if (base) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 4000);
+      const resp = await fetch(`${base.replace(/\/$/, '')}/functions/v1/get-client-ip?geo=1`, {
+        signal: ctrl.signal,
+        headers: key ? { apikey: key, Authorization: `Bearer ${key}` } : {},
+      });
+      clearTimeout(t);
+      if (resp.ok) {
+        const data: any = await resp.json();
+        const country = data.country || '—';
+        const region = data.region || '—';
+        const org = data.org || '—';
+        const asn = data.asn || '—';
+        if (country !== '—') {
+          const vpn = country !== 'RU' || /vpn|proxy|hosting|datacenter|cloud/i.test(`${org} ${asn}`);
+          return { country, region, org, asn, vpn };
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return fallback;
 }
 
 async function getServiceWorkerInfo(): Promise<string> {
