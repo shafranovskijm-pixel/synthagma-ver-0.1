@@ -267,7 +267,7 @@ export function useStudentDashboard() {
       const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
         supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle(),
         supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid),
+        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url)").eq("user_id", uid),
       ]);
 
       const profileData = profileRes.data;
