@@ -58,7 +58,6 @@ export default defineConfig(({ mode }) => ({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/~oauth/],
         additionalManifestEntries: [
           { url: "/manifest.webmanifest", revision: pwaCacheVersion },
