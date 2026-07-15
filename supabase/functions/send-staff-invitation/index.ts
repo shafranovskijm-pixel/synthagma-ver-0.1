@@ -4,17 +4,53 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
+import { sendPlatformEmail, sendSmtpEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function sendSmtp(to: string, subject: string, html: string): Promise<boolean> {
+async function sendSmtp(admin: any, to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
+  // Пул отправителей (LRU) с fallback на платформенный SMTP
+  let lastError = "";
+  try {
+    const { data: pickData, error: pickError } = await admin.rpc("pick_next_email_sender");
+    const sender = Array.isArray(pickData) ? pickData[0] : null;
+    if (!pickError && sender) {
+      try {
+        await sendSmtpEmail(
+          {
+            host: sender.host,
+            port: sender.port,
+            username: sender.email,
+            password: sender.app_password,
+            encryption: sender.encryption,
+            from_email: sender.email,
+            from_name: sender.from_name || "Синтагма",
+          },
+          { to, subject, html },
+        );
+        await admin.rpc("mark_email_sender_result", { p_sender_id: sender.id, p_ok: true, p_error: null }).catch(() => {});
+        return { ok: true };
+      } catch (poolErr) {
+        lastError = (poolErr as Error).message;
+        console.warn(`Pool sender ${sender.email} failed: ${lastError}. Fallback to platform SMTP.`);
+        await admin.rpc("mark_email_sender_result", { p_sender_id: sender.id, p_ok: false, p_error: lastError }).catch(() => {});
+      }
+    } else if (pickError) {
+      console.warn("pick_next_email_sender error:", pickError.message);
+    }
+  } catch (e) {
+    console.warn("Sender pool exception:", (e as Error).message);
+  }
   const r = await sendPlatformEmail({ to, subject, html });
-  if (!r.ok) console.error("SMTP send error:", r.error);
-  return r.ok;
+  if (!r.ok) {
+    const err = `пул: ${lastError || "недоступен"}; платформа: ${r.error || "ошибка"}`;
+    console.error("SMTP send error:", err);
+    return { ok: false, error: err };
+  }
+  return { ok: true };
 }
 
 function buildHtml(opts: {
