@@ -52,6 +52,8 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "system", label: "Системные", icon: Shield, color: "text-orange-500" },
   { key: "promo", label: "Промоакции", icon: Tag, color: "text-pink-500" },
   { key: "popups", label: "Всплывающие окна", icon: MessageSquare, color: "text-fuchsia-500" },
+  { key: "proxy-badge", label: "Плашка канала", icon: EyeOff, color: "text-slate-500" },
+
   { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
   { key: "analytics", label: "Аналитика", icon: BarChart3, color: "text-sky-500" },
   { key: "content", label: "Контент", icon: FileText, color: "text-teal-500" },
