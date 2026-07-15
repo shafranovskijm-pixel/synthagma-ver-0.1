@@ -46,11 +46,10 @@ const features = [
 const slots = ["Вт 10:00", "Вт 14:00", "Ср 11:00", "Ср 16:00", "Чт 12:00", "Чт 17:00"];
 
 // Kinescope video ID = часть URL после https://kinescope.io/
-// Замените "" на ваш ID после загрузки видео в личном кабинете kinescope.io
 const demoVideos: { title: string; text: string; kinescopeId: string }[] = [
-  { title: "Создание курса", text: "Собираем курс из блоков за несколько минут — видео, лонгриды, тесты, файлы.", kinescopeId: "" },
-  { title: "Добавление ученика", text: "Приглашение, автозачисление на программу и контроль прогресса.", kinescopeId: "" },
-  { title: "Выдача документов", text: "Формирование удостоверений и протоколов из шаблонов.", kinescopeId: "" },
+  { title: "Создание курса", text: "Собираем курс из блоков за несколько минут — видео, лонгриды, тесты, файлы.", kinescopeId: "0zLbxNWaXqqVirutHe2hFX" },
+  { title: "Добавление ученика", text: "Приглашение, автозачисление на программу и контроль прогресса.", kinescopeId: "8oJbrRNKBv7byqNjBPsZg9" },
+  { title: "Выдача документов", text: "Формирование удостоверений и протоколов из шаблонов.", kinescopeId: "aB9Q2ScCA7PrPrrHm8TdaT" },
 ];
 
 export default function DemonstrationPage() {
