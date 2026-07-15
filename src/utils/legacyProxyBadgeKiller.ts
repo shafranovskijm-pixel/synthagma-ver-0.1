@@ -106,5 +106,11 @@ export function installLegacyProxyBadgeKiller(): void {
     removeLegacyProxyBadge();
   });
 
+  window.addEventListener("sintagma:proxy-badge-visibility", (event) => {
+    const customEvent = event as CustomEvent<{ hide?: boolean }>;
+    hideBadge = customEvent.detail?.hide !== false;
+    removeLegacyProxyBadge();
+  });
+
   void refreshHideFlag();
 }

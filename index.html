@@ -77,6 +77,10 @@
         if (!isPreview) {
           removeLegacyProxyBadge();
           setInterval(removeLegacyProxyBadge, 1000);
+          window.addEventListener('sintagma:proxy-badge-visibility', function(event) {
+            hideBadge = !(event && event.detail && event.detail.hide === false);
+            removeLegacyProxyBadge();
+          });
           // Async refresh flag from Supabase (anon SELECT allowed for this single key)
           try {
             var SB_URL = 'https://atxwvjxbqjgkbjlhsdch.supabase.co';
