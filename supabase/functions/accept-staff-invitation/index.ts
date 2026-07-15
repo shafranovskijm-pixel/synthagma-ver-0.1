@@ -93,11 +93,19 @@ serve(async (req) => {
     // В зависимости от типа приглашения создаём запись
     let redirectPath = "/";
 
+    // Хелпер: заменяем глобальную роль пользователя целиком, чтобы не оставалась старая
+    // роль 'student' (иначе get_user_role может вернуть её, и после принятия приглашения
+    // человека кидает в кабинет ученика).
+    const setGlobalRole = async (targetRole: "admin" | "organization" | "company" | "sales_manager") => {
+      await admin.from("user_roles").delete().eq("user_id", user.id);
+      const { error } = await admin.from("user_roles").insert({
+        user_id: user.id, role: targetRole,
+      } as any);
+      if (error) throw error;
+    };
+
     if (inv.invitation_type === "admin") {
-      // Глобальная роль admin
-      await admin.from("user_roles").upsert({
-        user_id: user.id, role: "admin",
-      } as any, { onConflict: "user_id,role" });
+      await setGlobalRole("admin");
 
       const { error } = await admin.from("admin_staff").upsert({
         user_id: user.id,
@@ -110,6 +118,8 @@ serve(async (req) => {
 
     } else if (inv.invitation_type === "organization") {
       if (!inv.organization_id) throw new Error("Не указана организация");
+      await setGlobalRole("organization");
+
       // Привязываем профиль к организации (если ещё нет)
       await admin.from("profiles").update({
         organization_id: inv.organization_id,
@@ -128,10 +138,7 @@ serve(async (req) => {
 
     } else if (inv.invitation_type === "company") {
       if (!inv.company_id) throw new Error("Не указана компания");
-      // Глобальная роль company (для входа в раздел)
-      await admin.from("user_roles").upsert({
-        user_id: user.id, role: "company",
-      } as any, { onConflict: "user_id,role" });
+      await setGlobalRole("company");
 
       // Если у компании ещё нет владельца и роль приглашения = owner — становимся владельцем
       const { data: company } = await admin
@@ -155,10 +162,7 @@ serve(async (req) => {
       redirectPath = "/company";
 
     } else if (inv.invitation_type === "sales") {
-      // Глобальная роль sales_manager + запись в sales_managers
-      await admin.from("user_roles").upsert({
-        user_id: user.id, role: "sales_manager",
-      } as any, { onConflict: "user_id,role" });
+      await setGlobalRole("sales_manager");
       await admin.from("sales_managers").upsert({
         user_id: user.id,
         full_name: fullName,
