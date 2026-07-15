@@ -2,8 +2,9 @@ import { useState, useEffect, Suspense } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
-  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature, Receipt, CreditCard, Activity, Mail, MessageSquare
+  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature, Receipt, CreditCard, Activity, Mail, MessageSquare, EyeOff
 } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,8 @@ import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { AdminOperatorRequisites } from "./AdminOperatorRequisites";
 import { EmailSenderPoolManager } from "./EmailSenderPoolManager";
 import { LandingPopupsManager } from "./LandingPopupsManager";
+import { ProxyBadgeToggle } from "./ProxyBadgeToggle";
+
 
 const AdminFinanceOverview = lazyWithRetry(() => import("./AdminFinanceOverview").then(m => ({ default: m.AdminFinanceOverview })));
 const AdminClientErrorsTab = lazyWithRetry(() => import("./AdminClientErrorsTab").then(m => ({ default: m.AdminClientErrorsTab })));
@@ -33,7 +36,7 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "popups" | "notifications" | "analytics" | "content" | "ai" | "devtools" | "email-pool";
+type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "popups" | "proxy-badge" | "notifications" | "analytics" | "content" | "ai" | "devtools" | "email-pool";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
@@ -49,6 +52,8 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "system", label: "Системные", icon: Shield, color: "text-orange-500" },
   { key: "promo", label: "Промоакции", icon: Tag, color: "text-pink-500" },
   { key: "popups", label: "Всплывающие окна", icon: MessageSquare, color: "text-fuchsia-500" },
+  { key: "proxy-badge", label: "Плашка канала", icon: EyeOff, color: "text-slate-500" },
+
   { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
   { key: "analytics", label: "Аналитика", icon: BarChart3, color: "text-sky-500" },
   { key: "content", label: "Контент", icon: FileText, color: "text-teal-500" },
@@ -224,6 +229,8 @@ export function AdminSettings() {
 
       case "promo": return <PromoCodesManager />;
       case "popups": return <LandingPopupsManager />;
+      case "proxy-badge": return <ProxyBadgeToggle />;
+
 
       case "notifications":
         return (
