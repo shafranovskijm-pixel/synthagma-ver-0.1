@@ -5,6 +5,8 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+const pwaCacheVersion = "sintagma-1.0.76";
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',
@@ -17,6 +19,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: null,
       devOptions: { enabled: false },
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
@@ -49,12 +52,17 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        cacheId: pwaCacheVersion,
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/~oauth/],
+        additionalManifestEntries: [
+          { url: "/manifest.webmanifest", revision: pwaCacheVersion },
+        ],
         runtimeCaching: [
           {
             urlPattern: ({request}) => request.mode === 'navigate',
