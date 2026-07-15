@@ -2,6 +2,7 @@ import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 interface CourseCardNewProps {
   id: string;
@@ -38,7 +39,7 @@ export function CourseCardNew({
       {/* Cover */}
       <div className="relative h-40 bg-muted overflow-hidden">
         {coverImageUrl ? (
-          <img src={coverImageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img src={proxiedAssetUrl(coverImageUrl) || coverImageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
             <BookOpen className="w-10 h-10 text-primary/40" />
