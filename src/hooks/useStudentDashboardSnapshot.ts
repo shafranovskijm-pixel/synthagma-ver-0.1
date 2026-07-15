@@ -14,6 +14,7 @@ export interface StudentSnapshotEnrollment {
   skip_video_identification: boolean | null;
   total_lessons: number;
   completed_lessons: number;
+  cover_image_url: string | null;
 }
 
 export interface StudentSnapshot {
