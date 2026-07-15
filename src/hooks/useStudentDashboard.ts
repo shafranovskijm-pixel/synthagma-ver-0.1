@@ -352,7 +352,8 @@ export function useStudentDashboard() {
             id: course.id, title: course.title, description: course.description, duration: course.duration,
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
-            skip_video_identification: course.skip_video_identification || false
+            skip_video_identification: course.skip_video_identification || false,
+            cover_image_url: course.cover_image_url || null,
           });
         }
         setCourses(cachedCoursesData);
