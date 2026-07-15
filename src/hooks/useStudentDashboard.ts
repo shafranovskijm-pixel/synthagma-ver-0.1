@@ -21,6 +21,7 @@ export interface StudentCourse {
   completedLessons: number;
   status: "in_progress" | "completed" | "locked";
   skip_video_identification?: boolean;
+  cover_image_url?: string | null;
 }
 
 export interface CatalogCourse {
