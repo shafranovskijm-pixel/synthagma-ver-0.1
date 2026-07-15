@@ -55,13 +55,19 @@
       (function(){
         var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
 
+        // Runtime kill-switch: hide legacy "Резервный канал" badge based on app_settings.hide_proxy_badge.
+        // Cached locally for instant apply; async-refreshed from Supabase every load.
+        var HIDE_BADGE_KEY = '__hide_proxy_badge';
+        var hideBadge = localStorage.getItem(HIDE_BADGE_KEY) !== 'false'; // default: hide
+
         function removeLegacyProxyBadge() {
+          if (!hideBadge) return;
           try {
             var nodes = document.querySelectorAll('body *');
             for (var i = 0; i < nodes.length; i += 1) {
               var node = nodes[i];
               if (node && node.textContent && node.textContent.trim() === 'Резервный канал') {
-                var badge = node.closest('[class*="fixed"][class*="bottom-"]');
+                var badge = node.closest('[class*="fixed"][class*="bottom-"]') || node.closest('button,a,div');
                 if (badge) badge.remove();
               }
             }
@@ -70,7 +76,22 @@
 
         if (!isPreview) {
           setInterval(removeLegacyProxyBadge, 1000);
+          // Async refresh flag from Supabase (anon SELECT allowed for this single key)
+          try {
+            var SB_URL = 'https://atxwvjxbqjgkbjlhsdch.supabase.co';
+            var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0eHd2anhicWpna2JqbGhzZGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwODM5MjcsImV4cCI6MjA4MzY1OTkyN30.5mIZX4EYVPbQbCbHWww8ROD5taCQ51o5qNHOMcKK_s4';
+            fetch(SB_URL + '/rest/v1/app_settings?setting_key=eq.hide_proxy_badge&select=setting_value', {
+              headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+            }).then(function(r){ return r.ok ? r.json() : null; }).then(function(rows){
+              if (!rows || !rows.length) return;
+              var v = rows[0] && rows[0].setting_value && rows[0].setting_value.value;
+              var next = v !== false; // treat anything except explicit false as "hide"
+              localStorage.setItem(HIDE_BADGE_KEY, next ? 'true' : 'false');
+              hideBadge = next;
+            }).catch(function(){});
+          } catch (e) {}
         }
+
 
         function purgeAll() {
           var tasks = [];
