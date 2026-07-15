@@ -21,6 +21,7 @@ export interface StudentCourse {
   completedLessons: number;
   status: "in_progress" | "completed" | "locked";
   skip_video_identification?: boolean;
+  cover_image_url?: string | null;
 }
 
 export interface CatalogCourse {
@@ -192,6 +193,7 @@ export function useStudentDashboard() {
         completedLessons: Number(e.completed_lessons) || 0,
         status: (e.status === "completed" ? "completed" : "in_progress") as StudentCourse["status"],
         skip_video_identification: e.skip_video_identification || false,
+        cover_image_url: e.cover_image_url ?? null,
       }));
       setCourses(mapped);
       setTotalCompletedLessons(mapped.reduce((sum, c) => sum + c.completedLessons, 0));
@@ -266,7 +268,7 @@ export function useStudentDashboard() {
       const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
         supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle(),
         supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid),
+        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url)").eq("user_id", uid),
       ]);
 
       const profileData = profileRes.data;
@@ -351,7 +353,8 @@ export function useStudentDashboard() {
             id: course.id, title: course.title, description: course.description, duration: course.duration,
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
-            skip_video_identification: course.skip_video_identification || false
+            skip_video_identification: course.skip_video_identification || false,
+            cover_image_url: course.cover_image_url || null,
           });
         }
         setCourses(cachedCoursesData);
