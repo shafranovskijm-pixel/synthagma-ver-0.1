@@ -37,6 +37,7 @@ interface CourseCatalogProps {
     completedLessons: number;
     status: "in_progress" | "completed" | "locked";
     skip_video_identification?: boolean;
+    cover_image_url?: string | null;
   }[];
   isVideoIdentified?: boolean;
   totalProgress?: number;
