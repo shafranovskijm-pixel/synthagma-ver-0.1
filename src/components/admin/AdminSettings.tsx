@@ -24,6 +24,8 @@ import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { AdminOperatorRequisites } from "./AdminOperatorRequisites";
 import { EmailSenderPoolManager } from "./EmailSenderPoolManager";
 import { LandingPopupsManager } from "./LandingPopupsManager";
+import { ProxyBadgeToggle } from "./ProxyBadgeToggle";
+
 
 const AdminFinanceOverview = lazyWithRetry(() => import("./AdminFinanceOverview").then(m => ({ default: m.AdminFinanceOverview })));
 const AdminClientErrorsTab = lazyWithRetry(() => import("./AdminClientErrorsTab").then(m => ({ default: m.AdminClientErrorsTab })));
