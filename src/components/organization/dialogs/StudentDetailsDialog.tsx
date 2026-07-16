@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Copy, Building2, Save, Key, Send, Mail, Trash2, FileSpreadsheet } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { StudentPhoneEditor } from "./StudentPhoneEditor";
 
 interface Student {
   id: string;
