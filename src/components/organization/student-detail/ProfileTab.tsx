@@ -88,6 +88,11 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
         )}
       </div>
 
+      {/* Персональные данные для ФИС ФРДО */}
+      <PersonalFrdoSection h={h} />
+
+
+
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 rounded-xl bg-muted/50">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1"><Mail className="w-4 h-4" />Email</div>
