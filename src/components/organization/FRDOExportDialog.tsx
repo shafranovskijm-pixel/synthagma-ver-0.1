@@ -35,6 +35,8 @@ import {
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
+import { CitizenshipCombobox } from "./CitizenshipCombobox";
+import { normalizeRuPhone } from "@/utils/phoneParser";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
@@ -95,6 +97,7 @@ export function FRDOExportDialog({
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [phone, setPhone] = useState("");
   const [courseData, setCourseData] = useState<{
     title: string; duration: string | null; training_form?: string | null;
     frdo_program_type?: string | null; frdo_document_type?: string | null;
@@ -116,10 +119,14 @@ export function FRDOExportDialog({
     if (!student) return;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("student_frdo_data").select("*")
-        .eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle();
+      const [{ data, error }, profileRes] = await Promise.all([
+        supabase
+          .from("student_frdo_data").select("*")
+          .eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
+        supabase.from("profiles").select("phone").eq("user_id", student.user_id).maybeSingle(),
+      ]);
       if (error) throw error;
+      setPhone(profileRes.data?.phone || "");
 
       if (data) {
         setFrdoData({
@@ -211,6 +218,12 @@ export function FRDOExportDialog({
         if (error) throw error;
         setFrdoData((prev) => ({ ...prev, id: data.id }));
       }
+
+      const normalizedPhone = phone.trim() ? (normalizeRuPhone(phone) || phone.trim()) : null;
+      const { error: phoneErr } = await supabase
+        .from("profiles").update({ phone: normalizedPhone }).eq("user_id", student.user_id);
+      if (phoneErr) console.error("phone update error", phoneErr);
+
       toast.success("Данные сохранены");
     } catch (error) {
       console.error("Error saving FRDO data:", error);
@@ -427,9 +440,16 @@ export function FRDOExportDialog({
 
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Гражданство (код ОКСМ)</Label>
-                      <Input value={frдоData.citizenship_code} onChange={(e) => updateField("citizenship_code", e.target.value)} placeholder="643" />
+                      <Label>Телефон</Label>
+                      <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 999 123-45-67" inputMode="tel" />
                     </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Гражданство (ОКСМ)</Label>
+                      <CitizenshipCombobox value={frдоData.citizenship_code} onChange={(code) => updateField("citizenship_code", code)} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Форма обучения</Label>
                       <Select value={frдоData.training_form} onValueChange={(value) => updateField("training_form", value)}>
