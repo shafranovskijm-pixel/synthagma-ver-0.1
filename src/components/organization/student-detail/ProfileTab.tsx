@@ -310,3 +310,98 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
     </div>
   );
 }
+
+// ─── Персональные данные для ФИС ФРДО ───
+function PersonalFrdoSection({ h }: { h: any }) {
+  const [phone, setPhone] = useState<string>(h.phone || "");
+  const [birthDate, setBirthDate] = useState<string>(h.frdoData?.birth_date || "");
+  const [snils, setSnils] = useState<string>(h.frdoData?.snils || "");
+
+  useEffect(() => { setPhone(h.phone || ""); }, [h.phone]);
+  useEffect(() => { setBirthDate(h.frdoData?.birth_date || ""); }, [h.frdoData?.birth_date]);
+  useEffect(() => { setSnils(h.frdoData?.snils || ""); }, [h.frdoData?.snils]);
+
+  const gender = h.frdoData?.gender || "";
+  const citizenship = h.frdoData?.citizenship_code || "643";
+
+  const formatSnils = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    if (d.length <= 9) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 9)} ${d.slice(9)}`;
+  };
+
+  return (
+    <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Shield className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Персональные данные</h3>
+        <span className="text-xs text-muted-foreground">— используются для ФИС ФРДО и документов</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2"><Phone className="w-4 h-4" />Телефон</Label>
+          <Input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onBlur={() => { if (phone !== (h.phone || "")) h.savePhone(phone); }}
+            placeholder="+7 (___) ___-__-__"
+            className="rounded-lg"
+            disabled={h.savingPhone}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2"><User className="w-4 h-4" />Пол</Label>
+          <Select
+            value={gender}
+            onValueChange={(v) => h.saveFrdoField("gender", v)}
+            disabled={h.savingFrdoField === "gender"}
+          >
+            <SelectTrigger className="rounded-lg"><SelectValue placeholder="Не указан" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Мужской">Мужской</SelectItem>
+              <SelectItem value="Женский">Женский</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2"><Calendar className="w-4 h-4" />Дата рождения</Label>
+          <Input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            onBlur={() => { if (birthDate !== (h.frdoData?.birth_date || "")) h.saveFrdoField("birth_date", birthDate); }}
+            className="rounded-lg"
+            disabled={h.savingFrdoField === "birth_date"}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2"><Shield className="w-4 h-4" />СНИЛС</Label>
+          <Input
+            value={snils}
+            onChange={(e) => setSnils(formatSnils(e.target.value))}
+            onBlur={() => { if (snils !== (h.frdoData?.snils || "")) h.saveFrdoField("snils", snils); }}
+            placeholder="123-456-789 00"
+            className="rounded-lg font-mono"
+            disabled={h.savingFrdoField === "snils"}
+          />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label className="flex items-center gap-2"><Globe className="w-4 h-4" />Гражданство</Label>
+          <CitizenshipCombobox
+            value={citizenship}
+            onChange={(code) => h.saveFrdoField("citizenship_code", code)}
+          />
+          <p className="text-xs text-muted-foreground">Классификатор ОКСМ. По умолчанию — Россия (643).</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
