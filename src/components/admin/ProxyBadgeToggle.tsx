@@ -14,12 +14,11 @@ export function ProxyBadgeToggle() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await (supabase as any)
+      await (supabase as any)
         .from("app_settings")
         .select("setting_value")
         .eq("setting_key", SETTING_KEY)
         .maybeSingle();
-      const v = data?.setting_value?.value;
       setHide(true);
       setLoading(false);
     })();
