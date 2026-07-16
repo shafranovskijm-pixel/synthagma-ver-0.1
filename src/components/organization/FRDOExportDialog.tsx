@@ -35,6 +35,8 @@ import {
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
+import { CitizenshipCombobox } from "./CitizenshipCombobox";
+import { normalizeRuPhone } from "@/utils/phoneParser";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
