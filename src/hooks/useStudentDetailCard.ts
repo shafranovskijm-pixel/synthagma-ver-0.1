@@ -179,6 +179,9 @@ export function useStudentDetailCardLogic({
   // FRDO data state
   const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
   const [savingFrdoField, setSavingFrdoField] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string>("");
+  const [savingPhone, setSavingPhone] = useState(false);
+
 
   useEffect(() => {
     if (isOpen && student) loadStudentData();
