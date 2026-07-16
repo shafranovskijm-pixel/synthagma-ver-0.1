@@ -440,8 +440,24 @@ export function FRDOExportDialog({
 
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Гражданство (код ОКСМ)</Label>
-                      <Input value={frдоData.citizenship_code} onChange={(e) => updateField("citizenship_code", e.target.value)} placeholder="643" />
+                      <Label>Телефон</Label>
+                      <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 999 123-45-67" inputMode="tel" />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Гражданство (ОКСМ)</Label>
+                      <CitizenshipCombobox value={frдоData.citizenship_code} onChange={(code) => updateField("citizenship_code", code)} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Форма обучения</Label>
+                      <Select value={frдоData.training_form} onValueChange={(value) => updateField("training_form", value)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {FRDO_TRAINING_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Форма обучения</Label>
