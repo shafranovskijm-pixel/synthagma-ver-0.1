@@ -179,6 +179,9 @@ export function useStudentDetailCardLogic({
   // FRDO data state
   const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
   const [savingFrdoField, setSavingFrdoField] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string>("");
+  const [savingPhone, setSavingPhone] = useState(false);
+
 
   useEffect(() => {
     if (isOpen && student) loadStudentData();
@@ -188,7 +191,7 @@ export function useStudentDetailCardLogic({
     if (!student) return;
     setIsLoading(true);
     try {
-      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes, pepRes] = await Promise.all([
+      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes, pepRes, profileRes] = await Promise.all([
         supabase.from("student_consents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("consent_documents").select("*").eq("student_user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("video_identifications").select("*").eq("user_id", student.user_id).order("created_at", { ascending: false }),
@@ -196,6 +199,7 @@ export function useStudentDetailCardLogic({
         supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
         supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", student.user_id).eq("organization_id", organizationId).order("accepted_at", { ascending: false }),
+        supabase.from("profiles").select("phone").eq("user_id", student.user_id).maybeSingle(),
       ]);
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
@@ -205,8 +209,10 @@ export function useStudentDetailCardLogic({
       if (frdoRes.data) setFrdoData(frdoRes.data as Record<string, string | null>);
       else setFrdoData({});
       if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
+      setPhone((profileRes.data as any)?.phone || "");
     } catch (error) { console.error("Error loading student data:", error); }
     finally { setIsLoading(false); }
+
 
     // Decrypt password (admin/org with access)
     if (student?.user_id) {
@@ -331,6 +337,19 @@ export function useStudentDetailCardLogic({
     } catch (error) { console.error("Save FRDO field error:", error); toast.error("Ошибка сохранения"); }
     finally { setSavingFrdoField(null); }
   };
+
+  const savePhone = async (value: string) => {
+    if (!student) return;
+    setSavingPhone(true);
+    try {
+      const { error } = await supabase.from("profiles").update({ phone: value || null }).eq("user_id", student.user_id);
+      if (error) throw error;
+      setPhone(value);
+      toast.success("Телефон сохранён");
+    } catch (error) { console.error("Save phone error:", error); toast.error("Ошибка сохранения телефона"); }
+    finally { setSavingPhone(false); }
+  };
+
 
   const copyToClipboard = async (text: string, field: string) => {
     try { await navigator.clipboard.writeText(text); setCopiedField(field); setTimeout(() => setCopiedField(null), 2000); toast.success("Скопировано"); } catch { toast.error("Не удалось скопировать"); }
@@ -491,7 +510,9 @@ export function useStudentDetailCardLogic({
     formatDate, formatDuration, latestConsent, latestVerification, getIdentityDocByType, getMissingDocuments,
     isSendingReminder, handleSendDocumentsReminder, handleVerifyIdentification, handleManualVerification,
     frdoData, saveFrdoField, savingFrdoField,
+    phone, savePhone, savingPhone,
     autoLoginToken, isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
   };
 }
+
