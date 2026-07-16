@@ -218,6 +218,12 @@ export function FRDOExportDialog({
         if (error) throw error;
         setFrdoData((prev) => ({ ...prev, id: data.id }));
       }
+
+      const normalizedPhone = phone.trim() ? (normalizeRuPhone(phone) || phone.trim()) : null;
+      const { error: phoneErr } = await supabase
+        .from("profiles").update({ phone: normalizedPhone }).eq("user_id", student.user_id);
+      if (phoneErr) console.error("phone update error", phoneErr);
+
       toast.success("Данные сохранены");
     } catch (error) {
       console.error("Error saving FRDO data:", error);
