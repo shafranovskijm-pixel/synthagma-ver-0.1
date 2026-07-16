@@ -97,6 +97,7 @@ export function FRDOExportDialog({
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [phone, setPhone] = useState("");
   const [courseData, setCourseData] = useState<{
     title: string; duration: string | null; training_form?: string | null;
     frdo_program_type?: string | null; frdo_document_type?: string | null;
