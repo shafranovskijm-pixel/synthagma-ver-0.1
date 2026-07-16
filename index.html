@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="СИНТАГМА" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest?v=1.0.77" />
+    <link rel="manifest" href="/manifest.webmanifest?v=1.0.78" />
     
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -55,19 +55,23 @@
       (function(){
         var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
 
-        // Runtime kill-switch: hide legacy "Резервный канал" badge based on app_settings.hide_proxy_badge.
-        // Cached locally for instant apply; async-refreshed from Supabase every load.
+        // Runtime kill-switch: always remove the legacy "Резервный канал" badge.
+        // The proxy itself remains enabled on синтагма.рф; only the user-facing badge is removed.
         var HIDE_BADGE_KEY = '__hide_proxy_badge';
-        var hideBadge = localStorage.getItem(HIDE_BADGE_KEY) !== 'false'; // default: hide
+        var hideBadge = true;
+        try {
+          localStorage.setItem(HIDE_BADGE_KEY, 'true');
+        } catch (e) {}
 
         function removeLegacyProxyBadge() {
-          if (!hideBadge) return;
+          if (!hideBadge) hideBadge = true;
           try {
             var nodes = document.querySelectorAll('body *');
             for (var i = 0; i < nodes.length; i += 1) {
               var node = nodes[i];
-              if (node && node.textContent && node.textContent.trim() === 'Резервный канал') {
-                var badge = node.closest('[class*="fixed"][class*="bottom-"]') || node.closest('button,a,div');
+              var text = node && node.textContent ? node.textContent.trim() : '';
+              if (text === 'Резервный канал') {
+                var badge = node.closest('[class*="fixed"][class*="bottom-"]') || node.parentElement || node.closest('button,a,div');
                 if (badge) badge.remove();
               }
             }
@@ -76,29 +80,20 @@
 
         if (!isPreview) {
           removeLegacyProxyBadge();
-          setInterval(removeLegacyProxyBadge, 1000);
+          setInterval(removeLegacyProxyBadge, 250);
+          try {
+            var badgeObserver = new MutationObserver(removeLegacyProxyBadge);
+            if (document.body) badgeObserver.observe(document.body, { childList: true, subtree: true });
+            else document.addEventListener('DOMContentLoaded', function(){
+              if (document.body) badgeObserver.observe(document.body, { childList: true, subtree: true });
+              removeLegacyProxyBadge();
+            }, { once: true });
+          } catch (e) {}
           window.addEventListener('sintagma:proxy-badge-visibility', function(event) {
-            hideBadge = !(event && event.detail && event.detail.hide === false);
+            hideBadge = true;
+            try { localStorage.setItem(HIDE_BADGE_KEY, 'true'); } catch (e) {}
             removeLegacyProxyBadge();
           });
-          // Async refresh flag from Supabase (anon SELECT allowed for this single key)
-          try {
-            var SB_URL = 'https://atxwvjxbqjgkbjlhsdch.supabase.co';
-            var PROXY_REST_URL = 'https://api.xn--80aaiswd0ak.xn--p1ai/sb-api/rest/v1/app_settings?setting_key=eq.hide_proxy_badge&select=setting_value';
-            var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0eHd2anhicWpna2JqbGhzZGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwODM5MjcsImV4cCI6MjA4MzY1OTkyN30.5mIZX4EYVPbQbCbHWww8ROD5taCQ51o5qNHOMcKK_s4';
-            var settingsUrl = location.hostname === 'xn--80aaiswd0ak.xn--p1ai' || location.hostname === 'www.xn--80aaiswd0ak.xn--p1ai'
-              ? PROXY_REST_URL
-              : SB_URL + '/rest/v1/app_settings?setting_key=eq.hide_proxy_badge&select=setting_value';
-            fetch(settingsUrl, {
-              headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
-            }).then(function(r){ return r.ok ? r.json() : null; }).then(function(rows){
-              if (!rows || !rows.length) return;
-              var v = rows[0] && rows[0].setting_value && rows[0].setting_value.value;
-              var next = v !== false; // treat anything except explicit false as "hide"
-              localStorage.setItem(HIDE_BADGE_KEY, next ? 'true' : 'false');
-              hideBadge = next;
-            }).catch(function(){});
-          } catch (e) {}
         }
 
 
