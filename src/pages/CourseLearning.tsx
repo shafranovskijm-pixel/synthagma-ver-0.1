@@ -395,21 +395,22 @@ const CourseLearning = () => {
           <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Отправить" : "Отправить ответы"}</Button>}
             {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (() => {
-              const gated = currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < 90;
+              const VIDEO_FINISH_THRESHOLD = 85; // допускаем 85% — на мобильных последние ~10% часто пропускаются
+              const gated = currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < VIDEO_FINISH_THRESHOLD;
               return (
                 <Button
                   onClick={() => {
                     if (gated) {
-                      import("sonner").then(({ toast }) => toast.info(`Просмотрите минимум 90% видео (сейчас ${Math.floor(videoWatchProgress)}%)`));
+                      import("sonner").then(({ toast }) => toast.info(`Просмотрите минимум ${VIDEO_FINISH_THRESHOLD}% видео (сейчас ${Math.floor(videoWatchProgress)}%)`));
                       return;
                     }
                     markLessonComplete();
                   }}
-                  title={gated ? `Просмотрите минимум 90% видео (сейчас ${Math.floor(videoWatchProgress)}%)` : currentLesson?.type === 'video' ? 'Подтвердить просмотр и завершить урок' : undefined}
+                  title={gated ? `Просмотрите минимум ${VIDEO_FINISH_THRESHOLD}% видео (сейчас ${Math.floor(videoWatchProgress)}%)` : currentLesson?.type === 'video' ? 'Подтвердить просмотр и завершить урок' : undefined}
                   className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3", gated && "opacity-70")}
                 >
                   {gated
-                    ? (isMobile ? `Ещё ${Math.max(0, 90 - Math.floor(videoWatchProgress))}%` : `Досмотрите видео (${Math.floor(videoWatchProgress)}%/90%)`)
+                    ? (isMobile ? `Ещё ${Math.max(0, VIDEO_FINISH_THRESHOLD - Math.floor(videoWatchProgress))}%` : `Досмотрите видео (${Math.floor(videoWatchProgress)}%/${VIDEO_FINISH_THRESHOLD}%)`)
                     : (isMobile ? "Завершить" : currentLesson?.type === 'video' && !hasNativeVideoTracking ? "Подтвердить просмотр" : "Завершить урок")}
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>

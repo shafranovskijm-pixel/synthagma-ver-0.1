@@ -285,6 +285,12 @@ export const VideoPlayerInline = ({
       onProgressChange?.(progress);
       onSavePosition?.(ct, duration);
       if (progress >= 90 && onVideoComplete && !completedRef.current) { completedRef.current = true; onVideoComplete(); }
+      // Fallback: некоторые мобильные браузеры (iOS Safari, Android Chrome в fullscreen)
+      // не всегда бросают событие `ended` — показываем оверлей «Завершить урок» вручную,
+      // когда до конца остаётся менее ~1 сек или прогресс достиг 99%.
+      if (!videoEnded && (progress >= 99 || (duration - ct) <= 0.75)) {
+        setVideoEnded(true);
+      }
     }
   };
 
