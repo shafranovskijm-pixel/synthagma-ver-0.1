@@ -1,4 +1,4 @@
-import { Bot, Headset, ChevronDown, Pencil, Send, ExternalLink } from "lucide-react";
+import { Bot, Headset, ChevronDown, Pencil, Send, ExternalLink, X } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 
 import { HeaderBackground } from "@/components/support/HeaderBackground";
