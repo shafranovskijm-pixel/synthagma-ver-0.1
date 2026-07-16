@@ -119,10 +119,14 @@ export function FRDOExportDialog({
     if (!student) return;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("student_frdo_data").select("*")
-        .eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle();
+      const [{ data, error }, profileRes] = await Promise.all([
+        supabase
+          .from("student_frdo_data").select("*")
+          .eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
+        supabase.from("profiles").select("phone").eq("user_id", student.user_id).maybeSingle(),
+      ]);
       if (error) throw error;
+      setPhone(profileRes.data?.phone || "");
 
       if (data) {
         setFrdoData({
