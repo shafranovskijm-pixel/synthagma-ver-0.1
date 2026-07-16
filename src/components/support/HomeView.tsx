@@ -30,17 +30,20 @@ export function HomeView({ onClose, onWrite, hasHistory, messages, status }: Pro
         <HeaderBackground bgId={bgId} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
 
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        <div
+          className="absolute right-3 z-30 flex items-center gap-2"
+          style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
-            className="relative z-20 h-8 w-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
-            aria-label="Свернуть"
+            className="relative z-30 h-10 w-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/35 active:bg-white/40 text-white backdrop-blur-sm transition-colors shadow-md"
+            aria-label="Закрыть чат"
           >
-            <ChevronDown className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
