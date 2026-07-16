@@ -238,7 +238,7 @@ function SupportChatWidgetInner() {
         <div
           className={cn(
             "support-chat-scope",
-            "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground animate-scale-in",
+            "fixed z-[100] flex flex-col overflow-hidden bg-card text-foreground animate-scale-in",
             "inset-0 sm:inset-auto",
             "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl"
           )}
