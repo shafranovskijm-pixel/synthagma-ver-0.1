@@ -460,15 +460,6 @@ export function FRDOExportDialog({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Форма обучения</Label>
-                      <Select value={frдоData.training_form} onValueChange={(value) => updateField("training_form", value)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {FRDO_TRAINING_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
                       <Label>Источник финансирования</Label>
                       <Select value={frдоData.financing_source} onValueChange={(value) => updateField("financing_source", value)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
