@@ -40,21 +40,22 @@ export function ChatView({
     <>
       {/* Compact header */}
       <div
-        className="relative h-16 shrink-0 overflow-hidden"
+        className="relative shrink-0 overflow-hidden"
         style={{
           background: `linear-gradient(90deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+          paddingTop: "env(safe-area-inset-top)",
         }}
       >
         <HeaderBackground bgId={bgId} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10 pointer-events-none" />
-        <div className="relative z-10 h-full flex items-center justify-between px-3">
+        <div className="relative z-10 h-16 flex items-center justify-between px-3">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onBack(); }}
-            className="relative z-20 h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
+            className="relative z-20 h-10 w-10 flex items-center justify-center rounded-full text-white hover:bg-white/20 active:bg-white/30 transition-colors"
             aria-label="Назад"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 text-white pointer-events-none">
             <div className="h-7 w-7 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
@@ -71,14 +72,15 @@ export function ChatView({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
-              className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
-              aria-label="Свернуть"
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/30 active:bg-white/40 text-white transition-colors shadow-md"
+              aria-label="Закрыть чат"
             >
-              <ChevronDown className="h-4 w-4" />
+              <XIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
       </div>
+
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
