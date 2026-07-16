@@ -44,7 +44,8 @@ function SupportChatWidgetInner() {
     location.pathname === "/login" ||
     location.pathname.startsWith("/email-response") ||
     location.pathname.startsWith("/sign/") ||
-    location.pathname.startsWith("/course-learning/");
+    location.pathname.startsWith("/course-learning/") ||
+    /^\/course\/[^/]+\/learn/.test(location.pathname);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -209,27 +210,22 @@ function SupportChatWidgetInner() {
           onClick={() => setOpen(true)}
           className={cn(
             "support-chat-scope",
-            "fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full",
-            "text-white shadow-2xl",
-            "hover:scale-105 transition-all duration-300 ring-4"
+            "fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full",
+            "text-white shadow-lg",
+            "hover:scale-105 transition-transform duration-200"
           )}
           style={{
             background: `linear-gradient(135deg, hsl(${theme.accent}), hsl(${theme.accentDark}))`,
-            boxShadow: `0 10px 30px -8px hsl(${theme.accent} / 0.5)`,
-            ...({ "--tw-ring-color": `hsl(${theme.accent} / 0.18)` } as React.CSSProperties),
+            boxShadow: `0 8px 22px -8px hsl(${theme.accent} / 0.5)`,
           }}
           aria-label="Открыть чат поддержки"
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-5 w-5" />
           {unread > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-md">
+            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
-          <span
-            className="absolute inset-0 rounded-full animate-ping pointer-events-none"
-            style={{ background: `hsl(${theme.accent} / 0.2)` }}
-          />
         </button>
       )}
 
