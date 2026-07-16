@@ -153,6 +153,9 @@ export function StudentDetailsDialog({
                 </div>
               )}
 
+              <StudentPhoneEditor userId={studentDetails.student.user_id} />
+
+
               {studentDetails.student.course && (
                 <p className="text-sm mt-3">
                   Курс: <span className="font-medium">{studentDetails.student.course}</span>
