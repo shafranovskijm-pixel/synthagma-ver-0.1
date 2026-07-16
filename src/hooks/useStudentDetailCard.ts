@@ -338,6 +338,19 @@ export function useStudentDetailCardLogic({
     finally { setSavingFrdoField(null); }
   };
 
+  const savePhone = async (value: string) => {
+    if (!student) return;
+    setSavingPhone(true);
+    try {
+      const { error } = await supabase.from("profiles").update({ phone: value || null }).eq("user_id", student.user_id);
+      if (error) throw error;
+      setPhone(value);
+      toast.success("Телефон сохранён");
+    } catch (error) { console.error("Save phone error:", error); toast.error("Ошибка сохранения телефона"); }
+    finally { setSavingPhone(false); }
+  };
+
+
   const copyToClipboard = async (text: string, field: string) => {
     try { await navigator.clipboard.writeText(text); setCopiedField(field); setTimeout(() => setCopiedField(null), 2000); toast.success("Скопировано"); } catch { toast.error("Не удалось скопировать"); }
   };
