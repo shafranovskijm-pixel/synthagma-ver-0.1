@@ -44,7 +44,8 @@ function SupportChatWidgetInner() {
     location.pathname === "/login" ||
     location.pathname.startsWith("/email-response") ||
     location.pathname.startsWith("/sign/") ||
-    location.pathname.startsWith("/course-learning/");
+    location.pathname.startsWith("/course-learning/") ||
+    /^\/course\/[^/]+\/learn/.test(location.pathname);
 
   useEffect(() => {
     const handler = () => setOpen(true);
