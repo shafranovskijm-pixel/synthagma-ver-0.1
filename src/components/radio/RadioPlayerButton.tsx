@@ -22,6 +22,7 @@ export function RadioPlayerButton() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Радио"
               className={cn(
                 "rounded-xl w-10 h-10 relative hover:scale-105 transition-all",
                 playing && "text-primary"
