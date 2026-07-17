@@ -108,6 +108,39 @@ const BlogPostPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{`${post.title} · Синтагма`}</title>
+        {post.excerpt && <meta name="description" content={post.excerpt.slice(0, 160)} />}
+        <link rel="canonical" href={`https://sintagma.com.ru/blog/${post.slug}`} />
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={post.title} />
+        {post.excerpt && <meta property="og:description" content={post.excerpt.slice(0, 200)} />}
+        <meta property="og:url" content={`https://sintagma.com.ru/blog/${post.slug}`} />
+        {post.image_url && <meta property="og:image" content={post.image_url} />}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={post.title} />
+        {post.excerpt && <meta name="twitter:description" content={post.excerpt.slice(0, 200)} />}
+        {post.image_url && <meta name="twitter:image" content={post.image_url} />}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": post.title,
+            "description": post.excerpt || undefined,
+            "image": post.image_url || undefined,
+            "author": { "@type": "Person", "name": post.author },
+            "datePublished": post.published_at || post.created_at,
+            "dateModified": post.published_at || post.created_at,
+            "mainEntityOfPage": `https://sintagma.com.ru/blog/${post.slug}`,
+            "publisher": {
+              "@type": "Organization",
+              "name": "СИНТАГМА",
+              "url": "https://sintagma.com.ru/"
+            }
+          })}
+        </script>
+      </Helmet>
+
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
