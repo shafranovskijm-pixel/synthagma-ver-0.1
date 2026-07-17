@@ -44,4 +44,4 @@
  Disallow: /course-learning
  
  # Sitemap location
- Sitemap: https://synthagma-bloom.lovable.app/sitemap.xml
+ Sitemap: https://sintagma.com.ru/sitemap.xml
