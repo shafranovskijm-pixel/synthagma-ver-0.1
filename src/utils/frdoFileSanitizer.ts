@@ -33,6 +33,8 @@ export interface SanitizedCell {
   value: string | number;
   fixed: boolean;
   reason?: string;
+  /** Исходное значение ячейки до нормализации (для превью «было → стало»). */
+  originalRaw?: string;
 }
 
 export interface SanitizedRow {
@@ -774,7 +776,9 @@ export async function parseFrdoXlsx(
     const cells: SanitizedCell[] = meta.map((m, i) => {
       const srcIdx = columnMap[i];
       const raw = srcIdx >= 0 ? src[srcIdx] : undefined;
-      return sanitizeByKind(raw, m.kind, m.defaultValue);
+      const cell = sanitizeByKind(raw, m.kind, m.defaultValue);
+      const rawStr = raw === null || raw === undefined ? "" : String(raw);
+      return { ...cell, originalRaw: rawStr };
     });
 
     // Если ни одно «значимое» поле не заполнено — это «строка-призрак»
