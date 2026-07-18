@@ -33,6 +33,8 @@ export interface SanitizedCell {
   value: string | number;
   fixed: boolean;
   reason?: string;
+  /** Исходное значение ячейки до нормализации (для превью «было → стало»). */
+  originalRaw?: string;
 }
 
 export interface SanitizedRow {
