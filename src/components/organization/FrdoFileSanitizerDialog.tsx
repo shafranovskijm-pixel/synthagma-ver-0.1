@@ -328,6 +328,101 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
               );
             })()}
 
+            {/* Превью колонки L — «Наименование профессии» до подтверждения */}
+            {(() => {
+              if (!result) return null;
+              const profIdx = result.type === "po" ? 11 : 13;
+              const header = headers[profIdx] ?? "Колонка L";
+              // Собираем уникальные пары «было → стало» из колонки профессии
+              const seen = new Map<string, { before: string; after: string; reason?: string; count: number }>();
+              for (const row of result.rows) {
+                const cell = row.cells[profIdx];
+                if (!cell) continue;
+                const before = (cell.originalRaw ?? "").trim();
+                const after = String(cell.value ?? "").trim();
+                if (!before && !after) continue;
+                const key = `${before}→${after}`;
+                const prev = seen.get(key);
+                if (prev) prev.count += 1;
+                else seen.set(key, { before, after, reason: cell.reason, count: 1 });
+              }
+              const items = Array.from(seen.values());
+              if (items.length === 0) return null;
+              const changed = items.filter((it) => it.before !== it.after);
+              const unknown = items.filter(
+                (it) => it.reason && /классификатор/i.test(it.reason),
+              );
+              const canonical = items.length - unknown.length;
+              const displayItems = [...changed, ...items.filter((it) => it.before === it.after)]
+                .slice(0, 40);
+
+              return (
+                <div className="border border-primary/30 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 bg-primary/5 border-b border-primary/20 flex items-start gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">
+                        Превью колонки&nbsp;L — «{header}»
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Уникальных значений: <strong>{items.length}</strong> · подставлено из классификатора ОКПДТР: <strong className="text-emerald-600">{canonical}</strong>
+                        {unknown.length > 0 && (
+                          <> · требуют проверки вручную: <strong className="text-amber-600">{unknown.length}</strong></>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/40 sticky top-0">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium w-[42%]">Было в файле</th>
+                          <th className="text-left px-3 py-2 font-medium w-[42%]">Станет после нормализации</th>
+                          <th className="text-right px-3 py-2 font-medium">Строк</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayItems.map((it, i) => {
+                          const isChanged = it.before !== it.after;
+                          const isUnknown = !!(it.reason && /классификатор/i.test(it.reason));
+                          return (
+                            <tr key={i} className="border-t border-border/60">
+                              <td className="px-3 py-1.5 text-muted-foreground align-top break-words">
+                                {it.before || <span className="italic opacity-60">пусто</span>}
+                              </td>
+                              <td className="px-3 py-1.5 align-top break-words">
+                                <div className={isUnknown ? "text-amber-700 dark:text-amber-400" : isChanged ? "text-emerald-700 dark:text-emerald-400" : ""}>
+                                  {it.after || <span className="italic opacity-60">пусто</span>}
+                                </div>
+                                {isUnknown && (
+                                  <div className="text-[10px] text-amber-600/80 mt-0.5 flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" /> Не найдено в ОКПДТР — проверьте вручную
+                                  </div>
+                                )}
+                                {!isUnknown && isChanged && (
+                                  <div className="text-[10px] text-emerald-600/80 mt-0.5 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" /> Каноника ОКПДТР
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground align-top">
+                                {it.count}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {items.length > displayItems.length && (
+                      <div className="px-3 py-2 text-[11px] text-muted-foreground bg-muted/20 border-t border-border/60">
+                        Показано {displayItems.length} из {items.length} уникальных значений.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Раскрывающееся превью */}
             <div className="border border-border rounded-xl overflow-hidden">
               <button
