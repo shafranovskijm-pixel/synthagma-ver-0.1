@@ -182,8 +182,8 @@ describe("buildColumnMap fuzzy + positional fallback", () => {
     ]);
     const r = await parseFrdoXlsx(file, "po");
     expect(r.columnMap[11]).toBe(11);
-    // sanitizeProfessionName делает title-case под классификатор ФРДО
-    expect(String(r.rows[0].cells[11].value)).toBe("Водитель Автомобиля");
+    // Каноника ОКПДТР — sentence-case, а не Title Case
+    expect(String(r.rows[0].cells[11].value)).toBe("Водитель автомобиля");
   });
 
   it("matches 'СНИЛС получателя' for PO[21]", async () => {
