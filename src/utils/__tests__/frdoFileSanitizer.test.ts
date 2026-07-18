@@ -107,24 +107,29 @@ describe("sanitizeText", () => {
 });
 
 describe("sanitizeProfessionName", () => {
-  it("охранник → Охранник (title-case для классификатора ФРДО)", () => {
+  it("охранник → Охранник (каноника ОКПДТР)", () => {
     const r = sanitizeProfessionName("охранник");
     expect(r.value).toBe("Охранник");
     expect(r.fixed).toBe(true);
   });
-  it("ВОДИТЕЛЬ автомобиля → Водитель Автомобиля", () => {
-    expect(sanitizeProfessionName("ВОДИТЕЛЬ автомобиля").value).toBe("Водитель Автомобиля");
+  it("ВОДИТЕЛЬ автомобиля → Водитель автомобиля (sentence-case, не Title Case)", () => {
+    expect(sanitizeProfessionName("ВОДИТЕЛЬ автомобиля").value).toBe("Водитель автомобиля");
   });
-  it("сохраняет уже корректный регистр", () => {
-    const r = sanitizeProfessionName("Сварщик");
-    expect(r.value).toBe("Сварщик");
+  it("двойные пробелы и капс → каноника", () => {
+    expect(sanitizeProfessionName("ВОДИТЕЛЬ  АВТОМОБИЛЯ").value).toBe("Водитель автомобиля");
+  });
+  it("сохраняет уже корректный регистр канонической записи", () => {
+    const r = sanitizeProfessionName("Водитель автомобиля");
+    expect(r.value).toBe("Водитель автомобиля");
     expect(r.fixed).toBe(false);
   });
-  it("капитализирует слова после дефиса", () => {
-    expect(sanitizeProfessionName("слесарь-ремонтник").value).toBe("Слесарь-Ремонтник");
+  it("неизвестная профессия → sentence-case + reason", () => {
+    const r = sanitizeProfessionName("водитель НЛО");
+    expect(r.value).toBe("Водитель нло");
+    expect(r.reason).toMatch(/классификатор/i);
   });
   it("чистит NBSP и лишние пробелы", () => {
-    expect(sanitizeProfessionName("  машинист\u00A0крана  ").value).toBe("Машинист Крана");
+    expect(sanitizeProfessionName("  машинист\u00A0крана  ").value).toBe("Машинист крана");
   });
   it("пусто → пусто", () => {
     expect(sanitizeProfessionName("").value).toBe("");
@@ -177,8 +182,8 @@ describe("buildColumnMap fuzzy + positional fallback", () => {
     ]);
     const r = await parseFrdoXlsx(file, "po");
     expect(r.columnMap[11]).toBe(11);
-    // sanitizeProfessionName делает title-case под классификатор ФРДО
-    expect(String(r.rows[0].cells[11].value)).toBe("Водитель Автомобиля");
+    // Каноника ОКПДТР — sentence-case, а не Title Case
+    expect(String(r.rows[0].cells[11].value)).toBe("Водитель автомобиля");
   });
 
   it("matches 'СНИЛС получателя' for PO[21]", async () => {

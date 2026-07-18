@@ -21,6 +21,7 @@ import {
   FRDO_EDUCATION_LEVELS,
   FRDO_PROFESSIONAL_AREAS,
 } from "@/constants/frdo";
+import { FRDO_PROFESSIONS } from "@/constants/frdoProfessions";
 
 // ============================================================
 // Типы
@@ -343,24 +344,66 @@ export function sanitizeText(raw: unknown): SanitizedCell {
 }
 
 /**
- * Нормализует наименование профессии/должности под классификатор ФИС ФРДО:
- * первая буква каждого значимого слова — заглавная, остальные — строчные.
- * Примеры: "охранник" → "Охранник", "ВОДИТЕЛЬ автомобиля" → "Водитель автомобиля".
+ * Нормализует наименование профессии/должности под классификатор ОКПДТР,
+ * который используется ФИС ФРДО. Если значение узнано в справочнике —
+ * возвращаем каноническую запись (например «Водитель автомобиля»). Иначе —
+ * sentence-case (заглавная только у первой буквы) + флаг, что нужна ручная
+ * проверка.
  *
- * ФРДО-валидатор сравнивает значение с классификатором по точному совпадению,
- * поэтому регистр критичен.
+ * ФРДО-валидатор сравнивает значение с классификатором посимвольно, поэтому
+ * регистр критичен: «Водитель Автомобиля» — ошибка, «Водитель автомобиля» — ок.
  */
+function normalizeProfessionKey(s: string): string {
+  return normalizeWhitespace(stripInvisibles(s))
+    .toLowerCase()
+    .replace(/ё/g, "е");
+}
+
+let PROFESSION_INDEX: Map<string, string> | null = null;
+function getProfessionIndex(): Map<string, string> {
+  if (PROFESSION_INDEX) return PROFESSION_INDEX;
+  const idx = new Map<string, string>();
+  for (const p of FRDO_PROFESSIONS) {
+    const key = normalizeProfessionKey(p);
+    if (key && !idx.has(key)) idx.set(key, p);
+  }
+  PROFESSION_INDEX = idx;
+  return idx;
+}
+
+function sentenceCase(s: string): string {
+  const lower = s.toLowerCase();
+  const first = lower.match(/[а-яёa-z]/u);
+  if (!first || first.index === undefined) return lower;
+  return lower.slice(0, first.index) + first[0].toUpperCase() + lower.slice(first.index + 1);
+}
+
 export function sanitizeProfessionName(raw: unknown): SanitizedCell {
   if (raw === null || raw === undefined) return { value: "", fixed: false };
   const original = String(raw);
   const cleaned = normalizeWhitespace(stripInvisibles(original));
   if (!cleaned) return { value: "", fixed: cleaned !== original };
-  // Капитализация: первая буква слова — верхний регистр, остальные — нижний.
-  // Сохраняем разделители (пробел, дефис) как есть.
-  const titled = cleaned
-    .toLowerCase()
-    .replace(/(^|[\s\-])([а-яёa-z])/gu, (_m, sep, ch) => sep + ch.toUpperCase());
-  return { value: titled, fixed: titled !== original };
+
+  const key = normalizeProfessionKey(cleaned);
+  const canonical = getProfessionIndex().get(key);
+  if (canonical) {
+    return {
+      value: canonical,
+      fixed: canonical !== original,
+      reason:
+        canonical !== original
+          ? "Подставлено каноническое значение классификатора ОКПДТР"
+          : undefined,
+    };
+  }
+
+  // Sentence-case: заглавная только у первой буквы.
+  const titled = sentenceCase(cleaned);
+  return {
+    value: titled,
+    fixed: titled !== original,
+    reason: "Наименование не найдено в классификаторе ОКПДТР — проверьте вручную",
+  };
 }
 
 export function sanitizeNumber(raw: unknown): SanitizedCell {
