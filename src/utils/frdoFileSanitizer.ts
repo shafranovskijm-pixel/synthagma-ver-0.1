@@ -362,11 +362,6 @@ function normalizeProfessionKey(s: string): string {
 let PROFESSION_INDEX: Map<string, string> | null = null;
 function getProfessionIndex(): Map<string, string> {
   if (PROFESSION_INDEX) return PROFESSION_INDEX;
-  // Ленивая загрузка справочника (~5600 записей) — только при первом вызове.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-  const { FRDO_PROFESSIONS } = require("@/constants/frdoProfessions") as {
-    FRDO_PROFESSIONS: readonly string[];
-  };
   const idx = new Map<string, string>();
   for (const p of FRDO_PROFESSIONS) {
     const key = normalizeProfessionKey(p);
