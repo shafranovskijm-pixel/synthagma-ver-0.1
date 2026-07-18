@@ -21,6 +21,7 @@ import {
   FRDO_EDUCATION_LEVELS,
   FRDO_PROFESSIONAL_AREAS,
 } from "@/constants/frdo";
+import { FRDO_PROFESSIONS } from "@/constants/frdoProfessions";
 
 // ============================================================
 // Типы
