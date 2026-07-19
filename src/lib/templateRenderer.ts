@@ -19,15 +19,17 @@ function escapeHtml(s: string): string {
  * Подставляет значения переменных в HTML-шаблон.
  * - {{key}} — значение HTML-экранируется (безопасно по умолчанию)
  * - {{&key}} — значение вставляется как сырой HTML (use with caution)
+ * - если key входит в `rawKeys` — тоже вставляется как сырой HTML (для авто-таблиц вроде students_table)
  * Неизвестные переменные оставляет как есть, чтобы было видно «дырки» в шаблоне.
  */
-export function renderTemplate(html: string, variables: TemplateVariables): string {
+export function renderTemplate(html: string, variables: TemplateVariables, rawKeys?: Set<string> | string[]): string {
   if (!html) return "";
+  const rawSet = rawKeys instanceof Set ? rawKeys : new Set(rawKeys || []);
   return html.replace(/\{\{\s*(&)?\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, raw, key) => {
     if (!(key in variables)) return match;
     const value = variables[key];
     const str = value === null || value === undefined ? "" : String(value);
-    return raw ? str : escapeHtml(str);
+    return raw || rawSet.has(key) ? str : escapeHtml(str);
   });
 }
 
