@@ -168,6 +168,22 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
     finally { setCreatingStudent(false); }
   };
 
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      // Отвязываем учеников от группы
+      await supabase.from("profiles").update({ student_group_id: null } as any).eq("student_group_id", groupId);
+      // Удаляем ссылки регистрации
+      await supabase.from("registration_links").delete().eq("student_group_id", groupId);
+      const { error } = await supabase.from("student_groups").delete().eq("id", groupId);
+      if (error) throw error;
+      setGroups(prev => prev.filter(g => g.id !== groupId));
+      toast.success("Группа удалена");
+      onRefreshStudents?.();
+    } catch (err: any) {
+      toast.error("Ошибка удаления группы: " + (err.message || ""));
+    }
+  };
+
   return {
     groups, loading, enrollingGroupId, groupStudentCounts, enrolledCounts, groupLinks,
     showAddStudentsDialog, setShowAddStudentsDialog, selectedGroupForAdd, unassignedStudents,
@@ -176,6 +192,6 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
     newGroupStartDate, setNewGroupStartDate, newGroupEndDate, setNewGroupEndDate, isCreating,
     showNewStudentForm, setShowNewStudentForm, newStudentName, setNewStudentName, newStudentEmail, setNewStudentEmail, creatingStudent,
     handleCreateGroup, handleEnrollGroup, handleUpdateDate, handleCopyLink, handleOpenAddStudents,
-    handleAddStudentsToGroup, toggleStudent, handleCreateStudentInGroup,
+    handleAddStudentsToGroup, toggleStudent, handleCreateStudentInGroup, handleDeleteGroup,
   };
 }
