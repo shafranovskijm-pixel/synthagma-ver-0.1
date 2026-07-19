@@ -139,5 +139,8 @@ export function useTabNavigation({
     setSelectedCourseId,
     selectedStudentId,
     setSelectedStudentId,
+    selectedGroupId,
+    setSelectedGroupId,
   };
+
 }
