@@ -161,7 +161,6 @@ export function OrgSidebar() {
   const newIndicators = useOrgNewIndicators(d.organizationId);
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
