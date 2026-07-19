@@ -1,13 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles } from "lucide-react";
+import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+type ViewMode = "grid" | "list" | "table";
 
 interface GroupFolderTabProps {
   organizationId: string;
@@ -51,6 +54,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [openFolder, setOpenFolder] = useState<FolderKey | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
+
+  useEffect(() => { localStorage.setItem("groupFolderView", viewMode); }, [viewMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,34 +240,26 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         </div>
       </Card>
 
+      {/* Toolbar: view switcher */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground">
+          {openFolder ? FOLDER_META[openFolder].title : "Все папки"}
+        </div>
+        <ToggleGroup type="single" value={viewMode} onValueChange={v => v && setViewMode(v as ViewMode)} className="rounded-xl border border-border p-0.5">
+          <ToggleGroupItem value="grid" size="sm" className="rounded-lg h-8 w-8 p-0" aria-label="Плитка"><LayoutGrid className="w-4 h-4" /></ToggleGroupItem>
+          <ToggleGroupItem value="list" size="sm" className="rounded-lg h-8 w-8 p-0" aria-label="Список"><List className="w-4 h-4" /></ToggleGroupItem>
+          <ToggleGroupItem value="table" size="sm" className="rounded-lg h-8 w-8 p-0" aria-label="Таблица"><TableIcon className="w-4 h-4" /></ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
       {/* Folder grid */}
       {!openFolder ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {folderCards.map(({ key, count }) => {
-            const meta = FOLDER_META[key];
-            const Icon = meta.icon;
-            return (
-              <button
-                key={key}
-                onClick={() => setOpenFolder(key)}
-                className="group text-left p-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div className="font-semibold">{meta.title}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{meta.hint}</div>
-                <div className="mt-2">
-                  <Badge variant="secondary" className="rounded-full text-xs">{count} файл(ов)</Badge>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <FolderList folders={folderCards} viewMode={viewMode} onOpen={setOpenFolder} />
       ) : (
         <FolderContents
           folder={openFolder}
           students={students}
+          viewMode={viewMode}
           onBack={() => setOpenFolder(null)}
         />
       )}
@@ -269,9 +267,100 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   );
 }
 
-function FolderContents({ folder, students, onBack }: { folder: FolderKey; students: StudentRow[]; onBack: () => void }) {
+function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: FolderKey; count: number }>; viewMode: ViewMode; onOpen: (k: FolderKey) => void }) {
+  if (viewMode === "grid") {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {folders.map(({ key, count }) => {
+          const meta = FOLDER_META[key];
+          const Icon = meta.icon;
+          return (
+            <button
+              key={key}
+              onClick={() => onOpen(key)}
+              className="group text-left p-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Icon className="w-6 h-6" />
+              </div>
+              <div className="font-semibold">{meta.title}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{meta.hint}</div>
+              <div className="mt-2">
+                <Badge variant="secondary" className="rounded-full text-xs">{count} файл(ов)</Badge>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (viewMode === "list") {
+    return (
+      <Card className="rounded-2xl border-border overflow-hidden divide-y divide-border">
+        {folders.map(({ key, count }) => {
+          const meta = FOLDER_META[key];
+          const Icon = meta.icon;
+          return (
+            <button key={key} onClick={() => onOpen(key)} className="w-full text-left p-3 flex items-center gap-3 hover:bg-muted/50 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium truncate">{meta.title}</div>
+                <div className="text-xs text-muted-foreground truncate">{meta.hint}</div>
+              </div>
+              <Badge variant="secondary" className="rounded-full text-xs shrink-0">{count}</Badge>
+            </button>
+          );
+        })}
+      </Card>
+    );
+  }
+
+  // table
+  return (
+    <Card className="rounded-2xl border-border overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+          <tr>
+            <th className="text-left px-4 py-2 font-medium">Папка</th>
+            <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Описание</th>
+            <th className="text-right px-4 py-2 font-medium">Файлов</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {folders.map(({ key, count }) => {
+            const meta = FOLDER_META[key];
+            const Icon = meta.icon;
+            return (
+              <tr key={key} onClick={() => onOpen(key)} className="cursor-pointer hover:bg-muted/40">
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-primary" />
+                    <span className="font-medium">{meta.title}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell">{meta.hint}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{count}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
+function FolderContents({ folder, students, viewMode, onBack }: { folder: FolderKey; students: StudentRow[]; viewMode: ViewMode; onBack: () => void }) {
   const meta = FOLDER_META[folder];
   const Icon = meta.icon;
+
+  const getCount = (s: StudentRow) =>
+    folder === "contracts" ? s.contracts_count
+    : folder === "passports" ? s.documents.passport
+    : folder === "snils" ? s.documents.snils
+    : folder === "exams" ? s.test_attempts_count : 0;
 
   return (
     <Card className="rounded-2xl border-border overflow-hidden">
@@ -293,28 +382,63 @@ function FolderContents({ folder, students, onBack }: { folder: FolderKey; stude
         </div>
       ) : students.length === 0 ? (
         <div className="p-8 text-center text-sm text-muted-foreground">В группе ещё нет учеников.</div>
-      ) : (
+      ) : viewMode === "grid" ? (
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {students.map(s => {
+            const count = getCount(s);
+            return (
+              <div key={s.user_id} className="p-3 rounded-xl border border-border bg-card hover:shadow-sm transition-shadow">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                  <Folder className="w-5 h-5" />
+                </div>
+                <div className="font-medium text-sm truncate">{s.full_name}</div>
+                <div className="text-xs text-muted-foreground truncate">{s.email || s.login || "—"}</div>
+                <Badge variant={count > 0 ? "default" : "outline"} className="mt-2 rounded-full text-xs">
+                  {count > 0 ? `${count} шт.` : "нет"}
+                </Badge>
+              </div>
+            );
+          })}
+        </div>
+      ) : viewMode === "list" ? (
         <div className="divide-y divide-border">
           {students.map(s => {
-            const count = folder === "contracts" ? s.contracts_count
-              : folder === "passports" ? s.documents.passport
-              : folder === "snils" ? s.documents.snils
-              : folder === "exams" ? s.test_attempts_count : 0;
+            const count = getCount(s);
             return (
               <div key={s.user_id} className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-medium truncate">{s.full_name}</div>
                   <div className="text-xs text-muted-foreground truncate">{s.email || s.login || "—"}</div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <Badge variant={count > 0 ? "default" : "outline"} className="rounded-full">
-                    {count > 0 ? `${count} шт.` : "нет"}
-                  </Badge>
-                </div>
+                <Badge variant={count > 0 ? "default" : "outline"} className="rounded-full shrink-0">
+                  {count > 0 ? `${count} шт.` : "нет"}
+                </Badge>
               </div>
             );
           })}
         </div>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="text-left px-4 py-2 font-medium">ФИО</th>
+              <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Email / Логин</th>
+              <th className="text-right px-4 py-2 font-medium">Файлов</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {students.map(s => {
+              const count = getCount(s);
+              return (
+                <tr key={s.user_id} className="hover:bg-muted/40">
+                  <td className="px-4 py-2.5 font-medium">{s.full_name}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell">{s.email || s.login || "—"}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{count}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </Card>
   );
