@@ -5,11 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileSignature, Upload, Sparkles, Download, Trash2, Building2, User, FileText } from "lucide-react";
+import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText } from "lucide-react";
 import { useGroupContracts } from "@/hooks/useGroupContracts";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 import { UploadContractDialog } from "./UploadContractDialog";
-import { NewTemplateDialog } from "./NewTemplateDialog";
+import { UploadTemplateDialog } from "./UploadTemplateDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -53,7 +53,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           <Upload className="w-4 h-4" /> Загрузить готовый
         </Button>
         <Button variant="ghost" onClick={() => setTplOpen(true)} className="gap-1.5 rounded-xl">
-          <Sparkles className="w-4 h-4" /> Новый шаблон
+          <Wand2 className="w-4 h-4" /> Загрузить шаблон
         </Button>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="secondary" className="rounded-full">Всего: {stats.total}</Badge>
@@ -136,7 +136,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
         onClose={() => setUpOpen(false)}
         onUploaded={refresh}
       />
-      <NewTemplateDialog
+      <UploadTemplateDialog
         organizationId={organizationId}
         open={tplOpen}
         onClose={() => setTplOpen(false)}

@@ -1,77 +1,53 @@
 
-## Что делаем
+## Что меняем
 
-В папке «Договоры» внутри группы (`GroupFolderTab`) добавляем полный цикл работы с договорами по ученикам:
-1. Загрузка готового PDF/DOCX.
-2. Генерация договора из шаблона организации (`org_contract_templates`) — с выбором типа контрагента (физ. лицо / юр. лицо).
-3. Добавление нового шаблона прямо из папки — система автоматически находит переменные `{{...}}` в теле и предлагает заполнить недостающие.
+Кнопка **«Новый шаблон»** в папке «Договоры» превращается в **«Загрузить шаблон»**. Пользователь загружает Word-файл (.doc/.docx), система сама конвертирует его в HTML, находит места-заглушки («____», «[ФИО]», «« »», «№ ___» и т.п.) через AI и предлагает мастер-квиз: для каждого найденного места — предложение канонической переменной ({{individual_name}}, {{contract_number}}, …) с возможностью подтвердить/поменять/пропустить. По завершении шаблон сохраняется в `org_contract_templates` уже с `{{переменными}}` в теле.
 
-Используем то, что уже есть в проекте, ничего не дублируем:
-- Хук `useOrgContractTemplates` (`src/hooks/useOrgContracts.ts`) — CRUD шаблонов.
-- `src/lib/templateRenderer.ts` — `renderTemplate`, `extractVariables`, `findMissingVariables`, `buildOrgVariables`, `buildCompanyVariables`, `wrapAsPrintableDocument`.
-- `src/components/organization/contract-template/contractTemplateHelpers.ts` + `variableCategories.ts` — каталог переменных (ученик, организация, компания, договор).
-- Редактор шаблона `ContractTemplateEditor` (открытие по ссылке на вкладку `contract-editor`).
-- Существующая логика массовой генерации в `BulkDocumentGenerator.tsx` — из неё берём паттерн: рендер HTML → PDF через edge-функцию `html-to-pdf` → сохранение файла в bucket `billing-documents` → запись в `org_contracts`.
+Дополнительно: договор ИЦ «Горэлтех» (прикреплённый .doc) прогоняем один раз через тот же импортёр и сидим его как готовый шаблон в организации «ИЦ Горэлтех».
 
-## Что нужно добавить в БД
+## Поток пользователя
 
-Таблица `org_contracts` сейчас хранит только `organization_id, name, contract_number, contract_date, file_url, file_path, status`. Для «договоров по ученикам группы» и юр.лицам не хватает связей — GroupFolderTab уже пытается фильтровать по `student_user_id`, но такой колонки нет (запрос молча возвращает 0).
+1. Клик по «Загрузить шаблон» → диалог с drag-n-drop поля `.doc`/`.docx`.
+2. Файл конвертируется в HTML (см. ниже про .doc). Показываем предпросмотр.
+3. Автопоиск «дыр» → AI-предложения → **квиз**: карточка на каждую дырку с контекстом («…в лице ____, действующего…»), выпадающий список канонических переменных (из `CONTRACT_PLACEHOLDERS`) + «свой ключ» + «оставить как есть».
+4. По завершении: имя шаблона (авто из имени файла), «Сохранить». Пишется в `org_contract_templates` с уже подставленными `{{…}}`.
 
-Миграция:
-- `ALTER TABLE public.org_contracts` — добавить:
-  - `student_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL`
-  - `student_group_id UUID REFERENCES public.student_groups(id) ON DELETE SET NULL`
-  - `company_id UUID REFERENCES public.companies(id) ON DELETE SET NULL` (для юр.лица; таблицу `companies` использует существующий BulkDocumentGenerator)
-  - `counterparty_type TEXT CHECK (counterparty_type IN ('individual','legal'))`
-  - `template_id UUID REFERENCES public.org_contract_templates(id) ON DELETE SET NULL`
-  - `variables JSONB DEFAULT '{}'::jsonb` (снимок значений переменных на момент генерации — для повторного скачивания)
-- Индексы: `(organization_id, student_group_id)`, `(organization_id, student_user_id)`.
-- Существующие RLS-политики уже позволяют членам организации CRUD — новые колонки автоматически покрываются.
+## Как ищем переменные
 
-## UI: диалоги в папке «Договоры»
+- **Локальный детектор** (быстро, без AI): регэкспы на `_{3,}`, `«\s*»`, `\[[^\]]+\]`, `«___»`, «№ ___», даты «« » ___ 20__ г.», подписные строки. Каждой находке присваиваем стабильный `slot_id` и сохраняем окружающий контекст (~120 символов).
+- **AI-разметка** (Lovable AI Gateway → Gemini 2.5 Flash): передаём массив слотов `{id, context}` + справочник канонических ключей из `contractTemplateHelpers.CONTRACT_PLACEHOLDERS` + `templateRenderer.buildOrgVariables/buildCompanyVariables`. Модель возвращает `{id, suggested_key, confidence}`.
+- Слоты с `confidence ≥ 0.85` авто-подставляются; остальные попадают в квиз для ручного подтверждения.
 
-Новый компонент `src/components/organization/group-folder/ContractsFolder.tsx` рендерится, когда `openFolder === "contracts"`. Список договоров по ученикам группы (с фильтром/поиском) + кнопки:
+Если AI недоступен (нет тарифа / ошибка) — все слоты идут в квиз с пустым предложением, флоу продолжает работать.
 
-1. **«Загрузить договор»** — файл-инпут (`.pdf`, `.doc`, `.docx`). Диалог: выбрать ученика группы, тип (физ/юр), номер и дату. Загружаем в bucket `billing-documents` по пути `<orgId>/contracts/<groupId>/<studentId>/<uuid>.<ext>`, создаём запись в `org_contracts`.
+## Ограничение форматов
 
-2. **«Сгенерировать по шаблону»** → диалог `GenerateContractDialog.tsx`:
-   - Шаг 1: тип контрагента — **Физическое лицо** (ученик группы) / **Юридическое лицо** (компания из `companies`).
-   - Шаг 2: выбор шаблона из `org_contract_templates` (кнопка «Открыть редактор шаблонов» ведёт на `contract-editor`, кнопка «➕ Новый шаблон» открывает мини-редактор).
-   - Шаг 3: выбор получателя — ученик группы (мультиселект для физ.) или компания (селект + автоподгрузка реквизитов).
-   - Шаг 4: предпросмотр — рендерим `renderTemplate(body_html, vars)` в iframe. Через `findMissingVariables` подсвечиваем пустые поля и даём инпуты для ручного ввода (`contract_number`, `contract_date`, `contract_sum` и любые кастомные). Переменные тянем из тех же билдеров, что использует `BulkDocumentGenerator`.
-   - Шаг 5: генерация — вызов edge-функции `html-to-pdf` (уже развёрнута), сохранение записи в `org_contracts` (со снимком переменных и `template_id`). Прогресс + результаты (успех/ошибка на ученика).
-
-3. **«➕ Новый шаблон»** — компактный диалог `NewTemplateDialog.tsx`: имя + rich-textarea для HTML. По кнопке «Найти переменные» вызываем `extractVariables()` и выводим список найденных `{{key}}` с чекбоксами «известная / кастомная». Сохраняем через `useOrgContractTemplates().upsert`. Для полноценного редактирования шапка диалога даёт ссылку «Открыть в полном редакторе» → `ContractTemplateEditor`.
-
-## UI: карточки договоров в списке
-
-Каждая запись `org_contracts` — строка с:
-- ФИО ученика (или название компании),
-- номер/дата договора,
-- бейдж типа (физ/юр),
-- кнопки: «Скачать» (signed URL, `openPrivateFile`), «Перегенерировать» (если есть `template_id` + `variables`), «Удалить».
-
-## Технические детали
-
-- Signed URL для скачивания — 1 час, через `supabase.storage.from('billing-documents').createSignedUrl`.
-- Все значения переменных экранируются в `renderTemplate` по умолчанию (защита от XSS).
-- Для юр.лица подтягиваем реквизиты через `buildCompanyVariables(company)`, для физ.лица — минимальный набор из профиля (ФИО, email, паспорт/СНИЛС из `student_identity_documents`, если есть).
-- Никаких изменений в существующем `ContractTemplateEditor` и `BulkDocumentGenerator` — только переиспользуем.
+- `.docx` — конвертация в браузере через уже используемый `mammoth` (см. `src/lib/docxImport.ts`), достаём HTML (не блоки).
+- `.doc` (legacy) — mammoth не умеет. Делаем edge-функцию `convert-doc-to-html`, которая принимает файл и возвращает HTML. Реализация: используем облачный конвертер через уже подключённый `LOVABLE_API_KEY`-независимый путь — CloudConvert недоступен, поэтому проще: **на стороне клиента** отклоняем `.doc` с понятным сообщением «Сохраните файл как .docx (Файл → Сохранить как → .docx)» и предлагаем кнопку «Всё равно загрузить как plain text» (fallback: читаем как бинарь mammoth и, если падает, показываем инструкцию).
+  - Для сид-договора «Горэлтех» я один раз конвертирую его локально в .docx во время реализации и вошью HTML прямо в миграцию — пользователю ничего конвертировать не нужно.
 
 ## Файлы
 
-Создать:
-- `supabase/migrations/<ts>_org_contracts_student_link.sql`
-- `src/components/organization/group-folder/ContractsFolder.tsx`
-- `src/components/organization/group-folder/GenerateContractDialog.tsx`
-- `src/components/organization/group-folder/NewTemplateDialog.tsx`
-- `src/components/organization/group-folder/UploadContractDialog.tsx`
-- `src/hooks/useGroupContracts.ts` (список договоров по группе + realtime)
+**Заменяем:**
+- `src/components/organization/group-folder/NewTemplateDialog.tsx` → переименовать компонент в `UploadTemplateDialog`, оставить экспорт-обёртку для обратной совместимости или сразу поменять импорт в `ContractsFolder.tsx`.
 
-Изменить:
-- `src/components/organization/tabs/GroupFolderTab.tsx` — рендерить `ContractsFolder` в состоянии `openFolder === "contracts"` вместо текущей заглушки; учесть, что запрос по `student_user_id` теперь реально работает.
+**Новое:**
+- `src/lib/contractTemplateImport.ts` — `importWordAsHtml(file)`, `detectSlots(html)`, `applyMappings(html, mappings)`.
+- `src/lib/contractTemplateAiSuggest.ts` — вызов edge-функции с промптом и справочником канонических ключей.
+- `supabase/functions/suggest-template-variables/index.ts` — Lovable AI (Gemini 2.5 Flash), гейт по тарифу (max/pro), возвращает предложения.
+- `src/components/organization/group-folder/UploadTemplateDialog.tsx` — 3 шага: файл → квиз → сохранение. Предпросмотр справа, слоты слева.
 
-## Открытые вопросы
+**Правим:**
+- `src/components/organization/group-folder/ContractsFolder.tsx` — кнопка «Загрузить шаблон» (иконка `Upload`), новый диалог.
+- `supabase/migrations/<new>.sql` — INSERT в `org_contract_templates` для организации ИЦ «Горэлтех» (найдём по названию / попрошу подтверждение по ИНН перед выполнением).
 
-1. При генерации сразу класть договор в `org_contracts` **и** отправлять на подпись через `org_contract_signatures` (тот же поток, что в CRM), или пока только генерировать и хранить файл? По умолчанию сделаю только генерацию/хранение — подпись отдельной кнопкой в записи.
-2. Для юр.лица привязка нужна к `companies` (как в CRM) или к произвольному контрагенту с ручным вводом реквизитов? По умолчанию — `companies` + опция «Ввести реквизиты вручную».
+## Что нужно уточнить перед миграцией
+
+Для сида договора «Горэлтех» — назови точное название организации в системе или ИНН, чтобы миграция вставила шаблон в правильный `organization_id`. Иначе сделаю сид опциональным: добавлю кнопку «Загрузить пример договора Горэлтех» внутри диалога, которая подгрузит вшитый HTML и прогонит его через тот же квиз.
+
+## Технические детали
+
+- Квиз хранит состояние `Record<slot_id, {action: 'map'|'literal'|'skip', key?: string}>`.
+- Финальная замена: идём по слотам от конца к началу, заменяем оригинальный токен на `{{key}}` (или `{{&key}}` если ключ помечен как HTML — для подписей/печатей).
+- Валидация: перед сохранением показываем список найденных `{{key}}` (используем `extractVariables` из `templateRenderer`) и предупреждаем, если остались «сырые» `___`.
+- Сохранение — существующий `INSERT` в `org_contract_templates` (name, body_html, variables:{detected}, is_default:false).
