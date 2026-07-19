@@ -571,53 +571,51 @@ export function OrgSidebar() {
             {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
           </Tooltip>
 
-          {/* Collapse / Expand toggle (desktop only) — between «Что нового» and Aa */}
-          {effectiveExpanded ? (
-            <button
-              onClick={handleToggleExpanded}
-              className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors text-[12px] font-medium"
-              aria-label="Свернуть меню в иконки"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-              <span>Свернуть в иконки</span>
-            </button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
+          {/* Cycle mode (desktop only): expanded → compact → icons → expanded */}
+          {(() => {
+            const nextMode: SidebarMode = effectiveMode === "expanded" ? "compact" : effectiveMode === "compact" ? "icons" : "expanded";
+            const nextLabel = nextMode === "expanded" ? "Развернуть" : nextMode === "compact" ? "С подписями" : "Только иконки";
+            const currentLabel = effectiveMode === "expanded" ? "Развёрнуто" : effectiveMode === "compact" ? "С подписями" : "Только иконки";
+            const Icon = nextMode === "expanded" ? PanelLeftOpen : PanelLeftClose;
+            if (effectiveExpanded) {
+              return (
                 <button
-                  onClick={handleToggleExpanded}
-                  className="hidden lg:flex items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors"
-                  aria-label="Развернуть меню — показать названия пунктов"
+                  onClick={handleCycleMode}
+                  className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors text-[12px] font-medium"
+                  aria-label={`Переключить режим меню: ${nextLabel}`}
+                  title={`Сейчас: ${currentLabel}. Далее: ${nextLabel}`}
                 >
-                  <PanelLeftOpen className="h-4 w-4" />
-                  <span className="text-[10px] font-medium">Шире</span>
+                  <Icon className="h-4 w-4" />
+                  <span>{nextLabel}</span>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="z-[100] max-w-[220px]">
-                <div className="font-semibold text-sm mb-0.5">Развернуть меню</div>
-                <div className="text-xs text-muted-foreground">
-                  Покажет полные названия пунктов рядом с иконками. Удобно для новых пользователей.
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          )}
+              );
+            }
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleCycleMode}
+                    className={cn(
+                      "hidden lg:flex items-center justify-center gap-1 h-8 rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors",
+                      showLabels ? "w-[68px]" : "w-9"
+                    )}
+                    aria-label={`Переключить режим меню: ${nextLabel}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {showLabels && <span className="text-[10px] font-medium">{nextLabel}</span>}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="z-[100] max-w-[220px]">
+                  <div className="font-semibold text-sm mb-0.5">Режим меню</div>
+                  <div className="text-xs text-muted-foreground">
+                    Сейчас: {currentLabel}. Клик — {nextLabel}.
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })()}
 
-          {!effectiveExpanded && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowLabels((v) => !v)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
-                  aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
-                >
-                  {showLabels ? "Aa" : "·"}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="z-[100]">
-                {showLabels ? "Скрыть подписи" : "Показать подписи"}
-              </TooltipContent>
-            </Tooltip>
-          )}
+
 
           <Tooltip>
             <TooltipTrigger asChild>
