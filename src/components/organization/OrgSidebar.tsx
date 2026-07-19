@@ -605,7 +605,7 @@ export function OrgSidebar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <HelpCenterDialog open={helpOpen} onOpenChange={setHelpOpen} />
+    </>
     </>
   );
 }
