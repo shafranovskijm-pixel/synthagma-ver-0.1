@@ -119,6 +119,25 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                 <Button size="sm" className="rounded-xl gap-1.5 ml-1" disabled={isEnrolling || allEnrolled} onClick={() => h.handleEnrollGroup(group.id)}>
                   {isEnrolling ? <SigmaSpinner size="sm" /> : allEnrolled ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}{allEnrolled ? "Зачислены" : "Зачислить"}
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="rounded-xl h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" title="Удалить группу">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Удалить группу «{group.name}»?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Ученики будут откреплены от группы (аккаунты и зачисления на курс сохранятся). Ссылка регистрации группы будет удалена. Действие нельзя отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl">Отмена</AlertDialogCancel>
+                      <AlertDialogAction className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => h.handleDeleteGroup(group.id)}>Удалить</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           );
