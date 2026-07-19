@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
-import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
+
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
 import { useOrgSidebarPinned } from "@/hooks/useOrgSidebarPinned";
