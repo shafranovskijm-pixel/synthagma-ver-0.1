@@ -132,6 +132,10 @@ const SECTION_LABELS: Record<SectionId, string> = {
 
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
 const EXPANDED_KEY = "org-sidebar-expanded";
+const MODE_KEY = "org-sidebar-mode";
+
+type SidebarMode = "expanded" | "compact" | "icons";
+const MODE_WIDTH: Record<SidebarMode, number> = { expanded: 220, compact: 88, icons: 64 };
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -161,59 +165,57 @@ export function OrgSidebar() {
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
-  // Mini-labels under icons (for new orgs / sensor screens)
-  const [showLabels, setShowLabels] = useState<boolean>(() => {
+  // Sidebar mode: 3 states (expanded / compact-with-captions / icons-only).
+  const [mode, setMode] = useState<SidebarMode>(() => {
     try {
-      const v = localStorage.getItem(SHOW_LABELS_KEY);
-      return v === null ? true : v === "1";
-    } catch { return true; }
+      const raw = localStorage.getItem(MODE_KEY) as SidebarMode | null;
+      if (raw === "expanded" || raw === "compact" || raw === "icons") return raw;
+      const legacyExpanded = localStorage.getItem(EXPANDED_KEY) === "1";
+      if (legacyExpanded) return "expanded";
+      const legacyLabels = localStorage.getItem(SHOW_LABELS_KEY);
+      return legacyLabels === "0" ? "icons" : "compact";
+    } catch { return "compact"; }
   });
-  useEffect(() => {
-    try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
-  }, [showLabels]);
 
-  // Expanded mode (icon+text full panel) — desktop only.
-  // Raw `expanded` persists across devices so desktop users keep their pref;
-  // `effectiveExpanded` forces compact layout on mobile so the 220px panel
-  // doesn't overlap page content.
-  const [expanded, setExpanded] = useState<boolean>(() => {
-    try { return localStorage.getItem(EXPANDED_KEY) === "1"; } catch { return false; }
-  });
   const isMobile = useIsMobile();
-  const effectiveExpanded = expanded && !isMobile;
+  const effectiveMode: SidebarMode = mode === "expanded" && isMobile ? "compact" : mode;
+  const effectiveExpanded = effectiveMode === "expanded";
+  const showLabels = effectiveMode === "compact";
+  const width = MODE_WIDTH[effectiveMode];
+
   useEffect(() => {
-    try { localStorage.setItem(EXPANDED_KEY, expanded ? "1" : "0"); } catch {}
-    // Notify layout to adjust main content margin
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+      localStorage.setItem(EXPANDED_KEY, effectiveExpanded ? "1" : "0");
+      localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0");
+    } catch {}
     window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: effectiveExpanded }));
-  }, [expanded, effectiveExpanded]);
+    window.dispatchEvent(new CustomEvent("org-sidebar-width-change", { detail: width }));
+  }, [mode, effectiveExpanded, showLabels, width]);
 
   // Auto-collapse on screens < 1280px to prevent content squeeze
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia("(max-width: 1279px)");
-    const apply = () => { if (mq.matches && expanded) setExpanded(false); };
+    const apply = () => { if (mq.matches && mode === "expanded") setMode("compact"); };
     apply();
     const handler = () => apply();
     mq.addEventListener?.("change", handler);
     return () => mq.removeEventListener?.("change", handler);
-  }, [expanded]);
+  }, [mode]);
 
-  // One-time hint to explain the expanded mode
-  const handleToggleExpanded = useCallback(() => {
-    setExpanded((v) => {
-      const next = !v;
-      if (next) {
-        try {
-          const shown = localStorage.getItem("org-sidebar-expanded-hint-shown");
-          if (!shown) {
-            toast("Меню развёрнуто", {
-              description: "Теперь видны полные названия пунктов. Свернуть обратно — той же кнопкой.",
-              duration: 5000,
-            });
-            localStorage.setItem("org-sidebar-expanded-hint-shown", "1");
-          }
-        } catch {}
-      }
+  // Cycle: expanded -> compact -> icons -> expanded
+  const handleCycleMode = useCallback(() => {
+    setMode((m) => {
+      const next: SidebarMode = m === "expanded" ? "compact" : m === "compact" ? "icons" : "expanded";
+      try {
+        const shown = localStorage.getItem("org-sidebar-mode-hint-shown");
+        if (!shown) {
+          const desc = next === "expanded" ? "Полные названия рядом с иконками." : next === "compact" ? "Иконки с короткими подписями." : "Только иконки — минимум места.";
+          toast(next === "expanded" ? "Развёрнутое меню" : next === "compact" ? "Компактное меню" : "Меню — только иконки", { description: desc, duration: 3500 });
+          localStorage.setItem("org-sidebar-mode-hint-shown", "1");
+        }
+      } catch {}
       return next;
     });
   }, []);
@@ -318,8 +320,8 @@ export function OrgSidebar() {
           effectiveExpanded
             ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
             : cn(
-                "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
-                showLabels ? "gap-0.5" : "h-10"
+                "flex flex-col items-center justify-center px-1 py-1.5",
+                showLabels ? "w-[68px] gap-0.5" : "w-10 h-10"
               ),
           locked && "opacity-50",
           isActive
@@ -422,14 +424,13 @@ export function OrgSidebar() {
         aria-label="Основная навигация"
         className={cn(
           "fixed inset-y-0 left-0 z-50 shadow-[2px_0_12px_rgba(0,0,0,0.04)] flex flex-col transition-[transform,width] duration-300",
-          effectiveExpanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{
+          width,
           backdropFilter: "none",
           WebkitBackdropFilter: "none",
           backgroundColor: `hsl(${brandHsl} / 0.06)`,
-          // Subtle vertical brand stripe for accent + soft outer shadow
           boxShadow: `inset 3px 0 0 hsl(${brandHsl} / 0.5), 2px 0 12px rgba(0,0,0,0.04)`,
         }}
       >
@@ -569,53 +570,51 @@ export function OrgSidebar() {
             {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
           </Tooltip>
 
-          {/* Collapse / Expand toggle (desktop only) — between «Что нового» and Aa */}
-          {effectiveExpanded ? (
-            <button
-              onClick={handleToggleExpanded}
-              className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors text-[12px] font-medium"
-              aria-label="Свернуть меню в иконки"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-              <span>Свернуть в иконки</span>
-            </button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
+          {/* Cycle mode (desktop only): expanded → compact → icons → expanded */}
+          {(() => {
+            const nextMode: SidebarMode = effectiveMode === "expanded" ? "compact" : effectiveMode === "compact" ? "icons" : "expanded";
+            const nextLabel = nextMode === "expanded" ? "Развернуть" : nextMode === "compact" ? "С подписями" : "Только иконки";
+            const currentLabel = effectiveMode === "expanded" ? "Развёрнуто" : effectiveMode === "compact" ? "С подписями" : "Только иконки";
+            const Icon = nextMode === "expanded" ? PanelLeftOpen : PanelLeftClose;
+            if (effectiveExpanded) {
+              return (
                 <button
-                  onClick={handleToggleExpanded}
-                  className="hidden lg:flex items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors"
-                  aria-label="Развернуть меню — показать названия пунктов"
+                  onClick={handleCycleMode}
+                  className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors text-[12px] font-medium"
+                  aria-label={`Переключить режим меню: ${nextLabel}`}
+                  title={`Сейчас: ${currentLabel}. Далее: ${nextLabel}`}
                 >
-                  <PanelLeftOpen className="h-4 w-4" />
-                  <span className="text-[10px] font-medium">Шире</span>
+                  <Icon className="h-4 w-4" />
+                  <span>{nextLabel}</span>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="z-[100] max-w-[220px]">
-                <div className="font-semibold text-sm mb-0.5">Развернуть меню</div>
-                <div className="text-xs text-muted-foreground">
-                  Покажет полные названия пунктов рядом с иконками. Удобно для новых пользователей.
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          )}
+              );
+            }
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleCycleMode}
+                    className={cn(
+                      "hidden lg:flex items-center justify-center gap-1 h-8 rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors",
+                      showLabels ? "w-[68px]" : "w-9"
+                    )}
+                    aria-label={`Переключить режим меню: ${nextLabel}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {showLabels && <span className="text-[10px] font-medium">{nextLabel}</span>}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="z-[100] max-w-[220px]">
+                  <div className="font-semibold text-sm mb-0.5">Режим меню</div>
+                  <div className="text-xs text-muted-foreground">
+                    Сейчас: {currentLabel}. Клик — {nextLabel}.
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })()}
 
-          {!effectiveExpanded && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowLabels((v) => !v)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
-                  aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
-                >
-                  {showLabels ? "Aa" : "·"}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="z-[100]">
-                {showLabels ? "Скрыть подписи" : "Показать подписи"}
-              </TooltipContent>
-            </Tooltip>
-          )}
+
 
           <Tooltip>
             <TooltipTrigger asChild>
