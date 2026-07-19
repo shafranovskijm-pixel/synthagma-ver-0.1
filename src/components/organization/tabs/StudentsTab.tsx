@@ -46,6 +46,8 @@ interface StudentsTabProps {
 export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabProps) {
   const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false, isSendingBulkDocReminders = false } = props;
   const courseIds = courses.map(c => c.id);
+  const dash = useOrgDashboard();
+
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
 
