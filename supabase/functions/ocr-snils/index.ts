@@ -46,6 +46,33 @@ function normalizeDate(v: unknown): string | null {
   return null;
 }
 
+function normalizePassportSeries(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 4) return null;
+  return `${d.slice(0, 2)} ${d.slice(2)}`;
+}
+
+function normalizePassportNumber(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 6) return null;
+  return d;
+}
+
+function normalizeDepartmentCode(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 6) return null;
+  return `${d.slice(0, 3)}-${d.slice(3)}`;
+}
+
+function cleanText(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.replace(/\s+/g, " ").trim();
+  return s.length > 0 ? s : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
