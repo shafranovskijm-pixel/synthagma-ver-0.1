@@ -1,85 +1,77 @@
 
-## 1. Починка ссылки для регистрации
+## Что делаем
 
-**Причина ошибки «Invalid authentication»**: страница `/join/:token` (`src/pages/JoinByLink.tsx`) открывается **без входа в систему**, но вызывает edge-функцию `register-student`, которая на строке 30-34 требует авторизацию и возвращает `Invalid authentication`. Именно этот текст показывается пользователю as-is (тост «Ошибка регистрации / Invalid authentication» на скриншоте).
+В папке «Договоры» внутри группы (`GroupFolderTab`) добавляем полный цикл работы с договорами по ученикам:
+1. Загрузка готового PDF/DOCX.
+2. Генерация договора из шаблона организации (`org_contract_templates`) — с выбором типа контрагента (физ. лицо / юр. лицо).
+3. Добавление нового шаблона прямо из папки — система автоматически находит переменные `{{...}}` в теле и предлагает заполнить недостающие.
 
-**Правки:**
+Используем то, что уже есть в проекте, ничего не дублируем:
+- Хук `useOrgContractTemplates` (`src/hooks/useOrgContracts.ts`) — CRUD шаблонов.
+- `src/lib/templateRenderer.ts` — `renderTemplate`, `extractVariables`, `findMissingVariables`, `buildOrgVariables`, `buildCompanyVariables`, `wrapAsPrintableDocument`.
+- `src/components/organization/contract-template/contractTemplateHelpers.ts` + `variableCategories.ts` — каталог переменных (ученик, организация, компания, договор).
+- Редактор шаблона `ContractTemplateEditor` (открытие по ссылке на вкладку `contract-editor`).
+- Существующая логика массовой генерации в `BulkDocumentGenerator.tsx` — из неё берём паттерн: рендер HTML → PDF через edge-функцию `html-to-pdf` → сохранение файла в bucket `billing-documents` → запись в `org_contracts`.
 
-1. `supabase/functions/register-student/index.ts` — добавить публичную ветку:
-   - если в теле пришёл `registration_token`, вместо проверки Authorization вызывать `service_role` и проверить строку `registration_links` (не истёкшая, `used_count < max_uses` при заданном лимите, `organization_id/company_id/course_id/student_group_id` берутся из ссылки, а не из клиента). Только после этой проверки создавать ученика от имени service role.
-   - оставить существующую ветку с авторизацией для сценариев админа/организации.
+## Что нужно добавить в БД
 
-2. `src/pages/JoinByLink.tsx`:
-   - передавать `registration_token: token` в `safeInvoke('register-student', …)` и не полагаться на сессию.
-   - расширить блок «расшифровки» ошибок понятными русскими текстами: `Invalid authentication`, `Insufficient permissions`, `PROFILE_NOT_FOUND`, `Link not found/expired`, `Registration link exhausted`, `email_exists`, `weak_password`, `Organization limit reached`.
+Таблица `org_contracts` сейчас хранит только `organization_id, name, contract_number, contract_date, file_url, file_path, status`. Для «договоров по ученикам группы» и юр.лицам не хватает связей — GroupFolderTab уже пытается фильтровать по `student_user_id`, но такой колонки нет (запрос молча возвращает 0).
 
-3. Пройти по остальным местам, где показывается сырое `err.message`, и подключить общий словарь ошибок через существующий `src/utils/handleSupabaseError.ts` (плюс новый helper `humanizeAuthError`), чтобы одни и те же тексты работали в:
-   - `src/pages/Login.tsx` (ошибки входа),
-   - `src/pages/ResetPassword.tsx`,
-   - `src/hooks/useRegistrationLinks.ts` (создание ссылки в кабинете),
-   - `src/components/organization/QuickStartCard.tsx` и `src/hooks/useCompanyLinksAndGenerators.ts` (копирование/использование ссылок).
+Миграция:
+- `ALTER TABLE public.org_contracts` — добавить:
+  - `student_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL`
+  - `student_group_id UUID REFERENCES public.student_groups(id) ON DELETE SET NULL`
+  - `company_id UUID REFERENCES public.companies(id) ON DELETE SET NULL` (для юр.лица; таблицу `companies` использует существующий BulkDocumentGenerator)
+  - `counterparty_type TEXT CHECK (counterparty_type IN ('individual','legal'))`
+  - `template_id UUID REFERENCES public.org_contract_templates(id) ON DELETE SET NULL`
+  - `variables JSONB DEFAULT '{}'::jsonb` (снимок значений переменных на момент генерации — для повторного скачивания)
+- Индексы: `(organization_id, student_group_id)`, `(organization_id, student_user_id)`.
+- Существующие RLS-политики уже позволяют членам организации CRUD — новые колонки автоматически покрываются.
 
-Внешне: тост станет «Не удалось создать аккаунт: ссылка недействительна или срок её действия истёк» и т.п.
+## UI: диалоги в папке «Договоры»
 
-## 2. Папочный вид группы (как в проводнике Windows)
+Новый компонент `src/components/organization/group-folder/ContractsFolder.tsx` рендерится, когда `openFolder === "contracts"`. Список договоров по ученикам группы (с фильтром/поиском) + кнопки:
 
-Сейчас в разделе «Ученики» группы отображаются как цветные карточки (`StudentsTab.tsx`). Заказчик хочет провалиться в карточку группы и увидеть содержимое папками: **Договор, Паспорт, СНИЛС, Экзамены + сгенерированные документы группы** (по шаблонам из архива `для_сайта.zip`).
+1. **«Загрузить договор»** — файл-инпут (`.pdf`, `.doc`, `.docx`). Диалог: выбрать ученика группы, тип (физ/юр), номер и дату. Загружаем в bucket `billing-documents` по пути `<orgId>/contracts/<groupId>/<studentId>/<uuid>.<ext>`, создаём запись в `org_contracts`.
 
-### 2.1 Новый маршрут и страница
+2. **«Сгенерировать по шаблону»** → диалог `GenerateContractDialog.tsx`:
+   - Шаг 1: тип контрагента — **Физическое лицо** (ученик группы) / **Юридическое лицо** (компания из `companies`).
+   - Шаг 2: выбор шаблона из `org_contract_templates` (кнопка «Открыть редактор шаблонов» ведёт на `contract-editor`, кнопка «➕ Новый шаблон» открывает мини-редактор).
+   - Шаг 3: выбор получателя — ученик группы (мультиселект для физ.) или компания (селект + автоподгрузка реквизитов).
+   - Шаг 4: предпросмотр — рендерим `renderTemplate(body_html, vars)` в iframe. Через `findMissingVariables` подсвечиваем пустые поля и даём инпуты для ручного ввода (`contract_number`, `contract_date`, `contract_sum` и любые кастомные). Переменные тянем из тех же билдеров, что использует `BulkDocumentGenerator`.
+   - Шаг 5: генерация — вызов edge-функции `html-to-pdf` (уже развёрнута), сохранение записи в `org_contracts` (со снимком переменных и `template_id`). Прогресс + результаты (успех/ошибка на ученика).
 
-- Маршрут `/organization?tab=group-folder&groupId=…` (по аналогии с `course-details`), плюс редирект `src/pages/OrganizationGroupFolder.tsx` → `Navigate`.
-- Новый компонент `src/components/organization/tabs/GroupFolderTab.tsx`:
-  - хлебные крошки «Ученики / Группы / <название группы>»;
-  - шапка с датами группы, счётчиком учеников, кнопками «Открыть в новом окне», «Сформировать пакет документов»;
-  - сетка «папок» в стиле Windows Explorer (иконка `Folder` + название + счётчик файлов), три системные папки + одна папка на каждый сгенерированный документ:
-    - **Договоры** — договоры из `org_contracts`, где ученик группы = заказчик/подписант;
-    - **Паспорта** — сканы `student_identity_documents` с типом `passport` по всем ученикам группы;
-    - **СНИЛС** — те же документы с типом `snils`;
-    - **Экзамены** — попытки/протоколы `test_attempts` + сгенерированный протокол аттестации;
-    - **Документы группы** — 10 автогенерируемых файлов ниже.
+3. **«➕ Новый шаблон»** — компактный диалог `NewTemplateDialog.tsx`: имя + rich-textarea для HTML. По кнопке «Найти переменные» вызываем `extractVariables()` и выводим список найденных `{{key}}` с чекбоксами «известная / кастомная». Сохраняем через `useOrgContractTemplates().upsert`. Для полноценного редактирования шапка диалога даёт ссылку «Открыть в полном редакторе» → `ContractTemplateEditor`.
 
-- Клик по «папке» открывает `GroupFolderContentsDialog` (или отдельный подэкран) с таблицей файлов: имя, ученик, дата, размер, действия «Скачать / Открыть / Удалить». Верхняя строка «⬅ Назад» возвращает к сетке папок.
+## UI: карточки договоров в списке
 
-### 2.2 Автогенерация пакета документов по группе
+Каждая запись `org_contracts` — строка с:
+- ФИО ученика (или название компании),
+- номер/дата договора,
+- бейдж типа (физ/юр),
+- кнопки: «Скачать» (signed URL, `openPrivateFile`), «Перегенерировать» (если есть `template_id` + `variables`), «Удалить».
 
-Из загруженного архива берём 10 шаблонов (`.docx/.doc`) и заводим их как **встроенные системные шаблоны** для группы. Кладём файлы в `src/assets/group-templates/` и подключаем метаданными в новом `src/constants/groupDocumentTemplates.ts`:
+## Технические детали
 
-| Ключ | Название файла в UI | Источник (шаблон) |
-| --- | --- | --- |
-| `title_page` | Титульный лист группы | `12. Титульный лист группы.docx` |
-| `attendance_journal` | Журнал учёта занятий | `6. Журнал учёта занятий.docx` |
-| `students_list` | Список обучающихся | `5. Список обучающихся.docx` |
-| `schedule` | Расписание учебных занятий | `7. Расписание учебных занятий.docx` |
-| `open_order` | Приказ об открытии курса и зачислении | `8. Приказ об открытии курса и зачислении.docx` |
-| `close_order` | Приказ о закрытии курса и отчислении | `9. Приказ о закрытии курса и отчислении.docx` |
-| `attestation_sheet` | Итоговая ведомость аттестации | `10. Итоговая ведомость аттестации.docx` |
-| `registration_book` | Книга регистрации выдачи документов | `3. Книга регистрации выдачи документов.docx` |
-| `attestation_protocol` | Протокол итоговой аттестации | `Протокол итоговой аттестации…doc` |
-| `pass` | Пропуск | `пропуск.docx` |
+- Signed URL для скачивания — 1 час, через `supabase.storage.from('billing-documents').createSignedUrl`.
+- Все значения переменных экранируются в `renderTemplate` по умолчанию (защита от XSS).
+- Для юр.лица подтягиваем реквизиты через `buildCompanyVariables(company)`, для физ.лица — минимальный набор из профиля (ФИО, email, паспорт/СНИЛС из `student_identity_documents`, если есть).
+- Никаких изменений в существующем `ContractTemplateEditor` и `BulkDocumentGenerator` — только переиспользуем.
 
-Генерация:
-- новая edge-функция `generate-group-documents` (Deno) принимает `group_id` + `template_key`, читает шаблон из storage-бакета `group-templates` (загрузим один раз миграцией/сидом), подставляет переменные (название группы, даты, курс, ФИО учеников, СНИЛС/паспорта, реквизиты организации, номер приказа) через существующий движок `src/lib/templateRenderer.ts` (адаптированный для docx: html → docx через уже используемый в `useWordDocumentGenerator` подход), сохраняет результат в `group_documents` (новая таблица) и в приватный bucket `group-documents/<org>/<group>/…`.
-- в UI кнопка «Сформировать» рядом с шаблоном и «Сформировать пакет (все 10)» на верхнем уровне.
+## Файлы
 
-### 2.3 База данных (одна миграция)
+Создать:
+- `supabase/migrations/<ts>_org_contracts_student_link.sql`
+- `src/components/organization/group-folder/ContractsFolder.tsx`
+- `src/components/organization/group-folder/GenerateContractDialog.tsx`
+- `src/components/organization/group-folder/NewTemplateDialog.tsx`
+- `src/components/organization/group-folder/UploadContractDialog.tsx`
+- `src/hooks/useGroupContracts.ts` (список договоров по группе + realtime)
 
-- `group_documents` — `organization_id`, `student_group_id`, `template_key`, `title`, `file_path`, `generated_at`, `generated_by`. GRANT для `authenticated/service_role` + RLS: доступ через `has_org_staff_permission('documents','view'|'manage')`.
-- storage-бакет `group-documents` (private) + policy на чтение через тот же helper.
-- (шаблоны хранятся в коде/ассетах, отдельной таблицы не нужно.)
+Изменить:
+- `src/components/organization/tabs/GroupFolderTab.tsx` — рендерить `ContractsFolder` в состоянии `openFolder === "contracts"` вместо текущей заглушки; учесть, что запрос по `student_user_id` теперь реально работает.
 
-### 2.4 Точка входа
+## Открытые вопросы
 
-- В `StudentsTab.tsx` (карточки групп 1-ПК-26 / тест на втором скриншоте) вешаем `onClick` на карточку → переход на `?tab=group-folder&groupId=…`; текущее контекстное меню «Зачислить/Удалить» остаётся.
-- В `OrgDashboardContext.tsx` регистрируем новую вкладку.
-
-## Тех. детали
-
-- Все тексты ошибок централизуем в `src/utils/humanizeAuthError.ts` и переиспользуем в `JoinByLink`, `Login`, `ResetPassword`.
-- Гость (без сессии) сможет вызывать `register-student` только при передаче валидного `registration_token`; ветка с Authorization не меняется, чтобы не сломать существующие сценарии.
-- Проверка лимита учеников уже вызывается на клиенте — дополнительно продублируем в edge-функции при токен-ветке (защита от обхода клиента).
-- Генерация docx: используем `docx` npm-пакет в edge-функции (Deno-совместимая сборка) либо готовим `.docx` как ZIP с заменой плейсхолдеров в `word/document.xml` — выберем второй путь, чтобы не тянуть тяжёлую зависимость; шаблоны уже содержат маркеры вида `{{group_name}}` (добавим при первичной подготовке через скрипт).
-
-## Готово, когда
-
-1. По публичной ссылке `/join/:token` регистрация проходит без сессии; при ошибках показывается человеческий русский текст.
-2. В разделе «Ученики» клик по карточке группы открывает папочный вид с 4 системными папками + 10 генерируемыми документами и позволяет скачать сформированные файлы, заполненные данными группы.
+1. При генерации сразу класть договор в `org_contracts` **и** отправлять на подпись через `org_contract_signatures` (тот же поток, что в CRM), или пока только генерировать и хранить файл? По умолчанию сделаю только генерацию/хранение — подпись отдельной кнопкой в записи.
+2. Для юр.лица привязка нужна к `companies` (как в CRM) или к произвольному контрагенту с ручным вводом реквизитов? По умолчанию — `companies` + опция «Ввести реквизиты вручную».
