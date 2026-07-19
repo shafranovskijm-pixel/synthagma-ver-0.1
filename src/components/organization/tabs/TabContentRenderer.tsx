@@ -64,7 +64,9 @@ export function TabContentRenderer() {
     !activeTab.startsWith("documents") &&
     activeTab !== "course-details" &&
     activeTab !== "contract-editor" &&
-    activeTab !== "student-details";
+    activeTab !== "student-details" &&
+    activeTab !== "group-folder";
+
 
   return (
     <>
