@@ -111,20 +111,27 @@ export function detectSlots(html: string): TemplateSlot[] {
   while ((tm = EMPTY_TD_RE.exec(html)) !== null) {
     found.push({ start: tm.index, end: tm.index + tm[0].length, token: tm[0], kind: "td" });
   }
-  // Числовые ячейки таблицы
+  // Числовые ячейки таблицы — целимся только на цифры внутри <td>, чтобы не сломать теги при замене
   NUMERIC_TD_RE.lastIndex = 0;
   let nm: RegExpExecArray | null;
   while ((nm = NUMERIC_TD_RE.exec(html)) !== null) {
-    found.push({ start: nm.index, end: nm.index + nm[0].length, token: nm[0], kind: "td-num" });
+    const digits = nm[1] || "";
+    const inner = nm.index + nm[0].indexOf(digits);
+    found.push({ start: inner, end: inner + digits.length, token: digits, kind: "td-num" });
   }
-  // Короткие ячейки с текстом
+  // Короткие ячейки с текстом — тоже целимся только на внутренний текст
   SHORT_TD_RE.lastIndex = 0;
   let sm: RegExpExecArray | null;
   while ((sm = SHORT_TD_RE.exec(html)) !== null) {
-    const inner = (sm[1] || "").trim();
+    const raw = sm[1] || "";
+    const inner = raw.trim();
     if (!inner || /^\d+$/.test(inner) || looksLikeHeader(inner)) continue;
-    found.push({ start: sm.index, end: sm.index + sm[0].length, token: sm[0], kind: "td-short" });
+    const innerStart = nm ? 0 : 0;
+    const startIdx = sm.index + sm[0].indexOf(raw);
+    found.push({ start: startIdx, end: startIdx + raw.length, token: raw, kind: "td-short" });
+    void innerStart;
   }
+
 
   // Удалить пересечения (оставляем первый по позиции)
   found.sort((a, b) => a.start - b.start);
