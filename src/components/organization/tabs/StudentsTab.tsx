@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ArchiveRestore, ChevronDown, ChevronRight } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStudents } from "@/hooks/useStudents";
+
 import { toast } from "sonner";
 import type { Student, Course } from "@/types";
 import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
