@@ -52,6 +52,7 @@ export function OrgDashboardHeader() {
   const planName = d.subscriptionLimits?.plan;
   const { user: authUser } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const newIndicators = useOrgNewIndicators(organizationId);
 
   useEffect(() => {
     if (!organizationId) return;
