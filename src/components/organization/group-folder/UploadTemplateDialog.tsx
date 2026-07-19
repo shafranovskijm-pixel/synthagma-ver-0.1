@@ -242,7 +242,11 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <div className="flex items-center rounded-md border border-border overflow-hidden mr-2">
+                    <Button size="sm" variant={quizView === "list" ? "secondary" : "ghost"} className="rounded-none h-8" onClick={() => setQuizView("list")}>Список</Button>
+                    <Button size="sm" variant={quizView === "highlight" ? "secondary" : "ghost"} className="rounded-none h-8" onClick={() => setQuizView("highlight")}>В документе</Button>
+                  </div>
                   <Button size="sm" variant={quizFilter === "all" ? "secondary" : "ghost"} onClick={() => setQuizFilter("all")}>Все</Button>
                   <Button size="sm" variant={quizFilter === "mapped" ? "secondary" : "ghost"} onClick={() => setQuizFilter("mapped")}>Готовые</Button>
                   <Button size="sm" variant={quizFilter === "unmapped" ? "secondary" : "ghost"} onClick={() => setQuizFilter("unmapped")}>Без переменной</Button>
@@ -256,7 +260,13 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                   </Button>
                 </div>
               </div>
+              {quizView === "highlight" ? (
+                <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-white">
+                  <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+                </div>
+              ) : (
               <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-muted/20">
+
                 <div className="p-3 space-y-2">
                   {slots.length === 0 && (
                     <div className="p-8 text-center text-sm text-muted-foreground">
