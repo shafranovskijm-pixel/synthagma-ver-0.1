@@ -132,6 +132,10 @@ const SECTION_LABELS: Record<SectionId, string> = {
 
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
 const EXPANDED_KEY = "org-sidebar-expanded";
+const MODE_KEY = "org-sidebar-mode";
+
+type SidebarMode = "expanded" | "compact" | "icons";
+const MODE_WIDTH: Record<SidebarMode, number> = { expanded: 220, compact: 88, icons: 64 };
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -161,59 +165,57 @@ export function OrgSidebar() {
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
-  // Mini-labels under icons (for new orgs / sensor screens)
-  const [showLabels, setShowLabels] = useState<boolean>(() => {
+  // Sidebar mode: 3 states (expanded / compact-with-captions / icons-only).
+  const [mode, setMode] = useState<SidebarMode>(() => {
     try {
-      const v = localStorage.getItem(SHOW_LABELS_KEY);
-      return v === null ? true : v === "1";
-    } catch { return true; }
+      const raw = localStorage.getItem(MODE_KEY) as SidebarMode | null;
+      if (raw === "expanded" || raw === "compact" || raw === "icons") return raw;
+      const legacyExpanded = localStorage.getItem(EXPANDED_KEY) === "1";
+      if (legacyExpanded) return "expanded";
+      const legacyLabels = localStorage.getItem(SHOW_LABELS_KEY);
+      return legacyLabels === "0" ? "icons" : "compact";
+    } catch { return "compact"; }
   });
-  useEffect(() => {
-    try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
-  }, [showLabels]);
 
-  // Expanded mode (icon+text full panel) — desktop only.
-  // Raw `expanded` persists across devices so desktop users keep their pref;
-  // `effectiveExpanded` forces compact layout on mobile so the 220px panel
-  // doesn't overlap page content.
-  const [expanded, setExpanded] = useState<boolean>(() => {
-    try { return localStorage.getItem(EXPANDED_KEY) === "1"; } catch { return false; }
-  });
   const isMobile = useIsMobile();
-  const effectiveExpanded = expanded && !isMobile;
+  const effectiveMode: SidebarMode = mode === "expanded" && isMobile ? "compact" : mode;
+  const effectiveExpanded = effectiveMode === "expanded";
+  const showLabels = effectiveMode === "compact";
+  const width = MODE_WIDTH[effectiveMode];
+
   useEffect(() => {
-    try { localStorage.setItem(EXPANDED_KEY, expanded ? "1" : "0"); } catch {}
-    // Notify layout to adjust main content margin
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+      localStorage.setItem(EXPANDED_KEY, effectiveExpanded ? "1" : "0");
+      localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0");
+    } catch {}
     window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: effectiveExpanded }));
-  }, [expanded, effectiveExpanded]);
+    window.dispatchEvent(new CustomEvent("org-sidebar-width-change", { detail: width }));
+  }, [mode, effectiveExpanded, showLabels, width]);
 
   // Auto-collapse on screens < 1280px to prevent content squeeze
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia("(max-width: 1279px)");
-    const apply = () => { if (mq.matches && expanded) setExpanded(false); };
+    const apply = () => { if (mq.matches && mode === "expanded") setMode("compact"); };
     apply();
     const handler = () => apply();
     mq.addEventListener?.("change", handler);
     return () => mq.removeEventListener?.("change", handler);
-  }, [expanded]);
+  }, [mode]);
 
-  // One-time hint to explain the expanded mode
-  const handleToggleExpanded = useCallback(() => {
-    setExpanded((v) => {
-      const next = !v;
-      if (next) {
-        try {
-          const shown = localStorage.getItem("org-sidebar-expanded-hint-shown");
-          if (!shown) {
-            toast("Меню развёрнуто", {
-              description: "Теперь видны полные названия пунктов. Свернуть обратно — той же кнопкой.",
-              duration: 5000,
-            });
-            localStorage.setItem("org-sidebar-expanded-hint-shown", "1");
-          }
-        } catch {}
-      }
+  // Cycle: expanded -> compact -> icons -> expanded
+  const handleCycleMode = useCallback(() => {
+    setMode((m) => {
+      const next: SidebarMode = m === "expanded" ? "compact" : m === "compact" ? "icons" : "expanded";
+      try {
+        const shown = localStorage.getItem("org-sidebar-mode-hint-shown");
+        if (!shown) {
+          const desc = next === "expanded" ? "Полные названия рядом с иконками." : next === "compact" ? "Иконки с короткими подписями." : "Только иконки — минимум места.";
+          toast(next === "expanded" ? "Развёрнутое меню" : next === "compact" ? "Компактное меню" : "Меню — только иконки", { description: desc, duration: 3500 });
+          localStorage.setItem("org-sidebar-mode-hint-shown", "1");
+        }
+      } catch {}
       return next;
     });
   }, []);
