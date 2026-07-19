@@ -7113,6 +7113,57 @@ export type Database = {
           },
         ]
       }
+      program_training_plans: {
+        Row: {
+          course_id: string
+          created_at: string
+          form: string | null
+          hours: number | null
+          id: string
+          organization_id: string
+          plan_html: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          form?: string | null
+          hours?: number | null
+          id?: string
+          organization_id: string
+          plan_html?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          form?: string | null
+          hours?: number | null
+          id?: string
+          organization_id?: string
+          plan_html?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_training_plans_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_training_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       promo_codes: {
         Row: {
           code: string
@@ -10727,6 +10778,10 @@ export type Database = {
           ready_for_export: number
           total_documents: number
         }[]
+      }
+      get_next_document_number: {
+        Args: { p_doc_type: string; p_org: string; p_year?: number }
+        Returns: number
       }
       get_org_staff_permissions: {
         Args: { _organization_id: string; _user_id: string }
