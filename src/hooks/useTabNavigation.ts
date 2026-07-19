@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { TabType } from "@/components/organization/OrgSidebar";
 
 interface MenuSettings {
@@ -31,25 +31,68 @@ export function useTabNavigation({
   isEnabled,
 }: UseTabNavigationProps) {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const state = location.state as { tab?: TabType } | null;
-    return state?.tab || "courses";
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL is the source of truth for the active tab so that reload and
+  // browser Back/Forward correctly restore the previous section.
+  const activeTab = (searchParams.get("tab") as TabType) || "courses";
+
+  const setActiveTab = useCallback((tab: TabType) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (!tab || tab === "courses") next.delete("tab"); else next.set("tab", tab);
+      // Clear context params that no longer make sense on tab change
+      if (tab !== "course-details") next.delete("courseId");
+      if (tab !== "student-details") next.delete("studentId");
+      return next;
+    });
+  }, [setSearchParams]);
+
   const [swipeDirection, setSwipeDirection] = useState(0);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
+    () => searchParams.get("courseId")
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
+    () => searchParams.get("studentId")
+  );
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-
-  // Handle navigation state changes (e.g. from Profile settings)
+  // Support legacy navigation via location.state (from Profile etc.)
   useEffect(() => {
     const state = location.state as { tab?: TabType } | null;
     if (state?.tab) {
       setActiveTab(state.tab);
-      // Clear state to avoid re-applying on re-renders
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, setActiveTab]);
+
+  // Keep local selection ids in sync with URL (browser back/forward)
+  useEffect(() => {
+    const c = searchParams.get("courseId");
+    const s = searchParams.get("studentId");
+    setSelectedCourseId((prev) => (prev === c ? prev : c));
+    setSelectedStudentId((prev) => (prev === s ? prev : s));
+  }, [searchParams]);
+
+  // Wrap selection setters so they also update the URL
+  const setSelectedCourseIdWithUrl = useCallback((id: string | null) => {
+    setSelectedCourseId(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("courseId", id); else next.delete("courseId");
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const setSelectedStudentIdWithUrl = useCallback((id: string | null) => {
+    setSelectedStudentId(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("studentId", id); else next.delete("studentId");
+      return next;
+    });
+  }, [setSearchParams]);
+
 
   // Haptic feedback helper
   const triggerHapticFeedback = useCallback(() => {
@@ -136,9 +179,9 @@ export function useTabNavigation({
     triggerHapticFeedback,
     tabAnimationVariants,
     selectedCourseId,
-    setSelectedCourseId,
+    setSelectedCourseId: setSelectedCourseIdWithUrl,
     selectedStudentId,
-    setSelectedStudentId,
+    setSelectedStudentId: setSelectedStudentIdWithUrl,
     selectedGroupId,
     setSelectedGroupId,
   };

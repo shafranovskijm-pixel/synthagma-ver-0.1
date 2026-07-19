@@ -106,9 +106,16 @@ export default function OrganizationDashboard() {
         d.tabNavigation.setSelectedStudentId(studentId);
       }
       d.tabNavigation.setActiveTab(tab as any);
-      setSearchParams({}, { replace: true });
-    } else if (enableSales === '1') {
-      setSearchParams({}, { replace: true });
+      // URL is now the source of truth — do NOT clear tab/courseId/studentId,
+      // otherwise reload and browser Back/Forward lose the current section.
+    }
+    if (enableSales === '1') {
+      // Strip only the one-shot toggle, keep tab context intact
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('enableSales');
+        return next;
+      }, { replace: true });
     }
   }, [searchParams, d.organizationId]);
 
