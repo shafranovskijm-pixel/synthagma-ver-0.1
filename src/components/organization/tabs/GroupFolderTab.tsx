@@ -54,6 +54,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [openFolder, setOpenFolder] = useState<FolderKey | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
+
+  useEffect(() => { localStorage.setItem("groupFolderView", viewMode); }, [viewMode]);
 
   useEffect(() => {
     let cancelled = false;
