@@ -341,8 +341,10 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                   })}
                 </div>
               </div>
+              )}
             </div>
           )}
+
 
 
           {step === "review" && (
