@@ -39,6 +39,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
   const [suggesting, setSuggesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [quizFilter, setQuizFilter] = useState<"all" | "mapped" | "unmapped">("all");
 
   useEffect(() => {
     if (open) {
