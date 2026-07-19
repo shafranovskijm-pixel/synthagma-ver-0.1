@@ -120,6 +120,26 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
     [step, html, slots, mappings],
   );
 
+  // Highlighted source: подсвечивает все обнаруженные слоты прямо в оригинальном HTML
+  const highlightedHtml = useMemo(() => {
+    if (step !== "quiz" || quizView !== "highlight" || !html) return "";
+    const ordered = [...slots].sort((a, b) => b.start - a.start);
+    let out = html;
+    for (const s of ordered) {
+      const m = mappings[s.id];
+      const mapped = m?.action === "map" && !!m.key;
+      const color = mapped
+        ? "background:#d1fae5;color:#065f46;border:1px solid #10b981;"
+        : "background:#fef3c7;color:#92400e;border:1px solid #f59e0b;";
+      const label = mapped ? `{{${m!.key}}}` : "?";
+      const orig = out.slice(s.start, s.start + s.token.length)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const wrap = `<mark data-slot="${s.id}" title="${label}" style="${color}padding:1px 4px;border-radius:4px;font-family:ui-monospace,monospace;font-size:0.85em;">${orig}<sup style="margin-left:4px;opacity:0.7;">${label}</sup></mark>`;
+      out = out.slice(0, s.start) + wrap + out.slice(s.start + s.token.length);
+    }
+    return out;
+  }, [step, quizView, html, slots, mappings]);
+
   const save = async () => {
     if (!name.trim()) { toast.error("Укажите название шаблона"); return; }
     setSaving(true);
