@@ -56,6 +56,13 @@ export default function OrganizationDashboard() {
     const handler = (e: Event) => setSidebarWidth(Number((e as CustomEvent).detail) || 88);
     window.addEventListener("org-sidebar-width-change", handler);
     return () => window.removeEventListener("org-sidebar-width-change", handler);
+  const [isLg, setIsLg] = useState<boolean>(() => typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1024px)").matches);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const h = () => setIsLg(mq.matches);
+    mq.addEventListener?.("change", h);
+    return () => mq.removeEventListener?.("change", h);
   }, []);
 
   useEffect(() => {
