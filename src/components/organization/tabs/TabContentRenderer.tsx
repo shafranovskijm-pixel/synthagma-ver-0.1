@@ -253,6 +253,12 @@ export function TabContentRenderer() {
 
       {/* Student Details Tab */}
       {activeTab === "student-details" && <StudentDetailsTab />}
+
+      {/* Group folder view (Windows-like) */}
+      {activeTab === "group-folder" && organizationId && d.tabNavigation.selectedGroupId && (
+        <GroupFolderTab organizationId={organizationId} groupId={d.tabNavigation.selectedGroupId} />
+      )}
+
     </>
   );
 }
