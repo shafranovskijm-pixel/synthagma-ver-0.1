@@ -53,7 +53,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           <Upload className="w-4 h-4" /> Загрузить готовый
         </Button>
         <Button variant="ghost" onClick={() => setTplOpen(true)} className="gap-1.5 rounded-xl">
-          <Sparkles className="w-4 h-4" /> Новый шаблон
+          <Wand2 className="w-4 h-4" /> Загрузить шаблон
         </Button>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="secondary" className="rounded-full">Всего: {stats.total}</Badge>
@@ -136,7 +136,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
         onClose={() => setUpOpen(false)}
         onUploaded={refresh}
       />
-      <NewTemplateDialog
+      <UploadTemplateDialog
         organizationId={organizationId}
         open={tplOpen}
         onClose={() => setTplOpen(false)}
