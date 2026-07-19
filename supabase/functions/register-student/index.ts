@@ -135,7 +135,7 @@ serve(async (req) => {
     // ── Field-level validation ──
     const missing: string[] = [];
     if (!full_name || typeof full_name !== "string" || !full_name.trim()) missing.push("ФИО");
-    if (roleData.role !== "company" && !organization_id) missing.push("Организация");
+    if (!publicRegistration && roleData.role !== "company" && !organization_id) missing.push("Организация");
     if (missing.length > 0) {
       return new Response(
         JSON.stringify({ error: `Не заполнены обязательные поля: ${missing.join(", ")}` }),
@@ -143,32 +143,41 @@ serve(async (req) => {
       );
     }
 
-    // Determine effective org/company based on caller role
-    let effectiveOrgId = organization_id;
-    let effectiveCompanyId = company_id;
+    // Determine effective org/company based on caller role / registration token
+    let effectiveOrgId = publicRegistration ? effectiveOrgIdFromToken : organization_id;
+    let effectiveCompanyId = publicRegistration ? effectiveCompanyIdFromToken : company_id;
 
-    if (roleData.role === 'company') {
-      const { data: companyData } = await supabaseAdmin
-        .from('companies')
-        .select('id, organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!companyData) {
+    if (!publicRegistration) {
+      if (roleData.role === 'company') {
+        const { data: { user } } = await createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+          { global: { headers: { Authorization: req.headers.get('authorization') || "" } } }
+        ).auth.getUser();
+        const { data: companyData } = await supabaseAdmin
+          .from('companies')
+          .select('id, organization_id')
+          .eq('user_id', user!.id)
+          .single();
+        if (!companyData) {
+          return new Response(
+            JSON.stringify({ error: "Компания не найдена для текущего пользователя" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        effectiveOrgId = companyData.organization_id;
+        effectiveCompanyId = companyData.id;
+      } else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
         return new Response(
-          JSON.stringify({ error: "Компания не найдена для текущего пользователя" }),
+          JSON.stringify({ error: "Вы можете создавать учеников только в своей организации" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      effectiveOrgId = companyData.organization_id;
-      effectiveCompanyId = companyData.id;
-    } else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
-      return new Response(
-        JSON.stringify({ error: "Вы можете создавать учеников только в своей организации" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
+
+    // For public registration, always take course/group from the token, not the client
+    const effectiveCourseId = publicRegistration ? effectiveCourseIdFromToken : course_id;
+    const effectiveStudentGroupId = publicRegistration ? effectiveGroupIdFromToken : student_group_id;
 
     if (!effectiveOrgId) {
       return new Response(
