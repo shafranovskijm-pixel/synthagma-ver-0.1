@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase, Search, PlayCircle } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase, Search, PlayCircle, Star } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
@@ -22,6 +22,7 @@ import {
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
 import { QuickActionChips } from "./QuickActionChips";
+import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -51,6 +52,7 @@ export function OrgDashboardHeader() {
   const planName = d.subscriptionLimits?.plan;
   const { user: authUser } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const newIndicators = useOrgNewIndicators(organizationId);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -264,6 +266,31 @@ export function OrgDashboardHeader() {
               <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("subscription" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <CreditCard className="w-4 h-4" />
                 Тариф и оплата
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  try { localStorage.setItem("whats-new-last-seen", String(Date.now())); } catch {}
+                  d.tabNavigation.setActiveTab("whats-new" as any);
+                }}
+                className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
+              >
+                <Star className="w-4 h-4" />
+                <span className="flex-1">Что нового</span>
+                {newIndicators.whatsNew > 0 && (
+                  <span
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: "hsl(var(--warning))" }}
+                    aria-label="Есть новое"
+                  />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
+                className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Помощь
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
