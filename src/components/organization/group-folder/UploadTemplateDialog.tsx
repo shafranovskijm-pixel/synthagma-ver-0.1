@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Sparkles, Wand2, ArrowRight, ArrowLeft, Check, X } from "lucide-react";
@@ -151,8 +150,8 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
 
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-3">
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="w-5 h-5 text-primary" />
             Загрузить шаблон договора
@@ -165,7 +164,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
         </DialogHeader>
 
         {/* Steps indicator */}
-        <div className="flex items-center gap-2 text-xs">
+        <div className="px-6 flex items-center gap-2 text-xs">
           {(["upload", "quiz", "review"] as Step[]).map((s, i) => (
             <div key={s} className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${step === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
               <span className="font-semibold">{i + 1}</span>
@@ -174,9 +173,9 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
           ))}
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 pt-4 flex flex-col">
           {step === "upload" && (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto">
               <div className="space-y-1.5">
                 <Label>Название шаблона</Label>
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Договор с юр. лицом (ГОРЭЛТЕХ)" />
@@ -208,8 +207,8 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
           )}
 
           {step === "quiz" && (
-            <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between mb-2">
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex items-center justify-between mb-2 shrink-0">
                 <div className="text-sm">
                   Найдено слотов: <b>{slots.length}</b>, сопоставлено: <b>{mappedCount}</b>
                 </div>
@@ -224,7 +223,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                   </Button>
                 </div>
               </div>
-              <ScrollArea className="flex-1 border border-border rounded-xl">
+              <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto">
                 <div className="divide-y divide-border">
                   {slots.length === 0 && (
                     <div className="p-8 text-center text-sm text-muted-foreground">
@@ -266,18 +265,18 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                     );
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           )}
 
           {step === "review" && (
-            <ScrollArea className="h-[55vh] border border-border rounded-xl">
+            <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-white">
               <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: finalHtml }} />
-            </ScrollArea>
+            </div>
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 p-6 pt-4 border-t border-border">
           {step !== "upload" && (
             <Button variant="ghost" onClick={() => setStep(step === "review" ? "quiz" : "upload")} disabled={saving}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Назад

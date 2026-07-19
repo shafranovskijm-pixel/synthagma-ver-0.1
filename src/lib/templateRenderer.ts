@@ -19,15 +19,17 @@ function escapeHtml(s: string): string {
  * Подставляет значения переменных в HTML-шаблон.
  * - {{key}} — значение HTML-экранируется (безопасно по умолчанию)
  * - {{&key}} — значение вставляется как сырой HTML (use with caution)
+ * - если key входит в `rawKeys` — тоже вставляется как сырой HTML (для авто-таблиц вроде students_table)
  * Неизвестные переменные оставляет как есть, чтобы было видно «дырки» в шаблоне.
  */
-export function renderTemplate(html: string, variables: TemplateVariables): string {
+export function renderTemplate(html: string, variables: TemplateVariables, rawKeys?: Set<string> | string[]): string {
   if (!html) return "";
+  const rawSet = rawKeys instanceof Set ? rawKeys : new Set(rawKeys || []);
   return html.replace(/\{\{\s*(&)?\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, raw, key) => {
     if (!(key in variables)) return match;
     const value = variables[key];
     const str = value === null || value === undefined ? "" : String(value);
-    return raw ? str : escapeHtml(str);
+    return raw || rawSet.has(key) ? str : escapeHtml(str);
   });
 }
 
@@ -204,4 +206,50 @@ table, td, th { border: 1px solid #000; padding: 6px; }
 .no-print { display: none; }
 @media print { .no-print { display: none !important; } }
 </style></head><body>${bodyHtml}</body></html>`;
+}
+
+/**
+ * Строит HTML-таблицу «Список обучающихся» для подстановки в переменную {{students_table}}.
+ */
+export interface StudentRow {
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  position?: string | null;
+  education?: string | null;
+  program?: string | null;
+  address?: string | null;
+}
+export function buildStudentsTable(students: StudentRow[]): string {
+  const rows = students.map((s, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(s.full_name || "")}</td>
+      <td>${escapeHtml(s.position || "")}</td>
+      <td>${escapeHtml(s.education || "")}</td>
+      <td>${escapeHtml(s.program || "")}</td>
+      <td>${escapeHtml([s.phone, s.email].filter(Boolean).join(" / "))}</td>
+    </tr>`).join("");
+  return `<table style="width:100%;border-collapse:collapse" border="1" cellpadding="4">
+    <thead><tr>
+      <th>№</th><th>ФИО</th><th>Должность</th><th>Образование</th><th>Программа</th><th>Контакты</th>
+    </tr></thead>
+    <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:#888">Обучающиеся не выбраны</td></tr>`}</tbody>
+  </table>`;
+}
+
+export interface ProgramRow { title?: string | null; hours?: number | null; form?: string | null; count?: number | null; }
+export function buildProgramsTable(programs: ProgramRow[]): string {
+  const rows = programs.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(p.title || "")}</td>
+      <td>${p.hours != null ? p.hours : ""}</td>
+      <td>${escapeHtml(p.form || "")}</td>
+      <td>${p.count != null ? p.count : ""}</td>
+    </tr>`).join("");
+  return `<table style="width:100%;border-collapse:collapse" border="1" cellpadding="4">
+    <thead><tr><th>№</th><th>Программа</th><th>Часы</th><th>Форма</th><th>Кол-во чел.</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="5" style="text-align:center;color:#888">Программы не выбраны</td></tr>`}</tbody>
+  </table>`;
 }
