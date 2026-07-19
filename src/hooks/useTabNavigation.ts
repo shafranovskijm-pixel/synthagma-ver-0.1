@@ -179,9 +179,9 @@ export function useTabNavigation({
     triggerHapticFeedback,
     tabAnimationVariants,
     selectedCourseId,
-    setSelectedCourseId,
+    setSelectedCourseId: setSelectedCourseIdWithUrl,
     selectedStudentId,
-    setSelectedStudentId,
+    setSelectedStudentId: setSelectedStudentIdWithUrl,
     selectedGroupId,
     setSelectedGroupId,
   };
