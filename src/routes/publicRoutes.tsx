@@ -85,10 +85,12 @@ export const publicRoutes = (
     <Route path="/roadmap" element={<RoadmapPage />} />
     <Route path="/rostechnadzor-courses" element={<RostechnadzorCoursesPage />} />
     <Route path="/courses/fire-safety" element={<FireSafetyCoursesPage />} />
-    <Route path="/public-offer" element={<PublicOffer />} />
-    <Route path="/student-agreement" element={<StudentAgreement />} />
-    <Route path="/privacy" element={<PrivacyPolicy />} />
-    <Route path="/personal-data" element={<PersonalDataPolicy />} />
+    <Route path="/documents" element={<DocumentsIndex />} />
+    <Route path="/documents/:slug" element={<DocumentPage />} />
+    <Route path="/public-offer" element={<Navigate to="/documents/paid-plan-offer" replace />} />
+    <Route path="/student-agreement" element={<Navigate to="/documents/user-agreement" replace />} />
+    <Route path="/privacy" element={<Navigate to="/documents/personal-data-policy" replace />} />
+    <Route path="/personal-data" element={<Navigate to="/documents/personal-data-policy" replace />} />
     <Route path="/email-response" element={<EmailResponse />} />
     <Route path="/proposal/platform" element={<ProposalPlatform />} />
     <Route path="/proposal/:id" element={<ProposalPublic />} />
