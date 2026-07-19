@@ -1,13 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles } from "lucide-react";
+import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+type ViewMode = "grid" | "list" | "table";
 
 interface GroupFolderTabProps {
   organizationId: string;
