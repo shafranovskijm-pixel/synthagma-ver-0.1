@@ -66,6 +66,34 @@ export function useTabNavigation({
     }
   }, [location.state, setActiveTab]);
 
+  // Keep local selection ids in sync with URL (browser back/forward)
+  useEffect(() => {
+    const c = searchParams.get("courseId");
+    const s = searchParams.get("studentId");
+    setSelectedCourseId((prev) => (prev === c ? prev : c));
+    setSelectedStudentId((prev) => (prev === s ? prev : s));
+  }, [searchParams]);
+
+  // Wrap selection setters so they also update the URL
+  const setSelectedCourseIdWithUrl = useCallback((id: string | null) => {
+    setSelectedCourseId(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("courseId", id); else next.delete("courseId");
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const setSelectedStudentIdWithUrl = useCallback((id: string | null) => {
+    setSelectedStudentId(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("studentId", id); else next.delete("studentId");
+      return next;
+    });
+  }, [setSearchParams]);
+
+
   // Haptic feedback helper
   const triggerHapticFeedback = useCallback(() => {
     if ('vibrate' in navigator) {
