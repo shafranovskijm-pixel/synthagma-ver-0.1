@@ -39,6 +39,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
   const [suggesting, setSuggesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [quizFilter, setQuizFilter] = useState<"all" | "mapped" | "unmapped">("all");
 
   useEffect(() => {
     if (open) {
@@ -208,13 +209,24 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
 
           {step === "quiz" && (
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex items-center justify-between mb-2 shrink-0">
-                <div className="text-sm">
-                  Найдено слотов: <b>{slots.length}</b>, сопоставлено: <b>{mappedCount}</b>
+              <div className="flex items-center justify-between mb-2 shrink-0 flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <span>Найдено слотов: <b>{slots.length}</b></span>
+                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">
+                    <Check className="w-3 h-3 mr-1" /> {mappedCount} сопоставлено
+                  </Badge>
+                  {slots.length - mappedCount > 0 && (
+                    <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">
+                      {slots.length - mappedCount} без переменной
+                    </Badge>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant={quizFilter === "all" ? "secondary" : "ghost"} onClick={() => setQuizFilter("all")}>Все</Button>
+                  <Button size="sm" variant={quizFilter === "mapped" ? "secondary" : "ghost"} onClick={() => setQuizFilter("mapped")}>Готовые</Button>
+                  <Button size="sm" variant={quizFilter === "unmapped" ? "secondary" : "ghost"} onClick={() => setQuizFilter("unmapped")}>Без переменной</Button>
                   {suggesting && (
-                    <Badge variant="secondary" className="gap-1 text-xs">
+                    <Badge variant="secondary" className="gap-1 text-xs ml-2">
                       <Sparkles className="w-3 h-3 animate-pulse" /> AI подбирает…
                     </Badge>
                   )}
@@ -223,8 +235,8 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                   </Button>
                 </div>
               </div>
-              <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto">
-                <div className="divide-y divide-border">
+              <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-muted/20">
+                <div className="p-3 space-y-2">
                   {slots.length === 0 && (
                     <div className="p-8 text-center text-sm text-muted-foreground">
                       Слотов не найдено. Возможно, в шаблоне уже стоят переменные <code>{`{{...}}`}</code>, или заглушки записаны в нестандартном виде.
@@ -234,33 +246,65 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                     const m = mappings[s.id];
                     const value = m?.action === "map" && m.key ? m.key : SKIP;
                     const mapped = value !== SKIP;
+                    if (quizFilter === "mapped" && !mapped) return null;
+                    if (quizFilter === "unmapped" && mapped) return null;
+                    const label = mapped ? CATALOG.find(c => c.key === value)?.label : null;
+                    const parts = s.context.split(/⟦(.+?)⟧/);
                     return (
-                      <div key={s.id} className="p-3 flex items-start gap-3">
-                        <div className="mt-1">
-                          {mapped
-                            ? <Check className="w-4 h-4 text-primary" />
-                            : <X className="w-4 h-4 text-muted-foreground" />}
+                      <div
+                        key={s.id}
+                        className={`rounded-xl border p-3 transition-colors ${
+                          mapped
+                            ? "bg-emerald-50/60 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900"
+                            : "bg-amber-50/60 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 text-xs mb-2 flex-wrap">
+                          <span className="font-semibold text-muted-foreground">#{idx + 1}</span>
+                          {mapped ? (
+                            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white gap-1">
+                              <Check className="w-3 h-3" /> Сопоставлено
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500 hover:bg-amber-500 text-white gap-1">
+                              <X className="w-3 h-3" /> Не выбрано
+                            </Badge>
+                          )}
+                          {mapped && (
+                            <span className="font-mono text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              {`{{${value}}}`}
+                            </span>
+                          )}
+                          {label && <span className="text-muted-foreground">{label}</span>}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-muted-foreground mb-1">#{idx + 1} · Контекст</div>
-                          <div className="text-sm bg-muted/30 rounded-lg p-2 mb-2 font-mono whitespace-pre-wrap break-words">
-                            {s.context}
-                          </div>
-                          <Select value={value} onValueChange={v => setSlotKey(s.id, v)}>
-                            <SelectTrigger className="h-9 text-sm">
-                              <SelectValue placeholder="Выберите переменную" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-72">
-                              <SelectItem value={SKIP}>— Пропустить (оставить как есть) —</SelectItem>
-                              {CATALOG.map(c => (
-                                <SelectItem key={c.key} value={c.key}>
-                                  <span className="font-mono text-xs mr-2">{`{{${c.key}}}`}</span>
-                                  <span className="text-muted-foreground text-xs">{c.label}</span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="text-sm bg-background/70 rounded-lg p-2 mb-2 whitespace-pre-wrap break-words leading-relaxed">
+                          {parts.map((p, i) =>
+                            i % 2 === 1 ? (
+                              <span
+                                key={i}
+                                className="mx-1 px-1.5 py-0.5 rounded font-mono text-xs bg-yellow-200 text-yellow-900 border border-yellow-300"
+                              >
+                                {p}
+                              </span>
+                            ) : (
+                              <span key={i} className="text-muted-foreground">{p}</span>
+                            ),
+                          )}
                         </div>
+                        <Select value={value} onValueChange={v => setSlotKey(s.id, v)}>
+                          <SelectTrigger className={`h-9 text-sm bg-white dark:bg-background ${mapped ? "border-emerald-300" : "border-amber-300"}`}>
+                            <SelectValue placeholder="Выберите переменную" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value={SKIP}>— Пропустить (оставить как есть) —</SelectItem>
+                            {CATALOG.map(c => (
+                              <SelectItem key={c.key} value={c.key}>
+                                <span className="font-mono text-xs mr-2">{`{{${c.key}}}`}</span>
+                                <span className="text-muted-foreground text-xs">{c.label}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     );
                   })}
@@ -268,6 +312,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
               </div>
             </div>
           )}
+
 
           {step === "review" && (
             <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-white">
