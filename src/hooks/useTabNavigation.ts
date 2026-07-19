@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { TabType } from "@/components/organization/OrgSidebar";
 
 interface MenuSettings {
@@ -31,25 +31,40 @@ export function useTabNavigation({
   isEnabled,
 }: UseTabNavigationProps) {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const state = location.state as { tab?: TabType } | null;
-    return state?.tab || "courses";
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL is the source of truth for the active tab so that reload and
+  // browser Back/Forward correctly restore the previous section.
+  const activeTab = (searchParams.get("tab") as TabType) || "courses";
+
+  const setActiveTab = useCallback((tab: TabType) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (!tab || tab === "courses") next.delete("tab"); else next.set("tab", tab);
+      // Clear context params that no longer make sense on tab change
+      if (tab !== "course-details") next.delete("courseId");
+      if (tab !== "student-details") next.delete("studentId");
+      return next;
+    });
+  }, [setSearchParams]);
+
   const [swipeDirection, setSwipeDirection] = useState(0);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
+    () => searchParams.get("courseId")
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
+    () => searchParams.get("studentId")
+  );
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-
-  // Handle navigation state changes (e.g. from Profile settings)
+  // Support legacy navigation via location.state (from Profile etc.)
   useEffect(() => {
     const state = location.state as { tab?: TabType } | null;
     if (state?.tab) {
       setActiveTab(state.tab);
-      // Clear state to avoid re-applying on re-renders
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, setActiveTab]);
 
   // Haptic feedback helper
   const triggerHapticFeedback = useCallback(() => {
