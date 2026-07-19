@@ -27,6 +27,8 @@ import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsCo
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
+import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
+
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
 import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
 
@@ -62,7 +64,9 @@ export function TabContentRenderer() {
     !activeTab.startsWith("documents") &&
     activeTab !== "course-details" &&
     activeTab !== "contract-editor" &&
-    activeTab !== "student-details";
+    activeTab !== "student-details" &&
+    activeTab !== "group-folder";
+
 
   return (
     <>
@@ -249,6 +253,12 @@ export function TabContentRenderer() {
 
       {/* Student Details Tab */}
       {activeTab === "student-details" && <StudentDetailsTab />}
+
+      {/* Group folder view (Windows-like) */}
+      {activeTab === "group-folder" && organizationId && d.tabNavigation.selectedGroupId && (
+        <GroupFolderTab organizationId={organizationId} groupId={d.tabNavigation.selectedGroupId} />
+      )}
+
     </>
   );
 }

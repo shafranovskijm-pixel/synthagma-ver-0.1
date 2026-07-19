@@ -188,16 +188,13 @@ const JoinByLink = () => {
         return;
       }
 
-      // Use edge function to register student with proper permissions
+      // Use edge function to register student (public branch via registration_token)
       const { data: result, error: registerError } = await safeInvoke<any>('register-student', {
         body: {
           email,
           password,
           full_name: fullName,
-          organization_id: linkData.organization_id,
-          company_id: linkData.company_id || null,
-          course_id: linkData.course_id || null,
-          student_group_id: linkData.student_group_id || null
+          registration_token: linkData.token,
         }
       });
 
@@ -216,35 +213,18 @@ const JoinByLink = () => {
         console.error('Sign in error:', signInError);
       }
 
-      // Increment used_count on the link
-      await supabase
-        .from('registration_links')
-        .update({ used_count: (linkData.used_count || 0) + 1 })
-        .eq('id', linkData.id);
-
-      toast.success("Успешно!", { description: linkData.course_id });
+      toast.success("Успешно!", { description: linkData.course_id ? "Вы зачислены на курс" : "Регистрация завершена" });
 
       navigate('/student');
     } catch (err: any) {
       console.error('[JoinByLink] Registration error:', err);
-      let errorMessage = err?.message || "Не удалось завершить регистрацию. Попробуйте ещё раз.";
-      const lower = String(err?.message || '').toLowerCase();
-      if (lower.includes("already registered") || lower.includes("user already")) {
-        errorMessage = "Пользователь с таким email уже зарегистрирован. Войдите в существующий аккаунт.";
-      } else if (lower.includes("rate limit")) {
-        errorMessage = "Слишком много попыток регистрации. Подождите несколько минут и попробуйте снова.";
-      } else if (lower.includes("password")) {
-        errorMessage = "Пароль не соответствует требованиям (минимум 6 символов).";
-      } else if (lower.includes("invalid email") || lower.includes("email_address_invalid")) {
-        errorMessage = "Неверный формат email. Проверьте адрес и попробуйте снова.";
-      } else if (lower.includes("failed to fetch") || lower.includes("network")) {
-        errorMessage = "Нет соединения с сервером. Проверьте интернет/VPN и повторите.";
-      }
-      toast.error("Ошибка регистрации", { description: errorMessage });
+      const { humanizeAuthError } = await import('@/utils/humanizeAuthError');
+      toast.error("Ошибка регистрации", { description: humanizeAuthError(err) });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
 
   if (loading || authLoading) {
