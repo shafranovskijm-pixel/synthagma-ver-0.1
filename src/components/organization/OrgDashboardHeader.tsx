@@ -269,6 +269,31 @@ export function OrgDashboardHeader() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                onClick={() => {
+                  try { localStorage.setItem("whats-new-last-seen", String(Date.now())); } catch {}
+                  d.tabNavigation.setActiveTab("whats-new" as any);
+                }}
+                className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
+              >
+                <Star className="w-4 h-4" />
+                <span className="flex-1">Что нового</span>
+                {newIndicators.whatsNew > 0 && (
+                  <span
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: "hsl(var(--warning))" }}
+                    aria-label="Есть новое"
+                  />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
+                className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Помощь
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 onClick={() => d.setShowOnboarding?.(true)}
                 className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
               >
