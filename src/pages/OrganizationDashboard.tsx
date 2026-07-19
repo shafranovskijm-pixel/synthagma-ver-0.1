@@ -41,14 +41,21 @@ export default function OrganizationDashboard() {
   });
   const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
 
-  // Sidebar expanded state — sync margin of main content
-  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
-    try { return localStorage.getItem("org-sidebar-expanded") === "1"; } catch { return false; }
+  // Sidebar width state — sync margin of main content (supports 3 modes)
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const mode = localStorage.getItem("org-sidebar-mode");
+      if (mode === "expanded") return 220;
+      if (mode === "icons") return 64;
+      if (mode === "compact") return 88;
+      return localStorage.getItem("org-sidebar-expanded") === "1" ? 220 : 88;
+    } catch { return 88; }
   });
+  const sidebarExpanded = sidebarWidth === 220;
   useEffect(() => {
-    const handler = (e: Event) => setSidebarExpanded(!!(e as CustomEvent).detail);
-    window.addEventListener("org-sidebar-expanded-change", handler);
-    return () => window.removeEventListener("org-sidebar-expanded-change", handler);
+    const handler = (e: Event) => setSidebarWidth(Number((e as CustomEvent).detail) || 88);
+    window.addEventListener("org-sidebar-width-change", handler);
+    return () => window.removeEventListener("org-sidebar-width-change", handler);
   }, []);
 
   useEffect(() => {
