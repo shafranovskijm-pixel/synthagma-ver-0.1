@@ -9,6 +9,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ContractsFolder } from "@/components/organization/group-folder/ContractsFolder";
 
 type ViewMode = "grid" | "list" | "table";
 
