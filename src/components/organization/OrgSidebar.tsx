@@ -606,6 +606,5 @@ export function OrgSidebar() {
         </AlertDialogContent>
       </AlertDialog>
     </>
-    </>
   );
 }
