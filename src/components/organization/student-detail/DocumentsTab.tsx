@@ -29,8 +29,18 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
   const [middleName, setMiddleName] = useState(h.frdoData?.middle_name || "");
   const [birthDate, setBirthDate] = useState(h.frdoData?.birth_date || "");
   const [ocrDocId, setOcrDocId] = useState<string | null>(null);
-  const [ocrResult, setOcrResult] = useState<{ snils: string | null; birth_date: string | null; confidence: number | null } | null>(null);
+  const [ocrResult, setOcrResult] = useState<{
+    snils: string | null;
+    birth_date: string | null;
+    passport_series: string | null;
+    passport_number: string | null;
+    passport_issue_date: string | null;
+    passport_issued_by: string | null;
+    passport_department_code: string | null;
+    confidence: number | null;
+  } | null>(null);
   const [ocrOpen, setOcrOpen] = useState(false);
+  const [ocrDocType, setOcrDocType] = useState<string | null>(null);
 
   const ocrEnabled = orgPlan === "professional" || orgPlan === "maximum";
 
