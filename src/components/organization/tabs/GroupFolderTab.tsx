@@ -78,20 +78,21 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         }
 
         const [docsRes, contractsRes, attemptsRes] = await Promise.all([
-          supabase
+          (supabase as any)
             .from("student_identity_documents")
             .select("user_id, document_type")
             .in("user_id", userIds),
-          supabase
+          (supabase as any)
             .from("org_contracts")
             .select("id, student_user_id")
             .eq("organization_id", organizationId)
             .in("student_user_id", userIds),
-          supabase
+          (supabase as any)
             .from("test_attempts")
             .select("id, user_id")
             .in("user_id", userIds),
         ]);
+
 
         const docsByUser = new Map<string, { passport: number; snils: number }>();
         for (const row of (docsRes.data as any[]) || []) {
