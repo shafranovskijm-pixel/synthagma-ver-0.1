@@ -5267,8 +5267,10 @@ export type Database = {
       }
       org_contracts: {
         Row: {
+          company_id: string | null
           contract_date: string | null
           contract_number: string | null
+          counterparty_type: string | null
           created_at: string
           file_path: string | null
           file_url: string | null
@@ -5276,11 +5278,17 @@ export type Database = {
           name: string
           organization_id: string
           status: string
+          student_group_id: string | null
+          student_user_id: string | null
+          template_id: string | null
           updated_at: string
+          variables: Json
         }
         Insert: {
+          company_id?: string | null
           contract_date?: string | null
           contract_number?: string | null
+          counterparty_type?: string | null
           created_at?: string
           file_path?: string | null
           file_url?: string | null
@@ -5288,11 +5296,17 @@ export type Database = {
           name?: string
           organization_id: string
           status?: string
+          student_group_id?: string | null
+          student_user_id?: string | null
+          template_id?: string | null
           updated_at?: string
+          variables?: Json
         }
         Update: {
+          company_id?: string | null
           contract_date?: string | null
           contract_number?: string | null
+          counterparty_type?: string | null
           created_at?: string
           file_path?: string | null
           file_url?: string | null
@@ -5300,14 +5314,39 @@ export type Database = {
           name?: string
           organization_id?: string
           status?: string
+          student_group_id?: string | null
+          student_user_id?: string | null
+          template_id?: string | null
           updated_at?: string
+          variables?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "org_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "org_contracts_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_contracts_student_group_id_fkey"
+            columns: ["student_group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_contracts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "org_contract_templates"
             referencedColumns: ["id"]
           },
         ]

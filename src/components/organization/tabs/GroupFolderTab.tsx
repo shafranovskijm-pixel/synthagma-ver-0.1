@@ -9,6 +9,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ContractsFolder } from "@/components/organization/group-folder/ContractsFolder";
 
 type ViewMode = "grid" | "list" | "table";
 
@@ -255,6 +256,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       {/* Folder grid */}
       {!openFolder ? (
         <FolderList folders={folderCards} viewMode={viewMode} onOpen={setOpenFolder} />
+      ) : openFolder === "contracts" ? (
+        <ContractsFolder
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={group?.name || ""}
+          students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+        />
       ) : (
         <FolderContents
           folder={openFolder}
