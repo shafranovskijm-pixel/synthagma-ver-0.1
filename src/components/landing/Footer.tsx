@@ -117,17 +117,20 @@ export function Footer() {
             </a>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/40">
-            <Link to="/public-offer" className="hover:text-white/60 transition-colors">
-              Условия использования
+            <Link to="/documents" className="hover:text-white/60 transition-colors">
+              Все документы
             </Link>
-            <Link to="/student-agreement" className="hover:text-white/60 transition-colors">
-              Соглашение для слушателей
+            <Link to="/documents/paid-plan-offer" className="hover:text-white/60 transition-colors">
+              Оферта (платный тариф)
             </Link>
-            <Link to="/privacy" className="hover:text-white/60 transition-colors">
-              Конфиденциальность
+            <Link to="/documents/user-agreement" className="hover:text-white/60 transition-colors">
+              Пользовательское соглашение
             </Link>
-            <Link to="/personal-data" className="hover:text-white/60 transition-colors">
-              Обработка персональных данных
+            <Link to="/documents/personal-data-policy" className="hover:text-white/60 transition-colors">
+              Персональные данные
+            </Link>
+            <Link to="/documents/cookie-policy" className="hover:text-white/60 transition-colors">
+              Cookie
             </Link>
           </div>
         </div>
