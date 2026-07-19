@@ -82,6 +82,19 @@ const SLOT_REGEXPS: RegExp[] = [
 // Empty table cells (пустые <td></td> / <td> </td>) — часто это места под ФИО, программу и т.п.
 const EMPTY_TD_RE = /<td[^>]*>\s*(?:&nbsp;|\u00A0|\s)*\s*<\/td>/gi;
 
+// Числовые ячейки в таблицах (кол-во человек, часов, порядковые номера) — вероятные слоты.
+const NUMERIC_TD_RE = /<td[^>]*>\s*(?:<p[^>]*>\s*)?(\d{1,4})(?:\s*<\/p>)?\s*<\/td>/gi;
+
+// Короткие ячейки с 1–3 словами, вероятно, заполненные вручную и подлежащие параметризации
+// (например: «Иванов И.И.», «очная», «Устав», «40 часов»). Исключаем цифры (перекрывается NUMERIC_TD_RE)
+// и явно заголовочные тексты.
+const SHORT_TD_RE = /<td[^>]*>\s*(?:<p[^>]*>\s*)?([^<>\n]{2,60})(?:\s*<\/p>)?\s*<\/td>/gi;
+
+function looksLikeHeader(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  return /^(№|п\/п|наименование|программа|курс|кол-?во|количество|часов|стоимость|цена|итого|фио|ф\.и\.о\.|обучающ|форма|дата|период)$/i.test(t);
+}
+
 /** Найти слоты-заглушки. Возвращаются в порядке возникновения. */
 export function detectSlots(html: string): TemplateSlot[] {
   const found: Array<{ start: number; end: number; token: string; kind?: string }> = [];
@@ -98,6 +111,21 @@ export function detectSlots(html: string): TemplateSlot[] {
   while ((tm = EMPTY_TD_RE.exec(html)) !== null) {
     found.push({ start: tm.index, end: tm.index + tm[0].length, token: tm[0], kind: "td" });
   }
+  // Числовые ячейки таблицы
+  NUMERIC_TD_RE.lastIndex = 0;
+  let nm: RegExpExecArray | null;
+  while ((nm = NUMERIC_TD_RE.exec(html)) !== null) {
+    found.push({ start: nm.index, end: nm.index + nm[0].length, token: nm[0], kind: "td-num" });
+  }
+  // Короткие ячейки с текстом
+  SHORT_TD_RE.lastIndex = 0;
+  let sm: RegExpExecArray | null;
+  while ((sm = SHORT_TD_RE.exec(html)) !== null) {
+    const inner = (sm[1] || "").trim();
+    if (!inner || /^\d+$/.test(inner) || looksLikeHeader(inner)) continue;
+    found.push({ start: sm.index, end: sm.index + sm[0].length, token: sm[0], kind: "td-short" });
+  }
+
   // Удалить пересечения (оставляем первый по позиции)
   found.sort((a, b) => a.start - b.start);
   const unique: typeof found = [];
