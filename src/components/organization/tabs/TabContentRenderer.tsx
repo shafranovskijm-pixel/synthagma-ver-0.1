@@ -27,6 +27,8 @@ import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsCo
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
+import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
+
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
 import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
 
