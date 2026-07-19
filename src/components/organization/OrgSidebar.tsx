@@ -66,7 +66,9 @@ export type TabType =
   | "org-documents"
   | "course-details"
   | "contract-editor"
-  | "student-details";
+  | "student-details"
+  | "group-folder";
+
 
 const tabCategoryMap: Record<string, string> = {
   courses: "courses",
