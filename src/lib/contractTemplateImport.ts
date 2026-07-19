@@ -29,11 +29,15 @@ export interface SlotMapping {
 const HINT_RULES: Array<{ re: RegExp; hint: string }> = [
   { re: /№\s*$/i, hint: "contract_number" },
   { re: /от\s*«?\s*$/i, hint: "contract_date" },
+  { re: /действующ(?:его|ей)\s+на\s+основании\s*$/i, hint: "company_director_basis" },
+  { re: /на\s+основании\s*$/i, hint: "company_director_basis" },
   { re: /в\s+лице\s*$/i, hint: "company_director" },
   { re: /(заказчик|именуем(?:ое|ый|ая)\s+в\s+дальнейшем\s+«?заказчик)/i, hint: "company_name" },
   { re: /(инн|огрн|кпп)\s*[:№]?\s*$/i, hint: "company_inn" },
   { re: /программе?\s*«?\s*$/i, hint: "course_title" },
   { re: /(стоимост|сумм|цен)/i, hint: "total_price" },
+  { re: /(кол(?:ичество|-?во)|человек|обучающ)/i, hint: "students_count" },
+  { re: /(часов|объ[её]м|продолжительность)/i, hint: "course_hours" },
 ];
 
 /** Загрузить Word-файл и получить HTML. */
