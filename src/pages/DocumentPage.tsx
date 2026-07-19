@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
+import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
 import { Button } from "@/components/ui/button";
 import {
   getDocumentBySlug,
@@ -156,6 +157,11 @@ export default function DocumentPage() {
               {body}
             </ReactMarkdown>
           </article>
+
+          {/* Подпись и печать оператора */}
+          <div className="mt-10 pt-6 border-t border-border">
+            <SignatureStampBlock />
+          </div>
 
           {/* Footer meta */}
           <div className="mt-14 pt-6 border-t border-border text-xs text-muted-foreground doc-print-hide">
