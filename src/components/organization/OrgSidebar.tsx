@@ -523,52 +523,6 @@ export function OrgSidebar() {
 
         {/* Footer: Help, What's new, Collapse toggle, Aa labels, Logout */}
         <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
-                className={cn(
-                  "rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
-                  effectiveExpanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
-                )}
-                aria-label="Помощь"
-              >
-                <HelpCircle className="h-[18px] w-[18px] shrink-0" />
-                {effectiveExpanded && <span className="text-[13px] font-medium">Помощь</span>}
-              </button>
-            </TooltipTrigger>
-            {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Помощь</TooltipContent>}
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => {
-                  try { localStorage.setItem("whats-new-last-seen", String(Date.now())); } catch {}
-                  handleTabClick("whats-new" as TabType);
-                }}
-                className={cn(
-                  "relative rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
-                  effectiveExpanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
-                )}
-                aria-label="Что нового"
-              >
-                <Star className="h-[18px] w-[18px] shrink-0" />
-                {effectiveExpanded && <span className="text-[13px] font-medium flex-1">Что нового</span>}
-                {newIndicators.whatsNew > 0 && (
-                  <span
-                    className={cn(
-                      "rounded-full ring-2 ring-card animate-pulse",
-                      effectiveExpanded ? "w-2 h-2" : "absolute top-1.5 right-1.5 w-2 h-2"
-                    )}
-                    style={{ backgroundColor: "hsl(var(--warning))" }}
-                    aria-label="Есть новое"
-                  />
-                )}
-              </button>
-            </TooltipTrigger>
-            {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
-          </Tooltip>
 
           {/* Cycle mode (desktop only): expanded → compact → icons → expanded */}
           {(() => {
