@@ -424,14 +424,13 @@ export function OrgSidebar() {
         aria-label="Основная навигация"
         className={cn(
           "fixed inset-y-0 left-0 z-50 shadow-[2px_0_12px_rgba(0,0,0,0.04)] flex flex-col transition-[transform,width] duration-300",
-          effectiveExpanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{
+          width,
           backdropFilter: "none",
           WebkitBackdropFilter: "none",
           backgroundColor: `hsl(${brandHsl} / 0.06)`,
-          // Subtle vertical brand stripe for accent + soft outer shadow
           boxShadow: `inset 3px 0 0 hsl(${brandHsl} / 0.5), 2px 0 12px rgba(0,0,0,0.04)`,
         }}
       >
