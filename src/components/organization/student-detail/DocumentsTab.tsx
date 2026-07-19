@@ -1,13 +1,18 @@
 import { useState } from "react";
-import { FileText, Eye, Trash2, Upload, Save, User, Calendar } from "lucide-react";
+import { FileText, Eye, Trash2, Upload, Save, User, Calendar, ScanLine, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatSnils, isValidSnils } from "@/utils/formatSnils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface DocumentsTabProps {
   h: any;
+  orgPlan?: string;
 }
 
 const DOC_TYPES = [
@@ -17,12 +22,17 @@ const DOC_TYPES = [
   { type: "birth_certificate", label: "Свидетельство о рождении" },
 ];
 
-export function DocumentsTab({ h }: DocumentsTabProps) {
+export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
   const [snilsValue, setSnilsValue] = useState(h.frdoData?.snils || "");
   const [lastName, setLastName] = useState(h.frdoData?.last_name || "");
   const [firstName, setFirstName] = useState(h.frdoData?.first_name || "");
   const [middleName, setMiddleName] = useState(h.frdoData?.middle_name || "");
   const [birthDate, setBirthDate] = useState(h.frdoData?.birth_date || "");
+  const [ocrDocId, setOcrDocId] = useState<string | null>(null);
+  const [ocrResult, setOcrResult] = useState<{ snils: string | null; birth_date: string | null; confidence: number | null } | null>(null);
+  const [ocrOpen, setOcrOpen] = useState(false);
+
+  const ocrEnabled = orgPlan === "professional" || orgPlan === "maximum";
 
   // Sync from h.frdoData when it changes
   useState(() => {
@@ -38,6 +48,50 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
   const handleSnilsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSnilsValue(formatSnils(e.target.value));
   };
+
+  const handleRecognize = async (doc: any) => {
+    if (!ocrEnabled) return;
+    if (!doc.file_path) { toast.error("У документа нет файла"); return; }
+    setOcrDocId(doc.id);
+    setOcrResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ocr-snils", {
+        body: { file_path: doc.file_path, doc_type: doc.type },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const res = data as { snils: string | null; birth_date: string | null; confidence: number | null };
+      if (!res.snils && !res.birth_date) {
+        toast.error("Не удалось распознать данные — проверьте качество скана");
+        return;
+      }
+      setOcrResult(res);
+      setOcrOpen(true);
+    } catch (e: any) {
+      console.error("OCR error", e);
+      toast.error(e?.message || "Ошибка распознавания");
+    } finally {
+      setOcrDocId(null);
+    }
+  };
+
+  const applyOcr = async (fields: { snils?: boolean; birth_date?: boolean }) => {
+    if (!ocrResult) return;
+    try {
+      if (fields.snils && ocrResult.snils) {
+        setSnilsValue(ocrResult.snils);
+        await h.saveFrdoField("snils", ocrResult.snils);
+      }
+      if (fields.birth_date && ocrResult.birth_date) {
+        setBirthDate(ocrResult.birth_date);
+        await h.saveFrdoField("birth_date", ocrResult.birth_date);
+      }
+      setOcrOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось сохранить");
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -163,6 +217,31 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {(doc.type === "snils" || doc.type === "passport") && (
+                    ocrEnabled ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button size="sm" variant="ghost" className="rounded-lg text-primary" disabled={ocrDocId === doc.id} onClick={() => handleRecognize(doc)}>
+                              {ocrDocId === doc.id ? <SigmaSpinner size="sm" /> : <ScanLine className="w-4 h-4" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Распознать данные (ИИ)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground" disabled>
+                              <Lock className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Распознавание доступно на тарифах «Профессиональный» и «Максимальный»</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )
+                  )}
                   <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => h.handlePreviewDoc(doc)}>
                     {h.isLoadingPreview ? <SigmaSpinner size="sm" /> : <Eye className="w-4 h-4" />}
                   </Button>
@@ -175,6 +254,36 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
           </div>
         )}
       </div>
+
+      <AlertDialog open={ocrOpen} onOpenChange={setOcrOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Распознанные данные</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">СНИЛС:</span><span className="font-medium">{ocrResult?.snils || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Дата рождения:</span><span className="font-medium">{ocrResult?.birth_date || "—"}</span></div>
+                {typeof ocrResult?.confidence === "number" && (
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Уверенность модели:</span><span>{Math.round((ocrResult.confidence || 0) * 100)}%</span></div>
+                )}
+                <p className="text-xs text-muted-foreground pt-2">Проверьте данные — распознавание может содержать ошибки.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-wrap gap-2">
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            {ocrResult?.snils && (
+              <Button variant="outline" onClick={() => applyOcr({ snils: true })}>Только СНИЛС</Button>
+            )}
+            {ocrResult?.birth_date && (
+              <Button variant="outline" onClick={() => applyOcr({ birth_date: true })}>Только дату</Button>
+            )}
+            {ocrResult?.snils && ocrResult?.birth_date && (
+              <AlertDialogAction onClick={() => applyOcr({ snils: true, birth_date: true })}>Применить оба</AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
