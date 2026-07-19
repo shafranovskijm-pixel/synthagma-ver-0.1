@@ -277,7 +277,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 p-6 pt-4 border-t border-border">
           {step !== "upload" && (
             <Button variant="ghost" onClick={() => setStep(step === "review" ? "quiz" : "upload")} disabled={saving}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Назад
