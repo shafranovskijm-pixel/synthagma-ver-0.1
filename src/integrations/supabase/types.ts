@@ -8908,6 +8908,11 @@ export type Database = {
           last_name: string | null
           middle_name: string | null
           organization_id: string
+          passport_department_code: string | null
+          passport_issue_date: string | null
+          passport_issued_by: string | null
+          passport_number: string | null
+          passport_series: string | null
           profession_name: string | null
           professional_area: string | null
           qualification_name: string | null
@@ -8934,6 +8939,11 @@ export type Database = {
           last_name?: string | null
           middle_name?: string | null
           organization_id: string
+          passport_department_code?: string | null
+          passport_issue_date?: string | null
+          passport_issued_by?: string | null
+          passport_number?: string | null
+          passport_series?: string | null
           profession_name?: string | null
           professional_area?: string | null
           qualification_name?: string | null
@@ -8960,6 +8970,11 @@ export type Database = {
           last_name?: string | null
           middle_name?: string | null
           organization_id?: string
+          passport_department_code?: string | null
+          passport_issue_date?: string | null
+          passport_issued_by?: string | null
+          passport_number?: string | null
+          passport_series?: string | null
           profession_name?: string | null
           professional_area?: string | null
           qualification_name?: string | null
