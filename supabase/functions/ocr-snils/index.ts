@@ -46,6 +46,33 @@ function normalizeDate(v: unknown): string | null {
   return null;
 }
 
+function normalizePassportSeries(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 4) return null;
+  return `${d.slice(0, 2)} ${d.slice(2)}`;
+}
+
+function normalizePassportNumber(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 6) return null;
+  return d;
+}
+
+function normalizeDepartmentCode(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 6) return null;
+  return `${d.slice(0, 3)}-${d.slice(3)}`;
+}
+
+function cleanText(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.replace(/\s+/g, " ").trim();
+  return s.length > 0 ? s : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -129,11 +156,11 @@ Deno.serve(async (req) => {
     const b64 = bytesToBase64(buf);
     const dataUrl = `data:${mime};base64,${b64}`;
 
-    const system = `Ты извлекаешь данные со скана российских документов. Возвращай СТРОГО валидный JSON без markdown и пояснений: {"snils": string|null, "birth_date": string|null, "confidence": number}. СНИЛС — 11 цифр в формате "XXX-XXX-XXX XX". birth_date — в формате "YYYY-MM-DD". Если поля нет на изображении — null. confidence — 0..1.`;
+    const system = `Ты извлекаешь данные со скана российских документов. Возвращай СТРОГО валидный JSON без markdown и пояснений со следующей схемой: {"snils": string|null, "birth_date": string|null, "passport_series": string|null, "passport_number": string|null, "passport_issue_date": string|null, "passport_issued_by": string|null, "passport_department_code": string|null, "confidence": number}. СНИЛС — 11 цифр в формате "XXX-XXX-XXX XX". Даты — в формате "YYYY-MM-DD". passport_series — 4 цифры "XX XX". passport_number — 6 цифр без пробелов. passport_department_code — "XXX-XXX". passport_issued_by — полное наименование органа, выдавшего паспорт (без переносов строк). Если поля нет на изображении — null. confidence — 0..1.`;
     const userText =
       docType === "passport"
-        ? "На изображении первая страница паспорта РФ. Извлеки дату рождения. СНИЛС ставь null."
-        : "На изображении скан СНИЛС (страховое свидетельство). Извлеки номер СНИЛС и дату рождения владельца.";
+        ? "На изображении разворот/первая страница паспорта РФ. Извлеки: серию и номер паспорта, дату выдачи, кем выдан, код подразделения, дату рождения владельца. СНИЛС ставь null."
+        : "На изображении скан СНИЛС (страховое свидетельство). Извлеки номер СНИЛС и дату рождения владельца. Паспортные поля ставь null.";
 
     const contentBlocks: any[] = [{ type: "text", text: userText }];
     if (mime === "application/pdf") {
@@ -195,10 +222,25 @@ Deno.serve(async (req) => {
 
     const snils = normalizeSnils(parsed?.snils);
     const birth_date = normalizeDate(parsed?.birth_date);
+    const passport_series = normalizePassportSeries(parsed?.passport_series);
+    const passport_number = normalizePassportNumber(parsed?.passport_number);
+    const passport_issue_date = normalizeDate(parsed?.passport_issue_date);
+    const passport_issued_by = cleanText(parsed?.passport_issued_by);
+    const passport_department_code = normalizeDepartmentCode(parsed?.passport_department_code);
     const confidence = typeof parsed?.confidence === "number" ? parsed.confidence : null;
 
     return new Response(
-      JSON.stringify({ snils, birth_date, confidence, raw: parsed }),
+      JSON.stringify({
+        snils,
+        birth_date,
+        passport_series,
+        passport_number,
+        passport_issue_date,
+        passport_issued_by,
+        passport_department_code,
+        confidence,
+        raw: parsed,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

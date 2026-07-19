@@ -29,8 +29,18 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
   const [middleName, setMiddleName] = useState(h.frdoData?.middle_name || "");
   const [birthDate, setBirthDate] = useState(h.frdoData?.birth_date || "");
   const [ocrDocId, setOcrDocId] = useState<string | null>(null);
-  const [ocrResult, setOcrResult] = useState<{ snils: string | null; birth_date: string | null; confidence: number | null } | null>(null);
+  const [ocrResult, setOcrResult] = useState<{
+    snils: string | null;
+    birth_date: string | null;
+    passport_series: string | null;
+    passport_number: string | null;
+    passport_issue_date: string | null;
+    passport_issued_by: string | null;
+    passport_department_code: string | null;
+    confidence: number | null;
+  } | null>(null);
   const [ocrOpen, setOcrOpen] = useState(false);
+  const [ocrDocType, setOcrDocType] = useState<string | null>(null);
 
   const ocrEnabled = orgPlan === "professional" || orgPlan === "maximum";
 
@@ -54,14 +64,27 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
     if (!doc.file_path) { toast.error("У документа нет файла"); return; }
     setOcrDocId(doc.id);
     setOcrResult(null);
+    setOcrDocType(doc.type);
     try {
       const { data, error } = await supabase.functions.invoke("ocr-snils", {
         body: { file_path: doc.file_path, doc_type: doc.type },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const res = data as { snils: string | null; birth_date: string | null; confidence: number | null };
-      if (!res.snils && !res.birth_date) {
+      const res = data as {
+        snils: string | null;
+        birth_date: string | null;
+        passport_series: string | null;
+        passport_number: string | null;
+        passport_issue_date: string | null;
+        passport_issued_by: string | null;
+        passport_department_code: string | null;
+        confidence: number | null;
+      };
+      const hasAny =
+        res.snils || res.birth_date || res.passport_series || res.passport_number ||
+        res.passport_issue_date || res.passport_issued_by || res.passport_department_code;
+      if (!hasAny) {
         toast.error("Не удалось распознать данные — проверьте качество скана");
         return;
       }
@@ -75,18 +98,36 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
     }
   };
 
-  const applyOcr = async (fields: { snils?: boolean; birth_date?: boolean }) => {
+  const applyOcrAll = async () => {
     if (!ocrResult) return;
     try {
-      if (fields.snils && ocrResult.snils) {
-        setSnilsValue(ocrResult.snils);
-        await h.saveFrdoField("snils", ocrResult.snils);
-      }
-      if (fields.birth_date && ocrResult.birth_date) {
-        setBirthDate(ocrResult.birth_date);
-        await h.saveFrdoField("birth_date", ocrResult.birth_date);
+      const map: [string, string | null, ((v: string) => void)?][] = [
+        ["snils", ocrResult.snils, setSnilsValue],
+        ["birth_date", ocrResult.birth_date, setBirthDate],
+        ["passport_series", ocrResult.passport_series],
+        ["passport_number", ocrResult.passport_number],
+        ["passport_issue_date", ocrResult.passport_issue_date],
+        ["passport_issued_by", ocrResult.passport_issued_by],
+        ["passport_department_code", ocrResult.passport_department_code],
+      ];
+      for (const [field, value, setter] of map) {
+        if (value) {
+          setter?.(value);
+          // eslint-disable-next-line no-await-in-loop
+          await h.saveFrdoField(field, value);
+        }
       }
       setOcrOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось сохранить");
+    }
+  };
+
+  const applyOcrField = async (field: string, value: string | null, setter?: (v: string) => void) => {
+    if (!value) return;
+    try {
+      setter?.(value);
+      await h.saveFrdoField(field, value);
     } catch (e: any) {
       toast.error(e?.message || "Не удалось сохранить");
     }
@@ -256,31 +297,47 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
       </div>
 
       <AlertDialog open={ocrOpen} onOpenChange={setOcrOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Распознанные данные</AlertDialogTitle>
+            <AlertDialogTitle>
+              {ocrDocType === "passport" ? "Распознанные данные паспорта" : "Распознанные данные СНИЛС"}
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">СНИЛС:</span><span className="font-medium">{ocrResult?.snils || "—"}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Дата рождения:</span><span className="font-medium">{ocrResult?.birth_date || "—"}</span></div>
+                {[
+                  { label: "СНИЛС", value: ocrResult?.snils, field: "snils", setter: setSnilsValue },
+                  { label: "Дата рождения", value: ocrResult?.birth_date, field: "birth_date", setter: setBirthDate },
+                  { label: "Серия паспорта", value: ocrResult?.passport_series, field: "passport_series" },
+                  { label: "Номер паспорта", value: ocrResult?.passport_number, field: "passport_number" },
+                  { label: "Дата выдачи", value: ocrResult?.passport_issue_date, field: "passport_issue_date" },
+                  { label: "Код подразделения", value: ocrResult?.passport_department_code, field: "passport_department_code" },
+                  { label: "Кем выдан", value: ocrResult?.passport_issued_by, field: "passport_issued_by" },
+                ].filter(r => r.value).map((r) => (
+                  <div key={r.field} className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs text-muted-foreground">{r.label}</div>
+                      <div className="font-medium truncate">{r.value}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0"
+                      onClick={() => applyOcrField(r.field, r.value as string, r.setter)}
+                    >
+                      Применить
+                    </Button>
+                  </div>
+                ))}
                 {typeof ocrResult?.confidence === "number" && (
-                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Уверенность модели:</span><span>{Math.round((ocrResult.confidence || 0) * 100)}%</span></div>
+                  <div className="flex justify-between text-xs pt-1"><span className="text-muted-foreground">Уверенность модели:</span><span>{Math.round((ocrResult.confidence || 0) * 100)}%</span></div>
                 )}
                 <p className="text-xs text-muted-foreground pt-2">Проверьте данные — распознавание может содержать ошибки.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-wrap gap-2">
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
-            {ocrResult?.snils && (
-              <Button variant="outline" onClick={() => applyOcr({ snils: true })}>Только СНИЛС</Button>
-            )}
-            {ocrResult?.birth_date && (
-              <Button variant="outline" onClick={() => applyOcr({ birth_date: true })}>Только дату</Button>
-            )}
-            {ocrResult?.snils && ocrResult?.birth_date && (
-              <AlertDialogAction onClick={() => applyOcr({ snils: true, birth_date: true })}>Применить оба</AlertDialogAction>
-            )}
+            <AlertDialogCancel>Закрыть</AlertDialogCancel>
+            <AlertDialogAction onClick={applyOcrAll}>Применить все</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

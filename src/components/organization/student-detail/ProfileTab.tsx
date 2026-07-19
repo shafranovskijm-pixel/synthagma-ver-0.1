@@ -401,6 +401,104 @@ function PersonalFrdoSection({ h }: { h: any }) {
           <p className="text-xs text-muted-foreground">Классификатор ОКСМ. По умолчанию — Россия (643).</p>
         </div>
       </div>
+
+      <PassportFieldsBlock h={h} />
+    </div>
+  );
+}
+
+// ─── Паспортные данные ───
+function PassportFieldsBlock({ h }: { h: any }) {
+  const [series, setSeries] = useState<string>(h.frdoData?.passport_series || "");
+  const [number, setNumber] = useState<string>(h.frdoData?.passport_number || "");
+  const [issueDate, setIssueDate] = useState<string>(h.frdoData?.passport_issue_date || "");
+  const [issuedBy, setIssuedBy] = useState<string>(h.frdoData?.passport_issued_by || "");
+  const [deptCode, setDeptCode] = useState<string>(h.frdoData?.passport_department_code || "");
+
+  useEffect(() => { setSeries(h.frdoData?.passport_series || ""); }, [h.frdoData?.passport_series]);
+  useEffect(() => { setNumber(h.frdoData?.passport_number || ""); }, [h.frdoData?.passport_number]);
+  useEffect(() => { setIssueDate(h.frdoData?.passport_issue_date || ""); }, [h.frdoData?.passport_issue_date]);
+  useEffect(() => { setIssuedBy(h.frdoData?.passport_issued_by || ""); }, [h.frdoData?.passport_issued_by]);
+  useEffect(() => { setDeptCode(h.frdoData?.passport_department_code || ""); }, [h.frdoData?.passport_department_code]);
+
+  const formatSeries = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 4);
+    return d.length <= 2 ? d : `${d.slice(0, 2)} ${d.slice(2)}`;
+  };
+  const formatDept = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 6);
+    return d.length <= 3 ? d : `${d.slice(0, 3)}-${d.slice(3)}`;
+  };
+
+  const saveIfChanged = (field: string, value: string, current: string) => {
+    if (value !== (current || "")) h.saveFrdoField(field, value);
+  };
+
+  return (
+    <div className="border-t border-border pt-4 mt-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <FileText className="w-4 h-4 text-primary" />
+        <h4 className="font-medium text-sm">Паспортные данные (РФ)</h4>
+        <span className="text-xs text-muted-foreground">— автозаполнение по скану на тарифах «Профессиональный» / «Максимальный»</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Серия</Label>
+          <Input
+            value={series}
+            onChange={(e) => setSeries(formatSeries(e.target.value))}
+            onBlur={() => saveIfChanged("passport_series", series, h.frdoData?.passport_series || "")}
+            placeholder="XX XX"
+            className="rounded-lg font-mono"
+            disabled={h.savingFrdoField === "passport_series"}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Номер</Label>
+          <Input
+            value={number}
+            onChange={(e) => setNumber(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onBlur={() => saveIfChanged("passport_number", number, h.frdoData?.passport_number || "")}
+            placeholder="XXXXXX"
+            className="rounded-lg font-mono"
+            disabled={h.savingFrdoField === "passport_number"}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2"><Calendar className="w-4 h-4" />Дата выдачи</Label>
+          <Input
+            type="date"
+            value={issueDate}
+            onChange={(e) => setIssueDate(e.target.value)}
+            onBlur={() => saveIfChanged("passport_issue_date", issueDate, h.frdoData?.passport_issue_date || "")}
+            className="rounded-lg"
+            disabled={h.savingFrdoField === "passport_issue_date"}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Код подразделения</Label>
+          <Input
+            value={deptCode}
+            onChange={(e) => setDeptCode(formatDept(e.target.value))}
+            onBlur={() => saveIfChanged("passport_department_code", deptCode, h.frdoData?.passport_department_code || "")}
+            placeholder="XXX-XXX"
+            className="rounded-lg font-mono"
+            disabled={h.savingFrdoField === "passport_department_code"}
+          />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Кем выдан</Label>
+          <Input
+            value={issuedBy}
+            onChange={(e) => setIssuedBy(e.target.value)}
+            onBlur={() => saveIfChanged("passport_issued_by", issuedBy, h.frdoData?.passport_issued_by || "")}
+            placeholder="Наименование органа, выдавшего паспорт"
+            className="rounded-lg"
+            disabled={h.savingFrdoField === "passport_issued_by"}
+          />
+        </div>
+      </div>
     </div>
   );
 }
