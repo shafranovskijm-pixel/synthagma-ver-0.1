@@ -320,8 +320,8 @@ export function OrgSidebar() {
           effectiveExpanded
             ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
             : cn(
-                "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
-                showLabels ? "gap-0.5" : "h-10"
+                "flex flex-col items-center justify-center px-1 py-1.5",
+                showLabels ? "w-[68px] gap-0.5" : "w-10 h-10"
               ),
           locked && "opacity-50",
           isActive
