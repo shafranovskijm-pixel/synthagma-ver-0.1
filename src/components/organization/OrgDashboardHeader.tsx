@@ -22,6 +22,7 @@ import {
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
 import { QuickActionChips } from "./QuickActionChips";
+import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
