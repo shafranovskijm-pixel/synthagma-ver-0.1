@@ -1,49 +1,30 @@
-# Автораспознавание СНИЛС по скану (Gemini 2.5 Flash Vision)
+## Что меняем
 
-## Что делаем
-При загрузке скана СНИЛС или паспорта в карточке ученика — сразу показываем распознанные номер СНИЛС и дату рождения с кнопкой «Применить». Функция доступна только на тарифах **Профессиональный** и **Максимальный**.
+### 1. Сайдбар организации — вернуть третье состояние
+Сейчас на экранах < 1280px эффект авто-сворачивания в `OrgSidebar.tsx` (useEffect с `matchMedia("(max-width: 1279px)")`) насильно возвращает режим `expanded → compact` сразу после клика. Поэтому цикл «развёрнуто → компактно → иконки → развёрнуто» на ноутбуках выглядит как два состояния (compact ↔ icons), а третье просто не удерживается.
 
-## Backend
+Что сделаем:
+- Уберём принудительный `setMode("compact")` при `mode === "expanded"` на узких экранах после того, как пользователь сам выбрал режим. Оставим авто-сжатие только один раз при первой загрузке (если в `localStorage` ещё нет `org-sidebar-mode`).
+- Ничего не меняем в трёх режимах и их ширинах — они уже реализованы (`expanded 220 / compact 88 / icons 64`).
 
-### Edge Function: `supabase/functions/ocr-snils/index.ts`
-- Принимает `{ file_path: string, doc_type: 'snils' | 'passport' }`.
-- Проверяет JWT пользователя, находит его организацию, читает `subscription_plan` (+ `custom_ai_generations_limit` overrides) — если план не `professional`/`maximum`, возвращает 403 с понятным сообщением.
-- Скачивает файл из приватного bucket `student-documents` через service role, конвертирует в base64.
-- Вызывает Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`) с моделью `google/gemini-2.5-flash`, передаёт изображение (`image_url` с data URL) + строгий system-prompt: «извлеки СНИЛС в формате XXX-XXX-XXX XX и дату рождения YYYY-MM-DD, верни JSON `{snils, birth_date, confidence}`».
-- PDF: если MIME `application/pdf` — передаём через `type:"file"` блок (Gemini поддерживает PDF).
-- Возвращает клиенту `{ snils, birth_date, confidence, raw }`.
-- Обрабатывает 429/402 от gateway (лимиты/кредиты) и возвращает вменяемые ошибки.
-- `verify_jwt = true` (по умолчанию для Cloud — не трогаем `config.toml`).
+### 2. Убрать «Помощь» и «Что нового» из футера сайдбара
+В `src/components/organization/OrgSidebar.tsx` в футере удалим две кнопки:
+- «Помощь» (`HelpCircle`, диспатчит `open-support-chat`).
+- «Что нового» (`Star`, ведёт на вкладку `whats-new`).
 
-### Секреты
-`LOVABLE_API_KEY` уже есть в проекте — новых секретов не нужно.
+Останутся только: переключатель режима меню и «Выйти».
 
-## Frontend
+### 3. Добавить их в меню профиля
+В `src/components/organization/OrgDashboardHeader.tsx` в `DropdownMenu` под аватаром добавим два пункта:
+- «Помощь» — `onClick` диспатчит `open-support-chat` (та же логика, что раньше).
+- «Что нового» — переключает вкладку `whats-new` и сохраняет `whats-new-last-seen`; рядом маленькая точка-индикатор, если `newIndicators.whatsNew > 0` (используем существующий `useOrgNewIndicators`).
 
-### `src/components/organization/student-detail/DocumentsTab.tsx`
-- В блоке «Загруженные документы» для записей с `type === 'snils'` (и опционально `passport` — только дата рождения) добавляем кнопку «🔍 Распознать» рядом с «Просмотр»/«Удалить».
-- Кнопка видна только когда `orgPlan === 'professional' || orgPlan === 'maximum'`. Иначе — кнопка с замком и тултипом «Доступно на тарифах Профессиональный и Максимальный».
-- По клику: вызов `supabase.functions.invoke('ocr-snils', { body: { file_path, doc_type } })` со спиннером.
-- Результат показываем в маленьком `AlertDialog`: «Найдено — СНИЛС: 123-456-789 01, Дата рождения: 01.01.1990. Применить?». Кнопки: «Применить оба», «Только СНИЛС», «Только дату», «Отмена».
-- «Применить» вызывает существующий `h.saveFrdoField('snils', ...)` / `saveFrdoField('birth_date', ...)`.
-- Предварительная клиентская валидация: `isValidSnils` + `isValidSnilsChecksum` перед сохранением; если контрольная сумма не сошлась — предупреждаем, но разрешаем сохранить.
+Порядок в дропдауне: Профиль → Документы школы → Тариф и оплата → **Что нового** → **Помощь** → Перезапустить тур → Выйти. Иконка колокольчика `AnnouncementsBell` в шапке остаётся без изменений (это отдельные объявления платформы).
 
-### Опционально (в этом же PR)
-После успешной загрузки скана СНИЛС автоматически один раз запускать распознавание в фоне (только для plan gate ok) — чтобы кнопка сразу показывала «Найдено: …».
+## Технические детали
 
-## Тарифная логика
-- `orgPlan` уже приходит из `useSubscriptionLimits(organizationId)` в `StudentDetailCard` — пробрасываем в `DocumentsTab` как проп.
-- Двойная проверка: клиент (UX) + edge function (безопасность).
+Файлы:
+- `src/components/organization/OrgSidebar.tsx` — правка useEffect авто-сжатия + удаление двух кнопок из футера + чистка неиспользуемых импортов (`HelpCircle`, `Star`, `HelpCenterDialog`, `helpOpen`).
+- `src/components/organization/OrgDashboardHeader.tsx` — добавить два `DropdownMenuItem` + импорт `Star`, подключить `useOrgNewIndicators(organizationId)` для точки-индикатора.
 
-## Что НЕ трогаем
-- Схему БД (никаких новых таблиц/колонок — результат сразу пишется в существующий `student_frdo_data`).
-- Существующую загрузку/просмотр/удаление документов.
-- Форматы `formatSnils` / валидаторы.
-
-## Файлы
-- Новый: `supabase/functions/ocr-snils/index.ts`
-- Правка: `src/components/organization/student-detail/DocumentsTab.tsx`
-- Правка: `src/components/organization/StudentDetailCard.tsx` (пробросить `orgPlan` в `DocumentsTab`)
-
-## Модель
-`google/gemini-2.5-flash` через Lovable AI Gateway — vision, дёшево, покрывается кредитами Lovable AI, отдельного API-ключа не требуется.
+Никакой серверной логики, БД и стилей вне двух файлов не трогаем.
