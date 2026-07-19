@@ -22,12 +22,17 @@ const DOC_TYPES = [
   { type: "birth_certificate", label: "Свидетельство о рождении" },
 ];
 
-export function DocumentsTab({ h }: DocumentsTabProps) {
+export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
   const [snilsValue, setSnilsValue] = useState(h.frdoData?.snils || "");
   const [lastName, setLastName] = useState(h.frdoData?.last_name || "");
   const [firstName, setFirstName] = useState(h.frdoData?.first_name || "");
   const [middleName, setMiddleName] = useState(h.frdoData?.middle_name || "");
   const [birthDate, setBirthDate] = useState(h.frdoData?.birth_date || "");
+  const [ocrDocId, setOcrDocId] = useState<string | null>(null);
+  const [ocrResult, setOcrResult] = useState<{ snils: string | null; birth_date: string | null; confidence: number | null } | null>(null);
+  const [ocrOpen, setOcrOpen] = useState(false);
+
+  const ocrEnabled = orgPlan === "professional" || orgPlan === "maximum";
 
   // Sync from h.frdoData when it changes
   useState(() => {
@@ -43,6 +48,50 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
   const handleSnilsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSnilsValue(formatSnils(e.target.value));
   };
+
+  const handleRecognize = async (doc: any) => {
+    if (!ocrEnabled) return;
+    if (!doc.file_path) { toast.error("У документа нет файла"); return; }
+    setOcrDocId(doc.id);
+    setOcrResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ocr-snils", {
+        body: { file_path: doc.file_path, doc_type: doc.type },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const res = data as { snils: string | null; birth_date: string | null; confidence: number | null };
+      if (!res.snils && !res.birth_date) {
+        toast.error("Не удалось распознать данные — проверьте качество скана");
+        return;
+      }
+      setOcrResult(res);
+      setOcrOpen(true);
+    } catch (e: any) {
+      console.error("OCR error", e);
+      toast.error(e?.message || "Ошибка распознавания");
+    } finally {
+      setOcrDocId(null);
+    }
+  };
+
+  const applyOcr = async (fields: { snils?: boolean; birth_date?: boolean }) => {
+    if (!ocrResult) return;
+    try {
+      if (fields.snils && ocrResult.snils) {
+        setSnilsValue(ocrResult.snils);
+        await h.saveFrdoField("snils", ocrResult.snils);
+      }
+      if (fields.birth_date && ocrResult.birth_date) {
+        setBirthDate(ocrResult.birth_date);
+        await h.saveFrdoField("birth_date", ocrResult.birth_date);
+      }
+      setOcrOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось сохранить");
+    }
+  };
+
 
   return (
     <div className="space-y-6">
