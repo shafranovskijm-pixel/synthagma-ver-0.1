@@ -57,7 +57,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
         pdfPath:
-          "/documents/files/01_Обоснование_правомерности_и_готовности.pdf",
+          "/legal-files/01_Обоснование_правомерности_и_готовности.pdf",
         content: legalReadinessMd,
       },
       {
@@ -69,7 +69,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
         pdfPath:
-          "/documents/files/07_Поручение_на_обработку_персональных_данных_DPA.pdf",
+          "/legal-files/07_Поручение_на_обработку_персональных_данных_DPA.pdf",
         content: dpaMd,
       },
     ],
@@ -89,7 +89,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
           "Юридические лица, ИП, самозанятые и профессиональные пользователи",
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
-        pdfPath: "/documents/files/05_Публичная_оферта_бесплатный_тариф.pdf",
+        pdfPath: "/legal-files/05_Публичная_оферта_бесплатный_тариф.pdf",
         content: freePlanOfferMd,
       },
       {
@@ -101,7 +101,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
           "Юридические лица, ИП, самозанятые и профессиональные пользователи",
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
-        pdfPath: "/documents/files/06_Публичная_оферта_платный_тариф.pdf",
+        pdfPath: "/legal-files/06_Публичная_оферта_платный_тариф.pdf",
         content: paidPlanOfferMd,
       },
       {
@@ -113,7 +113,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
           "Администраторы, сотрудники, преподаватели и слушатели",
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
-        pdfPath: "/documents/files/08_Пользовательское_соглашение.pdf",
+        pdfPath: "/legal-files/08_Пользовательское_соглашение.pdf",
         content: userAgreementMd,
       },
     ],
@@ -133,7 +133,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
         pdfPath:
-          "/documents/files/02_Политика_обработки_персональных_данных.pdf",
+          "/legal-files/02_Политика_обработки_персональных_данных.pdf",
         content: personalDataPolicyMd,
       },
       {
@@ -145,7 +145,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
         pdfPath:
-          "/documents/files/03_Согласие_на_обработку_персональных_данных.pdf",
+          "/legal-files/03_Согласие_на_обработку_персональных_данных.pdf",
         content: personalDataConsentMd,
       },
       {
@@ -155,7 +155,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         audience: "Посетители сайта",
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
-        pdfPath: "/documents/files/04_Политика_cookie_и_аналитики.pdf",
+        pdfPath: "/legal-files/04_Политика_cookie_и_аналитики.pdf",
         content: cookiePolicyMd,
       },
       {
@@ -168,7 +168,7 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         version: DOCUMENTS_VERSION,
         updatedAt: DOCUMENTS_UPDATED_AT,
         pdfPath:
-          "/documents/files/09_Согласие_на_информационные_и_рекламные_сообщения.pdf",
+          "/legal-files/09_Согласие_на_информационные_и_рекламные_сообщения.pdf",
         content: marketingConsentMd,
       },
     ],
