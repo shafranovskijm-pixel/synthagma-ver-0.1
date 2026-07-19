@@ -217,6 +217,31 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {(doc.type === "snils" || doc.type === "passport") && (
+                    ocrEnabled ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button size="sm" variant="ghost" className="rounded-lg text-primary" disabled={ocrDocId === doc.id} onClick={() => handleRecognize(doc)}>
+                              {ocrDocId === doc.id ? <SigmaSpinner size="sm" /> : <ScanLine className="w-4 h-4" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Распознать данные (ИИ)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground" disabled>
+                              <Lock className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Распознавание доступно на тарифах «Профессиональный» и «Максимальный»</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )
+                  )}
                   <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => h.handlePreviewDoc(doc)}>
                     {h.isLoadingPreview ? <SigmaSpinner size="sm" /> : <Eye className="w-4 h-4" />}
                   </Button>
@@ -229,6 +254,36 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
           </div>
         )}
       </div>
+
+      <AlertDialog open={ocrOpen} onOpenChange={setOcrOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Распознанные данные</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">СНИЛС:</span><span className="font-medium">{ocrResult?.snils || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Дата рождения:</span><span className="font-medium">{ocrResult?.birth_date || "—"}</span></div>
+                {typeof ocrResult?.confidence === "number" && (
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Уверенность модели:</span><span>{Math.round((ocrResult.confidence || 0) * 100)}%</span></div>
+                )}
+                <p className="text-xs text-muted-foreground pt-2">Проверьте данные — распознавание может содержать ошибки.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-wrap gap-2">
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            {ocrResult?.snils && (
+              <Button variant="outline" onClick={() => applyOcr({ snils: true })}>Только СНИЛС</Button>
+            )}
+            {ocrResult?.birth_date && (
+              <Button variant="outline" onClick={() => applyOcr({ birth_date: true })}>Только дату</Button>
+            )}
+            {ocrResult?.snils && ocrResult?.birth_date && (
+              <AlertDialogAction onClick={() => applyOcr({ snils: true, birth_date: true })}>Применить оба</AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
