@@ -40,6 +40,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [quizFilter, setQuizFilter] = useState<"all" | "mapped" | "unmapped">("all");
+  const [quizView, setQuizView] = useState<"list" | "highlight">("list");
 
   useEffect(() => {
     if (open) {
@@ -118,6 +119,26 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
     () => (step === "review" ? applyMappings(html, slots, mappings) : ""),
     [step, html, slots, mappings],
   );
+
+  // Highlighted source: подсвечивает все обнаруженные слоты прямо в оригинальном HTML
+  const highlightedHtml = useMemo(() => {
+    if (step !== "quiz" || quizView !== "highlight" || !html) return "";
+    const ordered = [...slots].sort((a, b) => b.start - a.start);
+    let out = html;
+    for (const s of ordered) {
+      const m = mappings[s.id];
+      const mapped = m?.action === "map" && !!m.key;
+      const color = mapped
+        ? "background:#d1fae5;color:#065f46;border:1px solid #10b981;"
+        : "background:#fef3c7;color:#92400e;border:1px solid #f59e0b;";
+      const label = mapped ? `{{${m!.key}}}` : "?";
+      const orig = out.slice(s.start, s.start + s.token.length)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const wrap = `<mark data-slot="${s.id}" title="${label}" style="${color}padding:1px 4px;border-radius:4px;font-family:ui-monospace,monospace;font-size:0.85em;">${orig}<sup style="margin-left:4px;opacity:0.7;">${label}</sup></mark>`;
+      out = out.slice(0, s.start) + wrap + out.slice(s.start + s.token.length);
+    }
+    return out;
+  }, [step, quizView, html, slots, mappings]);
 
   const save = async () => {
     if (!name.trim()) { toast.error("Укажите название шаблона"); return; }
@@ -221,7 +242,11 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <div className="flex items-center rounded-md border border-border overflow-hidden mr-2">
+                    <Button size="sm" variant={quizView === "list" ? "secondary" : "ghost"} className="rounded-none h-8" onClick={() => setQuizView("list")}>Список</Button>
+                    <Button size="sm" variant={quizView === "highlight" ? "secondary" : "ghost"} className="rounded-none h-8" onClick={() => setQuizView("highlight")}>В документе</Button>
+                  </div>
                   <Button size="sm" variant={quizFilter === "all" ? "secondary" : "ghost"} onClick={() => setQuizFilter("all")}>Все</Button>
                   <Button size="sm" variant={quizFilter === "mapped" ? "secondary" : "ghost"} onClick={() => setQuizFilter("mapped")}>Готовые</Button>
                   <Button size="sm" variant={quizFilter === "unmapped" ? "secondary" : "ghost"} onClick={() => setQuizFilter("unmapped")}>Без переменной</Button>
@@ -235,7 +260,13 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                   </Button>
                 </div>
               </div>
+              {quizView === "highlight" ? (
+                <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-white">
+                  <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+                </div>
+              ) : (
               <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-muted/20">
+
                 <div className="p-3 space-y-2">
                   {slots.length === 0 && (
                     <div className="p-8 text-center text-sm text-muted-foreground">
@@ -310,8 +341,10 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                   })}
                 </div>
               </div>
+              )}
             </div>
           )}
+
 
 
           {step === "review" && (

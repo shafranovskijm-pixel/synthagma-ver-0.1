@@ -16,6 +16,8 @@ export const CONTRACT_PLACEHOLDERS = [
   { key: "{{org_bank_corr_account}}", label: "Корр. счёт", example: "30101810400000000225", patterns: ["к/с:", "корр"] },
   { key: "{{company_name}}", label: "Название компании-заказчика", example: "ООО «Заказчик»", patterns: ["заказчик"] },
   { key: "{{company_director}}", label: "Руководитель компании", example: "Генерального директора Петрова П.П.", patterns: [] },
+  { key: "{{company_director_basis}}", label: "На основании чего действует (Устав/Доверенность)", example: "Устава", patterns: ["на основании", "действующего на основании"] },
+  { key: "{{org_director_basis}}", label: "Основание действия рук-ля исполнителя", example: "Устава", patterns: [] },
   { key: "{{company_inn}}", label: "ИНН компании", example: "7700000001", patterns: [] },
   { key: "{{company_kpp}}", label: "КПП компании", example: "770001002", patterns: [] },
   { key: "{{company_ogrn}}", label: "ОГРН компании", example: "1027700000001", patterns: [] },

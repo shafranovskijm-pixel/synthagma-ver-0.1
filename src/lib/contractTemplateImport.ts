@@ -29,11 +29,15 @@ export interface SlotMapping {
 const HINT_RULES: Array<{ re: RegExp; hint: string }> = [
   { re: /№\s*$/i, hint: "contract_number" },
   { re: /от\s*«?\s*$/i, hint: "contract_date" },
+  { re: /действующ(?:его|ей)\s+на\s+основании\s*$/i, hint: "company_director_basis" },
+  { re: /на\s+основании\s*$/i, hint: "company_director_basis" },
   { re: /в\s+лице\s*$/i, hint: "company_director" },
   { re: /(заказчик|именуем(?:ое|ый|ая)\s+в\s+дальнейшем\s+«?заказчик)/i, hint: "company_name" },
   { re: /(инн|огрн|кпп)\s*[:№]?\s*$/i, hint: "company_inn" },
   { re: /программе?\s*«?\s*$/i, hint: "course_title" },
   { re: /(стоимост|сумм|цен)/i, hint: "total_price" },
+  { re: /(кол(?:ичество|-?во)|человек|обучающ)/i, hint: "students_count" },
+  { re: /(часов|объ[её]м|продолжительность)/i, hint: "course_hours" },
 ];
 
 /** Загрузить Word-файл и получить HTML. */
@@ -78,6 +82,19 @@ const SLOT_REGEXPS: RegExp[] = [
 // Empty table cells (пустые <td></td> / <td> </td>) — часто это места под ФИО, программу и т.п.
 const EMPTY_TD_RE = /<td[^>]*>\s*(?:&nbsp;|\u00A0|\s)*\s*<\/td>/gi;
 
+// Числовые ячейки в таблицах (кол-во человек, часов, порядковые номера) — вероятные слоты.
+const NUMERIC_TD_RE = /<td[^>]*>\s*(?:<p[^>]*>\s*)?(\d{1,4})(?:\s*<\/p>)?\s*<\/td>/gi;
+
+// Короткие ячейки с 1–3 словами, вероятно, заполненные вручную и подлежащие параметризации
+// (например: «Иванов И.И.», «очная», «Устав», «40 часов»). Исключаем цифры (перекрывается NUMERIC_TD_RE)
+// и явно заголовочные тексты.
+const SHORT_TD_RE = /<td[^>]*>\s*(?:<p[^>]*>\s*)?([^<>\n]{2,60})(?:\s*<\/p>)?\s*<\/td>/gi;
+
+function looksLikeHeader(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  return /^(№|п\/п|наименование|программа|курс|кол-?во|количество|часов|стоимость|цена|итого|фио|ф\.и\.о\.|обучающ|форма|дата|период)$/i.test(t);
+}
+
 /** Найти слоты-заглушки. Возвращаются в порядке возникновения. */
 export function detectSlots(html: string): TemplateSlot[] {
   const found: Array<{ start: number; end: number; token: string; kind?: string }> = [];
@@ -94,6 +111,28 @@ export function detectSlots(html: string): TemplateSlot[] {
   while ((tm = EMPTY_TD_RE.exec(html)) !== null) {
     found.push({ start: tm.index, end: tm.index + tm[0].length, token: tm[0], kind: "td" });
   }
+  // Числовые ячейки таблицы — целимся только на цифры внутри <td>, чтобы не сломать теги при замене
+  NUMERIC_TD_RE.lastIndex = 0;
+  let nm: RegExpExecArray | null;
+  while ((nm = NUMERIC_TD_RE.exec(html)) !== null) {
+    const digits = nm[1] || "";
+    const inner = nm.index + nm[0].indexOf(digits);
+    found.push({ start: inner, end: inner + digits.length, token: digits, kind: "td-num" });
+  }
+  // Короткие ячейки с текстом — тоже целимся только на внутренний текст
+  SHORT_TD_RE.lastIndex = 0;
+  let sm: RegExpExecArray | null;
+  while ((sm = SHORT_TD_RE.exec(html)) !== null) {
+    const raw = sm[1] || "";
+    const inner = raw.trim();
+    if (!inner || /^\d+$/.test(inner) || looksLikeHeader(inner)) continue;
+    const innerStart = nm ? 0 : 0;
+    const startIdx = sm.index + sm[0].indexOf(raw);
+    found.push({ start: startIdx, end: startIdx + raw.length, token: raw, kind: "td-short" });
+    void innerStart;
+  }
+
+
   // Удалить пересечения (оставляем первый по позиции)
   found.sort((a, b) => a.start - b.start);
   const unique: typeof found = [];
@@ -107,18 +146,30 @@ export function detectSlots(html: string): TemplateSlot[] {
   return unique.map((f, i) => {
     const before = stripTags(html.slice(Math.max(0, f.start - 200), f.start));
     const after = stripTags(html.slice(f.end, Math.min(html.length, f.end + 120)));
-    const tokenLabel = f.kind === "td" ? "◻ пустая ячейка" : f.token;
+    const innerText = f.kind && f.kind.startsWith("td") ? stripTags(f.token).trim() : "";
+    let tokenLabel: string;
+    if (f.kind === "td") tokenLabel = "◻ пустая ячейка";
+    else if (f.kind === "td-num") tokenLabel = `# ${innerText}`;
+    else if (f.kind === "td-short") tokenLabel = `«${innerText}»`;
+    else tokenLabel = f.token;
     const context = `${before.slice(-140)} ⟦${tokenLabel}⟧ ${after.slice(0, 80)}`.replace(/\s+/g, " ").trim();
     let hint = HINT_RULES.find(r => r.re.test(before))?.hint;
     // Хинты для табличных слотов по колонкам
-    if (!hint && f.kind === "td") {
-      const tail = before.slice(-260).toLowerCase();
-      if (/ф\.?и\.?о\.?|фамилия|обучающ/.test(tail)) hint = "students_table";
-      else if (/программ|курс|обучени/.test(tail)) hint = "programs_table";
+    if (!hint && f.kind && f.kind.startsWith("td")) {
+      const tail = before.slice(-400).toLowerCase();
+      if (f.kind === "td-num") {
+        if (/(кол-?во|количество|человек|обучающ)/.test(tail)) hint = "students_count";
+        else if (/(час|объ[её]м|продолжительность)/.test(tail)) hint = "course_hours";
+      } else {
+        if (/ф\.?и\.?о\.?|фамилия|обучающ/.test(tail)) hint = "students_table";
+        else if (/программ|курс|обучени/.test(tail)) hint = "programs_table";
+        else if (/форма/.test(tail)) hint = "education_form";
+      }
     }
     return { id: `slot_${i}`, token: f.token, start: f.start, context, hint };
   });
 }
+
 
 function stripTags(s: string): string {
   return s.replace(/<[^>]+>/g, " ");
