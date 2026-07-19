@@ -222,10 +222,25 @@ Deno.serve(async (req) => {
 
     const snils = normalizeSnils(parsed?.snils);
     const birth_date = normalizeDate(parsed?.birth_date);
+    const passport_series = normalizePassportSeries(parsed?.passport_series);
+    const passport_number = normalizePassportNumber(parsed?.passport_number);
+    const passport_issue_date = normalizeDate(parsed?.passport_issue_date);
+    const passport_issued_by = cleanText(parsed?.passport_issued_by);
+    const passport_department_code = normalizeDepartmentCode(parsed?.passport_department_code);
     const confidence = typeof parsed?.confidence === "number" ? parsed.confidence : null;
 
     return new Response(
-      JSON.stringify({ snils, birth_date, confidence, raw: parsed }),
+      JSON.stringify({
+        snils,
+        birth_date,
+        passport_series,
+        passport_number,
+        passport_issue_date,
+        passport_issued_by,
+        passport_department_code,
+        confidence,
+        raw: parsed,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
