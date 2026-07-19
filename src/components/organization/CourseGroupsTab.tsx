@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Users, UserPlus, Check, Plus, Copy, Link as LinkIcon } from "lucide-react";
+import { CalendarIcon, Users, UserPlus, Check, Plus, Copy, Link as LinkIcon, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useCourseGroups, GROUP_COLORS } from "@/hooks/useCourseGroups";
 
