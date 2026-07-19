@@ -139,18 +139,30 @@ export function detectSlots(html: string): TemplateSlot[] {
   return unique.map((f, i) => {
     const before = stripTags(html.slice(Math.max(0, f.start - 200), f.start));
     const after = stripTags(html.slice(f.end, Math.min(html.length, f.end + 120)));
-    const tokenLabel = f.kind === "td" ? "◻ пустая ячейка" : f.token;
+    const innerText = f.kind && f.kind.startsWith("td") ? stripTags(f.token).trim() : "";
+    let tokenLabel: string;
+    if (f.kind === "td") tokenLabel = "◻ пустая ячейка";
+    else if (f.kind === "td-num") tokenLabel = `# ${innerText}`;
+    else if (f.kind === "td-short") tokenLabel = `«${innerText}»`;
+    else tokenLabel = f.token;
     const context = `${before.slice(-140)} ⟦${tokenLabel}⟧ ${after.slice(0, 80)}`.replace(/\s+/g, " ").trim();
     let hint = HINT_RULES.find(r => r.re.test(before))?.hint;
     // Хинты для табличных слотов по колонкам
-    if (!hint && f.kind === "td") {
-      const tail = before.slice(-260).toLowerCase();
-      if (/ф\.?и\.?о\.?|фамилия|обучающ/.test(tail)) hint = "students_table";
-      else if (/программ|курс|обучени/.test(tail)) hint = "programs_table";
+    if (!hint && f.kind && f.kind.startsWith("td")) {
+      const tail = before.slice(-400).toLowerCase();
+      if (f.kind === "td-num") {
+        if (/(кол-?во|количество|человек|обучающ)/.test(tail)) hint = "students_count";
+        else if (/(час|объ[её]м|продолжительность)/.test(tail)) hint = "course_hours";
+      } else {
+        if (/ф\.?и\.?о\.?|фамилия|обучающ/.test(tail)) hint = "students_table";
+        else if (/программ|курс|обучени/.test(tail)) hint = "programs_table";
+        else if (/форма/.test(tail)) hint = "education_form";
+      }
     }
     return { id: `slot_${i}`, token: f.token, start: f.start, context, hint };
   });
 }
+
 
 function stripTags(s: string): string {
   return s.replace(/<[^>]+>/g, " ");
