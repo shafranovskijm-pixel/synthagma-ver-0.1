@@ -397,7 +397,7 @@ serve(async (req) => {
           generated_password: generatedPassword,
           organization_id: effectiveOrgId,
           company_id: effectiveCompanyId || null,
-          student_group_id: student_group_id || null
+          student_group_id: effectiveStudentGroupId || null
         }, { onConflict: "user_id" });
 
       if (profileInsertError) {
