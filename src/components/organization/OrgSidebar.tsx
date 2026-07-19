@@ -487,15 +487,17 @@ export function OrgSidebar() {
           {/* Pinned items (favorites) */}
           {pinnedItems.length > 0 && (
             <div className="w-full flex flex-col">
-              <div className={cn("px-1", effectiveExpanded ? "text-left" : "text-center")}>
-                <span
-                  className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none inline-flex items-center gap-1"
-                  aria-hidden
-                >
-                  <Pin className="w-2.5 h-2.5" /> Закреплено
-                </span>
-              </div>
-              <nav className={cn("flex flex-col gap-0.5 mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
+              {effectiveMode !== "icons" && (
+                <div className={cn("px-1", effectiveExpanded ? "text-left" : "text-center")}>
+                  <span
+                    className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none inline-flex items-center gap-1"
+                    aria-hidden
+                  >
+                    <Pin className="w-2.5 h-2.5" /> Закреплено
+                  </span>
+                </div>
+              )}
+              <nav className={cn("flex flex-col gap-0.5", effectiveMode !== "icons" && "mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
                 {pinnedItems.map((item) => renderNavItem(item))}
               </nav>
             </div>
@@ -503,17 +505,18 @@ export function OrgSidebar() {
 
           {grouped.map((group, gIdx) => (
             <div key={group.section} className="w-full flex flex-col">
-              {/* Section heading: plain caps text, no plate */}
-              <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", effectiveExpanded ? "text-left" : "text-center")}>
-                <span
-                  className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
-                  aria-hidden
-                >
-                  {SECTION_LABELS[group.section]}
-                </span>
-              </div>
+              {effectiveMode !== "icons" && (
+                <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", effectiveExpanded ? "text-left" : "text-center")}>
+                  <span
+                    className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
+                    aria-hidden
+                  >
+                    {SECTION_LABELS[group.section]}
+                  </span>
+                </div>
+              )}
 
-              <nav className={cn("flex flex-col gap-0.5 mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
+              <nav className={cn("flex flex-col gap-0.5", effectiveMode !== "icons" && "mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
                 {group.items.map((item) => renderNavItem(item))}
               </nav>
             </div>
