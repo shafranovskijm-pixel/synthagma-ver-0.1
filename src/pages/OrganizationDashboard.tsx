@@ -159,7 +159,7 @@ export default function OrganizationDashboard() {
           "flex-1 flex flex-col min-w-0 transition-all duration-300 pb-14 lg:pb-0",
           d.isAdminView ? "mt-10" : ""
         )}
-        style={{ marginLeft: typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)").matches ? sidebarWidth : undefined }}
+        style={{ marginLeft: isLg ? sidebarWidth : undefined }}
       >
         {/* Header with hero banner */}
         <OrgDashboardHeader />
