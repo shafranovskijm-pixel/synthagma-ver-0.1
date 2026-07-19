@@ -12,66 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid authentication" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const { data: roleData } = await supabaseAuth
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!roleData || !['organization', 'admin', 'company'].includes(roleData.role)) {
-      return new Response(
-        JSON.stringify({ error: "Insufficient permissions. Organization, company or admin role required." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
-
-    const { data: callerProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    console.log(`Caller profile lookup for user ${user.id}:`, callerProfile);
-
-    // Admins can work without a profile; other roles require one
-    if (!callerProfile && roleData.role !== 'admin') {
-      console.error(`Profile not found for user ${user.id}.`);
-      return new Response(
-        JSON.stringify({ 
-          error: "Ваша сессия устарела. Пожалуйста, выйдите и войдите снова.",
-          code: "PROFILE_NOT_FOUND"
-        }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     let payload: any;
     try {
@@ -83,7 +28,99 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password, student_group_id } = payload || {};
+    const {
+      email, password, full_name, organization_id, course_id, company_id,
+      custom_login, custom_password, student_group_id, registration_token,
+    } = payload || {};
+
+    // ── Public branch: registration by link token (no session required) ──
+    let publicRegistration = false;
+    let effectiveOrgIdFromToken: string | null = null;
+    let effectiveCompanyIdFromToken: string | null = null;
+    let effectiveCourseIdFromToken: string | null = null;
+    let effectiveGroupIdFromToken: string | null = null;
+    let roleData: { role: string } = { role: "organization" }; // synthetic role for downstream checks
+    let callerProfile: any = null;
+
+    if (registration_token) {
+      const { data: link, error: linkError } = await supabaseAdmin
+        .from("registration_links")
+        .select("id, organization_id, company_id, course_id, student_group_id, used_count, expires_at, max_uses")
+        .eq("token", registration_token)
+        .maybeSingle();
+
+      if (linkError || !link) {
+        return new Response(
+          JSON.stringify({ error: "Ссылка регистрации не найдена или срок её действия истёк." }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if ((link as any).expires_at && new Date((link as any).expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: "Срок действия ссылки регистрации истёк." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const maxUses = (link as any).max_uses;
+      if (maxUses != null && Number(link.used_count || 0) >= Number(maxUses)) {
+        return new Response(
+          JSON.stringify({ error: "Лимит использований ссылки исчерпан. Попросите новую ссылку." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      publicRegistration = true;
+      effectiveOrgIdFromToken = link.organization_id;
+      effectiveCompanyIdFromToken = (link as any).company_id || null;
+      effectiveCourseIdFromToken = (link as any).course_id || null;
+      effectiveGroupIdFromToken = (link as any).student_group_id || null;
+      console.log(`[register-student] public token registration → org ${effectiveOrgIdFromToken}`);
+    } else {
+      // ── Authenticated branch: existing behaviour ──
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Authentication required" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Ссылка регистрации недействительна или сессия устарела. Войдите заново или используйте новую ссылку." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: rd } = await supabaseAuth
+        .from('user_roles').select('role').eq('user_id', user.id).single();
+      if (!rd || !['organization', 'admin', 'company'].includes(rd.role)) {
+        return new Response(
+          JSON.stringify({ error: "Недостаточно прав. Требуется роль организации, компании или администратора." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      roleData = rd;
+
+      const { data: cp } = await supabaseAdmin
+        .from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+      callerProfile = cp;
+      console.log(`Caller profile lookup for user ${user.id}:`, cp);
+
+      if (!cp && rd.role !== 'admin') {
+        return new Response(
+          JSON.stringify({
+            error: "Ваша сессия устарела. Пожалуйста, выйдите и войдите снова.",
+            code: "PROFILE_NOT_FOUND"
+          }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     console.log(`[register-student] request:`, {
       hasFullName: !!full_name,
@@ -92,6 +129,7 @@ serve(async (req) => {
       hasCustomLogin: !!custom_login,
       hasCustomPassword: !!custom_password,
       callerRole: roleData.role,
+      publicRegistration,
     });
 
     // ── Field-level validation ──
