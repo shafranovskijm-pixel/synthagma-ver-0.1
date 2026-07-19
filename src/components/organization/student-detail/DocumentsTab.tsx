@@ -1,13 +1,18 @@
 import { useState } from "react";
-import { FileText, Eye, Trash2, Upload, Save, User, Calendar } from "lucide-react";
+import { FileText, Eye, Trash2, Upload, Save, User, Calendar, ScanLine, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatSnils, isValidSnils } from "@/utils/formatSnils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface DocumentsTabProps {
   h: any;
+  orgPlan?: string;
 }
 
 const DOC_TYPES = [
