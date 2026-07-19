@@ -60,6 +60,7 @@ export function Footer() {
                 { label: "Презентация", to: "/presentation" },
                 { label: "Партнёрам", to: "/partner" },
                 { label: "Блог", to: "/blog" },
+                { label: "Документы", to: "/documents" },
               ].map((link) => (
                 <li key={link.label}>
                   {link.to ? (
