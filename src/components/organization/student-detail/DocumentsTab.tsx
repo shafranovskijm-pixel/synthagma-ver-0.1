@@ -64,14 +64,27 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
     if (!doc.file_path) { toast.error("У документа нет файла"); return; }
     setOcrDocId(doc.id);
     setOcrResult(null);
+    setOcrDocType(doc.type);
     try {
       const { data, error } = await supabase.functions.invoke("ocr-snils", {
         body: { file_path: doc.file_path, doc_type: doc.type },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const res = data as { snils: string | null; birth_date: string | null; confidence: number | null };
-      if (!res.snils && !res.birth_date) {
+      const res = data as {
+        snils: string | null;
+        birth_date: string | null;
+        passport_series: string | null;
+        passport_number: string | null;
+        passport_issue_date: string | null;
+        passport_issued_by: string | null;
+        passport_department_code: string | null;
+        confidence: number | null;
+      };
+      const hasAny =
+        res.snils || res.birth_date || res.passport_series || res.passport_number ||
+        res.passport_issue_date || res.passport_issued_by || res.passport_department_code;
+      if (!hasAny) {
         toast.error("Не удалось распознать данные — проверьте качество скана");
         return;
       }
@@ -85,18 +98,36 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
     }
   };
 
-  const applyOcr = async (fields: { snils?: boolean; birth_date?: boolean }) => {
+  const applyOcrAll = async () => {
     if (!ocrResult) return;
     try {
-      if (fields.snils && ocrResult.snils) {
-        setSnilsValue(ocrResult.snils);
-        await h.saveFrdoField("snils", ocrResult.snils);
-      }
-      if (fields.birth_date && ocrResult.birth_date) {
-        setBirthDate(ocrResult.birth_date);
-        await h.saveFrdoField("birth_date", ocrResult.birth_date);
+      const map: [string, string | null, ((v: string) => void)?][] = [
+        ["snils", ocrResult.snils, setSnilsValue],
+        ["birth_date", ocrResult.birth_date, setBirthDate],
+        ["passport_series", ocrResult.passport_series],
+        ["passport_number", ocrResult.passport_number],
+        ["passport_issue_date", ocrResult.passport_issue_date],
+        ["passport_issued_by", ocrResult.passport_issued_by],
+        ["passport_department_code", ocrResult.passport_department_code],
+      ];
+      for (const [field, value, setter] of map) {
+        if (value) {
+          setter?.(value);
+          // eslint-disable-next-line no-await-in-loop
+          await h.saveFrdoField(field, value);
+        }
       }
       setOcrOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось сохранить");
+    }
+  };
+
+  const applyOcrField = async (field: string, value: string | null, setter?: (v: string) => void) => {
+    if (!value) return;
+    try {
+      setter?.(value);
+      await h.saveFrdoField(field, value);
     } catch (e: any) {
       toast.error(e?.message || "Не удалось сохранить");
     }
