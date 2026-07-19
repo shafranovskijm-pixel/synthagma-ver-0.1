@@ -436,13 +436,13 @@ serve(async (req) => {
 
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
-    
-    if (course_id) {
+
+    if (effectiveCourseId) {
       const { data: existingEnrollment } = await supabaseAdmin
         .from("enrollments")
         .select("id")
         .eq("user_id", userId)
-        .eq("course_id", course_id)
+        .eq("course_id", effectiveCourseId)
         .maybeSingle();
 
       if (existingEnrollment) {
@@ -450,7 +450,7 @@ serve(async (req) => {
       } else {
         const { error: enrollError } = await supabaseAdmin
           .from("enrollments")
-          .insert({ user_id: userId, course_id, status: "active", progress: 0 });
+          .insert({ user_id: userId, course_id: effectiveCourseId, status: "active", progress: 0 });
         if (enrollError) {
           console.error("Enrollment error:", enrollError);
         } else {
@@ -459,11 +459,30 @@ serve(async (req) => {
       }
     }
 
+    // Bump used_count on the link when registration succeeded via public token
+    if (publicRegistration && registration_token) {
+      try {
+        await supabaseAdmin.rpc('increment_registration_link_usage' as any, { p_token: registration_token }).throwOnError();
+      } catch {
+        // Fallback: direct update if RPC doesn't exist
+        const { data: cur } = await supabaseAdmin
+          .from("registration_links")
+          .select("used_count")
+          .eq("token", registration_token)
+          .maybeSingle();
+        await supabaseAdmin
+          .from("registration_links")
+          .update({ used_count: Number(cur?.used_count || 0) + 1 })
+          .eq("token", registration_token);
+      }
+    }
+
     let message: string;
     if (!isExisting && generatedLogin) {
       message = `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`;
     } else if (isExisting) {
-      if (!course_id) message = `Ученик ${existingName} уже существует в системе`;
+      if (!effectiveCourseId) message = `Ученик ${existingName} уже существует в системе`;
+
       else if (enrollmentCreated) message = `Ученик ${existingName} зачислен на курс`;
       else if (alreadyEnrolled) message = `Ученик ${existingName} уже зачислен на этот курс`;
       else message = `Ученик ${existingName} добавлен`;
