@@ -193,16 +193,16 @@ export function OrgSidebar() {
     window.dispatchEvent(new CustomEvent("org-sidebar-width-change", { detail: width }));
   }, [mode, effectiveExpanded, showLabels, width]);
 
-  // Auto-collapse on screens < 1280px to prevent content squeeze
+  // Auto-collapse only on first load when user has no saved preference
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
+    try {
+      if (localStorage.getItem(MODE_KEY)) return; // respect saved choice
+    } catch {}
     const mq = window.matchMedia("(max-width: 1279px)");
-    const apply = () => { if (mq.matches && mode === "expanded") setMode("compact"); };
-    apply();
-    const handler = () => apply();
-    mq.addEventListener?.("change", handler);
-    return () => mq.removeEventListener?.("change", handler);
-  }, [mode]);
+    if (mq.matches && mode === "expanded") setMode("compact");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cycle: expanded -> compact -> icons -> expanded
   const handleCycleMode = useCallback(() => {
