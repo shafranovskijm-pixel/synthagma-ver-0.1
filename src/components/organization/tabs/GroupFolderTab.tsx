@@ -255,6 +255,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       {/* Folder grid */}
       {!openFolder ? (
         <FolderList folders={folderCards} viewMode={viewMode} onOpen={setOpenFolder} />
+      ) : openFolder === "contracts" ? (
+        <ContractsFolder
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={group?.name || ""}
+          students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+        />
       ) : (
         <FolderContents
           folder={openFolder}
