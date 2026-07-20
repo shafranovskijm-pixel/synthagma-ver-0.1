@@ -110,25 +110,24 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
     }
     setDadataLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("dadata-suggest", {
-        body: { query: q, type: "party" },
+      const { data, error } = await supabase.functions.invoke("dadata-company", {
+        body: { inn: q },
       });
       if (error) throw error;
-      const s = data?.suggestions?.[0];
-      if (!s) {
+      const c = data?.company;
+      if (!data?.success || !c) {
         toast.warning("Организация не найдена");
         return;
       }
-      const d = s.data || {};
       setVars((prev) => ({
         ...prev,
-        counterparty_name: s.value || prev.counterparty_name,
-        counterparty_inn: d.inn || prev.counterparty_inn,
-        counterparty_kpp: d.kpp || prev.counterparty_kpp,
-        counterparty_ogrn: d.ogrn || prev.counterparty_ogrn,
-        counterparty_address: d.address?.value || prev.counterparty_address,
-        counterparty_signatory: d.management?.name || prev.counterparty_signatory,
-        counterparty_signatory_position: d.management?.post || prev.counterparty_signatory_position,
+        counterparty_name: c.name || prev.counterparty_name,
+        counterparty_inn: c.inn || prev.counterparty_inn,
+        counterparty_kpp: c.kpp || prev.counterparty_kpp,
+        counterparty_ogrn: c.ogrn || prev.counterparty_ogrn,
+        counterparty_address: c.address || prev.counterparty_address,
+        counterparty_signatory: c.management || prev.counterparty_signatory,
+        counterparty_signatory_position: c.managementPosition || prev.counterparty_signatory_position,
       }));
       toast.success("Реквизиты подгружены");
     } catch (e: any) {
