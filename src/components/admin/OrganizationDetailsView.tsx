@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgDetailsView, type Organization } from "@/hooks/useOrgDetailsView";
