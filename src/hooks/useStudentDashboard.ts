@@ -63,9 +63,12 @@ interface DashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   showRadio: boolean;
+  showWebinars: boolean;
+  showTrainers: boolean;
   catalogMode: "catalog" | "assigned";
   studentTheme: string | null;
 }
+
 
 interface ChatMessage {
   role: "user" | "assistant";
