@@ -396,6 +396,11 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
             requireEnrollmentApproval={h.requireEnrollmentApproval} onToggleRequireEnrollmentApproval={h.handleToggleRequireEnrollmentApproval}
             trainingForm={h.trainingForm} onUpdateTrainingForm={h.handleUpdateTrainingForm}
             frdoSettings={h.frdoSettings} onUpdateFrdoSettings={h.handleUpdateFrdoSettings}
+            collectDocuments={h.collectDocuments} onToggleCollectDocuments={h.handleToggleCollectDocuments}
+            requirePassport={h.requirePassport} onToggleRequirePassport={h.handleToggleRequirePassport}
+            requireSnils={h.requireSnils} onToggleRequireSnils={h.handleToggleRequireSnils}
+            requireEducationDocument={h.requireEducationDocument} onToggleRequireEducationDocument={h.handleToggleRequireEducationDocument}
+            requireBirthCertificate={h.requireBirthCertificate} onToggleRequireBirthCertificate={h.handleToggleRequireBirthCertificate}
           />
         )}
         {activeTab === "reminders" && (
