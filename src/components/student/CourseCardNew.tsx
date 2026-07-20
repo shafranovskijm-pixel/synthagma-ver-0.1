@@ -110,7 +110,11 @@ export function CourseCardNew({
           ) : isEnrolled ? (
             <Button size="sm" className="w-full gap-1.5" variant={status === "completed" ? "outline" : "default"}>
               <Play className="w-3.5 h-3.5" />
-              {status === "completed" ? "Пройти заново" : "Продолжить"}
+              {status === "completed"
+                ? "Пройти заново"
+                : (progress ?? 0) === 0 || (completedLessons ?? 0) === 0
+                  ? "Начать"
+                  : "Продолжить"}
             </Button>
           ) : isPaid && onBuy && onEnroll ? (
             <div className="space-y-1.5">
