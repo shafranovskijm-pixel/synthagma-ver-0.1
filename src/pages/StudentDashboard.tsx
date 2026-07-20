@@ -511,8 +511,8 @@ export default function StudentDashboard() {
                 />
               )}
 
-              {currentTab === ("webinars" as any) && <StudentWebinarsList />}
-              {currentTab === ("trainers" as any) && <StudentTrainersAndAI />}
+              {currentTab === ("webinars" as any) && dashboardSettings.showWebinars && <StudentWebinarsList />}
+              {currentTab === ("trainers" as any) && dashboardSettings.showTrainers && <StudentTrainersAndAI />}
 
               {currentTab === "chat" && (
                 <StudentChatsTab
