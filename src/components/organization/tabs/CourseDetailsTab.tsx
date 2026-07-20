@@ -113,20 +113,13 @@ export function CourseDetailsTab() {
   };
 
   if (!courseId || !organizationId) {
-    return <div className="flex items-center justify-center py-20 text-muted-foreground">Курс не найден</div>;
-  }
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
-  }
-
-  if (!courseId || !organizationId) {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
+
 
   if (!course) {
     return (
