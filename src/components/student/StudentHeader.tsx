@@ -30,7 +30,7 @@ interface StudentHeaderProps {
 
 export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
-  pendingCount, pendingReasons, isVideoIdentified, showAchievements,
+  pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = true,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
   onProfileClick,
 }: StudentHeaderProps) {
