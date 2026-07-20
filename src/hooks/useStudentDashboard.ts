@@ -175,8 +175,8 @@ export function useStudentDashboard() {
       const s = snapshot.org.student_dashboard_settings as Record<string, unknown>;
       setDashboardSettings({
         showLibrary: s.showLibrary === true,
-        showAchievements: s.showAchievements !== false,
-        showAiChat: s.showAiChat !== false,
+        showAchievements: s.showAchievements === true,
+        showAiChat: s.showAiChat === true,
         catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
         studentTheme: (s.studentTheme as string | null) ?? null,
       });
