@@ -109,6 +109,10 @@ export type Database = {
           doc_type: string
           html_content: string
           id: string
+          plan: string | null
+          sent_at: string | null
+          sent_to_email: string | null
+          sent_to_organization_id: string | null
           signature_id: string | null
           status: string
           updated_at: string
@@ -125,6 +129,10 @@ export type Database = {
           doc_type: string
           html_content: string
           id?: string
+          plan?: string | null
+          sent_at?: string | null
+          sent_to_email?: string | null
+          sent_to_organization_id?: string | null
           signature_id?: string | null
           status?: string
           updated_at?: string
@@ -141,12 +149,23 @@ export type Database = {
           doc_type?: string
           html_content?: string
           id?: string
+          plan?: string | null
+          sent_at?: string | null
+          sent_to_email?: string | null
+          sent_to_organization_id?: string | null
           signature_id?: string | null
           status?: string
           updated_at?: string
           variables?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "admin_generated_documents_sent_to_organization_id_fkey"
+            columns: ["sent_to_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "admin_generated_documents_signature_id_fkey"
             columns: ["signature_id"]
