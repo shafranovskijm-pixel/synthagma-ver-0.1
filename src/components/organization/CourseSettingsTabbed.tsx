@@ -101,6 +101,11 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
     requireEnrollmentApproval, onToggleRequireEnrollmentApproval,
     trainingForm, onUpdateTrainingForm,
     frdoSettings, onUpdateFrdoSettings,
+    collectDocuments, onToggleCollectDocuments,
+    requirePassport, onToggleRequirePassport,
+    requireSnils, onToggleRequireSnils,
+    requireEducationDocument, onToggleRequireEducationDocument,
+    requireBirthCertificate, onToggleRequireBirthCertificate,
   } = props;
 
   const visibleTabs = tabs.filter(t => t.value !== "frdo" || isFrdoEnabled);
