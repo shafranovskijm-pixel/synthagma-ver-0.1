@@ -59,6 +59,8 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
           showRadio: s.showRadio !== false,
+          showWebinars: s.showWebinars === true,
+          showTrainers: s.showTrainers === true,
           catalogMode: s.catalogMode || "catalog",
           studentTheme: s.studentTheme ?? null });
       }
