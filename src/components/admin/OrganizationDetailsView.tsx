@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgDetailsView, type Organization } from "@/hooks/useOrgDetailsView";
@@ -19,6 +19,7 @@ import { OrgTariffsPanel } from "./org-details/OrgTariffsPanel";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
+import { AdminDocumentsManager } from "./AdminDocumentsManager";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
@@ -47,6 +48,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     { key: "students", icon: Users, label: "Ученики", group: "main" },
     { key: "courses", icon: BookOpen, label: "Курсы", group: "main" },
     { key: "tariffs", icon: Crown, label: "Тарифы", group: "main" },
+    { key: "documents", icon: FileText, label: "Документы", group: "main" },
     { key: "history", icon: History, label: "История", group: "history" },
     { key: "comments", icon: MessageSquare, label: "Заметки", group: "history" },
     { key: "reminders", icon: Bell, label: "Напоминания", group: "history" },
@@ -186,6 +188,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           {vm.activeTab === "students" && <OrgStudentsPanel students={vm.students} filteredStudents={vm.filteredStudents} searchQuery={vm.searchQuery} setSearchQuery={vm.setSearchQuery} pendingEnrollmentsCount={vm.pendingEnrollmentsCount} organizationName={organization.name} onShowBulkImport={() => vm.setShowStudentBulkImport(true)} />}
           {vm.activeTab === "courses" && <OrgCoursesPanel courses={vm.courses} organizationId={organization.id} dndSensors={vm.dndSensors} handleCourseDragEnd={vm.handleCourseDragEnd} migratingCourseId={vm.migratingCourseId} setMigratingCourseId={vm.setMigratingCourseId} migrationResult={vm.migrationResult} setMigrationResult={vm.setMigrationResult} onShowSkillspaceImport={() => vm.setShowSkillspaceImport(true)} onShowSkillspaceBatchImport={() => vm.setShowSkillspaceBatchImport(true)} onSkillspaceUpdate={vm.setSkillspaceUpdateCourse} fetchCourses={vm.fetchCourses} />}
           {vm.activeTab === "tariffs" && <OrgTariffsPanel organizationId={organization.id} subscriptionPlan={organization.subscription_plan || 'free'} planInfo={vm.planInfo} tariffCustomLabel={vm.tariffCustomLabel} setTariffCustomLabel={vm.setTariffCustomLabel} tariffPaidUntil={vm.tariffPaidUntil} setTariffPaidUntil={vm.setTariffPaidUntil} isSavingTariff={vm.isSavingTariff} saveTariffSettings={vm.saveTariffSettings} customLimits={vm.customLimits} setCustomLimits={vm.setCustomLimits} customCategories={vm.customCategories} setCustomCategories={vm.setCustomCategories} customPrice={vm.customPrice} setCustomPrice={vm.setCustomPrice} customDiscount={vm.customDiscount} setCustomDiscount={vm.setCustomDiscount} />}
+          {vm.activeTab === "documents" && <AdminDocumentsManager />}
           {vm.activeTab === "history" && <OrgAuditLogsTab organizationId={organization.id} />}
           {vm.activeTab === "comments" && <OrgCommentsTab organizationId={organization.id} />}
           {vm.activeTab === "reminders" && <OrgRemindersTab organizationId={organization.id} />}
