@@ -208,6 +208,7 @@ const AdminDashboard = () => {
             {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
             {activeTab === "client-errors" && <AdminClientErrorsTab />}
             {activeTab === "settings" && <AdminSettings />}
+            {activeTab === "documents" && <AdminDocumentsManager />}
           </Suspense>
         </div>
 
