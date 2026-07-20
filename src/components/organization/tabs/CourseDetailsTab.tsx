@@ -19,6 +19,15 @@ export function CourseDetailsTab() {
     setActiveTab("editor");
   }, [courseId]);
 
+  // If we landed on this tab without a course selected (e.g. after reload
+  // of an old URL, or admin impersonation entry) — bounce back to courses list.
+  useEffect(() => {
+    if (!courseId) {
+      d.tabNavigation.setActiveTab("courses");
+    }
+  }, [courseId]);
+
+
   useEffect(() => {
     if (!courseId) return;
     const loadCourse = async () => {
