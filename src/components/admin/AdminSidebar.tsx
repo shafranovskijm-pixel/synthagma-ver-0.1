@@ -32,6 +32,7 @@ export type AdminTabType =
   | "updates"
   | "staff"
   | "webinars-admin"
+  | "documents"
   | "settings";
 
 interface NavItem {
