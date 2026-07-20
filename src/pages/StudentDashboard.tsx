@@ -370,7 +370,8 @@ export default function StudentDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex overflow-x-hidden">
+
       {/* Admin/preview bar */}
       {isAdminView && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
@@ -470,7 +471,7 @@ export default function StudentDashboard() {
 
         <main
           ref={isMobile ? pullToRefreshRef : undefined}
-          className="flex-1 overflow-auto md:pt-0 flex flex-col pb-20 md:pb-0"
+          className="flex-1 overflow-y-auto overflow-x-hidden md:pt-0 flex flex-col pb-20 md:pb-0 w-full max-w-full"
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
