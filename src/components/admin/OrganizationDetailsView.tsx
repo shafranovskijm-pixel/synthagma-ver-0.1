@@ -19,6 +19,7 @@ import { OrgTariffsPanel } from "./org-details/OrgTariffsPanel";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
+import { AdminDocumentsManager } from "./AdminDocumentsManager";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
