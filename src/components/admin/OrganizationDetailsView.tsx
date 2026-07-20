@@ -48,6 +48,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     { key: "students", icon: Users, label: "Ученики", group: "main" },
     { key: "courses", icon: BookOpen, label: "Курсы", group: "main" },
     { key: "tariffs", icon: Crown, label: "Тарифы", group: "main" },
+    { key: "documents", icon: FileText, label: "Документы", group: "main" },
     { key: "history", icon: History, label: "История", group: "history" },
     { key: "comments", icon: MessageSquare, label: "Заметки", group: "history" },
     { key: "reminders", icon: Bell, label: "Напоминания", group: "history" },
