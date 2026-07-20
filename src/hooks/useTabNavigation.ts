@@ -93,6 +93,28 @@ export function useTabNavigation({
     });
   }, [setSearchParams]);
 
+  const openCourseDetails = useCallback((courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", "course-details");
+      next.set("courseId", courseId);
+      next.delete("studentId");
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const openStudentDetails = useCallback((studentId: string) => {
+    setSelectedStudentId(studentId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", "student-details");
+      next.set("studentId", studentId);
+      next.delete("courseId");
+      return next;
+    });
+  }, [setSearchParams]);
+
 
   // Haptic feedback helper
   const triggerHapticFeedback = useCallback(() => {
@@ -180,8 +202,10 @@ export function useTabNavigation({
     tabAnimationVariants,
     selectedCourseId,
     setSelectedCourseId: setSelectedCourseIdWithUrl,
+    openCourseDetails,
     selectedStudentId,
     setSelectedStudentId: setSelectedStudentIdWithUrl,
+    openStudentDetails,
     selectedGroupId,
     setSelectedGroupId,
   };
