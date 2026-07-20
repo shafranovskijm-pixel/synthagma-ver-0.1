@@ -182,6 +182,8 @@ export function useStudentDashboard() {
         showAchievements: s.showAchievements === true,
         showAiChat: s.showAiChat === true,
         showRadio: s.showRadio !== false,
+        showWebinars: s.showWebinars === true,
+        showTrainers: s.showTrainers === true,
         catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
         studentTheme: (s.studentTheme as string | null) ?? null,
       });
