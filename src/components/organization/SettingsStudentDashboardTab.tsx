@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Save, Settings, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, Pencil } from "lucide-react";
+  Trophy, MessageCircle, LayoutGrid, Radio, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
@@ -16,6 +16,7 @@ import { ThemeSelector } from "@/components/ui/ThemeSelector";
 interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
+  showRadio: boolean;
   catalogMode: "catalog" | "assigned";
   studentTheme: string | null;
   [key: string]: boolean | string | null;
@@ -24,6 +25,7 @@ interface StudentDashboardSettings {
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
+  showRadio: true,
   catalogMode: "catalog",
   studentTheme: null };
 
