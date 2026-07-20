@@ -444,6 +444,8 @@ export default function StudentDashboard() {
           branding={branding}
           orgName={profile?.organization_name || null}
           showAiChat={dashboardSettings.showAiChat}
+          showWebinars={dashboardSettings.showWebinars}
+          showTrainers={dashboardSettings.showTrainers}
           isPreviewMode={isPreviewMode}
           isAdminView={isAdminView}
         />
