@@ -67,11 +67,22 @@ interface CourseSettingsTabbedProps {
   onUpdateTrainingForm: (v: string) => void;
   frdoSettings: CourseFRDOSettings;
   onUpdateFrdoSettings: (field: string, value: string | number | null) => void;
+  collectDocuments: boolean;
+  onToggleCollectDocuments: (v: boolean) => void;
+  requirePassport: boolean;
+  onToggleRequirePassport: (v: boolean) => void;
+  requireSnils: boolean;
+  onToggleRequireSnils: (v: boolean) => void;
+  requireEducationDocument: boolean;
+  onToggleRequireEducationDocument: (v: boolean) => void;
+  requireBirthCertificate: boolean;
+  onToggleRequireBirthCertificate: (v: boolean) => void;
 }
 
 const tabs: { value: SettingsSubTab; label: string; icon: React.ElementType }[] = [
   { value: "general", label: "Основные", icon: Settings },
   { value: "access", label: "Доступ", icon: KeyRound },
+  { value: "documents", label: "Документы", icon: FileText },
   { value: "frdo", label: "ФИС ФРДО", icon: FileSpreadsheet },
 ];
 
