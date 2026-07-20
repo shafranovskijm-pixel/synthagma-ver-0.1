@@ -152,31 +152,6 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAiChat ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
-        <div className="flex items-center justify-between py-3 border-t border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <LayoutGrid className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium">Начальный экран ученика</p>
-              <p className="text-sm text-muted-foreground">Что показывать первым при входе</p>
-            </div>
-          </div>
-          <div className="flex gap-1 bg-muted rounded-lg p-0.5">
-            <button
-              onClick={() => setSettings(prev => ({ ...prev, catalogMode: "catalog" }))}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${settings.catalogMode === "catalog" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Каталог
-            </button>
-            <button
-              onClick={() => setSettings(prev => ({ ...prev, catalogMode: "assigned" }))}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${settings.catalogMode === "assigned" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Назначенные
-            </button>
-          </div>
-        </div>
         <div className="py-3 border-t border-border">
           <ThemeSelector
             value={settings.studentTheme}
