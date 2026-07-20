@@ -22,6 +22,11 @@ import {
   Settings,
   KeyRound,
   ClipboardCheck,
+  FileText,
+  User,
+  Shield,
+  GraduationCap,
+  Baby,
 } from "lucide-react";
 import {
   FRDO_PROGRAM_TYPES,
