@@ -19,7 +19,7 @@ import {
   type AdminDocVariables,
   type CounterpartyKind,
 } from "@/lib/adminDocTemplates";
-import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
+
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
 
 interface HistoryRow {
