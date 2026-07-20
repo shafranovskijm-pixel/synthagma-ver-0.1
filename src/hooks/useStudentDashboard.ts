@@ -312,7 +312,7 @@ export function useStudentDashboard() {
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
-        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
+        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, showRadio: s.showRadio !== false, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
       }
 
       let cachedCoursesData: StudentCourse[] = [];
