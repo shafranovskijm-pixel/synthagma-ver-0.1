@@ -88,6 +88,7 @@ export function AdminSidebar({
     { id: "organizations", icon: Building2, label: "Организации" },
     { id: "users", icon: Users, label: "Пользователи" },
     { id: "companies", icon: Database, label: "База компаний" },
+    { id: "documents", icon: FileText, label: "Документы" },
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
     { id: "webinars-admin", icon: Radio, label: "Вебинары" },
