@@ -226,6 +226,27 @@ export function useCourseDetails(
   const handleToggleCopyProtection = async (v: boolean) => { setCopyProtection(v); await handleUpdateLandingContentField("copy_protection", v); toast.success(v ? "Защита от копирования включена" : "Защита от копирования отключена"); };
   const handleToggleVideoWatermark = async (v: boolean) => { setVideoWatermark(v); await handleUpdateLandingContentField("video_watermark", v); toast.success(v ? "Водяные знаки включены" : "Водяные знаки отключены"); };
   const handleUpdateExternalCardUrl = async (v: string) => { setExternalCardUrl(v); await handleUpdateLandingContentField("external_card_url", v || null); };
+
+  const updateDocumentCollectionField = async (key: string, value: boolean) => {
+    if (!course) return;
+    setIsSavingSettings(true);
+    try {
+      const { data: current } = await supabase.from("courses").select("landing_content").eq("id", course.id).single();
+      const lc = (current?.landing_content as any) || {};
+      const dc = { ...(lc.document_collection || {}), [key]: value };
+      const updated = { ...lc, document_collection: dc };
+      const { error } = await supabase.from("courses").update({ landing_content: updated } as any).eq("id", course.id);
+      if (error) throw error;
+      onCourseUpdated?.();
+    } catch (error) { console.error("Error updating document_collection:", error); toast.error("Ошибка сохранения"); }
+    finally { setIsSavingSettings(false); }
+  };
+  const handleToggleCollectDocuments = async (v: boolean) => { setCollectDocuments(v); await updateDocumentCollectionField("enabled", v); toast.success(v ? "Сбор документов включён" : "Сбор документов отключён"); };
+  const handleToggleRequirePassport = async (v: boolean) => { setRequirePassport(v); await updateDocumentCollectionField("passport", v); };
+  const handleToggleRequireSnils = async (v: boolean) => { setRequireSnils(v); await updateDocumentCollectionField("snils", v); };
+  const handleToggleRequireEducationDocument = async (v: boolean) => { setRequireEducationDocument(v); await updateDocumentCollectionField("education_document", v); };
+  const handleToggleRequireBirthCertificate = async (v: boolean) => { setRequireBirthCertificate(v); await updateDocumentCollectionField("birth_certificate", v); };
+
   const handleUpdateDefaultAccessDays = async (v: string) => {
     const days = v ? parseInt(v) : null;
     if (v && isNaN(days!)) return;
