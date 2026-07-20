@@ -214,7 +214,7 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
             Генерация договоров и согласий по официальным реквизитам ИП Шафрановский М.М. с подписью и печатью.
           </p>
         </div>
-        <Button onClick={() => { setTab("new"); setVars(emptyVars); }} className="gap-2">
+        <Button onClick={() => { setTab("new"); setVars(initialVars); }} className="gap-2">
           <Plus className="h-4 w-4" /> Новый документ
         </Button>
       </div>
