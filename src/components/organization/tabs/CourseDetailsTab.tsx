@@ -120,9 +120,28 @@ export function CourseDetailsTab() {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
 
-  if (!course) {
-    return <div className="flex items-center justify-center py-20 text-muted-foreground">Курс не найден</div>;
+  if (!courseId || !organizationId) {
+    return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
+  }
+
+  if (!course) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+        <span>Курс не найден или больше не доступен</span>
+        <button
+          className="text-sm text-primary underline"
+          onClick={() => { d.tabNavigation.setSelectedCourseId(null); d.tabNavigation.setActiveTab("courses"); }}
+        >
+          Вернуться к курсам
+        </button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="animate-in fade-in duration-300">
