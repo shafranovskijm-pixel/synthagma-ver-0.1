@@ -89,6 +89,14 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
 
   useEffect(() => { loadHistory(); }, []);
 
+  // Auto-fetch DaData details when prefill provides an INN
+  useEffect(() => {
+    if (prefill?.counterparty_inn && autoLookupDadata) {
+      lookupDadata();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const updateVar = (k: keyof AdminDocVariables, v: string) =>
     setVars((prev) => ({ ...prev, [k]: v }));
 
