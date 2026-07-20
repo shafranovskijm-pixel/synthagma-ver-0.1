@@ -38,7 +38,7 @@ import {
 } from "@/constants/frdo";
 import { ModuleAccessSchedule } from "./ModuleAccessSchedule";
 
-type SettingsSubTab = "general" | "access" | "frdo";
+type SettingsSubTab = "general" | "access" | "documents" | "frdo";
 
 interface CourseSettingsTabbedProps {
   course: { id: string };
