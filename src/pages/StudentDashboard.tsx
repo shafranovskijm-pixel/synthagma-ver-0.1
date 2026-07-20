@@ -363,8 +363,8 @@ export default function StudentDashboard() {
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
     { id: "catalog", icon: BookOpen, label: "Курсы" },
-    { id: "webinars" as StudentTab, icon: Presentation, label: "Вебинары" },
-    { id: "trainers" as StudentTab, icon: Monitor, label: "3D" },
+    ...(dashboardSettings.showWebinars ? [{ id: "webinars" as StudentTab, icon: Presentation, label: "Вебинары" }] : []),
+    ...(dashboardSettings.showTrainers ? [{ id: "trainers" as StudentTab, icon: Monitor, label: "3D" }] : []),
     ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
     { id: "profile" as StudentTab, icon: User, label: "Профиль" },
   ];
@@ -444,6 +444,8 @@ export default function StudentDashboard() {
           branding={branding}
           orgName={profile?.organization_name || null}
           showAiChat={dashboardSettings.showAiChat}
+          showWebinars={dashboardSettings.showWebinars}
+          showTrainers={dashboardSettings.showTrainers}
           isPreviewMode={isPreviewMode}
           isAdminView={isAdminView}
         />
@@ -509,8 +511,8 @@ export default function StudentDashboard() {
                 />
               )}
 
-              {currentTab === ("webinars" as any) && <StudentWebinarsList />}
-              {currentTab === ("trainers" as any) && <StudentTrainersAndAI />}
+              {currentTab === ("webinars" as any) && dashboardSettings.showWebinars && <StudentWebinarsList />}
+              {currentTab === ("trainers" as any) && dashboardSettings.showTrainers && <StudentTrainersAndAI />}
 
               {currentTab === "chat" && (
                 <StudentChatsTab

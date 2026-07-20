@@ -14,11 +14,13 @@ interface StudentSidebarProps {
   branding: { logoUrl: string; showOrgName: boolean; primaryColor?: string } | null;
   orgName: string | null;
   showAiChat: boolean;
+  showWebinars?: boolean;
+  showTrainers?: boolean;
   isPreviewMode?: boolean;
   isAdminView?: boolean;
 }
 
-const navItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
+const allNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
   { id: "catalog", icon: BookOpen, label: "Курсы" },
   { id: "webinars", icon: Presentation, label: "Вебинары" },
   { id: "trainers", icon: Monitor, label: "3D" },
@@ -68,8 +70,15 @@ function normalizeBrandColor(color?: string): string {
 
 export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
+  showWebinars = true, showTrainers = true,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
+  const navItems = allNavItems.filter(i => {
+    if (i.id === "chat") return showAiChat;
+    if (i.id === "webinars") return showWebinars;
+    if (i.id === "trainers") return showTrainers;
+    return true;
+  });
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
