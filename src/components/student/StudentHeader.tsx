@@ -88,7 +88,8 @@ export function StudentHeader({
 
       <div className="flex items-center gap-3">
         {/* Radio */}
-        <RadioPlayerButton />
+        {showRadio && <RadioPlayerButton />}
+
 
         {/* Что нового — bell с бейджем */}
         <AnnouncementsBell />
