@@ -27,6 +27,7 @@ const AdminFinanceOverview = lazyWithRetry(() => import("@/components/admin/Admi
 const AdminWebinarsOverview = lazyWithRetry(() => import("@/components/admin/AdminWebinarsOverview").then(m => ({ default: m.AdminWebinarsOverview })));
 const AdminClientErrorsTab = lazyWithRetry(() => import("@/components/admin/AdminClientErrorsTab").then(m => ({ default: m.AdminClientErrorsTab })));
 const AdminCompaniesTab = lazyWithRetry(() => import("@/components/admin/AdminCompaniesTab").then(m => ({ default: m.AdminCompaniesTab })));
+const AdminDocumentsManager = lazyWithRetry(() => import("@/components/admin/AdminDocumentsManager").then(m => ({ default: m.AdminDocumentsManager })));
 
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
@@ -207,6 +208,7 @@ const AdminDashboard = () => {
             {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
             {activeTab === "client-errors" && <AdminClientErrorsTab />}
             {activeTab === "settings" && <AdminSettings />}
+            {activeTab === "documents" && <AdminDocumentsManager />}
           </Suspense>
         </div>
 

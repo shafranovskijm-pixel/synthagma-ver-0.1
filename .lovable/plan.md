@@ -1,83 +1,95 @@
 
-# План: публичные документы + админ-генератор договоров
+## 1. Диагностика: «GitHub-деплой не видит футер / нет вкладки Документы»
 
-Задача состоит из двух независимых частей, обе делаются в рамках одной итерации.
+Проверил:
+- `APP_VERSION = 1.0.78`, `pwaCacheVersion = sintagma-1.0.78`, `manifest?v=1.0.78` — версия уже поднята, ваш скрин снизу («Синтагма · v1.0.78 · 16.07») это подтверждает.
+- В `src/components/landing/Footer.tsx` пункт **Документы** уже присутствует в колонке «Платформа» (строка 63) и виден на вашем 2-м скриншоте.
+- Значит проблема не в коде, а в том, что: (а) сборка на GitHub-раннере действительно бежит на актуальном коммите, и (б) SW/браузер уже подхватил новую версию. То, что вы видите одновременно «Документы в футере есть» и «вкладки Документы нет в админке» — это две **разные** вещи: пункт **Документы в админ-сайдбаре никогда не добавлялся**. Это и делаем ниже.
 
----
+Никакой отдельной инвалидции кэша для этой задачи не потребуется — bump `APP_VERSION` уже в общем pipeline.
 
-## Часть 1. Актуализация публичных документов
+## 2. Что добавляем в админку
 
-Ставим канонический комплект из архива «Публичный комплект документов СИНТАГМА» (ред. 1.0 от 19.07.2026): 9 юридических документов + хаб `/documents` по спецификации из `LOVABLE_PROMPT.md`.
+Новая вкладка **«Документы»** в `AdminSidebar` (иконка `FileText`, между «База компаний» и «Маркетплейс»). Открывает раздел с тремя функциями (все три, как вы просили):
 
-### Файлы контента
-- `public/documents/files/01…09_*.pdf` — 9 PDF из архива, положить как есть (кириллические имена).
-- `src/content/documents/*.md` — 9 Markdown-файлов из `WEB/`.
-- `src/content/documents/manifest.ts` — типизированная копия `WEB/documents.json` (группы, slug, версия, дата, contentPath, pdfPath, аудитория).
+1. **Скачивание** (DOC/PDF без сохранения) — быстрый режим.
+2. **Сохранение в БД** — новая таблица `admin_generated_documents` с историей и повторным скачиванием.
+3. **Отправка на подпись** — интеграция с существующей `document_signatures` (ПЭП, штамп ИП Шафрановский).
 
-### Маршруты (`src/routes/publicRoutes.tsx`)
-- Добавить лениво: `/documents` → `DocumentsIndex`, `/documents/:slug` → `DocumentPage`.
-- Старые страницы `/public-offer`, `/student-agreement`, `/privacy`, `/personal-data` → `<Navigate>` на соответствующие `/documents/:slug` (`paid-plan-offer`, `user-agreement`, `personal-data-policy`, `personal-data-policy`). Файлы `PublicOffer.tsx`, `StudentAgreement.tsx`, `PrivacyPolicy.tsx`, `PersonalDataPolicy.tsx` удалить.
+## 3. Шаблоны (все 4 группы)
 
-### Новые страницы
-- `src/pages/DocumentsIndex.tsx` — hero «Документы платформы СИНТАГМА», три группы карточек (Compliance / Contracts / Privacy), внизу реквизиты оператора и ссылка на реестр РКН 25-24-013414. Использует `LandingHeader` + `Footer`.
-- `src/pages/DocumentPage.tsx` — рендер Markdown через уже установленные `react-markdown` + `remark-gfm` (+ `DOMPurify` если HTML), оглавление из H2, кнопки «Скачать PDF», «Печать», «Назад». Проверка slug по манифесту → 404 при неизвестном. SEO через `react-helmet-async`, `print.css` для чистой печати.
+| Шаблон | Стороны | Ключевые переменные |
+|---|---|---|
+| Договор возмездного оказания услуг | ИП Шафрановский ↔ Организация-заказчик | № договора, дата, предмет, сумма, срок, реквизиты обеих сторон |
+| Договор безвозмездного оказания услуг | ИП Шафрановский ↔ Организация-заказчик | № договора, дата, предмет, срок, реквизиты |
+| Согласие на обработку ПДн (физлицо-слушатель) | Слушатель → Оператор ИП Шафрановский | ФИО, паспорт, адрес, цели, срок (152-ФЗ) |
+| Пакет: Согласие на маркетинг + Соглашение об ЭП (ПЭП) + Поручение на обработку ПДн (DPA) | Оператор ↔ Заказчик/Слушатель | ФИО/наименование, email, цели, перечень поручаемых операций |
 
-### Навигация и футер
-- В `LandingHeader.tsx` и `Footer.tsx` (`src/components/landing/`) добавить пункт «Документы» → `/documents`. В футере заменить старые ссылки на юр. страницы на `/documents/*`.
+Все шаблоны — HTML A4, Times New Roman, реквизиты ИП Шафрановский из `src/constants/operatorDetails.ts`, блок печати+подписи `<SignatureStampBlock />` в конце.
 
-### Согласия и акцепт
-Задача чистит из старых текстов формулу «использование сайта = согласие». В логике регистрации/чекаута оставляем текущее раздельное поведение (уже реализовано в `StudentPepAgreementCard`, `StudentConsentForm`), только меняем ссылки чекбоксов на новые `/documents/user-agreement`, `/documents/personal-data-consent`, `/documents/marketing-consent`. Схему хранения акцептов (id, slug, версия, hash, IP, UA, time) не переделываем — она уже есть в `pep_agreements`/`consent_documents`; добавляем поле `document_slug` и `document_version` в `consent_documents` если их нет (проверим и создадим миграцию только при необходимости).
+## 4. Мастер генерации (единый flow)
 
----
+Пошаговый диалог `AdminDocGeneratorDialog`:
 
-## Часть 2. Админ-генератор «Договор возмездного оказания услуг» для организаций
+1. **Тип документа** — карточки 4 шаблонов.
+2. **Тип заказчика** (для договоров) — юрлицо / ИП / физлицо (для согласий — только физлицо).
+3. **Данные заказчика** — переключатель **«Из базы» / «Ввести вручную (+ DaData по ИНН)»**:
+   - Из базы: `<Select>` по `organizations` и/или `companies` с автозаполнением.
+   - Вручную: поля + кнопка «Подтянуть по ИНН» через существующий DaData-хук (`useOrgRequisites`/аналог).
+4. **Параметры документа** — № (авто через `get_next_document_number('admin_contract')` или вручную), дата, предмет, сумма (для возмездного), срок.
+5. **Действие** — три кнопки:
+   - **Скачать DOC** (`useWordDocumentGenerator` — уже есть, табличный layout под штамп).
+   - **Скачать PDF** (печать через `printHtmlToPdf`).
+   - **Сохранить в историю** (INSERT в `admin_generated_documents`).
+   - **Отправить на подпись** (создать запись в `document_signatures`, статус `pending`).
 
-Клиенты (учебные центры) просят договор от ИП Шафрановский для лицензирования. Нужен генератор в админке, аналогичный `OrgContractsManager`, но: сторона Исполнитель = ИП Шафрановский (из `operatorDetails`), Заказчик = организация-клиент.
+## 5. Раздел «История» на той же вкладке
 
-### UI и навигация
-- Новый пункт `documents` в `AdminSidebar.tsx` (`AdminTabType`): иконка `FileText`, лейбл «Документы».
-- Новый компонент `src/components/admin/AdminDocumentsTab.tsx` с табами:
-  - «Договоры с организациями» (основное) — список + кнопка «Создать договор».
-  - «Шаблоны» — редактируемые шаблоны договоров возмездного оказания услуг (по умолчанию один преднастроенный).
-- Регистрация вкладки в `OrganizationDashboard`/`AdminDashboard` где рендерятся таб-компоненты (аналогично `AdminBillingOverview`), с гардом `canSeeAdminTab('documents')` и правом в `rolePermissions.ts`.
+Таблица: дата, тип, № документа, заказчик, статус (`draft` / `sent_for_signature` / `signed`), действия (Скачать / Открыть подписант / Удалить). Фильтры по типу и статусу, поиск по контрагенту.
 
-### База данных (миграция)
-Новая таблица `admin_service_contracts`:
-- `organization_id` (FK → organizations), `contract_number` (auto через `get_next_document_number`), `contract_date`, `service_start_date`, `service_end_date`, `subject` (текст «оказание услуг платформы для целей лицензирования …»), `amount` numeric, `status` (`draft|sent|signed|cancelled`), `document_html` (снепшот), `pdf_path`, `template_id` (FK на `admin_service_contract_templates`), `signed_at`, `signature_token`, `created_by`, `created_at/updated_at`.
+## 6. Технические детали
 
-Новая таблица `admin_service_contract_templates`: `name`, `content_html`, `is_default`, `updated_at`.
+**Новые файлы (frontend):**
+- `src/pages/admin/AdminDocumentsTab.tsx` — экран вкладки (список + кнопка «Создать»).
+- `src/components/admin/documents/AdminDocGeneratorDialog.tsx` — мастер.
+- `src/components/admin/documents/AdminDocumentsHistory.tsx` — таблица истории.
+- `src/lib/adminDocTemplates/` — 4 HTML-шаблона (`paidContract.ts`, `freeContract.ts`, `pdnConsent.ts`, `mixedPackage.ts`) + общий `renderTemplate(html, vars)`.
+- `src/hooks/useAdminDocuments.ts` — CRUD над `admin_generated_documents`.
 
-Обязательные GRANT/RLS: доступ только пользователям с `has_admin_staff_role('super_admin' | 'admin')` (и `service_role` полный). Для `signature_token` — публичный SELECT через SECURITY DEFINER RPC как в существующих контрактах.
+**Правки:**
+- `src/components/admin/AdminSidebar.tsx` — добавить пункт `documents`.
+- `src/pages/AdminDashboard.tsx` — case `activeTab === "documents"`.
+- Тип `AdminTabType` — добавить `"documents"`.
 
-### Дефолтный шаблон
-Сеедом миграции вставить шаблон с текстом договора «Договор возмездного оказания услуг» с плейсхолдерами `{{contract_number}} {{contract_date}} {{org_name}} {{org_inn}} {{org_kpp}} {{org_ogrn}} {{org_legal_address}} {{org_director_name}} {{org_director_position}} {{amount}} {{amount_words}} {{service_start_date}} {{service_end_date}}`. Реквизиты Исполнителя — ИП Шафрановский М.М., ИНН 253615392404, ОГРНИП 324253600042754 — берутся из `operatorDetails.ts` автоматически, в шаблоне не редактируются.
+**Backend (миграция):**
+```sql
+CREATE TABLE public.admin_generated_documents (
+  id uuid PK default gen_random_uuid(),
+  doc_type text NOT NULL,        -- paid_contract | free_contract | pdn_consent | mixed_package
+  doc_number text,
+  doc_date date NOT NULL,
+  counterparty_name text NOT NULL,
+  counterparty_inn text,
+  counterparty_kind text,        -- legal | ip | individual
+  variables jsonb NOT NULL,
+  html_content text NOT NULL,
+  status text NOT NULL default 'draft',
+  signature_id uuid REFERENCES document_signatures(id),
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+GRANT SELECT,INSERT,UPDATE,DELETE ON public.admin_generated_documents TO authenticated;
+GRANT ALL ON public.admin_generated_documents TO service_role;
+ALTER TABLE ... ENABLE ROW LEVEL SECURITY;
+-- Политика: только has_admin_staff_role(auth.uid(),'super_admin' | 'documents')
+```
 
-### Диалоги
-- `CreateAdminServiceContractDialog.tsx` — 3 шага: 1) выбор организации (поиск по `organizations`), 2) параметры (номер авто/ручной, дата, период услуг, сумма, доп. условия), 3) предпросмотр + «Сохранить черновик» / «Отправить на подписание».
-- `AdminServiceContractTemplatesEditor.tsx` — редактор шаблонов (rich-text как в `OrgContractTemplateEditor`).
+Плюс расширить `get_next_document_number` серией `admin_contract`.
 
-### Экспорт
-- Кнопки «Скачать PDF» (через `htmlToPdfPages`) и «Скачать Word» (через `useWordDocumentGenerator` с табличной раскладкой печати/подписей — как в мемори `document-storage-and-pdf-standards`).
-- Копирование ссылки на подписание `/sign/:token` (переиспользуем существующий флоу подписания).
+## 7. Bump версии
+`APP_VERSION → 1.0.79`, `pwaCacheVersion → sintagma-1.0.79`, manifest `?v=1.0.79`.
 
-### Хук
-- `src/hooks/useAdminServiceContracts.ts` — CRUD, realtime подписка на `admin_service_contracts`.
-
----
-
-## Технические заметки
-
-- Все PDF копировать в `public/documents/files/` вручную (кириллические имена сохраняем — их поддерживает CDN Lovable). В `manifest.ts` `pdfPath` начинается со `/documents/files/`.
-- Markdown-контент импортируем как `?raw` через Vite (`import md from '…/legal-readiness.md?raw'`), чтобы не тянуть fetch на runtime.
-- Санитизация: если рендерим только Markdown без raw HTML — `DOMPurify` не нужен; ставим `react-markdown` с `skipHtml`.
-- Тайтлы/описания страниц под `<title>` <60 символов, `<meta description>` <160.
-- Кнопка «Настройки cookie» в футере — оставляем существующий баннер, добавляем ссылку-триггер повторного открытия.
-- SEO для `/documents/*`: JSON-LD `LegalDocument` (name, dateModified, version, publisher = «ИП Шафрановский М.М.»).
-- Ограничения плана мода: работы не начнутся до подтверждения. После подтверждения — миграция БД пойдёт отдельным шагом (Supabase tool), после апрува миграции — код фронта.
-
-## Что НЕ делаем в этой итерации
-
-- Не меняем закрытые кабинеты и внутренние документы организаций (`OrgContractsManager` не трогаем).
-- Не переносим логику баннера cookie (используем существующий).
-- Не переводим тексты (документы только на русском, как в архиве).
-- Изображения печати/подписи ИП не размещаем на публичной части.
+## 8. Что НЕ трогаем
+- Публичный раздел `/documents` и PDF в `/legal-files/` уже актуальны.
+- Существующий `ContractGenerator` в кабинете организации остаётся как есть — новый генератор живёт в админке отдельно.
