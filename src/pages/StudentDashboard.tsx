@@ -462,6 +462,7 @@ export default function StudentDashboard() {
           pendingReasons={pendingReasons}
           isVideoIdentified={isVideoIdentified}
           showAchievements={dashboardSettings.showAchievements}
+          showRadio={dashboardSettings.showRadio}
           onShowVideoId={() => setShowVideoIdentification(true)}
           onShowConsent={() => setShowConsentForm(true)}
           onShowDocs={() => setShowDocumentsUpload(true)}
@@ -493,7 +494,7 @@ export default function StudentDashboard() {
 
               {currentTab === "catalog" && (
                 <CatalogContent
-                  catalogCourses={catalogCourses}
+                  catalogCourses={dashboardSettings.catalogMode === "assigned" ? [] : catalogCourses}
                   categories={categories}
                   handleCourseClick={handleCourseClick}
                   enrolledCourses={courses}

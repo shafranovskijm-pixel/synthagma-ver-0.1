@@ -20,6 +20,7 @@ interface StudentHeaderProps {
   pendingReasons?: string[];
   isVideoIdentified: boolean;
   showAchievements: boolean;
+  showRadio?: boolean;
   onShowVideoId: () => void;
   onShowConsent: () => void;
   onShowDocs: () => void;
@@ -29,7 +30,7 @@ interface StudentHeaderProps {
 
 export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
-  pendingCount, pendingReasons, isVideoIdentified, showAchievements,
+  pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = true,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
   onProfileClick,
 }: StudentHeaderProps) {
@@ -87,7 +88,8 @@ export function StudentHeader({
 
       <div className="flex items-center gap-3">
         {/* Radio */}
-        <RadioPlayerButton />
+        {showRadio && <RadioPlayerButton />}
+
 
         {/* Что нового — bell с бейджем */}
         <AnnouncementsBell />

@@ -62,6 +62,7 @@ interface DashboardSettings {
   showLibrary: boolean;
   showAchievements: boolean;
   showAiChat: boolean;
+  showRadio: boolean;
   catalogMode: "catalog" | "assigned";
   studentTheme: string | null;
 }
@@ -96,7 +97,7 @@ export function useStudentDashboard() {
   const [categories, setCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
-  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, catalogMode: "catalog", studentTheme: null });
+  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: true, catalogMode: "catalog", studentTheme: null });
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
@@ -177,6 +178,7 @@ export function useStudentDashboard() {
         showLibrary: s.showLibrary === true,
         showAchievements: s.showAchievements === true,
         showAiChat: s.showAiChat === true,
+        showRadio: s.showRadio !== false,
         catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
         studentTheme: (s.studentTheme as string | null) ?? null,
       });
@@ -310,7 +312,7 @@ export function useStudentDashboard() {
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
-        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
+        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, showRadio: s.showRadio !== false, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
       }
 
       let cachedCoursesData: StudentCourse[] = [];
