@@ -20,6 +20,7 @@ interface StudentHeaderProps {
   pendingReasons?: string[];
   isVideoIdentified: boolean;
   showAchievements: boolean;
+  showRadio?: boolean;
   onShowVideoId: () => void;
   onShowConsent: () => void;
   onShowDocs: () => void;
