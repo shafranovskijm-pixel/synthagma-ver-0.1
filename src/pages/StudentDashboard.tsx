@@ -462,6 +462,7 @@ export default function StudentDashboard() {
           pendingReasons={pendingReasons}
           isVideoIdentified={isVideoIdentified}
           showAchievements={dashboardSettings.showAchievements}
+          showRadio={dashboardSettings.showRadio}
           onShowVideoId={() => setShowVideoIdentification(true)}
           onShowConsent={() => setShowConsentForm(true)}
           onShowDocs={() => setShowDocumentsUpload(true)}
