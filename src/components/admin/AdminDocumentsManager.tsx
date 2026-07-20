@@ -15,6 +15,7 @@ import { FileText, Download, Printer, Eye, Trash2, Plus, Loader2 } from "lucide-
 import {
   renderAdminDoc,
   ADMIN_DOC_META,
+  START_PLAN_CONTRACT_SUBJECT,
   type AdminDocType,
   type AdminDocVariables,
   type CounterpartyKind,
@@ -39,6 +40,7 @@ const emptyVars: AdminDocVariables = {
   doc_date: new Date().toISOString().slice(0, 10),
   counterparty_kind: "legal",
   counterparty_name: "",
+  subject: START_PLAN_CONTRACT_SUBJECT,
 };
 
 export interface AdminDocsPrefill {
@@ -345,7 +347,7 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
               </div>
               {(docType === "paid_contract" || docType === "free_contract" || docType === "mixed_package") && (
                 <>
-                  <div><Label>Предмет / услуги</Label><Textarea rows={2} value={vars.subject || ""} onChange={(e) => updateVar("subject", e.target.value)} placeholder="Оказание образовательных услуг на платформе Синтагма" /></div>
+                  <div><Label>Предмет / услуги</Label><Textarea rows={6} value={vars.subject || ""} onChange={(e) => updateVar("subject", e.target.value)} placeholder={START_PLAN_CONTRACT_SUBJECT} /></div>
                   <div><Label>Срок</Label><Input value={vars.term || ""} onChange={(e) => updateVar("term", e.target.value)} placeholder="с даты подписания до 31 декабря" /></div>
                 </>
               )}
