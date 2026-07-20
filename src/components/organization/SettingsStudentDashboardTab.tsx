@@ -53,6 +53,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         setSettings({
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
+          showRadio: s.showRadio !== false,
           catalogMode: s.catalogMode || "catalog",
           studentTheme: s.studentTheme ?? null });
       }
