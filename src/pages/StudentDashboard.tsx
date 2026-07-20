@@ -494,7 +494,7 @@ export default function StudentDashboard() {
 
               {currentTab === "catalog" && (
                 <CatalogContent
-                  catalogCourses={catalogCourses}
+                  catalogCourses={dashboardSettings.catalogMode === "assigned" ? [] : catalogCourses}
                   categories={categories}
                   handleCourseClick={handleCourseClick}
                   enrolledCourses={courses}
