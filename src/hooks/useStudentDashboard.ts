@@ -62,6 +62,7 @@ interface DashboardSettings {
   showLibrary: boolean;
   showAchievements: boolean;
   showAiChat: boolean;
+  showRadio: boolean;
   catalogMode: "catalog" | "assigned";
   studentTheme: string | null;
 }
