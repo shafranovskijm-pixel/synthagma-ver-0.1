@@ -97,6 +97,65 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_generated_documents: {
+        Row: {
+          counterparty_inn: string | null
+          counterparty_kind: string
+          counterparty_name: string
+          created_at: string
+          created_by: string | null
+          doc_date: string
+          doc_number: string | null
+          doc_type: string
+          html_content: string
+          id: string
+          signature_id: string | null
+          status: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          counterparty_inn?: string | null
+          counterparty_kind?: string
+          counterparty_name: string
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string
+          doc_number?: string | null
+          doc_type: string
+          html_content: string
+          id?: string
+          signature_id?: string | null
+          status?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          counterparty_inn?: string | null
+          counterparty_kind?: string
+          counterparty_name?: string
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string
+          doc_number?: string | null
+          doc_type?: string
+          html_content?: string
+          id?: string
+          signature_id?: string | null
+          status?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_generated_documents_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "document_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notifications: {
         Row: {
           created_at: string
