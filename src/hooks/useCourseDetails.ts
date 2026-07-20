@@ -76,6 +76,11 @@ export function useCourseDetails(
   const [copyProtection, setCopyProtection] = useState(false);
   const [videoWatermark, setVideoWatermark] = useState(false);
   const [externalCardUrl, setExternalCardUrl] = useState("");
+  const [collectDocuments, setCollectDocuments] = useState(true);
+  const [requirePassport, setRequirePassport] = useState(true);
+  const [requireSnils, setRequireSnils] = useState(true);
+  const [requireEducationDocument, setRequireEducationDocument] = useState(true);
+  const [requireBirthCertificate, setRequireBirthCertificate] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
