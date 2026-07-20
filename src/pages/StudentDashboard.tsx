@@ -471,7 +471,7 @@ export default function StudentDashboard() {
 
         <main
           ref={isMobile ? pullToRefreshRef : undefined}
-          className="flex-1 overflow-auto md:pt-0 flex flex-col pb-20 md:pb-0"
+          className="flex-1 overflow-y-auto overflow-x-hidden md:pt-0 flex flex-col pb-20 md:pb-0 w-full max-w-full"
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
