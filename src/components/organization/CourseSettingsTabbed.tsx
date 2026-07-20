@@ -22,6 +22,11 @@ import {
   Settings,
   KeyRound,
   ClipboardCheck,
+  FileText,
+  User,
+  Shield,
+  GraduationCap,
+  Baby,
 } from "lucide-react";
 import {
   FRDO_PROGRAM_TYPES,
@@ -33,7 +38,7 @@ import {
 } from "@/constants/frdo";
 import { ModuleAccessSchedule } from "./ModuleAccessSchedule";
 
-type SettingsSubTab = "general" | "access" | "frdo";
+type SettingsSubTab = "general" | "access" | "documents" | "frdo";
 
 interface CourseSettingsTabbedProps {
   course: { id: string };
@@ -62,11 +67,22 @@ interface CourseSettingsTabbedProps {
   onUpdateTrainingForm: (v: string) => void;
   frdoSettings: CourseFRDOSettings;
   onUpdateFrdoSettings: (field: string, value: string | number | null) => void;
+  collectDocuments: boolean;
+  onToggleCollectDocuments: (v: boolean) => void;
+  requirePassport: boolean;
+  onToggleRequirePassport: (v: boolean) => void;
+  requireSnils: boolean;
+  onToggleRequireSnils: (v: boolean) => void;
+  requireEducationDocument: boolean;
+  onToggleRequireEducationDocument: (v: boolean) => void;
+  requireBirthCertificate: boolean;
+  onToggleRequireBirthCertificate: (v: boolean) => void;
 }
 
 const tabs: { value: SettingsSubTab; label: string; icon: React.ElementType }[] = [
   { value: "general", label: "Основные", icon: Settings },
   { value: "access", label: "Доступ", icon: KeyRound },
+  { value: "documents", label: "Документы", icon: FileText },
   { value: "frdo", label: "ФИС ФРДО", icon: FileSpreadsheet },
 ];
 
@@ -85,6 +101,11 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
     requireEnrollmentApproval, onToggleRequireEnrollmentApproval,
     trainingForm, onUpdateTrainingForm,
     frdoSettings, onUpdateFrdoSettings,
+    collectDocuments, onToggleCollectDocuments,
+    requirePassport, onToggleRequirePassport,
+    requireSnils, onToggleRequireSnils,
+    requireEducationDocument, onToggleRequireEducationDocument,
+    requireBirthCertificate, onToggleRequireBirthCertificate,
   } = props;
 
   const visibleTabs = tabs.filter(t => t.value !== "frdo" || isFrdoEnabled);
@@ -184,6 +205,36 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
           </div>
         </div>
       )}
+
+      {/* Documents */}
+      {subTab === "documents" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+            <FileText className="w-4 h-4 shrink-0" />
+            Управляйте сбором персональных документов слушателей этого курса.
+          </div>
+          <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
+            <SettingRow icon={FileText} iconColor="bg-primary/10 text-primary" label="Собирать документы у слушателей" desc="Общий переключатель. Если отключено, слушатели курса не увидят запрос на загрузку документов">
+              <Switch checked={collectDocuments} onCheckedChange={onToggleCollectDocuments} disabled={isSavingSettings} />
+            </SettingRow>
+            <div className={cn("space-y-6 transition-opacity", !collectDocuments && "opacity-50 pointer-events-none")}>
+              <SettingRow icon={User} iconColor="bg-blue-500/10 text-blue-500" label="Паспорт" desc="Копия паспорта (страницы с фото и пропиской)">
+                <Switch checked={requirePassport} onCheckedChange={onToggleRequirePassport} disabled={isSavingSettings || !collectDocuments} />
+              </SettingRow>
+              <SettingRow icon={Shield} iconColor="bg-emerald-500/10 text-emerald-500" label="СНИЛС" desc="Обязателен для внесения данных в ФИС ФРДО и другие государственные системы">
+                <Switch checked={requireSnils} onCheckedChange={onToggleRequireSnils} disabled={isSavingSettings || !collectDocuments} />
+              </SettingRow>
+              <SettingRow icon={GraduationCap} iconColor="bg-purple-500/10 text-purple-500" label="Документ об образовании" desc="Аттестат, диплом или справка для подтверждения права на освоение программы">
+                <Switch checked={requireEducationDocument} onCheckedChange={onToggleRequireEducationDocument} disabled={isSavingSettings || !collectDocuments} />
+              </SettingRow>
+              <SettingRow icon={Baby} iconColor="bg-pink-500/10 text-pink-500" label="Свидетельство о рождении" desc="Для несовершеннолетних вместо паспорта">
+                <Switch checked={requireBirthCertificate} onCheckedChange={onToggleRequireBirthCertificate} disabled={isSavingSettings || !collectDocuments} />
+              </SettingRow>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* FRDO */}
       {subTab === "frdo" && isFrdoEnabled && (
