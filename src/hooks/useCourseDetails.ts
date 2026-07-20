@@ -128,6 +128,12 @@ export function useCourseDetails(
       setCopyProtection(lc?.copy_protection || false);
       setVideoWatermark(lc?.video_watermark || false);
       setExternalCardUrl(lc?.external_card_url || "");
+      const dc = lc?.document_collection || {};
+      setCollectDocuments(dc.enabled !== false);
+      setRequirePassport(dc.passport !== false);
+      setRequireSnils(dc.snils !== false);
+      setRequireEducationDocument(dc.education_document !== false);
+      setRequireBirthCertificate(dc.birth_certificate === true);
     }
   }, [course]);
 
