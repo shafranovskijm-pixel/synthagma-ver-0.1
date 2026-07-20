@@ -135,7 +135,8 @@ export function AdminDocumentsManager() {
     const blob = new Blob(["\ufeff", html], { type: "application/msword" });
     const url = URL.createObjectURL(blob);
     const fname = `${meta.title.replace(/[^\w-]+/g, "_")}_${vars.doc_number || "draft"}.doc`;
-    downloadHtmlFile(url, fname);
+    const a = document.createElement("a");
+    a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
