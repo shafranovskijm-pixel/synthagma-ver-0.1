@@ -41,15 +41,32 @@ const emptyVars: AdminDocVariables = {
   counterparty_name: "",
 };
 
-export function AdminDocumentsManager() {
-  const [tab, setTab] = useState<"history" | "new">("history");
+export interface AdminDocsPrefill {
+  counterparty_kind?: CounterpartyKind;
+  counterparty_name?: string;
+  counterparty_inn?: string;
+  counterparty_email?: string;
+  counterparty_phone?: string;
+  counterparty_signatory?: string;
+}
+
+interface AdminDocumentsManagerProps {
+  prefill?: AdminDocsPrefill;
+  autoLookupDadata?: boolean;
+}
+
+export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: AdminDocumentsManagerProps = {}) {
+  const initialVars: AdminDocVariables = prefill
+    ? { ...emptyVars, ...prefill, counterparty_kind: prefill.counterparty_kind ?? "legal" }
+    : emptyVars;
+  const [tab, setTab] = useState<"history" | "new">(prefill ? "new" : "history");
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
   // Wizard state
   const [docType, setDocType] = useState<AdminDocType>("paid_contract");
-  const [vars, setVars] = useState<AdminDocVariables>(emptyVars);
+  const [vars, setVars] = useState<AdminDocVariables>(initialVars);
   const [dadataLoading, setDadataLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -71,6 +88,14 @@ export function AdminDocumentsManager() {
   };
 
   useEffect(() => { loadHistory(); }, []);
+
+  // Auto-fetch DaData details when prefill provides an INN
+  useEffect(() => {
+    if (prefill?.counterparty_inn && autoLookupDadata) {
+      lookupDadata();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateVar = (k: keyof AdminDocVariables, v: string) =>
     setVars((prev) => ({ ...prev, [k]: v }));
@@ -189,7 +214,7 @@ export function AdminDocumentsManager() {
             Генерация договоров и согласий по официальным реквизитам ИП Шафрановский М.М. с подписью и печатью.
           </p>
         </div>
-        <Button onClick={() => { setTab("new"); setVars(emptyVars); }} className="gap-2">
+        <Button onClick={() => { setTab("new"); setVars(initialVars); }} className="gap-2">
           <Plus className="h-4 w-4" /> Новый документ
         </Button>
       </div>
