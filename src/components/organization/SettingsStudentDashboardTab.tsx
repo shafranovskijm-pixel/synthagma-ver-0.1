@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Save, Settings, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, LayoutGrid, Pencil } from "lucide-react";
+  Trophy, MessageCircle, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
