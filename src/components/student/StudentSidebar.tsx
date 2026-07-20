@@ -70,8 +70,15 @@ function normalizeBrandColor(color?: string): string {
 
 export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
+  showWebinars = true, showTrainers = true,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
+  const navItems = allNavItems.filter(i => {
+    if (i.id === "chat") return showAiChat;
+    if (i.id === "webinars") return showWebinars;
+    if (i.id === "trainers") return showTrainers;
+    return true;
+  });
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
