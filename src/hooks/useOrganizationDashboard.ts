@@ -232,8 +232,7 @@ export function useOrganizationDashboard() {
   const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount(students);
   const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(students);
   const handleViewStudent = useCallback((student: any) => {
-    tabNavigation.setSelectedStudentId(student.user_id);
-    tabNavigation.setActiveTab("student-details" as any);
+    tabNavigation.openStudentDetails(student.user_id);
   }, [tabNavigation]);
 
   const handleBulkSendCredentials = async (userIds?: string[]) => {

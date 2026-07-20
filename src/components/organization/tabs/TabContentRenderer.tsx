@@ -79,8 +79,7 @@ export function TabContentRenderer() {
         <CoursesTab 
           organizationId={organizationId} 
           onOpenCourseDetails={(course) => {
-            d.tabNavigation.setSelectedCourseId(course.id);
-            d.tabNavigation.setActiveTab("course-details");
+            d.tabNavigation.openCourseDetails(course.id);
           }}
           onCoursesDeleted={d.refreshData}
         />
