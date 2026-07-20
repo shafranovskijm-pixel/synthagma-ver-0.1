@@ -97,7 +97,7 @@ export function useStudentDashboard() {
   const [categories, setCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
-  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, catalogMode: "catalog", studentTheme: null });
+  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: true, catalogMode: "catalog", studentTheme: null });
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
