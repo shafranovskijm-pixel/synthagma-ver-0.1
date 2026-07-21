@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
 import { CourseDetailsTab } from "./CourseDetailsTab";
@@ -20,8 +21,6 @@ import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
 import { PaymentsTab } from "@/components/organization/PaymentsTab";
 import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
-import { WebinarsManager } from "@/components/organization/WebinarsManager";
-import { AIAvatarManager } from "@/components/organization/AIAvatarManager";
 import { OrgProfileTab as ProfileTab } from "@/components/organization/tabs/OrgProfileTab";
 import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsContent";
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
@@ -39,6 +38,12 @@ export function TabContentRenderer() {
   const d = useOrgDashboard();
   const activeTab = d.tabNavigation.activeTab;
   const organizationId = d.organizationId;
+
+  useEffect(() => {
+    if (activeTab === "ai-tutors" || activeTab === "webinars") {
+      d.tabNavigation.setActiveTab("courses" as any);
+    }
+  }, [activeTab, d.tabNavigation]);
 
   const shouldShowStatsCards = activeTab !== "organizations" && 
     activeTab !== "services" && 
@@ -188,16 +193,6 @@ export function TabContentRenderer() {
 
       {/* Homework Review Tab */}
       {activeTab === "homework-review" && <HomeworkReviewTab />}
-
-      {/* AI Tutors Tab */}
-      {activeTab === "ai-tutors" && organizationId && (
-        <AIAvatarManager organizationId={organizationId} />
-      )}
-
-      {/* Webinars Tab */}
-      {activeTab === "webinars" && organizationId && (
-        <WebinarsManager organizationId={organizationId} />
-      )}
 
       {/* Staff Tab */}
       {activeTab === ("staff" as any) && organizationId && (

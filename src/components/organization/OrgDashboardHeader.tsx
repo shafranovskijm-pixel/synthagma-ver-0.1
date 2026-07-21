@@ -98,7 +98,6 @@ export function OrgDashboardHeader() {
       case "frdo": return "ФИС ФРДО";
       case "profile": return "Профиль";
       case "homework-review": return "Домашние работы";
-      case "ai-tutors": return "ИИ-уроки";
       case "sales": return "Продажи";
       case "org-documents": return "Документы школы";
       case "whats-new": return "Что нового";
@@ -108,7 +107,7 @@ export function OrgDashboardHeader() {
 
   // Breadcrumbs: section group → page
   const getBreadcrumb = (): { section: string; page: string } | null => {
-    const learning = ["courses", "homework-review", "ai-tutors", "labor-safety"];
+    const learning = ["courses", "homework-review", "labor-safety"];
     const clients = ["students", "organizations", "sales", "chats"];
     const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
     const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];
@@ -129,7 +128,7 @@ export function OrgDashboardHeader() {
 
   // Map active tab to section id for breadcrumb dropdown
   const getSectionId = (): "learning" | "clients" | "tools" | "settings" | null => {
-    const learning = ["courses", "homework-review", "ai-tutors", "labor-safety"];
+    const learning = ["courses", "homework-review", "labor-safety"];
     const clients = ["students", "organizations", "sales", "chats"];
     const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
     const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];

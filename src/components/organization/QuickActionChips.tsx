@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Plus, FileSpreadsheet, ShoppingBag, FileText, Send, Upload, Users, Sparkles } from "lucide-react";
+import { Plus, FileSpreadsheet, ShoppingBag, FileText, Send, Upload, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useRecentActions, type RecentAction } from "@/hooks/useOrgSidebarPinned";
@@ -72,12 +72,6 @@ export function QuickActionChips() {
       label: "Документы",
       icon: FileText,
       run: () => d.tabNavigation.setActiveTab("documents" as any),
-    },
-    "ai-tutors": {
-      id: "ai-tutors",
-      label: "ИИ-уроки",
-      icon: Sparkles,
-      run: () => d.tabNavigation.setActiveTab("ai-tutors" as any),
     },
   }), [navigate, d]);
 
