@@ -101,7 +101,11 @@ export function RadioPlayerButton() {
                   onClick={() => {
                     setRadioButtonHidden(true);
                     toast.success("Радио скрыто", {
-                      description: "Включить обратно можно в настройках оформления кабинета.",
+                      description: "Вернуть можно в настройках кабинета.",
+                      action: {
+                        label: "Отменить",
+                        onClick: () => setRadioButtonHidden(false),
+                      },
                     });
                   }}
                   aria-label="Скрыть радио"
