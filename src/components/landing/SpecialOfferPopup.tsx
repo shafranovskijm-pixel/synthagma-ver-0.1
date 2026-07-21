@@ -40,6 +40,15 @@ export function SpecialOfferPopup() {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     (async () => {
+      // Global kill-switch — if master is not explicitly enabled, do nothing.
+      const { data: master } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "landing_popups_master_enabled")
+        .maybeSingle();
+      if (cancelled) return;
+      if (master?.setting_value !== "true") return;
+
       const { data } = await supabase
         .from("landing_popups")
         .select("id, title, subtitle, description, badge_text, cta_text, image_url, delay_seconds, storage_key, show_for_authenticated, source_tag")
