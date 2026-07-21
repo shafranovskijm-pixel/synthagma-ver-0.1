@@ -53,13 +53,35 @@ const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }>
 
 export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps) {
   const d = useOrgDashboard();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
-  const [openFolder, setOpenFolder] = useState<FolderKey | null>(null);
+  const folderParam = searchParams.get("folder");
+  const openFolder = (["contracts","passports","snils","exams","docs"] as const).includes(folderParam as any) ? (folderParam as FolderKey) : null;
+  const setOpenFolder = useCallback((f: FolderKey | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (f) next.set("folder", f); else next.delete("folder");
+      return next;
+    });
+  }, [setSearchParams]);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
 
   useEffect(() => { localStorage.setItem("groupFolderView", viewMode); }, [viewMode]);
+
+  const backToStudentsGroups = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", "students");
+      next.set("studentsView", "groups");
+      next.delete("groupId");
+      next.delete("folder");
+      return next;
+    });
+    try { window.localStorage.setItem("orgStudentsPanelMode", "groups"); } catch {}
+  }, [setSearchParams]);
+
 
   useEffect(() => {
     let cancelled = false;
