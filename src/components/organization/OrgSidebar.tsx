@@ -273,9 +273,6 @@ export function OrgSidebar() {
   // === ОБУЧЕНИЕ ===
   if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", description: "Создание и редактирование учебных программ", category: "courses", section: "learning" });
   rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0, section: "learning" });
-  if (menuSettings.showAITutors !== false) {
-    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", description: "Голосовые ИИ-преподаватели для уроков", section: "learning" });
-  }
   if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", description: "Изолированный модуль обучения по ОТ", category: "labor_safety", section: "learning" });
 
   // === КЛИЕНТЫ ===

@@ -75,8 +75,8 @@ export function StudentSidebar({
 }: StudentSidebarProps) {
   const navItems = allNavItems.filter(i => {
     if (i.id === "chat") return showAiChat;
-    if (i.id === "webinars") return showWebinars;
-    if (i.id === "trainers") return showTrainers;
+    if (i.id === "webinars") return false;
+    if (i.id === "trainers") return false;
     return true;
   });
   const { theme: currentTheme, setTheme } = useTheme();

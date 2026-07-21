@@ -8,11 +8,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Save, Settings, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, LayoutGrid, Radio, Pencil, Presentation, Monitor } from "lucide-react";
+  Trophy, MessageCircle, LayoutGrid, Radio, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
-import { Badge } from "@/components/ui/badge";
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
@@ -59,8 +58,8 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
           showRadio: s.showRadio !== false,
-          showWebinars: s.showWebinars === true,
-          showTrainers: s.showTrainers === true,
+          showWebinars: false,
+          showTrainers: false,
           catalogMode: s.catalogMode || "catalog",
           studentTheme: s.studentTheme ?? null });
       }
@@ -71,9 +70,10 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const safeSettings = { ...settings, showWebinars: false, showTrainers: false };
       const { error } = await supabase
         .from('organizations')
-        .update({ student_dashboard_settings: JSON.parse(JSON.stringify(settings)) })
+        .update({ student_dashboard_settings: JSON.parse(JSON.stringify(safeSettings)) })
         .eq('id', organizationId);
       if (error) throw error;
       toast.success('Настройки сохранены');
@@ -178,48 +178,6 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showRadio ? 'bg-primary' : 'bg-muted'}`}
           >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showRadio ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between py-3 border-t border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Presentation className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium">Вебинары</p>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">BETA</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">Раздел «Вебинары» в кабинете ученика</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSettings(prev => ({ ...prev, showWebinars: !prev.showWebinars }))}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showWebinars ? 'bg-primary' : 'bg-muted'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showWebinars ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between py-3 border-t border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Monitor className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium">3D-тренажёры и ИИ-преподаватель</p>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">BETA</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">Раздел «3D» с тренажёрами и ИИ-преподавателем</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSettings(prev => ({ ...prev, showTrainers: !prev.showTrainers }))}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showTrainers ? 'bg-primary' : 'bg-muted'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showTrainers ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
 

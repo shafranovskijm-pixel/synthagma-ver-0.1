@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BookOpen, MessageCircle, Menu, Eye, X, User, Presentation, Monitor,
+  BookOpen, MessageCircle, Menu, Eye, X, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -22,8 +22,6 @@ import { StudentFooter } from "@/components/student/StudentFooter";
 import { OrgBanner } from "@/components/student/OrgBanner";
 import { CourseCatalog } from "@/components/student/CourseCatalog";
 import { cn } from "@/lib/utils";
-import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
-import { StudentTrainersAndAI } from "@/components/student/StudentTrainersAndAI";
 import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
@@ -363,8 +361,6 @@ export default function StudentDashboard() {
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
     { id: "catalog", icon: BookOpen, label: "Курсы" },
-    ...(dashboardSettings.showWebinars ? [{ id: "webinars" as StudentTab, icon: Presentation, label: "Вебинары" }] : []),
-    ...(dashboardSettings.showTrainers ? [{ id: "trainers" as StudentTab, icon: Monitor, label: "3D" }] : []),
     ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
     { id: "profile" as StudentTab, icon: User, label: "Профиль" },
   ];
@@ -444,8 +440,8 @@ export default function StudentDashboard() {
           branding={branding}
           orgName={profile?.organization_name || null}
           showAiChat={dashboardSettings.showAiChat}
-          showWebinars={dashboardSettings.showWebinars}
-          showTrainers={dashboardSettings.showTrainers}
+          showWebinars={false}
+          showTrainers={false}
           isPreviewMode={isPreviewMode}
           isAdminView={isAdminView}
         />
@@ -478,7 +474,7 @@ export default function StudentDashboard() {
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
-          {(currentTab === "catalog" || currentTab === "chat" || currentTab === ("webinars" as any) || currentTab === ("trainers" as any)) && (
+          {(currentTab === "catalog" || currentTab === "chat") && (
             <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto w-full flex-1">
               <OrgBanner
                 orgName={profile?.organization_name || null}
@@ -510,9 +506,6 @@ export default function StudentDashboard() {
                   isAdminView={isAdminView}
                 />
               )}
-
-              {currentTab === ("webinars" as any) && dashboardSettings.showWebinars && <StudentWebinarsList />}
-              {currentTab === ("trainers" as any) && dashboardSettings.showTrainers && <StudentTrainersAndAI />}
 
               {currentTab === "chat" && (
                 <StudentChatsTab
