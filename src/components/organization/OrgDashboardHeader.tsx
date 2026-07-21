@@ -368,16 +368,31 @@ export function OrgDashboardHeader() {
               </Button>
             )}
             {activeTab === "students" && (
-              <>
-                <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
-                  <FileSpreadsheet className="w-4 h-4" />
-                  <span className="hidden sm:inline">Импорт</span>
-                </Button>
-                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Добавить</span>
-                </Button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm">
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Добавить</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))} className="gap-2 cursor-pointer">
+                    <Plus className="w-4 h-4" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">Добавить вручную</span>
+                      <span className="text-xs text-muted-foreground">Одного ученика через форму</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleStudentAction(() => d.setShowImportDialog(true))} className="gap-2 cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">Загрузить файлом</span>
+                      <span className="text-xs text-muted-foreground">Массовый импорт из Excel / CSV</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {activeTab === "courses" && (
               <div className="flex items-center gap-2">
