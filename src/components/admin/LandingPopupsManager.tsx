@@ -56,8 +56,33 @@ export function LandingPopupsManager() {
   const [form, setForm] = useState<typeof empty>(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [masterEnabled, setMasterEnabled] = useState(false);
+  const [masterLoading, setMasterLoading] = useState(false);
 
-  useEffect(() => { fetchItems(); }, []);
+  useEffect(() => { fetchItems(); fetchMaster(); }, []);
+
+  const fetchMaster = async () => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "landing_popups_master_enabled")
+      .maybeSingle();
+    setMasterEnabled(data?.setting_value === "true");
+  };
+
+  const toggleMaster = async (v: boolean) => {
+    setMasterLoading(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert(
+        { setting_key: "landing_popups_master_enabled", setting_value: v ? "true" : "false" },
+        { onConflict: "setting_key" }
+      );
+    setMasterLoading(false);
+    if (error) { toast.error("Не удалось сохранить"); return; }
+    setMasterEnabled(v);
+    toast.success(v ? "Показ попапов включён" : "Все попапы скрыты");
+  };
 
   const fetchItems = async () => {
     setLoading(true);
