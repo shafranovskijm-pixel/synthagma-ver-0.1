@@ -194,9 +194,12 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "active" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Users className="w-4 h-4" />
-            Активные
-            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {activeStudentsCount}
+            <span className="whitespace-pre-line text-center">
+              Ученики
+              {"\n\n"}
+              <span className={`text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                {activeStudentsCount}
+              </span>
             </span>
           </button>
           <button
