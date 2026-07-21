@@ -179,6 +179,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         <div className="inline-flex items-center rounded-xl border border-border bg-muted/30 p-1 text-sm w-full sm:w-auto">
           <button
             type="button"
+            onClick={() => setPanelMode("groups")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "groups" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <FolderOpen className="w-4 h-4" />
+            Группы
+            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "groups" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+              {studentGroups.length}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setPanelMode("active")}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "active" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -199,18 +210,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               {archivedStudents.length}
             </span>
           </button>
-          <button
-            type="button"
-            onClick={() => setPanelMode("groups")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "groups" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <FolderOpen className="w-4 h-4" />
-            Группы
-            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "groups" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {studentGroups.length}
-            </span>
-          </button>
         </div>
+
         {panelMode === "archive" && (
           <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
             <Archive className="w-3 h-3" />
