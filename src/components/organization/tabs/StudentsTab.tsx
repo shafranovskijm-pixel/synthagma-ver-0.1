@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ChevronDown, ChevronRight } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
