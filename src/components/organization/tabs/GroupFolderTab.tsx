@@ -206,7 +206,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   if (!group) {
     return (
       <div className="p-6">
-        <Button variant="ghost" size="sm" onClick={() => d.tabNavigation.setActiveTab("students")} className="gap-1.5 rounded-xl">
+        <Button variant="ghost" size="sm" onClick={() => backToStudentsGroups()} className="gap-1.5 rounded-xl">
           <ArrowLeft className="w-4 h-4" /> К ученикам
         </Button>
         <p className="mt-4 text-muted-foreground">Группа не найдена.</p>
@@ -226,7 +226,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     <div className="space-y-4">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <button className="hover:text-foreground" onClick={() => d.tabNavigation.setActiveTab("students")}>Ученики</button>
+        <button className="hover:text-foreground" onClick={() => backToStudentsGroups()}>Ученики</button>
         <span>/</span>
         <span>Группы</span>
         <span>/</span>
@@ -258,7 +258,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={generateStudentsListDoc} disabled={students.length === 0}>
               <Download className="w-4 h-4" /> Список обучающихся (.doc)
             </Button>
-            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => d.tabNavigation.setActiveTab("students")}>
+            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => backToStudentsGroups()}>
               <ArrowLeft className="w-4 h-4" /> Назад
             </Button>
           </div>
