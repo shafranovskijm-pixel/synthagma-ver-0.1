@@ -178,9 +178,6 @@ function CatalogContent({
           isAdminView={isAdminView}
         />
       )}
-      {contentTab === "webinars" && <StudentWebinarsList />}
-      {contentTab === "trainers" && <StudentTrainersAndAI />}
-
       <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
