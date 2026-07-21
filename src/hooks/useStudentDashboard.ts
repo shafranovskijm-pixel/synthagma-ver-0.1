@@ -240,6 +240,7 @@ export function useStudentDashboard() {
       setDocumentsProgress({
         completed: [snapshot.documents.has_passport, snapshot.documents.has_snils, snapshot.documents.has_education].filter(Boolean).length,
         total: 3,
+        requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES,
       });
     }
     setIsVideoIdentified(!!snapshot.video_identified);
@@ -498,7 +499,12 @@ export function useStudentDashboard() {
           if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
           setTotalTimeSpent(cached.totalTimeSpent || 0);
           setTotalCompletedLessons(cached.totalCompletedLessons || 0);
-          setDocumentsProgress(cached.documentsProgress || { completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
+          const cachedDocs = cached.documentsProgress as Partial<DocumentsProgress> | undefined;
+          setDocumentsProgress({
+            completed: cachedDocs?.completed ?? 0,
+            total: cachedDocs?.total ?? DEFAULT_REQUIRED_DOCUMENT_TYPES.length,
+            requiredTypes: cachedDocs?.requiredTypes ?? DEFAULT_REQUIRED_DOCUMENT_TYPES,
+          });
           toast.info('Загружены данные из кеша', { description:"'Данные могут быть устаревшими'" });
         }
       }
