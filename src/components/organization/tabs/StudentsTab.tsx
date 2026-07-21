@@ -54,11 +54,30 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
 
-  const [panelMode, setPanelModeState] = useState<PanelMode>("active");
+  const [panelMode, setPanelModeState] = useState<PanelMode>(() => {
+    if (typeof window === "undefined") return "groups";
+    const url = new URLSearchParams(window.location.search);
+    const v = url.get("studentsView");
+    if (v === "active" || v === "archive" || v === "groups") return v;
+    const stored = window.localStorage.getItem("orgStudentsPanelMode");
+    if (stored === "active" || stored === "archive" || stored === "groups") return stored;
+    return "groups";
+  });
   const setPanelMode = useCallback((mode: PanelMode) => {
     setPanelModeState(mode);
     if (mode === "active" || mode === "archive") setViewMode(mode);
+    try { window.localStorage.setItem("orgStudentsPanelMode", mode); } catch {}
+    try {
+      const url = new URL(window.location.href);
+      if (mode === "groups") url.searchParams.delete("studentsView");
+      else url.searchParams.set("studentsView", mode);
+      window.history.replaceState({}, "", url.toString());
+    } catch {}
   }, [setViewMode]);
+  React.useEffect(() => {
+    if (panelMode === "active" || panelMode === "archive") setViewMode(panelMode);
+  }, [panelMode, setViewMode]);
+
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
