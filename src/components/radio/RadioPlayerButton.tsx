@@ -92,6 +92,25 @@ export function RadioPlayerButton() {
                 </p>
               )}
             </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full w-8 h-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setRadioButtonHidden(true);
+                    toast.success("Радио скрыто", {
+                      description: "Включить обратно можно в настройках оформления кабинета.",
+                    });
+                  }}
+                  aria-label="Скрыть радио"
+                >
+                  <EyeOff className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Скрыть радио</TooltipContent>
+            </Tooltip>
             <Button
               variant={playing ? "default" : "outline"}
               size="icon"
