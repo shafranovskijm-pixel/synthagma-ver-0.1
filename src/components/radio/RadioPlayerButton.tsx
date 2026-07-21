@@ -1,10 +1,21 @@
-import { Radio, Pause, Play, Volume2, ChevronDown } from "lucide-react";
+import { Radio, Pause, Play, Volume2, ChevronDown, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { useRadioPlayer } from "@/hooks/useRadioPlayer";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+
+const HIDE_KEY = "radio.userHidden";
+const HIDE_EVENT = "radio:visibility-changed";
+
+export function setRadioButtonHidden(hidden: boolean) {
+  if (hidden) localStorage.setItem(HIDE_KEY, "1");
+  else localStorage.removeItem(HIDE_KEY);
+  window.dispatchEvent(new Event(HIDE_EVENT));
+}
 
 export function RadioPlayerButton() {
   const {
@@ -12,7 +23,22 @@ export function RadioPlayerButton() {
     volume, setVolume, nowPlaying, toggle, selectStation,
   } = useRadioPlayer();
 
-  // Always show the button, even without stations
+  const [hidden, setHidden] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(HIDE_KEY) === "1";
+  });
+
+  useEffect(() => {
+    const sync = () => setHidden(localStorage.getItem(HIDE_KEY) === "1");
+    window.addEventListener(HIDE_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(HIDE_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  if (hidden) return null;
 
   return (
     <Popover>
