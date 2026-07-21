@@ -245,7 +245,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                 const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
                 return (
                   <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
-                    <button onClick={() => { dash.tabNavigation.setSelectedGroupId(group.id); dash.tabNavigation.setActiveTab("group-folder"); }} className="w-full text-left" title="Открыть папку группы">
+                    <button onClick={() => dash.tabNavigation.openGroupFolder(group.id)} className="w-full text-left" title="Открыть папку группы">
                       <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
                     </button>
