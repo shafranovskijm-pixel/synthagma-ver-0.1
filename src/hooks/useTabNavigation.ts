@@ -236,7 +236,8 @@ export function useTabNavigation({
     setSelectedStudentId: setSelectedStudentIdWithUrl,
     openStudentDetails,
     selectedGroupId,
-    setSelectedGroupId,
+    setSelectedGroupId: setSelectedGroupIdWithUrl,
+    openGroupFolder,
   };
 
 }
