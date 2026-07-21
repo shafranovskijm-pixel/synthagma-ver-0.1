@@ -48,16 +48,27 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
     <div className="space-y-4">
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setGenOpen(true)} className="gap-1.5 rounded-xl">
-          <FileSignature className="w-4 h-4" /> Сгенерировать договор
-        </Button>
-        <Button variant="outline" onClick={() => setUpOpen(true)} className="gap-1.5 rounded-xl">
-          <Upload className="w-4 h-4" /> Загрузить готовый
-        </Button>
-        <Button variant="ghost" onClick={() => setTplOpen(true)} className="gap-1.5 rounded-xl">
-          <Wand2 className="w-4 h-4" /> Загрузить шаблон
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="gap-1.5 rounded-xl">
+              Действие <ChevronDown className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuItem onClick={() => setGenOpen(true)} className="gap-2">
+              <FileSignature className="w-4 h-4" /> Сгенерировать договор
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setUpOpen(true)} className="gap-2">
+              <Upload className="w-4 h-4" /> Загрузить готовый договор
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setTplOpen(true)} className="gap-2">
+              <Wand2 className="w-4 h-4" /> Загрузить шаблон договора
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+
           <Badge variant="secondary" className="rounded-full">Всего: {stats.total}</Badge>
           <Badge variant="secondary" className="rounded-full gap-1"><User className="w-3 h-3" />{stats.individual}</Badge>
           <Badge variant="secondary" className="rounded-full gap-1"><Building2 className="w-3 h-3" />{stats.legal}</Badge>
