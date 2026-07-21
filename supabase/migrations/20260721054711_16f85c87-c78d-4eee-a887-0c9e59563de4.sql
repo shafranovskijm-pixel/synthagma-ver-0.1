@@ -1,0 +1,1 @@
+insert into app_settings (setting_key, setting_value) values ('landing_popups_master_enabled', 'false') on conflict (setting_key) do nothing;
