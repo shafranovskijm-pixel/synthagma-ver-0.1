@@ -255,10 +255,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={generateStudentsListDoc} disabled={students.length === 0}>
-              <Download className="w-4 h-4" /> Список обучающихся (.doc)
-            </Button>
-            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => backToStudentsGroups()}>
+            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => {
+              if (openFolder) setOpenFolder(null);
+              else backToStudentsGroups();
+            }}>
               <ArrowLeft className="w-4 h-4" /> Назад
             </Button>
           </div>

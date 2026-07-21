@@ -51,7 +51,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button className="gap-1.5 rounded-xl">
-              Действие <ChevronDown className="w-4 h-4" />
+              Добавить <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
