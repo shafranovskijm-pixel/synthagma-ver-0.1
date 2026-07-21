@@ -13,7 +13,6 @@ const SECTION_ITEMS: Record<SectionId, { tab: string; label: string }[]> = {
   learning: [
     { tab: "courses", label: "Курсы" },
     { tab: "homework-review", label: "Домашние работы" },
-    { tab: "ai-tutors", label: "ИИ-уроки" },
     { tab: "labor-safety", label: "Охрана труда" },
   ],
   clients: [

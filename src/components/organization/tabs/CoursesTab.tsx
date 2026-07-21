@@ -3,9 +3,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BookOpen, Trash2, GripVertical, Video, Box, Sparkles } from "lucide-react";
-import { AIAvatarManager } from "@/components/organization/AIAvatarManager";
-import { WebinarsContent, ThreeDContent } from "./courses/ContentTabPlaceholders";
+import { BookOpen, Trash2, GripVertical } from "lucide-react";
 import { CoursesToolbar } from "./courses/CoursesToolbar";
 import { useCourses } from "@/hooks/useCourses";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -24,9 +22,6 @@ import { CategoryFolder } from "./courses/CategoryFolder";
 import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { QuickStartCard } from "@/components/organization/QuickStartCard";
-import { useOrganizationCore } from "@/hooks/useOrganizationCore";
-import { Card } from "@/components/ui/card";
-import { Lock } from "lucide-react";
 
 interface CoursesTabProps {
   organizationId: string;
@@ -375,15 +370,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     return groups;
   }, [filteredCourses, categories]);
 
-  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "3d" | "ai-tutor">("courses");
-
-  // Тарифный гейт: Вебинары / 3D / ИИ-преподаватель — только Профессиональный и Максимальный
-  const { data: orgCore } = useOrganizationCore(organizationId);
-  const isProTier = React.useMemo(() => {
-    const plan = (orgCore?.subscription_plan || 'free').toLowerCase();
-    return plan === 'professional' || plan === 'maximum';
-  }, [orgCore?.subscription_plan]);
-
   return (
     <div className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
@@ -391,53 +377,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       {/* Quick start checklist for new orgs */}
       <QuickStartCard />
 
-      {/* Content type tabs */}
-      <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
-        {[
-          { key: "courses" as const, icon: BookOpen, label: "Курсы", proBadge: false },
-          { key: "webinars" as const, icon: Video, label: "Вебинары", proBadge: true },
-          { key: "3d" as const, icon: Box, label: "3D-тренажёры", proBadge: true },
-          { key: "ai-tutor" as const, icon: Sparkles, label: "ИИ-преподаватель", proBadge: true },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setContentTab(tab.key)}
-            title={tab.proBadge ? "Доступно в Профессиональном тарифе" : undefined}
-            className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentTab === tab.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <tab.icon className="w-4 h-4 inline-block mr-2" />{tab.label}
-            {tab.proBadge && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-gradient-to-r from-amber-400/20 to-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide leading-none">
-                Pro
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-
-      {/* Pro tier gate for premium tabs */}
-      {(contentTab === "webinars" || contentTab === "3d" || contentTab === "ai-tutor") && !isProTier ? (
-        <ProFeatureLocked
-          tab={contentTab}
-          onNavigateToTariffs={() => dashboard.tabNavigation.setActiveTab("subscription" as any)}
-        />
-      ) : (
-        <>
-          {contentTab === "webinars" && (
-            <WebinarsContent
-              organizationId={organizationId}
-              isEnabled={dashboard.isEnabled('webinars')}
-              onNavigateToTariffs={() => dashboard.tabNavigation.setActiveTab("subscription" as any)}
-            />
-          )}
-          {contentTab === "3d" && <ThreeDContent />}
-          {contentTab === "ai-tutor" && <AIAvatarManager organizationId={organizationId} />}
-        </>
-      )}
-
       {/* Courses content */}
-      {contentTab === "courses" && <>
+      <>
       {/* Filters */}
       <CoursesToolbar
         searchQuery={searchQuery} setSearchQuery={setSearchQuery}
@@ -609,72 +550,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         currentOrganizationId={organizationId}
         onTransferred={refresh}
       />
-      </>}
+      </>
     </div>
   );
 });
-
-const PRO_TAB_META: Record<string, { title: string; description: string; benefits: string[] }> = {
-  webinars: {
-    title: "Вебинары",
-    description: "Проводите живые онлайн-занятия и трансляции с записью на Kinescope Live.",
-    benefits: [
-      "Интерактивные вебинары с чатом и записью",
-      "Безопасная трансляция через Kinescope",
-      "Автосохранение записей в курсах",
-    ],
-  },
-  "3d": {
-    title: "3D-тренажёры",
-    description: "Интерактивные 3D-симуляции для практической отработки навыков.",
-    benefits: [
-      "Готовые сценарии и кастомные тренажёры",
-      "Запуск прямо в уроке без установки",
-      "Автоматическая фиксация прохождения",
-    ],
-  },
-  "ai-tutor": {
-    title: "ИИ-преподаватель",
-    description: "Голосовой ИИ-аватар, который ведёт диалог с учеником по теме урока.",
-    benefits: [
-      "Персональные голосовые консультации",
-      "Настройка тона и сценариев под курс",
-      "Экономия времени преподавателей",
-    ],
-  },
-};
-
-function ProFeatureLocked({ tab, onNavigateToTariffs }: { tab: string; onNavigateToTariffs: () => void }) {
-  const meta = PRO_TAB_META[tab] || PRO_TAB_META["webinars"];
-  return (
-    <div className="max-w-3xl mx-auto py-8 lg:py-12">
-      <Card className="p-8 lg:p-12 text-center bg-gradient-to-br from-primary/5 via-card to-card border-primary/20">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/15 text-primary mb-6">
-          <Lock className="w-8 h-8" />
-        </div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wide mb-4">
-          <Sparkles className="w-3.5 h-3.5" />
-          Профессиональный тариф
-        </div>
-        <h2 className="text-2xl lg:text-3xl font-display font-bold mb-3">{meta.title}</h2>
-        <p className="text-muted-foreground mb-8 max-w-xl mx-auto">{meta.description}</p>
-        <ul className="text-left max-w-md mx-auto mb-8 space-y-2.5">
-          {meta.benefits.map((b) => (
-            <li key={b} className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary shrink-0">
-                <Sparkles className="w-3 h-3" />
-              </span>
-              <span className="text-foreground/85">{b}</span>
-            </li>
-          ))}
-        </ul>
-        <Button size="lg" onClick={onNavigateToTariffs} className="rounded-xl gap-2">
-          Перейти к тарифам
-        </Button>
-        <p className="text-xs text-muted-foreground mt-4">
-          Доступно на тарифах «Профессиональный» и «Максимальный».
-        </p>
-      </Card>
-    </div>
-  );
-}

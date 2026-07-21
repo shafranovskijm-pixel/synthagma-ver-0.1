@@ -27,6 +27,7 @@ export function LessonAIAvatar({ lesson, onComplete, isMobile }: Props) {
   const [starting, setStarting] = useState(false);
   const minutes = lesson.ai_avatar_session_minutes || 5;
   const tutorName = lesson.ai_avatar_name || "ИИ-преподаватель";
+  const aiTutorEnabled = false;
 
   const handleStart = async () => {
     setStarting(true);
@@ -96,12 +97,12 @@ export function LessonAIAvatar({ lesson, onComplete, isMobile }: Props) {
 
             <Button
               onClick={handleStart}
-              disabled={starting}
+              disabled={starting || !aiTutorEnabled}
               size="lg"
               className="gap-2 bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600 text-white border-0 rounded-xl"
             >
               {starting ? <SigmaSpinner size="sm" /> : <PlayCircle className="w-5 h-5" />}
-              {starting ? "Запуск…" : `Начать сессию (${minutes} мин)`}
+              {starting ? "Запуск…" : aiTutorEnabled ? `Начать сессию (${minutes} мин)` : "Временно недоступно"}
             </Button>
           </div>
         </div>

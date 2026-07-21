@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
@@ -28,57 +28,58 @@ export function CourseDetailsTab() {
   }, [courseId]);
 
 
-  useEffect(() => {
+  const loadCourse = useCallback(async (withSpinner = true) => {
     if (!courseId) return;
-    const loadCourse = async () => {
-      setLoading(true);
-      const { data: courseData } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("id", courseId)
-        .single();
+    if (withSpinner) setLoading(true);
+    const { data: courseData } = await supabase
+      .from("courses")
+      .select("*")
+      .eq("id", courseId)
+      .single();
 
-      if (courseData) {
-        const { count: lessonsCount } = await supabase
-          .from("lessons")
-          .select("*", { count: "exact", head: true })
-          .eq("course_id", courseId);
+    if (courseData) {
+      const { count: lessonsCount } = await supabase
+        .from("lessons")
+        .select("*", { count: "exact", head: true })
+        .eq("course_id", courseId);
 
-        const { data: enrollments } = await supabase
-          .from("enrollments")
-          .select("id, user_id, progress, status")
-          .eq("course_id", courseId);
+      const { data: enrollments } = await supabase
+        .from("enrollments")
+        .select("id, user_id, progress, status")
+        .eq("course_id", courseId);
 
-        const studentsList: any[] = [];
-        if (enrollments && enrollments.length > 0) {
-          const userIds = enrollments.map(e => e.user_id);
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("user_id, full_name, email")
-            .in("user_id", userIds);
+      const studentsList: any[] = [];
+      if (enrollments && enrollments.length > 0) {
+        const userIds = enrollments.map(e => e.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .in("user_id", userIds);
 
-          const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-          for (const e of enrollments) {
-            const prof = profileMap.get(e.user_id);
-            studentsList.push({
-              id: e.id, user_id: e.user_id, enrollment_id: e.id,
-              name: prof?.full_name || "Без имени", email: prof?.email || "",
-              progress: e.progress || 0, status: e.status,
-            });
-          }
+        const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+        for (const e of enrollments) {
+          const prof = profileMap.get(e.user_id);
+          studentsList.push({
+            id: e.id, user_id: e.user_id, enrollment_id: e.id,
+            name: prof?.full_name || "Без имени", email: prof?.email || "",
+            progress: e.progress || 0, status: e.status,
+          });
         }
-
-        setCourse({
-          ...courseData,
-          lessonsCount: lessonsCount || 0,
-          studentsCount: studentsList.length,
-        });
-        setCourseStudents(studentsList);
       }
-      setLoading(false);
-    };
-    loadCourse();
+
+      setCourse({
+        ...courseData,
+        lessonsCount: lessonsCount || 0,
+        studentsCount: studentsList.length,
+      });
+      setCourseStudents(studentsList);
+    }
+    setLoading(false);
   }, [courseId]);
+
+  useEffect(() => {
+    loadCourse();
+  }, [loadCourse]);
 
   const refreshStudents = async () => {
     if (!courseId) return;
@@ -146,7 +147,7 @@ export function CourseDetailsTab() {
         onTabChange={setActiveTab}
         onEnrollStudent={() => {}}
         onCourseDeleted={handleBack}
-        onCourseUpdated={refreshStudents}
+        onCourseUpdated={() => loadCourse(false)}
         onRefreshStudents={refreshStudents}
         onBack={handleBack}
       />
