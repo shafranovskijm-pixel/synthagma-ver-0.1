@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ArchiveRestore, ChevronDown, ChevronRight } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ChevronDown, ChevronRight } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStudents } from "@/hooks/useStudents";
@@ -43,13 +44,21 @@ interface StudentsTabProps {
   onNavigateToFRDO?: () => void;
 }
 
+type PanelMode = "active" | "archive" | "groups";
+
 export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabProps) {
-  const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false, isSendingBulkDocReminders = false } = props;
+  const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false } = props;
   const courseIds = courses.map(c => c.id);
   const dash = useOrgDashboard();
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
+
+  const [panelMode, setPanelModeState] = useState<PanelMode>("active");
+  const setPanelMode = useCallback((mode: PanelMode) => {
+    setPanelModeState(mode);
+    if (mode === "active" || mode === "archive") setViewMode(mode);
+  }, [setViewMode]);
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -59,19 +68,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
-  const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   React.useEffect(() => {
-    // Auto-expand the first (most recent) month when entering archive
-    if (viewMode === "archive" && archiveByMonth.length > 0) {
+    if (panelMode === "archive" && archiveByMonth.length > 0) {
       setExpandedMonths(prev => {
         if (prev.size > 0) return prev;
         return new Set([archiveByMonth[0].key]);
       });
     }
-  }, [viewMode, archiveByMonth]);
+  }, [panelMode, archiveByMonth]);
   const toggleMonth = useCallback((key: string) => {
     setExpandedMonths(prev => {
       const next = new Set(prev);
@@ -143,35 +150,49 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const paginatedStudents = filteredStudents.slice(0, visibleCount);
   React.useEffect(() => { setVisibleCount(10); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter]);
 
+  const bulkBusy = isCreatingBulkCredentials || isSendingBulkCredentials;
+  const enrollmentsCount = getSelectedEnrollmentsCount();
+
   return (
     <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
-      {/* Active / Archive tabs — visible top row */}
+      {/* Active / Archive / Groups tabs */}
       <div className="px-4 lg:px-6 pt-4">
         <div className="inline-flex items-center rounded-xl border border-border bg-muted/30 p-1 text-sm w-full sm:w-auto">
           <button
             type="button"
-            onClick={() => setViewMode("active")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${viewMode === "active" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setPanelMode("active")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "active" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Users className="w-4 h-4" />
             Активные
-            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${viewMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
               {activeStudentsCount}
             </span>
           </button>
           <button
             type="button"
-            onClick={() => setViewMode("archive")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${viewMode === "archive" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setPanelMode("archive")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "archive" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Archive className="w-4 h-4" />
             Архив
-            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${viewMode === "archive" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "archive" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
               {archivedStudents.length}
             </span>
           </button>
+          <button
+            type="button"
+            onClick={() => setPanelMode("groups")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "groups" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <FolderOpen className="w-4 h-4" />
+            Группы
+            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "groups" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+              {studentGroups.length}
+            </span>
+          </button>
         </div>
-        {viewMode === "archive" && (
+        {panelMode === "archive" && (
           <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
             <Archive className="w-3 h-3" />
             В архиве отображаются только ученики, явно перенесённые сюда вручную или через действие «Удалить» (мягкое удаление). Завершившие обучение остаются в активном списке.
@@ -179,176 +200,218 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         )}
       </div>
 
-      {/* Header + Filters */}
-      <div className="p-4 lg:p-6 border-b border-border space-y-3">
-        {/* Row 1: title + desktop search */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-            <h2 className="font-display text-lg lg:text-xl font-semibold truncate">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : viewMode === "archive" ? "Архив учеников" : "Все ученики"}</h2>
-            {courseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить</span></Button>}
+      {panelMode === "groups" ? (
+        /* Groups panel */
+        <div className="p-4 lg:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              <h2 className="font-display text-lg lg:text-xl font-semibold">Группы учеников</h2>
+              <span className="text-sm text-muted-foreground">· {studentGroups.length}</span>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1 text-xs" onClick={() => setShowGroupDialog(true)}>
+              <Plus className="w-3.5 h-3.5" />Создать группу
+            </Button>
           </div>
-          <div className="relative hidden lg:block"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск по имени или email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-72 rounded-xl" /></div>
-        </div>
-        {/* Mobile search */}
-        <div className="lg:hidden"><div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" /></div></div>
-
-        {/* Row 2: filters + secondary actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <TooltipProvider delayDuration={300}>
-            <Select value={courseFilter} onValueChange={setCourseFilter}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><BookOpen className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Курс" /></SelectTrigger><SelectContent><SelectItem value="all">Все курсы</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
-            <Select value={statusFilter} onValueChange={v => setStatusFilter(v as any)}><SelectTrigger className="w-28 lg:w-44 rounded-xl shrink-0 text-xs lg:text-sm"><Filter className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Статус" /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="active">Активные</SelectItem><SelectItem value="completed">Завершили</SelectItem><SelectItem value="not_enrolled">Не зачислены</SelectItem></SelectContent></Select>
-            <Select value={docsFilter} onValueChange={v => setDocsFilter(v as any)}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><FileCheck className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Документы" /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="complete">Все загружены</SelectItem><SelectItem value="incomplete">Недостающие</SelectItem><SelectItem value="no_passport">Нет паспорта</SelectItem><SelectItem value="no_snils">Нет СНИЛС</SelectItem><SelectItem value="no_education">Нет образования</SelectItem></SelectContent></Select>
-            <Select value={groupFilter} onValueChange={setGroupFilter}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><FolderOpen className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Группа" /></SelectTrigger><SelectContent><SelectItem value="all">Все группы</SelectItem><SelectItem value="no_group">Без группы</SelectItem>{studentGroups.map(g => <SelectItem key={g.id} value={g.id}><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />{g.name}</span></SelectItem>)}</SelectContent></Select>
-
-            <div className="h-6 w-px bg-border mx-1 hidden lg:block" />
-
-            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="rounded-xl gap-1 shrink-0 text-xs lg:text-sm" onClick={() => setShowGroupDialog(true)}><FolderOpen className="w-4 h-4" /><span className="hidden sm:inline">Группы</span></Button></TooltipTrigger><TooltipContent>Управление группами учеников</TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" onClick={handleExportStudents}><FileSpreadsheet className="w-4 h-4" /><span className="hidden sm:inline">Экспорт</span></Button></TooltipTrigger><TooltipContent>Экспорт данных учеников в Excel</TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" onClick={() => setShowRemindConfirm(true)} disabled={isSendingBulkDocReminders}>{isSendingBulkDocReminders ? <SigmaSpinner size="sm" /> : <FileText className="w-4 h-4" />}<span className="hidden sm:inline">Напомнить</span></Button></TooltipTrigger><TooltipContent>Отправить напоминание о документах</TooltipContent></Tooltip>
-          </TooltipProvider>
-        </div>
-
-        {/* Row 3: bulk actions (sticky, only when selection exists) */}
-        {selectedStudentIds.size > 0 && (
-          <div className="sticky top-0 z-10 -mx-4 lg:-mx-6 px-4 lg:px-6 py-2 bg-card/95 backdrop-blur border-t border-border/60 flex items-center gap-2 flex-wrap">
-            <span className="text-xs lg:text-sm font-medium text-foreground mr-1">Выбрано {selectedStudentIds.size}</span>
-            <Button variant="ghost" size="sm" className="rounded-xl gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setSelectedStudentIds(new Set())}><X className="w-3.5 h-3.5" />Сбросить</Button>
-            <div className="h-6 w-px bg-border mx-1" />
-            <TooltipProvider delayDuration={300}>
-              <Tooltip><TooltipTrigger asChild><Button onClick={() => props.onShowEnrollDialog?.(Array.from(selectedStudentIds))} className="btn-gradient rounded-xl gap-2 shrink-0 text-xs lg:text-sm"><GraduationCap className="w-4 h-4" /><span className="hidden sm:inline">Зачислить</span></Button></TooltipTrigger><TooltipContent>Зачислить выбранных учеников на курс</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button onClick={() => setShowLoginsConfirm(true)} variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={isCreatingBulkCredentials}>{isCreatingBulkCredentials ? <SigmaSpinner size="sm" /> : <Key className="w-4 h-4" />}<span className="hidden sm:inline">Логины</span></Button></TooltipTrigger><TooltipContent>Создать логины и пароли</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button onClick={() => setShowSendConfirm(true)} variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={isSendingBulkCredentials}>{isSendingBulkCredentials ? <SigmaSpinner size="sm" /> : <Mail className="w-4 h-4" />}<span className="hidden sm:inline">На почту</span></Button></TooltipTrigger><TooltipContent>Отправить данные для входа на почту</TooltipContent></Tooltip>
-              {getSelectedEnrollmentsCount() > 0 && <Tooltip><TooltipTrigger asChild><Button onClick={() => props.onShowUnenrollConfirm?.(Array.from(selectedStudentIds))} variant="outline" size="sm" className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"><XCircle className="w-4 h-4" /><span className="hidden sm:inline">Отчислить</span> ({getSelectedEnrollmentsCount()})</Button></TooltipTrigger><TooltipContent>Отчислить выбранных из курса</TooltipContent></Tooltip>}
-              <Tooltip><TooltipTrigger asChild><Button onClick={() => props.onShowBulkFRDOExport?.(Array.from(selectedStudentIds))} variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"><FileSpreadsheet className="w-4 h-4" /><span className="hidden sm:inline">ФРДО</span></Button></TooltipTrigger><TooltipContent>Экспорт данных для ФРДО</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button onClick={handleGeneratePrikaz} variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={isGenerating}>{isGenerating ? <SigmaSpinner size="sm" /> : <FileText className="w-4 h-4" />}<span className="hidden sm:inline">Приказ</span></Button></TooltipTrigger><TooltipContent>Сгенерировать приказ</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button onClick={handleGenerateProtokol} variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={isGenerating}>{isGenerating ? <SigmaSpinner size="sm" /> : <FileText className="w-4 h-4" />}<span className="hidden sm:inline">Протокол</span></Button></TooltipTrigger><TooltipContent>Сгенерировать протокол</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button onClick={() => setShowDeleteConfirm(true)} variant="outline" size="sm" className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"><Trash2 className="w-4 h-4" /><span className="hidden sm:inline">Удалить</span></Button></TooltipTrigger><TooltipContent>Удалить выбранных учеников</TooltipContent></Tooltip>
-            </TooltipProvider>
-          </div>
-        )}
-      </div>
-
-      {/* Groups */}
-      {studentGroups.length > 0 && groupFilter === "all" && (
-        <div className="px-4 lg:px-6 pt-4 pb-2 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><FolderOpen className="w-4 h-4 text-muted-foreground" /><span className="text-sm font-medium text-muted-foreground">{studentGroups.length} групп</span></div>
-            <Button variant="outline" size="sm" className="rounded-xl gap-1 text-xs" onClick={() => setShowGroupDialog(true)}><Plus className="w-3 h-3" />Создать группу</Button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3">
-            {studentGroups.map(group => {
-              const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
-              return (
-                <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
-                  <button onClick={() => { dash.tabNavigation.setSelectedGroupId(group.id); dash.tabNavigation.setActiveTab("group-folder"); }} className="w-full text-left" title="Открыть папку группы">
-                    <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
-                  </button>
-                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                    <button onClick={e => { e.stopPropagation(); setGroupFilter(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Показать учеников группы"><Filter className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                    <button onClick={e => { e.stopPropagation(); setSettingsGroupId(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Настройки группы"><Settings className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          {studentGroups.length === 0 ? (
+            <div className="py-16 text-center text-muted-foreground">
+              <FolderOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">Пока нет групп</p>
+              <p className="text-sm mt-1">Создайте первую группу, чтобы объединять учеников.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3">
+              {studentGroups.map(group => {
+                const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
+                return (
+                  <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
+                    <button onClick={() => { dash.tabNavigation.setSelectedGroupId(group.id); dash.tabNavigation.setActiveTab("group-folder"); }} className="w-full text-left" title="Открыть папку группы">
+                      <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
+                    </button>
+                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                      <button onClick={e => { e.stopPropagation(); setPanelMode("active"); setGroupFilter(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Показать учеников группы"><Filter className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={e => { e.stopPropagation(); setSettingsGroupId(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Настройки группы"><Settings className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
-      ) : filteredStudents.length === 0 ? (
-        viewMode === "archive" ? (
-          <div className="py-16 text-center text-muted-foreground">
-            <Archive className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">Архив пуст</p>
-            <p className="text-sm mt-1">Сюда автоматически попадают ученики, прошедшие все курсы на 100%.</p>
-          </div>
-        ) : (
-          <StudentsEmptyState onAddStudent={props.onAddStudent} onImportStudents={props.onImportStudents} onNavigateToFRDO={props.onNavigateToFRDO} />
-        )
-      ) : viewMode === "archive" ? (
-        <div className="divide-y divide-border">
-          {archiveByMonth.map(group => {
-            const isOpen = expandedMonths.has(group.key);
-            return (
-              <div key={group.key}>
-                <button
-                  type="button"
-                  onClick={() => toggleMonth(group.key)}
-                  className="w-full flex items-center justify-between px-4 lg:px-6 py-3 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                    <span className="font-medium">{group.label}</span>
-                    <span className="text-xs text-muted-foreground">— {group.students.length} учен.</span>
-                  </div>
-                </button>
-                {isOpen && (
-                  <div className="hidden lg:block overflow-x-auto border-t border-border bg-muted/10">
-                    <table className="w-full">
-                      <thead><tr className="border-b border-border">
-                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground w-12"></th>
-                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Ученик</th>
-                        <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground w-24">Онлайн</th>
-                        <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">Группа</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Документы</th>
-                        <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">ФРДО</th>
-                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Курсы</th>
-                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Прогресс</th>
-                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Статус</th>
-                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Действия</th>
-                      </tr></thead>
-                      <tbody>
-                        {group.students.map(student => (
-                          <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {isOpen && (
-                  <div className="lg:hidden divide-y divide-border border-t border-border bg-muted/10">
-                    {group.students.map(student => (
-                      <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : (
         <>
-          <div className="lg:hidden divide-y divide-border">
-            {paginatedStudents.map(student => (
-              <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
-            ))}
+          {/* Header + Filters */}
+          <div className="p-4 lg:p-6 border-b border-border space-y-3">
+            {/* Row 1: title + desktop search */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                <h2 className="font-display text-lg lg:text-xl font-semibold truncate">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : panelMode === "archive" ? "Архив учеников" : "Все ученики"}</h2>
+                {courseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить</span></Button>}
+              </div>
+              <div className="relative hidden lg:block"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск по имени или email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-72 rounded-xl" /></div>
+            </div>
+            {/* Mobile search */}
+            <div className="lg:hidden"><div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" /></div></div>
+
+            {/* Row 2: filters + secondary actions */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <TooltipProvider delayDuration={300}>
+                <Select value={courseFilter} onValueChange={setCourseFilter}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><BookOpen className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Курс" /></SelectTrigger><SelectContent><SelectItem value="all">Все курсы</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
+                <Select value={statusFilter} onValueChange={v => setStatusFilter(v as any)}><SelectTrigger className="w-28 lg:w-44 rounded-xl shrink-0 text-xs lg:text-sm"><Filter className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Статус" /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="active">Активные</SelectItem><SelectItem value="completed">Завершили</SelectItem><SelectItem value="not_enrolled">Не зачислены</SelectItem></SelectContent></Select>
+                <Select value={docsFilter} onValueChange={v => setDocsFilter(v as any)}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><FileCheck className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Документы" /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="complete">Все загружены</SelectItem><SelectItem value="incomplete">Недостающие</SelectItem><SelectItem value="no_passport">Нет паспорта</SelectItem><SelectItem value="no_snils">Нет СНИЛС</SelectItem><SelectItem value="no_education">Нет образования</SelectItem></SelectContent></Select>
+                <Select value={groupFilter} onValueChange={setGroupFilter}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><FolderOpen className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Группа" /></SelectTrigger><SelectContent><SelectItem value="all">Все группы</SelectItem><SelectItem value="no_group">Без группы</SelectItem>{studentGroups.map(g => <SelectItem key={g.id} value={g.id}><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />{g.name}</span></SelectItem>)}</SelectContent></Select>
+
+                <div className="h-6 w-px bg-border mx-1 hidden lg:block" />
+
+                <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" onClick={handleExportStudents}><FileSpreadsheet className="w-4 h-4" /><span className="hidden sm:inline">Выгрузить</span></Button></TooltipTrigger><TooltipContent>Выгрузить список учеников в Excel</TooltipContent></Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {/* Row 3: bulk actions (sticky, only when selection exists) */}
+            {selectedStudentIds.size > 0 && (
+              <div className="sticky top-0 z-10 -mx-4 lg:-mx-6 px-4 lg:px-6 py-2 bg-card/95 backdrop-blur border-t border-border/60 flex items-center gap-2 flex-wrap">
+                <span className="text-xs lg:text-sm font-medium text-foreground mr-1">Выбрано {selectedStudentIds.size}</span>
+                <Button variant="ghost" size="sm" className="rounded-xl gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setSelectedStudentIds(new Set())}><X className="w-3.5 h-3.5" />Сбросить</Button>
+                <div className="h-6 w-px bg-border mx-1" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="btn-gradient rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={bulkBusy || isGenerating}>
+                      {(bulkBusy || isGenerating) ? <SigmaSpinner size="sm" /> : <Settings className="w-4 h-4" />}
+                      Действие
+                      <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuItem onClick={() => props.onShowEnrollDialog?.(Array.from(selectedStudentIds))}>
+                      <GraduationCap className="w-4 h-4 mr-2" />Зачислить на курс
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowLoginsConfirm(true)} disabled={isCreatingBulkCredentials}>
+                      <Key className="w-4 h-4 mr-2" />Создать логины и пароли
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowSendConfirm(true)} disabled={isSendingBulkCredentials}>
+                      <Mail className="w-4 h-4 mr-2" />Отправить логины и пароли на почту
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleGeneratePrikaz} disabled={isGenerating}>
+                      <FileText className="w-4 h-4 mr-2" />Сгенерировать приказ о зачислении
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleGenerateProtokol} disabled={isGenerating}>
+                      <FileText className="w-4 h-4 mr-2" />Сгенерировать протокол
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => props.onShowBulkFRDOExport?.(Array.from(selectedStudentIds))}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в ФРДО
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {enrollmentsCount > 0 && (
+                      <DropdownMenuItem onClick={() => props.onShowUnenrollConfirm?.(Array.from(selectedStudentIds))} className="text-destructive focus:text-destructive">
+                        <XCircle className="w-4 h-4 mr-2" />Отчислить с курса ({enrollmentsCount})
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />Удалить учеников
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead><tr className="border-b border-border">
-                <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12"><input type="checkbox" checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.user_id))} onChange={() => toggleSelectAll(paginatedStudents)} className="w-4 h-4 rounded border-border" /></th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
-                <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground w-24">Онлайн</th>
-                <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">Группа</th>
-                <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
-                <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курсы</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-              </tr></thead>
-              <tbody>
+
+          {/* Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
+          ) : filteredStudents.length === 0 ? (
+            panelMode === "archive" ? (
+              <div className="py-16 text-center text-muted-foreground">
+                <Archive className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">Архив пуст</p>
+                <p className="text-sm mt-1">Сюда автоматически попадают ученики, прошедшие все курсы на 100%.</p>
+              </div>
+            ) : (
+              <StudentsEmptyState onAddStudent={props.onAddStudent} onImportStudents={props.onImportStudents} onNavigateToFRDO={props.onNavigateToFRDO} />
+            )
+          ) : panelMode === "archive" ? (
+            <div className="divide-y divide-border">
+              {archiveByMonth.map(group => {
+                const isOpen = expandedMonths.has(group.key);
+                return (
+                  <div key={group.key}>
+                    <button
+                      type="button"
+                      onClick={() => toggleMonth(group.key)}
+                      className="w-full flex items-center justify-between px-4 lg:px-6 py-3 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        <span className="font-medium">{group.label}</span>
+                        <span className="text-xs text-muted-foreground">— {group.students.length} учен.</span>
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="hidden lg:block overflow-x-auto border-t border-border bg-muted/10">
+                        <table className="w-full">
+                          <thead><tr className="border-b border-border">
+                            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground w-12"></th>
+                            <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Ученик</th>
+                            <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground w-24">Онлайн</th>
+                            <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">Группа</th>
+                            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Документы</th>
+                            <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">ФРДО</th>
+                            <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Курсы</th>
+                            <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Прогресс</th>
+                            <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Статус</th>
+                            <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Действия</th>
+                          </tr></thead>
+                          <tbody>
+                            {group.students.map(student => (
+                              <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} />
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {isOpen && (
+                      <div className="lg:hidden divide-y divide-border border-t border-border bg-muted/10">
+                        {group.students.map(student => (
+                          <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="lg:hidden divide-y divide-border">
                 {paginatedStudents.map(student => (
-                  <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
+                  <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <LoadMoreControls visibleCount={paginatedStudents.length} totalCount={filteredStudents.length} onLoadMore={n => setVisibleCount(prev => prev + n)} />
+              </div>
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead><tr className="border-b border-border">
+                    <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12"><input type="checkbox" checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.user_id))} onChange={() => toggleSelectAll(paginatedStudents)} className="w-4 h-4 rounded border-border" /></th>
+                    <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
+                    <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground w-24">Онлайн</th>
+                    <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">Группа</th>
+                    <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
+                    <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
+                    <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курсы</th>
+                    <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
+                    <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
+                    <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
+                  </tr></thead>
+                  <tbody>
+                    {paginatedStudents.map(student => (
+                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <LoadMoreControls visibleCount={paginatedStudents.length} totalCount={filteredStudents.length} onLoadMore={n => setVisibleCount(prev => prev + n)} />
+            </>
+          )}
         </>
       )}
 
@@ -374,7 +437,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
 
       {settingsGroupId && <GroupSettingsDialog open={!!settingsGroupId} onOpenChange={v => { if (!v) setSettingsGroupId(null); }} groupId={settingsGroupId} organizationId={organizationId} onDeleted={() => { setSettingsGroupId(null); if (groupFilter === settingsGroupId) setGroupFilter("all"); refreshGroups(); }} onUpdated={() => refreshGroups()} />}
 
-      <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} showRemindConfirm={showRemindConfirm} setShowRemindConfirm={setShowRemindConfirm} showDeleteConfirm={showDeleteConfirm} setShowDeleteConfirm={setShowDeleteConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} onBulkSendDocReminders={props.onBulkSendDocReminders} onShowBulkDeleteConfirm={props.onShowBulkDeleteConfirm} />
+      <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} showDeleteConfirm={showDeleteConfirm} setShowDeleteConfirm={setShowDeleteConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} onShowBulkDeleteConfirm={props.onShowBulkDeleteConfirm} />
     </div>
   );
 });
