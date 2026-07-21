@@ -349,6 +349,9 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     <DropdownMenuItem onClick={() => props.onShowBulkFRDOExport?.(Array.from(selectedStudentIds))}>
                       <FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в ФРДО
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportStudents}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />Выгрузить в Excel
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {enrollmentsCount > 0 && (
                       <DropdownMenuItem onClick={() => props.onShowUnenrollConfirm?.(Array.from(selectedStudentIds))} className="text-destructive focus:text-destructive">
