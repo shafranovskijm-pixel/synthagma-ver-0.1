@@ -264,19 +264,12 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         <>
           {/* Header + Filters */}
           <div className="p-4 lg:p-6 border-b border-border space-y-3">
-            {/* Row 1: title + desktop search */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                <h2 className="font-display text-lg lg:text-xl font-semibold truncate">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : panelMode === "archive" ? "Архив учеников" : "Все ученики"}</h2>
-                {courseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить</span></Button>}
-              </div>
-              <div className="relative hidden lg:block"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск по имени или email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-72 rounded-xl" /></div>
-            </div>
-            {/* Mobile search */}
-            <div className="lg:hidden"><div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" /></div></div>
-
-            {/* Row 2: single grouped filter */}
+            {/* Row 1: search (left) + filters (right) */}
             <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-xl">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Поиск по имени или email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" />
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm">
@@ -289,7 +282,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     <ChevronDown className="w-3.5 h-3.5 opacity-70" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-72 p-3 space-y-3">
+                <PopoverContent align="end" className="w-72 p-3 space-y-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" />Курс</label>
                     <Select value={courseFilter} onValueChange={setCourseFilter}><SelectTrigger className="w-full rounded-lg text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все курсы</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
@@ -313,7 +306,13 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                   )}
                 </PopoverContent>
               </Popover>
+              {courseFilter !== "all" && (
+                <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground shrink-0">
+                  <X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить курс</span>
+                </Button>
+              )}
             </div>
+
 
             {/* Row 3: bulk actions (sticky, only when selection exists) */}
             {selectedStudentIds.size > 0 && (
