@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ChevronDown, ChevronRight } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -194,12 +195,9 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "active" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Users className="w-4 h-4" />
-            <span className="whitespace-pre-line text-center">
-              Ученики
-              {"\n\n"}
-              <span className={`text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                {activeStudentsCount}
-              </span>
+            Ученики
+            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+              {activeStudentsCount}
             </span>
           </button>
           <button
@@ -277,18 +275,44 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             {/* Mobile search */}
             <div className="lg:hidden"><div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" /></div></div>
 
-            {/* Row 2: filters + secondary actions */}
+            {/* Row 2: single grouped filter */}
             <div className="flex items-center gap-2 flex-wrap">
-              <TooltipProvider delayDuration={300}>
-                <Select value={courseFilter} onValueChange={setCourseFilter}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><BookOpen className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Курс" /></SelectTrigger><SelectContent><SelectItem value="all">Все курсы</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
-                <Select value={statusFilter} onValueChange={v => setStatusFilter(v as any)}><SelectTrigger className="w-28 lg:w-44 rounded-xl shrink-0 text-xs lg:text-sm"><Filter className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Статус" /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="active">Активные</SelectItem><SelectItem value="completed">Завершили</SelectItem><SelectItem value="not_enrolled">Не зачислены</SelectItem></SelectContent></Select>
-                <Select value={docsFilter} onValueChange={v => setDocsFilter(v as any)}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><FileCheck className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Документы" /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="complete">Все загружены</SelectItem><SelectItem value="incomplete">Недостающие</SelectItem><SelectItem value="no_passport">Нет паспорта</SelectItem><SelectItem value="no_snils">Нет СНИЛС</SelectItem><SelectItem value="no_education">Нет образования</SelectItem></SelectContent></Select>
-                <Select value={groupFilter} onValueChange={setGroupFilter}><SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm"><FolderOpen className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Группа" /></SelectTrigger><SelectContent><SelectItem value="all">Все группы</SelectItem><SelectItem value="no_group">Без группы</SelectItem>{studentGroups.map(g => <SelectItem key={g.id} value={g.id}><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />{g.name}</span></SelectItem>)}</SelectContent></Select>
-
-                <div className="h-6 w-px bg-border mx-1 hidden lg:block" />
-
-                <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" onClick={handleExportStudents}><FileSpreadsheet className="w-4 h-4" /><span className="hidden sm:inline">Выгрузить</span></Button></TooltipTrigger><TooltipContent>Выгрузить список учеников в Excel</TooltipContent></Tooltip>
-              </TooltipProvider>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm">
+                    <Filter className="w-4 h-4" />
+                    Фильтры
+                    {(() => {
+                      const active = [courseFilter, statusFilter, docsFilter, groupFilter].filter(v => v && v !== "all").length;
+                      return active > 0 ? <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary">{active}</span> : null;
+                    })()}
+                    <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-72 p-3 space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" />Курс</label>
+                    <Select value={courseFilter} onValueChange={setCourseFilter}><SelectTrigger className="w-full rounded-lg text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все курсы</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><Filter className="w-3.5 h-3.5" />Статус</label>
+                    <Select value={statusFilter} onValueChange={v => setStatusFilter(v as any)}><SelectTrigger className="w-full rounded-lg text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="active">Активные</SelectItem><SelectItem value="completed">Завершили</SelectItem><SelectItem value="not_enrolled">Не зачислены</SelectItem></SelectContent></Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><FileCheck className="w-3.5 h-3.5" />Документы</label>
+                    <Select value={docsFilter} onValueChange={v => setDocsFilter(v as any)}><SelectTrigger className="w-full rounded-lg text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все</SelectItem><SelectItem value="complete">Все загружены</SelectItem><SelectItem value="incomplete">Недостающие</SelectItem><SelectItem value="no_passport">Нет паспорта</SelectItem><SelectItem value="no_snils">Нет СНИЛС</SelectItem><SelectItem value="no_education">Нет образования</SelectItem></SelectContent></Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" />Группа</label>
+                    <Select value={groupFilter} onValueChange={setGroupFilter}><SelectTrigger className="w-full rounded-lg text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все группы</SelectItem><SelectItem value="no_group">Без группы</SelectItem>{studentGroups.map(g => <SelectItem key={g.id} value={g.id}><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />{g.name}</span></SelectItem>)}</SelectContent></Select>
+                  </div>
+                  {[courseFilter, statusFilter, docsFilter, groupFilter].some(v => v && v !== "all") && (
+                    <Button variant="ghost" size="sm" className="w-full rounded-lg gap-1 text-muted-foreground" onClick={() => { setCourseFilter("all"); setStatusFilter("all" as any); setDocsFilter("all" as any); setGroupFilter("all"); }}>
+                      <X className="w-3.5 h-3.5" />Сбросить фильтры
+                    </Button>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Row 3: bulk actions (sticky, only when selection exists) */}
@@ -324,6 +348,9 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => props.onShowBulkFRDOExport?.(Array.from(selectedStudentIds))}>
                       <FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в ФРДО
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportStudents}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />Выгрузить в Excel
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {enrollmentsCount > 0 && (
