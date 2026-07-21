@@ -63,10 +63,42 @@ interface DashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   showRadio: boolean;
-  showWebinars: boolean;
-  showTrainers: boolean;
   catalogMode: "catalog" | "assigned";
   studentTheme: string | null;
+}
+
+type RequiredDocumentType = "passport" | "birth_certificate" | "snils" | "education_document";
+
+interface DocumentsProgress {
+  completed: number;
+  total: number;
+  requiredTypes: RequiredDocumentType[];
+}
+
+const DEFAULT_REQUIRED_DOCUMENT_TYPES: RequiredDocumentType[] = ["passport", "snils", "education_document"];
+
+function resolveRequiredDocumentTypes(courses: Array<{ landing_content?: any }>): RequiredDocumentType[] {
+  if (!courses.length) return DEFAULT_REQUIRED_DOCUMENT_TYPES;
+
+  const required = new Set<RequiredDocumentType>();
+  let hasDocumentSettings = false;
+
+  for (const course of courses) {
+    const dc = course.landing_content?.document_collection;
+    if (!dc || typeof dc !== "object") {
+      DEFAULT_REQUIRED_DOCUMENT_TYPES.forEach(type => required.add(type));
+      continue;
+    }
+
+    hasDocumentSettings = true;
+    if (dc.enabled === false) continue;
+    if (dc.passport !== false) required.add("passport");
+    if (dc.snils !== false) required.add("snils");
+    if (dc.education_document !== false) required.add("education_document");
+    if (dc.birth_certificate === true) required.add("birth_certificate");
+  }
+
+  return hasDocumentSettings ? Array.from(required) : DEFAULT_REQUIRED_DOCUMENT_TYPES;
 }
 
 
@@ -100,7 +132,7 @@ export function useStudentDashboard() {
   const [categories, setCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
-  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: true, showWebinars: false, showTrainers: false, catalogMode: "catalog", studentTheme: null });
+  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: true, catalogMode: "catalog", studentTheme: null });
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
@@ -124,7 +156,7 @@ export function useStudentDashboard() {
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
+  const [documentsProgress, setDocumentsProgress] = useState<DocumentsProgress>({ completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [orgPlan, setOrgPlan] = useState<string>("free");
@@ -182,8 +214,6 @@ export function useStudentDashboard() {
         showAchievements: s.showAchievements === true,
         showAiChat: s.showAiChat === true,
         showRadio: s.showRadio !== false,
-        showWebinars: false,
-        showTrainers: false,
         catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
         studentTheme: (s.studentTheme as string | null) ?? null,
       });
@@ -275,7 +305,7 @@ export function useStudentDashboard() {
       const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
         supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle(),
         supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url)").eq("user_id", uid),
+        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid),
       ]);
 
       const profileData = profileRes.data;
@@ -317,7 +347,7 @@ export function useStudentDashboard() {
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
-        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, showRadio: s.showRadio !== false, showWebinars: false, showTrainers: false, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
+        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, showRadio: s.showRadio !== false, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
       }
 
       let cachedCoursesData: StudentCourse[] = [];
@@ -418,6 +448,10 @@ export function useStudentDashboard() {
       }
 
       if (effectiveOrgId) {
+        const enrolledCoursesForDocs = (enrollments || [])
+          .map(e => e.courses as any)
+          .filter(Boolean);
+        const requiredTypes = resolveRequiredDocumentTypes(enrolledCoursesForDocs);
         // Параллельно: identity docs + video identification
         const [identityRes, videoIdRes] = await Promise.all([
           supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId),
@@ -425,10 +459,12 @@ export function useStudentDashboard() {
         ]);
         const identityDocs = identityRes.data;
         if (identityDocs) {
-          const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
-          const hasSnils = identityDocs.some(d => d.type === "snils");
-          const hasEducation = identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
-          setDocumentsProgress({ completed: [hasPassport, hasSnils, hasEducation].filter(Boolean).length, total: 3 });
+          const hasType = (type: RequiredDocumentType) => {
+            if (type === "passport") return identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
+            if (type === "education_document") return identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
+            return identityDocs.some(d => d.type === type);
+          };
+          setDocumentsProgress({ completed: requiredTypes.filter(hasType).length, total: requiredTypes.length, requiredTypes });
         }
         setIsVideoIdentified(!!videoIdRes.data);
       }
@@ -436,7 +472,7 @@ export function useStudentDashboard() {
       // Cache dashboard data for offline fallback using local variables
       if (uid) {
         const docsProgress = (() => {
-          if (!effectiveOrgId) return { completed: 0, total: 3 };
+          if (!effectiveOrgId) return { completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES };
           return documentsProgress; // already set above via setDocumentsProgress
         })();
         cacheDashboardData(uid, {
@@ -462,7 +498,7 @@ export function useStudentDashboard() {
           if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
           setTotalTimeSpent(cached.totalTimeSpent || 0);
           setTotalCompletedLessons(cached.totalCompletedLessons || 0);
-          setDocumentsProgress(cached.documentsProgress || { completed: 0, total: 3 });
+          setDocumentsProgress(cached.documentsProgress || { completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
           toast.info('Загружены данные из кеша', { description:"'Данные могут быть устаревшими'" });
         }
       }

@@ -437,8 +437,6 @@ export default function StudentDashboard() {
           branding={branding}
           orgName={profile?.organization_name || null}
           showAiChat={dashboardSettings.showAiChat}
-          showWebinars={false}
-          showTrainers={false}
           isPreviewMode={isPreviewMode}
           isAdminView={isAdminView}
         />
@@ -583,6 +581,7 @@ export default function StudentDashboard() {
           organizationId={profile?.organization_id || ""}
           isOpen={showDocumentsUpload}
           onOpenChange={setShowDocumentsUpload}
+          requiredTypes={documentsProgress.requiredTypes}
         />
       )}
       {showAchievements && user && (

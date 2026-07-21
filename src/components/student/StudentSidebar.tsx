@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { BookOpen, MessageCircle, Monitor, Presentation } from "lucide-react";
+import { BookOpen, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
 
-export type StudentTab = "catalog" | "library" | "chat" | "profile" | "webinars" | "trainers";
+export type StudentTab = "catalog" | "library" | "chat" | "profile";
 
 interface StudentSidebarProps {
   activeTab: StudentTab;
@@ -14,16 +14,12 @@ interface StudentSidebarProps {
   branding: { logoUrl: string; showOrgName: boolean; primaryColor?: string } | null;
   orgName: string | null;
   showAiChat: boolean;
-  showWebinars?: boolean;
-  showTrainers?: boolean;
   isPreviewMode?: boolean;
   isAdminView?: boolean;
 }
 
 const allNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
   { id: "catalog", icon: BookOpen, label: "Курсы" },
-  { id: "webinars", icon: Presentation, label: "Вебинары" },
-  { id: "trainers", icon: Monitor, label: "3D" },
   { id: "chat", icon: MessageCircle, label: "Чат" },
 ];
 
@@ -70,13 +66,10 @@ function normalizeBrandColor(color?: string): string {
 
 export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
-  showWebinars = true, showTrainers = true,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
   const navItems = allNavItems.filter(i => {
     if (i.id === "chat") return showAiChat;
-    if (i.id === "webinars") return false;
-    if (i.id === "trainers") return false;
     return true;
   });
   const { theme: currentTheme, setTheme } = useTheme();

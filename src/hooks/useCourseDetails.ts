@@ -130,10 +130,10 @@ export function useCourseDetails(
       setExternalCardUrl(lc?.external_card_url || "");
       const dc = lc?.document_collection || {};
       setCollectDocuments(dc.enabled !== false);
-      setRequirePassport(dc.passport !== false);
-      setRequireSnils(dc.snils !== false);
-      setRequireEducationDocument(dc.education_document !== false);
-      setRequireBirthCertificate(dc.birth_certificate === true);
+      setRequirePassport(dc.enabled !== false && dc.passport !== false);
+      setRequireSnils(dc.enabled !== false && dc.snils !== false);
+      setRequireEducationDocument(dc.enabled !== false && dc.education_document !== false);
+      setRequireBirthCertificate(dc.enabled !== false && dc.birth_certificate === true);
     }
   }, [course]);
 
@@ -233,7 +233,10 @@ export function useCourseDetails(
     try {
       const { data: current } = await supabase.from("courses").select("landing_content").eq("id", course.id).single();
       const lc = (current?.landing_content as any) || {};
-      const dc = { ...(lc.document_collection || {}), [key]: value };
+      const currentDc = lc.document_collection || {};
+      const dc = key === "enabled" && value === false
+        ? { ...currentDc, enabled: false, passport: false, snils: false, education_document: false, birth_certificate: false }
+        : { ...currentDc, [key]: value };
       const updated = { ...lc, document_collection: dc };
       const { error } = await supabase.from("courses").update({ landing_content: updated } as any).eq("id", course.id);
       if (error) throw error;
@@ -241,7 +244,17 @@ export function useCourseDetails(
     } catch (error) { console.error("Error updating document_collection:", error); toast.error("Ошибка сохранения"); }
     finally { setIsSavingSettings(false); }
   };
-  const handleToggleCollectDocuments = async (v: boolean) => { setCollectDocuments(v); await updateDocumentCollectionField("enabled", v); toast.success(v ? "Сбор документов включён" : "Сбор документов отключён"); };
+  const handleToggleCollectDocuments = async (v: boolean) => {
+    setCollectDocuments(v);
+    if (!v) {
+      setRequirePassport(false);
+      setRequireSnils(false);
+      setRequireEducationDocument(false);
+      setRequireBirthCertificate(false);
+    }
+    await updateDocumentCollectionField("enabled", v);
+    toast.success(v ? "Сбор документов включён" : "Сбор документов отключён");
+  };
   const handleToggleRequirePassport = async (v: boolean) => { setRequirePassport(v); await updateDocumentCollectionField("passport", v); };
   const handleToggleRequireSnils = async (v: boolean) => { setRequireSnils(v); await updateDocumentCollectionField("snils", v); };
   const handleToggleRequireEducationDocument = async (v: boolean) => { setRequireEducationDocument(v); await updateDocumentCollectionField("education_document", v); };

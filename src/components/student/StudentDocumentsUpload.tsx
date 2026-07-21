@@ -24,6 +24,7 @@ interface StudentDocumentsUploadProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   embedded?: boolean;
+  requiredTypes?: string[];
 }
 
 interface IdentityDocument {
@@ -66,7 +67,8 @@ export function StudentDocumentsUpload({
   organizationId,
   isOpen,
   onOpenChange,
-  embedded = false }: StudentDocumentsUploadProps) {
+  embedded = false,
+  requiredTypes }: StudentDocumentsUploadProps) {
   const [documents, setDocuments] = useState<IdentityDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
@@ -240,10 +242,14 @@ export function StudentDocumentsUpload({
     return documents.find((d) => d.type === type);
   };
 
-  const completedCount = DOCUMENT_TYPES.filter(
+  const visibleDocumentTypes = requiredTypes?.length
+    ? DOCUMENT_TYPES.filter((dt) => requiredTypes.includes(dt.id))
+    : DOCUMENT_TYPES;
+
+  const completedCount = visibleDocumentTypes.filter(
     (dt) => dt.required && getDocumentByType(dt.id)
   ).length;
-  const requiredCount = DOCUMENT_TYPES.filter((dt) => dt.required).length;
+  const requiredCount = visibleDocumentTypes.filter((dt) => dt.required).length;
 
   const mainContent = (
     <div>
@@ -296,7 +302,7 @@ export function StudentDocumentsUpload({
           </div>
         ) : (
           <div className="space-y-3 max-h-[60vh] overflow-y-auto" data-scrollable>
-            {DOCUMENT_TYPES.map((docType) => {
+          {visibleDocumentTypes.map((docType) => {
               const existingDoc = getDocumentByType(docType.id);
               const isUploading = uploadingType === docType.id;
               const Icon = docType.icon;
