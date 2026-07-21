@@ -44,6 +44,7 @@ export function useTabNavigation({
       // Clear context params that no longer make sense on tab change
       if (tab !== "course-details") next.delete("courseId");
       if (tab !== "student-details") next.delete("studentId");
+      if (tab !== "group-folder") { next.delete("groupId"); next.delete("folder"); }
       return next;
     });
   }, [setSearchParams]);
@@ -55,7 +56,9 @@ export function useTabNavigation({
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
     () => searchParams.get("studentId")
   );
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(
+    () => searchParams.get("groupId")
+  );
 
   // Support legacy navigation via location.state (from Profile etc.)
   useEffect(() => {
@@ -70,8 +73,10 @@ export function useTabNavigation({
   useEffect(() => {
     const c = searchParams.get("courseId");
     const s = searchParams.get("studentId");
+    const g = searchParams.get("groupId");
     setSelectedCourseId((prev) => (prev === c ? prev : c));
     setSelectedStudentId((prev) => (prev === s ? prev : s));
+    setSelectedGroupId((prev) => (prev === g ? prev : g));
   }, [searchParams]);
 
   // Wrap selection setters so they also update the URL
@@ -89,6 +94,15 @@ export function useTabNavigation({
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (id) next.set("studentId", id); else next.delete("studentId");
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const setSelectedGroupIdWithUrl = useCallback((id: string | null) => {
+    setSelectedGroupId(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("groupId", id); else { next.delete("groupId"); next.delete("folder"); }
       return next;
     });
   }, [setSearchParams]);
@@ -114,6 +128,21 @@ export function useTabNavigation({
       return next;
     });
   }, [setSearchParams]);
+
+  const openGroupFolder = useCallback((groupId: string) => {
+    setSelectedGroupId(groupId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", "group-folder");
+      next.set("groupId", groupId);
+      next.delete("courseId");
+      next.delete("studentId");
+      next.delete("folder");
+      return next;
+    });
+  }, [setSearchParams]);
+
+
 
 
   // Haptic feedback helper
@@ -207,7 +236,8 @@ export function useTabNavigation({
     setSelectedStudentId: setSelectedStudentIdWithUrl,
     openStudentDetails,
     selectedGroupId,
-    setSelectedGroupId,
+    setSelectedGroupId: setSelectedGroupIdWithUrl,
+    openGroupFolder,
   };
 
 }

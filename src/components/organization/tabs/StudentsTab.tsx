@@ -54,11 +54,30 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
 
-  const [panelMode, setPanelModeState] = useState<PanelMode>("active");
+  const [panelMode, setPanelModeState] = useState<PanelMode>(() => {
+    if (typeof window === "undefined") return "groups";
+    const url = new URLSearchParams(window.location.search);
+    const v = url.get("studentsView");
+    if (v === "active" || v === "archive" || v === "groups") return v;
+    const stored = window.localStorage.getItem("orgStudentsPanelMode");
+    if (stored === "active" || stored === "archive" || stored === "groups") return stored;
+    return "groups";
+  });
   const setPanelMode = useCallback((mode: PanelMode) => {
     setPanelModeState(mode);
     if (mode === "active" || mode === "archive") setViewMode(mode);
+    try { window.localStorage.setItem("orgStudentsPanelMode", mode); } catch {}
+    try {
+      const url = new URL(window.location.href);
+      if (mode === "groups") url.searchParams.delete("studentsView");
+      else url.searchParams.set("studentsView", mode);
+      window.history.replaceState({}, "", url.toString());
+    } catch {}
   }, [setViewMode]);
+  React.useEffect(() => {
+    if (panelMode === "active" || panelMode === "archive") setViewMode(panelMode);
+  }, [panelMode, setViewMode]);
+
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -160,6 +179,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         <div className="inline-flex items-center rounded-xl border border-border bg-muted/30 p-1 text-sm w-full sm:w-auto">
           <button
             type="button"
+            onClick={() => setPanelMode("groups")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "groups" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <FolderOpen className="w-4 h-4" />
+            Группы
+            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "groups" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+              {studentGroups.length}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setPanelMode("active")}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "active" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -180,18 +210,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               {archivedStudents.length}
             </span>
           </button>
-          <button
-            type="button"
-            onClick={() => setPanelMode("groups")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${panelMode === "groups" ? "bg-background shadow-sm font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <FolderOpen className="w-4 h-4" />
-            Группы
-            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "groups" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {studentGroups.length}
-            </span>
-          </button>
         </div>
+
         {panelMode === "archive" && (
           <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
             <Archive className="w-3 h-3" />
@@ -225,7 +245,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                 const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
                 return (
                   <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
-                    <button onClick={() => { dash.tabNavigation.setSelectedGroupId(group.id); dash.tabNavigation.setActiveTab("group-folder"); }} className="w-full text-left" title="Открыть папку группы">
+                    <button onClick={() => dash.tabNavigation.openGroupFolder(group.id)} className="w-full text-left" title="Открыть папку группы">
                       <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
                     </button>

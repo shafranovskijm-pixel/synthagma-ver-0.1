@@ -1,5 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,13 +53,35 @@ const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }>
 
 export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps) {
   const d = useOrgDashboard();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
-  const [openFolder, setOpenFolder] = useState<FolderKey | null>(null);
+  const folderParam = searchParams.get("folder");
+  const openFolder = (["contracts","passports","snils","exams","docs"] as const).includes(folderParam as any) ? (folderParam as FolderKey) : null;
+  const setOpenFolder = useCallback((f: FolderKey | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (f) next.set("folder", f); else next.delete("folder");
+      return next;
+    });
+  }, [setSearchParams]);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
 
   useEffect(() => { localStorage.setItem("groupFolderView", viewMode); }, [viewMode]);
+
+  const backToStudentsGroups = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", "students");
+      next.set("studentsView", "groups");
+      next.delete("groupId");
+      next.delete("folder");
+      return next;
+    });
+    try { window.localStorage.setItem("orgStudentsPanelMode", "groups"); } catch {}
+  }, [setSearchParams]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -182,7 +206,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   if (!group) {
     return (
       <div className="p-6">
-        <Button variant="ghost" size="sm" onClick={() => d.tabNavigation.setActiveTab("students")} className="gap-1.5 rounded-xl">
+        <Button variant="ghost" size="sm" onClick={() => backToStudentsGroups()} className="gap-1.5 rounded-xl">
           <ArrowLeft className="w-4 h-4" /> К ученикам
         </Button>
         <p className="mt-4 text-muted-foreground">Группа не найдена.</p>
@@ -202,7 +226,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     <div className="space-y-4">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <button className="hover:text-foreground" onClick={() => d.tabNavigation.setActiveTab("students")}>Ученики</button>
+        <button className="hover:text-foreground" onClick={() => backToStudentsGroups()}>Ученики</button>
         <span>/</span>
         <span>Группы</span>
         <span>/</span>
@@ -234,7 +258,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={generateStudentsListDoc} disabled={students.length === 0}>
               <Download className="w-4 h-4" /> Список обучающихся (.doc)
             </Button>
-            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => d.tabNavigation.setActiveTab("students")}>
+            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => backToStudentsGroups()}>
               <ArrowLeft className="w-4 h-4" /> Назад
             </Button>
           </div>
