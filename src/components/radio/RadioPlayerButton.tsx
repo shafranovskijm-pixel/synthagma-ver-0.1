@@ -76,7 +76,7 @@ export function RadioPlayerButton() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground font-medium">
+            <p className="text-xs text-muted-foreground font-medium">
                 {playing ? "Сейчас играет" : "Радио выключено"}
               </p>
               {playing && nowPlaying ? (
