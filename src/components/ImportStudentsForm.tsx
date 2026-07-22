@@ -323,8 +323,8 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
           <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Формат файла (.xlsx, .csv):</p>
-            <p>Колонки: <b>Логин, Пароль, Табельный номер, Фамилия, Имя, Отчество, Email, Группа, Курс, Курс…</b></p>
-            <p>Порядок и регистр не важны. Колонка «Курс» может повторяться — все курсы будут назначены ученику.</p>
+            <p>Колонки: <b>Логин, Пароль, Табельный номер, Фамилия, Имя, Отчество, Email, Группа, Курс 1, Курс 2, Курс 3 …</b></p>
+            <p>Порядок и регистр не важны. Колонок <b>«Курс»</b> можно добавлять сколько нужно (Курс 1, Курс 2, Курс 3 … Курс N) — все указанные курсы будут назначены ученику.</p>
           </div>
         </div>
         <Button variant="link" className="mt-2 h-auto p-0 text-primary" onClick={downloadStudentsTemplate}>

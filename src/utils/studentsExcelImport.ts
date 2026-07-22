@@ -148,7 +148,11 @@ export async function parseExcelOrCsv(file: File): Promise<ParseResult> {
 
 export async function downloadStudentsTemplate() {
   const XLSX = await import("xlsx");
-  const headers = ["Логин", "Пароль", "Табельный номер", "Фамилия", "Имя", "Отчество", "Email", "Группа", "Курс", "Курс"];
+  const headers = [
+    "Логин", "Пароль", "Табельный номер",
+    "Фамилия", "Имя", "Отчество", "Email", "Группа",
+    "Курс 1", "Курс 2", "Курс 3", "Курс 4", "Курс 5",
+  ];
   const example = [
     "Sgt104910",
     "Sgt104910",
@@ -160,6 +164,9 @@ export async function downloadStudentsTemplate() {
     "СГТ",
     "Эксплуатация самосвала БелАЗ 75131",
     "Действия в аварийных ситуациях и оказание первой помощи",
+    "",
+    "",
+    "",
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
   (ws as any)["!cols"] = headers.map(h => ({ wch: Math.max(14, h.length + 4) }));
