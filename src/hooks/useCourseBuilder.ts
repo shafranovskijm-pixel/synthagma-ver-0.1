@@ -251,12 +251,13 @@ export function useCourseBuilder(propCourseId?: string) {
     return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [courseId, hasUnsavedChanges]);
 
-  const addLesson = (type: LessonType, moduleId?: string | null) => {
+  const addLesson = (type: LessonType, moduleId?: string | null, overrides?: Partial<Lesson>) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание", ai_avatar: "ИИ-аватар" };
     const newLesson: Lesson = {
       id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true,
       blocks: (type === "text" || type === "practice") ? [] : undefined,
       module_id: moduleId ?? null,
+      ...(overrides || {}),
     };
     // Accordion: новый урок раскрыт, остальные свёрнуты
     setLessons(prev => [...prev.map(l => ({ ...l, expanded: false })), newLesson]);
@@ -353,13 +354,15 @@ export function useCourseBuilder(propCourseId?: string) {
   const collapseAllModules = () => setModules(prev => prev.map(m => ({ ...m, collapsed: true })));
   const expandAllModules = () => setModules(prev => prev.map(m => ({ ...m, collapsed: false })));
 
-  const handleGenerateStructure = async () => {
+  const handleGenerateStructure = async (customSystemPrompt?: string) => {
     if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
     if (!(await aiLimit.checkAndNotify())) return;
     setIsGenerating(true);
     try {
       await aiLimit.increment();
-      const { data, error } = await safeInvoke<any>("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
+      const body: Record<string, unknown> = { title: courseTitle, description: courseDescription };
+      if (customSystemPrompt && customSystemPrompt.trim()) body.customSystemPrompt = customSystemPrompt.trim();
+      const { data, error } = await safeInvoke<any>("generate-course-structure", { body });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
 

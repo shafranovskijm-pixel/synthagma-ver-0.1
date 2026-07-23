@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
 import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
+import { AIActionsMenu } from "@/components/course-builder/AIActionsMenu";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
 import { CourseSnapshotsDialog } from "@/components/course-builder/CourseSnapshotsDialog";
 import { CourseGenerationProgress } from "@/components/course-builder/CourseGenerationProgress";
@@ -101,6 +103,30 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     await createSnapshot("before_ai_review", "Перед AI-проверкой");
     setShowReviewDialog(true);
     await startReview(resolvedCourseId);
+  };
+
+  // Generate a new text lesson using a user-provided system prompt.
+  const handleGenerateLessonWithPrompt = async (customSystemPrompt: string, lessonTitle: string) => {
+    try {
+      toast.info("Генерация урока по вашему промпту...");
+      const { data, error } = await safeInvoke<any>("generate-lesson-content", {
+        body: {
+          lessonTitle,
+          lessonType: "text",
+          courseTitle,
+          courseDescription,
+          customSystemPrompt,
+        },
+      });
+      if (error) throw new Error(error.message || "Ошибка генерации");
+      if (!data?.success) throw new Error(data?.error || "AI не вернул контент");
+      const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+      addLesson("text", null, { title: lessonTitle, content: JSON.stringify(blocks) });
+      markAsChanged();
+      toast.success("Урок создан");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Ошибка генерации урока");
+    }
   };
 
   const handlePreview = async () => {
@@ -233,19 +259,15 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     <span className="text-[10px] text-muted-foreground font-normal">DOCX, TXT, MD, HTML</span>
                   </Button>
                   <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
-                  <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
-                    <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
-                     <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
-                        <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
-                        <span className="text-[10px] text-muted-foreground font-normal">Только анализ, курс не меняется</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>AI только проанализирует уроки и тесты. Никакие изменения в курс не вносятся.</TooltipContent>
-                  </Tooltip>
+                  <AIActionsMenu
+                    isGenerating={isGenerating}
+                    isReviewing={isReviewing}
+                    reviewDisabled={!resolvedCourseId || lessons.length === 0}
+                    onGenerateStructure={(p) => handleGenerateStructure(p)}
+                    onStartReview={handleStartReview}
+                    onGenerateLessonWithPrompt={handleGenerateLessonWithPrompt}
+                  />
+
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="outline" size="sm" onClick={() => setShowSnapshotsDialog(true)} disabled={!resolvedCourseId} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
@@ -271,7 +293,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4">
                         <Button variant="outline" onClick={() => addLesson('text')} className="gap-2" size="sm"><Plus className="w-4 h-4" />Добавить урок</Button>
                         <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" size="sm"><FileUp className="w-4 h-4" />Импорт</Button>
-                        <Button onClick={handleGenerateStructure} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
+                        <Button onClick={() => handleGenerateStructure()} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
                       </div>
                     </div>
                   );
