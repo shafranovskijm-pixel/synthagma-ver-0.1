@@ -15,7 +15,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { course_id, user_id } = await req.json();
+    const { course_id, user_id, enrollment_id } = await req.json();
 
     if (!course_id || !user_id) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
