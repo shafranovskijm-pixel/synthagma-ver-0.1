@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, CheckCircle2, XCircle, FileText, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { generateTestAttemptPdf } from "@/utils/testAttemptPdf";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { generateTestAttemptPdf, generateTestAttemptExcel } from "@/utils/testAttemptPdf";
+
 
 export interface QuestionData {
   id: string;
