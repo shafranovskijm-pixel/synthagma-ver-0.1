@@ -723,7 +723,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
                     <tr className="border-b">
                       <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Тип уведомления</th>
                       <th className="text-center py-3 px-3 font-medium text-muted-foreground">Платформа</th>
-                      <th className="text-center py-3 px-3 font-medium text-muted-foreground">Браузер</th>
+                      <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Браузер</th>
                       <th className="text-center py-3 px-3 font-medium text-muted-foreground">Email</th>
                       <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Телеграм</th>
                       <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Приложение</th>
@@ -734,7 +734,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
                       <tr key={n.key} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="py-3 pr-4">{n.label}</td>
                         <td className="text-center py-3 px-3"><Checkbox checked={n.platform} onCheckedChange={() => toggleNotif(n.key, "platform")} /></td>
-                        <td className="text-center py-3 px-3"><Checkbox checked={n.browser} onCheckedChange={() => toggleNotif(n.key, "browser")} /></td>
+                        <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
                         <td className="text-center py-3 px-3"><Checkbox checked={n.email} onCheckedChange={() => toggleNotif(n.key, "email")} /></td>
                         <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
                         <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
@@ -744,7 +744,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
                 </table>
               </div>
               <div className="flex items-center justify-between mt-6">
-                <p className="text-xs text-muted-foreground">Телеграм и Приложение — скоро</p>
+                <p className="text-xs text-muted-foreground">Браузер, Телеграм и Приложение — скоро</p>
                 <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveNotifs} disabled={saving}>
                   <Save className="w-4 h-4" /> Сохранить
                 </Button>
