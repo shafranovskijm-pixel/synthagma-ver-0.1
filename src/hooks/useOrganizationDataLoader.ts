@@ -447,7 +447,20 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       } catch (error) {
         if (cancelled) return;
         console.error("Error fetching data:", error);
-        toast.error("Ошибка загрузки данных");
+        const network = isNetworkErr(error);
+        toast.error(
+          network
+            ? "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус."
+            : "Ошибка загрузки данных",
+          {
+            id: "org-data-error",
+            duration: 15000,
+            action: {
+              label: "Повторить",
+              onClick: () => setRefreshKey(prev => prev + 1),
+            },
+          },
+        );
       } finally {
         if (!cancelled) {
           setIsLoadingCourses(false);
