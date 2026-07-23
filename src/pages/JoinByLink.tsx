@@ -49,6 +49,7 @@ const JoinByLink = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [region, setRegion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -195,6 +196,7 @@ const JoinByLink = () => {
           password,
           full_name: fullName,
           registration_token: linkData.token,
+          region: region.trim() || undefined,
         }
       });
 
@@ -384,6 +386,23 @@ const JoinByLink = () => {
                   disabled={isSubmitting}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="region">Регион</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="region"
+                  type="text"
+                  placeholder="Например: Москва, Свердловская обл."
+                  className="pl-10 h-12 rounded-xl"
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Необязательно — поможет менеджеру связаться с вами</p>
             </div>
 
             <Button 
