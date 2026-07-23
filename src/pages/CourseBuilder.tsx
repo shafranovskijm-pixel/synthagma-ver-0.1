@@ -293,7 +293,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4">
                         <Button variant="outline" onClick={() => addLesson('text')} className="gap-2" size="sm"><Plus className="w-4 h-4" />Добавить урок</Button>
                         <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" size="sm"><FileUp className="w-4 h-4" />Импорт</Button>
-                        <Button onClick={handleGenerateStructure} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
+                        <Button onClick={() => handleGenerateStructure()} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
                       </div>
                     </div>
                   );
