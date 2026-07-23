@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 import { detectGenderFromMiddleName, generateDocumentNumber, generateRegNumber } from "@/constants/frdo";
 import { buildDPORow, buildPORow, exportFRDOExcel, formatDateForFRDO } from "@/utils/frdoExcelExport";
@@ -56,8 +57,8 @@ export function useFRDOManager(organizationId: string) {
       const userIds = profilesData?.map(p => p.user_id) || [];
       if (userIds.length === 0) { setStudents([]); setIsLoading(false); return; }
 
-      const { data: rolesData } = await supabase.from("user_roles").select("user_id, role").in("user_id", userIds).in("role", ["organization", "admin"]);
-      const orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+      const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
+      const orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
       const studentUserIds = userIds.filter(id => !orgAdminUserIds.has(id));
       const studentProfiles = (profilesData || []).filter(p => !orgAdminUserIds.has(p.user_id));
       if (studentUserIds.length === 0) { setStudents([]); setIsLoading(false); return; }

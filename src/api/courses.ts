@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import type { Course, CourseCategory, Enrollment } from "@/types";
 
 // ============= Courses API =============
@@ -82,12 +83,8 @@ export async function fetchCourseStudentCounts(courseIds: string[]): Promise<Map
     const enrollmentUserIds = Array.from(new Set(enrollments.map(e => e.user_id)));
     let orgAdminUserIds = new Set<string>();
     try {
-      const { data: rolesData } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("user_id", enrollmentUserIds)
-        .in("role", ["organization", "admin"]);
-      orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+      const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
+      orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
     } catch (e) {
     }
 

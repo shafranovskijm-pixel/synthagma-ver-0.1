@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/utils/retryFetch";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { logStudentDeletion } from "@/utils/logStudentDeletion";
 import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
 
@@ -59,13 +60,8 @@ export async function fetchStudents(
   let orgAdminUserIds = new Set<string>();
 
   if (userIds.length > 0) {
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("user_id, role")
-      .in("user_id", userIds)
-      .in("role", ["organization", "admin"]);
-
-    orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+    const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
+    orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
   }
 
   const coursesData = coursesRes.data;
