@@ -44,22 +44,30 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
     ? attempt.questions.filter((q) => attempt.shown_question_ids!.includes(q.id))
     : attempt.questions;
 
-  const handleDownloadPdf = (e: React.MouseEvent) => {
+  const buildData = () => ({
+    studentName,
+    courseTitle: attempt.course_title,
+    testTitle: attempt.lesson_title,
+    completedAt: attempt.completed_at,
+    score: attempt.score,
+    maxScore: attempt.max_score,
+    percentage,
+    isPassed,
+    passingScore: attempt.passing_score,
+    questions: shownQuestions,
+    answers: attempt.answers,
+  });
+
+  const handleDownloadPdf = (e: Event) => {
     e.stopPropagation();
-    void generateTestAttemptPdf({
-      studentName,
-      courseTitle: attempt.course_title,
-      testTitle: attempt.lesson_title,
-      completedAt: attempt.completed_at,
-      score: attempt.score,
-      maxScore: attempt.max_score,
-      percentage,
-      isPassed,
-      passingScore: attempt.passing_score,
-      questions: shownQuestions,
-      answers: attempt.answers,
-    });
+    void generateTestAttemptPdf(buildData());
   };
+
+  const handleDownloadExcel = (e: Event) => {
+    e.stopPropagation();
+    void generateTestAttemptExcel(buildData());
+  };
+
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
