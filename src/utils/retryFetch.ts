@@ -3,7 +3,14 @@
  * Designed for Supabase queries that may fail due to transient network/connection issues.
  */
 
+import { toast } from "sonner";
+
 const RETRY_DELAYS = [0, 3000, 6000]; // immediate, 3s, 6s
+
+function isNetworkError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return /Failed to fetch|NetworkError|Load failed|network|timeout|ECONN|fetch failed/i.test(msg);
+}
 
 export async function withRetry<T>(
   fn: () => PromiseLike<T> | Promise<T>,
@@ -11,19 +18,30 @@ export async function withRetry<T>(
   label = "query"
 ): Promise<T> {
   let lastError: unknown;
+  const toastId = `retry:${label}`;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       if (attempt > 0) {
         const delay = RETRY_DELAYS[attempt] ?? 3000;
+        if (isNetworkError(lastError)) {
+          toast.loading(`Медленное соединение — повторяем (${attempt + 1}/${maxRetries})...`, {
+            id: toastId,
+            duration: delay + 1500,
+          });
+        }
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
-      return await fn();
+      const result = await fn();
+      if (attempt > 0) toast.dismiss(toastId);
+      return result;
     } catch (error) {
       lastError = error;
+      console.warn(`[withRetry:${label}] attempt ${attempt + 1} failed:`, error);
     }
   }
 
+  toast.dismiss(toastId);
   throw lastError;
 }
 
