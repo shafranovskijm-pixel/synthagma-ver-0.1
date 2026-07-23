@@ -68,8 +68,12 @@ function isForcedProxyHost(): boolean {
   if (typeof window === 'undefined') return false;
   const h = window.location.hostname;
   if (FORCE_PROXY_HOSTS_EXACT.has(h)) return true;
+  // Любой поддомен синтагма.рф (punycode) — форс-прокси, чтобы Supabase
+  // никогда не ходил напрямую с российских провайдеров, где он заблокирован.
+  if (h === 'xn--80aaiswd0ak.xn--p1ai' || h.endsWith('.xn--80aaiswd0ak.xn--p1ai')) return true;
   return false;
 }
+
 
 function isProxyAllowedHost(): boolean {
   if (typeof window === 'undefined') return false;
