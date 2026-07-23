@@ -24,6 +24,13 @@ const SUPABASE_HOST = (() => {
   return 'atxwvjxbqjgkbjlhsdch.supabase.co';
 })();
 
+// Старый storage-проект, из которого в некоторых импортированных курсах остались
+// публичные ссылки на видео. Клиенты на синтагма.рф не всегда могут открыть его
+// напрямую, поэтому такие asset-ссылки проксируем через текущий backend.
+const LEGACY_STORAGE_HOSTS = new Set<string>([
+  'qpsfswrsuqvffdrnpsso.supabase.co',
+]);
+
 // Базовый URL прокси-сервера на отдельном VDS (NGINX, Timeweb).
 // Punycode для api.синтагма.рф.
 const PROXY_BASE_URL = 'https://api.xn--80aaiswd0ak.xn--p1ai';
@@ -476,7 +483,19 @@ export function resetProxyChannel() {
 
 export function proxiedAssetUrl(url: string | null | undefined): string {
   if (!url) return '';
-  if (!url.includes(SUPABASE_HOST)) return url;
-  if (!getProxyMode()) return url;
-  return rewriteUrl(url);
+  try {
+    const u = new URL(url);
+    if (u.host === SUPABASE_HOST) {
+      return getProxyMode() ? rewriteUrl(url) : url;
+    }
+    if (LEGACY_STORAGE_HOSTS.has(u.host) && u.pathname.startsWith('/storage/v1/object/public/')) {
+      const currentBackendUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+      if (!currentBackendUrl) return url;
+      const proxyUrl = `${currentBackendUrl.replace(/\/$/, '')}/functions/v1/proxy-storage-asset?u=${encodeURIComponent(url)}`;
+      return getProxyMode() ? rewriteUrl(proxyUrl) : proxyUrl;
+    }
+  } catch {
+    return url;
+  }
+  return url;
 }
