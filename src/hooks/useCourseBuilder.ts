@@ -251,12 +251,13 @@ export function useCourseBuilder(propCourseId?: string) {
     return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [courseId, hasUnsavedChanges]);
 
-  const addLesson = (type: LessonType, moduleId?: string | null) => {
+  const addLesson = (type: LessonType, moduleId?: string | null, overrides?: Partial<Lesson>) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание", ai_avatar: "ИИ-аватар" };
     const newLesson: Lesson = {
       id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true,
       blocks: (type === "text" || type === "practice") ? [] : undefined,
       module_id: moduleId ?? null,
+      ...(overrides || {}),
     };
     // Accordion: новый урок раскрыт, остальные свёрнуты
     setLessons(prev => [...prev.map(l => ({ ...l, expanded: false })), newLesson]);
