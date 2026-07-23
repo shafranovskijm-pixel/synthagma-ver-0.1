@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { notifyStudent } from "../_shared/notification-prefs.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     for (let level = 1; level <= 3 && currentPartnerId; level++) {
       const { data: partner } = await supabase
         .from("referral_partners")
-        .select("id, status, level1_percent, level2_percent, level3_percent, balance, total_earned, referred_by_partner_id, monthly_network_revenue, has_turnover_bonus, is_top_partner")
+        .select("id, user_id, status, level1_percent, level2_percent, level3_percent, balance, total_earned, referred_by_partner_id, monthly_network_revenue, has_turnover_bonus, is_top_partner")
         .eq("id", currentPartnerId)
         .maybeSingle();
 
@@ -168,6 +169,17 @@ Deno.serve(async (req) => {
           total_earned: Number(p.total_earned) + totalCommission,
         })
         .eq("id", p.id);
+
+      // Personal in-app notification for the partner (respects partner_changes.platform)
+      if (p.user_id && totalCommission > 0) {
+        await notifyStudent({
+          userId: p.user_id,
+          type: "partner_changes",
+          title: `Начислено вознаграждение: ${totalCommission.toFixed(2)} ₽`,
+          message: `Уровень ${p.level}. Источник — оплата организации.`,
+          relatedId: null,
+        });
+      }
 
       results.push({
         partner_id: p.id,
