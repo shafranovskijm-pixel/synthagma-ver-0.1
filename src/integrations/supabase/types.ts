@@ -4687,6 +4687,7 @@ export type Database = {
           test_passing_score: number
           test_questions_count: number | null
           test_questions_to_show: number | null
+          test_show_answers: boolean
           title: string
           type: string
           updated_at: string
@@ -4720,6 +4721,7 @@ export type Database = {
           test_passing_score?: number
           test_questions_count?: number | null
           test_questions_to_show?: number | null
+          test_show_answers?: boolean
           title: string
           type?: string
           updated_at?: string
@@ -4753,6 +4755,7 @@ export type Database = {
           test_passing_score?: number
           test_questions_count?: number | null
           test_questions_to_show?: number | null
+          test_show_answers?: boolean
           title?: string
           type?: string
           updated_at?: string
@@ -7011,6 +7014,7 @@ export type Database = {
           onboarding_completed: boolean
           organization_id: string | null
           phone: string | null
+          region: string | null
           student_group_id: string | null
           telegram_link: string | null
           updated_at: string
@@ -7040,6 +7044,7 @@ export type Database = {
           onboarding_completed?: boolean
           organization_id?: string | null
           phone?: string | null
+          region?: string | null
           student_group_id?: string | null
           telegram_link?: string | null
           updated_at?: string
@@ -7069,6 +7074,7 @@ export type Database = {
           onboarding_completed?: boolean
           organization_id?: string | null
           phone?: string | null
+          region?: string | null
           student_group_id?: string | null
           telegram_link?: string | null
           updated_at?: string
