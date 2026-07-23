@@ -154,7 +154,7 @@ export function useTestQuestionEditor({
 
   const addOption = (questionId: string) => {
     setQuestions(questions.map(q => {
-      if (q.id === questionId && q.options.length < 6) return { ...q, options: [...q.options, { text: "" }] };
+      if (q.id === questionId && q.options.length < 10) return { ...q, options: [...q.options, { text: "" }] };
       return q;
     }));
   };
