@@ -20,7 +20,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, ChevronDown, ChevronRight, MoreVertical, Pencil, Trash2, FolderPlus, type LucideIcon } from "lucide-react";
+import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, ChevronDown, ChevronRight, MoreVertical, Pencil, Trash2, FolderPlus, Video, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lessonIcons, lessonColors, type Lesson, type LessonType, type CourseModule } from "@/components/course-builder/LessonTypeConfig";
 
@@ -28,6 +28,7 @@ type LessonTypeOption = { type: LessonType; icon: LucideIcon; label: string; des
 
 const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
   { type: "text", icon: FileText, label: "Текст", description: "Форматированный текст с видео, аудио и изображениями. Прикрепляйте файлы для скачивания.", iconClass: "text-primary bg-primary/10" },
+  { type: "video", icon: Video, label: "Видео", description: "Видеоурок с плеером Kinescope или прямой ссылкой. Защита от скачивания и адаптивное качество.", iconClass: "text-rose-500 bg-rose-500/10" },
   { type: "test", icon: CheckSquare, label: "Тест", description: "Проверка знаний с вариантами ответов, изображениями и пояснениями. Настраиваемый проходной балл.", iconClass: "text-sigma-orange bg-sigma-orange/10" },
   { type: "slider", icon: Presentation, label: "Слайды", description: "Презентация с переключаемыми слайдами. Удобно для пошагового объяснения материала.", iconClass: "text-amber-500 bg-amber-500/10" },
   { type: "audio", icon: Headphones, label: "Аудио", description: "Аудиоурок: подкаст, лекция или интервью. Поддержка фоновой обложки и описания.", iconClass: "text-green-500 bg-green-500/10" },
