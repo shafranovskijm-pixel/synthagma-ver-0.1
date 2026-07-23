@@ -181,6 +181,8 @@ export function useStudentDetailCardLogic({
   const [savingFrdoField, setSavingFrdoField] = useState<string | null>(null);
   const [phone, setPhone] = useState<string>("");
   const [savingPhone, setSavingPhone] = useState(false);
+  const [region, setRegion] = useState<string>("");
+  const [savingRegion, setSavingRegion] = useState(false);
 
   // Block/unblock state
   const [blockedAt, setBlockedAt] = useState<string | null>(null);
