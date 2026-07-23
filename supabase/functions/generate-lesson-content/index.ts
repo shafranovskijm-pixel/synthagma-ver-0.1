@@ -66,7 +66,7 @@ serve(async (req) => {
       );
     }
 
-    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider, taskIndex, lessonIndex, rawText } = await req.json();
+    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider, taskIndex, lessonIndex, rawText, customSystemPrompt } = await req.json();
 
     // For "format" mode, rawText is required instead of lessonTitle
     if (lessonType !== "format" && !lessonTitle?.trim()) {
