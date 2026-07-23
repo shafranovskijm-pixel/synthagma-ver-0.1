@@ -297,7 +297,7 @@ export function StudentDetailsTab() {
               {h.activeTab === "courses" && <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />}
               {h.activeTab === "documents" && <DocumentsTab h={h} />}
               {h.activeTab === "activity" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />}
-              {h.activeTab === "testing" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} defaultSubTab="tests" />}
+              {h.activeTab === "testing" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} defaultSubTab="tests" onlySubTab />}
               {h.activeTab === "chat" && user && <ChatTab studentUserId={student.user_id} organizationId={organizationId} currentUserId={user.id} studentName={student.name} />}
             </>
           )}
