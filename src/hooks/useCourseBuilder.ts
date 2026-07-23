@@ -353,13 +353,15 @@ export function useCourseBuilder(propCourseId?: string) {
   const collapseAllModules = () => setModules(prev => prev.map(m => ({ ...m, collapsed: true })));
   const expandAllModules = () => setModules(prev => prev.map(m => ({ ...m, collapsed: false })));
 
-  const handleGenerateStructure = async () => {
+  const handleGenerateStructure = async (customSystemPrompt?: string) => {
     if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
     if (!(await aiLimit.checkAndNotify())) return;
     setIsGenerating(true);
     try {
       await aiLimit.increment();
-      const { data, error } = await safeInvoke<any>("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
+      const body: Record<string, unknown> = { title: courseTitle, description: courseDescription };
+      if (customSystemPrompt && customSystemPrompt.trim()) body.customSystemPrompt = customSystemPrompt.trim();
+      const { data, error } = await safeInvoke<any>("generate-course-structure", { body });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
 
