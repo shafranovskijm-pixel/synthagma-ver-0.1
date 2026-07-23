@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Mail, Lock, User, Building2, AlertTriangle, BookOpen, Users } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building2, AlertTriangle, BookOpen, Users, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
