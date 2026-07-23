@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 import { FRDO_DOCUMENT_TYPES, type CourseFRDOSettings } from "@/constants/frdo";
 
@@ -149,12 +150,8 @@ export function useCourseDetails(
       const profileUserIds = (allProfiles || []).map(p => p.user_id);
       let excludedUserIds = new Set<string>();
       if (profileUserIds.length > 0) {
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("user_id, role")
-          .in("user_id", profileUserIds)
-          .in("role", ["organization", "admin"]);
-        excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
+        const rolesData = await fetchUserRolesBatched(profileUserIds, ["organization", "admin"]);
+        excludedUserIds = new Set(rolesData.map(r => r.user_id));
       }
       const available = (allProfiles || [])
         .filter(p => !enrolledUserIds.has(p.user_id) && !excludedUserIds.has(p.user_id))

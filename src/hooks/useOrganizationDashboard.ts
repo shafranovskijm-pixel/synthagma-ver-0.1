@@ -26,6 +26,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrgBalance } from "@/hooks/useOrgBalance";
 import { useOrgUnreadChats } from "@/hooks/useOrgUnreadChats";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 
 export function useOrganizationDashboard() {
@@ -173,12 +174,8 @@ export function useOrganizationDashboard() {
       const enrollmentUserIds = Array.from(new Set((enrollments || []).map(e => e.user_id)));
       let excludedUserIds = new Set<string>();
       if (enrollmentUserIds.length > 0) {
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("user_id, role")
-          .in("user_id", enrollmentUserIds)
-          .in("role", ["organization", "admin"]);
-        excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
+        const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
+        excludedUserIds = new Set(rolesData.map(r => r.user_id));
       }
 
       const enrolledList: any[] = [];

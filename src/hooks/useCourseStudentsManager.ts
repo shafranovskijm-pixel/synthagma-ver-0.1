@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
 
@@ -31,12 +32,8 @@ export function useCourseStudentsManager(organizationId: string | null) {
       const enrollmentUserIds = Array.from(new Set((enrollments || []).map(e => e.user_id)));
       let excludedUserIds = new Set<string>();
       if (enrollmentUserIds.length > 0) {
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("user_id, role")
-          .in("user_id", enrollmentUserIds)
-          .in("role", ["organization", "admin"]);
-        excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
+        const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
+        excludedUserIds = new Set(rolesData.map(r => r.user_id));
       }
 
       const filteredEnrollments = (enrollments || []).filter(e => !excludedUserIds.has(e.user_id));
@@ -80,12 +77,8 @@ export function useCourseStudentsManager(organizationId: string | null) {
         const profileUserIds = Array.from(new Set((allProfiles || []).map(p => p.user_id)));
         let orgAdminUserIds = new Set<string>();
         if (profileUserIds.length > 0) {
-          const { data: rolesData } = await supabase
-            .from("user_roles")
-            .select("user_id, role")
-            .in("user_id", profileUserIds)
-            .in("role", ["organization", "admin"]);
-          orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+          const rolesData = await fetchUserRolesBatched(profileUserIds, ["organization", "admin"]);
+          orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
         }
         
         const available = (allProfiles || [])

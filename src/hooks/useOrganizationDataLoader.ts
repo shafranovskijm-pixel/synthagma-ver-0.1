@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from "@/types/shared";
 import { fetchAllRows } from "@/utils/retryFetch";
+import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 
 const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
@@ -247,15 +248,9 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         const profileUserIds = uniq((allProfilesData || []).map((p: { user_id: string }) => p.user_id));
         let orgAdminUserIds = new Set<string>();
         if (profileUserIds.length > 0) {
-          const rolesData = await fetchAllRows(({ from, to }) =>
-            supabase
-              .from("user_roles")
-              .select("user_id, role")
-              .in("user_id", profileUserIds)
-              .in("role", ["organization", "admin"])
-              .range(from, to)
-          );
-          orgAdminUserIds = new Set(((rolesData || []) as Array<{ user_id: string; role: string }>).map((r) => r.user_id));
+          // Batched to keep URL length below NGINX proxy_buffer_size (chunks of 50 UUIDs)
+          const rolesData = await fetchUserRolesBatched(profileUserIds, ["organization", "admin"]);
+          orgAdminUserIds = new Set(rolesData.map((r) => r.user_id));
         }
 
         if (cancelled) return;
