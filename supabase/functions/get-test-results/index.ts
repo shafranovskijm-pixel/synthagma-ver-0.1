@@ -82,11 +82,12 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
 
   const { data: lesson } = await supabaseAdmin
     .from("lessons")
-    .select("test_passing_score")
+    .select("test_passing_score, test_max_attempts")
     .eq("id", lesson_id)
     .single();
 
   const passingScore = lesson?.test_passing_score ?? 80;
+  const maxAttempts = (lesson as any)?.test_max_attempts as number | null ?? null;
   const scorePercent = lastAttempt.max_score > 0
     ? Math.round((lastAttempt.score / lastAttempt.max_score) * 100)
     : 0;
@@ -103,5 +104,7 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
     passed,
     passingScore,
     scorePercent,
+    maxAttempts,
+    attemptsUsed: allAttempts?.length ?? 0,
   };
 }));

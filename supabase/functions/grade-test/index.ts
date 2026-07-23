@@ -145,6 +145,13 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
       );
   }
 
+  // Recount attempts after insert
+  const { count: attemptsUsed } = await supabaseAdmin
+    .from("test_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("lesson_id", lesson_id)
+    .eq("user_id", user.sub);
+
   console.log(`Test graded for user ${user.sub}: ${score}/${maxScore} (${scorePercent}%), passed: ${passed}`);
 
   return {
@@ -153,6 +160,8 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
     scorePercent,
     passed,
     passingScore,
+    maxAttempts,
+    attemptsUsed: attemptsUsed ?? 0,
     correctAnswers: Object.fromEntries(correctAnswersMap),
     explanations: Object.fromEntries(explanationsMap),
   };
