@@ -204,7 +204,7 @@ export function useStudentDetailCardLogic({
         supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
         supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", student.user_id).eq("organization_id", organizationId).order("accepted_at", { ascending: false }),
-        supabase.from("profiles").select("phone").eq("user_id", student.user_id).maybeSingle(),
+        supabase.from("profiles").select("phone, blocked_at, blocked_reason").eq("user_id", student.user_id).maybeSingle(),
       ]);
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
@@ -215,6 +215,8 @@ export function useStudentDetailCardLogic({
       else setFrdoData({});
       if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
       setPhone((profileRes.data as any)?.phone || "");
+      setBlockedAt((profileRes.data as any)?.blocked_at || null);
+      setBlockedReason((profileRes.data as any)?.blocked_reason || null);
     } catch (error) { console.error("Error loading student data:", error); }
     finally { setIsLoading(false); }
 
