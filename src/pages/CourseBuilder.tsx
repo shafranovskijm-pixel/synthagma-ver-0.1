@@ -105,6 +105,30 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     await startReview(resolvedCourseId);
   };
 
+  // Generate a new text lesson using a user-provided system prompt.
+  const handleGenerateLessonWithPrompt = async (customSystemPrompt: string, lessonTitle: string) => {
+    try {
+      toast.info("Генерация урока по вашему промпту...");
+      const { data, error } = await safeInvoke<any>("generate-lesson-content", {
+        body: {
+          lessonTitle,
+          lessonType: "text",
+          courseTitle,
+          courseDescription,
+          customSystemPrompt,
+        },
+      });
+      if (error) throw new Error(error.message || "Ошибка генерации");
+      if (!data?.success) throw new Error(data?.error || "AI не вернул контент");
+      const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+      addLesson("text", null, { title: lessonTitle, content: JSON.stringify(blocks) });
+      markAsChanged();
+      toast.success("Урок создан");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Ошибка генерации урока");
+    }
+  };
+
   const handlePreview = async () => {
     if (resolvedCourseId && !hasUnsavedChanges) {
       navigate(`/course-preview/${resolvedCourseId}`);
