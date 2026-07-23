@@ -259,19 +259,15 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     <span className="text-[10px] text-muted-foreground font-normal">DOCX, TXT, MD, HTML</span>
                   </Button>
                   <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
-                  <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
-                    <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
-                     <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
-                        <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
-                        <span className="text-[10px] text-muted-foreground font-normal">Только анализ, курс не меняется</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>AI только проанализирует уроки и тесты. Никакие изменения в курс не вносятся.</TooltipContent>
-                  </Tooltip>
+                  <AIActionsMenu
+                    isGenerating={isGenerating}
+                    isReviewing={isReviewing}
+                    reviewDisabled={!resolvedCourseId || lessons.length === 0}
+                    onGenerateStructure={(p) => handleGenerateStructure(p)}
+                    onStartReview={handleStartReview}
+                    onGenerateLessonWithPrompt={handleGenerateLessonWithPrompt}
+                  />
+
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="outline" size="sm" onClick={() => setShowSnapshotsDialog(true)} disabled={!resolvedCourseId} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
