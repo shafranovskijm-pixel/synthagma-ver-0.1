@@ -1,89 +1,70 @@
-## Что проверено (end-to-end)
+## Что клиент видит сейчас
 
-Аудит всех настроек уведомлений (`notification_preferences`) и всех реальных путей отправки в приложении и edge-функциях.
+Ученик закончил курс — письмо на почту не пришло. Причины (подтверждены чтением кода):
 
-### Что настраивается в UI
+1. **Ученику письмо не отправляется вообще.** `supabase/functions/notify-course-completion/index.ts` пишет только in-app уведомление ученику и шлёт email **организации** + адресам из `completion_notify_emails`. Отдельной ветки «письмо ученику» нет, даже если у него в профиле `course_completed.email = ON` (а это дефолт).
+2. **Функция часто вообще не вызывается.** Триггер БД `enrollments` авто-выставляет `status='completed'` при `progress>=100` (`20260411050701…sql`) — во многих сценариях фронтовый вызов `safeInvoke('notify-course-completion', ...)` из `useCourseLearningFacade.ts` не срабатывает (нет теста в конце, авто-финализация из лестницы прогресса и т.п.). А сам вызов на фронте ещё и залочен под `if (course.notify_on_completion)` (это переключатель «уведомлять организацию»), т.е. если организация не включила рассылку себе — ученику тоже ничего не уйдёт.
+3. Переключатель «Email» на типах `homework/deadline_reminder/partner_changes/course_updates` в профиле ученика сохраняется в `notification_preferences`, но по большей части не «дёргается» ни одной edge-функцией (кроме `deadline_reminder` в `process-reminders` и `partner_changes` в `referral-commission`).
 
-**Ученик** (`useStudentProfile.ts`), 5 типов × 3 канала:
-`course_updates`, `webinar_reminder`, `homework`, `deadline_reminder`, `partner_changes` × `platform` / `browser` / `email`.
+## Что делаем
 
-**Организация** (`OrgProfileTab.tsx`), 8 типов × 5 каналов:
-`group_full`, `student_completed`, `webinar_reminder`, `homework`, `partner_changes`, `promo_expired`, `student_waiting`, `student_paid` × `platform` / `browser` / `email` / `telegram` / `app`.
+### 1. Гарантированное письмо ученику при завершении курса
 
-### Что реально работает
+`supabase/functions/notify-course-completion/index.ts`:
+- Убрать ранний `return`, если `notify_on_completion=false`. Теперь функция всегда исполняется, а `notify_on_completion` управляет только рассылкой организации / доп. адресам.
+- Добавить блок «письмо ученику»: если `isPrefEnabled(user_id, 'course_completed', 'email')` → отправить `sendPlatformEmail` на `profile.email` в фирменном шаблоне (поздравление, название курса, дата, ссылка «Мои документы / сертификат»). Skip suppression → нет.
+- Дедупликация: writing to `email_send_log` уже происходит внутри `sendPlatformEmail`; дополнительно ставим `idempotencyKey: course-complete-<enrollment_id>-student` в metadata (в шапке письма/subject), чтобы повторный клик не дублировал письмо в одном логе.
 
-| Канал/тип | Пишется в БД | Читается перед отправкой |
-|---|---|---|
-| `org_notifications` (in-app колокольчик организации) | да — 8 мест (заявки, доки, счета, идентификация, подписи) | **нет — переключатели не проверяются** |
-| `admin_notifications` (in-app колокольчик админа) | да — 6 мест (программы, тарифы, партнёры, ФРДО, документы) | нет — нет UI-настроек для админа, но и не нужны |
-| Email завершения курса (`notify-course-completion`) | — | смотрит только `courses.notify_on_completion`, игнорирует `student_completed` |
-| Email напоминаний о вебинарах (`webinar-reminders-cron`) | — | шлёт всем участникам, **не смотрит** `webinar_reminder.email` |
-| Cron `process-reminders` (переобучение) | — | смотрит `course_reminders.notify_student/company/organization`, **не смотрит** `deadline_reminder` |
-| `sound` (звук в колокольчике организации) | — | **работает** (`OrgNotifications.tsx` читает `notification_preferences` где `type=sound`) |
-| `course_updates`, `homework`, `partner_changes`, `deadline_reminder` (ученик) | **нигде** | **нигде** — переключатели чисто декоративные |
-| `group_full`, `homework`, `promo_expired`, `student_waiting`, `student_paid` (организация) | **нигде** | **нигде** — переключатели чисто декоративные |
-| Канал `browser` (push) | — | **не реализовано**: нет Service Worker push, нет VAPID, нет `Notification.requestPermission` |
-| Канал `telegram` (организация) | — | не связан с настройкой: работает только через `organizations.telegram_notify_enabled` + `chat_id` |
+### 2. Гарантированный триггер уведомления
 
-### Вывод
+Триггер БД `enrollments_auto_complete_on_progress` уже переводит `status='completed'`. Добавляем **второй AFTER-UPDATE триггер** `enrollments_notify_on_complete`: когда `NEW.status='completed' AND OLD.status IS DISTINCT FROM 'completed'`, вызывает edge `notify-course-completion` через `net.http_post` c body `{course_id, user_id, enrollment_id}`. Это закрывает все пути (авто-финализация лестницей, ручной тест, API из мобильного и т.п.).
 
-Из ~40 комбинаций «тип × канал», отображённых в двух панелях настроек, **реально что-то делает только 1** — звук в колокольчике организации. Всё остальное сохраняется в `notification_preferences`, но ни одна edge-функция и ни один клиентский код не читает эту таблицу перед отправкой. Push-уведомлений в браузере нет вообще.
+На фронте (`useCourseLearningFacade.ts`) убираем условие `if (course.notify_on_completion)` — теперь вызов делаем всегда (двойная подстраховка + мгновенное письмо без ожидания cron/trigger). Дедуп на бэке отсекает лишний повтор.
 
----
+### 3. Аудит переключателей `notification_preferences`
 
-## План исправления
+Пройти end-to-end и подключить недостающие шлюзы:
 
-### Этап 1. Убрать «мёртвые» переключатели (быстрый честный фикс)
+| Тип                  | Где триггерится                            | Что чиним |
+|----------------------|--------------------------------------------|-----------|
+| `course_completed`   | notify-course-completion                   | добавить email ученику (см. п.1) |
+| `webinar_reminder`   | webinar-reminders-cron                     | уже гейтится корректно, оставляем |
+| `deadline_reminder`  | process-reminders                          | уже гейтится, оставляем |
+| `partner_changes`    | referral-commission                        | уже гейтится, оставляем |
+| `homework`           | нигде                                      | добавить in-app + email ученику в момент оценки / комментария домашней работы (edge `notify-homework-graded`, дёргаем из UI преподавателя при `homework_submissions.update`). Снимаем ярлык «Coming soon» после подключения. |
+| `course_updates`     | нигде                                      | оставить «Coming soon», НО добавить один реально работающий кейс: при `enrollments.insert` (новый доступ к курсу) — in-app + email ученику через новую edge `notify-course-access-granted`, гейт по `course_updates.email/platform`. Можно тем же путём отсылать при смене `default_access_days`. |
 
-Пока нет реализации, UI не должен обещать функции, которых нет.
+### 4. UI
 
-- В `useStudentProfile.ts` и `OrgProfileTab.tsx` оставить только те типы/каналы, под которыми есть реальная отправка (см. Этап 2). Остальные пометить бейджем «Скоро» и disable, чтобы не сохраняли `false`, вводя в заблуждение.
-- Канал `browser` временно скрыть у ученика и организации.
-- Канал `telegram` у организации переименовать: указать, что настраивается через раздел «Telegram организации».
+`src/hooks/useStudentProfile.ts` / `StudentProfileNotifications*`:
+- Снять флаг `comingSoon` с `homework` и `course_updates` после включения реальных путей.
+- Добавить рядом с каждым тумблером маленькую строку «когда приходит», чтобы клиент понимал, что настройка живая.
 
-### Этап 2. Подключить настройки к реальным отправкам
+Организации в `OrgProfileTab` — без изменений (соответствующие пути через `notify_on_completion` уже работают).
 
-Общий хелпер `_shared/notifications.ts` (edge) и `checkNotificationPref(userId, type, channel)`:
-- читает `notification_preferences` (`enabled`, дефолт по типу),
-- возвращает `true`, если канал включён; если строки нет — применяет дефолт из общей карты (совпадает с `buildDefaultNotifSettings`).
+### 5. Проверка
 
-Затем подшить проверку в существующие пути:
+- Через `supabase.functions.invoke('notify-course-completion', ...)` из devtools — письмо ученику приходит, лог в `email_send_log`.
+- Ручное `UPDATE enrollments SET status='completed' ...` в тест-организации — триггер вызывает функцию, письмо приходит.
+- Выключить `course_completed.email` в профиле ученика → повторный прогон не шлёт email ученику, но in-app и письмо организации остаются.
+- Прогон `pnpm tsgo` (или встроенный typecheck), просмотр `edge_function_logs` на `notify-course-completion`, `notify-homework-graded`, `notify-course-access-granted`.
 
-1. **`notify-course-completion`** (email админам курса) — не меняем, это уровень курса (`notify_on_completion`), а не пользователя. Дополнительно: отправлять и ученику email «поздравляем с завершением», гейт — `student_completed.email` (для ученика тип назвать `course_completed`).
-2. **`webinar-reminders-cron`** — перед добавлением email в список получателей проверять `webinar_reminder.email` для каждого `user_id`. Учитывать также `platform`: пишем `org_notifications` только если для владельцев вебинара включён `webinar_reminder.platform` (для ученика будем писать в `student_notifications`, см. п.5).
-3. **`process-reminders` (`course_reminders`)** — по каждому получателю (student/company/organization) проверять `deadline_reminder.email` (email) и `deadline_reminder.platform` (in-app).
-4. **`org_notifications` insert (везде — `check-subscription-expiry`, `process-document-expiry-reminders`, `notify-enrollment-request`, `notify-course-order`, `AdminDocumentsManager`, `CompanyRequestsTab`, `useCourseStoreManager`, `useStudentDetailCard`, `BackgroundUploadsContext`, `useSubscriptionTab`)** — обёртывать в helper, который смотрит агрегированный флаг организации (например: `student_paid.platform`, `student_completed.platform`, `student_waiting.platform`, `group_full.platform`, `promo_expired.platform`). Если у сотрудников организации выключено — не создавать запись; если включён `email` — параллельно слать письмо.
-5. **Домашние задания (`homework`)** — сейчас статус ДЗ живёт в `homework_submissions`, но нигде не пишется уведомление. Добавить в edge-функцию отправки/оценки ДЗ создание записи в `org_notifications` (тип `homework`, гейт `homework.platform` для организации) и в новую таблицу `student_notifications` (для ученика, гейт `homework.platform` / email).
+## Технические детали
 
-### Этап 3. In-app уведомления для ученика
+- Новые edge-функции: `notify-homework-graded`, `notify-course-access-granted` (одинаковый скелет: cors, service-role client, `isPrefEnabled` для email, `notifyStudent` для in-app, `sendPlatformEmail` с фирменным HTML).
+- Миграция `enrollments_notify_on_complete_trigger.sql`:
+  - `CREATE OR REPLACE FUNCTION public.trg_notify_course_completion() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... net.http_post(url:=<functions_url>/notify-course-completion, headers:=..., body:=json_build_object(...)) $$;`
+  - `CREATE TRIGGER enrollments_notify_on_complete AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (NEW.status='completed' AND OLD.status IS DISTINCT FROM 'completed') EXECUTE FUNCTION public.trg_notify_course_completion();`
+  - Через `supabase--insert` (URL/anon key user-specific), не через `migration`.
+- `notify-course-completion` — принимает и `enrollment_id` опционально, использует для idempotencyKey.
+- Дедлайн запросов не меняем; таблицу `notification_preferences`/`student_notifications` не трогаем.
 
-Сейчас у ученика **нет** таблицы personal-уведомлений (`org_notifications` — только для организации). Панель «Уведомления» в профиле ученика существует, но показывать нечего.
+## Файлы
 
-- Создать `public.student_notifications (id, user_id, type, title, message, related_id, is_read, created_at)` с RLS `auth.uid() = user_id`, GRANT authenticated.
-- Добавить компонент-колокольчик в шапке ученика (по образцу `OrgNotifications`), realtime-подписка на `INSERT`.
-- Писать туда из ключевых событий: завершение курса, оценка/комментарий к ДЗ, приближающийся дедлайн, начисление партнёру, изменение доступа к курсу.
-
-### Этап 4. Браузерные push-уведомления (канал `browser`)
-
-Только после этапов 1–3, если это действительно нужно клиентам:
-- добавить VAPID-ключи в secrets,
-- в PWA service worker обработчик `push` + `notificationclick`,
-- клиентский `Notification.requestPermission` + `subscribe(pushManager)`,
-- таблица `push_subscriptions (user_id, endpoint, keys)`,
-- edge-функция `send-push`, вызываемая параллельно `email/platform` там, где включён `browser`.
-
-Если по итогу этапа 1 канал `browser` решено не поддерживать — этот этап пропустить.
-
-### Технические детали
-
-- Все `insert` в `org_notifications`, `admin_notifications`, а также email-рассылки из edge-функций проходят через новый `_shared/notifications.ts` (проверка `notification_preferences` + запись в `email_send_log` уже есть).
-- Дефолты и «карта» типов вынести в `_shared/notificationTypes.ts` — одна и та же карта у клиента (`useStudentProfile` / `OrgProfileTab`) и на бэкенде, чтобы не расходились.
-- Для org-канала (несколько сотрудников) правило: включено, если хотя бы у одного сотрудника соответствующий переключатель включён; email — рассылать только тем, у кого email включён.
-- Миграция для `student_notifications` включает `GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_notifications TO authenticated; GRANT ALL ON public.student_notifications TO service_role;` и RLS-политики на `user_id = auth.uid()` + служебная роль.
-- Оставить sound-переключатель как есть (единственное работающее).
-
-### Что попросить у тебя перед реализацией
-
-1. Оставляем канал `browser` (push) в roadmap или убираем из UI совсем?
-2. Тип `partner_changes` — хочешь email/уведомления при начислении реферальной комиссии?
-3. Тип `course_updates` (у ученика) — что именно он должен ловить: изменения структуры курса организацией, открытие следующих модулей, продление доступа? Или это тоже убрать?
+- `supabase/functions/notify-course-completion/index.ts` — правка (email ученику, без раннего return).
+- `supabase/functions/notify-homework-graded/index.ts` — новая.
+- `supabase/functions/notify-course-access-granted/index.ts` — новая.
+- `src/hooks/course-learning/useCourseLearningFacade.ts` — снять условие `notify_on_completion` перед invoke.
+- `src/hooks/useStudentProfile.ts` — снять `comingSoon` с homework/course_updates.
+- Вызовы новых функций: из UI преподавателя при оценке ДЗ; из `create_enrollment*`/UI выдачи доступа (org side).
+- SQL: `supabase--insert` для триггера `enrollments_notify_on_complete`.
