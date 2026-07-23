@@ -263,6 +263,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     isGenerating={isGenerating}
                     isReviewing={isReviewing}
                     reviewDisabled={!resolvedCourseId || lessons.length === 0}
+                    courseId={resolvedCourseId}
                     onGenerateStructure={(p) => handleGenerateStructure(p)}
                     onStartReview={handleStartReview}
                     onGenerateLessonWithPrompt={handleGenerateLessonWithPrompt}
