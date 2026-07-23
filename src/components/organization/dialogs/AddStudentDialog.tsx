@@ -37,6 +37,13 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
   const [password, setPassword] = useState("");
   const [courseSearch, setCourseSearch] = useState("");
 
+  useEffect(() => {
+    if (open) {
+      setName(""); setEmail(""); setCourseIds([]); setCompanyId("");
+      setLogin(""); setPassword(""); setCourseSearch("");
+    }
+  }, [open]);
+
   const publishedCourses = courses.filter(c => c.is_published);
   const filteredCourses = publishedCourses.filter(c => 
     c.title.toLowerCase().includes(courseSearch.toLowerCase())
