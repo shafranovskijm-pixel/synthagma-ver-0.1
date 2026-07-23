@@ -171,17 +171,25 @@ function AddLessonButton({
           {LESSON_TYPE_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isActive = opt.type === selectedType;
+            const isDisabled = opt.disabled;
             return (
               <button
                 key={opt.type}
                 type="button"
-                onClick={() => setSelectedType(opt.type)}
+                disabled={isDisabled}
+                onClick={() => !isDisabled && setSelectedType(opt.type)}
                 className={cn(
-                  "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all",
-                  "hover:border-primary/40 hover:bg-primary/5",
+                  "group relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all",
+                  !isDisabled && "hover:border-primary/40 hover:bg-primary/5",
                   isActive ? "border-primary bg-primary/10 shadow-sm" : "border-border/60 bg-card",
+                  isDisabled && "opacity-60 cursor-not-allowed",
                 )}
               >
+                {opt.badge && (
+                  <span className="absolute -top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-muted text-muted-foreground border border-border/60">
+                    {opt.badge}
+                  </span>
+                )}
                 <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", opt.iconClass)}>
                   <Icon className="w-5 h-5" />
                 </div>
