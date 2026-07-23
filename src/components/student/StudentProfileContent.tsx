@@ -271,19 +271,25 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false, pe
                     {NOTIFICATION_TYPES.map(nt => (
                       <tr key={nt.key} className="border-b border-border last:border-0">
                         <td className="py-5 pr-4">
-                          <Tooltip>
-                            <TooltipTrigger className="inline-flex items-center gap-1 text-sm">
-                              {nt.label}
-                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>{nt.hint}</TooltipContent>
-                          </Tooltip>
+                          <div className="flex items-center gap-2">
+                            <Tooltip>
+                              <TooltipTrigger className="inline-flex items-center gap-1 text-sm text-left">
+                                {nt.label}
+                                <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent>{nt.hint}</TooltipContent>
+                            </Tooltip>
+                            {nt.comingSoon && (
+                              <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">Скоро</span>
+                            )}
+                          </div>
                         </td>
                         {CHANNELS.map(ch => (
                           <td key={ch.key} className="text-center py-5 px-3">
                             <Switch
                               checked={sp.notifSettings[nt.key]?.[ch.key] ?? false}
                               onCheckedChange={() => sp.toggleNotif(nt.key, ch.key)}
+                              disabled={!!nt.comingSoon}
                             />
                           </td>
                         ))}
