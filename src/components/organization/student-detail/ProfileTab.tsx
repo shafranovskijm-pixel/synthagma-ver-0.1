@@ -195,6 +195,89 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
         </div>
       )}
 
+
+      {/* Access block / unblock */}
+      <div className={`rounded-2xl border p-6 ${h.blockedAt ? 'bg-destructive/5 border-destructive/40' : 'bg-card border-border'}`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2">
+              {h.blockedAt ? <Ban className="w-5 h-5 text-destructive" /> : <ShieldCheck className="w-5 h-5 text-primary" />}
+              Доступ к платформе
+            </h3>
+            {h.blockedAt ? (
+              <div className="mt-2 text-sm">
+                <div className="text-destructive font-medium">Ученик заблокирован</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  С {new Date(h.blockedAt).toLocaleString('ru-RU')}
+                  {h.blockedReason ? ` · Причина: ${h.blockedReason}` : ''}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Ученик не сможет войти в систему до разблокировки.</div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-2">Доступ активен. Ученик может входить в платформу.</p>
+            )}
+          </div>
+          {h.blockedAt ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg gap-2"
+              onClick={() => h.handleToggleBlock(false)}
+              disabled={h.isTogglingBlock}
+            >
+              {h.isTogglingBlock ? <SigmaSpinner size="sm" /> : <ShieldCheck className="w-4 h-4" />}
+              Разблокировать
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="rounded-lg gap-2"
+              onClick={() => { setBlockReasonInput(""); setBlockDialogOpen(true); }}
+              disabled={h.isTogglingBlock}
+            >
+              <Ban className="w-4 h-4" />
+              Заблокировать
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <AlertDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Заблокировать ученика?</AlertDialogTitle>
+            <AlertDialogDescription>
+              После блокировки ученик не сможет войти в платформу. Вы сможете разблокировать в любой момент.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="blockReason">Причина (необязательно)</Label>
+            <Textarea
+              id="blockReason"
+              value={blockReasonInput}
+              onChange={(e) => setBlockReasonInput(e.target.value)}
+              placeholder="Например: нарушение правил обучения"
+              rows={3}
+              maxLength={500}
+              className="rounded-lg"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg">Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                await h.handleToggleBlock(true, blockReasonInput.trim() || undefined);
+                setBlockDialogOpen(false);
+              }}
+            >
+              Заблокировать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Login links */}
       {student.login && (
         <div className="bg-card rounded-2xl border border-border p-6">
