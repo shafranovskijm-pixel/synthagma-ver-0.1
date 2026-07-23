@@ -33,6 +33,8 @@ export function useLessonTest({
   const [testQuestionsCount, setTestQuestionsCount] = useState<number | null>(null);
   const [testPassingScore, setTestPassingScore] = useState<number>(60);
   const [testExplanations, setTestExplanations] = useState<Record<string, string | null>>({});
+  const [testMaxAttempts, setTestMaxAttempts] = useState<number | null>(null);
+  const [testAttemptsUsed, setTestAttemptsUsed] = useState<number>(0);
 
   useEffect(() => {
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({});
@@ -69,7 +71,14 @@ export function useLessonTest({
         correctAnswers?: Record<string, number>;
         explanations?: Record<string, string | null>;
         usedQuestionIds?: string[];
+        maxAttempts?: number | null;
+        attemptsUsed?: number;
       }>('get-test-results', { body: { lesson_id: lessonId } });
+
+      if (resultsData) {
+        setTestMaxAttempts(resultsData.maxAttempts ?? null);
+        setTestAttemptsUsed(resultsData.attemptsUsed ?? 0);
+      }
 
       if (resultsError) { selectRandomQuestions(allQuestions, questionsToShow, []); setUsedQuestionIds([]); setAnswers({}); return; }
 
@@ -109,6 +118,7 @@ export function useLessonTest({
       const { data: gradeResult, error: gradeError } = await safeInvoke<{
         score: number; maxScore: number; scorePercent: number; passed: boolean;
         correctAnswers: Record<string, number>; explanations?: Record<string, string | null>;
+        maxAttempts?: number | null; attemptsUsed?: number;
       }>('grade-test', { body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds } });
       if (gradeError || !gradeResult) {
         // Fallback: ставим в очередь, чтобы при восстановлении сети ответ ушёл.
@@ -117,8 +127,10 @@ export function useLessonTest({
         toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
         return;
       }
-      const { score, maxScore, scorePercent, passed, correctAnswers, explanations } = gradeResult;
+      const { score, maxScore, scorePercent, passed, correctAnswers, explanations, maxAttempts, attemptsUsed } = gradeResult;
       if (explanations) setTestExplanations(explanations);
+      if (maxAttempts !== undefined) setTestMaxAttempts(maxAttempts ?? null);
+      if (attemptsUsed !== undefined) setTestAttemptsUsed(attemptsUsed);
       setTestQuestions(testQuestions.map(q => ({ ...q, correct_answer: correctAnswers[q.id] ?? q.correct_answer })));
       setTestSubmitted(true);
       setTestScore({ score, max: maxScore });
@@ -143,6 +155,10 @@ export function useLessonTest({
   };
 
   const retryTest = () => {
+    if (testMaxAttempts && testMaxAttempts > 0 && testAttemptsUsed >= testMaxAttempts) {
+      toast.error(`Использованы все попытки (${testAttemptsUsed}/${testMaxAttempts})`);
+      return;
+    }
     const newUsedIds = [...usedQuestionIds, ...testQuestions.map(q => q.id)];
     setUsedQuestionIds(newUsedIds);
     selectRandomQuestions(allBankQuestions, testQuestionsCount, newUsedIds);
@@ -152,6 +168,7 @@ export function useLessonTest({
   return {
     testQuestions, allBankQuestions, answers, setAnswers,
     testSubmitted, testScore, testPassingScore, testExplanations,
+    testMaxAttempts, testAttemptsUsed,
     submitTest, retryTest,
   };
 }
