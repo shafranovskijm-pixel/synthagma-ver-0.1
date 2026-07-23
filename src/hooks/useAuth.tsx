@@ -172,6 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     
     if (!error && data?.user) {
+      // Check if user is blocked before establishing session
+      try {
+        const { data: blocked } = await supabase.rpc('is_user_blocked', { _user_id: data.user.id });
+        if (blocked === true) {
+          await supabase.auth.signOut();
+          return { error: new Error('Учётная запись заблокирована. Обратитесь к администратору организации.') };
+        }
+      } catch (e) {
+        console.warn('is_user_blocked check failed:', e);
+      }
+
       setSession(data.session);
       setUser(data.user);
       
