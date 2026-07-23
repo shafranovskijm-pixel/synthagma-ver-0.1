@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,13 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [courseSearch, setCourseSearch] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setName(""); setEmail(""); setCourseIds([]); setCompanyId("");
+      setLogin(""); setPassword(""); setCourseSearch("");
+    }
+  }, [open]);
 
   const publishedCourses = courses.filter(c => c.is_published);
   const filteredCourses = publishedCourses.filter(c => 
