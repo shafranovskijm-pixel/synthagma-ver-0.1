@@ -17,16 +17,35 @@ interface UseOrganizationDataLoaderProps {
   onCategoriesLoaded?: (categories: CourseCategory[]) => void;
 }
 
+const RETRY_TOAST_ID = "org-data-retry";
+
+function isNetworkErr(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return /Failed to fetch|NetworkError|Load failed|network|timeout|ECONN|fetch failed/i.test(msg);
+}
+
 /** Helper: run a Supabase query with up to 3 retries, increased delays */
 async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unknown }>, label = "query"): Promise<T | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       const delay = attempt * 3000; // 3s, 6s
+      // Notify user we are retrying instead of failing silently
+      toast.loading(`Медленное соединение — повторяем загрузку (${attempt + 1}/3)...`, {
+        id: RETRY_TOAST_ID,
+        duration: delay + 1500,
+      });
       await new Promise(r => setTimeout(r, delay));
     }
     const { data, error } = await fn();
-    if (!error) return data;
-    if (attempt === 2) throw error;
+    if (!error) {
+      if (attempt > 0) toast.dismiss(RETRY_TOAST_ID);
+      return data;
+    }
+    console.warn(`[retryQuery:${label}] attempt ${attempt + 1} failed:`, error);
+    if (attempt === 2) {
+      toast.dismiss(RETRY_TOAST_ID);
+      throw error;
+    }
   }
   return null;
 }
@@ -428,7 +447,20 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       } catch (error) {
         if (cancelled) return;
         console.error("Error fetching data:", error);
-        toast.error("Ошибка загрузки данных");
+        const network = isNetworkErr(error);
+        toast.error(
+          network
+            ? "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус."
+            : "Ошибка загрузки данных",
+          {
+            id: "org-data-error",
+            duration: 15000,
+            action: {
+              label: "Повторить",
+              onClick: () => setRefreshKey(prev => prev + 1),
+            },
+          },
+        );
       } finally {
         if (!cancelled) {
           setIsLoadingCourses(false);
