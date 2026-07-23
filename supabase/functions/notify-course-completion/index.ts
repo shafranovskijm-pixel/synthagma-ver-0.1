@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
-import { notifyStudent } from "../_shared/notification-prefs.ts";
+import { notifyStudent, isPrefEnabled } from "../_shared/notification-prefs.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
