@@ -182,6 +182,11 @@ export function useStudentDetailCardLogic({
   const [phone, setPhone] = useState<string>("");
   const [savingPhone, setSavingPhone] = useState(false);
 
+  // Block/unblock state
+  const [blockedAt, setBlockedAt] = useState<string | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  const [isTogglingBlock, setIsTogglingBlock] = useState(false);
+
 
   useEffect(() => {
     if (isOpen && student) loadStudentData();
