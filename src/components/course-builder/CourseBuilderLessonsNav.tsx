@@ -20,7 +20,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, ChevronDown, ChevronRight, MoreVertical, Pencil, Trash2, FolderPlus, type LucideIcon } from "lucide-react";
+import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, ChevronDown, ChevronRight, MoreVertical, Pencil, Trash2, FolderPlus, Video, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lessonIcons, lessonColors, type Lesson, type LessonType, type CourseModule } from "@/components/course-builder/LessonTypeConfig";
 
