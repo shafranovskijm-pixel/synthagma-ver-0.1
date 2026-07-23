@@ -52,21 +52,22 @@ serve(async (req: Request) => {
       force: true,
     });
 
-    if (!course.notify_on_completion) {
-      return new Response(JSON.stringify({ skipped: true, reason: "Org notifications disabled" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-
+    // Fetch student profile (name) + auth email
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, organization_id")
       .eq("user_id", user_id)
       .single();
 
     const studentName = profile?.full_name || "Слушатель";
+
+    let studentEmail: string | null = null;
+    try {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
+      studentEmail = authUser?.user?.email ?? null;
+    } catch (e) {
+      console.error("getUserById failed:", e);
+    }
 
     const { data: org } = await supabaseAdmin
       .from("organizations")
