@@ -280,8 +280,8 @@ export interface PlatformEmailResult {
  */
 export async function sendPlatformEmail(opts: PlatformEmailOptions): Promise<PlatformEmailResult> {
   if (!opts.skipRateLimit) {
-    const key = opts.rateLimitKey || `email:${opts.to}`;
-    const rl = checkRateLimit(key, {
+    const rlKey = opts.rateLimitKey || `email:${opts.to}`;
+    const rl = checkRateLimit(rlKey, {
       maxRequests: opts.rateLimitMax ?? 20,
       windowSeconds: opts.rateLimitWindowSec ?? 60,
     });
@@ -290,12 +290,50 @@ export async function sendPlatformEmail(opts: PlatformEmailOptions): Promise<Pla
     }
   }
 
-  let cfg: SmtpConfig;
-  try {
-    cfg = getPlatformSmtpConfig();
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
+  const supaUrl = Deno.env.get("SUPABASE_URL");
+  const supaKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  // 1) Пытаемся взять отправителя из пула email_sender_pool (LRU + суточный лимит)
+  let poolSenderId: string | null = null;
+  let cfg: SmtpConfig | null = null;
+  if (supaUrl && supaKey) {
+    try {
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
+      const admin = createClient(supaUrl, supaKey);
+      const { data: picked } = await admin.rpc("pick_next_email_sender");
+      const row = Array.isArray(picked) ? picked[0] : picked;
+      if (row?.email && row?.app_password) {
+        poolSenderId = row.id;
+        cfg = {
+          host: row.host,
+          port: row.port,
+          username: row.email,
+          password: row.app_password,
+          encryption: row.encryption,
+          from_email: row.email,
+          from_name: row.from_name || "Синтагма",
+        };
+      }
+    } catch (_) { /* fallback ниже */ }
   }
+
+  // 2) Fallback — платформенный SMTP из env
+  if (!cfg) {
+    try {
+      cfg = getPlatformSmtpConfig();
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  }
+
+  const markResult = async (err: string | null) => {
+    if (!poolSenderId || !supaUrl || !supaKey) return;
+    try {
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
+      const admin = createClient(supaUrl, supaKey);
+      await admin.rpc("mark_email_sender_result", { _sender_id: poolSenderId, _error: err });
+    } catch (_) { /* ignore */ }
+  };
 
   try {
     await sendSmtpEmail(cfg, {
@@ -307,9 +345,12 @@ export async function sendPlatformEmail(opts: PlatformEmailOptions): Promise<Pla
       attachments: opts.attachments,
       extraHeaders: opts.extraHeaders,
     });
+    await markResult(null);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: (e as Error).message };
+    const msg = (e as Error).message;
+    await markResult(msg);
+    return { ok: false, error: msg };
   }
 }
 
