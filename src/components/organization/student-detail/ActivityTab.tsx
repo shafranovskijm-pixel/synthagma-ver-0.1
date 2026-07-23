@@ -188,10 +188,6 @@ export function ActivityTab({ userId, organizationId, studentName, defaultSubTab
             <BookOpen className="w-4 h-4 mr-1.5" />
             Заходы на курсы ({courseAccess.length})
           </TabsTrigger>
-          <TabsTrigger value="tests">
-            <ClipboardCheck className="w-4 h-4 mr-1.5" />
-            Тестирование ({testAttempts.length})
-          </TabsTrigger>
           <TabsTrigger value="logins">
             <Monitor className="w-4 h-4 mr-1.5" />
             Входы на платформу ({history.length})
