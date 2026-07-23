@@ -6992,6 +6992,9 @@ export type Database = {
           archived_at: string | null
           avatar_url: string | null
           bio: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
           chat_privacy: Json | null
           city: string | null
           company_id: string | null
@@ -7018,6 +7021,9 @@ export type Database = {
           archived_at?: string | null
           avatar_url?: string | null
           bio?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           chat_privacy?: Json | null
           city?: string | null
           company_id?: string | null
@@ -7044,6 +7050,9 @@ export type Database = {
           archived_at?: string | null
           avatar_url?: string | null
           bio?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           chat_privacy?: Json | null
           city?: string | null
           company_id?: string | null
@@ -11094,6 +11103,7 @@ export type Database = {
         Args: { p_email: string; p_scope: string }
         Returns: boolean
       }
+      is_user_blocked: { Args: { _user_id: string }; Returns: boolean }
       is_webinar_org_member: { Args: { _webinar_id: string }; Returns: boolean }
       is_webinar_participant: {
         Args: { _user_id: string; _webinar_id: string }
@@ -11267,6 +11277,10 @@ export type Database = {
           p_org_reply?: string
           p_resolution_status: string
         }
+        Returns: undefined
+      }
+      set_student_blocked: {
+        Args: { _blocked: boolean; _reason?: string; _target_user_id: string }
         Returns: undefined
       }
       soft_delete_document: {

@@ -182,6 +182,11 @@ export function useStudentDetailCardLogic({
   const [phone, setPhone] = useState<string>("");
   const [savingPhone, setSavingPhone] = useState(false);
 
+  // Block/unblock state
+  const [blockedAt, setBlockedAt] = useState<string | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  const [isTogglingBlock, setIsTogglingBlock] = useState(false);
+
 
   useEffect(() => {
     if (isOpen && student) loadStudentData();
@@ -199,7 +204,7 @@ export function useStudentDetailCardLogic({
         supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
         supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", student.user_id).eq("organization_id", organizationId).order("accepted_at", { ascending: false }),
-        supabase.from("profiles").select("phone").eq("user_id", student.user_id).maybeSingle(),
+        supabase.from("profiles").select("phone, blocked_at, blocked_reason").eq("user_id", student.user_id).maybeSingle(),
       ]);
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
@@ -210,6 +215,8 @@ export function useStudentDetailCardLogic({
       else setFrdoData({});
       if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
       setPhone((profileRes.data as any)?.phone || "");
+      setBlockedAt((profileRes.data as any)?.blocked_at || null);
+      setBlockedReason((profileRes.data as any)?.blocked_reason || null);
     } catch (error) { console.error("Error loading student data:", error); }
     finally { setIsLoading(false); }
 
@@ -494,6 +501,34 @@ export function useStudentDetailCardLogic({
     } catch (error) { console.error("Manual verify error:", error); toast.error("Ошибка обновления"); }
   };
 
+  const handleToggleBlock = async (block: boolean, reason?: string) => {
+    if (!student) return;
+    setIsTogglingBlock(true);
+    try {
+      const { error } = await supabase.rpc('set_student_blocked', {
+        _target_user_id: student.user_id,
+        _blocked: block,
+        _reason: reason ?? null,
+      });
+      if (error) throw error;
+      if (block) {
+        setBlockedAt(new Date().toISOString());
+        setBlockedReason(reason ?? null);
+        toast.success("Ученик заблокирован");
+      } else {
+        setBlockedAt(null);
+        setBlockedReason(null);
+        toast.success("Ученик разблокирован");
+      }
+      onStudentUpdated?.();
+    } catch (e: any) {
+      console.error("Toggle block error:", e);
+      toast.error(e?.message || "Ошибка изменения статуса блокировки");
+    } finally {
+      setIsTogglingBlock(false);
+    }
+  };
+
   return {
     activeTab, setActiveTab, isLoading,
     consents, pepAgreements, latestPepAgreement, generatedConsents, verifications, documents, identityDocs,
@@ -513,6 +548,7 @@ export function useStudentDetailCardLogic({
     phone, savePhone, savingPhone,
     autoLoginToken, isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
+    blockedAt, blockedReason, isTogglingBlock, handleToggleBlock,
   };
 }
 
