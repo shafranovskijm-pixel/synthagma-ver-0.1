@@ -45,11 +45,12 @@ serve(async (req) => {
     if (registration_token) {
       const { data: link, error: linkError } = await supabaseAdmin
         .from("registration_links")
-        .select("id, organization_id, company_id, course_id, student_group_id, used_count, expires_at, max_uses")
+        .select("id, organization_id, company_id, course_id, student_group_id, used_count, expires_at")
         .eq("token", registration_token)
         .maybeSingle();
 
       if (linkError || !link) {
+        console.error("[register-student] link lookup failed", linkError);
         return new Response(
           JSON.stringify({ error: "Ссылка регистрации не найдена или срок её действия истёк." }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -58,13 +59,6 @@ serve(async (req) => {
       if ((link as any).expires_at && new Date((link as any).expires_at) < new Date()) {
         return new Response(
           JSON.stringify({ error: "Срок действия ссылки регистрации истёк." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const maxUses = (link as any).max_uses;
-      if (maxUses != null && Number(link.used_count || 0) >= Number(maxUses)) {
-        return new Response(
-          JSON.stringify({ error: "Лимит использований ссылки исчерпан. Попросите новую ссылку." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
