@@ -200,44 +200,103 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-    const recipients: string[] = [];
-    if (org.email) recipients.push(org.email);
-    if (course.completion_notify_emails) {
-      const extras = course.completion_notify_emails
-        .split(",")
-        .map((e: string) => e.trim())
-        .filter((e: string) => e && e.includes("@"));
-      recipients.push(...extras);
-    }
-
-    if (recipients.length === 0) {
-      return new Response(JSON.stringify({ skipped: true, reason: "No recipients" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const subject = `Курс завершён: ${studentName} — ${course.title}`;
-    let sent = 0;
-    const errors: string[] = [];
-
-    for (const recipient of recipients) {
-      const res = await sendPlatformEmail({
-        to: recipient,
-        subject,
-        html: htmlBody,
-        skipRateLimit: true, // системные уведомления, не пользовательские
-      });
-      if (res.ok) {
-        sent++;
+    // ----- Student email (gated by notification_preferences.course_completed.email) -----
+    let studentEmailSent = false;
+    let studentEmailSkipped: string | undefined;
+    if (studentEmail) {
+      const studentAllowed = await isPrefEnabled(user_id, "course_completed", "email");
+      if (studentAllowed) {
+        const studentHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f1f5f9;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <div style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;padding:32px;text-align:center;">
+        <div style="font-size:48px;margin-bottom:8px;">🎓</div>
+        <h1 style="margin:0;font-size:22px;font-weight:700;">Поздравляем с завершением курса!</h1>
+        <p style="margin:8px 0 0 0;opacity:0.9;font-size:14px;">${org.name}</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="margin:0 0 16px 0;font-size:16px;color:#0f172a;">${studentName}, вы успешно завершили курс:</p>
+        <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">${course.title}</p>
+          <p style="margin:6px 0 0 0;font-size:13px;color:#64748b;">Дата завершения: ${completionDate}</p>
+        </div>
+        ${testResults.length > 0 ? `
+        <div style="background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%);border:1px solid #bbf7d0;border-radius:12px;padding:16px;text-align:center;margin-bottom:24px;">
+          <p style="margin:0 0 4px 0;font-size:13px;color:#166534;">Итоговый результат тестирования</p>
+          <p style="margin:0;font-size:24px;font-weight:700;color:#15803d;">${totalScore}/${totalMax} (${totalPercent}%)</p>
+        </div>` : ""}
+        <p style="margin:0 0 20px 0;font-size:14px;color:#334155;line-height:1.6;">
+          Сертификат и другие документы об обучении появятся в разделе <strong>«Мои документы»</strong> в личном кабинете.
+        </p>
+        <div style="text-align:center;">
+          <a href="https://sintagma.com.ru/dashboard?tab=documents"
+             style="display:inline-block;background:#10b981;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;">
+            Открыть мои документы
+          </a>
+        </div>
+      </div>
+      <div style="background:#f8fafc;padding:16px;text-align:center;border-top:1px solid #e2e8f0;">
+        <p style="color:#94a3b8;font-size:12px;margin:0 0 4px 0;">Это письмо отправлено автоматически.</p>
+        <p style="color:#94a3b8;font-size:11px;margin:0;">Настроить уведомления: Профиль → Уведомления</p>
+      </div>
+    </div>
+  </div>
+</body></html>`;
+        const res = await sendPlatformEmail({
+          to: studentEmail,
+          subject: `Курс завершён: ${course.title}`,
+          html: studentHtml,
+          skipRateLimit: true,
+          rateLimitKey: `course-complete-student-${enrollment_id || user_id}-${course_id}`,
+        });
+        if (res.ok) studentEmailSent = true;
+        else console.error("student email send error:", studentEmail, res.error);
       } else {
-        errors.push(`${recipient}: ${res.error}`);
-        console.error("notify-course-completion send error:", recipient, res.error);
+        studentEmailSkipped = "student opted out (course_completed.email = false)";
+      }
+    } else {
+      studentEmailSkipped = "no student email";
+    }
+
+    // ----- Organization / extra recipients (gated by course.notify_on_completion) -----
+    let orgSent = 0;
+    let orgTotal = 0;
+    const orgErrors: string[] = [];
+    if (course.notify_on_completion) {
+      const recipients: string[] = [];
+      if (org.email) recipients.push(org.email);
+      if (course.completion_notify_emails) {
+        const extras = course.completion_notify_emails
+          .split(",")
+          .map((e: string) => e.trim())
+          .filter((e: string) => e && e.includes("@"));
+        recipients.push(...extras);
+      }
+      orgTotal = recipients.length;
+      const subject = `Курс завершён: ${studentName} — ${course.title}`;
+      for (const recipient of recipients) {
+        const res = await sendPlatformEmail({
+          to: recipient,
+          subject,
+          html: htmlBody,
+          skipRateLimit: true,
+        });
+        if (res.ok) orgSent++;
+        else {
+          orgErrors.push(`${recipient}: ${res.error}`);
+          console.error("notify-course-completion send error:", recipient, res.error);
+        }
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, sent, total: recipients.length, errors: errors.length ? errors : undefined }),
+      JSON.stringify({
+        success: true,
+        student: { emailSent: studentEmailSent, skipped: studentEmailSkipped },
+        organization: { sent: orgSent, total: orgTotal, errors: orgErrors.length ? orgErrors : undefined, gated: !course.notify_on_completion },
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
