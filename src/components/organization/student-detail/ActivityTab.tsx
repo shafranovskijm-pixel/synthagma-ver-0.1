@@ -26,6 +26,7 @@ interface ActivityTabProps {
   userId: string;
   organizationId: string;
   studentName?: string;
+  defaultSubTab?: "courses" | "tests" | "logins";
 }
 
 function parseUserAgent(ua: string | null): string {
@@ -38,7 +39,7 @@ function parseUserAgent(ua: string | null): string {
   return "🖥 Браузер";
 }
 
-export function ActivityTab({ userId, organizationId, studentName }: ActivityTabProps) {
+export function ActivityTab({ userId, organizationId, studentName, defaultSubTab = "courses" }: ActivityTabProps) {
   const [history, setHistory] = useState<LoginRecord[]>([]);
   const [courseAccess, setCourseAccess] = useState<CourseAccessRecord[]>([]);
   const [testAttempts, setTestAttempts] = useState<EnrichedTestAttempt[]>([]);
@@ -179,7 +180,7 @@ export function ActivityTab({ userId, organizationId, studentName }: ActivityTab
   }
 
   return (
-    <Tabs defaultValue="courses" className="space-y-4">
+    <Tabs defaultValue={defaultSubTab} className="space-y-4">
       <TabsList>
         <TabsTrigger value="courses">
           <BookOpen className="w-4 h-4 mr-1.5" />
