@@ -333,9 +333,11 @@ export function installErrorReporter() {
             responseSnippet: snippet,
             responseCT: ct,
             durationMs: performance.now() - startedAt,
+            finalUrl: resp.url || null,
           })
         );
       }
+
       return resp;
     } catch (err) {
       const errorKind = classifyError(err, url);
