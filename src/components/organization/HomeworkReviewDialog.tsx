@@ -59,6 +59,9 @@ export function HomeworkReviewDialog({ submission, open, onOpenChange, onUpdated
     if (error) {
       toast.error("Ошибка сохранения");
     } else {
+      // Fire-and-forget student notification (in-app + email if enabled)
+      supabase.functions.invoke("notify-homework-graded", { body: { submission_id: submission.id } })
+        .catch((e) => console.error("notify-homework-graded invoke error:", e));
       toast.success("Проверка сохранена");
       onUpdated();
     }
