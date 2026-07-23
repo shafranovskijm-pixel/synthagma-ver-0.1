@@ -88,9 +88,24 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
             <Badge className={isPassed ? "bg-green-500/15 text-green-600 border-green-500/30 hover:bg-green-500/20" : "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20"}>
               {isPassed ? `${percentage}%` : "Не пройден"}
             </Badge>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDownloadPdf} title="Скачать PDF">
-              <Download className="w-4 h-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="Скачать">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onSelect={handleDownloadPdf}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Скачать PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDownloadExcel}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Скачать Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
         </div>
