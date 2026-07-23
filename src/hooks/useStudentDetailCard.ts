@@ -548,6 +548,7 @@ export function useStudentDetailCardLogic({
     phone, savePhone, savingPhone,
     autoLoginToken, isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
+    blockedAt, blockedReason, isTogglingBlock, handleToggleBlock,
   };
 }
 
