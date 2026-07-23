@@ -303,10 +303,15 @@ ${courseTitle ? `Курс: ${courseTitle}` : ""}
 ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
 Тип: ${lessonType === "test" ? "тест с вопросами" : lessonType === "practice" ? "практическое задание (кейс/ситуационная задача)" : "текстовая лекция"}${previousLessonsList}`;
 
+    // Allow caller to override the system prompt (user-provided template).
+    const effectiveSystemPrompt = typeof customSystemPrompt === "string" && customSystemPrompt.trim()
+      ? customSystemPrompt.trim()
+      : systemPrompt;
+
     try {
       const args = await callAIWithTools(
         [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: effectiveSystemPrompt },
           { role: "user", content: userPrompt }
         ],
         toolDefinition ? { type: "function", function: toolDefinition.function } : undefined,
