@@ -251,13 +251,23 @@ function buildEvent(params: {
   responseSnippet: string | null;
   responseCT: string | null;
   durationMs: number;
+  finalUrl?: string | null;
 }): ErrorEvent {
   const { host, path } = getHostAndPath(params.url);
-  const proxyUsed =
-    path.startsWith("/sb-api") ||
-    path.startsWith("/sb-functions") ||
-    path.startsWith("/sb-storage") ||
-    host.startsWith("api.xn--80aaiswd0ak");
+  // Определяем факт прохода через прокси по фактическому URL ответа (resp.url),
+  // если доступен, — errorReporter оборачивает fetch поверх proxyFetch, поэтому
+  // входной url всегда исходный supabase.co, а resp.url отражает реальный канал.
+  let proxyUsed = false;
+  const finalHost = params.finalUrl ? getHostAndPath(params.finalUrl).host : host;
+  const finalPath = params.finalUrl ? getHostAndPath(params.finalUrl).path : path;
+  if (
+    finalPath.startsWith("/sb-api") ||
+    finalPath.startsWith("/sb-functions") ||
+    finalPath.startsWith("/sb-storage") ||
+    finalHost.startsWith("api.xn--80aaiswd0ak")
+  ) {
+    proxyUsed = true;
+  }
   return {
     occurred_at: new Date().toISOString(),
     method: params.method.toUpperCase().slice(0, 16),
@@ -277,6 +287,7 @@ function buildEvent(params: {
     occurrence_count: 1,
   };
 }
+
 
 export function installErrorReporter() {
   if (installed) return;
