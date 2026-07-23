@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
+import { isPrefEnabled, notifyStudent } from "../_shared/notification-prefs.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -211,8 +212,19 @@ serve(async (req) => {
           }
         }
 
-        // --- Email to student ---
-        if (cr.notify_student && smtpConfigured && studentEmail && !studentEmail.endsWith("@student.local")) {
+        // --- In-app notification to student (respects deadline_reminder.platform) ---
+        await notifyStudent({
+          userId: cr.user_id,
+          type: "deadline_reminder",
+          title: `Напоминание о переобучении: ${courseName}`,
+          message: `Дата переобучения — ${new Date(cr.reminder_date).toLocaleDateString("ru-RU")}`,
+          relatedId: cr.course_id,
+        });
+
+        // --- Email to student (respects deadline_reminder.email) ---
+        const studentEmailAllowed = cr.notify_student
+          && await isPrefEnabled(cr.user_id, "deadline_reminder", "email");
+        if (studentEmailAllowed && smtpConfigured && studentEmail && !studentEmail.endsWith("@student.local")) {
           const html = buildReminderEmailHtml(courseName, studentName, cr.completed_at, cr.reminder_date, orgName, cr.reminder_text, "student");
           await sendEmailViaSMTP(studentEmail, `Напоминание о переобучении — ${courseName}`, html, SMTP_HOST!, SMTP_PORT!, SMTP_USER!, SMTP_PASS!, SMTP_FROM!);
           console.log(`Email sent to student ${studentEmail} for reminder ${cr.id}`);

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
+import { notifyStudent } from "../_shared/notification-prefs.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,12 +42,23 @@ serve(async (req: Request) => {
       });
     }
 
+    // Personal in-app notification for the student — milestone, no opt-out
+    await notifyStudent({
+      userId: user_id,
+      type: "course_completed",
+      title: `Курс завершён: ${course.title}`,
+      message: `Поздравляем! Сертификат появится в разделе «Мои документы».`,
+      relatedId: course_id,
+      force: true,
+    });
+
     if (!course.notify_on_completion) {
-      return new Response(JSON.stringify({ skipped: true, reason: "Notifications disabled" }), {
+      return new Response(JSON.stringify({ skipped: true, reason: "Org notifications disabled" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")

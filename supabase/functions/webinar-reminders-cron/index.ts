@@ -2,6 +2,7 @@
 // за 24ч / 1ч / 15мин до начала. Адресаты — все приглашённые (webinar_participants + по access_type).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { filterEnabledUsers, notifyStudent } from "../_shared/notification-prefs.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,12 +104,32 @@ Deno.serve(async (req) => {
       }
 
       const uniqueIds = Array.from(new Set(userIds));
+
+      // Gate email: only users who allow webinar_reminder.email
+      const emailAllowed = await filterEnabledUsers(uniqueIds, "webinar_reminder", "email");
+      const emailToUser = new Map<string, string>(); // email -> userId
       if (uniqueIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("email").in("user_id", uniqueIds);
+        const { data: profs } = await supabase
+          .from("profiles").select("user_id, email").in("user_id", uniqueIds);
         for (const p of profs ?? []) {
-          if (p.email && /@/.test(p.email) && !p.email.endsWith("@student.local")) emails.add(p.email);
+          if (!p.email || !/@/.test(p.email) || p.email.endsWith("@student.local")) continue;
+          if (!emailAllowed.has(p.user_id as string)) continue;
+          emails.add(p.email);
+          emailToUser.set(p.email, p.user_id as string);
         }
       }
+
+      // In-app notifications (personal bell): respect webinar_reminder.platform
+      const scheduledMskShort = new Date(w.scheduled_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", dateStyle: "short", timeStyle: "short" });
+      await Promise.all(uniqueIds.map((uid) =>
+        notifyStudent({
+          userId: uid,
+          type: "webinar_reminder",
+          title: `Вебинар ${tier.label}: ${w.title}`,
+          message: `Начало: ${scheduledMskShort}`,
+          relatedId: w.id,
+        })
+      ));
 
       if (emails.size === 0) {
         await supabase.from("webinars").update({

@@ -1,4 +1,4 @@
-import { User, LogOut, Bell, Sparkles, HelpCircle } from "lucide-react";
+import { User, LogOut, Sparkles, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -7,6 +7,8 @@ import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
+import { StudentNotifications } from "@/components/student/StudentNotifications";
+import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 
 interface StudentHeaderProps {
@@ -35,6 +37,7 @@ export function StudentHeader({
   onProfileClick,
 }: StudentHeaderProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { theme: currentTheme, setTheme: setAppTheme } = useTheme();
   const toggleTheme = () => setAppTheme(currentTheme === "dark" ? "light" : "dark");
   const initials = fullName
@@ -94,15 +97,8 @@ export function StudentHeader({
         {/* Что нового — bell с бейджем */}
         <AnnouncementsBell />
 
-        {/* Notifications bell (заглушка под персональные уведомления) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform" disabled>
-              <Bell className="w-6 h-6 text-muted-foreground" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Скоро: уведомления</TooltipContent>
-        </Tooltip>
+        {/* Personal notifications */}
+        {user?.id && <StudentNotifications userId={user.id} />}
 
         {/* Profile dropdown */}
         <DropdownMenu>

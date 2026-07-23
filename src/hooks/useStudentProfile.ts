@@ -12,30 +12,34 @@ export const PROFILE_TABS = [
   { id: "help", label: "Помощь" },
 ] as const;
 
-export const NOTIFICATION_TYPES = [
-  { key: "course_updates", label: "Обновление курса и доступов", hint: "Уведомления об изменениях в курсах и доступах" },
-  { key: "webinar_reminder", label: "Напоминание о предстоящем вебинаре", hint: "Напоминание за день и за час до вебинара" },
-  { key: "homework", label: "Уведомления по домашним заданиям", hint: "Оценки и комментарии к домашним заданиям" },
-  { key: "deadline_reminder", label: "Напоминание о сроках дедлайнов", hint: "Предупреждение о приближающихся сроках" },
+export const NOTIFICATION_TYPES: { key: string; label: string; hint: string; comingSoon?: boolean }[] = [
+  { key: "course_completed", label: "Завершение курса", hint: "Приходит сразу после того, как вы прошли курс на 100%" },
+  { key: "webinar_reminder", label: "Напоминание о вебинаре", hint: "Напоминание за 24 часа, за 1 час и за 15 минут до вебинара" },
+  { key: "deadline_reminder", label: "Напоминание о переобучении", hint: "Приближается дата, до которой нужно пройти курс заново" },
   { key: "partner_changes", label: "Изменения и транзакции партнёра", hint: "Начисления и изменения в партнёрской программе" },
+  { key: "homework", label: "Оценки и комментарии по домашним заданиям", hint: "Оценки и комментарии к домашним заданиям", comingSoon: true },
+  { key: "course_updates", label: "Обновления курса и доступов", hint: "Изменения в курсах и правах доступа", comingSoon: true },
 ];
 
-export const CHANNELS = [
-  { key: "platform", label: "Платформа", hint: "Уведомления внутри платформы" },
-  { key: "browser", label: "Браузер", hint: "Push-уведомления в браузере" },
-  { key: "email", label: "Email", hint: "Уведомления на email" },
+export const CHANNELS: { key: "platform" | "email"; label: string; hint: string }[] = [
+  { key: "platform", label: "В приложении", hint: "Значок «колокольчик» в шапке ученика" },
+  { key: "email", label: "Email", hint: "На основной email профиля" },
 ];
+
+/** Default value per (type, channel). Kept in sync with edge helper `_shared/notification-prefs.ts`. */
+const DEFAULTS: Record<string, Record<string, boolean>> = {
+  course_completed:  { platform: true,  email: true  },
+  webinar_reminder:  { platform: true,  email: true  },
+  homework:          { platform: true,  email: false },
+  deadline_reminder: { platform: true,  email: false },
+  partner_changes:   { platform: true,  email: false },
+  course_updates:    { platform: true,  email: false },
+};
 
 function buildDefaultNotifSettings(): Record<string, Record<string, boolean>> {
-  const defaults: Record<string, Record<string, boolean>> = {};
-  NOTIFICATION_TYPES.forEach(t => {
-    defaults[t.key] = {};
-    CHANNELS.forEach(c => {
-      defaults[t.key][c.key] = c.key === "platform";
-    });
-  });
-  defaults["webinar_reminder"]["email"] = true;
-  return defaults;
+  const out: Record<string, Record<string, boolean>> = {};
+  for (const t of NOTIFICATION_TYPES) out[t.key] = { ...(DEFAULTS[t.key] ?? { platform: true, email: false }) };
+  return out;
 }
 
 export function useStudentProfile(effectiveUserId: string, isAdminView: boolean, userId?: string) {
