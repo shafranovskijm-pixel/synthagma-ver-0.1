@@ -17,7 +17,7 @@ export const NOTIFICATION_TYPES: { key: string; label: string; hint: string; com
   { key: "webinar_reminder", label: "Напоминание о вебинаре", hint: "Напоминание за 24 часа, за 1 час и за 15 минут до вебинара" },
   { key: "deadline_reminder", label: "Напоминание о переобучении", hint: "Приближается дата, до которой нужно пройти курс заново" },
   { key: "partner_changes", label: "Изменения и транзакции партнёра", hint: "Начисления и изменения в партнёрской программе" },
-  { key: "homework", label: "Оценки и комментарии по домашним заданиям", hint: "Оценки и комментарии к домашним заданиям", comingSoon: true },
+  { key: "homework", label: "Оценки и комментарии по домашним заданиям", hint: "Приходит после проверки преподавателем" },
   { key: "course_updates", label: "Обновления курса и доступов", hint: "Изменения в курсах и правах доступа", comingSoon: true },
 ];
 
