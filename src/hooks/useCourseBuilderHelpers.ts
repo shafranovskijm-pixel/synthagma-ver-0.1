@@ -82,6 +82,7 @@ export function normalizeLessonsFromDB(
       testPassingScore: (l as any).test_passing_score ?? 60,
       testQuestionsToShow: (l as any).test_questions_to_show ?? null,
       testMaxAttempts: (l as any).test_max_attempts ?? null,
+      testShowAnswers: (l as any).test_show_answers ?? true,
       questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
       attachments: attachmentsMap[l.id] || [],
       module_id: (l as any).module_id ?? null,
