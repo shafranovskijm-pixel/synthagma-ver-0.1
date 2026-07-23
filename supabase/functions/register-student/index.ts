@@ -31,6 +31,7 @@ serve(async (req) => {
     const {
       email, password, full_name, organization_id, course_id, company_id,
       custom_login, custom_password, student_group_id, registration_token,
+      region,
     } = payload || {};
 
     // ── Public branch: registration by link token (no session required) ──
