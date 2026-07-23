@@ -26,6 +26,7 @@ interface ActivityTabProps {
   userId: string;
   organizationId: string;
   studentName?: string;
+  defaultSubTab?: "courses" | "tests" | "logins";
 }
 
 function parseUserAgent(ua: string | null): string {
