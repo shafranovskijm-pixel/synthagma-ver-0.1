@@ -501,6 +501,34 @@ export function useStudentDetailCardLogic({
     } catch (error) { console.error("Manual verify error:", error); toast.error("Ошибка обновления"); }
   };
 
+  const handleToggleBlock = async (block: boolean, reason?: string) => {
+    if (!student) return;
+    setIsTogglingBlock(true);
+    try {
+      const { error } = await supabase.rpc('set_student_blocked', {
+        _target_user_id: student.user_id,
+        _blocked: block,
+        _reason: reason ?? null,
+      });
+      if (error) throw error;
+      if (block) {
+        setBlockedAt(new Date().toISOString());
+        setBlockedReason(reason ?? null);
+        toast.success("Ученик заблокирован");
+      } else {
+        setBlockedAt(null);
+        setBlockedReason(null);
+        toast.success("Ученик разблокирован");
+      }
+      onStudentUpdated?.();
+    } catch (e: any) {
+      console.error("Toggle block error:", e);
+      toast.error(e?.message || "Ошибка изменения статуса блокировки");
+    } finally {
+      setIsTogglingBlock(false);
+    }
+  };
+
   return {
     activeTab, setActiveTab, isLoading,
     consents, pepAgreements, latestPepAgreement, generatedConsents, verifications, documents, identityDocs,
