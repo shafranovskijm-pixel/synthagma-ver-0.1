@@ -98,7 +98,7 @@ export function useCourseBuilder(propCourseId?: string) {
       const lessonsPromise = courseId
         ? supabase
             .from("lessons")
-            .select("id, course_id, title, type, order_index, module_id, is_locked, test_passing_score, test_questions_to_show, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model")
+            .select("id, course_id, title, type, order_index, module_id, is_locked, test_passing_score, test_questions_to_show, test_max_attempts, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model")
             .eq("course_id", courseId)
             .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
@@ -500,7 +500,9 @@ export function useCourseBuilder(propCourseId?: string) {
         const baseRow = (lesson: typeof lessons[number], index: number) => ({
           id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type,
           order_index: index, test_passing_score: lesson.testPassingScore ?? 60,
-          test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null,
+          test_questions_to_show: lesson.testQuestionsToShow ?? null,
+          test_max_attempts: lesson.testMaxAttempts ?? null,
+          module_id: lesson.module_id ?? null,
         });
         const lessonsWithContent = lessons
           .map((l, i) => ({ l, i }))
@@ -589,8 +591,8 @@ export function useCourseBuilder(propCourseId?: string) {
         if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
-      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
-      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }); if (error) throw error; toast.success("Лекция сохранена"); }
+      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, module_id: lesson.module_id ?? null }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
+      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, module_id: lesson.module_id ?? null }); if (error) throw error; toast.success("Лекция сохранена"); }
     } catch (error: unknown) { toast.error("Ошибка сохранения: " + (error instanceof Error ? error.message : String(error))); }
     finally { setIsSaving(false); }
   };

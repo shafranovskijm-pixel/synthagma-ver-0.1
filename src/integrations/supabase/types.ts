@@ -4639,6 +4639,7 @@ export type Database = {
           is_locked: boolean
           module_id: string | null
           order_index: number
+          test_max_attempts: number | null
           test_passing_score: number
           test_questions_count: number | null
           test_questions_to_show: number | null
@@ -4671,6 +4672,7 @@ export type Database = {
           is_locked?: boolean
           module_id?: string | null
           order_index?: number
+          test_max_attempts?: number | null
           test_passing_score?: number
           test_questions_count?: number | null
           test_questions_to_show?: number | null
@@ -4703,6 +4705,7 @@ export type Database = {
           is_locked?: boolean
           module_id?: string | null
           order_index?: number
+          test_max_attempts?: number | null
           test_passing_score?: number
           test_questions_count?: number | null
           test_questions_to_show?: number | null

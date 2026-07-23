@@ -40,7 +40,7 @@ const CourseLearning = () => {
     user, navigate, isMobile, contentRef,
     course, lessons, currentLessonIndex, lessonProgress, loading,
     sidebarOpen, setSidebarOpen, isTransitioning,
-    testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions,
+    testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions, testMaxAttempts, testAttemptsUsed,
     answers, setAnswers,
     isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
@@ -302,7 +302,20 @@ const CourseLearning = () => {
                       <div className={cn("w-16 h-16 rounded-full flex items-center justify-center", testPassed ? "bg-sigma-green/20" : "bg-destructive/20")}><Trophy className={cn("w-8 h-8", testPassed ? "text-sigma-green" : "text-destructive")} /></div>
                       <div><h3 className="text-xl font-bold">{testPassed ? 'Тест пройден!' : 'Тест не пройден'}</h3><p className="text-muted-foreground">Результат: {testScore.score} из {testScore.max} ({Math.round(testScore.score / testScore.max * 100)}%)</p></div>
                     </div>
-                    {!testPassed && <div className="mt-4 flex items-center gap-3"><Button onClick={retryTest}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button></div>}
+                    {!testPassed && (
+                      <div className="mt-4 flex items-center gap-3 flex-wrap">
+                        {testMaxAttempts && testMaxAttempts > 0 && testAttemptsUsed >= testMaxAttempts ? (
+                          <p className="text-sm text-destructive font-medium">Использованы все попытки ({testAttemptsUsed}/{testMaxAttempts})</p>
+                        ) : (
+                          <>
+                            <Button onClick={retryTest}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button>
+                            {testMaxAttempts && testMaxAttempts > 0 && (
+                              <span className="text-xs text-muted-foreground">Попытка {testAttemptsUsed} из {testMaxAttempts}</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 {testSubmitted && testScore && (

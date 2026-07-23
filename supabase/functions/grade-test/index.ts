@@ -56,6 +56,28 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
     );
   }
 
+  // Check attempt limit before grading
+  const { data: lessonMeta } = await supabaseAdmin
+    .from("lessons")
+    .select("test_passing_score, test_max_attempts")
+    .eq("id", lesson_id)
+    .single();
+
+  const maxAttempts = (lessonMeta as any)?.test_max_attempts as number | null ?? null;
+  if (maxAttempts && maxAttempts > 0) {
+    const { count: usedCount } = await supabaseAdmin
+      .from("test_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("lesson_id", lesson_id)
+      .eq("user_id", user.sub);
+    if ((usedCount ?? 0) >= maxAttempts) {
+      return new Response(
+        JSON.stringify({ error: "Attempts exhausted", attemptsUsed: usedCount ?? 0, maxAttempts }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   const { data: questionsWithAnswers, error: fetchError } = await supabaseAdmin
     .from("test_questions")
     .select("id, correct_answer, explanation")
@@ -86,13 +108,7 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
 
   const maxScore = shown_question_ids.length;
 
-  const { data: lesson } = await supabaseAdmin
-    .from("lessons")
-    .select("test_passing_score")
-    .eq("id", lesson_id)
-    .single();
-
-  const passingScore = lesson?.test_passing_score ?? 80;
+  const passingScore = lessonMeta?.test_passing_score ?? 80;
   const scorePercent = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   const passed = scorePercent >= passingScore;
 
@@ -129,6 +145,13 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
       );
   }
 
+  // Recount attempts after insert
+  const { count: attemptsUsed } = await supabaseAdmin
+    .from("test_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("lesson_id", lesson_id)
+    .eq("user_id", user.sub);
+
   console.log(`Test graded for user ${user.sub}: ${score}/${maxScore} (${scorePercent}%), passed: ${passed}`);
 
   return {
@@ -137,6 +160,8 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
     scorePercent,
     passed,
     passingScore,
+    maxAttempts,
+    attemptsUsed: attemptsUsed ?? 0,
     correctAnswers: Object.fromEntries(correctAnswersMap),
     explanations: Object.fromEntries(explanationsMap),
   };

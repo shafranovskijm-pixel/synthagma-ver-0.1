@@ -43,6 +43,7 @@ export interface Lesson {
   videoScript?: string;
   testPassingScore?: number;
   testQuestionsToShow?: number | null;
+  testMaxAttempts?: number | null;
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];
   module_id?: string | null;
