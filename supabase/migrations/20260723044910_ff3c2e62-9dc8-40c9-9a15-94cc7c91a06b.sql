@@ -1,0 +1,2 @@
+UPDATE public.email_sender_pool SET is_active=false, last_error='not in notifications whitelist', last_error_at=now() WHERE email IN ('sintagma@sintagma.online','sintagma@sintagmapro.ru');
+UPDATE public.email_sender_pool SET is_active=true, last_error=NULL, last_error_at=NULL WHERE email IN ('24@24zxc.ru','info@24sintagma.ru','noreply@24sintagma.ru','sintagma@prosintagma.ru','support@sintagma.com.ru');
