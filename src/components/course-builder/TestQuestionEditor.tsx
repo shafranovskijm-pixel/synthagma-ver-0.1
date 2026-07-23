@@ -94,7 +94,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
                         </div>
                       ))}
                     </RadioGroup>
-                    {question.options.length < 6 && (
+                    {question.options.length < 10 && (
                       <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => h.addOption(question.id)}><Plus className="w-3 h-3 mr-1" />Добавить вариант</Button>
                     )}
                   </div>

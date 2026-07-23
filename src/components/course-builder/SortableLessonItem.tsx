@@ -374,7 +374,7 @@ export function SortableLessonItem({
             <div className="space-y-4">
               <div className="bg-secondary/30 rounded-xl p-4 border border-border">
                 <h4 className="font-medium text-sm mb-3 flex items-center gap-2"><FileQuestion className="w-4 h-4 text-sigma-orange" />Настройки теста</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="text-sm">Проходной балл (%)</Label>
                     <Input type="number" min={0} max={100} value={lesson.testPassingScore ?? 60} onChange={(e) => onUpdate({ testPassingScore: parseInt(e.target.value) || 60 })} className="rounded-lg" />
@@ -384,6 +384,11 @@ export function SortableLessonItem({
                     <Label className="text-sm">Показывать вопросов</Label>
                     <Input type="number" min={1} value={lesson.testQuestionsToShow ?? ''} onChange={(e) => { const val = e.target.value; onUpdate({ testQuestionsToShow: val ? parseInt(val) : null }); }} placeholder="Все" className="rounded-lg" />
                     <p className="text-xs text-muted-foreground">Оставьте пустым, чтобы показать все вопросы.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Количество попыток</Label>
+                    <Input type="number" min={1} value={lesson.testMaxAttempts ?? ''} onChange={(e) => { const val = e.target.value; onUpdate({ testMaxAttempts: val ? parseInt(val) : null }); }} placeholder="Без ограничений" className="rounded-lg" />
+                    <p className="text-xs text-muted-foreground">Оставьте пустым для неограниченного количества попыток.</p>
                   </div>
                 </div>
               </div>
