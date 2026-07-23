@@ -134,9 +134,10 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       if (!block.documentUrl) return null;
       const docExt = block.documentName?.split('.').pop()?.toLowerCase();
       const isPdf = docExt === 'pdf';
+      const documentUrl = proxiedAssetUrl(block.documentUrl);
       const previewUrl = isPdf
-        ? `https://docs.google.com/gview?url=${encodeURIComponent(block.documentUrl)}&embedded=true`
-        : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.documentUrl)}`;
+        ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
+        : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`;
       return (
         <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden not-prose">
           <div className="flex items-center gap-3 p-3 border-b border-indigo-500/20">
@@ -144,7 +145,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
               <BookOpen className="w-4 h-4 text-indigo-500" />
             </div>
             <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
-            <a href={block.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
+            <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
           </div>
           <div className="aspect-[4/3]">
             <iframe src={previewUrl} className="w-full h-full border-0" />
@@ -171,7 +172,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
         </div>
       );
     case "image":
-      return block.imageSrc ? <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto not-prose" /> : null;
+      return block.imageSrc ? <img src={proxiedAssetUrl(block.imageSrc)} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto not-prose" /> : null;
     case "video": {
       if (!block.videoUrl) return null;
       return <div className="not-prose"><VideoPreviewInline content={block.videoUrl} eager /></div>;

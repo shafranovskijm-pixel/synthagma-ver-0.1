@@ -15,6 +15,7 @@ import {
   getKinescopeEmbedUrl,
   generateKinescopeDrmToken,
 } from "@/utils/courseBuilderHelpers";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 export interface VideoPlayerInlineProps {
   content: string;
@@ -38,6 +39,9 @@ export const VideoPlayerInline = ({
   const embedResult = getVideoEmbedUrl(content);
   const directVideoSrc = embedResult?.url && isDirectVideoFileUrl(embedResult.url) ? embedResult.url : null;
   const resolvedContent = directVideoSrc ?? content;
+  const playableContent = isDirectVideoFileUrl(resolvedContent) || isMpegTsFileUrl(resolvedContent)
+    ? proxiedAssetUrl(resolvedContent)
+    : resolvedContent;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
@@ -129,14 +133,14 @@ export const VideoPlayerInline = ({
   // Wire up hls.js for .ts / .m2ts / .mts / .m3u8 files (Chrome/Firefox/Edge can't decode MPEG-TS natively)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !resolvedContent) return;
-    if (!isMpegTsFileUrl(resolvedContent)) return;
+    if (!video || !playableContent) return;
+    if (!isMpegTsFileUrl(playableContent)) return;
 
     // Safari can play MPEG-TS / HLS natively — let the native <video src> handle it
     const canPlayNative =
       video.canPlayType("application/vnd.apple.mpegurl") !== "" ||
       video.canPlayType("video/mp2t") !== "";
-    if (canPlayNative && !/\.m3u8(\?|$)/i.test(resolvedContent)) return;
+    if (canPlayNative && !/\.m3u8(\?|$)/i.test(playableContent)) return;
 
     let hls: any = null;
     let cancelled = false;
@@ -152,13 +156,13 @@ export const VideoPlayerInline = ({
         }
         hls = new Hls({ enableWorker: true });
 
-        let manifestUrl = resolvedContent;
-        if (!/\.m3u8(\?|$)/i.test(resolvedContent)) {
+        let manifestUrl = playableContent;
+        if (!/\.m3u8(\?|$)/i.test(playableContent)) {
           // Wrap the standalone .ts file in a synthesized HLS playlist
           const playlist =
             "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:60\n" +
             "#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
-            `#EXTINF:60.0,\n${resolvedContent}\n#EXT-X-ENDLIST\n`;
+            `#EXTINF:60.0,\n${playableContent}\n#EXT-X-ENDLIST\n`;
           manifestObjectUrl = URL.createObjectURL(
             new Blob([playlist], { type: "application/vnd.apple.mpegurl" })
           );
@@ -181,7 +185,7 @@ export const VideoPlayerInline = ({
       try { hls?.destroy(); } catch {}
       if (manifestObjectUrl) URL.revokeObjectURL(manifestObjectUrl);
     };
-  }, [resolvedContent]);
+  }, [playableContent]);
 
   // Determine player mode (native vs embed) once and report up.
   // Native = HTML5 <video> with timeupdate; Embed = iframe (Kinescope, KonturTalk, YouTube etc.)
@@ -340,7 +344,7 @@ export const VideoPlayerInline = ({
           <p className="text-xs text-muted-foreground mb-3">Формат не поддерживается или файл недоступен</p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Button variant="outline" onClick={handleRetryVideo} className="inline-flex items-center gap-2"><RotateCcw className="w-4 h-4" />Попробовать снова</Button>
-            <a href={resolvedContent} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"><Play className="w-4 h-4" />Открыть в новом окне</a>
+            <a href={playableContent} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"><Play className="w-4 h-4" />Открыть в новом окне</a>
           </div>
         </div>
       </div>
@@ -352,7 +356,7 @@ export const VideoPlayerInline = ({
       <video
         key={allowSeek ? "seek-on" : "seek-off"}
         ref={videoRef} controls={false} className="w-full h-full rounded-2xl video-no-controls"
-        {...(isMpegTsFileUrl(resolvedContent) ? {} : { src: resolvedContent })}
+        {...(isMpegTsFileUrl(playableContent) ? {} : { src: playableContent })}
         preload="metadata" onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking} onRateChange={handleRateChange}
@@ -376,7 +380,7 @@ export const VideoPlayerInline = ({
                 <Button variant="outline" onClick={handleRetryVideo} className="inline-flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20">
                   <RotateCcw className="w-4 h-4" />Попробовать снова
                 </Button>
-                <a href={resolvedContent} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                <a href={playableContent} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
                   <Play className="w-4 h-4" />Открыть в новом окне
                 </a>
               </div>
@@ -389,7 +393,7 @@ export const VideoPlayerInline = ({
       {videoSlow && !videoLoading && (
         <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm text-xs px-3 py-2 rounded-lg flex items-center gap-2 border border-border">
           <span className="text-muted-foreground">Видео загружается медленно</span>
-          <a href={resolvedContent} target="_blank" rel="noopener noreferrer" className="text-primary underline">Открыть отдельно</a>
+          <a href={playableContent} target="_blank" rel="noopener noreferrer" className="text-primary underline">Открыть отдельно</a>
         </div>
       )}
       {/* Controls */}
