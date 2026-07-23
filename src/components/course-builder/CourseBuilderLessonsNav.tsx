@@ -248,35 +248,36 @@ function ModuleHeaderRow({
     <>
       <div
         className={cn(
-          "group flex items-center gap-1 rounded-xl px-2 py-2 text-sm transition-colors",
+          "group flex items-start gap-1 rounded-xl px-2 py-2 text-sm transition-colors",
           "bg-muted/40 hover:bg-muted/60",
         )}
       >
         <button
           onClick={onToggle}
-          className="p-1 shrink-0 text-muted-foreground hover:text-primary transition-colors"
+          className="p-1 shrink-0 text-muted-foreground hover:text-primary transition-colors mt-0.5"
           aria-label={module.collapsed ? "Развернуть модуль" : "Свернуть модуль"}
         >
           {module.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
         {editing ? (
-          <input
+          <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitRename(); }
               if (e.key === "Escape") { setDraft(module.title); setEditing(false); }
             }}
             autoFocus
-            className="flex-1 bg-background border border-primary/40 rounded-md px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+            rows={2}
+            className="flex-1 min-w-0 bg-background border border-primary/40 rounded-md px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-primary resize-none whitespace-pre-wrap break-words"
           />
         ) : (
           <button
             onClick={onToggle}
             onDoubleClick={() => { setDraft(module.title); setEditing(true); }}
-            className="flex-1 text-left font-semibold text-foreground min-w-0 truncate"
+            className="flex-1 text-left font-semibold text-foreground min-w-0 whitespace-normal break-words leading-snug py-0.5"
             title={module.title}
           >
             {module.title}
