@@ -44,6 +44,7 @@ export interface Lesson {
   testPassingScore?: number;
   testQuestionsToShow?: number | null;
   testMaxAttempts?: number | null;
+  testShowAnswers?: boolean;
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];
   module_id?: string | null;
