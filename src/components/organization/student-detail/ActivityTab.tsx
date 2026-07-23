@@ -27,6 +27,7 @@ interface ActivityTabProps {
   organizationId: string;
   studentName?: string;
   defaultSubTab?: "courses" | "tests" | "logins";
+  onlySubTab?: boolean;
 }
 
 function parseUserAgent(ua: string | null): string {
@@ -39,7 +40,7 @@ function parseUserAgent(ua: string | null): string {
   return "🖥 Браузер";
 }
 
-export function ActivityTab({ userId, organizationId, studentName, defaultSubTab = "courses" }: ActivityTabProps) {
+export function ActivityTab({ userId, organizationId, studentName, defaultSubTab = "courses", onlySubTab = false }: ActivityTabProps) {
   const [history, setHistory] = useState<LoginRecord[]>([]);
   const [courseAccess, setCourseAccess] = useState<CourseAccessRecord[]>([]);
   const [testAttempts, setTestAttempts] = useState<EnrichedTestAttempt[]>([]);
@@ -181,20 +182,22 @@ export function ActivityTab({ userId, organizationId, studentName, defaultSubTab
 
   return (
     <Tabs defaultValue={defaultSubTab} className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="courses">
-          <BookOpen className="w-4 h-4 mr-1.5" />
-          Заходы на курсы ({courseAccess.length})
-        </TabsTrigger>
-        <TabsTrigger value="tests">
-          <ClipboardCheck className="w-4 h-4 mr-1.5" />
-          Тестирование ({testAttempts.length})
-        </TabsTrigger>
-        <TabsTrigger value="logins">
-          <Monitor className="w-4 h-4 mr-1.5" />
-          Входы на платформу ({history.length})
-        </TabsTrigger>
-      </TabsList>
+      {!onlySubTab && (
+        <TabsList>
+          <TabsTrigger value="courses">
+            <BookOpen className="w-4 h-4 mr-1.5" />
+            Заходы на курсы ({courseAccess.length})
+          </TabsTrigger>
+          <TabsTrigger value="tests">
+            <ClipboardCheck className="w-4 h-4 mr-1.5" />
+            Тестирование ({testAttempts.length})
+          </TabsTrigger>
+          <TabsTrigger value="logins">
+            <Monitor className="w-4 h-4 mr-1.5" />
+            Входы на платформу ({history.length})
+          </TabsTrigger>
+        </TabsList>
+      )}
 
       <TabsContent value="courses">
         {courseAccess.length === 0 ? (
