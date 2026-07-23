@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Download, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, CheckCircle2, XCircle, FileText, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { generateTestAttemptPdf } from "@/utils/testAttemptPdf";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { generateTestAttemptPdf, generateTestAttemptExcel } from "@/utils/testAttemptPdf";
+
 
 export interface QuestionData {
   id: string;
@@ -42,22 +44,30 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
     ? attempt.questions.filter((q) => attempt.shown_question_ids!.includes(q.id))
     : attempt.questions;
 
-  const handleDownloadPdf = (e: React.MouseEvent) => {
+  const buildData = () => ({
+    studentName,
+    courseTitle: attempt.course_title,
+    testTitle: attempt.lesson_title,
+    completedAt: attempt.completed_at,
+    score: attempt.score,
+    maxScore: attempt.max_score,
+    percentage,
+    isPassed,
+    passingScore: attempt.passing_score,
+    questions: shownQuestions,
+    answers: attempt.answers,
+  });
+
+  const handleDownloadPdf = (e: Event) => {
     e.stopPropagation();
-    void generateTestAttemptPdf({
-      studentName,
-      courseTitle: attempt.course_title,
-      testTitle: attempt.lesson_title,
-      completedAt: attempt.completed_at,
-      score: attempt.score,
-      maxScore: attempt.max_score,
-      percentage,
-      isPassed,
-      passingScore: attempt.passing_score,
-      questions: shownQuestions,
-      answers: attempt.answers,
-    });
+    void generateTestAttemptPdf(buildData());
   };
+
+  const handleDownloadExcel = (e: Event) => {
+    e.stopPropagation();
+    void generateTestAttemptExcel(buildData());
+  };
+
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -78,9 +88,24 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
             <Badge className={isPassed ? "bg-green-500/15 text-green-600 border-green-500/30 hover:bg-green-500/20" : "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20"}>
               {isPassed ? `${percentage}%` : "Не пройден"}
             </Badge>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDownloadPdf} title="Скачать PDF">
-              <Download className="w-4 h-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="Скачать">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onSelect={handleDownloadPdf}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Скачать PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDownloadExcel}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Скачать Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
         </div>
