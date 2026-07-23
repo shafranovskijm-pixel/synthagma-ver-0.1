@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
 import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
+import { AIActionsMenu } from "@/components/course-builder/AIActionsMenu";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
 import { CourseSnapshotsDialog } from "@/components/course-builder/CourseSnapshotsDialog";
 import { CourseGenerationProgress } from "@/components/course-builder/CourseGenerationProgress";
