@@ -374,6 +374,50 @@ export type Database = {
           },
         ]
       }
+      ai_prompt_templates: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          prompt: string
+          scope: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          prompt: string
+          scope: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          prompt?: string
+          scope?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_prompt_templates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_settings: {
         Row: {
           concurrency: number | null
