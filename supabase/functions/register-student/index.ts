@@ -31,6 +31,7 @@ serve(async (req) => {
     const {
       email, password, full_name, organization_id, course_id, company_id,
       custom_login, custom_password, student_group_id, registration_token,
+      region,
     } = payload || {};
 
     // ── Public branch: registration by link token (no session required) ──
@@ -391,7 +392,8 @@ serve(async (req) => {
           generated_password: generatedPassword,
           organization_id: effectiveOrgId,
           company_id: effectiveCompanyId || null,
-          student_group_id: effectiveStudentGroupId || null
+          student_group_id: effectiveStudentGroupId || null,
+          region: region ? String(region).trim() || null : null,
         }, { onConflict: "user_id" });
 
       if (profileInsertError) {

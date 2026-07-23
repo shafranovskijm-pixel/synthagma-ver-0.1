@@ -318,7 +318,7 @@ const CourseLearning = () => {
                     )}
                   </div>
                 )}
-                {testSubmitted && testScore && (
+                {testSubmitted && testScore && ((currentLesson as any)?.test_show_answers ?? true) && (
                   <Collapsible open={reviewOpen} onOpenChange={setReviewOpen}>
                     <CollapsibleTrigger asChild>
                       <Button variant="outline" className="w-full rounded-xl"><ClipboardList className="w-4 h-4 mr-2" />{reviewOpen ? 'Скрыть разбор ответов' : 'Показать разбор ответов'}</Button>

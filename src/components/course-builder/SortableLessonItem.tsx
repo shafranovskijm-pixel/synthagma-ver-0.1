@@ -391,6 +391,18 @@ export function SortableLessonItem({
                     <p className="text-xs text-muted-foreground">Оставьте пустым для неограниченного количества попыток.</p>
                   </div>
                 </div>
+                <label className="mt-4 flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-border accent-primary"
+                    checked={lesson.testShowAnswers ?? true}
+                    onChange={(e) => onUpdate({ testShowAnswers: e.target.checked })}
+                  />
+                  <div>
+                    <div className="text-sm font-medium">Показывать разбор ответов</div>
+                    <p className="text-xs text-muted-foreground">Ученик увидит правильные ответы и пояснения после завершения теста.</p>
+                  </div>
+                </label>
               </div>
               <div className="flex justify-end gap-2 flex-wrap">
                 <TestImportDialog onImport={(imported) => {

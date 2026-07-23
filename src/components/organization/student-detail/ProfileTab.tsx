@@ -403,10 +403,12 @@ function PersonalFrdoSection({ h }: { h: any }) {
   const [phone, setPhone] = useState<string>(h.phone || "");
   const [birthDate, setBirthDate] = useState<string>(h.frdoData?.birth_date || "");
   const [snils, setSnils] = useState<string>(h.frdoData?.snils || "");
+  const [region, setRegion] = useState<string>(h.region || "");
 
   useEffect(() => { setPhone(h.phone || ""); }, [h.phone]);
   useEffect(() => { setBirthDate(h.frdoData?.birth_date || ""); }, [h.frdoData?.birth_date]);
   useEffect(() => { setSnils(h.frdoData?.snils || ""); }, [h.frdoData?.snils]);
+  useEffect(() => { setRegion(h.region || ""); }, [h.region]);
 
   const gender = h.frdoData?.gender || "";
   const citizenship = h.frdoData?.citizenship_code || "643";
@@ -486,6 +488,19 @@ function PersonalFrdoSection({ h }: { h: any }) {
             onChange={(code) => h.saveFrdoField("citizenship_code", code)}
           />
           <p className="text-xs text-muted-foreground">Классификатор ОКСМ. По умолчанию — Россия (643).</p>
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label className="flex items-center gap-2"><Globe className="w-4 h-4" />Регион</Label>
+          <Input
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            onBlur={() => { if (region !== (h.region || "")) h.saveRegion(region); }}
+            placeholder="Например: Москва, Свердловская обл."
+            className="rounded-lg"
+            disabled={h.savingRegion}
+          />
+          <p className="text-xs text-muted-foreground">Необязательно — для связи менеджера с учеником.</p>
         </div>
       </div>
 
