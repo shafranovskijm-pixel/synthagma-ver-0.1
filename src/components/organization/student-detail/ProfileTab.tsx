@@ -613,3 +613,92 @@ function PassportFieldsBlock({ h }: { h: any }) {
   );
 }
 
+/**
+ * Карточка "Контактный email" — показывается только для учеников, у которых
+ * основной email синтетический (@student.local). Пишет в profiles.contact_email,
+ * который используется в notify-* функциях через getPreferredEmail().
+ */
+function ContactEmailCard({ studentEmail, userId }: { studentEmail: string; userId?: string }) {
+  const isSynthetic = (studentEmail || "").toLowerCase().endsWith("@student.local");
+  const [value, setValue] = useState("");
+  const [saved, setSaved] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isSynthetic || !userId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("contact_email")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!cancelled) {
+        const v = (data as any)?.contact_email || "";
+        setSaved(v);
+        setValue(v);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isSynthetic, userId]);
+
+  if (!isSynthetic) return null;
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) && !value.trim().toLowerCase().endsWith("@student.local");
+
+  const save = async () => {
+    if (!userId) return;
+    if (value && !emailValid) { toast.error("Введите корректный email"); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ contact_email: value.trim() || null } as any)
+      .eq("user_id", userId);
+    setSaving(false);
+    if (error) { toast.error("Не удалось сохранить: " + error.message); return; }
+    setSaved(value.trim());
+    toast.success(value.trim() ? "Контактный email сохранён" : "Контактный email удалён");
+  };
+
+  return (
+    <div className="bg-card rounded-2xl border border-amber-500/30 bg-amber-500/[0.03] p-6">
+      <div className="flex items-start gap-3 mb-3">
+        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <h3 className="font-semibold">Контактный email для уведомлений</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            У ученика нет реального email (вход по логину). Укажите адрес,
+            на который будут приходить письма о завершении курса, вебинарах и т.д.
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          type="email"
+          value={value}
+          disabled={loading || saving}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="ivanov@example.com"
+          className="rounded-lg"
+        />
+        <Button
+          onClick={save}
+          disabled={saving || loading || value.trim() === (saved || "")}
+          className="rounded-lg"
+        >
+          {saving ? <SigmaSpinner size="sm" /> : "Сохранить"}
+        </Button>
+      </div>
+      {saved && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Текущий контактный email: <span className="font-medium text-foreground">{saved}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+
