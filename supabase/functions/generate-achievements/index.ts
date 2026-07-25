@@ -32,38 +32,32 @@ Deno.serve(withAuth(async ({ body }) => {
 
 Ответ должен быть JSON массивом объектов. Только JSON, без markdown.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
+  let content = "[]";
+  try {
+    const { text } = await callAI(
+      [
         { role: "system", content: "Ты генератор достижений для образовательной LMS-платформы. Отвечай только JSON." },
         { role: "user", content: prompt },
       ],
-    }),
-  });
-
-  if (!response.ok) {
-    const status = response.status;
-    if (status === 429) {
+      4096,
+      "gigachat",
+    );
+    content = text || "[]";
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("429")) {
       return new Response(JSON.stringify({ error: "Превышен лимит запросов, попробуйте позже" }), {
         status: 429, headers: { "Content-Type": "application/json" },
       });
     }
-    if (status === 402) {
+    if (msg.includes("402")) {
       return new Response(JSON.stringify({ error: "Необходимо пополнить баланс" }), {
         status: 402, headers: { "Content-Type": "application/json" },
       });
     }
-    throw new Error(`AI gateway error: ${status}`);
+    throw e;
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "[]";
 
   let achievements;
   try {
