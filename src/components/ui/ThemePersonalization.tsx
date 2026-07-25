@@ -153,9 +153,64 @@ export function useThemePersonalization() {
 interface ThemePersonalizationProps {
   isDarkMode: boolean;
   onToggleDark: (dark: boolean) => void;
+  showAdminSidebar?: boolean;
 }
 
-export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonalizationProps) {
+const ADMIN_SIDEBAR_ITEMS: { id: string; label: string }[] = [
+  { id: "analytics", label: "Статистика" },
+  { id: "organizations", label: "Организации" },
+  { id: "users", label: "Пользователи" },
+  { id: "marketplace", label: "Маркетплейс" },
+  { id: "sales", label: "Продажи" },
+  { id: "webinars-admin", label: "Вебинары" },
+  { id: "companies", label: "База компаний" },
+  { id: "documents", label: "Документы" },
+  { id: "chats", label: "Чаты" },
+];
+
+function AdminSidebarVisibility() {
+  const [hidden, setHidden] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("admin-sidebar-hidden");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return ["webinars-admin", "companies", "documents"];
+  });
+  const toggle = (id: string) => {
+    const next = hidden.includes(id) ? hidden.filter(x => x !== id) : [...hidden, id];
+    setHidden(next);
+    try { localStorage.setItem("admin-sidebar-hidden", JSON.stringify(next)); } catch {}
+    window.dispatchEvent(new CustomEvent("admin-sidebar-visibility-change"));
+  };
+  return (
+    <div>
+      <p className="font-medium text-sm mb-1">Иконки боковой панели</p>
+      <p className="text-xs text-muted-foreground mb-3">Отметьте, какие иконки показывать в боковой панели админки</p>
+      <div className="grid grid-cols-2 gap-2">
+        {ADMIN_SIDEBAR_ITEMS.map(item => {
+          const visible = !hidden.includes(item.id);
+          return (
+            <button
+              key={item.id}
+              onClick={() => toggle(item.id)}
+              className={cn(
+                "flex items-center justify-between rounded-xl border-2 px-3 py-2 text-xs font-medium transition-all",
+                visible
+                  ? "border-accent bg-accent/10 text-foreground"
+                  : "border-border text-muted-foreground hover:border-muted-foreground/30"
+              )}
+            >
+              <span>{item.label}</span>
+              {visible && <Check className="w-3.5 h-3.5" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSidebar }: ThemePersonalizationProps) {
   const [accentHsl, setAccentHsl] = useState(() => localStorage.getItem('theme-accent') || '174 72% 46%');
   const [density, setDensity] = useState(() => localStorage.getItem('theme-density') || 'default');
   const [radius, setRadius] = useState(() => localStorage.getItem('theme-radius') || 'default');
