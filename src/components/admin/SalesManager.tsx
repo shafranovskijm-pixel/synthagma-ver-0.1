@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, Send, Target, Users, PhoneCall, Package, FileCode, Settings as SettingsIcon, Database } from 'lucide-react';
+import { Menu, Send, Target, Users, PhoneCall, Package, FileCode, Settings as SettingsIcon, Database, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
@@ -23,6 +23,7 @@ import { SalesShiftView } from './sales/SalesShiftView';
 import { LeadsManager } from './sales/LeadsManager';
 import { CallRecordingsAdminList } from './sales/CallRecordingsAdminList';
 import { EmailTemplatesManager } from '@/components/shared/sales/EmailTemplatesManager';
+import { AdminDocumentsManager } from './AdminDocumentsManager';
 import { useAuth } from '@/hooks/useAuth';
 import { getAdminSalesView } from '@/utils/adminViewMode';
 
@@ -52,6 +53,8 @@ export function SalesManager() {
     { id: 'broadcast', label: 'Рассылка', icon: Send },
     { id: 'overview', label: 'Обзор', icon: Target },
     { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'companies', label: 'База компаний', icon: Database },
+    { id: 'admin-documents', label: 'Документы', icon: FileText },
     { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
     { id: 'managers', label: 'Менеджеры', icon: Users },
     { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
@@ -137,6 +140,7 @@ export function SalesManager() {
       />
     ),
     companies: <CompaniesUnified />,
+    'admin-documents': <AdminDocumentsManager />,
     proposals: (
       <CommercialProposals
         prefillCompany={proposalPrefill}

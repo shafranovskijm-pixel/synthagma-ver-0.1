@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, PhoneCall, FileText, Database, Save, Mic, AlertTriangle, Send, Target, Package, FileCode, Settings as SettingsIcon } from 'lucide-react';
+import { Users, PhoneCall, FileText, Database, Save, Mic, AlertTriangle, Send, Target, Package, FileCode, Settings as SettingsIcon, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SalesManagersList } from './SalesManagersList';
@@ -117,6 +117,8 @@ export function SalesAdminView() {
     { id: 'broadcast', label: 'Рассылка', icon: Send },
     { id: 'overview', label: 'Обзор', icon: Target },
     { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'companies', label: 'База компаний', icon: Building2 },
+    { id: 'admin-documents', label: 'Документы', icon: FileText },
     { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
     { id: 'managers', label: 'Менеджеры', icon: Users },
     { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
