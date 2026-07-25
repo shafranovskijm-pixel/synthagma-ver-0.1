@@ -117,6 +117,8 @@ export function SalesAdminView() {
     { id: 'broadcast', label: 'Рассылка', icon: Send },
     { id: 'overview', label: 'Обзор', icon: Target },
     { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'companies', label: 'База компаний', icon: Building2 },
+    { id: 'admin-documents', label: 'Документы', icon: FileText },
     { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
     { id: 'managers', label: 'Менеджеры', icon: Users },
     { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
