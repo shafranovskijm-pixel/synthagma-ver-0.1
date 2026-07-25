@@ -123,6 +123,11 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
         </div>
       </div>
 
+      {/* Контактный email — для учеников без реального email (@student.local) */}
+      <ContactEmailCard studentEmail={student.email} userId={student.user_id} />
+
+
+
       {/* Credentials */}
       {student.login && (
         <div className="bg-card rounded-2xl border border-border p-6">
