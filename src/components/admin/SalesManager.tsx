@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, Send, Target, Users, PhoneCall, Package, FileCode, Settings as SettingsIcon, Database } from 'lucide-react';
+import { Menu, Send, Target, Users, PhoneCall, Package, FileCode, Settings as SettingsIcon, Database, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
