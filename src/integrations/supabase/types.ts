@@ -5212,6 +5212,21 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_dedup_log: {
+        Row: {
+          created_at: string
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           channel: string
@@ -7001,6 +7016,7 @@ export type Database = {
           chat_privacy: Json | null
           city: string | null
           company_id: string | null
+          contact_email: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -7031,6 +7047,7 @@ export type Database = {
           chat_privacy?: Json | null
           city?: string | null
           company_id?: string | null
+          contact_email?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -7061,6 +7078,7 @@ export type Database = {
           chat_privacy?: Json | null
           city?: string | null
           company_id?: string | null
+          contact_email?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -10764,6 +10782,7 @@ export type Database = {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
       }
+      claim_notification_dedup: { Args: { _key: string }; Returns: boolean }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
       consume_email_quota: {
