@@ -23,6 +23,7 @@ import { SalesShiftView } from './sales/SalesShiftView';
 import { LeadsManager } from './sales/LeadsManager';
 import { CallRecordingsAdminList } from './sales/CallRecordingsAdminList';
 import { EmailTemplatesManager } from '@/components/shared/sales/EmailTemplatesManager';
+import { AdminDocumentsManager } from './AdminDocumentsManager';
 import { useAuth } from '@/hooks/useAuth';
 import { getAdminSalesView } from '@/utils/adminViewMode';
 
