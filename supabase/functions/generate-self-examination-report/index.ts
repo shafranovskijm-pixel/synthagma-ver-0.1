@@ -290,13 +290,9 @@ ${JSON.stringify(reportData, null, 2)}`;
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-
-    const aiData = await aiResponse.json();
-    let reportContent = aiData.choices?.[0]?.message?.content || "";
-
     // Clean up the response - remove markdown code blocks if present
     reportContent = reportContent.replace(/```html\n?/g, "").replace(/```\n?/g, "").trim();
+
 
     // Wrap in proper HTML document structure
     const fullHtmlDocument = `<!DOCTYPE html>
