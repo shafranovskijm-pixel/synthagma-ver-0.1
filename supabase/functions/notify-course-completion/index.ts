@@ -75,13 +75,9 @@ serve(async (req: Request) => {
 
     const studentName = profile?.full_name || "Слушатель";
 
-    let studentEmail: string | null = null;
-    try {
-      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
-      studentEmail = authUser?.user?.email ?? null;
-    } catch (e) {
-      console.error("getUserById failed:", e);
-    }
+    // Предпочтительный email: profiles.contact_email → auth.users.email (если реальный)
+    const studentEmail = await getPreferredEmail(user_id);
+
 
     const { data: org } = await supabaseAdmin
       .from("organizations")
