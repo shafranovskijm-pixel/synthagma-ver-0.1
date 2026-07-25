@@ -1,4 +1,7 @@
 import { withAuth } from "../_shared/handler.ts";
+import { callAI } from "../_shared/gigachat-client.ts";
+
+
 
 interface ExplainBody {
   question?: string;
