@@ -99,6 +99,5 @@ Deno.serve(withAuth(async ({ body }) => {
     throw err;
   }
 
-
-  return JSON.parse(toolCall.function.arguments);
 }));
+
