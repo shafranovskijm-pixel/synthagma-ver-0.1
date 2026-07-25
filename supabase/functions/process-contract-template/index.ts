@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAI } from "../_shared/gigachat-client.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,47 +98,42 @@ ${placeholdersList}
 - НЕ добавляй пояснения — верни ТОЛЬКО обработанный текст
 - Если не уверен в замене — ОСТАВЬ оригинальный текст как есть`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
+    let processedText = "";
+    try {
+      const { text } = await callAI(
+        [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Обработай следующий текст договора. Замени ТОЛЬКО конкретные данные на переменные, сохранив весь остальной текст без изменений:\n\n${text}` },
         ],
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
+        8192,
+        "gigachat",
+        "GigaChat-Max",
+        "google/gemini-2.5-flash",
+      );
+      processedText = text || "";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("AI error:", msg);
+      if (msg.includes("429")) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (msg.includes("402")) {
         return new Response(
           JSON.stringify({ error: "Payment required" }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
       return new Response(
         JSON.stringify({ error: "AI processing failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const data = await response.json();
-    const processedText = data.choices?.[0]?.message?.content;
-
     if (!processedText) {
-      console.error("No content in AI response:", data);
+      console.error("No content in AI response");
       return new Response(
         JSON.stringify({ error: "No response from AI" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -144,6 +141,7 @@ ${placeholdersList}
     }
 
     console.log("Successfully processed contract template");
+
 
     return new Response(
       JSON.stringify({ processedText }),

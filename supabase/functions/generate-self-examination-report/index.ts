@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAI } from "../_shared/gigachat-client.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,44 +255,42 @@ serve(async (req) => {
 
 ${JSON.stringify(reportData, null, 2)}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
+    let reportContent = "";
+    try {
+      const { text } = await callAI(
+        [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 8000,
-      }),
-    });
+        8000,
+        "gigachat",
+        "GigaChat-Max",
+        "google/gemini-2.5-pro",
+      );
+      reportContent = text || "";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("AI API error:", msg);
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI API error:", aiResponse.status, errorText);
-      
-      if (aiResponse.status === 429) {
+      if (msg.includes("429")) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResponse.status === 402) {
+      if (msg.includes("402")) {
         return new Response(JSON.stringify({ error: "Payment required. Please add credits." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
+
       return new Response(JSON.stringify({ error: "AI generation failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const aiData = await aiResponse.json();
     let reportContent = aiData.choices?.[0]?.message?.content || "";

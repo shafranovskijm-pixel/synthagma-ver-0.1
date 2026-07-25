@@ -2,6 +2,8 @@
 // Принимает массив слотов { id, context } + справочник допустимых ключей.
 // Возвращает [{ id, suggested_key, confidence }].
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callAI } from "../_shared/gigachat-client.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,32 +62,30 @@ Deno.serve(async (req) => {
       .map(s => `${s.id}: ${s.context}${s.hint ? ` [подсказка: ${s.hint}]` : ""}`)
       .join("\n")}`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": lovableKey,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
+    let content = "{}";
+    try {
+      const { text } = await callAI(
+        [
           { role: "system", content: system },
           { role: "user", content: userPrompt },
         ],
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      console.error("AI error:", aiRes.status, errText);
+        4096,
+        "gigachat",
+        "GigaChat-Max",
+        "google/gemini-2.5-pro",
+      );
+      content = text || "{}";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("AI error:", msg);
       return new Response(
-        JSON.stringify({ suggestions: [], warning: `AI ${aiRes.status}` }),
+        JSON.stringify({ suggestions: [], warning: `AI: ${msg.substring(0, 80)}` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    const aiData = await aiRes.json();
-    const content = aiData?.choices?.[0]?.message?.content || "{}";
+    // strip potential markdown fences
+    content = content.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+
     let parsed: any = {};
     try {
       parsed = JSON.parse(content);
