@@ -118,6 +118,7 @@ export function AdminSettings() {
         return (
           <ThemePersonalization
             isDarkMode={isDarkMode}
+            showAdminSidebar
             onToggleDark={(dark) => {
               setIsDarkMode(dark);
               if (dark) { document.documentElement.classList.add("dark"); localStorage.setItem("theme", "dark"); }

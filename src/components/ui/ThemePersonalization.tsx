@@ -416,6 +416,8 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
           ))}
         </div>
       </div>
+
+      {showAdminSidebar && <AdminSidebarVisibility />}
     </div>
   );
 }
