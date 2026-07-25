@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAIWithTools } from "../_shared/gigachat-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,11 +18,6 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
     const { topic, category, style = "информативный" }: GenerateRequest = await req.json();
 
     console.log("Generating blog post for topic:", topic);
@@ -43,73 +39,59 @@ serve(async (req) => {
   "readTime": "X мин"
 }`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    const tool = {
+      type: "function",
+      function: {
+        name: "create_blog_post",
+        description: "Создает структурированную статью для блога",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Заголовок статьи" },
+            excerpt: { type: "string", description: "Краткое описание для превью" },
+            content: { type: "string", description: "Полный текст статьи в Markdown" },
+            readTime: { type: "string", description: "Время чтения, например '5 мин'" },
+          },
+          required: ["title", "excerpt", "content", "readTime"],
+          additionalProperties: false,
+        },
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
+    };
+
+    let blogPost: any;
+    try {
+      blogPost = await callAIWithTools(
+        [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Напиши статью на тему: "${topic}"` },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_blog_post",
-              description: "Создает структурированную статью для блога",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string", description: "Заголовок статьи" },
-                  excerpt: { type: "string", description: "Краткое описание для превью" },
-                  content: { type: "string", description: "Полный текст статьи в Markdown" },
-                  readTime: { type: "string", description: "Время чтения, например '5 мин'" },
-                },
-                required: ["title", "excerpt", "content", "readTime"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "create_blog_post" } },
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
+        tool,
+        "GigaChat-Max",
+        "google/gemini-3-flash-preview",
+        "gigachat",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("AI error:", msg);
+      if (msg.includes("429")) {
         return new Response(
           JSON.stringify({ error: "Превышен лимит запросов. Попробуйте позже." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (msg.includes("402")) {
         return new Response(
           JSON.stringify({ error: "Требуется пополнение баланса для использования ИИ." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw err;
     }
 
-    const data = await response.json();
     console.log("AI response received");
 
-    // Extract the tool call result
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      throw new Error("No tool call in response");
-    }
-
-    const blogPost = JSON.parse(toolCall.function.arguments);
-
     // Generate slug from title
-    const slug = blogPost.title
+    const slug = (blogPost.title || "")
       .toLowerCase()
       .replace(/[^a-zа-яё0-9\s]/gi, "")
       .replace(/\s+/g, "-")

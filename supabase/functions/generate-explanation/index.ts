@@ -1,4 +1,7 @@
 import { withAuth } from "../_shared/handler.ts";
+import { callAI } from "../_shared/gigachat-client.ts";
+
+
 
 interface ExplainBody {
   question?: string;
@@ -39,45 +42,37 @@ Deno.serve(withAuth(async ({ body, user }) => {
 
 Напиши краткое пояснение, почему правильный ответ верен и почему другие варианты неверны.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
+  let explanation = "";
+  try {
+    const { text } = await callAI(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("AI gateway error:", response.status, errorText);
-
-    if (response.status === 429) {
+      2048,
+      "gigachat",
+    );
+    explanation = text || "";
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("AI error:", msg);
+    if (msg.includes("429")) {
       return new Response(
         JSON.stringify({ error: "Слишком много запросов. Подождите немного." }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
     }
-    if (response.status === 402) {
+    if (msg.includes("402")) {
       return new Response(
         JSON.stringify({ error: "Требуется пополнение баланса." }),
         { status: 402, headers: { "Content-Type": "application/json" } }
       );
     }
-    throw new Error(`AI gateway error: ${response.status}`);
+    throw err;
   }
 
-  const data = await response.json();
-  const explanation = data.choices?.[0]?.message?.content || "";
-
   console.log(`Generated explanation for user ${user.sub}`);
+
 
   return { explanation };
 }));
