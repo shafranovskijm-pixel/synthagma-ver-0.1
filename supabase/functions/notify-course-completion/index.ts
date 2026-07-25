@@ -267,7 +267,7 @@ serve(async (req: Request) => {
         studentEmailSkipped = "student opted out (course_completed.email = false)";
       }
     } else {
-      studentEmailSkipped = "no student email";
+      studentEmailSkipped = "no_real_email";
     }
 
     // ----- Organization / extra recipients (gated by course.notify_on_completion) -----
@@ -275,18 +275,22 @@ serve(async (req: Request) => {
     let orgTotal = 0;
     const orgErrors: string[] = [];
     if (course.notify_on_completion) {
-      const recipients: string[] = [];
-      if (org.email) recipients.push(org.email);
+      const raw: string[] = [];
+      if (org.email) raw.push(org.email);
       if (course.completion_notify_emails) {
         const extras = course.completion_notify_emails
           .split(",")
-          .map((e: string) => e.trim())
-          .filter((e: string) => e && e.includes("@"));
-        recipients.push(...extras);
+          .map((e: string) => e.trim());
+        raw.push(...extras);
       }
+      // dedup + фильтр реальных адресов
+      const recipients = Array.from(new Set(
+        raw.map((e) => e.trim().toLowerCase()).filter((e) => isRealEmail(e))
+      ));
       orgTotal = recipients.length;
       const subject = `Курс завершён: ${studentName} — ${course.title}`;
-      for (const recipient of recipients) {
+      for (let i = 0; i < recipients.length; i++) {
+        const recipient = recipients[i];
         const res = await sendPlatformEmail({
           to: recipient,
           subject,
@@ -298,8 +302,11 @@ serve(async (req: Request) => {
           orgErrors.push(`${recipient}: ${res.error}`);
           console.error("notify-course-completion send error:", recipient, res.error);
         }
+        // небольшая задержка между письмами — чтобы шли поочерёдно по пулу
+        if (i < recipients.length - 1) await sleep(600);
       }
     }
+
 
     return new Response(
       JSON.stringify({
