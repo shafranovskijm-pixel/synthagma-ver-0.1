@@ -140,6 +140,7 @@ export function SalesManager() {
       />
     ),
     companies: <CompaniesUnified />,
+    'admin-documents': <AdminDocumentsManager />,
     proposals: (
       <CommercialProposals
         prefillCompany={proposalPrefill}
