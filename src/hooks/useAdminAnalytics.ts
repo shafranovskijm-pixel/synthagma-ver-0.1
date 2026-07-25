@@ -5,7 +5,7 @@ import { ADMIN_ANALYTICS_KEY, fetchAnalytics } from "./admin-analytics/fetcher";
 import {
   buildLookupMaps, selectRegistrationsByDay, selectActivityByDay, selectCompletionsByDay,
   selectVisitsByDay, selectVisitStats, selectVisitLog, selectTopUsers, selectPaymentStats,
-  selectFeatureUsageStats, selectStats, selectAiUsageByOrg, selectAiUserStats,
+  selectFeatureUsageStats, selectStats, selectAiUsageByOrg, selectAiUserStats, selectAiExpenseByDay,
   selectEnrollmentStatusData, selectPaymentStatusData, selectTariffDistributionData,
   CHART_CONFIG, formatCurrency,
 } from "./admin-analytics/selectors";
@@ -48,12 +48,13 @@ export function useAdminAnalytics() {
     () => data ? selectVisitLog(data, periodDays, visitFilter, visitSearch, profilesMap, coursesMap, orgsMap) : [],
     [data, periodDays, visitFilter, visitSearch, profilesMap, coursesMap, orgsMap]
   );
-  const topUsers = useMemo(() => data ? selectTopUsers(data, periodDays, profilesMap) : [], [data, periodDays, profilesMap]);
+  const topUsers = useMemo(() => data ? selectTopUsers(data, periodDays, profilesMap, orgsMap) : [], [data, periodDays, profilesMap, orgsMap]);
   const paymentStats = useMemo(() => data ? selectPaymentStats(data) : null, [data]);
   const featureUsageStats = useMemo(() => data ? selectFeatureUsageStats(data) : [], [data]);
   const stats = useMemo(() => data ? selectStats(data, periodDays) : null, [data, periodDays]);
   const aiUsageByOrg = useMemo(() => data ? selectAiUsageByOrg(data) : [], [data]);
   const aiUserStats = useMemo(() => data ? selectAiUserStats(data, profilesMap) : [], [data, profilesMap]);
+  const aiExpenseByDay = useMemo(() => data ? selectAiExpenseByDay(data, profilesMap, orgsMap) : [], [data, profilesMap, orgsMap]);
   const enrollmentStatusData = useMemo(() => data ? selectEnrollmentStatusData(data) : [], [data]);
   const paymentStatusData = useMemo(() => data ? selectPaymentStatusData(data) : [], [data]);
   const tariffDistributionData = useMemo(() => data ? selectTariffDistributionData(data) : [], [data]);
@@ -61,7 +62,7 @@ export function useAdminAnalytics() {
   return {
     data, loading, period, setPeriod, visitFilter, setVisitFilter, visitSearch, setVisitSearch,
     registrationsByDay, activityByDay, completionsByDay, visitsByDay, visitStats, visitLog,
-    topUsers, paymentStats, featureUsageStats, stats, aiUsageByOrg, aiUserStats,
+    topUsers, paymentStats, featureUsageStats, stats, aiUsageByOrg, aiUserStats, aiExpenseByDay,
     enrollmentStatusData, paymentStatusData, tariffDistributionData,
     chartConfig: CHART_CONFIG, formatCurrency,
     profilesMap, coursesMap, orgsMap,

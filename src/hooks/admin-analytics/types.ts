@@ -19,6 +19,7 @@ export interface ProfileInfo {
   email: string | null;
   login: string | null;
   organization_id: string | null;
+  role: string | null;
 }
 
 export interface CourseInfo {
@@ -42,7 +43,7 @@ export interface AnalyticsData {
   }[];
   featureUsage: { feature_id: string; usage_count: number; organization_id: string }[];
   aiUsage: { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[];
-  aiUserLog: { user_id: string; organization_id: string; function_name: string; created_at: string }[];
+  aiUserLog: { user_id: string; organization_id: string; function_name: string; created_at: string; tokens_used?: number | null }[];
   loginHistory: LoginHistoryRecord[];
   courseAccessLog: CourseAccessRecord[];
   profilesInfo: ProfileInfo[];

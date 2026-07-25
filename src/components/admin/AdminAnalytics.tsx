@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, BookOpen, Activity, CheckCircle, Building2, DollarSign, Calendar, TrendingUp } from "lucide-react";
 import { OnlineUsersWidget } from "./OnlineUsersWidget";
 import { AdminAITodayWidget } from "./analytics/AdminAITodayWidget";
+import { AiExpenseLog } from "./analytics/AiExpenseLog";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
 import { RegistrationsChart } from "./analytics/RegistrationsChart";
 import { ActivityChart } from "./analytics/ActivityChart";
@@ -18,7 +19,7 @@ export function AdminAnalytics() {
   const {
     loading, period, setPeriod, visitFilter, setVisitFilter, visitSearch, setVisitSearch,
     registrationsByDay, activityByDay, completionsByDay, visitsByDay, visitStats, visitLog,
-    topUsers, paymentStats, featureUsageStats, stats, aiUsageByOrg, aiUserStats,
+    topUsers, paymentStats, featureUsageStats, stats, aiUsageByOrg, aiUserStats, aiExpenseByDay,
     enrollmentStatusData, paymentStatusData, tariffDistributionData, chartConfig, formatCurrency } = useAdminAnalytics();
 
   if (loading) {
@@ -142,24 +143,17 @@ export function AdminAnalytics() {
       </div>
 
       {/* Charts */}
-      <Tabs defaultValue="registrations" className="space-y-4">
+      <Tabs defaultValue="visits" className="space-y-4">
         <TabsList className="flex-wrap">
+          <TabsTrigger value="visits">Посещения</TabsTrigger>
+          <TabsTrigger value="ai">Расход ИИ</TabsTrigger>
           <TabsTrigger value="registrations">Регистрации</TabsTrigger>
           <TabsTrigger value="activity">Активность</TabsTrigger>
-          <TabsTrigger value="visits">Посещения</TabsTrigger>
           <TabsTrigger value="completions">Завершения</TabsTrigger>
           <TabsTrigger value="payments">Оплаты</TabsTrigger>
           <TabsTrigger value="features">Функции</TabsTrigger>
           <TabsTrigger value="overview">Обзор</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="registrations">
-          <RegistrationsChart data={registrationsByDay} period={period} chartConfig={chartConfig} />
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <ActivityChart data={activityByDay} period={period} chartConfig={chartConfig} />
-        </TabsContent>
 
         <TabsContent value="visits">
           <VisitsChart
@@ -168,6 +162,18 @@ export function AdminAnalytics() {
             visitSearch={visitSearch} setVisitSearch={setVisitSearch}
             period={period} chartConfig={chartConfig}
           />
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <AiExpenseLog entries={aiExpenseByDay} />
+        </TabsContent>
+
+        <TabsContent value="registrations">
+          <RegistrationsChart data={registrationsByDay} period={period} chartConfig={chartConfig} />
+        </TabsContent>
+
+        <TabsContent value="activity">
+          <ActivityChart data={activityByDay} period={period} chartConfig={chartConfig} />
         </TabsContent>
 
         <TabsContent value="completions">
