@@ -1,4 +1,7 @@
 import { withAuth } from "../_shared/handler.ts";
+import { callAIWithTools } from "../_shared/gigachat-client.ts";
+
+
 
 interface SeoBody {
   courseTitle?: string;
