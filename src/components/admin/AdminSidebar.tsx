@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Building2, Users, LogOut, Store, Briefcase, MessageSquare, Radio, Database, FileText
+  Building2, Users, LogOut, Store, Briefcase, MessageSquare, Radio, Database, FileText, Activity
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
