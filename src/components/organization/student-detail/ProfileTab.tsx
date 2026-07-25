@@ -13,6 +13,7 @@ import { getStatusBadge } from "./StatusBadge";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 
 interface ProfileTabProps {
@@ -22,11 +23,13 @@ interface ProfileTabProps {
     login?: string | null;
     company_name?: string | null;
     generated_password?: string | null;
+    user_id?: string;
   };
   enrollmentsCount: number;
   h: any;
   orgPlan?: string;
 }
+
 
 export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTabProps) {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
