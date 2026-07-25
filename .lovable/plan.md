@@ -1,70 +1,141 @@
-## Что клиент видит сейчас
+# План: блокировка, отправка уведомлений и дубли писем
 
-Ученик закончил курс — письмо на почту не пришло. Причины (подтверждены чтением кода):
+Три отдельные проблемы — исправляем end-to-end.
 
-1. **Ученику письмо не отправляется вообще.** `supabase/functions/notify-course-completion/index.ts` пишет только in-app уведомление ученику и шлёт email **организации** + адресам из `completion_notify_emails`. Отдельной ветки «письмо ученику» нет, даже если у него в профиле `course_completed.email = ON` (а это дефолт).
-2. **Функция часто вообще не вызывается.** Триггер БД `enrollments` авто-выставляет `status='completed'` при `progress>=100` (`20260411050701…sql`) — во многих сценариях фронтовый вызов `safeInvoke('notify-course-completion', ...)` из `useCourseLearningFacade.ts` не срабатывает (нет теста в конце, авто-финализация из лестницы прогресса и т.п.). А сам вызов на фронте ещё и залочен под `if (course.notify_on_completion)` (это переключатель «уведомлять организацию»), т.е. если организация не включила рассылку себе — ученику тоже ничего не уйдёт.
-3. Переключатель «Email» на типах `homework/deadline_reminder/partner_changes/course_updates` в профиле ученика сохраняется в `notification_preferences`, но по большей части не «дёргается» ни одной edge-функцией (кроме `deadline_reminder` в `process-reminders` и `partner_changes` в `referral-commission`).
+---
 
-## Что делаем
+## 1. «Недостаточно прав» при блокировке ученика в кабинете организации
 
-### 1. Гарантированное письмо ученику при завершении курса
+**Причина.** `public.set_student_blocked` разрешает вызов только:
+- платформенному `admin`, либо
+- пользователю с `has_org_staff_permission(caller, org, 'students.manage')`.
 
-`supabase/functions/notify-course-completion/index.ts`:
-- Убрать ранний `return`, если `notify_on_completion=false`. Теперь функция всегда исполняется, а `notify_on_completion` управляет только рассылкой организации / доп. адресам.
-- Добавить блок «письмо ученику»: если `isPrefEnabled(user_id, 'course_completed', 'email')` → отправить `sendPlatformEmail` на `profile.email` в фирменном шаблоне (поздравление, название курса, дата, ссылка «Мои документы / сертификат»). Skip suppression → нет.
-- Дедупликация: writing to `email_send_log` уже происходит внутри `sendPlatformEmail`; дополнительно ставим `idempotencyKey: course-complete-<enrollment_id>-student` в metadata (в шапке письма/subject), чтобы повторный клик не дублировал письмо в одном логе.
+Владелец организации (`organizations.owner_id`) и профили с `role='organization'`, которые сами не заведены в `org_staff`, проверку не проходят — отсюда ошибка.
 
-### 2. Гарантированный триггер уведомления
+**Что делаем.** Миграция: расширить проверку в `set_student_blocked`, разрешив:
+1. `has_role(caller,'admin')` — как сейчас;
+2. `organizations.owner_id = caller` для организации ученика;
+3. `profiles.role='organization' AND profiles.organization_id = _target_org` (админ‑аккаунт организации);
+4. `has_org_staff_permission(caller, _target_org, 'students.manage')` — как сейчас.
 
-Триггер БД `enrollments_auto_complete_on_progress` уже переводит `status='completed'`. Добавляем **второй AFTER-UPDATE триггер** `enrollments_notify_on_complete`: когда `NEW.status='completed' AND OLD.status IS DISTINCT FROM 'completed'`, вызывает edge `notify-course-completion` через `net.http_post` c body `{course_id, user_id, enrollment_id}`. Это закрывает все пути (авто-финализация лестницей, ручной тест, API из мобильного и т.п.).
+Ошибку менять на `RAISE EXCEPTION USING MESSAGE='...', ERRCODE='42501'`, чтобы фронт мог отличать permission от других.
 
-На фронте (`useCourseLearningFacade.ts`) убираем условие `if (course.notify_on_completion)` — теперь вызов делаем всегда (двойная подстраховка + мгновенное письмо без ожидания cron/trigger). Дедуп на бэке отсекает лишний повтор.
+Фронт `useStudentDetailCard.handleToggleBlock` не меняем (он уже показывает `error.message`).
 
-### 3. Аудит переключателей `notification_preferences`
+---
 
-Пройти end-to-end и подключить недостающие шлюзы:
+## 2. Bounce на `sgt103633@student.local` и «выдуманные» email
 
-| Тип                  | Где триггерится                            | Что чиним |
-|----------------------|--------------------------------------------|-----------|
-| `course_completed`   | notify-course-completion                   | добавить email ученику (см. п.1) |
-| `webinar_reminder`   | webinar-reminders-cron                     | уже гейтится корректно, оставляем |
-| `deadline_reminder`  | process-reminders                          | уже гейтится, оставляем |
-| `partner_changes`    | referral-commission                        | уже гейтится, оставляем |
-| `homework`           | нигде                                      | добавить in-app + email ученику в момент оценки / комментария домашней работы (edge `notify-homework-graded`, дёргаем из UI преподавателя при `homework_submissions.update`). Снимаем ярлык «Coming soon» после подключения. |
-| `course_updates`     | нигде                                      | оставить «Coming soon», НО добавить один реально работающий кейс: при `enrollments.insert` (новый доступ к курсу) — in-app + email ученику через новую edge `notify-course-access-granted`, гейт по `course_updates.email/platform`. Можно тем же путём отсылать при смене `default_access_days`. |
+**Причина.** У учеников без реальной почты в `auth.users.email` лежит служебный `<login>@student.local`. `notify-course-completion` берёт этот email и отправляет письмо — Timeweb возвращает **Mail delivery failed / Unrouteable address**, копия падает на `support@sintagma.com.ru`.
 
-### 4. UI
+Тот же паттерн уже фильтруется в `process-reminders` и `webinar-reminders-cron` (`endsWith('@student.local')`), но в `notify-course-completion` и в ручных «Отправить письмо» действиях из кабинета — нет.
 
-`src/hooks/useStudentProfile.ts` / `StudentProfileNotifications*`:
-- Снять флаг `comingSoon` с `homework` и `course_updates` после включения реальных путей.
-- Добавить рядом с каждым тумблером маленькую строку «когда приходит», чтобы клиент понимал, что настройка живая.
+**Что делаем.**
 
-Организации в `OrgProfileTab` — без изменений (соответствующие пути через `notify_on_completion` уже работают).
+### 2.1. Хелпер `isRealEmail`
+Добавить в `supabase/functions/_shared/notification-prefs.ts`:
+```ts
+export const isRealEmail = (e?: string|null) =>
+  !!e && /@/.test(e) && !e.toLowerCase().endsWith('@student.local');
+```
 
-### 5. Проверка
+### 2.2. Фильтр в edge-функциях
+Прогнать через `isRealEmail(studentEmail)` перед отправкой во всех местах, где адрес берётся из `auth.users`:
+- `notify-course-completion`
+- `notify-homework-graded`
+- `notify-enrollment-request`
+- `notify-order-status`, `notify-program-order`, `notify-course-order`
+- `send-email` (если `to` заканчивается на `@student.local` — отдаём 200 `{skipped:'no_real_email'}`, чтобы не ретраить).
 
-- Через `supabase.functions.invoke('notify-course-completion', ...)` из devtools — письмо ученику приходит, лог в `email_send_log`.
-- Ручное `UPDATE enrollments SET status='completed' ...` в тест-организации — триггер вызывает функцию, письмо приходит.
-- Выключить `course_completed.email` в профиле ученика → повторный прогон не шлёт email ученику, но in-app и письмо организации остаются.
-- Прогон `pnpm tsgo` (или встроенный typecheck), просмотр `edge_function_logs` на `notify-course-completion`, `notify-homework-graded`, `notify-course-access-granted`.
+Если письмо пропущено — пишем `studentEmailSkipped='no_real_email'` в ответ, in‑app уведомление всё равно создаётся (`notifyStudent(force)` уже работает).
 
-## Технические детали
+### 2.3. UI: попросить ввести реальную почту
+В `ProfileTab.tsx` (карточка ученика) и в `StudentProfile.tsx` (ЛК самого ученика) добавить блок:
+- если `auth email` заканчивается на `@student.local` **и** в `profiles` нет реальной почты →
+  жёлтая карточка «Укажите email для получения уведомлений» + инпут + кнопка «Сохранить».
+- Сохранение вызывает уже существующий `update-student-credentials` с `new_email`.
+- В `useStudentDetailCard` хелпер `hasRealEmail` — прячем кнопку «Отправить документы на почту» / «Отправить письмо» при её отсутствии и показываем tooltip «Сначала добавьте email».
 
-- Новые edge-функции: `notify-homework-graded`, `notify-course-access-granted` (одинаковый скелет: cors, service-role client, `isPrefEnabled` для email, `notifyStudent` для in-app, `sendPlatformEmail` с фирменным HTML).
-- Миграция `enrollments_notify_on_complete_trigger.sql`:
-  - `CREATE OR REPLACE FUNCTION public.trg_notify_course_completion() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... net.http_post(url:=<functions_url>/notify-course-completion, headers:=..., body:=json_build_object(...)) $$;`
-  - `CREATE TRIGGER enrollments_notify_on_complete AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (NEW.status='completed' AND OLD.status IS DISTINCT FROM 'completed') EXECUTE FUNCTION public.trg_notify_course_completion();`
-  - Через `supabase--insert` (URL/anon key user-specific), не через `migration`.
-- `notify-course-completion` — принимает и `enrollment_id` опционально, использует для idempotencyKey.
-- Дедлайн запросов не меняем; таблицу `notification_preferences`/`student_notifications` не трогаем.
+### 2.4. Диалог «Отправить письмо» из UI
+Компоненты, где менеджер вручную нажимает «Отправить» (карточка ученика, документы, приглашения) — перед вызовом edge-функции проверяют `isRealEmail`; если нет — открывается тот же inline‑диалог «Введите email получателя», значение сохраняется в `profiles.contact_email` (новая колонка) и используется для рассылок.
 
-## Файлы
+Миграция: `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS contact_email TEXT;` + фильтр по формату. В edge‑функциях приоритет: `profiles.contact_email` → `auth.users.email` (если real).
 
-- `supabase/functions/notify-course-completion/index.ts` — правка (email ученику, без раннего return).
-- `supabase/functions/notify-homework-graded/index.ts` — новая.
-- `supabase/functions/notify-course-access-granted/index.ts` — новая.
-- `src/hooks/course-learning/useCourseLearningFacade.ts` — снять условие `notify_on_completion` перед invoke.
-- `src/hooks/useStudentProfile.ts` — снять `comingSoon` с homework/course_updates.
-- Вызовы новых функций: из UI преподавателя при оценке ДЗ; из `create_enrollment*`/UI выдачи доступа (org side).
-- SQL: `supabase--insert` для триггера `enrollments_notify_on_complete`.
+---
+
+## 3. Дубликаты писем и «поочередная» рассылка
+
+Скриншот Outlook: 4 идентичных «Курс завершён: Рябцев Мих…» приходят одновременно на один ящик организации.
+
+**Причины (обе бывают).**
+1. **Дубли инвока.** `useCourseLearningFacade` вызывает `notify-course-completion` при каждом монтировании, когда `progress===100`. Быстрые повторные монтирования / StrictMode / переоткрытие вкладки → несколько инвоков за секунды. Rate‑limit пропускает, потому что орг-отправки идут с `skipRateLimit:true`.
+2. **Дубли адресатов.** `org.email` совпадает с одним из `completion_notify_emails` — recipients не дедуплицируются.
+
+**Что делаем.**
+
+### 3.1. Серверная идемпотентность
+- Новая таблица `notification_dedup_log`:
+  - `key TEXT PRIMARY KEY`, `created_at TIMESTAMPTZ DEFAULT now()`
+  - GRANT/RLS: только `service_role`.
+- В `notify-course-completion` в начале обработки:
+  ```
+  key = `course-completion:${enrollment_id||user_id}:${course_id}`
+  INSERT ... ON CONFLICT DO NOTHING RETURNING key;
+  ```
+  Если строки нет — уже отправляли, отвечаем `{success:true, deduped:true}` и выходим.
+- Дневная авто‑очистка (cron 03:15 UTC) — `DELETE ... WHERE created_at < now() - interval '30 days'`.
+
+Тот же приём для `notify-homework-graded` (`homework:${submission_id}:${status}`) и `notify-enrollment-request` (`enrollment-request:${enrollment_id}`).
+
+### 3.2. Дедупликация адресатов
+В `notify-course-completion`:
+```
+const recipients = Array.from(new Set(
+  [org.email, ...extras].filter(isRealEmail).map(e => e.toLowerCase())
+));
+```
+
+### 3.3. «Поочередно» между ящиками
+Пул `email_sender_pool` уже LRU (`pick_next_email_sender` + `mark_email_sender_result`). Проверяем и фиксируем:
+- В `sendPlatformEmail` **не** параллелим отправку внутри одного вызова функции — идём последовательно (уже так и есть).
+- Между разными получателями в одном инвоке — задержка `send_delay_ms` из `email_send_state` (сейчас игнорируется в `sendPlatformEmail`). Добавляем `await sleep(delay)` между итерациями цикла recipients.
+- Пишем `email_send_log` (уже есть таблица) на каждом sendPlatformEmail — для дашборда.
+
+### 3.4. Клиентская защита от повторного вызова
+В `useCourseLearningFacade` перед `safeInvoke('notify-course-completion',…)`:
+- `sessionStorage` ключ `notified:${enrollment_id}` — второй вызов в одной вкладке пропускается;
+- условие уже включает `just became 100%`, а не «остаётся 100%» — уточняем реф `notifiedRef` через `useRef<Set<string>>`.
+
+---
+
+## 4. Проверка end‑to‑end
+
+Скрипт (playwright, headless) под `/tmp/browser/notifs/`:
+1. Логин под test‑ученик с реальной почтой → пройти тестовый курс до 100% → убедиться, что `notify-course-completion` вернул `student.emailSent=true, deduped:false`; повторный ручной вызов → `deduped:true`.
+2. Логин под ученика с `@student.local` → пройти курс → ответ: `student.skipped='no_real_email'`, в UI на карточке появилась плашка «Укажите email».
+3. Организация: назначить `owner_id` пользователю; из UI нажать «Заблокировать» → toast «Ученик заблокирован», выход из аккаунта ученика при следующей проверке `is_user_blocked`.
+4. `select count(*) from email_send_log where template_name='course_completion' and message_id like 'course-completion:<enrollment>:%'` → ровно 1 группа.
+5. Проверить, что `pick_next_email_sender` возвращает разные ящики между последовательными вызовами (`select email from email_sender_pool order by last_used_at desc limit 5`).
+
+---
+
+## Технические детали / файлы
+
+**Миграции**
+- `set_student_blocked` — расширенная авторизация.
+- `notification_dedup_log` + GRANT service_role + cron очистки.
+- `profiles.contact_email TEXT`.
+
+**Edge‑функции (после миграций)**
+- `_shared/notification-prefs.ts` — export `isRealEmail`, `getPreferredEmail(userId)`.
+- `notify-course-completion/index.ts` — dedup log, recipient dedup, `isRealEmail`, `send_delay_ms`.
+- `notify-homework-graded`, `notify-enrollment-request`, `notify-order-status`, `notify-program-order`, `notify-course-order`, `send-email` — `isRealEmail`.
+- Deploy: перечисленные функции.
+
+**Фронт**
+- `src/hooks/useStudentDetailCard.ts` — `hasRealEmail`, показ тултипов.
+- `src/components/organization/student-detail/ProfileTab.tsx` — карточка «Укажите email».
+- `src/pages/StudentProfile.tsx` — та же карточка для ученика.
+- `src/hooks/course-learning/useCourseLearningFacade.ts` — `notifiedRef`/sessionStorage guard.
+
+Никаких изменений тарифов, дизайна, storage.
