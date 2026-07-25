@@ -27,10 +27,21 @@ serve(async (req: Request) => {
       });
     }
 
+    // --- Idempotency: skip если уже отправляли для этого enrollment/course ---
+    const dedupKey = `course-completion:${enrollment_id || user_id}:${course_id}`;
+    const claimed = await claimDedupKey(dedupKey);
+    if (!claimed) {
+      return new Response(JSON.stringify({ success: true, deduped: true, dedupKey }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
 
     const { data: course, error: courseErr } = await supabaseAdmin
       .from("courses")
