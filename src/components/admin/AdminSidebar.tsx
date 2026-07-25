@@ -85,21 +85,43 @@ export function AdminSidebar({
   };
 
   const allNavItems: NavItem[] = [
+    { id: "analytics", icon: Activity, label: "Статистика" },
     { id: "organizations", icon: Building2, label: "Организации" },
     { id: "users", icon: Users, label: "Пользователи" },
-    { id: "companies", icon: Database, label: "База компаний" },
-    { id: "documents", icon: FileText, label: "Документы" },
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
     { id: "webinars-admin", icon: Radio, label: "Вебинары" },
+    { id: "companies", icon: Database, label: "База компаний" },
+    { id: "documents", icon: FileText, label: "Документы" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats + unreadSupport },
   ];
 
+  // Скрытие иконок через настройки темы (localStorage: 'admin-sidebar-hidden')
+  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("admin-sidebar-hidden");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    // Дефолт: скрываем вебинары, «База компаний» и «Документы» (перенесены в Продажи)
+    return ["webinars-admin", "companies", "documents"];
+  });
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const raw = localStorage.getItem("admin-sidebar-hidden");
+        setHiddenIds(raw ? JSON.parse(raw) : []);
+      } catch { setHiddenIds([]); }
+    };
+    window.addEventListener("admin-sidebar-visibility-change", handler);
+    return () => window.removeEventListener("admin-sidebar-visibility-change", handler);
+  }, []);
+
   // Гард по admin_staff.role: если запись есть — показываем только разрешённые разделы.
   // Пока грузится — показываем всё.
-  const navItems: NavItem[] = permsLoading
+  const navItems: NavItem[] = (permsLoading
     ? allNavItems
-    : allNavItems.filter(item => canSeeAdminTab(item.id));
+    : allNavItems.filter(item => canSeeAdminTab(item.id))
+  ).filter(item => !hiddenIds.includes(item.id));
 
   const brandHsl = themeAccent || "220 70% 50%";
 
