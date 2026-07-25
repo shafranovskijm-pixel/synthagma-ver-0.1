@@ -106,3 +106,50 @@ export async function notifyStudent(params: {
   });
   if (error) console.error("notifyStudent insert failed:", error.message);
 }
+
+/**
+ * True if `email` looks like a real deliverable address.
+ * Excludes служебные `<login>@student.local` заглушки, которые мы выдаём
+ * ученикам без реальной почты — SMTP всё равно вернёт bounce.
+ */
+export function isRealEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const e = String(email).trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return false;
+  if (e.endsWith("@student.local")) return false;
+  return true;
+}
+
+/**
+ * Возвращает лучший email для ученика: сначала `profiles.contact_email`,
+ * затем `auth.users.email` (если реальный). Иначе null.
+ */
+export async function getPreferredEmail(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  const supa = admin();
+  const { data: prof } = await supa
+    .from("profiles")
+    .select("contact_email")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const contact = (prof as any)?.contact_email as string | undefined;
+  if (isRealEmail(contact)) return contact!.trim();
+  try {
+    const { data: authUser } = await supa.auth.admin.getUserById(userId);
+    const authEmail = authUser?.user?.email ?? null;
+    if (isRealEmail(authEmail)) return authEmail;
+  } catch (_) { /* ignore */ }
+  return null;
+}
+
+/** Атомарный claim ключа дедупликации; true = первый раз, false = уже отправляли. */
+export async function claimDedupKey(key: string): Promise<boolean> {
+  if (!key) return true;
+  const { data, error } = await admin().rpc("claim_notification_dedup", { _key: key });
+  if (error) {
+    console.error("claim_notification_dedup failed:", error.message);
+    return true; // fail-open, чтобы не потерять важное уведомление
+  }
+  return !!data;
+}
+

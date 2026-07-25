@@ -157,7 +157,15 @@ export function useCourseLearning() {
 
       // Always invoke — edge function sends student email based on their prefs,
       // and only sends to org/extras when course.notify_on_completion=true.
-      try { await safeInvoke('notify-course-completion', { body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id } }); } catch (e) { console.error('Notification error:', e); }
+      // Клиентский guard: не вызываем повторно из той же вкладки (StrictMode / re-mount).
+      const notifyKey = `notified:course-completion:${enrollmentId}:${courseId}`;
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(notifyKey)) {
+        // уже вызывали в этой сессии — сервер и так дедуплицирует, но экономим RTT
+      } else {
+        try { sessionStorage.setItem(notifyKey, '1'); } catch (_) { /* ignore */ }
+        try { await safeInvoke('notify-course-completion', { body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id } }); } catch (e) { console.error('Notification error:', e); }
+      }
+
     } catch (error) { console.error('Error handling course completion:', error); }
   };
 
