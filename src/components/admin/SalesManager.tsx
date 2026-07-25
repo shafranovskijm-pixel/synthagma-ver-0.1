@@ -53,6 +53,8 @@ export function SalesManager() {
     { id: 'broadcast', label: 'Рассылка', icon: Send },
     { id: 'overview', label: 'Обзор', icon: Target },
     { id: 'leads', label: 'Лиды', icon: Database },
+    { id: 'companies', label: 'База компаний', icon: Database },
+    { id: 'admin-documents', label: 'Документы', icon: FileText },
     { id: 'recordings', label: 'Дозвоны', icon: PhoneCall },
     { id: 'managers', label: 'Менеджеры', icon: Users },
     { id: 'templates', label: 'Шаблоны писем', icon: FileCode },
