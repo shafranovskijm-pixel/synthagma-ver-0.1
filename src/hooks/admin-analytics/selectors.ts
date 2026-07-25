@@ -88,7 +88,7 @@ export function selectVisitStats(data: AnalyticsData, periodDays: number) {
 export type VisitEntry = {
   userId: string; name: string; email: string; time: Date; ip: string;
   device: string; browser: string; type: "platform" | "course";
-  courseTitle: string | null; orgName: string | null;
+  courseTitle: string | null; orgName: string | null; role: string | null;
 };
 
 export function selectVisitLog(
@@ -108,6 +108,7 @@ export function selectVisitLog(
         time: d, ip: r.ip_address || "—", device: parseDevice(r.user_agent),
         browser: parseBrowser(r.user_agent), type: "platform", courseTitle: null,
         orgName: p?.organization_id ? orgsMap.get(p.organization_id) || null : null,
+        role: p?.role || null,
       });
     });
   }
@@ -123,18 +124,19 @@ export function selectVisitLog(
         browser: parseBrowser(r.user_agent), type: "course",
         courseTitle: coursesMap.get(r.course_id) || r.course_id,
         orgName: p?.organization_id ? orgsMap.get(p.organization_id) || null : null,
+        role: p?.role || null,
       });
     });
   }
   const search = visitSearch.toLowerCase();
   const filtered = search
-    ? entries.filter(e => e.name.toLowerCase().includes(search) || e.email.toLowerCase().includes(search))
+    ? entries.filter(e => e.name.toLowerCase().includes(search) || e.email.toLowerCase().includes(search) || (e.orgName || "").toLowerCase().includes(search) || (e.role || "").toLowerCase().includes(search))
     : entries;
   filtered.sort((a, b) => b.time.getTime() - a.time.getTime());
-  return filtered.slice(0, 200);
+  return filtered.slice(0, 500);
 }
 
-export function selectTopUsers(data: AnalyticsData, periodDays: number, profilesMap: Map<string, ProfileInfo>) {
+export function selectTopUsers(data: AnalyticsData, periodDays: number, profilesMap: Map<string, ProfileInfo>, orgsMap?: Map<string, string>) {
   const periodStart = subDays(new Date(), periodDays);
   const userStats = new Map<string, { platform: number; courses: number }>();
   data.loginHistory.forEach(r => {
@@ -150,10 +152,50 @@ export function selectTopUsers(data: AnalyticsData, periodDays: number, profiles
   return Array.from(userStats.entries())
     .map(([userId, s]) => {
       const p = profilesMap.get(userId);
-      return { userId, name: p?.full_name || "—", email: p?.email || p?.login || "—", platform: s.platform, courses: s.courses, total: s.platform + s.courses };
+      return {
+        userId, name: p?.full_name || "—", email: p?.email || p?.login || "—",
+        role: p?.role || null,
+        orgName: p?.organization_id && orgsMap ? orgsMap.get(p.organization_id) || null : null,
+        platform: s.platform, courses: s.courses, total: s.platform + s.courses,
+      };
     })
     .sort((a, b) => b.total - a.total)
-    .slice(0, 20);
+    .slice(0, 30);
+}
+
+export type AiExpenseEntry = {
+  key: string; userId: string; userName: string; orgName: string;
+  role: string | null; day: Date; dayLabel: string;
+  generations: number; tokens: number;
+};
+
+export function selectAiExpenseByDay(
+  data: AnalyticsData,
+  profilesMap: Map<string, ProfileInfo>,
+  orgsMap: Map<string, string>,
+): AiExpenseEntry[] {
+  if (!data.aiUserLog.length) return [];
+  const map = new Map<string, AiExpenseEntry>();
+  data.aiUserLog.forEach(log => {
+    const d = startOfDay(new Date(log.created_at));
+    const key = `${log.user_id}|${log.organization_id}|${d.toISOString()}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.generations += 1;
+      existing.tokens += log.tokens_used || 0;
+    } else {
+      const p = profilesMap.get(log.user_id);
+      map.set(key, {
+        key, userId: log.user_id,
+        userName: p?.full_name || p?.email || p?.login || log.user_id.slice(0, 8),
+        orgName: orgsMap.get(log.organization_id) || "—",
+        role: p?.role || null,
+        day: d, dayLabel: fmt(d),
+        generations: 1, tokens: log.tokens_used || 0,
+      });
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => b.day.getTime() - a.day.getTime() || b.tokens - a.tokens);
 }
 
 export function selectPaymentStats(data: AnalyticsData) {
