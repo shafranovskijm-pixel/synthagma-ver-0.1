@@ -29,7 +29,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Служебные @student.local — не почта, тихо пропускаем (без 500-ошибок).
+    if (String(to).trim().toLowerCase().endsWith("@student.local")) {
+      console.log("send-email skipped @student.local recipient:", to);
+      return new Response(
+        JSON.stringify({ success: true, skipped: "no_real_email" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log("Sending email to:", to, "subject:", subject);
+
 
     const result = await sendPlatformEmail({
       to,
