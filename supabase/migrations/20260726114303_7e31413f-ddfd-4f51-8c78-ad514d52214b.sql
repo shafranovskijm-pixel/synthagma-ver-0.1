@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public._admin_set_lesson_content(uuid, text);

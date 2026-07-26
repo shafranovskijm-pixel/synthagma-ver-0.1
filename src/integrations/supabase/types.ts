@@ -10704,10 +10704,6 @@ export type Database = {
       }
     }
     Functions: {
-      _admin_set_lesson_content: {
-        Args: { _content: string; _lesson_id: string }
-        Returns: undefined
-      }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
       _webinar_rate_check: {
