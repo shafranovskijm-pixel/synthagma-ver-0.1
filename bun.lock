@@ -63,7 +63,6 @@
         "framer-motion": "^12.26.1",
         "hls.js": "^1.5.15",
         "html2canvas": "^1.4.1",
-        "jsdom": "^28.0.0",
         "jspdf": "^4.2.0",
         "jssip": "^3.13.8",
         "jszip": "^3.10.1",
