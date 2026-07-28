@@ -10934,6 +10934,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_course_students_stats: {
+        Args: { p_course_id: string }
+        Returns: {
+          active_count: number
+          average_progress: number
+          completed_count: number
+          total_count: number
+        }[]
+      }
       get_decrypted_company_credentials: {
         Args: { p_company_id: string }
         Returns: {
