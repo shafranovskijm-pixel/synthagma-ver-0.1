@@ -510,6 +510,7 @@ export function useCourseDetails(
     handleUpdateDefaultAccessDays, handleToggleRequireEnrollmentApproval, handleUpdateTrainingForm,
     handleUpdateFrdoSettings, handleResetProgress, handleDeleteCourse,
     totalStudents, activeStudents, completedStudents, avgProgress, completionRate,
+    isLoadingStats: statsQuery.isLoading,
     // Reminders-specific handlers (inline in the component)
     updateCourseSetting,
     // Server-paginated course students
