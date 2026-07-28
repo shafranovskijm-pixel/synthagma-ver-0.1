@@ -15,7 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Download, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle, RefreshCcw } from "lucide-react";
 import { format } from "date-fns";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
@@ -24,6 +24,7 @@ import {
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
 import { resolveFRDOFields, validateFRDORowSync, type CourseFRDOLike } from "@/utils/frdoFieldResolver";
+import { fetchStudentsByUserIds } from "@/api/students";
 
 interface Student {
   id: string;
@@ -44,8 +45,12 @@ interface BulkFRDOExportProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: string;
-  selectedStudentIds: Set<string>;
-  students: Student[];
+  /**
+   * Phase 4A: dialog receives only the selected user_ids. Names, FRDO data
+   * and enrollments are point-fetched on open; the dialog no longer relies
+   * on the caller's full d.students snapshot.
+   */
+  selectedUserIds: string[];
 }
 
 interface FRDOData {
@@ -82,7 +87,7 @@ interface EnrollmentData {
 }
 
 export function BulkFRDOExport({
-  isOpen, onOpenChange, organizationId, selectedStudentIds, students }: BulkFRDOExportProps) {
+  isOpen, onOpenChange, organizationId, selectedUserIds }: BulkFRDOExportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportType, setExportType] = useState<"dpo" | "po">("dpo");
@@ -91,6 +96,8 @@ export function BulkFRDOExport({
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
   const [enrollmentsMap, setEnrollmentsMap] = useState<Map<string, EnrollmentData[]>>(new Map());
   const [studentsWithMissingData, setStudentsWithMissingData] = useState<string[]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
+  const [loadError, setLoadError] = useState<{ scope: "profiles" | "frdo" | "enrollments"; message: string } | null>(null);
   const [validationPreview, setValidationPreview] = useState<{
     rows: (string | number)[][];
     issues: { studentName: string; issues: string[] }[];
@@ -98,14 +105,37 @@ export function BulkFRDOExport({
     professionFromTitleCount: number;
   } | null>(null);
 
-  const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id) || selectedStudentIds.has(s.id));
-
-  useEffect(() => { if (isOpen) loadData(); }, [isOpen]);
+  useEffect(() => { if (isOpen) loadData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [isOpen]);
 
   const loadData = async () => {
     setIsLoading(true);
+    setLoadError(null);
+    const userIds: string[] = Array.from(new Set(selectedUserIds)).filter((v): v is string => typeof v === "string" && v.length > 0);
+    if (userIds.length === 0 || !organizationId) {
+      setSelectedStudents([]); setFrdoDataMap(new Map()); setEnrollmentsMap(new Map());
+      setStudentsWithMissingData([]); setCourses([]);
+      setIsLoading(false); return;
+    }
+
+    let students: Student[] = [];
     try {
-      const userIds = [...new Set(selectedStudents.map(s => s.user_id))];
+      const { students: fetched } = await fetchStudentsByUserIds(organizationId, userIds, { includeEnrollments: false });
+      students = fetched.map(s => ({
+        id: s.id, user_id: s.user_id, name: s.name, email: s.email,
+        course_id: s.course_id ?? null, course: s.course ?? null,
+      }));
+      setSelectedStudents(students);
+      if (students.length === 0) {
+        setLoadError({ scope: "profiles", message: "Профили выбранных учеников не найдены" });
+        setIsLoading(false); return;
+      }
+    } catch (err: any) {
+      console.error("[BulkFRDOExport] profiles load failed:", err);
+      setLoadError({ scope: "profiles", message: err?.message ?? "Не удалось загрузить учеников" });
+      setIsLoading(false); return;
+    }
+
+    try {
       const { data: frdoData, error: frdoError } = await supabase
         .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", userIds);
       if (frdoError) throw frdoError;
@@ -113,7 +143,7 @@ export function BulkFRDOExport({
       const dataMap = new Map<string, FRDOData>();
       const missing: string[] = [];
 
-      for (const student of selectedStudents) {
+      for (const student of students) {
         const data = frdoData?.find(d => d.user_id === student.user_id);
         if (data) {
           dataMap.set(student.user_id, {
@@ -152,7 +182,13 @@ export function BulkFRDOExport({
 
       setFrdoDataMap(dataMap);
       setStudentsWithMissingData(missing);
+    } catch (error: any) {
+      console.error("[BulkFRDOExport] frdo load failed:", error);
+      setLoadError({ scope: "frdo", message: error?.message ?? "Не удалось загрузить данные ФРДО" });
+      setIsLoading(false); return;
+    }
 
+    try {
       const { data: enrollmentsData, error: enrollError } = await supabase
         .from("enrollments")
         .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_profession_name, frdo_qualification_rank, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_financing_source, frdo_education_form)")
@@ -190,9 +226,9 @@ export function BulkFRDOExport({
 
       setEnrollmentsMap(enrollMap);
       setCourses(Array.from(courseSet.values()));
-    } catch (error) {
-      console.error("Error loading data:", error);
-      toast.error("Ошибка загрузки данных");
+    } catch (error: any) {
+      console.error("[BulkFRDOExport] enrollments load failed:", error);
+      setLoadError({ scope: "enrollments", message: error?.message ?? "Не удалось загрузить зачисления" });
     } finally {
       setIsLoading(false);
     }
@@ -323,6 +359,25 @@ export function BulkFRDOExport({
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner size="lg" />
+          </div>
+        ) : loadError ? (
+          <div className="space-y-4 py-6">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-destructive">
+                  {loadError.scope === "profiles" && "Не удалось загрузить учеников"}
+                  {loadError.scope === "frdo" && "Не удалось загрузить данные ФРДО"}
+                  {loadError.scope === "enrollments" && "Не удалось загрузить зачисления"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1 break-words">{loadError.message}</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" className="rounded-xl gap-2" onClick={loadData}>
+                <RefreshCcw className="w-4 h-4" />Повторить
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">

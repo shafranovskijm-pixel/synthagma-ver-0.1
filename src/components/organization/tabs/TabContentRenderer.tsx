@@ -119,10 +119,11 @@ export function TabContentRenderer() {
             if (d.studentCourseFilter !== "all") d.enrollmentActions.setEnrollCourseId(d.studentCourseFilter);
             d.enrollmentActions.setShowEnrollDialog(true);
           }}
-          onShowUnenrollConfirm={(selectedIds) => {
-            if (selectedIds && selectedIds.length > 0) {
-              d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
+          onShowUnenrollConfirm={(selectedUserIds, selectedEnrollmentIds) => {
+            if (selectedUserIds && selectedUserIds.length > 0) {
+              d.enrollmentActions.setSelectedStudentIds(new Set(selectedUserIds));
             }
+            d.enrollmentActions.setSelectedEnrollmentIds(selectedEnrollmentIds || []);
             d.enrollmentActions.setShowUnenrollConfirm(true);
           }}
           onShowBulkFRDOExport={(selectedIds) => {
@@ -133,9 +134,7 @@ export function TabContentRenderer() {
           }}
           onShowBulkDeleteConfirm={(selectedUserIds) => {
             if (selectedUserIds && selectedUserIds.length > 0) {
-              const selectionIds = d.students.filter(s => selectedUserIds.includes(s.user_id))
-                .map(s => s.enrollment_id || s.user_id);
-              d.enrollmentActions.setSelectedStudentIds(new Set(selectionIds));
+              d.enrollmentActions.setSelectedStudentIds(new Set(selectedUserIds));
             }
             d.enrollmentActions.setShowBulkDeleteConfirm(true);
           }}

@@ -33,8 +33,8 @@ interface StudentsTabProps {
   onBulkSendCredentials?: (userIds: string[]) => Promise<void>;
   onBulkSendDocReminders?: () => Promise<void>;
   onShowEnrollDialog?: (selectedIds: string[]) => void;
-  onShowUnenrollConfirm?: (selectedIds: string[]) => void;
-  onShowBulkFRDOExport?: (selectedIds: string[]) => void;
+  onShowUnenrollConfirm?: (selectedUserIds: string[], selectedEnrollmentIds: string[]) => void;
+  onShowBulkFRDOExport?: (selectedUserIds: string[]) => void;
   onShowBulkDeleteConfirm?: (selectedUserIds: string[]) => void;
   isCreatingBulkCredentials?: boolean;
   isSendingBulkCredentials?: boolean;
@@ -396,7 +396,20 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {enrollmentsCount > 0 && (
-                      <DropdownMenuItem onClick={() => props.onShowUnenrollConfirm?.(Array.from(selectedStudentIds))} className="text-destructive focus:text-destructive">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const userIds = Array.from(selectedStudentIds);
+                          const enrollmentIds: string[] = [];
+                          for (const id of userIds) {
+                            const s = students.find(x => x.user_id === id);
+                            if (s?.enrollments?.length) {
+                              for (const e of s.enrollments) enrollmentIds.push(e.id);
+                            }
+                          }
+                          props.onShowUnenrollConfirm?.(userIds, enrollmentIds);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
                         <XCircle className="w-4 h-4 mr-2" />Отчислить с курса ({enrollmentsCount})
                       </DropdownMenuItem>
                     )}

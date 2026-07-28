@@ -584,3 +584,159 @@ export async function fetchStudentPasswordsForUsers(
   }
   return map;
 }
+
+// =============================================================================
+// Phase 4A: point-fetch profiles + enrollments for the currently selected users
+// only. Never called during normal list load — used exclusively by bulk actions
+// (enrollment / unenrollment / delete / credentials / FRDO export) so those
+// paths do not depend on the legacy full-org d.students / d.allProfiles caches.
+// =============================================================================
+
+export interface FetchStudentsByUserIdsResult {
+  /** Raw profiles for the requested user_ids (deduped, scoped to the org). */
+  profiles: Array<{
+    id: string;
+    user_id: string;
+    full_name: string | null;
+    email: string | null;
+    login: string | null;
+    student_group_id: string | null;
+    archived_at: string | null;
+  }>;
+  /** Raw enrollments (empty when includeEnrollments is false). */
+  enrollments: Array<{
+    id: string;
+    user_id: string;
+    course_id: string;
+    course_title: string;
+    progress: number;
+    status: string;
+    started_at: string | null;
+    completed_at: string | null;
+    time_spent: number;
+  }>;
+  /** Convenience Student shape ready for bulk-action consumers. */
+  students: Student[];
+}
+
+/**
+ * Load only the requested user_ids from `profiles` (org-scoped) and optionally
+ * their enrollments. Never fetches decrypted passwords — use
+ * `fetchStudentPasswordsForUsers` after an explicit user action.
+ */
+export async function fetchStudentsByUserIds(
+  organizationId: string,
+  userIds: string[],
+  options: { includeEnrollments?: boolean } = {},
+): Promise<FetchStudentsByUserIdsResult> {
+  const uniq = Array.from(new Set(userIds)).filter(Boolean);
+  if (uniq.length === 0) {
+    return { profiles: [], enrollments: [], students: [] };
+  }
+  const includeEnrollments = options.includeEnrollments !== false;
+
+  const profiles: FetchStudentsByUserIdsResult["profiles"] = [];
+  for (let i = 0; i < uniq.length; i += 100) {
+    const chunk = uniq.slice(i, i + 100);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, user_id, full_name, email, login, student_group_id, archived_at")
+      .eq("organization_id", organizationId)
+      .in("user_id", chunk);
+    if (error) throw error;
+    if (data) profiles.push(...(data as any[]));
+  }
+
+  if (profiles.length === 0) {
+    throw new Error(
+      `fetchStudentsByUserIds: no profiles found in org ${organizationId} for ${uniq.length} user_id(s)`,
+    );
+  }
+
+  const rawEnrollments: FetchStudentsByUserIdsResult["enrollments"] = [];
+  const courseTitleMap = new Map<string, string>();
+  if (includeEnrollments) {
+    const enrollmentRows: any[] = [];
+    for (let i = 0; i < uniq.length; i += 100) {
+      const chunk = uniq.slice(i, i + 100);
+      const { data, error } = await supabase
+        .from("enrollments")
+        .select("id, user_id, course_id, progress, status, started_at, completed_at, time_spent")
+        .in("user_id", chunk);
+      if (error) throw error;
+      if (data) enrollmentRows.push(...data);
+    }
+    const courseIds = Array.from(new Set(enrollmentRows.map(e => e.course_id).filter(Boolean)));
+    if (courseIds.length > 0) {
+      // Batch course-title fetch — build a Map so per-enrollment lookup is O(1).
+      for (let i = 0; i < courseIds.length; i += 100) {
+        const chunk = courseIds.slice(i, i + 100);
+        const { data, error } = await supabase
+          .from("courses")
+          .select("id, title")
+          .in("id", chunk);
+        if (error) throw error;
+        for (const c of (data ?? []) as any[]) {
+          courseTitleMap.set(c.id, c.title as string);
+        }
+      }
+    }
+    for (const e of enrollmentRows) {
+      rawEnrollments.push({
+        id: e.id,
+        user_id: e.user_id,
+        course_id: e.course_id,
+        course_title: courseTitleMap.get(e.course_id) || "—",
+        progress: Number(e.progress ?? 0),
+        status: e.status,
+        started_at: e.started_at,
+        completed_at: e.completed_at ?? null,
+        time_spent: Number(e.time_spent ?? 0),
+      });
+    }
+  }
+
+  const enrByUser = new Map<string, StudentEnrollment[]>();
+  for (const e of rawEnrollments) {
+    const arr = enrByUser.get(e.user_id) ?? [];
+    arr.push({
+      id: e.id,
+      course_id: e.course_id,
+      course_title: e.course_title,
+      progress: e.progress,
+      status: e.status,
+      started_at: e.started_at ?? "",
+      completed_at: e.completed_at,
+      time_spent: e.time_spent,
+    });
+    enrByUser.set(e.user_id, arr);
+  }
+
+  const students: Student[] = profiles.map(p => {
+    const enr = enrByUser.get(p.user_id) ?? [];
+    const totalProgress = enr.length > 0
+      ? Math.round(enr.reduce((s, e) => s + (e.progress || 0), 0) / enr.length)
+      : 0;
+    const hasCompleted = enr.some(e => e.status === "completed");
+    const hasActive = enr.some(e => e.status === "active");
+    return {
+      id: p.id,
+      user_id: p.user_id,
+      enrollment_id: enr.length === 1 ? enr[0].id : null,
+      name: p.full_name || "Без имени",
+      email: p.email || "",
+      login: p.login ?? null,
+      generated_password: null,
+      course: enr.length > 0 ? enr.map(e => e.course_title).join(", ") : null,
+      course_id: enr.length === 1 ? enr[0].course_id : null,
+      progress: totalProgress,
+      lastActivity: enr[0]?.started_at || null,
+      status: hasCompleted ? "completed" : hasActive ? "active" : null,
+      enrollments: enr,
+      archived_at: p.archived_at ?? null,
+      student_group_id: p.student_group_id ?? null,
+    } as Student;
+  });
+
+  return { profiles, enrollments: rawEnrollments, students };
+}
