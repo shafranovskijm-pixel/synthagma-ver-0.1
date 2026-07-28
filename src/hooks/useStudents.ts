@@ -15,6 +15,7 @@ interface StudentGroup {
 }
 import { 
   fetchStudents,
+  fetchStudentPasswords,
   fetchFRDOStatus,
   createStudent,
   enrollStudent,
@@ -26,6 +27,7 @@ import {
   setStudentArchived,
   isValidEmail
 } from "@/api/students";
+
 import { toast } from "sonner";
 import { qk } from "@/lib/queryKeys";
 
@@ -141,12 +143,33 @@ export function useStudents(
     gcTime: 5 * 60_000,
   });
 
-  const students = studentsData?.students ?? [];
+  // Passwords — separate, non-critical query. NEVER blocks the primary list.
+  const { data: passwordMap } = useQuery({
+    queryKey: qk.org.studentsList(organizationId ?? "none", "__passwords__"),
+    queryFn: async () => {
+      if (!organizationId) return new Map<string, string>();
+      return fetchStudentPasswords(organizationId);
+    },
+    enabled: !!organizationId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    // Password RPC failure must NOT surface as a student-list error.
+    retry: (failureCount, err) => failureCount < 1 && isTransientNetworkError(err),
+  });
+
+  const rawStudents = studentsData?.students ?? [];
+  const students = useMemo(() => {
+    if (!passwordMap || passwordMap.size === 0) return rawStudents;
+    return rawStudents.map(s => (
+      s.generated_password ? s : { ...s, generated_password: passwordMap.get(s.user_id) ?? null }
+    ));
+  }, [rawStudents, passwordMap]);
   const allProfiles = studentsData?.allProfiles ?? [];
   const studentGroupMap = studentsData?.groupMap ?? new Map<string, string | null>();
   const studentGroups = groupsData ?? [];
   const isLoading = !!organizationId && studentsLoading;
   const isError = !!organizationId && studentsIsError;
+
 
   // FRDO status — secondary, lightly cached
   const studentUserIdsKey = useMemo(
