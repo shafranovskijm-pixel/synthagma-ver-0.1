@@ -420,3 +420,167 @@ export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email.trim());
 }
+
+// =============================================================================
+// Phase 3: server-side paginated students of the organization
+// =============================================================================
+
+export interface OrgStudentPageRow {
+  student: Student;
+  total_count: number;
+  active_count: number;
+  archived_count: number;
+}
+
+export interface OrgStudentsPage {
+  rows: Student[];
+  totalFiltered: number;
+  activeTotal: number;
+  archivedTotal: number;
+  nextOffset: number | null;
+}
+
+export interface FetchOrgStudentsPageInput {
+  organizationId: string;
+  limit?: number;
+  offset?: number;
+  search?: string | null;
+  courseId?: string | null;
+  groupFilter?: string | null;
+  status?: string | null;
+  docsFilter?: string | null;
+  archiveMode?: "active" | "archive";
+}
+
+function toStudentFromServerRow(r: any): Student {
+  const enrollmentsRaw = Array.isArray(r.enrollments) ? r.enrollments : [];
+  const enrollments: StudentEnrollment[] = enrollmentsRaw.map((e: any) => ({
+    id: e.id,
+    course_id: e.course_id,
+    course_title: e.course_title || "—",
+    progress: Number(e.progress ?? 0),
+    status: e.status,
+    started_at: e.started_at,
+    completed_at: e.completed_at ?? null,
+    time_spent: Number(e.time_spent ?? 0),
+  }));
+
+  const courseNames = enrollments.map(e => e.course_title);
+  return {
+    id: r.id,
+    user_id: r.user_id,
+    enrollment_id: enrollments.length === 1 ? enrollments[0].id : null,
+    name: r.full_name || "Без имени",
+    email: r.email || "",
+    login: r.login ?? null,
+    // Passwords are loaded on demand only — see fetchStudentPasswordsForUsers().
+    generated_password: null,
+    course: courseNames.length > 0 ? courseNames.join(", ") : null,
+    course_id: enrollments.length === 1 ? enrollments[0].course_id : null,
+    progress: Number(r.progress ?? 0),
+    lastActivity: r.last_activity ?? null,
+    last_visit_at: r.last_visit_at ?? null,
+    status: (r.status as string | null) ?? null,
+    enrollments,
+    archived_at: r.archived_at ?? null,
+    student_group_id: r.student_group_id ?? null,
+    has_passport: !!r.has_passport,
+    has_snils: !!r.has_snils,
+    has_education: !!r.has_education,
+    frdo_has_data: !!r.frdo_has_data,
+    frdo_complete: !!r.frdo_complete,
+  };
+}
+
+export async function fetchOrganizationStudentsPage(
+  input: FetchOrgStudentsPageInput,
+): Promise<OrgStudentsPage> {
+  const limit = Math.max(1, Math.min(100, input.limit ?? 10));
+  const offset = Math.max(0, input.offset ?? 0);
+  const { data, error } = await supabase.rpc("get_organization_students_page", {
+    p_organization_id: input.organizationId,
+    p_limit: limit,
+    p_offset: offset,
+    p_search: input.search && input.search.trim() ? input.search.trim() : undefined,
+    p_course_id: input.courseId && input.courseId !== "all" ? input.courseId : undefined,
+    p_group_filter: input.groupFilter && input.groupFilter !== "all" ? input.groupFilter : undefined,
+    p_status: input.status && input.status !== "all" ? input.status : undefined,
+    p_docs_filter: input.docsFilter && input.docsFilter !== "all" ? input.docsFilter : undefined,
+    p_archive_mode: input.archiveMode ?? "active",
+  } as any);
+  if (error) throw error;
+
+  const list = (data ?? []) as any[];
+  const first = list[0];
+  const totalFiltered = first ? Number(first.total_count ?? 0) : 0;
+  const activeTotal = first ? Number(first.active_count ?? 0) : 0;
+  const archivedTotal = first ? Number(first.archived_count ?? 0) : 0;
+  const rows = list.map(toStudentFromServerRow);
+  const nextOffset = offset + rows.length < totalFiltered ? offset + rows.length : null;
+  return { rows, totalFiltered, activeTotal, archivedTotal, nextOffset };
+}
+
+export interface OrgStudentsCounts {
+  active_count: number;
+  archived_count: number;
+  total_count: number;
+}
+
+export async function fetchOrganizationStudentsCounts(
+  organizationId: string,
+): Promise<OrgStudentsCounts> {
+  const { data, error } = await supabase.rpc("get_organization_students_counts", {
+    p_organization_id: organizationId,
+  } as any);
+  if (error) throw error;
+  const row = (data ?? [])[0] as any | undefined;
+  return {
+    active_count: Number(row?.active_count ?? 0),
+    archived_count: Number(row?.archived_count ?? 0),
+    total_count: Number(row?.total_count ?? 0),
+  };
+}
+
+export interface OrgStudentGroupCount {
+  group_id: string | null;
+  total_count: number;
+  active_count: number;
+  archived_count: number;
+}
+
+export async function fetchOrganizationStudentGroupCounts(
+  organizationId: string,
+): Promise<OrgStudentGroupCount[]> {
+  const { data, error } = await supabase.rpc("get_organization_student_group_counts", {
+    p_organization_id: organizationId,
+  } as any);
+  if (error) throw error;
+  return ((data ?? []) as any[]).map(r => ({
+    group_id: r.group_id ?? null,
+    total_count: Number(r.total_count ?? 0),
+    active_count: Number(r.active_count ?? 0),
+    archived_count: Number(r.archived_count ?? 0),
+  }));
+}
+
+export async function fetchStudentPasswordsForUsers(
+  organizationId: string,
+  userIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (userIds.length === 0) return map;
+  // Server enforces max 100; batch client-side just in case.
+  const uniq = Array.from(new Set(userIds));
+  for (let i = 0; i < uniq.length; i += 100) {
+    const chunk = uniq.slice(i, i + 100);
+    const { data, error } = await supabase.rpc("get_decrypted_student_passwords_for_users", {
+      p_organization_id: organizationId,
+      p_user_ids: chunk,
+    } as any);
+    if (error) throw error;
+    for (const row of (data ?? []) as any[]) {
+      if (row.decrypted_password) map.set(row.user_id, row.decrypted_password);
+    }
+  }
+  return map;
+}
