@@ -451,7 +451,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     {isOpen && (
                       <div className="lg:hidden divide-y divide-border border-t border-border bg-muted/10">
                         {group.students.map(student => (
-                          <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
+                          <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} studentDocsByUser={studentDocsByUser} />
+
                         ))}
                       </div>
                     )}
