@@ -15,7 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Download, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle, RefreshCcw } from "lucide-react";
 import { format } from "date-fns";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
@@ -24,6 +24,7 @@ import {
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
 import { resolveFRDOFields, validateFRDORowSync, type CourseFRDOLike } from "@/utils/frdoFieldResolver";
+import { fetchStudentsByUserIds } from "@/api/students";
 
 interface Student {
   id: string;
@@ -44,8 +45,12 @@ interface BulkFRDOExportProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: string;
-  selectedStudentIds: Set<string>;
-  students: Student[];
+  /**
+   * Phase 4A: dialog receives only the selected user_ids. Names, FRDO data
+   * and enrollments are point-fetched on open; the dialog no longer relies
+   * on the caller's full d.students snapshot.
+   */
+  selectedUserIds: string[];
 }
 
 interface FRDOData {
