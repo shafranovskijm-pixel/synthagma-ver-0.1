@@ -112,8 +112,10 @@ export interface UseStudentsReturn {
   // Archive
   viewMode: "active" | "archive";
   setViewMode: (mode: "active" | "archive") => void;
-  activeStudentsCount: number;
-  archivedCount: number;
+  /** `null` while the counts RPC is loading or errored — UI must not show 0. */
+  activeStudentsCount: number | null;
+  /** `null` while the counts RPC is loading or errored — UI must not show 0. */
+  archivedCount: number | null;
   archiveByMonth: Array<{ key: string; label: string; students: Student[] }>;
   archiveStudent: (userId: string) => Promise<boolean>;
   unarchiveStudent: (userId: string) => Promise<boolean>;
