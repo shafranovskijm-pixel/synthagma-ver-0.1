@@ -1,5 +1,5 @@
-import React from "react";
-import { Copy, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { Copy, CheckCircle2, XCircle, ChevronRight, Loader2 } from "lucide-react";
 import type { Student } from "@/types";
 
 interface StudentMobileCardProps {
@@ -8,20 +8,36 @@ interface StudentMobileCardProps {
   onToggleSelection: () => void;
   onViewStudent: () => void;
   onCopyCredentials: (login: string, password: string) => void;
+  onRequestCredentials?: (userId: string) => Promise<string | null>;
   studentDocsByUser: Map<string, string[]>;
 }
 
 export const StudentMobileCard = React.memo(function StudentMobileCard({
-  student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, studentDocsByUser,
+  student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, onRequestCredentials, studentDocsByUser,
 }: StudentMobileCardProps) {
-  // Prefer server-provided flags; fall back to the legacy client-side map so
-  // callers that still populate studentDocsByUser (e.g. course-scoped views)
-  // keep working.
   const userDocs = studentDocsByUser.get(student.user_id) || [];
   const hasPassport = student.has_passport ?? userDocs.some(t => t === "passport" || t === "birth_certificate");
   const hasSnils = student.has_snils ?? userDocs.includes("snils");
   const hasEducation = student.has_education ?? userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
   const enrollmentsCount = student.enrollments?.length || 0;
+  const [loadingPw, setLoadingPw] = useState(false);
+
+  const handleCopy = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!student.login) return;
+    if (student.generated_password) {
+      onCopyCredentials(student.login, student.generated_password);
+      return;
+    }
+    if (!onRequestCredentials) return;
+    setLoadingPw(true);
+    try {
+      const pw = await onRequestCredentials(student.user_id);
+      if (pw) onCopyCredentials(student.login, pw);
+    } finally {
+      setLoadingPw(false);
+    }
+  }, [student.login, student.generated_password, student.user_id, onCopyCredentials, onRequestCredentials]);
 
   return (
     <div className={`p-4 ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => onViewStudent()}>
@@ -36,9 +52,9 @@ export const StudentMobileCard = React.memo(function StudentMobileCard({
               {student.login && (
                 <div className="flex items-center gap-1 mt-1">
                   <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
-                  {student.generated_password && (
-                    <button onClick={e => { e.stopPropagation(); onCopyCredentials(student.login!, student.generated_password!); }} className="p-1 hover:bg-muted rounded transition-colors">
-                      <Copy className="w-3 h-3 text-muted-foreground" />
+                  {(student.generated_password || onRequestCredentials) && (
+                    <button onClick={handleCopy} disabled={loadingPw} className="p-1 hover:bg-muted rounded transition-colors disabled:opacity-50">
+                      {loadingPw ? <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
                     </button>
                   )}
                 </div>
@@ -65,3 +81,4 @@ export const StudentMobileCard = React.memo(function StudentMobileCard({
     </div>
   );
 });
+
