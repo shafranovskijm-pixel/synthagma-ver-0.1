@@ -18,6 +18,14 @@ export function readAdminViewOrg(): AdminViewOrg | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
+
+    // Legacy code used to store just the organization id as a plain string.
+    // Keep accepting it so old admin entry points do not silently disable
+    // the view-as mode.
+    if (!raw.trim().startsWith("{")) {
+      return { id: raw, name: "" };
+    }
+
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed.id === "string" && parsed.id) {
       return { id: parsed.id, name: typeof parsed.name === "string" ? parsed.name : "" };
@@ -50,6 +58,23 @@ export async function resolveAdminViewOrg(userId: string | null | undefined): Pr
   if (!userId) return { status: "unknown" };
 
   try {
+    // Use the canonical server role resolver instead of the overloaded
+    // has_role RPC. This avoids ambiguous overload/signature failures and
+    // still keeps admin verification server-side.
+    const roleResult = await supabase.rpc("get_user_role", {
+      _user_id: userId,
+    });
+
+    if (!roleResult.error) {
+      if (roleResult.data === "admin") return { status: "admin", view };
+      if (roleResult.data) {
+        clearAdminViewOrg();
+        return { status: "not_admin" };
+      }
+      return { status: "unknown" };
+    }
+
+    // Fallback for deployments where get_user_role is temporarily unavailable.
     const { data, error } = await supabase.rpc("has_role", {
       _user_id: userId,
       _role: "admin",
