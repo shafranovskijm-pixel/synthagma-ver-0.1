@@ -238,6 +238,23 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             В архиве отображаются только ученики, явно перенесённые сюда вручную или через действие «Удалить» (мягкое удаление). Завершившие обучение остаются в активном списке.
           </p>
         )}
+        {(countsErrorKind || groupCountsErrorKind) && (
+          <div className="mt-2 text-xs text-destructive flex items-center gap-2">
+            <span>
+              {countsErrorKind === "permission" || groupCountsErrorKind === "permission"
+                ? "Нет прав на просмотр счётчиков."
+                : "Не удалось загрузить счётчики учеников."}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => { if (countsErrorKind) retryCounts(); if (groupCountsErrorKind) retryGroupCounts(); }}
+            >
+              Повторить
+            </Button>
+          </div>
+        )}
       </div>
 
       {panelMode === "groups" ? (
