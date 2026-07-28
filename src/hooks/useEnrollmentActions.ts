@@ -369,8 +369,8 @@ export function useEnrollmentActions(
         const ok = await deleteStudent(userId);
         if (ok) success++; else failed++;
       }
-      if (success > 0) toast.success(`Удалено: ${success} учеников`);
-      if (failed > 0) toast.error(`Ошибок: ${failed}`);
+      if (success > 0) toast.success(`Перенесено в архив: ${success} ${success === 1 ? "ученик" : "учеников"}`);
+      if (failed > 0) toast.error(`Не удалось перенести: ${failed}`);
 
       setShowBulkDeleteConfirm(false);
       setSelectedStudentIds(new Set());
@@ -378,8 +378,8 @@ export function useEnrollmentActions(
       onRefresh();
       return true;
     } catch (error) {
-      console.error("Error bulk deleting:", error);
-      toast.error("Ошибка удаления");
+      console.error("Error bulk archiving:", error);
+      toast.error("Ошибка переноса в архив");
       return false;
     } finally {
       setIsBulkDeleting(false);
