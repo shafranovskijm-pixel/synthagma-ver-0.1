@@ -291,6 +291,11 @@ export function useOrganizationDashboard() {
       }
       await studentActions.bulkCreateCredentials(studentsToCreate, sendEmails);
       qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+      // Phase 4A.1: freshly generated passwords must invalidate per-user
+      // credential caches so on-demand lookups don't return stale values.
+      for (const s of studentsToCreate) {
+        qc.invalidateQueries({ queryKey: qk.org.studentCredentials(organizationId, s.user_id) });
+      }
     } catch (err: any) {
       console.error("[handleBulkCreateCredentials] point-fetch failed:", err);
       toast.error(err?.message?.includes("no profiles")
