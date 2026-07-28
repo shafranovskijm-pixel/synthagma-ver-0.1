@@ -53,7 +53,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const dash = useOrgDashboard();
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
-  const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
+  const { filteredStudents, isLoading, isError, error, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent, refresh } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const [panelMode, setPanelModeState] = useState<PanelMode>(() => {
     if (typeof window === "undefined") return "groups";
@@ -369,6 +369,24 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
           {/* Content */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+              <XCircle className="w-10 h-10 opacity-60" />
+              <p className="font-medium text-foreground">Не удалось загрузить учеников</p>
+              <p className="text-sm max-w-md text-center">
+                {(() => {
+                  const msg = error instanceof Error ? error.message : String((error as any)?.message ?? "");
+                  if (/permission denied|row-level security/i.test(msg)) {
+                    return "Недостаточно прав. Обратитесь к владельцу организации.";
+                  }
+                  if (/failed to fetch|network|timeout/i.test(msg)) {
+                    return "Проблема с сетью или прокси. Проверьте подключение и повторите.";
+                  }
+                  return "Ошибка загрузки данных. Повторите попытку.";
+                })()}
+              </p>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={refresh}>Повторить</Button>
+            </div>
           ) : filteredStudents.length === 0 ? (
             panelMode === "archive" ? (
               <div className="py-16 text-center text-muted-foreground">
