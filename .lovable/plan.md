@@ -1,83 +1,110 @@
-## Что делаем
+## Фаза 3 — серверная пагинация вкладки «Ученики» организации
 
-Создаём курс из загруженного архива `.7z` в организации ООО «ЦЕНТР СРЕДСТВ ЗАЩИТЫ» (`55c536f0-6024-4386-950e-d180a358e841`). В архиве есть головной документ программы (36 ак.ч, 4 модуля) и учебные материалы для каждой темы (`.docx` лекции + `.pptx` презентации). Материалов достаточно — все 22 темы покрыты `.docx`.
+Базовый commit: `028620d0af979baa23bc4273b7db535a84e22bd4`. После завершения — стоп, Фазу 4 не начинаем.
 
-## Название курса
+### 1. Новая SQL-миграция (одна)
 
-«Монтаж, техническое обслуживание, ремонт средств обеспечения пожарной безопасности зданий, сооружений и их элементов, диспетчеризация и проведение пусконаладочных работ» (36 ак.ч, ПК).
+Файл: `supabase/migrations/<ts>_students_page_phase3.sql`. Существующую миграцию `20260728082057_...` не редактирую.
 
-## Структура (4 модуля, 22 темы + итоговый тест)
+**1.1. `CREATE OR REPLACE FUNCTION public.get_organization_students_page(...)`** — переопределяю поверх текущей, сохраняя сигнатуру, но:
+- документы считаю по агрегатам:
+  - `has_passport = BOOL_OR(d.type IN ('passport','birth_certificate'))`
+  - `has_snils = BOOL_OR(d.type = 'snils')`
+  - `has_education = BOOL_OR(d.type IN ('education_document','diploma','attestat'))`
+- фильтры `complete/incomplete/no_passport/no_snils/no_education` используют эти признаки.
+- фильтр статуса переношу с агрегированного `r_status` на `EXISTS`-подзапросы:
+  - `active` → есть enrollment со `status='active'`;
+  - `completed` → есть enrollment со `status='completed'`;
+  - `not_enrolled` → зачислений нет.
+- сам возвращаемый `status` остаётся агрегированным (для совместимости UI).
+
+**1.2. `get_organization_students_counts(p_organization_id uuid)`**
+Возвращает одну строку: `active_count`, `archived_count`, `total_count`. Исключает admin / organization / активных `org_staff`. Не зависит от `p_search`/фильтров.
+
+**1.3. `get_organization_student_group_counts(p_organization_id uuid)`**
+Возвращает `group_id (nullable) | total_count | active_count | archived_count`, те же исключения.
+
+**1.4. `get_decrypted_student_passwords_for_users(p_organization_id uuid, p_user_ids uuid[])`**
+- Ограничение: не более 100 uuid;
+- проверка `is_student_profile(user_id)` и `organization_id = p_organization_id`;
+- доступ: `has_role(auth.uid(),'admin')` ИЛИ владелец организации ИЛИ `has_org_staff_permission(p_organization_id,'students.write')`;
+- `pgp_sym_decrypt`, возвращает `user_id, decrypted_password`.
+
+Все 4 функции: `SECURITY DEFINER`, `STABLE` (кроме 1.4 — тоже `STABLE`), `SET search_path=public`, `REVOKE ALL FROM PUBLIC, anon`, `GRANT EXECUTE authenticated, service_role`.
+
+### 2. API (`src/api/students.ts`)
+
+Добавляю без удаления `fetchStudents` (нужен legacy-пути):
+- `fetchOrganizationStudentsPage(params)` — вызывает RPC, ограничивает `limit=10`, offset строится вызывающим.
+- `fetchOrganizationStudentsCounts(orgId)`
+- `fetchOrganizationStudentGroupCounts(orgId)`
+- `fetchStudentPasswordsForUsers(orgId, userIds)`
+- Один mapper `rowToStudent(row)` — правила из ТЗ (generated_password=null, безопасный parse enrollments, course/course_id только при 1 зачислении, lastActivity=last_activity, сохранение archived_at/student_group_id/serverных признаков).
+
+Тип строки — из `Database['public']['Functions']['get_organization_students_page']['Returns'][number]`.
+
+Оставшиеся вызовы `fetchStudents` укажу в отчёте.
+
+### 3. Query keys (`src/lib/queryKeys.ts`)
 
 ```
-Модуль 1. Организационные основы обеспечения ПБ
-  1.1 Организационные мероприятия в области ПБ
-  1.2 Правовое регулирование в области ПБ
-  1.3 Требования градостроительного кодекса
-  1.4 Лицензирование в области ПБ
-  1.5 Государственный контроль (надзор) в области ПБ
-
-Модуль 2. Пожары. Классификация пожаров. Опасные факторы
-  2.1 Пожары. Виды, классификация пожаров
-  2.2 Опасные факторы пожара
-  2.3 Противопожарный инструктаж, обучение и проверка знаний
-  2.4 Требования к взрывопожаробезопасности в зданиях
-  2.5 Требования к системам противопожарной защиты
-
-Модуль 3. Требования по охране труда при выполнении работ
-  3.1 Правовые основы охраны труда при выполнении работ
-  3.2 Оценка рисков
-
-Модуль 4. Монтаж, ТО и ремонт систем пожарной безопасности
-  4.1 …системы пожаротушения и её элементов
-  4.2 …системы дренчер- и спринклер
-  4.3 …системы противодымной защиты
-  4.4 …противопожарных дверей
-  4.5 …систем оповещения и эвакуации
-  4.6 …противопожарных завес
-  4.7 …огнезащитных материалов
-  4.8 …первичных средств
-  4.9 Пусконаладочные работы, монтаж, ремонт и техобслуживание
-  4.10 …элементов систем противодымной защиты
-
-Итоговый тест (из раздела 8.2 программы)
+qk.org.studentsPage(orgId, {search,course,group,status,docs,archive})
+qk.org.studentsCounts(orgId)
+qk.org.studentGroupCounts(orgId)
+qk.org.studentCredentials(orgId, userId)
+qk.org.studentsPageAll(orgId)  // префикс для инвалидации
 ```
+`courseIdsKey` для новой страницы не использую.
 
-## Как импортируем контент
+### 4. `useStudents.ts` — переписан
 
-Для каждой темы:
-1. Читаем `.docx` из архива, конвертируем в HTML/блоки контента (уже есть утилита `src/lib/docxImport.ts` + библиотека `mammoth`).
-2. Создаём урок типа `text` с полученным HTML‑контентом.
-3. Если для темы есть `.pptx` — загружаем в bucket `course-files` и прикрепляем как материал к уроку (без создания слайдер‑урока, чтобы не дублировать текст).
-4. Порядок уроков `order_index` — по номеру модуля/темы.
+- `useDebouncedValue(searchQuery, 350)`.
+- `useInfiniteQuery` (page size 10) для активного списка **или** архива, в зависимости от `viewMode`. Ключ — `qk.org.studentsPage(...)`; `getNextPageParam` — если `rows.length===10` возвращает `offset+10`.
+- `retry`: не более 2, только для `isTransientNetworkError`; 401/403/42501 — нет.
+- Дедуп по `user_id` через `Set` при склейке страниц.
+- `useQuery` для counts (`get_organization_students_counts`) → `activeStudentsCount` и `archivedCount`.
+- `useQuery` для group counts.
+- Убираю: `fetchStudentPasswords` (авто), fetch FRDO по всей странице (признаки уже в строках), клиентские фильтры `filteredStudents`, `archivedStudents.length` по массиву, `archiveByMonth` теперь строится по загруженным строкам архива с корректной догрузкой (Map ключ — `YYYY-MM`, дополняется).
+- Ошибки: `initialError` / `nextPageError` / отдельно ошибки counts.
+- `selectedStudentIds`: сохраняется при догрузке; сброс — при смене `search`/`course`/`group`/`status`/`docs`/`viewMode` (через `useEffect` на debounced-ключе).
+- `toggleSelectAll` — только по загруженным (`students.map(user_id)`).
+- Оставляю `bulkUnenroll/bulkDelete/enroll/...` работающими по загруженным моделям.
+- Функция `fetchStudentCredentialsOnDemand(userId)` для точечного пароля (используется StudentTableRow).
 
-Итоговый тест: парсим блок «8.2 Варианты вопросов для итоговой аттестации» из головного docx и создаём урок типа `test` с вопросами (`test_questions`, банк вопросов, 20 вопросов, проходной 70%, попыток — 3). Если распарсить не удастся чисто — оставим пустой тест‑урок с TODO‑комментом (не блокирует остальной импорт).
+### 5. `StudentsTab.tsx`
 
-## Как выполняем
+- Удаляю `visibleCount`, `paginatedStudents = filteredStudents.slice(0,visibleCount)`, `LoadMoreControls` (клиентские 25/50/100/Все).
+- Использую `students` (склеенные страницы) напрямую. Под списком:
+  - `Показано {loaded} из {total}`;
+  - кнопка `Показать ещё {min(10, total-loaded)}`;
+  - spinner при `isFetchingNextPage`;
+  - retry при `isFetchNextPageError`.
+- Первая страница не пропадает при ошибке догрузки.
+- Архив: группировка по месяцам через `archiveByMonth` (уже из hook), дедупликация ключей при догрузке.
+- Экспорт: переименовать в «Выгрузить показанных в Excel ({loaded})», работает только по загруженным.
+- Групповые счётчики — `groupCounts.get(g.id)?.total_count ?? 0` вместо `Array.from(studentGroupMap.values()).filter(...)`.
+- `panelMode==='groups'` не запускает страницы (query `enabled` только при active/archive).
+- Пустой архив — текст про ручное архивирование (уже есть).
 
-Один разовый скрипт `scripts/import-dpp-tszz.mjs` (Node, локально), который:
+### 6. Row-компоненты
 
-1. Распаковывает архив `/mnt/user-uploads/ДПП_…7z` (через `7z x`).
-2. По маппингу файлов → создаёт курс, модули (`course_modules`), уроки (`lessons`), test_questions.
-3. Загружает `.pptx` в Storage через service‑role ключ и прикрепляет ссылки в `lesson_attachments`.
-4. Публикует курс (`is_published=true`), скрыт от каталога маркетплейса (`hidden_from_catalog=true`) — курс для внутреннего использования организации.
+- `StudentTableRow.tsx` и `StudentMobileCard.tsx`: используют серверные признаки `has_passport/has_snils/has_education` и `frdo_has_data/frdo_complete` из `student.*` (расширяю `Student` optional-полями). Локальный fallback на `studentDocsByUser`/`frdoStatus` пока сохраняю, чтобы курсовая часть и другие вызовы не сломались.
+- Кнопка «Копировать пароль»: если `generated_password` уже есть — копирует; иначе — вызывает `fetchStudentCredentialsOnDemand(user_id)`, показывает локальный spinner, ошибки классифицирую.
 
-Скрипт запустится один раз — после этого можно удалить. Никакие компоненты UI и существующая логика курсов не меняются.
+### 7. Что НЕ трогаю
 
-## Технические детали
+`useOrganizationDataLoader`, `useOrganizationDashboard`, bulk-pipelines, полный Excel-экспорт, Bulk FRDO, генераторы документов, NGINX, курс-пагинацию, legacy-компоненты. В отчёте перечислю оставшиеся legacy-запросы.
 
-- Организация: `id = 55c536f0-6024-4386-950e-d180a358e841` (ООО «ЦЕНТР СРЕДСТВ ЗАЩИТЫ», уже существует).
-- Таблицы: `courses`, `course_modules`, `lessons`, `test_questions`, `lesson_attachments`.
-- Storage: bucket `course-files`, путь `courses/{course_id}/attachments/{filename}`.
-- Docx → HTML: `mammoth.convertToHtml` (уже используется в `src/lib/docxImport.ts`).
-- pptx оставляем как файлы‑вложения (без конвертации в слайдер), т.к. слайдер требует картинок, а pptx содержит ту же информацию, что и docx‑лекция.
-- Автор курса / created_by — владелец организации (найдём через `user_roles` role=owner + organization_id).
+### 8. Проверки
 
-## Что НЕ делаем в этой итерации
+- `bunx tsgo --noEmit` + `bun run build`.
+- SQL-проверки через `supabase--read_query` на организациях со 100+ учениками (Modern Mining / Синтагма): первая/вторая страница, счётчики при пустом поиске, ролевой фильтр, документы с birth_certificate/diploma, ученик с active+completed.
+- Playwright-проход по вкладке (сеть: только 1 rpc `get_organization_students_page` + counts на входе, дебаунс поиска, отсутствие `get_decrypted_student_passwords` до клика).
 
-- Не генерируем лекции через AI (все 22 темы покрыты docx‑материалами из архива).
-- Не создаём обложку курса и не заполняем описание маркетинговое — можно позже добавить руками или через AI‑кнопку в редакторе курса.
-- Не создаём вебинары/AI‑тьютор/3D — по проекту эти фичи скрыты по умолчанию.
+### 9. Итоговый отчёт
 
-## Проверка результата
+Имя миграции, изменённые файлы, commit, число строк 1/2 страницы, сетевые запросы, оставшиеся legacy-запросы `useOrganizationDataLoader`, debounce, фильтры доков/статуса, счётчики, selection, on-demand пароль, TS/build результаты, что осталось на Фазу 4.
 
-После запуска скрипта откроем `/organization/courses` под ООО «ЦЕНТР СРЕДСТВ ЗАЩИТЫ», убедимся что курс появился, 22 текстовых урока идут по порядку, к каждому уроку с pptx приложен файл, итоговый тест открывается.
+---
+
+Если готов — подтверди, и я стартую с миграции.
