@@ -25,7 +25,7 @@ import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTa
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
+
 import { useCourseDetails } from "@/hooks/useCourseDetails";
 // Lazy-loaded heavy chunks. We expose the import factories so we can also
 // prefetch them in the background as soon as the course card opens — this
@@ -441,6 +441,18 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
 function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
   const courseStudents = h.courseStudents;
   const total = h.totalFilteredStudents;
+  const remaining = Math.max(0, total - courseStudents.length);
+  const nextChunk = Math.min(10, remaining);
+
+  const availableRemaining = Math.max(0, h.availableTotalFiltered - h.availableStudents.length);
+  const availableNextChunk = Math.min(20, availableRemaining);
+
+  const errorLabel = (kind: string | null) =>
+    kind === "permission" ? "Недостаточно прав для просмотра списка."
+    : kind === "unauthorized" ? "Сессия истекла — войдите заново."
+    : kind === "network" ? "Проблема с сетью или прокси."
+    : "Не удалось загрузить данные.";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -450,17 +462,53 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
           <PopoverContent className="w-80 p-0" align="end">
             <div className="p-3 border-b border-border"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Поиск учеников..." value={h.enrollSearchQuery} onChange={(e) => h.setEnrollSearchQuery(e.target.value)} className="pl-9 rounded-lg" /></div></div>
             <ScrollArea className="h-64">
-              {h.isLoadingAvailable && h.filteredAvailableStudents.length === 0 ? <div className="flex items-center justify-center py-8"><SigmaSpinner /></div> : h.filteredAvailableStudents.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">Нет доступных учеников</div> : (
+              {h.isLoadingAvailable && h.availableStudents.length === 0 ? (
+                <div className="flex items-center justify-center py-8"><SigmaSpinner /></div>
+              ) : h.availableErrorKind ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground px-4">
+                  <span>{errorLabel(h.availableErrorKind)}</span>
+                  <Button variant="ghost" size="sm" onClick={h.retryAvailable}>Повторить</Button>
+                </div>
+              ) : h.availableStudents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">Нет доступных учеников</div>
+              ) : (
                 <div className="p-2 space-y-1">
-                  {h.filteredAvailableStudents.map(s => (
-                    <div key={s.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => h.toggleStudentToEnroll(s.user_id)}>
-                      <Checkbox checked={h.selectedToEnroll.has(s.user_id)} onCheckedChange={() => h.toggleStudentToEnroll(s.user_id)} />
-                      <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-xs text-muted-foreground truncate">{s.email}</div></div>
+                  {h.availableStudents.map(s => {
+                    const checked = h.selectedToEnroll.has(s.user_id);
+                    return (
+                      <div
+                        key={s.user_id}
+                        role="button"
+                        tabIndex={0}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                        onClick={() => h.toggleStudentToEnroll(s.user_id)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); h.toggleStudentToEnroll(s.user_id); } }}
+                      >
+                        {/* Checkbox is presentational — the row owns the toggle so
+                            clicking anywhere (checkbox or row) fires exactly one
+                            toggle. Stop pointer propagation just in case. */}
+                        <Checkbox
+                          checked={checked}
+                          onClick={(e) => e.stopPropagation()}
+                          onCheckedChange={() => h.toggleStudentToEnroll(s.user_id)}
+                          tabIndex={-1}
+                        />
+                        <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-xs text-muted-foreground truncate">{s.email}</div></div>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-1 text-[11px] text-muted-foreground text-center">
+                    Показано {h.availableStudents.length} из {h.availableTotalFiltered}
+                  </div>
+                  {h.nextAvailablePageErrorKind && (
+                    <div className="flex flex-col items-center gap-1 pt-1 text-xs text-muted-foreground">
+                      <span>{errorLabel(h.nextAvailablePageErrorKind)}</span>
+                      <Button variant="ghost" size="sm" onClick={h.retryNextAvailablePage}>Повторить</Button>
                     </div>
-                  ))}
-                  {h.hasMoreAvailable && (
+                  )}
+                  {availableRemaining > 0 && !h.nextAvailablePageErrorKind && (
                     <Button variant="ghost" size="sm" className="w-full rounded-lg text-xs text-muted-foreground" onClick={h.loadMoreAvailable} disabled={h.isLoadingAvailable}>
-                      {h.isLoadingAvailable ? "Загрузка..." : `Показать ещё (${h.availableTotalFiltered - h.filteredAvailableStudents.length})`}
+                      {h.isLoadingAvailable ? "Загрузка..." : `Показать ещё ${availableNextChunk}`}
                     </Button>
                   )}
                 </div>
@@ -499,12 +547,17 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
 
       {h.isLoadingStudents && courseStudents.length === 0 ? (
         <div className="flex items-center justify-center py-12"><SigmaSpinner /></div>
+      ) : h.studentsErrorKind ? (
+        <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+          <span>{errorLabel(h.studentsErrorKind)}</span>
+          <Button variant="outline" size="sm" onClick={h.retryStudents}>Повторить</Button>
+        </div>
       ) : courseStudents.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>{h.studentsSearchQuery || h.studentsStatusFilter !== "all" ? "Никто не найден по заданным фильтрам" : "Нет зачисленных учеников"}</p></div>
       ) : (
         <>
           <div className="space-y-2">{courseStudents.map((s: any) => (
-            <div key={s.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+            <div key={s.enrollment_id || s.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
               <div><div className="font-medium">{s.name}</div><div className="text-sm text-muted-foreground">{s.email}</div></div>
               <div className="flex items-center gap-4">
                 <div className="text-right"><div className="text-sm font-medium">{Math.min(s.progress, 100)}%</div><Progress value={Math.min(s.progress, 100)} className="w-24 h-2" /></div>
@@ -513,11 +566,24 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
               </div>
             </div>
           ))}</div>
-          <LoadMoreControls
-            visibleCount={courseStudents.length}
-            totalCount={total}
-            onLoadMore={(n) => h.loadMoreStudents(n)}
-          />
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <div className="text-xs text-muted-foreground">Показано {courseStudents.length} из {total}</div>
+            {h.nextStudentsPageErrorKind ? (
+              <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+                <span>{errorLabel(h.nextStudentsPageErrorKind)}</span>
+                <Button variant="outline" size="sm" onClick={h.retryNextStudentsPage}>Повторить</Button>
+              </div>
+            ) : remaining > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={h.loadMoreStudents}
+                disabled={h.isFetchingMoreStudents}
+              >
+                {h.isFetchingMoreStudents ? "Загрузка..." : `Показать ещё ${nextChunk}`}
+              </Button>
+            ) : null}
+          </div>
         </>
       )}
     </div>
