@@ -128,6 +128,7 @@ export function useOrganization(): UseOrganizationReturn {
         const org = await fetchOrganization(orgId);
         if (org) {
           setOrganization(org);
+          setOrganizationName(org.name);
           setIsFrdoEnabled(org.frdo_enabled);
           
           // Load branding

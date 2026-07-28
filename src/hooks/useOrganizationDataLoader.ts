@@ -172,6 +172,17 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         if (cancelled) return;
         setOrganizationId(orgId);
 
+        const { data: selectedOrgData } = await supabase
+          .from("organizations")
+          .select("name, frdo_enabled")
+          .eq("id", orgId)
+          .maybeSingle();
+
+        if (selectedOrgData && !cancelled) {
+          setOrganizationName(selectedOrgData.name);
+          setIsFrdoEnabled(selectedOrgData.frdo_enabled || false);
+        }
+
         // ===== PHASE 1: Light queries only (courses, profiles, categories, companies) =====
         // NO passwords, NO heavy RPCs — render fast
         const [coursesData, allProfilesData, categoriesData, companiesData] = await Promise.all([
