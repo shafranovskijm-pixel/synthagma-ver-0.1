@@ -403,7 +403,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               <div className="py-16 text-center text-muted-foreground">
                 <Archive className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p className="font-medium">Архив пуст</p>
-                <p className="text-sm mt-1">Сюда автоматически попадают ученики, прошедшие все курсы на 100%.</p>
+                <p className="text-sm mt-1">В архив попадают только ученики, перенесённые вручную через меню действий.</p>
               </div>
             ) : (
               <StudentsEmptyState onAddStudent={props.onAddStudent} onImportStudents={props.onImportStudents} onNavigateToFRDO={props.onNavigateToFRDO} />
