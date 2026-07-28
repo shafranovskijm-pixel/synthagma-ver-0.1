@@ -18,6 +18,7 @@ import {
   updateStudentDashboardSettings as updateSettingsApi
 } from "@/api/organizations";
 import { toast } from "sonner";
+import { resolveAdminViewOrg, clearAdminViewOrg } from "@/utils/adminViewOrg";
 
 export type { 
   Organization, 
