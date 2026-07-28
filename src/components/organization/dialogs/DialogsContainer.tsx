@@ -243,30 +243,29 @@ export function DialogsContainer() {
         selectedUserIds={Array.from(d.enrollmentActions.selectedStudentIds)}
       />
 
-      {/* Bulk Delete Confirmation Dialog */}
+      {/* Bulk Archive Confirmation Dialog (single confirmation for the archive flow) */}
       <AlertDialog open={d.enrollmentActions.showBulkDeleteConfirm} onOpenChange={d.enrollmentActions.setShowBulkDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить учеников?</AlertDialogTitle>
+            <AlertDialogTitle>Перенести учеников в архив?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы уверены, что хотите удалить {d.enrollmentActions.selectedStudentIds.size} учеников?
-              Это действие нельзя отменить. Все данные учеников, включая зачисления и документы, будут удалены.
+              Выбранные ученики ({d.enrollmentActions.selectedStudentIds.size}) будут перенесены в архив.
+              Действие обратимо — их можно восстановить во вкладке «Архив».
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={d.enrollmentActions.isBulkDeleting}>Отмена</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => d.enrollmentActions.bulkDelete(Array.from(d.enrollmentActions.selectedStudentIds))} 
+            <AlertDialogAction
+              onClick={() => d.enrollmentActions.bulkDelete(Array.from(d.enrollmentActions.selectedStudentIds))}
               disabled={d.enrollmentActions.isBulkDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {d.enrollmentActions.isBulkDeleting ? (
                 <>
                   <SigmaSpinner size="sm" className="mr-2" />
-                  Удаление...
+                  Перенос...
                 </>
               ) : (
-                "Удалить"
+                "Перенести в архив"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
