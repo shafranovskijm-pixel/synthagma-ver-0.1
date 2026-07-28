@@ -487,7 +487,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                   </tbody>
                 </table>
               </div>
-              <LoadMoreControls visibleCount={paginatedStudents.length} totalCount={filteredStudents.length} onLoadMore={n => setVisibleCount(prev => prev + n)} />
+              {(hasNextPage || totalFiltered > loadedCount) && (
+                <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-t border-border">
+                  <span className="text-sm text-muted-foreground">Показано {loadedCount} из {totalFiltered}</span>
+                  <div className="flex items-center gap-2">
+                    {nextPageErrorKind && (
+                      <Button variant="outline" size="sm" onClick={retryNextPage}>Повторить</Button>
+                    )}
+                    <Button variant="outline" size="sm" disabled={isFetchingNextPage || !hasNextPage} onClick={loadMore}>
+                      {isFetchingNextPage ? "Загрузка..." : "Показать ещё 10"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </>
