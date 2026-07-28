@@ -550,8 +550,13 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             {studentGroups.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {studentGroups.map(group => {
-                  const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
-                  return <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} /><div><div className="font-medium text-sm">{group.name}</div><div className="text-xs text-muted-foreground">{count} уч.{group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}{group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}</div></div></div><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="w-4 h-4" /></Button></div>;
+                  const serverCount = groupCounts.get(group.id)?.total_count;
+                  const countLabel = groupCountsLoading && serverCount === undefined
+                    ? "…"
+                    : groupCountsErrorKind
+                      ? "—"
+                      : String(serverCount ?? 0);
+                  return <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} /><div><div className="font-medium text-sm">{group.name}</div><div className="text-xs text-muted-foreground">{countLabel} уч.{group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}{group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}</div></div></div><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="w-4 h-4" /></Button></div>;
                 })}
               </div>
             )}
