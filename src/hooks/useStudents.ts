@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { isTransientNetworkError } from "@/utils/isTransientNetworkError";
 
 interface StudentGroup {
   id: string;
@@ -120,8 +121,6 @@ export function useStudents(
     gcTime: 5 * 60_000,
     retry: (failureCount, err) => {
       // Only retry transient network/gateway errors, and only twice.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { isTransientNetworkError } = require("@/utils/isTransientNetworkError");
       return failureCount < 2 && isTransientNetworkError(err);
     },
   });
