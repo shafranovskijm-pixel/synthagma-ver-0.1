@@ -25,6 +25,7 @@ import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTa
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { useCourseDetails } from "@/hooks/useCourseDetails";
 // Lazy-loaded heavy chunks. We expose the import factories so we can also
 // prefetch them in the background as soon as the course card opens — this
