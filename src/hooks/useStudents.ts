@@ -500,6 +500,8 @@ export function useStudents(
     students,
     allProfiles,
     isLoading,
+    isError,
+    error: studentsError,
     frdoStatus,
     selectedStudentIds,
     setSelectedStudentIds,
