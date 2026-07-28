@@ -136,9 +136,15 @@ export function BulkFRDOExport({
     }
 
     try {
-      const { data: frdoData, error: frdoError } = await supabase
-        .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", userIds);
-      if (frdoError) throw frdoError;
+      // Phase 4A.1: chunk .in() to avoid URL-length limits on large selections.
+      const frdoData: any[] = [];
+      for (let i = 0; i < userIds.length; i += 100) {
+        const chunk = userIds.slice(i, i + 100);
+        const { data, error: frdoError } = await supabase
+          .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", chunk);
+        if (frdoError) throw frdoError;
+        if (data) frdoData.push(...data);
+      }
 
       const dataMap = new Map<string, FRDOData>();
       const missing: string[] = [];
