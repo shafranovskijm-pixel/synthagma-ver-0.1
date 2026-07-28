@@ -636,6 +636,7 @@ export async function fetchStudentsByUserIds(
   const includeEnrollments = options.includeEnrollments !== false;
 
   const profiles: FetchStudentsByUserIdsResult["profiles"] = [];
+  const seen = new Set<string>();
   for (let i = 0; i < uniq.length; i += 100) {
     const chunk = uniq.slice(i, i + 100);
     const { data, error } = await supabase
@@ -644,12 +645,21 @@ export async function fetchStudentsByUserIds(
       .eq("organization_id", organizationId)
       .in("user_id", chunk);
     if (error) throw error;
-    if (data) profiles.push(...(data as any[]));
+    for (const row of (data ?? []) as any[]) {
+      if (row.user_id && !seen.has(row.user_id)) {
+        seen.add(row.user_id);
+        profiles.push(row);
+      }
+    }
   }
 
-  if (profiles.length === 0) {
+  // Phase 4A.1: reject partial success — any missing profile aborts the
+  // whole operation BEFORE callers mutate anything. We don't include the
+  // missing user_ids in the message to avoid leaking PII beyond counts.
+  if (profiles.length !== uniq.length) {
+    const missingCount = uniq.length - profiles.length;
     throw new Error(
-      `fetchStudentsByUserIds: no profiles found in org ${organizationId} for ${uniq.length} user_id(s)`,
+      `fetchStudentsByUserIds: partial result — requested ${uniq.length} profile(s), got ${profiles.length}, missing ${missingCount}. Aborting to prevent partial mutation.`,
     );
   }
 
