@@ -209,7 +209,25 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
                   )}>
                     {course.is_published ? 'Опубликован' : 'Черновик'}
                   </span>
-                  <div className="flex items-center gap-1"><Users className="w-4 h-4" />{course.studentsCount} учеников</div>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    {h.isLoadingStats ? (
+                      <span className="opacity-80">… учеников</span>
+                    ) : h.statsErrorKind ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="opacity-80">Статистика недоступна</span>
+                        <button
+                          onClick={h.retryStats}
+                          className="underline text-xs hover:opacity-100 opacity-90"
+                          type="button"
+                        >
+                          Повторить
+                        </button>
+                      </span>
+                    ) : (
+                      <>{h.totalStudents} учеников</>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
                 </div>
               </div>
