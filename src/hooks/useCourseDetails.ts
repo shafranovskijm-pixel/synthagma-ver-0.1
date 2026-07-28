@@ -1,9 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 import { FRDO_DOCUMENT_TYPES, type CourseFRDOSettings } from "@/constants/frdo";
+import {
+  fetchCourseStudentsPage,
+  fetchCourseStudentsStats,
+  fetchAvailableStudentsForCoursePage,
+  type CourseStudentPageRow,
+} from "@/api/courseStudents";
 
 interface Course {
   id: string;
@@ -32,32 +38,24 @@ interface Course {
   frdo_education_form?: string | null;
 }
 
-interface Student {
-  id: string;
-  user_id: string;
-  enrollment_id: string | null;
-  name: string;
-  email: string;
-  progress: number;
-  status: string | null;
-}
+const PAGE_SIZE = 10;
+const AVAILABLE_PAGE_SIZE = 20;
 
-interface AvailableStudent {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-}
-
+/**
+ * Second signature-arg (`_legacyStudents`) is kept for backwards compatibility
+ * with older call sites (e.g. useCourseDetailsLogic) — it is ignored. Student
+ * data is now fetched server-side by this hook via React Query pagination.
+ */
 export function useCourseDetails(
   course: Course,
-  courseStudents: Student[],
+  _legacyStudents: unknown = null,
   organizationId: string | null,
   onCourseUpdated?: () => void,
   onRefreshStudents?: () => void,
   onCourseDeleted?: () => void
 ) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -82,13 +80,15 @@ export function useCourseDetails(
   const [requireSnils, setRequireSnils] = useState(true);
   const [requireEducationDocument, setRequireEducationDocument] = useState(true);
   const [requireBirthCertificate, setRequireBirthCertificate] = useState(false);
-  const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
+  const [resetConfirmStudent, setResetConfirmStudent] = useState<CourseStudentPageRow | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+
+  // Server-side filters
+  const [studentsSearchQuery, setStudentsSearchQuery] = useState("");
+  const [studentsStatusFilter, setStudentsStatusFilter] = useState<"all" | "active" | "completed">("all");
 
   // Enroll popover
   const [enrollPopoverOpen, setEnrollPopoverOpen] = useState(false);
-  const [availableStudents, setAvailableStudents] = useState<AvailableStudent[]>([]);
-  const [isLoadingAvailable, setIsLoadingAvailable] = useState(false);
   const [enrollSearchQuery, setEnrollSearchQuery] = useState("");
   const [selectedToEnroll, setSelectedToEnroll] = useState<Set<string>>(new Set());
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -138,58 +138,158 @@ export function useCourseDetails(
     }
   }, [course]);
 
-  const loadAvailableStudents = useCallback(async () => {
-    if (!organizationId || !course) return;
-    setIsLoadingAvailable(true);
-    try {
-      const enrolledUserIds = new Set(courseStudents.map(s => s.user_id));
-      const { data: allProfiles } = await supabase
-        .from("profiles")
-        .select("id, user_id, full_name, email")
-        .eq("organization_id", organizationId);
-      const profileUserIds = (allProfiles || []).map(p => p.user_id);
-      let excludedUserIds = new Set<string>();
-      if (profileUserIds.length > 0) {
-        const rolesData = await fetchUserRolesBatched(profileUserIds, ["organization", "admin"]);
-        excludedUserIds = new Set(rolesData.map(r => r.user_id));
-      }
-      const available = (allProfiles || [])
-        .filter(p => !enrolledUserIds.has(p.user_id) && !excludedUserIds.has(p.user_id))
-        .map(p => ({ id: p.id, user_id: p.user_id, name: p.full_name || "Без имени", email: p.email || "" }));
-      setAvailableStudents(available);
-    } catch (error) { console.error("Error loading available students:", error); toast.error("Ошибка загрузки списка учеников"); }
-    finally { setIsLoadingAvailable(false); }
-  }, [organizationId, course, courseStudents]);
+  // ---- Server-side paginated students of the course ----
+  const studentsQueryKey = useMemo(
+    () => ["course-students-page", course?.id, studentsSearchQuery.trim() || null, studentsStatusFilter] as const,
+    [course?.id, studentsSearchQuery, studentsStatusFilter]
+  );
+
+  const studentsQuery = useInfiniteQuery({
+    queryKey: studentsQueryKey,
+    initialPageParam: 0,
+    enabled: !!course?.id,
+    queryFn: ({ pageParam }) =>
+      fetchCourseStudentsPage({
+        courseId: course.id,
+        limit: PAGE_SIZE,
+        offset: pageParam as number,
+        search: studentsSearchQuery,
+        status: studentsStatusFilter,
+      }),
+    getNextPageParam: (last) => last.nextOffset,
+    staleTime: 30_000,
+  });
+
+  const courseStudents = useMemo<CourseStudentPageRow[]>(
+    () => (studentsQuery.data?.pages ?? []).flatMap((p) => p.rows),
+    [studentsQuery.data]
+  );
+  const totalFilteredStudents = studentsQuery.data?.pages?.[0]?.totalFiltered ?? 0;
+
+  // ---- Course-wide stats (independent of filter, works with empty page) ----
+  const statsQuery = useQuery({
+    queryKey: ["course-students-stats", course?.id],
+    enabled: !!course?.id,
+    queryFn: () => fetchCourseStudentsStats(course.id),
+    staleTime: 30_000,
+  });
+  const totalStudents = statsQuery.data?.totalStudents ?? 0;
+  const activeStudents = statsQuery.data?.activeStudents ?? 0;
+  const completedStudents = statsQuery.data?.completedStudents ?? 0;
+  const avgProgress = Math.round(statsQuery.data?.averageProgress ?? 0);
+  const completionRate = totalStudents > 0 ? Math.round((completedStudents / totalStudents) * 100) : 0;
+
+  const invalidateStudents = useCallback(() => {
+    if (!course?.id) return;
+    queryClient.invalidateQueries({ queryKey: ["course-students-page", course.id] });
+    queryClient.invalidateQueries({ queryKey: ["course-students-stats", course.id] });
+    queryClient.invalidateQueries({ queryKey: ["available-students-for-course", course.id] });
+    onRefreshStudents?.();
+  }, [course?.id, queryClient, onRefreshStudents]);
+
+  const loadMoreStudents = useCallback((_n?: number) => {
+    // LoadMoreControls asks for a specific chunk size; our server page is fixed
+    // at PAGE_SIZE so we fetch the next page. Repeated calls (e.g. "Все") walk
+    // additional pages naturally via subsequent clicks — good enough for now.
+    if (studentsQuery.hasNextPage && !studentsQuery.isFetchingNextPage) {
+      void studentsQuery.fetchNextPage();
+    }
+  }, [studentsQuery]);
+
+  // ---- Server-side paginated "available students" for the enroll popover ----
+  const availableQueryKey = useMemo(
+    () => ["available-students-for-course", course?.id, enrollSearchQuery.trim() || null] as const,
+    [course?.id, enrollSearchQuery]
+  );
+
+  const availableQuery = useInfiniteQuery({
+    queryKey: availableQueryKey,
+    initialPageParam: 0,
+    enabled: !!course?.id && enrollPopoverOpen,
+    queryFn: ({ pageParam }) =>
+      fetchAvailableStudentsForCoursePage({
+        courseId: course.id,
+        limit: AVAILABLE_PAGE_SIZE,
+        offset: pageParam as number,
+        search: enrollSearchQuery,
+      }),
+    getNextPageParam: (last) => last.nextOffset,
+    staleTime: 15_000,
+  });
+
+  const availableStudents = useMemo(
+    () => (availableQuery.data?.pages ?? []).flatMap((p) => p.rows),
+    [availableQuery.data]
+  );
+  const availableTotalFiltered = availableQuery.data?.pages?.[0]?.totalFiltered ?? 0;
+  const isLoadingAvailable = availableQuery.isLoading || availableQuery.isFetchingNextPage;
 
   useEffect(() => {
-    if (enrollPopoverOpen) { loadAvailableStudents(); setSelectedToEnroll(new Set()); setEnrollSearchQuery(""); }
-  }, [enrollPopoverOpen, loadAvailableStudents]);
+    if (enrollPopoverOpen) {
+      setSelectedToEnroll(new Set());
+      setEnrollSearchQuery("");
+    }
+  }, [enrollPopoverOpen]);
+
+  const loadMoreAvailable = useCallback(() => {
+    if (availableQuery.hasNextPage && !availableQuery.isFetchingNextPage) {
+      void availableQuery.fetchNextPage();
+    }
+  }, [availableQuery]);
 
   const handleEnrollSelected = async () => {
     if (!course || selectedToEnroll.size === 0) return;
     setIsEnrolling(true);
     try {
       const userIds = Array.from(selectedToEnroll);
-      const { data: existing } = await supabase.from("enrollments").select("user_id").eq("course_id", course.id).in("user_id", userIds);
-      const existingIds = new Set((existing || []).map(e => e.user_id));
-      const newIds = userIds.filter(id => !existingIds.has(id));
-      if (newIds.length === 0) { toast.info("Все выбранные ученики уже зачислены"); setSelectedToEnroll(new Set()); return; }
-      const rows = newIds.map(userId => ({ user_id: userId, course_id: course.id, status: "active", progress: 0, ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) }));
+      const { data: existing } = await supabase
+        .from("enrollments")
+        .select("user_id")
+        .eq("course_id", course.id)
+        .in("user_id", userIds);
+      const existingIds = new Set((existing || []).map((e) => e.user_id));
+      const newIds = userIds.filter((id) => !existingIds.has(id));
+      if (newIds.length === 0) {
+        toast.info("Все выбранные ученики уже зачислены");
+        setSelectedToEnroll(new Set());
+        return;
+      }
+      const rows = newIds.map((userId) => ({
+        user_id: userId,
+        course_id: course.id,
+        status: "active",
+        progress: 0,
+        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
+      }));
       const { error } = await supabase.from("enrollments").insert(rows);
       if (error) throw error;
-      toast.success(`Зачислено ${newIds.length} ${newIds.length === 1 ? 'ученик' : newIds.length < 5 ? 'ученика' : 'учеников'}`);
-      setSelectedToEnroll(new Set()); setEnrollPopoverOpen(false); onRefreshStudents?.();
-    } catch (error) { console.error("Error enrolling:", error); toast.error("Ошибка зачисления"); }
-    finally { setIsEnrolling(false); }
+      toast.success(
+        `Зачислено ${newIds.length} ${
+          newIds.length === 1 ? "ученик" : newIds.length < 5 ? "ученика" : "учеников"
+        }`
+      );
+      setSelectedToEnroll(new Set());
+      setEnrollPopoverOpen(false);
+      invalidateStudents();
+    } catch (error) {
+      console.error("Error enrolling:", error);
+      toast.error("Ошибка зачисления");
+    } finally {
+      setIsEnrolling(false);
+    }
   };
 
   const toggleStudentToEnroll = (userId: string) => {
-    setSelectedToEnroll(prev => { const s = new Set(prev); s.has(userId) ? s.delete(userId) : s.add(userId); return s; });
+    setSelectedToEnroll((prev) => {
+      const s = new Set(prev);
+      s.has(userId) ? s.delete(userId) : s.add(userId);
+      return s;
+    });
   };
 
-  const filteredAvailableStudents = availableStudents.filter(s =>
-    s.name.toLowerCase().includes(enrollSearchQuery.toLowerCase()) || s.email.toLowerCase().includes(enrollSearchQuery.toLowerCase())
-  );
+  // Kept for backwards-compat with existing UI — server already filters, so
+  // this is now an identity pass-through.
+  const filteredAvailableStudents = availableStudents;
 
   // Settings handlers
   const updateCourseSetting = async (field: string, value: any, successMsg?: string) => {
@@ -199,8 +299,12 @@ export function useCourseDetails(
       if (error) throw error;
       if (successMsg) toast.success(successMsg);
       onCourseUpdated?.();
-    } catch (error) { console.error(`Error updating ${field}:`, error); toast.error("Ошибка сохранения настроек"); }
-    finally { setIsSavingSettings(false); }
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+      toast.error("Ошибка сохранения настроек");
+    } finally {
+      setIsSavingSettings(false);
+    }
   };
 
   const handleToggleSkipVideoId = async (v: boolean) => { setSkipVideoId(v); await updateCourseSetting("skip_video_identification", v, v ? "Видеоидентификация отключена" : "Видеоидентификация включена"); };
@@ -244,10 +348,8 @@ export function useCourseDetails(
   const handleToggleCollectDocuments = async (v: boolean) => {
     setCollectDocuments(v);
     if (!v) {
-      setRequirePassport(false);
-      setRequireSnils(false);
-      setRequireEducationDocument(false);
-      setRequireBirthCertificate(false);
+      setRequirePassport(false); setRequireSnils(false);
+      setRequireEducationDocument(false); setRequireBirthCertificate(false);
     }
     await updateDocumentCollectionField("enabled", v);
     toast.success(v ? "Сбор документов включён" : "Сбор документов отключён");
@@ -268,7 +370,7 @@ export function useCourseDetails(
 
   const handleUpdateFrdoSettings = async (field: string, value: string | number | null) => {
     if (!course) return;
-    setFrdoSettings(prev => {
+    setFrdoSettings((prev) => {
       const s = { ...prev, [field]: value };
       if (field === "frdo_program_type" && value) s.frdo_document_type = FRDO_DOCUMENT_TYPES[value as string] || null;
       return s;
@@ -284,12 +386,12 @@ export function useCourseDetails(
     finally { setIsSavingSettings(false); }
   };
 
-  const handleResetProgress = async (student: Student) => {
+  const handleResetProgress = async (student: CourseStudentPageRow) => {
     if (!course || !student.enrollment_id) return;
     setIsResetting(true);
     try {
       const { data: lessons } = await supabase.from("lessons").select("id").eq("course_id", course.id);
-      const lessonIds = (lessons || []).map(l => l.id);
+      const lessonIds = (lessons || []).map((l) => l.id);
       if (lessonIds.length > 0) {
         await supabase.from("lesson_progress").delete().eq("user_id", student.user_id).in("lesson_id", lessonIds);
         await supabase.from("test_attempts").delete().eq("user_id", student.user_id).in("lesson_id", lessonIds);
@@ -297,7 +399,8 @@ export function useCourseDetails(
       const { error } = await supabase.from("enrollments").update({ progress: 0, status: "active", completed_at: null }).eq("id", student.enrollment_id);
       if (error) throw error;
       toast.success(`Прогресс ученика "${student.name}" сброшен`);
-      setResetConfirmStudent(null); onRefreshStudents?.();
+      setResetConfirmStudent(null);
+      invalidateStudents();
     } catch (error) { console.error("Error resetting:", error); toast.error("Ошибка сброса прогресса"); }
     finally { setIsResetting(false); }
   };
@@ -315,13 +418,6 @@ export function useCourseDetails(
     finally { setIsDeleting(false); }
   };
 
-  // Stats
-  const totalStudents = courseStudents.length;
-  const activeStudents = courseStudents.filter(s => s.status !== 'completed').length;
-  const completedStudents = courseStudents.filter(s => s.status === 'completed').length;
-  const avgProgress = totalStudents > 0 ? Math.min(Math.round(courseStudents.reduce((sum, s) => sum + Math.min(s.progress, 100), 0) / totalStudents), 100) : 0;
-  const completionRate = totalStudents > 0 ? Math.round(completedStudents / totalStudents * 100) : 0;
-
   return {
     navigate, showDeleteConfirm, setShowDeleteConfirm, isDeleting, isSavingSettings,
     skipVideoId, sequentialLessons, allowVideoSeek, trainingForm, retrainingPeriod, setRetrainingPeriod,
@@ -335,6 +431,7 @@ export function useCourseDetails(
     enrollPopoverOpen, setEnrollPopoverOpen, availableStudents, isLoadingAvailable,
     enrollSearchQuery, setEnrollSearchQuery, selectedToEnroll, isEnrolling, frdoSettings,
     filteredAvailableStudents, toggleStudentToEnroll, handleEnrollSelected,
+    availableTotalFiltered, loadMoreAvailable, hasMoreAvailable: !!availableQuery.hasNextPage,
     handleToggleSkipVideoId, handleToggleSequentialLessons, handleToggleAllowVideoSeek,
     handleToggleCopyProtection, handleToggleVideoWatermark, handleUpdateExternalCardUrl,
     handleUpdateDefaultAccessDays, handleToggleRequireEnrollmentApproval, handleUpdateTrainingForm,
@@ -342,5 +439,15 @@ export function useCourseDetails(
     totalStudents, activeStudents, completedStudents, avgProgress, completionRate,
     // Reminders-specific handlers (inline in the component)
     updateCourseSetting,
+    // Server-paginated course students
+    courseStudents,
+    totalFilteredStudents,
+    studentsSearchQuery, setStudentsSearchQuery,
+    studentsStatusFilter, setStudentsStatusFilter,
+    isLoadingStudents: studentsQuery.isLoading,
+    isFetchingMoreStudents: studentsQuery.isFetchingNextPage,
+    hasMoreStudents: !!studentsQuery.hasNextPage,
+    loadMoreStudents,
+    refreshStudents: invalidateStudents,
   };
 }

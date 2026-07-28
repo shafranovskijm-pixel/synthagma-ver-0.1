@@ -145,3 +145,135 @@ export async function loadCourseStudents(
 
   return result;
 }
+
+// -----------------------------------------------------------------------------
+// Phase 2 — server-side paginated loaders. These call the SECURITY DEFINER RPCs
+// created in the earlier migration and return small pages instead of the full
+// list, so opening a course with hundreds of enrollments is O(1) requests.
+// -----------------------------------------------------------------------------
+
+export interface CourseStudentPageRow {
+  id: string;
+  user_id: string;
+  enrollment_id: string;
+  name: string;
+  email: string;
+  login: string | null;
+  progress: number;
+  status: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  time_spent: number | null;
+  archived_at: string | null;
+}
+
+export interface CourseStudentsPage {
+  rows: CourseStudentPageRow[];
+  totalFiltered: number;
+  nextOffset: number | null;
+}
+
+export interface FetchCourseStudentsPageInput {
+  courseId: string;
+  limit?: number;
+  offset?: number;
+  search?: string | null;
+  status?: "all" | "active" | "completed" | null;
+}
+
+export async function fetchCourseStudentsPage({
+  courseId, limit = 10, offset = 0, search, status,
+}: FetchCourseStudentsPageInput): Promise<CourseStudentsPage> {
+  const { data, error } = await supabase.rpc("get_course_students_page", {
+    p_course_id: courseId,
+    p_limit: limit,
+    p_offset: offset,
+    p_search: search && search.trim() ? search.trim() : undefined,
+    p_status: status && status !== "all" ? status : undefined,
+  });
+  if (error) throw error;
+
+  const list = (data ?? []) as any[];
+  const totalFiltered = list.length > 0 ? Number(list[0].total_count ?? 0) : 0;
+
+  const rows: CourseStudentPageRow[] = list.map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    enrollment_id: r.enrollment_id,
+    name: r.full_name || "Профиль недоступен",
+    email: r.email || "",
+    login: r.login ?? null,
+    progress: Number(r.progress ?? 0),
+    status: r.status ?? null,
+    started_at: r.started_at ?? null,
+    completed_at: r.completed_at ?? null,
+    time_spent: r.time_spent ?? null,
+    archived_at: r.archived_at ?? null,
+  }));
+
+  const nextOffset = offset + rows.length < totalFiltered ? offset + rows.length : null;
+  return { rows, totalFiltered, nextOffset };
+}
+
+export interface CourseStudentsStats {
+  totalStudents: number;
+  activeStudents: number;
+  completedStudents: number;
+  averageProgress: number;
+}
+
+export async function fetchCourseStudentsStats(courseId: string): Promise<CourseStudentsStats> {
+  const { data, error } = await supabase.rpc("get_course_students_stats", {
+    p_course_id: courseId,
+  });
+  if (error) throw error;
+  const row = (data ?? [])[0] as any | undefined;
+  return {
+    totalStudents: Number(row?.total_count ?? 0),
+    activeStudents: Number(row?.active_count ?? 0),
+    completedStudents: Number(row?.completed_count ?? 0),
+    averageProgress: Number(row?.average_progress ?? 0),
+  };
+}
+
+export interface AvailableStudentRow {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  login: string | null;
+}
+
+export interface AvailableStudentsPage {
+  rows: AvailableStudentRow[];
+  totalFiltered: number;
+  nextOffset: number | null;
+}
+
+export async function fetchAvailableStudentsForCoursePage({
+  courseId, limit = 20, offset = 0, search,
+}: {
+  courseId: string; limit?: number; offset?: number; search?: string | null;
+}): Promise<AvailableStudentsPage> {
+  const { data, error } = await supabase.rpc("get_available_students_for_course_page", {
+    p_course_id: courseId,
+    p_limit: limit,
+    p_offset: offset,
+    p_search: search && search.trim() ? search.trim() : undefined,
+  });
+  if (error) throw error;
+
+  const list = (data ?? []) as any[];
+  const totalFiltered = list.length > 0 ? Number(list[0].total_count ?? 0) : 0;
+
+  const rows: AvailableStudentRow[] = list.map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    name: r.full_name || "Без имени",
+    email: r.email || "",
+    login: r.login ?? null,
+  }));
+
+  const nextOffset = offset + rows.length < totalFiltered ? offset + rows.length : null;
+  return { rows, totalFiltered, nextOffset };
+}

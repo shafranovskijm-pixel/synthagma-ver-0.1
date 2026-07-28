@@ -25,6 +25,7 @@ import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTa
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { useCourseDetails } from "@/hooks/useCourseDetails";
 // Lazy-loaded heavy chunks. We expose the import factories so we can also
 // prefetch them in the background as soon as the course card opens — this
@@ -332,7 +333,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
               })}
             </aside>
             <div className="min-w-0">
-              {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+              {activeTab === "students" && <StudentsSection h={h} />}
               {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
               {activeTab === "history" && (
                 <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
@@ -361,7 +362,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
       {/* Content panel for non-students groups */}
       {!(showSubTabs && activeGroup === "students") && (
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
-          {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+          {activeTab === "students" && <StudentsSection h={h} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
         {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
         {activeTab === "history" && (
@@ -383,7 +384,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         )}
         {activeTab === "settings" && (
           <CourseSettingsTabbed course={course} isFrdoEnabled={isFrdoEnabled} isSavingSettings={h.isSavingSettings}
-            courseStudents={courseStudents}
+            courseStudents={h.courseStudents as any}
             skipVideoId={h.skipVideoId} onToggleSkipVideoId={h.handleToggleSkipVideoId}
             sequentialLessons={h.sequentialLessons} onToggleSequentialLessons={h.handleToggleSequentialLessons}
             allowVideoSeek={h.allowVideoSeek} onToggleAllowVideoSeek={h.handleToggleAllowVideoSeek}
@@ -437,41 +438,89 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   );
 }
 
-function StudentsSection({ h, courseStudents }: { h: ReturnType<typeof useCourseDetails>; courseStudents: any[] }) {
+function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
+  const courseStudents = h.courseStudents;
+  const total = h.totalFilteredStudents;
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-semibold">Ученики курса</h3>
         <Popover open={h.enrollPopoverOpen} onOpenChange={h.setEnrollPopoverOpen}>
           <PopoverTrigger asChild><Button className="btn-gradient rounded-xl gap-2"><Plus className="w-4 h-4" />Зачислить ученика</Button></PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
             <div className="p-3 border-b border-border"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Поиск учеников..." value={h.enrollSearchQuery} onChange={(e) => h.setEnrollSearchQuery(e.target.value)} className="pl-9 rounded-lg" /></div></div>
             <ScrollArea className="h-64">
-              {h.isLoadingAvailable ? <div className="flex items-center justify-center py-8"><SigmaSpinner /></div> : h.filteredAvailableStudents.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">Нет доступных учеников</div> : (
-                <div className="p-2 space-y-1">{h.filteredAvailableStudents.map(s => (
-                  <div key={s.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => h.toggleStudentToEnroll(s.user_id)}>
-                    <Checkbox checked={h.selectedToEnroll.has(s.user_id)} onCheckedChange={() => h.toggleStudentToEnroll(s.user_id)} />
-                    <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-xs text-muted-foreground truncate">{s.email}</div></div>
-                  </div>
-                ))}</div>
+              {h.isLoadingAvailable && h.filteredAvailableStudents.length === 0 ? <div className="flex items-center justify-center py-8"><SigmaSpinner /></div> : h.filteredAvailableStudents.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">Нет доступных учеников</div> : (
+                <div className="p-2 space-y-1">
+                  {h.filteredAvailableStudents.map(s => (
+                    <div key={s.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => h.toggleStudentToEnroll(s.user_id)}>
+                      <Checkbox checked={h.selectedToEnroll.has(s.user_id)} onCheckedChange={() => h.toggleStudentToEnroll(s.user_id)} />
+                      <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-xs text-muted-foreground truncate">{s.email}</div></div>
+                    </div>
+                  ))}
+                  {h.hasMoreAvailable && (
+                    <Button variant="ghost" size="sm" className="w-full rounded-lg text-xs text-muted-foreground" onClick={h.loadMoreAvailable} disabled={h.isLoadingAvailable}>
+                      {h.isLoadingAvailable ? "Загрузка..." : `Показать ещё (${h.availableTotalFiltered - h.filteredAvailableStudents.length})`}
+                    </Button>
+                  )}
+                </div>
               )}
             </ScrollArea>
             {h.selectedToEnroll.size > 0 && <div className="p-3 border-t border-border"><Button className="w-full btn-gradient rounded-lg gap-2" onClick={h.handleEnrollSelected} disabled={h.isEnrolling}>{h.isEnrolling ? <><SigmaSpinner size="sm" />Зачисление...</> : <><UserPlus className="w-4 h-4" />Зачислить ({h.selectedToEnroll.size})</>}</Button></div>}
           </PopoverContent>
         </Popover>
       </div>
-      {courseStudents.length === 0 ? <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Нет зачисленных учеников</p></div> : (
-        <div className="space-y-2">{courseStudents.map(s => (
-          <div key={s.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
-            <div><div className="font-medium">{s.name}</div><div className="text-sm text-muted-foreground">{s.email}</div></div>
-            <div className="flex items-center gap-4">
-              <div className="text-right"><div className="text-sm font-medium">{Math.min(s.progress, 100)}%</div><Progress value={Math.min(s.progress, 100)} className="w-24 h-2" /></div>
-              <span className={`px-2 py-1 rounded-full text-xs ${s.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'}`}>{s.status === 'completed' ? 'Завершил' : 'Активный'}</span>
-              {s.progress > 0 && s.enrollment_id && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => h.setResetConfirmStudent(s)} title="Сбросить прогресс"><RotateCcw className="w-4 h-4" /></Button>}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по имени, email или логину..."
+            value={h.studentsSearchQuery}
+            onChange={(e) => h.setStudentsSearchQuery(e.target.value)}
+            className="pl-9 rounded-lg"
+          />
+        </div>
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 text-xs">
+          {(["all", "active", "completed"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => h.setStudentsStatusFilter(k)}
+              className={cn(
+                "px-3 py-1.5 rounded-md transition-colors",
+                h.studentsStatusFilter === k ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {k === "all" ? "Все" : k === "active" ? "Активные" : "Завершившие"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {h.isLoadingStudents && courseStudents.length === 0 ? (
+        <div className="flex items-center justify-center py-12"><SigmaSpinner /></div>
+      ) : courseStudents.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>{h.studentsSearchQuery || h.studentsStatusFilter !== "all" ? "Никто не найден по заданным фильтрам" : "Нет зачисленных учеников"}</p></div>
+      ) : (
+        <>
+          <div className="space-y-2">{courseStudents.map((s: any) => (
+            <div key={s.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+              <div><div className="font-medium">{s.name}</div><div className="text-sm text-muted-foreground">{s.email}</div></div>
+              <div className="flex items-center gap-4">
+                <div className="text-right"><div className="text-sm font-medium">{Math.min(s.progress, 100)}%</div><Progress value={Math.min(s.progress, 100)} className="w-24 h-2" /></div>
+                <span className={`px-2 py-1 rounded-full text-xs ${s.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'}`}>{s.status === 'completed' ? 'Завершил' : 'Активный'}</span>
+                {s.progress > 0 && s.enrollment_id && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => h.setResetConfirmStudent(s)} title="Сбросить прогресс"><RotateCcw className="w-4 h-4" /></Button>}
+              </div>
             </div>
-          </div>
-        ))}</div>
+          ))}</div>
+          <LoadMoreControls
+            visibleCount={courseStudents.length}
+            totalCount={total}
+            onLoadMore={(n) => h.loadMoreStudents(n)}
+          />
+        </>
       )}
     </div>
   );
 }
+

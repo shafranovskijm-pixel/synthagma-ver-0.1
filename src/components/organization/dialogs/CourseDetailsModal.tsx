@@ -182,7 +182,7 @@ export function CourseDetailsModal({
                 toggleStudentToEnroll={logic.toggleStudentToEnroll}
                 isEnrolling={logic.isEnrolling}
                 onEnrollSelected={logic.handleEnrollSelected}
-                onResetConfirm={logic.setResetConfirmStudent}
+                onResetConfirm={logic.setResetConfirmStudent as any}
               />
             </TabsContent>
 
