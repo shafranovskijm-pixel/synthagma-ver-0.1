@@ -87,7 +87,7 @@ interface EnrollmentData {
 }
 
 export function BulkFRDOExport({
-  isOpen, onOpenChange, organizationId, selectedStudentIds, students }: BulkFRDOExportProps) {
+  isOpen, onOpenChange, organizationId, selectedUserIds }: BulkFRDOExportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportType, setExportType] = useState<"dpo" | "po">("dpo");
@@ -96,6 +96,8 @@ export function BulkFRDOExport({
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
   const [enrollmentsMap, setEnrollmentsMap] = useState<Map<string, EnrollmentData[]>>(new Map());
   const [studentsWithMissingData, setStudentsWithMissingData] = useState<string[]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
+  const [loadError, setLoadError] = useState<{ scope: "profiles" | "frdo" | "enrollments"; message: string } | null>(null);
   const [validationPreview, setValidationPreview] = useState<{
     rows: (string | number)[][];
     issues: { studentName: string; issues: string[] }[];
@@ -103,14 +105,37 @@ export function BulkFRDOExport({
     professionFromTitleCount: number;
   } | null>(null);
 
-  const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id) || selectedStudentIds.has(s.id));
-
-  useEffect(() => { if (isOpen) loadData(); }, [isOpen]);
+  useEffect(() => { if (isOpen) loadData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [isOpen]);
 
   const loadData = async () => {
     setIsLoading(true);
+    setLoadError(null);
+    const userIds: string[] = Array.from(new Set(selectedUserIds)).filter((v): v is string => typeof v === "string" && v.length > 0);
+    if (userIds.length === 0 || !organizationId) {
+      setSelectedStudents([]); setFrdoDataMap(new Map()); setEnrollmentsMap(new Map());
+      setStudentsWithMissingData([]); setCourses([]);
+      setIsLoading(false); return;
+    }
+
+    let students: Student[] = [];
     try {
-      const userIds = [...new Set(selectedStudents.map(s => s.user_id))];
+      const { students: fetched } = await fetchStudentsByUserIds(organizationId, userIds, { includeEnrollments: false });
+      students = fetched.map(s => ({
+        id: s.id, user_id: s.user_id, name: s.name, email: s.email,
+        course_id: s.course_id ?? null, course: s.course ?? null,
+      }));
+      setSelectedStudents(students);
+      if (students.length === 0) {
+        setLoadError({ scope: "profiles", message: "Профили выбранных учеников не найдены" });
+        setIsLoading(false); return;
+      }
+    } catch (err: any) {
+      console.error("[BulkFRDOExport] profiles load failed:", err);
+      setLoadError({ scope: "profiles", message: err?.message ?? "Не удалось загрузить учеников" });
+      setIsLoading(false); return;
+    }
+
+    try {
       const { data: frdoData, error: frdoError } = await supabase
         .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", userIds);
       if (frdoError) throw frdoError;
@@ -118,7 +143,7 @@ export function BulkFRDOExport({
       const dataMap = new Map<string, FRDOData>();
       const missing: string[] = [];
 
-      for (const student of selectedStudents) {
+      for (const student of students) {
         const data = frdoData?.find(d => d.user_id === student.user_id);
         if (data) {
           dataMap.set(student.user_id, {
@@ -157,7 +182,13 @@ export function BulkFRDOExport({
 
       setFrdoDataMap(dataMap);
       setStudentsWithMissingData(missing);
+    } catch (error: any) {
+      console.error("[BulkFRDOExport] frdo load failed:", error);
+      setLoadError({ scope: "frdo", message: error?.message ?? "Не удалось загрузить данные ФРДО" });
+      setIsLoading(false); return;
+    }
 
+    try {
       const { data: enrollmentsData, error: enrollError } = await supabase
         .from("enrollments")
         .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_profession_name, frdo_qualification_rank, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_financing_source, frdo_education_form)")
@@ -195,9 +226,9 @@ export function BulkFRDOExport({
 
       setEnrollmentsMap(enrollMap);
       setCourses(Array.from(courseSet.values()));
-    } catch (error) {
-      console.error("Error loading data:", error);
-      toast.error("Ошибка загрузки данных");
+    } catch (error: any) {
+      console.error("[BulkFRDOExport] enrollments load failed:", error);
+      setLoadError({ scope: "enrollments", message: error?.message ?? "Не удалось загрузить зачисления" });
     } finally {
       setIsLoading(false);
     }
