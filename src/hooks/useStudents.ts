@@ -152,6 +152,8 @@ export function useStudents(
   );
 
   // ---- Paginated student list (10 per page, active OR archive) ----
+  // `enabled` gates ONLY the page list. Counts/group counts keep running so
+  // sidebar/tab numbers stay correct even when the tab is on "Groups".
   const pageQuery = useInfiniteQuery({
     queryKey: qk.org.studentsPage(organizationId ?? "none", filtersKey),
     initialPageParam: 0,
@@ -199,25 +201,27 @@ export function useStudents(
   const nextPageErrorKind: UserFacingErrorKind | null =
     pageQuery.isFetchNextPageError ? classifyDataError(pageQuery.error) : null;
 
-  // ---- Org-wide counts (active / archived) — independent of filters ----
+  // ---- Org-wide counts (active / archived) — independent of filters and
+  // independent of `enabled` (Groups panel still needs these badges). ----
   const countsQuery = useQuery({
     queryKey: qk.org.studentsCounts(organizationId ?? "none"),
     queryFn: () => fetchOrganizationStudentsCounts(organizationId!),
-    enabled: !!organizationId && enabled,
+    enabled: !!organizationId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     retry: paginationRetry,
   });
 
-  // ---- Group counts ----
+  // ---- Group counts (also independent of `enabled`) ----
   const groupCountsQuery = useQuery({
     queryKey: qk.org.studentGroupCounts(organizationId ?? "none"),
     queryFn: () => fetchOrganizationStudentGroupCounts(organizationId!),
-    enabled: !!organizationId && enabled,
+    enabled: !!organizationId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     retry: paginationRetry,
   });
+
 
   const groupCounts = useMemo(() => {
     const map = new Map<string, OrgStudentGroupCount>();
@@ -271,17 +275,19 @@ export function useStudents(
   const isLoading = !!organizationId && enabled && pageQuery.isLoading;
   const isError = !!organizationId && pageQuery.isLoadingError && students.length === 0;
 
-  // ---- Archive grouped by month ----
+  // ---- Archive grouped by month by profile.archived_at ONLY ----
+  // Completing all courses does NOT archive the student — archive contains
+  // only explicitly archived / soft-deleted profiles.
   const archiveByMonth = useMemo(() => {
     if (viewMode !== "archive") return [] as Array<{ key: string; label: string; students: Student[] }>;
     const groups = new Map<string, Student[]>();
+    const labels: Record<string, string> = {};
     const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
     const seenPerKey = new Map<string, Set<string>>();
     for (const s of students) {
-      const dates = (s.enrollments ?? []).map(e => e.completed_at).filter((d): d is string => !!d);
-      const dateStr = dates.length > 0 ? dates.sort()[dates.length - 1] : s.archived_at ?? null;
+      const dateStr = s.archived_at ?? null;
       let key = "no-date";
-      let label = "Без даты завершения";
+      let label = "Без даты архивации";
       if (dateStr) {
         const d = new Date(dateStr);
         key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -294,15 +300,13 @@ export function useStudents(
       const arr = groups.get(key) ?? [];
       arr.push(s);
       groups.set(key, arr);
-      // preserve label for later
-      (groups as any).__labels = { ...((groups as any).__labels || {}), [key]: label };
+      labels[key] = label;
     }
-    const labels = (groups as any).__labels || {};
     return Array.from(groups.entries())
-      .filter(([k]) => k !== "__labels")
       .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
-      .map(([key, list]) => ({ key, label: labels[key] || "Без даты завершения", students: list }));
+      .map(([key, list]) => ({ key, label: labels[key] || "Без даты архивации", students: list }));
   }, [students, viewMode]);
+
 
   // ---- Mutations & helpers ----
   const invalidateStudents = useCallback(() => {
@@ -418,13 +422,23 @@ export function useStudents(
     return true;
   }, [invalidateStudents]);
 
+  const dropFromSelection = useCallback((userId: string) => {
+    setSelectedStudentIds(prev => {
+      if (!prev.has(userId)) return prev;
+      const next = new Set(prev);
+      next.delete(userId);
+      return next;
+    });
+  }, []);
+
   const removeStudent = useCallback(async (userId: string) => {
     const ok = await deleteStudent(userId);
     if (!ok) { toast.error("Ошибка удаления ученика"); return false; }
     toast.success("Ученик удалён");
+    dropFromSelection(userId);
     invalidateStudents();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateStudents, dropFromSelection]);
 
   const refresh = useCallback(() => { invalidateStudents(); }, [invalidateStudents]);
 
@@ -432,17 +446,20 @@ export function useStudents(
     const ok = await setStudentArchived(userId, true);
     if (!ok) { toast.error("Не удалось перенести в архив"); return false; }
     toast.success("Ученик перенесён в архив");
+    dropFromSelection(userId);
     invalidateStudents();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateStudents, dropFromSelection]);
 
   const unarchiveStudent = useCallback(async (userId: string) => {
     const ok = await setStudentArchived(userId, false);
     if (!ok) { toast.error("Не удалось вернуть из архива"); return false; }
     toast.success("Ученик возвращён из архива");
+    dropFromSelection(userId);
     invalidateStudents();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateStudents, dropFromSelection]);
+
 
   // ---- Pagination controls ----
   const loadMore = useCallback(() => {
