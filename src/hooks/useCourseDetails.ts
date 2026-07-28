@@ -284,9 +284,13 @@ export function useCourseDetails(
   const isLoadingAvailable = availableQuery.isLoading || availableQuery.isFetchingNextPage;
 
   const availableErrorKind: UserFacingErrorKind | null =
-    availableQuery.isError && availableStudents.length === 0 ? classifyDataError(availableQuery.error) : null;
+    availableQuery.isLoadingError && availableStudents.length === 0
+      ? classifyDataError(availableQuery.error)
+      : null;
   const nextAvailablePageErrorKind: UserFacingErrorKind | null =
-    availableQuery.isError && availableStudents.length > 0 ? classifyDataError(availableQuery.error) : null;
+    availableQuery.isFetchNextPageError
+      ? classifyDataError(availableQuery.error)
+      : null;
   const retryAvailable = useCallback(() => { void availableQuery.refetch(); }, [availableQuery]);
   const retryNextAvailablePage = useCallback(() => {
     if (!availableQuery.isFetchingNextPage) void availableQuery.fetchNextPage();
