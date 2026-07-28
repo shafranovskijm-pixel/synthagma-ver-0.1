@@ -100,32 +100,15 @@ export function useOrganization(): UseOrganizationReturn {
       }
 
       try {
-        // Check for admin view mode
-        const adminViewData = localStorage.getItem("adminViewAsOrg");
+        // Единый резолвер admin-view: не удаляет флаг на транзиентных ошибках has_role.
+        const resolution = await resolveAdminViewOrg(user.id);
         let orgId: string | null = null;
 
-        if (adminViewData) {
-          // Verify the current user actually has admin role before trusting the localStorage flag.
-          // This prevents non-admin users from spoofing admin-only UI (e.g. "Перенести в другую организацию").
-          const { data: isAdmin } = await supabase.rpc('has_role', {
-            _role: 'admin',
-            _user_id: user.id,
-          });
-
-          if (isAdmin) {
-            const adminView = JSON.parse(adminViewData);
-            orgId = adminView.id;
-            setAdminViewOrgId(adminView.id);
-            setOrganizationName(adminView.name);
-            setIsAdminView(true);
-          } else {
-            // Not actually an admin — clear the spoofed flag and fall back to normal flow.
-            localStorage.removeItem("adminViewAsOrg");
-            const result = await fetchOrganizationByUserId(user.id);
-            orgId = result.organizationId;
-            setOrganizationName(result.organizationName);
-            setIsFrdoEnabled(result.isFrdoEnabled);
-          }
+        if (resolution.status === "admin") {
+          orgId = resolution.view.id;
+          setAdminViewOrgId(resolution.view.id);
+          setOrganizationName(resolution.view.name);
+          setIsAdminView(true);
         } else {
           const result = await fetchOrganizationByUserId(user.id);
           orgId = result.organizationId;
