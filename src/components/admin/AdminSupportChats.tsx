@@ -278,7 +278,12 @@ export function AdminSupportChats() {
                           {m.role === 'user' || m.role === 'system' ? (
                             <p className="whitespace-pre-wrap break-words">{m.content}</p>
                           ) : (
-                            <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:my-1">
+                            <div className={cn(
+                              "prose prose-sm max-w-none break-words prose-p:my-1",
+                              m.role === 'operator'
+                                ? 'prose-invert prose-headings:text-primary-foreground prose-strong:text-primary-foreground prose-a:text-primary-foreground text-primary-foreground'
+                                : 'dark:prose-invert'
+                            )}>
                               <ReactMarkdown>{m.content}</ReactMarkdown>
                             </div>
                           )}
