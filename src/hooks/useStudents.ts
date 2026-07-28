@@ -1,8 +1,26 @@
-import { useState, useCallback, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { isTransientNetworkError } from "@/utils/isTransientNetworkError";
+import { isTransientNetworkError, classifyDataError, type UserFacingErrorKind } from "@/utils/isTransientNetworkError";
+import {
+  fetchOrganizationStudentsPage,
+  fetchOrganizationStudentsCounts,
+  fetchOrganizationStudentGroupCounts,
+  fetchStudentPasswordsForUsers,
+  type OrgStudentGroupCount,
+  createStudent,
+  enrollStudent,
+  unenrollStudent as apiUnenrollStudent,
+  bulkEnrollStudents,
+  bulkUnenrollStudents,
+  updateStudentCompany,
+  deleteStudent,
+  setStudentArchived,
+  isValidEmail,
+} from "@/api/students";
+import { toast } from "sonner";
+import { qk } from "@/lib/queryKeys";
 
 interface StudentGroup {
   id: string;
@@ -13,30 +31,32 @@ interface StudentGroup {
   start_date: string | null;
   end_date: string | null;
 }
-import { 
-  fetchStudents,
-  fetchStudentPasswords,
-  fetchFRDOStatus,
-  createStudent,
-  enrollStudent,
-  unenrollStudent as apiUnenrollStudent,
-  bulkEnrollStudents,
-  bulkUnenrollStudents,
-  updateStudentCompany,
-  deleteStudent,
-  setStudentArchived,
-  isValidEmail
-} from "@/api/students";
 
-import { toast } from "sonner";
-import { qk } from "@/lib/queryKeys";
+const PAGE_SIZE = 10;
 
-interface UseStudentsReturn {
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+const paginationRetry = (failureCount: number, error: unknown) =>
+  failureCount < 2 && isTransientNetworkError(error);
+
+interface UseStudentsOptions {
+  enabled?: boolean;
+}
+
+export interface UseStudentsReturn {
   students: Student[];
-  allProfiles: Student[];
   isLoading: boolean;
   isError: boolean;
   error: unknown;
+  errorKind: UserFacingErrorKind | null;
+  nextPageErrorKind: UserFacingErrorKind | null;
   frdoStatus: Map<string, StudentFRDOStatus>;
   selectedStudentIds: Set<string>;
   setSelectedStudentIds: (ids: Set<string>) => void;
@@ -58,7 +78,7 @@ interface UseStudentsReturn {
   toggleSelectAll: (filteredList: Student[]) => void;
   getSelectedUserIds: () => string[];
   refresh: () => void;
-  // Filtering
+  // Filters
   statusFilter: StudentStatusFilter;
   setStatusFilter: (filter: StudentStatusFilter) => void;
   courseFilter: string;
@@ -68,26 +88,36 @@ interface UseStudentsReturn {
   studentGroups: StudentGroup[];
   refreshGroups: () => void;
   studentGroupMap: Map<string, string | null>;
+  groupCounts: Map<string, OrgStudentGroupCount>; // key: group_id (or "__none" for null)
   docsFilter: StudentDocsFilter;
   setDocsFilter: (filter: StudentDocsFilter) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  filteredStudents: Student[];
+  // Pagination
+  loadMore: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  loadedCount: number;
+  totalFiltered: number;
+  retry: () => void;
+  retryNextPage: () => void;
   // Archive
   viewMode: "active" | "archive";
   setViewMode: (mode: "active" | "archive") => void;
-  archivedStudents: Student[];
   activeStudentsCount: number;
+  archivedCount: number;
   archiveByMonth: Array<{ key: string; label: string; students: Student[] }>;
   archiveStudent: (userId: string) => Promise<boolean>;
   unarchiveStudent: (userId: string) => Promise<boolean>;
+  // On-demand credentials
+  fetchStudentCredentialsOnDemand: (userId: string) => Promise<string | null>;
 }
 
 export function useStudents(
   organizationId: string | null,
-  courseIds: string[],
-  studentDocsByUser: Map<string, string[]>
+  options: UseStudentsOptions = {},
 ): UseStudentsReturn {
+  const { enabled = true } = options;
   const qc = useQueryClient();
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
@@ -106,28 +136,99 @@ export function useStudents(
     if (typeof window !== "undefined") localStorage.setItem("org.students.viewMode", mode);
   }, []);
 
-  // Memoize courseIds join to prevent infinite loops
-  const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
+  const debouncedSearch = useDebouncedValue(searchQuery, 350);
+  const trimmedSearch = debouncedSearch.trim();
 
-  // Students + per-row group map (single source of truth — fetchStudents already returns groupMap)
-  const { data: studentsData, isLoading: studentsLoading, isError: studentsIsError, error: studentsError } = useQuery({
-    queryKey: qk.org.studentsList(organizationId ?? "none", courseIdsKey),
-    queryFn: async () => {
-      if (!organizationId) {
-        return { students: [] as Student[], allProfiles: [] as Student[], groupMap: new Map<string, string | null>() };
-      }
-      return fetchStudents(organizationId, courseIds);
-    },
-    enabled: !!organizationId,
-    staleTime: 60_000,
+  const filtersKey = useMemo(
+    () => ({
+      search: trimmedSearch,
+      course: courseFilter,
+      group: groupFilter,
+      status: statusFilter,
+      docs: docsFilter,
+      archive: viewMode,
+    }),
+    [trimmedSearch, courseFilter, groupFilter, statusFilter, docsFilter, viewMode],
+  );
+
+  // ---- Paginated student list (10 per page, active OR archive) ----
+  const pageQuery = useInfiniteQuery({
+    queryKey: qk.org.studentsPage(organizationId ?? "none", filtersKey),
+    initialPageParam: 0,
+    enabled: !!organizationId && enabled,
+    queryFn: ({ pageParam }) =>
+      fetchOrganizationStudentsPage({
+        organizationId: organizationId!,
+        limit: PAGE_SIZE,
+        offset: pageParam as number,
+        search: trimmedSearch || null,
+        courseId: courseFilter,
+        groupFilter,
+        status: statusFilter,
+        docsFilter,
+        archiveMode: viewMode,
+      }),
+    getNextPageParam: last => last.nextOffset,
+    staleTime: 30_000,
     gcTime: 5 * 60_000,
-    retry: (failureCount, err) => {
-      // Only retry transient network/gateway errors, and only twice.
-      return failureCount < 2 && isTransientNetworkError(err);
-    },
+    retry: paginationRetry,
   });
 
-  const { data: groupsData } = useQuery({
+  const students = useMemo<Student[]>(() => {
+    const seen = new Set<string>();
+    const out: Student[] = [];
+    for (const p of pageQuery.data?.pages ?? []) {
+      for (const s of p.rows) {
+        if (seen.has(s.user_id)) continue;
+        seen.add(s.user_id);
+        out.push(s);
+      }
+    }
+    return out;
+  }, [pageQuery.data]);
+
+  // Reset selection whenever filters/view change (new debounced key).
+  useEffect(() => {
+    setSelectedStudentIds(new Set());
+  }, [filtersKey]);
+
+  const totalFiltered = pageQuery.data?.pages?.[0]?.totalFiltered ?? 0;
+
+  const errorKind: UserFacingErrorKind | null =
+    pageQuery.isLoadingError && students.length === 0 ? classifyDataError(pageQuery.error) : null;
+  const nextPageErrorKind: UserFacingErrorKind | null =
+    pageQuery.isFetchNextPageError ? classifyDataError(pageQuery.error) : null;
+
+  // ---- Org-wide counts (active / archived) — independent of filters ----
+  const countsQuery = useQuery({
+    queryKey: qk.org.studentsCounts(organizationId ?? "none"),
+    queryFn: () => fetchOrganizationStudentsCounts(organizationId!),
+    enabled: !!organizationId && enabled,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: paginationRetry,
+  });
+
+  // ---- Group counts ----
+  const groupCountsQuery = useQuery({
+    queryKey: qk.org.studentGroupCounts(organizationId ?? "none"),
+    queryFn: () => fetchOrganizationStudentGroupCounts(organizationId!),
+    enabled: !!organizationId && enabled,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: paginationRetry,
+  });
+
+  const groupCounts = useMemo(() => {
+    const map = new Map<string, OrgStudentGroupCount>();
+    for (const g of groupCountsQuery.data ?? []) {
+      map.set(g.group_id ?? "__none", g);
+    }
+    return map;
+  }, [groupCountsQuery.data]);
+
+  // ---- Student groups directory ----
+  const groupsQuery = useQuery({
     queryKey: qk.org.studentGroups(organizationId ?? "none"),
     queryFn: async () => {
       if (!organizationId) return [] as StudentGroup[];
@@ -142,256 +243,123 @@ export function useStudents(
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
+  const studentGroups = groupsQuery.data ?? [];
 
-  // Passwords — separate, non-critical query. NEVER blocks the primary list.
-  const { data: passwordMap } = useQuery({
-    queryKey: qk.org.studentsList(organizationId ?? "none", "__passwords__"),
-    queryFn: async () => {
-      if (!organizationId) return new Map<string, string>();
-      return fetchStudentPasswords(organizationId);
-    },
-    enabled: !!organizationId,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    // Password RPC failure must NOT surface as a student-list error.
-    retry: (failureCount, err) => failureCount < 1 && isTransientNetworkError(err),
-  });
+  // Build studentGroupMap from loaded rows (for row-level Select value binding).
+  const studentGroupMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const s of students) map.set(s.user_id, s.student_group_id ?? null);
+    return map;
+  }, [students]);
 
-  const rawStudents = studentsData?.students ?? [];
-  const students = useMemo(() => {
-    if (!passwordMap || passwordMap.size === 0) return rawStudents;
-    return rawStudents.map(s => (
-      s.generated_password ? s : { ...s, generated_password: passwordMap.get(s.user_id) ?? null }
-    ));
-  }, [rawStudents, passwordMap]);
-  const allProfiles = studentsData?.allProfiles ?? [];
-  const studentGroupMap = studentsData?.groupMap ?? new Map<string, string | null>();
-  const studentGroups = groupsData ?? [];
-  const isLoading = !!organizationId && studentsLoading;
-  const isError = !!organizationId && studentsIsError;
+  // FRDO status map built from server flags on the loaded rows.
+  const frdoStatus = useMemo(() => {
+    const map = new Map<string, StudentFRDOStatus>();
+    for (const s of students) {
+      map.set(s.user_id, {
+        hasData: !!s.frdo_has_data,
+        isComplete: !!s.frdo_complete,
+        // Row component only checks isComplete/hasData for the icon — the
+        // detailed missing-fields list is populated in the drawer with a
+        // targeted fetchFRDOStatus call for that single user.
+        missingFields: s.frdo_has_data && !s.frdo_complete ? ["данные ФРДО"] : [],
+      });
+    }
+    return map;
+  }, [students]);
 
+  const isLoading = !!organizationId && enabled && pageQuery.isLoading;
+  const isError = !!organizationId && pageQuery.isLoadingError && students.length === 0;
 
-  // FRDO status — secondary, lightly cached
-  const studentUserIdsKey = useMemo(
-    () => students.map(s => s.user_id).sort().join(","),
-    [students]
-  );
+  // ---- Archive grouped by month ----
+  const archiveByMonth = useMemo(() => {
+    if (viewMode !== "archive") return [] as Array<{ key: string; label: string; students: Student[] }>;
+    const groups = new Map<string, Student[]>();
+    const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+    const seenPerKey = new Map<string, Set<string>>();
+    for (const s of students) {
+      const dates = (s.enrollments ?? []).map(e => e.completed_at).filter((d): d is string => !!d);
+      const dateStr = dates.length > 0 ? dates.sort()[dates.length - 1] : s.archived_at ?? null;
+      let key = "no-date";
+      let label = "Без даты завершения";
+      if (dateStr) {
+        const d = new Date(dateStr);
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+      }
+      let dedup = seenPerKey.get(key);
+      if (!dedup) { dedup = new Set(); seenPerKey.set(key, dedup); }
+      if (dedup.has(s.user_id)) continue;
+      dedup.add(s.user_id);
+      const arr = groups.get(key) ?? [];
+      arr.push(s);
+      groups.set(key, arr);
+      // preserve label for later
+      (groups as any).__labels = { ...((groups as any).__labels || {}), [key]: label };
+    }
+    const labels = (groups as any).__labels || {};
+    return Array.from(groups.entries())
+      .filter(([k]) => k !== "__labels")
+      .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
+      .map(([key, list]) => ({ key, label: labels[key] || "Без даты завершения", students: list }));
+  }, [students, viewMode]);
 
-  const { data: frdoStatus = new Map<string, StudentFRDOStatus>() } = useQuery({
-    queryKey: qk.org.studentsFrdo(organizationId ?? "none", studentUserIdsKey),
-    queryFn: async () => {
-      if (!organizationId) return new Map<string, StudentFRDOStatus>();
-      const userIds = [...new Set(students.map(s => s.user_id))];
-      if (userIds.length === 0) return new Map<string, StudentFRDOStatus>();
-      return fetchFRDOStatus(organizationId, userIds);
-    },
-    enabled: !!organizationId && students.length > 0,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-  });
-
+  // ---- Mutations & helpers ----
   const invalidateStudents = useCallback(() => {
     if (!organizationId) return;
-    qc.invalidateQueries({ queryKey: qk.org.studentsListAll(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentsCounts(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
   }, [qc, organizationId]);
 
   const refreshGroups = useCallback(() => {
     if (!organizationId) return;
     qc.invalidateQueries({ queryKey: qk.org.studentGroups(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
   }, [qc, organizationId]);
 
-  // Helper: archived only if explicitly archived via profiles.archived_at.
-  // Completing all courses must NOT hide a student from the active list,
-  // otherwise the organization perceives finished students as "disappeared".
-  const isArchived = useCallback((s: Student): boolean => {
-    return !!s.archived_at;
-  }, []);
-
-  const lastCompletedAt = useCallback((s: Student): string | null => {
-    const enrollments = s.enrollments || [];
-    const dates = enrollments
-      .map(e => e.completed_at)
-      .filter((d): d is string => !!d);
-    if (dates.length === 0) return s.archived_at ?? null;
-    dates.sort();
-    return dates[dates.length - 1];
-  }, []);
-
-  const archivedStudents = useMemo(
-    () => students.filter(isArchived),
-    [students, isArchived]
-  );
-  const activeStudentsCount = students.length - archivedStudents.length;
-
-  // Filtered students (respects viewMode + filters)
-  const filteredStudents = useMemo(() => {
-    const pool = viewMode === "archive" ? archivedStudents : students.filter(s => !isArchived(s));
-    return pool.filter(student => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch = 
-          student.name.toLowerCase().includes(query) ||
-          student.email.toLowerCase().includes(query) ||
-          (student.login && student.login.toLowerCase().includes(query));
-        if (!matchesSearch) return false;
-      }
-
-      // Status filter (only meaningful in active view)
-      if (viewMode === "active" && statusFilter !== "all") {
-        const enrollments = student.enrollments || [];
-        if (statusFilter === "not_enrolled" && enrollments.length > 0) return false;
-        if (statusFilter === "active" && !enrollments.some(e => e.status === "active")) return false;
-        if (statusFilter === "completed" && !enrollments.some(e => e.status === "completed")) return false;
-      }
-
-      // Course filter
-      if (courseFilter !== "all") {
-        const enrollments = student.enrollments || [];
-        if (!enrollments.some(e => e.course_id === courseFilter)) return false;
-      }
-
-      // Group filter
-      if (groupFilter !== "all") {
-        const studentGroupId = studentGroupMap.get(student.user_id);
-        if (groupFilter === "no_group") {
-          if (studentGroupId) return false;
-        } else {
-          if (studentGroupId !== groupFilter) return false;
-        }
-      }
-
-      // Documents filter
-      if (docsFilter !== "all") {
-        const userDocs = studentDocsByUser.get(student.user_id) || [];
-        const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-        const hasSnils = userDocs.includes("snils");
-        const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-        
-        if (docsFilter === "complete" && !(hasPassport && hasSnils && hasEducation)) return false;
-        if (docsFilter === "incomplete" && (hasPassport && hasSnils && hasEducation)) return false;
-        if (docsFilter === "no_passport" && hasPassport) return false;
-        if (docsFilter === "no_snils" && hasSnils) return false;
-        if (docsFilter === "no_education" && hasEducation) return false;
-      }
-
-      return true;
-    });
-  }, [students, archivedStudents, viewMode, isArchived, searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, studentDocsByUser, studentGroupMap]);
-
-  // Group archive view by month (newest first)
-  const archiveByMonth = useMemo(() => {
-    if (viewMode !== "archive") return [] as Array<{ key: string; label: string; students: Student[] }>;
-    const groups = new Map<string, Student[]>();
-    const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
-    for (const s of filteredStudents) {
-      const dateStr = lastCompletedAt(s);
-      let key = "no-date";
-      let label = "Без даты завершения";
-      if (dateStr) {
-        const d = new Date(dateStr);
-        const y = d.getFullYear();
-        const m = d.getMonth();
-        key = `${y}-${String(m + 1).padStart(2, "0")}`;
-        label = `${MONTHS[m]} ${y}`;
-      }
-      const arr = groups.get(key) ?? [];
-      arr.push(s);
-      groups.set(key, arr);
-    }
-    return Array.from(groups.entries())
-      .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
-      .map(([key, list]) => {
-        const sample = list[0];
-        const d = lastCompletedAt(sample);
-        const label = d
-          ? `${MONTHS[new Date(d).getMonth()]} ${new Date(d).getFullYear()}`
-          : "Без даты завершения";
-        return { key, label, students: list };
-      });
-  }, [filteredStudents, viewMode, lastCompletedAt]);
-
-  // Selection helpers - use user_id for unique selection (one row per student)
   const toggleSelection = useCallback((uniqueId: string) => {
     setSelectedStudentIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(uniqueId)) {
-        newSet.delete(uniqueId);
-      } else {
-        newSet.add(uniqueId);
-      }
-      return newSet;
+      const next = new Set(prev);
+      if (next.has(uniqueId)) next.delete(uniqueId);
+      else next.add(uniqueId);
+      return next;
     });
   }, []);
 
   const toggleSelectAll = useCallback((filteredList: Student[]) => {
-    const filteredIds = filteredList.map(s => s.user_id); // Use user_id for unique selection
+    const ids = filteredList.map(s => s.user_id);
     setSelectedStudentIds(prev => {
-      const allSelected = filteredIds.every(id => prev.has(id)) && filteredIds.length > 0;
-      if (allSelected) {
-        const newSet = new Set(prev);
-        filteredIds.forEach(id => newSet.delete(id));
-        return newSet;
-      } else {
-        const newSet = new Set(prev);
-        filteredIds.forEach(id => newSet.add(id));
-        return newSet;
-      }
+      const allSelected = ids.length > 0 && ids.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) ids.forEach(id => next.delete(id));
+      else ids.forEach(id => next.add(id));
+      return next;
     });
   }, []);
 
-  const getSelectedUserIds = useCallback((): string[] => {
-    // selectedStudentIds now contains user_ids directly
-    return Array.from(selectedStudentIds);
-  }, [selectedStudentIds]);
+  const getSelectedUserIds = useCallback((): string[] => Array.from(selectedStudentIds), [selectedStudentIds]);
 
   const createNewStudent = useCallback(async (params: {
-    name: string;
-    email: string;
-    courseId?: string;
-    companyId?: string;
-    noLogin?: boolean;
+    name: string; email: string; courseId?: string; companyId?: string; noLogin?: boolean;
   }): Promise<boolean> => {
     if (!organizationId) return false;
+    if (!params.name.trim() || !params.email.trim()) { toast.error("Заполните ФИО и Email"); return false; }
+    if (!isValidEmail(params.email)) { toast.error("Введите корректный email адрес"); return false; }
 
-    if (!params.name.trim() || !params.email.trim()) {
-      toast.error("Заполните ФИО и Email");
-      return false;
-    }
+    const result = await createStudent({ organizationId, ...params });
+    if (!result.success) { toast.error(result.error || "Ошибка создания ученика"); return false; }
 
-    if (!isValidEmail(params.email)) {
-      toast.error("Введите корректный email адрес");
-      return false;
-    }
-
-    const result = await createStudent({
-      organizationId,
-      ...params
-    });
-
-    if (!result.success) {
-      toast.error(result.error || "Ошибка создания ученика");
-      return false;
-    }
-
-    if (result.data?.is_no_login) {
-      toast.success(result.data.message || "Ученик добавлен");
-    } else if (result.data?.is_existing) {
-      toast.success(result.data.message || "Ученик зачислен на курс");
-    } else {
-      toast.success(`Ученик создан. Пароль: ${result.data?.password} (сохраните его!)`);
-    }
-
+    if (result.data?.is_no_login) toast.success(result.data.message || "Ученик добавлен");
+    else if (result.data?.is_existing) toast.success(result.data.message || "Ученик зачислен на курс");
+    else toast.success(`Ученик создан. Пароль: ${result.data?.password} (сохраните его!)`);
     invalidateStudents();
     return true;
   }, [organizationId, invalidateStudents]);
 
   const enrollToCourse = useCallback(async (userId: string, courseId: string): Promise<boolean> => {
     const result = await enrollStudent(userId, courseId);
-    if (!result.success) {
-      toast.error(result.error || "Ошибка зачисления");
-      return false;
-    }
+    if (!result.success) { toast.error(result.error || "Ошибка зачисления"); return false; }
     toast.success("Ученик зачислен на курс");
     invalidateStudents();
     return true;
@@ -399,131 +367,121 @@ export function useStudents(
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
     const success = await apiUnenrollStudent(enrollmentId);
-    if (!success) {
-      toast.error("Ошибка отчисления");
-      return false;
-    }
+    if (!success) { toast.error("Ошибка отчисления"); return false; }
     toast.success("Ученик отчислен с курса");
     invalidateStudents();
     return true;
   }, [invalidateStudents]);
 
-  const bulkEnroll = useCallback(async (courseId: string): Promise<{ success: number; failed: number }> => {
+  const bulkEnroll = useCallback(async (courseId: string) => {
     const userIds = getSelectedUserIds();
     const result = await bulkEnrollStudents(userIds, courseId);
-    
-    if (result.success > 0) {
-      toast.success(`Зачислено: ${result.success} учеников`);
-    }
-    if (result.failed > 0) {
-      toast.error(`Ошибок: ${result.failed}`);
-    }
-    
+    if (result.success > 0) toast.success(`Зачислено: ${result.success} учеников`);
+    if (result.failed > 0) toast.error(`Ошибок: ${result.failed}`);
     setSelectedStudentIds(new Set());
     invalidateStudents();
     return result;
   }, [getSelectedUserIds, invalidateStudents]);
 
-  const bulkUnenroll = useCallback(async (): Promise<{ success: number; failed: number }> => {
+  const bulkUnenroll = useCallback(async () => {
     const enrollmentIds = Array.from(selectedStudentIds).map(id => {
-      const student = students.find(s => s.enrollment_id === id);
+      const student = students.find(s => s.user_id === id);
       return student?.enrollment_id;
     }).filter(Boolean) as string[];
-
     const result = await bulkUnenrollStudents(enrollmentIds);
-    
-    if (result.success > 0) {
-      toast.success(`Отчислено: ${result.success} учеников`);
-    }
-    if (result.failed > 0) {
-      toast.error(`Ошибок: ${result.failed}`);
-    }
-    
+    if (result.success > 0) toast.success(`Отчислено: ${result.success} учеников`);
+    if (result.failed > 0) toast.error(`Ошибок: ${result.failed}`);
     setSelectedStudentIds(new Set());
     invalidateStudents();
     return result;
   }, [selectedStudentIds, students, invalidateStudents]);
 
-  const bulkDelete = useCallback(async (): Promise<{ success: number; failed: number }> => {
+  const bulkDelete = useCallback(async () => {
     const userIds = getSelectedUserIds();
-    let success = 0;
-    let failed = 0;
-
+    let success = 0, failed = 0;
     for (const userId of userIds) {
-      const result = await deleteStudent(userId);
-      if (result) {
-        success++;
-      } else {
-        failed++;
-      }
+      const ok = await deleteStudent(userId);
+      if (ok) success++; else failed++;
     }
-    
-    if (success > 0) {
-      toast.success(`Удалено: ${success} учеников`);
-    }
-    if (failed > 0) {
-      toast.error(`Ошибок: ${failed}`);
-    }
-    
+    if (success > 0) toast.success(`Удалено: ${success} учеников`);
+    if (failed > 0) toast.error(`Ошибок: ${failed}`);
     setSelectedStudentIds(new Set());
     invalidateStudents();
     return { success, failed };
   }, [getSelectedUserIds, invalidateStudents]);
 
-  const updateCompany = useCallback(async (userId: string, companyId: string | null): Promise<boolean> => {
-    const success = await updateStudentCompany(userId, companyId);
-    if (!success) {
-      toast.error("Ошибка обновления компании");
-      return false;
-    }
+  const updateCompany = useCallback(async (userId: string, companyId: string | null) => {
+    const ok = await updateStudentCompany(userId, companyId);
+    if (!ok) { toast.error("Ошибка обновления компании"); return false; }
     toast.success("Компания обновлена");
     invalidateStudents();
     return true;
   }, [invalidateStudents]);
 
-  const removeStudent = useCallback(async (userId: string): Promise<boolean> => {
-    const success = await deleteStudent(userId);
-    if (!success) {
-      toast.error("Ошибка удаления ученика");
-      return false;
-    }
+  const removeStudent = useCallback(async (userId: string) => {
+    const ok = await deleteStudent(userId);
+    if (!ok) { toast.error("Ошибка удаления ученика"); return false; }
     toast.success("Ученик удалён");
     invalidateStudents();
     return true;
   }, [invalidateStudents]);
 
-  const refresh = useCallback(() => {
-    invalidateStudents();
-  }, [invalidateStudents]);
+  const refresh = useCallback(() => { invalidateStudents(); }, [invalidateStudents]);
 
-  const archiveStudent = useCallback(async (userId: string): Promise<boolean> => {
+  const archiveStudent = useCallback(async (userId: string) => {
     const ok = await setStudentArchived(userId, true);
-    if (!ok) {
-      toast.error("Не удалось перенести в архив");
-      return false;
-    }
+    if (!ok) { toast.error("Не удалось перенести в архив"); return false; }
     toast.success("Ученик перенесён в архив");
     invalidateStudents();
     return true;
   }, [invalidateStudents]);
 
-  const unarchiveStudent = useCallback(async (userId: string): Promise<boolean> => {
+  const unarchiveStudent = useCallback(async (userId: string) => {
     const ok = await setStudentArchived(userId, false);
-    if (!ok) {
-      toast.error("Не удалось вернуть из архива");
-      return false;
-    }
+    if (!ok) { toast.error("Не удалось вернуть из архива"); return false; }
     toast.success("Ученик возвращён из архива");
     invalidateStudents();
     return true;
   }, [invalidateStudents]);
 
+  // ---- Pagination controls ----
+  const loadMore = useCallback(() => {
+    if (pageQuery.hasNextPage && !pageQuery.isFetchingNextPage) void pageQuery.fetchNextPage();
+  }, [pageQuery]);
+  const retry = useCallback(() => { void pageQuery.refetch(); }, [pageQuery]);
+  const retryNextPage = useCallback(() => {
+    if (!pageQuery.isFetchingNextPage) void pageQuery.fetchNextPage();
+  }, [pageQuery]);
+
+  // ---- On-demand credentials for a single user ----
+  const fetchStudentCredentialsOnDemand = useCallback(async (userId: string): Promise<string | null> => {
+    if (!organizationId) return null;
+    try {
+      const cached = qc.getQueryData<string | null>(qk.org.studentCredentials(organizationId, userId));
+      if (cached !== undefined) return cached ?? null;
+      const map = await fetchStudentPasswordsForUsers(organizationId, [userId]);
+      const pw = map.get(userId) ?? null;
+      qc.setQueryData(qk.org.studentCredentials(organizationId, userId), pw);
+      return pw;
+    } catch (err) {
+      const kind = classifyDataError(err);
+      if (kind === "permission") toast.error("Нет прав на просмотр пароля");
+      else if (kind === "network") toast.error("Сетевая ошибка. Повторите.");
+      else toast.error("Не удалось получить пароль");
+      return null;
+    }
+  }, [organizationId, qc]);
+
+  const activeStudentsCount = countsQuery.data?.active_count ?? 0;
+  const archivedCount = countsQuery.data?.archived_count ?? 0;
+
   return {
     students,
-    allProfiles,
     isLoading,
     isError,
-    error: studentsError,
+    error: pageQuery.error,
+    errorKind,
+    nextPageErrorKind,
     frdoStatus,
     selectedStudentIds,
     setSelectedStudentIds,
@@ -548,17 +506,25 @@ export function useStudents(
     studentGroups,
     refreshGroups,
     studentGroupMap,
+    groupCounts,
     docsFilter,
     setDocsFilter,
     searchQuery,
     setSearchQuery,
-    filteredStudents,
+    loadMore,
+    hasNextPage: !!pageQuery.hasNextPage,
+    isFetchingNextPage: pageQuery.isFetchingNextPage,
+    loadedCount: students.length,
+    totalFiltered,
+    retry,
+    retryNextPage,
     viewMode,
     setViewMode,
-    archivedStudents,
     activeStudentsCount,
+    archivedCount,
     archiveByMonth,
     archiveStudent,
     unarchiveStudent,
+    fetchStudentCredentialsOnDemand,
   };
 }
