@@ -10891,6 +10891,49 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_available_students_for_course_page: {
+        Args: {
+          p_course_id: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          login: string
+          total_count: number
+          user_id: string
+        }[]
+      }
+      get_course_students_page: {
+        Args: {
+          p_course_id: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          active_count: number
+          archived_at: string
+          average_progress: number
+          completed_at: string
+          completed_count: number
+          email: string
+          enrollment_id: string
+          full_name: string
+          id: string
+          login: string
+          progress: number
+          started_at: string
+          status: string
+          time_spent: number
+          total_count: number
+          user_id: string
+        }[]
+      }
       get_decrypted_company_credentials: {
         Args: { p_company_id: string }
         Returns: {
@@ -10992,6 +11035,42 @@ export type Database = {
         Returns: string[]
       }
       get_organization_core: { Args: { p_org_id: string }; Returns: Json }
+      get_organization_students_page: {
+        Args: {
+          p_archive_mode?: string
+          p_course_id?: string
+          p_docs_filter?: string
+          p_group_filter?: string
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          active_count: number
+          archived_at: string
+          archived_count: number
+          company_id: string
+          email: string
+          enrollments: Json
+          frdo_complete: boolean
+          frdo_has_data: boolean
+          full_name: string
+          has_education: boolean
+          has_passport: boolean
+          has_snils: boolean
+          id: string
+          last_activity: string
+          last_visit_at: string
+          login: string
+          progress: number
+          status: string
+          student_group_id: string
+          total_count: number
+          user_id: string
+        }[]
+      }
       get_registration_link_by_token: {
         Args: { link_token: string }
         Returns: {
