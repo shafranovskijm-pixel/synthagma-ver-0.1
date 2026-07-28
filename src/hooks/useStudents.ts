@@ -275,17 +275,19 @@ export function useStudents(
   const isLoading = !!organizationId && enabled && pageQuery.isLoading;
   const isError = !!organizationId && pageQuery.isLoadingError && students.length === 0;
 
-  // ---- Archive grouped by month ----
+  // ---- Archive grouped by month by profile.archived_at ONLY ----
+  // Completing all courses does NOT archive the student — archive contains
+  // only explicitly archived / soft-deleted profiles.
   const archiveByMonth = useMemo(() => {
     if (viewMode !== "archive") return [] as Array<{ key: string; label: string; students: Student[] }>;
     const groups = new Map<string, Student[]>();
+    const labels: Record<string, string> = {};
     const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
     const seenPerKey = new Map<string, Set<string>>();
     for (const s of students) {
-      const dates = (s.enrollments ?? []).map(e => e.completed_at).filter((d): d is string => !!d);
-      const dateStr = dates.length > 0 ? dates.sort()[dates.length - 1] : s.archived_at ?? null;
+      const dateStr = s.archived_at ?? null;
       let key = "no-date";
-      let label = "Без даты завершения";
+      let label = "Без даты архивации";
       if (dateStr) {
         const d = new Date(dateStr);
         key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -298,15 +300,13 @@ export function useStudents(
       const arr = groups.get(key) ?? [];
       arr.push(s);
       groups.set(key, arr);
-      // preserve label for later
-      (groups as any).__labels = { ...((groups as any).__labels || {}), [key]: label };
+      labels[key] = label;
     }
-    const labels = (groups as any).__labels || {};
     return Array.from(groups.entries())
-      .filter(([k]) => k !== "__labels")
       .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
-      .map(([key, list]) => ({ key, label: labels[key] || "Без даты завершения", students: list }));
+      .map(([key, list]) => ({ key, label: labels[key] || "Без даты архивации", students: list }));
   }, [students, viewMode]);
+
 
   // ---- Mutations & helpers ----
   const invalidateStudents = useCallback(() => {
