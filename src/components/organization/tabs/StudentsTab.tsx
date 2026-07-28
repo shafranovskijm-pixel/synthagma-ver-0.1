@@ -227,7 +227,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <Archive className="w-4 h-4" />
             Архив
             <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "archive" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {archivedCount}
+              {countsLoading && archivedCount === null ? "…" : countsErrorKind ? "—" : archivedCount}
             </span>
           </button>
         </div>
