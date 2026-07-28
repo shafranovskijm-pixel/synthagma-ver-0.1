@@ -215,9 +215,8 @@ export function useEnrollmentActions(
 
     setIsUnenrolling(true);
     try {
-      // Point-load the enrollment rows before deletion so we can build
-      // the expulsion order with real course/student names and afterwards
-      // invalidate the correct course caches.
+      // ---------- Phase 4A.1 preflight (no mutation yet) -----------------
+      // 1. Load all enrollment rows. Abort if any id is missing.
       const { data: enrollmentRows, error: enrErr } = await supabase
         .from("enrollments")
         .select("id, user_id, course_id, courses(title)")
@@ -230,60 +229,79 @@ export function useEnrollmentActions(
         course_id: string;
         courses: { title: string } | null;
       }>;
-      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
-
-      let nameByUser = new Map<string, string>();
-      if (userIds.length > 0) {
-        try {
-          const { students: fetched } = await fetchStudentsByUserIds(
-            organizationId,
-            userIds,
-            { includeEnrollments: false },
-          );
-          nameByUser = new Map(fetched.map(s => [s.user_id, s.name]));
-        } catch (nameErr) {
-          console.warn("[bulkUnenroll] name point-fetch failed:", nameErr);
-        }
+      if (rows.length !== ids.length) {
+        toast.error(
+          `Найдено только ${rows.length} из ${ids.length} зачислений. Отчисление отменено.`,
+        );
+        return false;
       }
 
+      // 2. Point-fetch profiles for real names. Any missing => abort.
+      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
+      let nameByUser = new Map<string, string>();
+      try {
+        const { students: fetched } = await fetchStudentsByUserIds(
+          organizationId,
+          userIds,
+          { includeEnrollments: false },
+        );
+        nameByUser = new Map(fetched.map(s => [s.user_id, s.name]));
+      } catch (nameErr) {
+        console.error("[bulkUnenroll] preflight profiles failed:", nameErr);
+        toast.error("Не удалось загрузить профили учеников. Отчисление отменено.");
+        return false;
+      }
+      const missingNames = userIds.filter(uid => {
+        const n = nameByUser.get(uid);
+        return !n || !n.trim() || n === "Без имени";
+      });
+      if (missingNames.length > 0) {
+        toast.error(`Нет ФИО у ${missingNames.length} учеников. Отчисление отменено.`);
+        return false;
+      }
+
+      // ---------- Mutation ------------------------------------------------
       const { error: delError } = await supabase
         .from("enrollments")
         .delete()
         .in("id", ids);
       if (delError) throw delError;
 
-      // Group by course so we can emit one order per course.
-      const byCourse = new Map<string, { courseName: string; names: string[]; courseId: string }>();
-      for (const r of rows) {
-        const name = nameByUser.get(r.user_id);
-        if (!name) continue;
-        const entry = byCourse.get(r.course_id) ?? {
-          courseName: r.courses?.title || "Курс",
-          names: [],
-          courseId: r.course_id,
-        };
-        entry.names.push(name);
-        byCourse.set(r.course_id, entry);
-      }
-
-      if (byCourse.size > 0) {
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("name, director_name, director_position")
-          .eq("id", organizationId)
-          .single();
-        for (const entry of byCourse.values()) {
-          const orderName = await generateEnrollmentOrder({
-            organizationId,
-            organizationName: orgData?.name || organizationName,
-            directorName: orgData?.director_name,
-            directorPosition: orgData?.director_position,
-            studentNames: entry.names,
-            courseName: entry.courseName,
-            orderType: "expulsion",
-          });
-          if (orderName) toast.success(`Приказ об отчислении создан: ${orderName}`);
+      // ---------- Expulsion orders (post-mutation, separate error) --------
+      try {
+        const byCourse = new Map<string, { courseName: string; names: string[]; courseId: string }>();
+        for (const r of rows) {
+          const name = nameByUser.get(r.user_id)!;
+          const entry = byCourse.get(r.course_id) ?? {
+            courseName: r.courses?.title || "Курс",
+            names: [],
+            courseId: r.course_id,
+          };
+          entry.names.push(name);
+          byCourse.set(r.course_id, entry);
         }
+        if (byCourse.size > 0) {
+          const { data: orgData } = await supabase
+            .from("organizations")
+            .select("name, director_name, director_position")
+            .eq("id", organizationId)
+            .single();
+          for (const entry of byCourse.values()) {
+            const orderName = await generateEnrollmentOrder({
+              organizationId,
+              organizationName: orgData?.name || organizationName,
+              directorName: orgData?.director_name,
+              directorPosition: orgData?.director_position,
+              studentNames: entry.names,
+              courseName: entry.courseName,
+              orderType: "expulsion",
+            });
+            if (orderName) toast.success(`Приказ об отчислении создан: ${orderName}`);
+          }
+        }
+      } catch (orderErr) {
+        console.error("[bulkUnenroll] expulsion order failed:", orderErr);
+        toast.warning("Ученики отчислены, но приказ создать не удалось");
       }
 
       toast.success(`Отчислено ${ids.length} зачислений`);
