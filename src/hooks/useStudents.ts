@@ -499,8 +499,18 @@ export function useStudents(
     }
   }, [organizationId, qc]);
 
-  const activeStudentsCount = countsQuery.data?.active_count ?? 0;
-  const archivedCount = countsQuery.data?.archived_count ?? 0;
+  const activeStudentsCount = countsQuery.data ? countsQuery.data.active_count : null;
+  const archivedCount = countsQuery.data ? countsQuery.data.archived_count : null;
+
+  const countsLoading = countsQuery.isPending || countsQuery.isFetching;
+  const countsErrorKind: UserFacingErrorKind | null =
+    countsQuery.isError && !countsQuery.data ? classifyDataError(countsQuery.error) : null;
+  const retryCounts = useCallback(() => { void countsQuery.refetch(); }, [countsQuery]);
+
+  const groupCountsLoading = groupCountsQuery.isPending || groupCountsQuery.isFetching;
+  const groupCountsErrorKind: UserFacingErrorKind | null =
+    groupCountsQuery.isError && !groupCountsQuery.data ? classifyDataError(groupCountsQuery.error) : null;
+  const retryGroupCounts = useCallback(() => { void groupCountsQuery.refetch(); }, [groupCountsQuery]);
 
   return {
     students,
