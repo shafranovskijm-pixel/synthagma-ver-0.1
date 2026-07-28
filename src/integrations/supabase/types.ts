@@ -11140,6 +11140,10 @@ export type Database = {
         Args: { p_email: string; p_scope: string }
         Returns: boolean
       }
+      is_student_profile: {
+        Args: { _org_id: string; _target_user_id: string }
+        Returns: boolean
+      }
       is_user_blocked: { Args: { _user_id: string }; Returns: boolean }
       is_webinar_org_member: { Args: { _webinar_id: string }; Returns: boolean }
       is_webinar_participant: {
