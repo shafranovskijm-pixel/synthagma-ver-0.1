@@ -398,7 +398,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               </p>
               <Button variant="outline" size="sm" className="rounded-xl" onClick={refresh}>Повторить</Button>
             </div>
-          ) : filteredStudents.length === 0 ? (
+          ) : students.length === 0 ? (
             panelMode === "archive" ? (
               <div className="py-16 text-center text-muted-foreground">
                 <Archive className="w-10 h-10 mx-auto mb-3 opacity-40" />
