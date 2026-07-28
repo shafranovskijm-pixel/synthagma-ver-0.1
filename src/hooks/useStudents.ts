@@ -422,13 +422,23 @@ export function useStudents(
     return true;
   }, [invalidateStudents]);
 
+  const dropFromSelection = useCallback((userId: string) => {
+    setSelectedStudentIds(prev => {
+      if (!prev.has(userId)) return prev;
+      const next = new Set(prev);
+      next.delete(userId);
+      return next;
+    });
+  }, []);
+
   const removeStudent = useCallback(async (userId: string) => {
     const ok = await deleteStudent(userId);
     if (!ok) { toast.error("Ошибка удаления ученика"); return false; }
     toast.success("Ученик удалён");
+    dropFromSelection(userId);
     invalidateStudents();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateStudents, dropFromSelection]);
 
   const refresh = useCallback(() => { invalidateStudents(); }, [invalidateStudents]);
 
@@ -436,17 +446,20 @@ export function useStudents(
     const ok = await setStudentArchived(userId, true);
     if (!ok) { toast.error("Не удалось перенести в архив"); return false; }
     toast.success("Ученик перенесён в архив");
+    dropFromSelection(userId);
     invalidateStudents();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateStudents, dropFromSelection]);
 
   const unarchiveStudent = useCallback(async (userId: string) => {
     const ok = await setStudentArchived(userId, false);
     if (!ok) { toast.error("Не удалось вернуть из архива"); return false; }
     toast.success("Ученик возвращён из архива");
+    dropFromSelection(userId);
     invalidateStudents();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateStudents, dropFromSelection]);
+
 
   // ---- Pagination controls ----
   const loadMore = useCallback(() => {
