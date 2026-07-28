@@ -27,6 +27,9 @@ import { useOrgBalance } from "@/hooks/useOrgBalance";
 import { useOrgUnreadChats } from "@/hooks/useOrgUnreadChats";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
+import { fetchStudentsByUserIds, fetchStudentPasswordsForUsers } from "@/api/students";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/queryKeys";
 import { toast } from "sonner";
 
 export function useOrganizationDashboard() {
@@ -225,25 +228,75 @@ export function useOrganizationDashboard() {
   }, [courseDetailsModal.showCourseDetailsModal, courseDetailsModal.selectedCourseForDetails?.id, loadCourseStudentsForModal]);
 
   // Derived handlers
+  const qc = useQueryClient();
   const handleLogout = async () => await signOut();
-  const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount(students);
-  const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(students);
+  const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount();
+  const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(enrollmentActions.selectedEnrollmentIds);
   const handleViewStudent = useCallback((student: any) => {
     tabNavigation.openStudentDetails(student.user_id);
   }, [tabNavigation]);
 
+  /**
+   * Phase 4A: bulk credentials work off explicit selected user_ids.
+   * Profiles and (existing) passwords are point-fetched on demand — we no
+   * longer filter the legacy d.students snapshot, so passwords cannot be
+   * "missing" merely because they weren't preloaded.
+   */
   const handleBulkSendCredentials = async (userIds?: string[]) => {
-    const ids = userIds || Array.from(enrollmentActions.selectedStudentIds);
-    if (ids.length === 0) { toast.error("Выберите учеников"); return; }
-    await studentActions.bulkSendCredentials(students.filter(s => ids.includes(s.user_id)));
+    const ids = (userIds && userIds.length > 0
+      ? userIds
+      : Array.from(enrollmentActions.selectedStudentIds));
+    const uniq = Array.from(new Set(ids)).filter(Boolean);
+    if (uniq.length === 0) { toast.error("Выберите учеников"); return; }
+    if (!organizationId) { toast.error("Организация не выбрана"); return; }
+    try {
+      const [fetched, passwords] = await Promise.all([
+        fetchStudentsByUserIds(organizationId, uniq, { includeEnrollments: false }),
+        fetchStudentPasswordsForUsers(organizationId, uniq),
+      ]);
+      const merged = fetched.students.map(s => ({
+        ...s,
+        generated_password: passwords.get(s.user_id) ?? null,
+      }));
+      await studentActions.bulkSendCredentials(merged);
+    } catch (err: any) {
+      console.error("[handleBulkSendCredentials] point-fetch failed:", err);
+      toast.error(err?.message?.includes("no profiles")
+        ? "Не найдены выбранные ученики"
+        : "Не удалось загрузить данные для отправки");
+    }
   };
 
   const handleBulkCreateCredentials = async (userIds?: string[], sendEmails?: boolean) => {
-    const ids = userIds || Array.from(enrollmentActions.selectedStudentIds);
-    if (ids.length === 0) { toast.error("Выберите учеников"); return; }
-    const studentsToCreate = students.filter(s => ids.includes(s.user_id) && (!s.login || !s.generated_password));
-    if (studentsToCreate.length === 0) { toast.info("У всех выбранных учеников уже есть логин и пароль"); return; }
-    await studentActions.bulkCreateCredentials(studentsToCreate, sendEmails);
+    const ids = (userIds && userIds.length > 0
+      ? userIds
+      : Array.from(enrollmentActions.selectedStudentIds));
+    const uniq = Array.from(new Set(ids)).filter(Boolean);
+    if (uniq.length === 0) { toast.error("Выберите учеников"); return; }
+    if (!organizationId) { toast.error("Организация не выбрана"); return; }
+    try {
+      // Always resolve existing passwords first — otherwise we could
+      // regenerate credentials for a user whose password merely wasn't
+      // loaded into memory.
+      const [fetched, passwords] = await Promise.all([
+        fetchStudentsByUserIds(organizationId, uniq, { includeEnrollments: false }),
+        fetchStudentPasswordsForUsers(organizationId, uniq),
+      ]);
+      const studentsToCreate = fetched.students
+        .map(s => ({ ...s, generated_password: passwords.get(s.user_id) ?? null }))
+        .filter(s => !s.login || !s.generated_password);
+      if (studentsToCreate.length === 0) {
+        toast.info("У всех выбранных учеников уже есть логин и пароль");
+        return;
+      }
+      await studentActions.bulkCreateCredentials(studentsToCreate, sendEmails);
+      qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+    } catch (err: any) {
+      console.error("[handleBulkCreateCredentials] point-fetch failed:", err);
+      toast.error(err?.message?.includes("no profiles")
+        ? "Не найдены выбранные ученики"
+        : "Не удалось загрузить данные учеников");
+    }
   };
 
   const handleCompanyCreate = async () => {

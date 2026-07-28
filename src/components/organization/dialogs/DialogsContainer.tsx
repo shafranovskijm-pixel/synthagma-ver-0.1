@@ -65,7 +65,11 @@ export function DialogsContainer() {
         isEnrolling={d.enrollmentActions.isEnrolling}
         onEnroll={async (courseId) => {
           d.enrollmentActions.setEnrollCourseId(courseId);
-          await d.enrollmentActions.bulkEnroll(courseId, d.students, d.allProfiles, d.courses);
+          await d.enrollmentActions.bulkEnroll(
+            courseId,
+            Array.from(d.enrollmentActions.selectedStudentIds),
+            d.courses,
+          );
         }}
       />
 
@@ -235,9 +239,8 @@ export function DialogsContainer() {
       <BulkFRDOExport
         isOpen={d.enrollmentActions.showBulkFRDOExport}
         onOpenChange={d.enrollmentActions.setShowBulkFRDOExport}
-        organizationId={d.organizationId}
-        selectedStudentIds={d.enrollmentActions.selectedStudentIds}
-        students={d.students}
+        organizationId={d.organizationId || ""}
+        selectedUserIds={Array.from(d.enrollmentActions.selectedStudentIds)}
       />
 
       {/* Bulk Delete Confirmation Dialog */}
@@ -253,7 +256,7 @@ export function DialogsContainer() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={d.enrollmentActions.isBulkDeleting}>Отмена</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => d.enrollmentActions.bulkDelete(d.students)} 
+              onClick={() => d.enrollmentActions.bulkDelete(Array.from(d.enrollmentActions.selectedStudentIds))} 
               disabled={d.enrollmentActions.isBulkDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
