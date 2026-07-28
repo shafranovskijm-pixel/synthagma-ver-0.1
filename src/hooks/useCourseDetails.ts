@@ -197,10 +197,18 @@ export function useCourseDetails(
   }, [studentsQuery.data]);
   const totalFilteredStudents = studentsQuery.data?.pages?.[0]?.totalFiltered ?? 0;
 
+  // Distinguish first-page load failure from next-page failure using
+  // React Query's dedicated `isFetchNextPageError` flag — a background
+  // refetch error while data exists must NOT be surfaced as a "next page"
+  // error, and a failed second page must NOT hide the first page.
   const studentsErrorKind: UserFacingErrorKind | null =
-    studentsQuery.isError && courseStudents.length === 0 ? classifyDataError(studentsQuery.error) : null;
+    studentsQuery.isLoadingError && courseStudents.length === 0
+      ? classifyDataError(studentsQuery.error)
+      : null;
   const nextStudentsPageErrorKind: UserFacingErrorKind | null =
-    studentsQuery.isError && courseStudents.length > 0 ? classifyDataError(studentsQuery.error) : null;
+    studentsQuery.isFetchNextPageError
+      ? classifyDataError(studentsQuery.error)
+      : null;
 
   const retryStudents = useCallback(() => { void studentsQuery.refetch(); }, [studentsQuery]);
   const retryNextStudentsPage = useCallback(() => {
