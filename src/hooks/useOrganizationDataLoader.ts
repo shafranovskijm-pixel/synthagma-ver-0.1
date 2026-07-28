@@ -5,6 +5,7 @@ import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from 
 import { fetchAllRows } from "@/utils/retryFetch";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { isTransientNetworkError, classifyDataError } from "@/utils/isTransientNetworkError";
+import { resolveAdminViewOrg } from "@/utils/adminViewOrg";
 
 const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
@@ -106,39 +107,19 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       if (!userId) return;
       
       try {
-        // Check for admin view mode — BUT verify server-side that this user is
-        // actually a platform admin. Otherwise a stale localStorage flag would
-        // send a regular org owner into another org's data.
-        const adminViewData = localStorage.getItem("adminViewAsOrg");
+        // Единый резолвер admin-view: не удаляет флаг на транзиентных ошибках has_role,
+        // чтобы «Войти как» из админки не срывался из-за одного неудачного RPC.
+        const resolution = await resolveAdminViewOrg(userId);
         let orgId: string | null = null;
-        let isVerifiedAdmin = false;
 
-        if (adminViewData) {
-          try {
-            const { data: isAdmin } = await supabase.rpc("has_role", {
-              _user_id: userId,
-              _role: "admin",
-            });
-            isVerifiedAdmin = !!isAdmin;
-          } catch {
-            isVerifiedAdmin = false;
-          }
-        }
-
-        if (adminViewData && isVerifiedAdmin) {
-          const adminView = JSON.parse(adminViewData);
-          orgId = adminView.id;
+        if (resolution.status === "admin") {
+          orgId = resolution.view.id;
           if (!cancelled) {
-            setAdminViewOrgId(adminView.id);
-            setOrganizationName(adminView.name);
+            setAdminViewOrgId(resolution.view.id);
+            setOrganizationName(resolution.view.name);
             setIsAdminView(true);
           }
         } else {
-          if (adminViewData && !isVerifiedAdmin) {
-            // Stale flag from a previous admin session — clear it so we don't
-            // silently send a non-admin into another org.
-            try { localStorage.removeItem("adminViewAsOrg"); } catch { /* ignore */ }
-          }
 
           const { data: profile } = await supabase
             .from("profiles")
