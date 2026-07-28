@@ -151,36 +151,35 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const getSelectedEnrollmentsCount = useCallback(() => {
     let count = 0;
     for (const id of selectedStudentIds) {
-      const student = filteredStudents.find(s => s.user_id === id);
+      const student = students.find(s => s.user_id === id);
       if (student?.enrollments?.length) count += student.enrollments.length;
     }
     return count;
-  }, [selectedStudentIds, filteredStudents]);
+  }, [selectedStudentIds, students]);
 
   const handleExportStudents = useCallback(async () => {
     const XLSX = await import('xlsx');
-    const data = filteredStudents.map(s => ({ 'ФИО': s.name, 'Email': s.email || '', 'Логин': s.login || '', 'Пароль': s.generated_password || '', 'Курсы': s.course || 'Не зачислен', 'Прогресс (%)': s.progress, 'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—' }));
+    const data = students.map(s => ({ 'ФИО': s.name, 'Email': s.email || '', 'Логин': s.login || '', 'Пароль': s.generated_password || '', 'Курсы': s.course || 'Не зачислен', 'Прогресс (%)': s.progress, 'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—' }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Ученики');
     XLSX.writeFile(wb, `ученики_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('Список учеников экспортирован');
-  }, [filteredStudents]);
+  }, [students]);
 
   const handleGeneratePrikaz = useCallback(() => {
-    const students = filteredStudents.filter(s => selectedStudentIds.has(s.user_id));
-    if (!students.length) { toast.error("Выберите учеников"); return; }
-    generateDocument({ templateType: "prikaz", persons: students.map(s => ({ fullName: s.name })) });
-  }, [filteredStudents, selectedStudentIds, generateDocument]);
+    const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id));
+    if (!selectedStudents.length) { toast.error("Выберите учеников"); return; }
+    generateDocument({ templateType: "prikaz", persons: selectedStudents.map(s => ({ fullName: s.name })) });
+  }, [students, selectedStudentIds, generateDocument]);
 
   const handleGenerateProtokol = useCallback(() => {
-    const students = filteredStudents.filter(s => selectedStudentIds.has(s.user_id));
-    if (!students.length) { toast.error("Выберите учеников"); return; }
-    generateDocument({ templateType: "protokol", persons: students.map(s => ({ fullName: s.name, isPassed: s.status === 'completed' })) });
-  }, [filteredStudents, selectedStudentIds, generateDocument]);
+    const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id));
+    if (!selectedStudents.length) { toast.error("Выберите учеников"); return; }
+    generateDocument({ templateType: "protokol", persons: selectedStudents.map(s => ({ fullName: s.name, isPassed: s.status === 'completed' })) });
+  }, [students, selectedStudentIds, generateDocument]);
 
-  const paginatedStudents = filteredStudents.slice(0, visibleCount);
-  React.useEffect(() => { setVisibleCount(10); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter]);
+  const paginatedStudents = students;
 
   const bulkBusy = isCreatingBulkCredentials || isSendingBulkCredentials;
   const enrollmentsCount = getSelectedEnrollmentsCount();
