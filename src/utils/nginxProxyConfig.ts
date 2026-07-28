@@ -32,16 +32,17 @@ export const NGINX_PROXY_CONFIG = `# === Sintagma reverse proxy для синт�
 
 map $http_origin $cors_origin {
     default "";
-    # синтагма.рф (punycode) — основной домен
-    "~^https?://(www\\.)?xn--80aaiswd0ak\\.xn--p1ai$"     $http_origin;
-    # sintagma.com.ru — латиничный домен (proxyFetch.ts тоже допускает)
-    "~^https?://(www\\.)?sintagma\\.com\\.ru$"             $http_origin;
+    # синтагма.рф (punycode) — корень, www и любые контролируемые поддомены
+    "~^https?://([a-z0-9-]+\\.)?xn--80aaiswd0ak\\.xn--p1ai$" $http_origin;
+    # sintagma.com.ru — латиничный домен (корень + www)
+    "~^https?://(www\\.)?sintagma\\.com\\.ru$"               $http_origin;
     # preview / staging
-    "~^https?://[a-z0-9-]+\\.twc1\\.net$"                  $http_origin;
-    "~^https?://[a-z0-9-]+\\.lovable\\.app$"               $http_origin;
-    "~^https?://[a-z0-9-]+\\.lovableproject\\.com$"        $http_origin;
-    "~^http://localhost(:[0-9]+)?$"                       $http_origin;
+    "~^https?://[a-z0-9-]+\\.twc1\\.net$"                    $http_origin;
+    "~^https?://[a-z0-9-]+\\.lovable\\.app$"                 $http_origin;
+    "~^https?://[a-z0-9-]+\\.lovableproject\\.com$"          $http_origin;
+    "~^http://localhost(:[0-9]+)?$"                          $http_origin;
 }
+
 
 server {
     listen 80;

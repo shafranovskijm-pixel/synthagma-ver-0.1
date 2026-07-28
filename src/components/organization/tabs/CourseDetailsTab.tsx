@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { loadCourseStudents } from "@/api/courseStudents";
+import { loadCourseStudents, CourseProfilesUnavailableError } from "@/api/courseStudents";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
+
 
 type LoadState = "loading" | "success" | "not_found" | "error";
 
@@ -72,8 +73,12 @@ export function CourseDetailsTab() {
       students = await loadCourseStudents({ courseId, courseTitle: courseData.title });
     } catch (err) {
       console.error("[CourseDetailsTab] students fetch failed:", err);
-      const kind = classifyDataError(err);
       setState("error");
+      if (err instanceof CourseProfilesUnavailableError) {
+        setErrorMessage("Зачисления найдены, но профили учеников недоступны. Проверьте права доступа к профилям.");
+        return;
+      }
+      const kind = classifyDataError(err);
       setErrorMessage(
         kind === "permission"
           ? "Недостаточно прав для просмотра учеников этого курса."
@@ -83,6 +88,7 @@ export function CourseDetailsTab() {
       );
       return;
     }
+
 
     setCourse({
       ...courseData,

@@ -10,10 +10,10 @@ export async function fetchStudents(
   organizationId: string,
   courseIds: string[]
 ): Promise<{ students: Student[]; allProfiles: Student[]; groupMap: Map<string, string | null> }> {
-  // Run independent queries in parallel to cut waterfall latency.
-  // - profiles: include student_group_id so we don't need a second profiles roundtrip
-  // - enrollments: trim select to only the columns we actually use
-  // - passwords + courses: kick off in parallel
+  // Passwords are intentionally NOT fetched here — the decrypted-password RPC
+  // can be slow or hang, and it must not block the primary student list.
+  // See fetchStudentPasswords() below and useStudents() for the separate
+  // secondary query that merges passwords in once they arrive.
   const enrollmentsPromise = courseIds.length > 0
     ? fetchAllRows<any>(({ from, to }) =>
         supabase
@@ -34,36 +34,22 @@ export async function fetchStudents(
       .then(r => ({ data: r.data as any[] | null, error: r.error }))
   );
 
-  const passwordsPromise = supabase
-    .rpc("get_decrypted_student_passwords", { p_organization_id: organizationId });
-
   const coursesPromise = supabase
     .from("courses")
     .select("id, title")
     .eq("organization_id", organizationId);
 
-  const [allEnrollments, allProfilesData, passwordsRes, coursesRes] = await Promise.all([
+  const [allEnrollments, allProfilesData, coursesRes] = await Promise.all([
     enrollmentsPromise,
     profilesPromise,
-    passwordsPromise,
     coursesPromise,
   ]);
 
   // Profiles / enrollments / courses must succeed — otherwise the UI would
   // silently render an empty student list and the org would think everyone
-  // disappeared. Passwords are optional (decryption RPC can legitimately be
-  // unavailable), so we swallow that error only.
+  // disappeared.
   if ((coursesRes as any).error) {
     throw (coursesRes as any).error;
-  }
-
-  const passwordMap = new Map<string, string>();
-  if (!(passwordsRes as any).error) {
-    (passwordsRes.data || []).forEach((row: any) => {
-      if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
-    });
-  } else {
-    console.warn("[fetchStudents] passwords RPC failed:", (passwordsRes as any).error);
   }
 
   // Fetch user roles only for users that actually have enrollments OR appear once -
@@ -133,18 +119,19 @@ export async function fetchStudents(
     studentsList.push({
       id: profile.id,
       user_id: profile.user_id,
-      enrollment_id: enrollments.length === 1 ? enrollments[0].id : null, // Only set if single enrollment
+      enrollment_id: enrollments.length === 1 ? enrollments[0].id : null,
       name: profile.full_name || "Без имени",
       email: profile.email || "",
       login: profile.login || null,
-      generated_password: passwordMap.get(profile.user_id) || null,
+      // Passwords are merged in by useStudents() from fetchStudentPasswords().
+      generated_password: null,
       course: courseNames.length > 0 ? courseNames.join(", ") : null,
-      course_id: enrollments.length === 1 ? enrollments[0].course_id : null, // Only set if single enrollment
+      course_id: enrollments.length === 1 ? enrollments[0].course_id : null,
       progress: totalProgress,
       lastActivity: enrollments[0]?.started_at || null,
       last_visit_at: profile.last_visit_at || null,
       status: aggregateStatus,
-      enrollments: enrollments, // Add all enrollments for detail view
+      enrollments: enrollments,
       archived_at: profile.archived_at ?? null,
     } as Student);
   }
@@ -170,6 +157,30 @@ export async function fetchStudents(
     groupMap,
   };
 }
+
+/**
+ * Fetches decrypted passwords for students of an organization.
+ * Intentionally SEPARATE from fetchStudents() — this RPC can be slow or hang,
+ * and it must not block the primary list. Errors here are non-critical.
+ */
+export async function fetchStudentPasswords(
+  organizationId: string
+): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .rpc("get_decrypted_student_passwords", { p_organization_id: organizationId });
+
+  if (error) {
+    console.warn("[fetchStudentPasswords] RPC failed:", error);
+    throw error;
+  }
+
+  const map = new Map<string, string>();
+  for (const row of (data || []) as any[]) {
+    if (row.decrypted_password) map.set(row.user_id, row.decrypted_password);
+  }
+  return map;
+}
+
 
 export async function fetchStudentEnrollments(userId: string): Promise<StudentEnrollment[]> {
   const { data: enrollments, error } = await supabase

@@ -5,6 +5,8 @@
  *  - fetches enrollments and profiles in bounded batches (no N+1 per user),
  *  - propagates errors instead of silently returning an empty list,
  *  - de-duplicates user IDs and filters out organization/admin accounts,
+ *  - detects a total profile-access failure (RLS/permission) rather than
+ *    rendering a list full of "Без имени",
  *  - keeps the shape identical for both callers.
  */
 
@@ -26,11 +28,26 @@ export interface CourseStudentRow {
   progress: number;
   lastActivity: string | null;
   status: string | null;
+  /** true when profile row could not be loaded for this enrollment. */
+  profile_missing?: boolean;
 }
 
 export interface LoadCourseStudentsInput {
   courseId: string;
   courseTitle?: string | null;
+}
+
+/**
+ * Thrown when enrollments were fetched successfully but ZERO profiles
+ * came back for their user_ids — this signals an access / integrity problem,
+ * not an empty course. The caller must show a diagnostic message instead
+ * of a list of "Без имени" rows.
+ */
+export class CourseProfilesUnavailableError extends Error {
+  code = "PROFILES_UNAVAILABLE" as const;
+  constructor(public expectedUserIds: string[]) {
+    super("Профили учеников недоступны для этих зачислений");
+  }
 }
 
 async function chunk<T, R>(items: T[], size: number, fn: (batch: T[]) => Promise<R[]>): Promise<R[]> {
@@ -85,17 +102,35 @@ export async function loadCourseStudents(
 
   const profileMap = new Map(profileRows.map((p) => [p.user_id, p]));
 
+  // 4a) Enrollments exist but ZERO profiles came back → treat as permission /
+  // integrity failure, NOT as a valid list of "Без имени" rows.
+  if (studentUserIds.length > 0 && profileMap.size === 0) {
+    throw new CourseProfilesUnavailableError(studentUserIds);
+  }
+
+  // 4b) Partially missing profiles — log a diagnostic, mark each row so
+  // the UI can render "Профиль недоступен" instead of a fake name.
+  const missingProfileUserIds = studentUserIds.filter((id) => !profileMap.has(id));
+  if (missingProfileUserIds.length > 0) {
+    console.warn(
+      "[loadCourseStudents] partial profile access: %d/%d profiles unavailable",
+      missingProfileUserIds.length,
+      studentUserIds.length,
+      { courseId, missingProfileUserIds }
+    );
+  }
+
   // 5) Merge — one row per enrollment (skipping enrollments whose user is org/admin).
   const result: CourseStudentRow[] = [];
   for (const e of rows) {
     if (excludedUserIds.has(e.user_id)) continue;
     const prof = profileMap.get(e.user_id);
-    // profile can legitimately be missing (e.g. deleted user) — still show enrollment.
+    const profileMissing = !prof;
     result.push({
       id: prof?.id ?? e.user_id,
       user_id: e.user_id,
       enrollment_id: e.id,
-      name: prof?.full_name || "Без имени",
+      name: prof?.full_name || (profileMissing ? "Профиль недоступен" : "Без имени"),
       email: prof?.email || "",
       login: prof?.login ?? null,
       generated_password: null,
@@ -104,6 +139,7 @@ export async function loadCourseStudents(
       progress: e.progress ?? 0,
       lastActivity: (e as any).started_at ?? null,
       status: e.status ?? null,
+      profile_missing: profileMissing || undefined,
     });
   }
 
