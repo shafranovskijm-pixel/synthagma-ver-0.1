@@ -98,22 +98,54 @@ export function useEnrollmentActions(
 
     setIsEnrolling(true);
     try {
-      const { data: existingEnrollments, error: existErr } = await supabase
-        .from("enrollments")
-        .select("user_id")
-        .eq("course_id", courseId)
-        .in("user_id", userIds);
-      if (existErr) throw existErr;
+      // ---------- Phase 4A.1 preflight (no mutation yet) -----------------
+      // 1. Point-fetch every selected profile (throws on any missing user_id).
+      let fetched: Awaited<ReturnType<typeof fetchStudentsByUserIds>>;
+      try {
+        fetched = await fetchStudentsByUserIds(
+          organizationId,
+          userIds,
+          { includeEnrollments: false },
+        );
+      } catch (err) {
+        console.error("[bulkEnroll] preflight profiles failed:", err);
+        toast.error("Не удалось загрузить профили выбранных учеников. Зачисление отменено.");
+        return false;
+      }
+      const nameByUser = new Map(fetched.students.map(s => [s.user_id, s.name]));
+      const missingNames = userIds.filter(uid => {
+        const n = nameByUser.get(uid);
+        return !n || !n.trim() || n === "Без имени";
+      });
+      if (missingNames.length > 0) {
+        toast.error(`Нет ФИО у ${missingNames.length} из ${userIds.length} учеников. Зачисление отменено.`);
+        return false;
+      }
 
-      const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+      // 2. Existing enrollments — abort on error, don't silently proceed.
+      let existingUserIds: Set<string>;
+      try {
+        const { data: existingEnrollments, error: existErr } = await supabase
+          .from("enrollments")
+          .select("user_id")
+          .eq("course_id", courseId)
+          .in("user_id", userIds);
+        if (existErr) throw existErr;
+        existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+      } catch (err) {
+        console.error("[bulkEnroll] preflight existing enrollments failed:", err);
+        toast.error("Не удалось проверить существующие зачисления. Зачисление отменено.");
+        return false;
+      }
+
       const newUserIds = userIds.filter(id => !existingUserIds.has(id));
-
       if (newUserIds.length === 0) {
         toast.info("Все выбранные ученики уже зачислены на этот курс");
         setShowEnrollDialog(false);
         return false;
       }
 
+      // ---------- Mutation ------------------------------------------------
       const { error: insertError } = await supabase
         .from("enrollments")
         .insert(newUserIds.map(userId => ({
@@ -124,42 +156,30 @@ export function useEnrollmentActions(
         })));
       if (insertError) throw insertError;
 
-      // Point-fetch real full names for the enrollment order. If profiles
-      // fail we abort the order (rather than emit a "Неизвестный" one).
+      // ---------- Enrollment order (post-mutation, separate error) --------
       try {
-        const { students: fetched } = await fetchStudentsByUserIds(
+        const enrolledNames = newUserIds
+          .map(uid => nameByUser.get(uid))
+          .filter((v): v is string => !!v);
+        const course = courses.find(c => c.id === courseId);
+        const { data: orgData } = await supabase
+          .from("organizations")
+          .select("name, director_name, director_position")
+          .eq("id", organizationId)
+          .single();
+        const orderName = await generateEnrollmentOrder({
           organizationId,
-          newUserIds,
-          { includeEnrollments: false },
-        );
-        const nameByUser = new Map(fetched.map(s => [s.user_id, s.name]));
-        const enrolledNames = newUserIds.map(uid => nameByUser.get(uid)).filter(Boolean) as string[];
-
-        if (enrolledNames.length === newUserIds.length) {
-          const course = courses.find(c => c.id === courseId);
-          const { data: orgData } = await supabase
-            .from("organizations")
-            .select("name, director_name, director_position")
-            .eq("id", organizationId)
-            .single();
-
-          const orderName = await generateEnrollmentOrder({
-            organizationId,
-            organizationName: orgData?.name || organizationName,
-            directorName: orgData?.director_name,
-            directorPosition: orgData?.director_position,
-            studentNames: enrolledNames,
-            courseName: course?.title || "Курс",
-            orderType: "enrollment",
-          });
-          if (orderName) toast.success(`Приказ о зачислении создан: ${orderName}`);
-        } else {
-          console.warn("[bulkEnroll] name lookup incomplete — skipping enrollment order");
-          toast.warning("Приказ о зачислении не создан: не удалось получить ФИО части учеников");
-        }
-      } catch (nameErr) {
-        console.error("[bulkEnroll] name point-fetch failed:", nameErr);
-        toast.warning("Приказ о зачислении не создан: не удалось получить ФИО");
+          organizationName: orgData?.name || organizationName,
+          directorName: orgData?.director_name,
+          directorPosition: orgData?.director_position,
+          studentNames: enrolledNames,
+          courseName: course?.title || "Курс",
+          orderType: "enrollment",
+        });
+        if (orderName) toast.success(`Приказ о зачислении создан: ${orderName}`);
+      } catch (orderErr) {
+        console.error("[bulkEnroll] enrollment order failed:", orderErr);
+        toast.warning("Ученики зачислены, но приказ создать не удалось");
       }
 
       toast.success(`Зачислено ${newUserIds.length} учеников`);
