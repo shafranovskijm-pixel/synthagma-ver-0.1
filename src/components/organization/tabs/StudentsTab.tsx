@@ -414,7 +414,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" />Удалить учеников
+                      <Trash2 className="w-4 h-4 mr-2" />Перенести в архив
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

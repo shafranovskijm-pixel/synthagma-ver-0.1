@@ -136,9 +136,15 @@ export function BulkFRDOExport({
     }
 
     try {
-      const { data: frdoData, error: frdoError } = await supabase
-        .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", userIds);
-      if (frdoError) throw frdoError;
+      // Phase 4A.1: chunk .in() to avoid URL-length limits on large selections.
+      const frdoData: any[] = [];
+      for (let i = 0; i < userIds.length; i += 100) {
+        const chunk = userIds.slice(i, i + 100);
+        const { data, error: frdoError } = await supabase
+          .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", chunk);
+        if (frdoError) throw frdoError;
+        if (data) frdoData.push(...data);
+      }
 
       const dataMap = new Map<string, FRDOData>();
       const missing: string[] = [];
@@ -189,11 +195,16 @@ export function BulkFRDOExport({
     }
 
     try {
-      const { data: enrollmentsData, error: enrollError } = await supabase
-        .from("enrollments")
-        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_profession_name, frdo_qualification_rank, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_financing_source, frdo_education_form)")
-        .in("user_id", userIds);
-      if (enrollError) throw enrollError;
+      const enrollmentsData: any[] = [];
+      for (let i = 0; i < userIds.length; i += 100) {
+        const chunk = userIds.slice(i, i + 100);
+        const { data, error: enrollError } = await supabase
+          .from("enrollments")
+          .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_profession_name, frdo_qualification_rank, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_financing_source, frdo_education_form)")
+          .in("user_id", chunk);
+        if (enrollError) throw enrollError;
+        if (data) enrollmentsData.push(...data);
+      }
 
       const enrollMap = new Map<string, EnrollmentData[]>();
       const courseSet = new Map<string, Course>();
