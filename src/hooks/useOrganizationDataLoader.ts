@@ -5,6 +5,7 @@ import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from 
 import { fetchAllRows } from "@/utils/retryFetch";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { isTransientNetworkError, classifyDataError } from "@/utils/isTransientNetworkError";
+import { resolveAdminViewOrg } from "@/utils/adminViewOrg";
 
 const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
