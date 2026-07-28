@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
+import { loadCourseStudents, CourseProfilesUnavailableError } from "@/api/courseStudents";
+import { classifyDataError, isTransientNetworkError } from "@/utils/isTransientNetworkError";
+
+type LoadErrorKind = "permission" | "network" | "unknown" | "profiles_unavailable";
 
 export function useCourseStudentsManager(organizationId: string | null) {
   const [showCourseStudentsDialog, setShowCourseStudentsDialog] = useState(false);
@@ -13,87 +17,61 @@ export function useCourseStudentsManager(organizationId: string | null) {
   const [selectedStudentsToAdd, setSelectedStudentsToAdd] = useState<Set<string>>(new Set());
   const [isAddingStudentsToCourse, setIsAddingStudentsToCourse] = useState(false);
   const [courseStudentsSearchQuery, setCourseStudentsSearchQuery] = useState("");
+  const [loadError, setLoadError] = useState<{ kind: LoadErrorKind; message: string } | null>(null);
 
-  // Open course students dialog
+  const errorMessageFor = (kind: LoadErrorKind): string => {
+    switch (kind) {
+      case "permission":
+        return "Недостаточно прав для просмотра учеников этого курса.";
+      case "network":
+        return "Не удалось загрузить учеников — проблема с сетью или прокси. Повторите попытку.";
+      case "profiles_unavailable":
+        return "Зачисления найдены, но профили учеников недоступны. Проверьте права доступа к профилям.";
+      default:
+        return "Не удалось загрузить учеников курса. Повторите попытку.";
+    }
+  };
+
   const openCourseStudents = useCallback(async (course: Course) => {
     setSelectedCourse(course);
     setShowCourseStudentsDialog(true);
     setIsLoadingCourseStudents(true);
     setSelectedStudentsToAdd(new Set());
     setCourseStudentsSearchQuery("");
-    
+    setLoadError(null);
+
     try {
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from("enrollments")
-        .select("id, user_id, progress, status")
-        .eq("course_id", course.id);
-
-      if (enrollmentsError) throw enrollmentsError;
-
-      // Exclude organization/admin accounts from student lists
-      const enrollmentUserIds = Array.from(new Set((enrollments || []).map(e => e.user_id)));
-      let excludedUserIds = new Set<string>();
-      if (enrollmentUserIds.length > 0) {
-        try {
-          const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
-          excludedUserIds = new Set(rolesData.map(r => r.user_id));
-        } catch (err) {
-          console.warn("[useCourseStudentsManager] role filter failed, showing all users:", err);
-        }
-      }
-
-      const filteredEnrollments = (enrollments || []).filter(e => !excludedUserIds.has(e.user_id));
-      const enrolledStudentIds = new Set(filteredEnrollments.map(e => e.user_id));
-
-      // Batch-fetch profiles in chunks of 50 UUIDs — no N+1 per user.
-      const profileMap = new Map<string, any>();
-      const targetIds = Array.from(enrolledStudentIds);
-      const BATCH = 50;
-      for (let i = 0; i < targetIds.length; i += BATCH) {
-        const slice = targetIds.slice(i, i + BATCH);
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, user_id, full_name, email, login, generated_password")
-          .in("user_id", slice);
-        if (profilesError) throw profilesError;
-        for (const p of profiles || []) profileMap.set(p.user_id, p);
-      }
-
-      const enrolledList: Student[] = filteredEnrollments.map(enrollment => {
-        const profile = profileMap.get(enrollment.user_id);
-        return {
-          id: profile?.id ?? enrollment.user_id,
-          user_id: enrollment.user_id,
-          enrollment_id: enrollment.id,
-          name: profile?.full_name || "Без имени",
-          email: profile?.email || "",
-          login: profile?.login || null,
-          generated_password: profile?.generated_password || null,
-          course: course.title,
-          course_id: course.id,
-          progress: enrollment.progress,
-          lastActivity: null,
-          status: enrollment.status,
-        } as Student;
+      // 1) Enrolled students — via shared loader (no N+1, honest errors).
+      const enrolled = await loadCourseStudents({
+        courseId: course.id,
+        courseTitle: course.title,
       });
+      setCourseStudents(enrolled as unknown as Student[]);
 
-      setCourseStudents(enrolledList);
-      
+      // 2) Available profiles (not yet enrolled).
       if (organizationId) {
-        const { data: allProfiles } = await supabase
+        const enrolledUserIds = new Set(enrolled.map(e => e.user_id));
+
+        const { data: allProfiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, user_id, full_name, email, login, generated_password")
           .eq("organization_id", organizationId);
 
+        if (profilesError) throw profilesError;
+
         const profileUserIds = Array.from(new Set((allProfiles || []).map(p => p.user_id)));
         let orgAdminUserIds = new Set<string>();
         if (profileUserIds.length > 0) {
-          const rolesData = await fetchUserRolesBatched(profileUserIds, ["organization", "admin"]);
-          orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
+          try {
+            const rolesData = await fetchUserRolesBatched(profileUserIds, ["organization", "admin"]);
+            orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
+          } catch (err) {
+            console.warn("[useCourseStudentsManager] role filter for available failed:", err);
+          }
         }
-        
+
         const available = (allProfiles || [])
-          .filter(p => !enrolledStudentIds.has(p.user_id))
+          .filter(p => !enrolledUserIds.has(p.user_id))
           .filter(p => !orgAdminUserIds.has(p.user_id))
           .map(p => ({
             id: p.id,
@@ -107,51 +85,68 @@ export function useCourseStudentsManager(organizationId: string | null) {
             course_id: null,
             progress: 0,
             lastActivity: null,
-            status: null
+            status: null,
           }));
-        
-        setAvailableStudentsForCourse(available);
+
+        setAvailableStudentsForCourse(available as Student[]);
       }
     } catch (error) {
       console.error("Error loading course students:", error);
-      toast.error("Ошибка загрузки данных");
+      let kind: LoadErrorKind;
+      if (error instanceof CourseProfilesUnavailableError) {
+        kind = "profiles_unavailable";
+        setCourseStudents([]);
+      } else {
+        const c = classifyDataError(error);
+        kind = c === "permission" || c === "unauthorized"
+          ? "permission"
+          : c === "network"
+          ? "network"
+          : "unknown";
+      }
+      const message = errorMessageFor(kind);
+      setLoadError({ kind, message });
+      toast.error(message);
     } finally {
       setIsLoadingCourseStudents(false);
     }
   }, [organizationId]);
 
-  // Add students to course
+  const retryLoadCourseStudents = useCallback(() => {
+    if (selectedCourse) void openCourseStudents(selectedCourse);
+  }, [selectedCourse, openCourseStudents]);
+
   const addStudentsToCourse = useCallback(async () => {
     if (!selectedCourse || selectedStudentsToAdd.size === 0) return;
-    
+
     setIsAddingStudentsToCourse(true);
     try {
       const userIds = Array.from(selectedStudentsToAdd);
 
-      // Check for existing enrollments
-      const { data: existingEnrollments } = await supabase
+      const { data: existingEnrollments, error: existingError } = await supabase
         .from("enrollments")
         .select("user_id")
         .eq("course_id", selectedCourse.id)
         .in("user_id", userIds);
-      
+      if (existingError) throw existingError;
+
       const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
       const newUserIds = userIds.filter(id => !existingUserIds.has(id));
-      
+
       if (newUserIds.length === 0) {
         toast.info("Все выбранные ученики уже зачислены на этот курс");
         setSelectedStudentsToAdd(new Set());
         return;
       }
-      
+
       const enrollmentsToInsert = newUserIds.map(userId => ({
         user_id: userId,
         course_id: selectedCourse.id,
         status: "active",
-        progress: 0
+        progress: 0,
       }));
-      
-      // Retry up to 3 times with exponential backoff for transient network/RLS issues
+
+      // Retry ONLY on transient network errors. 401/403/RLS/42501 must fail fast.
       let lastError: unknown = null;
       let inserted = false;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -160,6 +155,7 @@ export function useCourseStudentsManager(organizationId: string | null) {
         if (!error) { inserted = true; break; }
         lastError = error;
         console.warn(`[enrollments] insert attempt ${attempt + 1} failed:`, error);
+        if (!isTransientNetworkError(error)) break;
       }
       if (!inserted) throw lastError;
 
@@ -168,20 +164,22 @@ export function useCourseStudentsManager(organizationId: string | null) {
       openCourseStudents(selectedCourse);
     } catch (error: any) {
       console.error("Error adding students to course:", error);
-      const msg = error?.message || error?.error_description || "";
-      toast.error("Ошибка зачисления", { description: msg || "Попробуйте ещё раз через минуту" });
-
+      const kind = classifyDataError(error);
+      const description =
+        kind === "permission" || kind === "unauthorized"
+          ? "Недостаточно прав для зачисления"
+          : error?.message || error?.error_description || "Попробуйте ещё раз через минуту";
+      toast.error("Ошибка зачисления", { description });
     } finally {
       setIsAddingStudentsToCourse(false);
     }
   }, [selectedCourse, selectedStudentsToAdd, openCourseStudents]);
 
-  // Remove student from course
   const removeStudentFromCourse = useCallback(async (enrollmentId: string) => {
     try {
       const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
       if (error) throw error;
-      
+
       toast.success("Ученик удалён из курса");
       if (selectedCourse) {
         openCourseStudents(selectedCourse);
@@ -192,20 +190,15 @@ export function useCourseStudentsManager(organizationId: string | null) {
     }
   }, [selectedCourse, openCourseStudents]);
 
-  // Toggle student selection
   const toggleStudentSelection = useCallback((userId: string) => {
     setSelectedStudentsToAdd(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(userId)) {
-        newSet.delete(userId);
-      } else {
-        newSet.add(userId);
-      }
+      if (newSet.has(userId)) newSet.delete(userId);
+      else newSet.add(userId);
       return newSet;
     });
   }, []);
 
-  // Direct setter for course students (used by CourseDetailsModal)
   const setCourseStudentsDirectly = useCallback((students: Student[]) => {
     setCourseStudents(students);
   }, []);
@@ -226,5 +219,7 @@ export function useCourseStudentsManager(organizationId: string | null) {
     removeStudentFromCourse,
     toggleStudentSelection,
     setCourseStudentsDirectly,
+    loadError,
+    retryLoadCourseStudents,
   };
 }
