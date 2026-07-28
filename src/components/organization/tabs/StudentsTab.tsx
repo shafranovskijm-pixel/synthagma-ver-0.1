@@ -48,11 +48,9 @@ type PanelMode = "active" | "archive" | "groups";
 
 export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabProps) {
   const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false } = props;
-  const courseIds = courses.map(c => c.id);
   const dash = useOrgDashboard();
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
-  const { filteredStudents, isLoading, isError, error, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent, refresh } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const [panelMode, setPanelModeState] = useState<PanelMode>(() => {
     if (typeof window === "undefined") return "groups";
@@ -63,6 +61,22 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     if (stored === "active" || stored === "archive" || stored === "groups") return stored;
     return "groups";
   });
+
+  const {
+    students,
+    isLoading, isError, error, errorKind, nextPageErrorKind,
+    frdoStatus,
+    selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds,
+    statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter,
+    studentGroups, refreshGroups, studentGroupMap, groupCounts,
+    docsFilter, setDocsFilter, searchQuery, setSearchQuery,
+    removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
+    archiveStudent, unarchiveStudent, refresh,
+    loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
+    retryNextPage,
+    fetchStudentCredentialsOnDemand,
+  } = useStudents(organizationId, { enabled: panelMode !== "groups" });
+
   const setPanelMode = useCallback((mode: PanelMode) => {
     setPanelModeState(mode);
     if (mode === "active" || mode === "archive") setViewMode(mode);
@@ -88,7 +102,6 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(10);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   React.useEffect(() => {
     if (panelMode === "archive" && archiveByMonth.length > 0) {
