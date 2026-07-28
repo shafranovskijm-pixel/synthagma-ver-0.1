@@ -1,18 +1,34 @@
 import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { Student, Course } from "@/types/shared";
-import { deleteStudent } from "@/api/students";
+import { deleteStudent, fetchStudentsByUserIds } from "@/api/students";
+import { qk } from "@/lib/queryKeys";
 
+/**
+ * Phase 4A: selection is user_id-only.
+ *
+ * `selectedStudentIds` MUST contain profiles.user_id values ONLY — never
+ * enrollment_id, never profile.id. Enrollment identifiers used by
+ * bulkUnenroll are stored separately in `selectedEnrollmentIds`, populated
+ * when the confirmation dialog opens from the currently loaded pages.
+ *
+ * Callers pass user_ids and enrollment_ids explicitly; the hook no longer
+ * scans a full `students`/`allProfiles` snapshot to disambiguate selection.
+ */
 export function useEnrollmentActions(
   organizationId: string | null,
   organizationName: string,
-  onRefresh: () => void
+  onRefresh: () => void,
 ) {
+  const qc = useQueryClient();
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  /** Enrollment IDs staged for unenrollment. Set by the confirmation callback. */
+  const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<string[]>([]);
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
   const [showBulkFRDOExport, setShowBulkFRDOExport] = useState(false);
@@ -20,83 +36,74 @@ export function useEnrollmentActions(
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [enrollCourseId, setEnrollCourseId] = useState<string>("");
 
-  const toggleStudentSelection = useCallback((uniqueId: string) => {
-    const newSet = new Set(selectedStudentIds);
-    if (newSet.has(uniqueId)) {
-      newSet.delete(uniqueId);
-    } else {
-      newSet.add(uniqueId);
-    }
-    setSelectedStudentIds(newSet);
-  }, [selectedStudentIds]);
+  const invalidateStudents = useCallback(() => {
+    if (!organizationId) return;
+    qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentsCounts(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
+  }, [qc, organizationId]);
+
+  const invalidateCourse = useCallback((courseId: string | null | undefined) => {
+    if (!courseId) return;
+    qc.invalidateQueries({ queryKey: ["course-students-page", courseId] });
+    qc.invalidateQueries({ queryKey: ["course-students-stats", courseId] });
+    qc.invalidateQueries({ queryKey: ["available-students-for-course", courseId] });
+  }, [qc]);
+
+  const toggleStudentSelection = useCallback((userId: string) => {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }, []);
 
   const toggleSelectAll = useCallback((filteredList: Student[]) => {
-    const filteredIds = filteredList.map(s => s.enrollment_id || s.user_id);
-    const allSelected = filteredIds.every(id => selectedStudentIds.has(id)) && filteredIds.length > 0;
+    const ids = filteredList.map(s => s.user_id);
+    setSelectedStudentIds(prev => {
+      const allSelected = ids.length > 0 && ids.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) ids.forEach(id => next.delete(id));
+      else ids.forEach(id => next.add(id));
+      return next;
+    });
+  }, []);
 
-    if (allSelected) {
-      const newSet = new Set(selectedStudentIds);
-      filteredIds.forEach(id => newSet.delete(id));
-      setSelectedStudentIds(newSet);
-    } else {
-      const newSet = new Set(selectedStudentIds);
-      filteredIds.forEach(id => newSet.add(id));
-      setSelectedStudentIds(newSet);
-    }
+  /** Selection is user_id-only — return it as an array (deduped by Set). */
+  const getSelectedUserIds = useCallback((): string[] => {
+    return Array.from(selectedStudentIds);
   }, [selectedStudentIds]);
 
-  const getSelectedUserIds = useCallback((students: Student[]): string[] => {
-    const userIds = new Set<string>();
-    for (const student of students) {
-      // Check both user_id and enrollment_id as selection can use either
-      const hasUserId = selectedStudentIds.has(student.user_id);
-      const hasEnrollmentId = student.enrollment_id && selectedStudentIds.has(student.enrollment_id);
-      if (hasUserId || hasEnrollmentId) {
-        userIds.add(student.user_id);
-      }
-    }
-    // Fallback: snapshot `students` может отставать от того, что показывает StudentsTab
-    // (у него собственный инстанс useStudents). StudentsTab всегда кладёт в выбор user_id —
-    // используем их напрямую, отсекая значения, которые в snapshot'е являются enrollment_id.
-    if (userIds.size === 0 && selectedStudentIds.size > 0) {
-      const enrollmentIds = new Set(
-        students.map(s => s.enrollment_id).filter((v): v is string => !!v)
-      );
-      for (const id of selectedStudentIds) {
-        if (!enrollmentIds.has(id)) userIds.add(id);
-      }
-    }
-    return Array.from(userIds);
-  }, [selectedStudentIds]);
-
+  /**
+   * Bulk enroll — takes an explicit list of user_ids so we no longer scan
+   * the legacy full-org d.students / d.allProfiles arrays. Missing profiles
+   * surface as an error instead of an anonymous "Неизвестный" order entry.
+   */
   const bulkEnroll = useCallback(async (
     courseId: string,
-    students: Student[],
-    allProfiles: Student[],
-    courses: Course[]
+    selectedUserIds: string[],
+    courses: Course[],
   ) => {
     if (!courseId) {
       toast.error("Выберите курс");
       return false;
     }
-
-    const userIds = getSelectedUserIds(students);
+    const userIds = Array.from(new Set(selectedUserIds)).filter(Boolean);
     if (userIds.length === 0) {
-      console.warn("[bulkEnroll] no user_ids resolved", {
-        selectedStudentIds: Array.from(selectedStudentIds),
-        studentsCount: students.length,
-      });
       toast.error("Выберите учеников");
       return false;
     }
+    if (!organizationId) return false;
 
     setIsEnrolling(true);
     try {
-      const { data: existingEnrollments } = await supabase
+      const { data: existingEnrollments, error: existErr } = await supabase
         .from("enrollments")
         .select("user_id")
         .eq("course_id", courseId)
         .in("user_id", userIds);
+      if (existErr) throw existErr;
 
       const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
       const newUserIds = userIds.filter(id => !existingUserIds.has(id));
@@ -107,49 +114,60 @@ export function useEnrollmentActions(
         return false;
       }
 
-      const enrollmentsToInsert = newUserIds.map(userId => ({
-        user_id: userId,
-        course_id: courseId,
-        status: "active",
-        progress: 0
-      }));
+      const { error: insertError } = await supabase
+        .from("enrollments")
+        .insert(newUserIds.map(userId => ({
+          user_id: userId,
+          course_id: courseId,
+          status: "active",
+          progress: 0,
+        })));
+      if (insertError) throw insertError;
 
-      const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
-      if (error) throw error;
-
-      // Generate enrollment order
-      if (organizationId) {
-        const enrolledStudentNames = newUserIds.map(userId => {
-          const student = [...students, ...allProfiles].find(s => s.user_id === userId);
-          return student?.name || "Неизвестный";
-        });
-        const course = courses.find(c => c.id === courseId);
-
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("name, director_name, director_position")
-          .eq("id", organizationId)
-          .single();
-
-        const orderName = await generateEnrollmentOrder({
+      // Point-fetch real full names for the enrollment order. If profiles
+      // fail we abort the order (rather than emit a "Неизвестный" one).
+      try {
+        const { students: fetched } = await fetchStudentsByUserIds(
           organizationId,
-          organizationName: orgData?.name || organizationName,
-          directorName: orgData?.director_name,
-          directorPosition: orgData?.director_position,
-          studentNames: enrolledStudentNames,
-          courseName: course?.title || "Курс",
-          orderType: "enrollment",
-        });
+          newUserIds,
+          { includeEnrollments: false },
+        );
+        const nameByUser = new Map(fetched.map(s => [s.user_id, s.name]));
+        const enrolledNames = newUserIds.map(uid => nameByUser.get(uid)).filter(Boolean) as string[];
 
-        if (orderName) {
-          toast.success(`Приказ о зачислении создан: ${orderName}`);
+        if (enrolledNames.length === newUserIds.length) {
+          const course = courses.find(c => c.id === courseId);
+          const { data: orgData } = await supabase
+            .from("organizations")
+            .select("name, director_name, director_position")
+            .eq("id", organizationId)
+            .single();
+
+          const orderName = await generateEnrollmentOrder({
+            organizationId,
+            organizationName: orgData?.name || organizationName,
+            directorName: orgData?.director_name,
+            directorPosition: orgData?.director_position,
+            studentNames: enrolledNames,
+            courseName: course?.title || "Курс",
+            orderType: "enrollment",
+          });
+          if (orderName) toast.success(`Приказ о зачислении создан: ${orderName}`);
+        } else {
+          console.warn("[bulkEnroll] name lookup incomplete — skipping enrollment order");
+          toast.warning("Приказ о зачислении не создан: не удалось получить ФИО части учеников");
         }
+      } catch (nameErr) {
+        console.error("[bulkEnroll] name point-fetch failed:", nameErr);
+        toast.warning("Приказ о зачислении не создан: не удалось получить ФИО");
       }
 
       toast.success(`Зачислено ${newUserIds.length} учеников`);
       setShowEnrollDialog(false);
       setSelectedStudentIds(new Set());
       setEnrollCourseId("");
+      invalidateStudents();
+      invalidateCourse(courseId);
       onRefresh();
       return true;
     } catch (error) {
@@ -159,71 +177,103 @@ export function useEnrollmentActions(
     } finally {
       setIsEnrolling(false);
     }
-  }, [organizationId, organizationName, getSelectedUserIds, onRefresh]);
+  }, [organizationId, organizationName, invalidateStudents, invalidateCourse, onRefresh]);
 
-  const bulkUnenroll = useCallback(async (students: Student[]) => {
-    const enrollmentIds = Array.from(selectedStudentIds).filter(id => {
-      const student = students.find(s => s.enrollment_id === id);
-      return student !== undefined;
-    });
-
-    if (enrollmentIds.length === 0) {
+  /**
+   * Bulk unenroll — takes explicit enrollment IDs. NEVER derives them from a
+   * legacy full-org snapshot: callers pass the exact enrollment_ids from the
+   * currently loaded student pages, so unrelated enrollments cannot be hit.
+   */
+  const bulkUnenroll = useCallback(async (enrollmentIds: string[]) => {
+    const ids = Array.from(new Set(enrollmentIds)).filter(Boolean);
+    if (ids.length === 0) {
       toast.error("Нет выбранных зачислений для отчисления");
       setShowUnenrollConfirm(false);
       return false;
     }
+    if (!organizationId) return false;
 
     setIsUnenrolling(true);
     try {
-      const studentsToUnenroll = enrollmentIds.map(enrollmentId => {
-        const student = students.find(s => s.enrollment_id === enrollmentId);
-        return {
-          name: student?.name || "Неизвестный",
-          courseName: student?.course || "Курс",
-          courseId: student?.course_id
+      // Point-load the enrollment rows before deletion so we can build
+      // the expulsion order with real course/student names and afterwards
+      // invalidate the correct course caches.
+      const { data: enrollmentRows, error: enrErr } = await supabase
+        .from("enrollments")
+        .select("id, user_id, course_id, courses(title)")
+        .in("id", ids);
+      if (enrErr) throw enrErr;
+
+      const rows = (enrollmentRows ?? []) as Array<{
+        id: string;
+        user_id: string;
+        course_id: string;
+        courses: { title: string } | null;
+      }>;
+      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
+
+      let nameByUser = new Map<string, string>();
+      if (userIds.length > 0) {
+        try {
+          const { students: fetched } = await fetchStudentsByUserIds(
+            organizationId,
+            userIds,
+            { includeEnrollments: false },
+          );
+          nameByUser = new Map(fetched.map(s => [s.user_id, s.name]));
+        } catch (nameErr) {
+          console.warn("[bulkUnenroll] name point-fetch failed:", nameErr);
+        }
+      }
+
+      const { error: delError } = await supabase
+        .from("enrollments")
+        .delete()
+        .in("id", ids);
+      if (delError) throw delError;
+
+      // Group by course so we can emit one order per course.
+      const byCourse = new Map<string, { courseName: string; names: string[]; courseId: string }>();
+      for (const r of rows) {
+        const name = nameByUser.get(r.user_id);
+        if (!name) continue;
+        const entry = byCourse.get(r.course_id) ?? {
+          courseName: r.courses?.title || "Курс",
+          names: [],
+          courseId: r.course_id,
         };
-      });
+        entry.names.push(name);
+        byCourse.set(r.course_id, entry);
+      }
 
-      const { error } = await supabase.from("enrollments").delete().in("id", enrollmentIds);
-      if (error) throw error;
-
-      // Generate expulsion orders
-      if (organizationId) {
+      if (byCourse.size > 0) {
         const { data: orgData } = await supabase
           .from("organizations")
           .select("name, director_name, director_position")
           .eq("id", organizationId)
           .single();
-
-        const studentsByCourse = studentsToUnenroll.reduce((acc, student) => {
-          const key = student.courseId || "unknown";
-          if (!acc[key]) {
-            acc[key] = { courseName: student.courseName, names: [] };
-          }
-          acc[key].names.push(student.name);
-          return acc;
-        }, {} as Record<string, { courseName: string; names: string[] }>);
-
-        for (const courseData of Object.values(studentsByCourse)) {
+        for (const entry of byCourse.values()) {
           const orderName = await generateEnrollmentOrder({
             organizationId,
             organizationName: orgData?.name || organizationName,
             directorName: orgData?.director_name,
             directorPosition: orgData?.director_position,
-            studentNames: courseData.names,
-            courseName: courseData.courseName,
+            studentNames: entry.names,
+            courseName: entry.courseName,
             orderType: "expulsion",
           });
-
-          if (orderName) {
-            toast.success(`Приказ об отчислении создан: ${orderName}`);
-          }
+          if (orderName) toast.success(`Приказ об отчислении создан: ${orderName}`);
         }
       }
 
-      toast.success(`Отчислено ${enrollmentIds.length} записей`);
+      toast.success(`Отчислено ${ids.length} зачислений`);
       setShowUnenrollConfirm(false);
       setSelectedStudentIds(new Set());
+      setSelectedEnrollmentIds([]);
+      invalidateStudents();
+      for (const courseId of new Set(rows.map(r => r.course_id))) {
+        invalidateCourse(courseId);
+      }
       onRefresh();
       return true;
     } catch (error) {
@@ -233,16 +283,17 @@ export function useEnrollmentActions(
     } finally {
       setIsUnenrolling(false);
     }
-  }, [organizationId, organizationName, selectedStudentIds, onRefresh]);
+  }, [organizationId, organizationName, invalidateStudents, invalidateCourse, onRefresh]);
 
-  const getSelectedEnrollmentsCount = useCallback((students: Student[]) => {
-    return Array.from(selectedStudentIds).filter(id => {
-      const student = students.find(s => s.enrollment_id === id);
-      return student !== undefined;
-    }).length;
-  }, [selectedStudentIds]);
+  const getSelectedEnrollmentsCount = useCallback(
+    () => selectedEnrollmentIds.length,
+    [selectedEnrollmentIds],
+  );
 
-  const deleteEnrollment = useCallback(async (enrollmentId: string | null, setStudents: React.Dispatch<React.SetStateAction<Student[]>>) => {
+  const deleteEnrollment = useCallback(async (
+    enrollmentId: string | null,
+    setStudents: React.Dispatch<React.SetStateAction<Student[]>>,
+  ) => {
     if (!enrollmentId) {
       toast.error("Нельзя удалить — нет зачисления");
       return;
@@ -251,16 +302,21 @@ export function useEnrollmentActions(
       const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
       if (error) throw error;
       setStudents(prev => prev.filter(s => s.enrollment_id !== enrollmentId));
+      invalidateStudents();
       toast.success("Ученик удалён из курса");
     } catch (error) {
       console.error("Error deleting enrollment:", error);
       toast.error("Ошибка удаления");
     }
-  }, []);
+  }, [invalidateStudents]);
 
-  const bulkDelete = useCallback(async (students: Student[]) => {
-    const userIds = getSelectedUserIds(students);
-    
+  /**
+   * Bulk delete — takes explicit user_ids from the selection. Never converts
+   * enrollment_ids back into user_ids and never falls back to a legacy
+   * full-org snapshot: what the caller passes is what gets archived.
+   */
+  const bulkDelete = useCallback(async (selectedUserIds: string[]) => {
+    const userIds = Array.from(new Set(selectedUserIds)).filter(Boolean);
     if (userIds.length === 0) {
       toast.error("Выберите учеников для удаления");
       setShowBulkDeleteConfirm(false);
@@ -270,26 +326,17 @@ export function useEnrollmentActions(
     setIsBulkDeleting(true);
     let success = 0;
     let failed = 0;
-
     try {
       for (const userId of userIds) {
-        const result = await deleteStudent(userId);
-        if (result) {
-          success++;
-        } else {
-          failed++;
-        }
+        const ok = await deleteStudent(userId);
+        if (ok) success++; else failed++;
       }
-
-      if (success > 0) {
-        toast.success(`Удалено: ${success} учеников`);
-      }
-      if (failed > 0) {
-        toast.error(`Ошибок: ${failed}`);
-      }
+      if (success > 0) toast.success(`Удалено: ${success} учеников`);
+      if (failed > 0) toast.error(`Ошибок: ${failed}`);
 
       setShowBulkDeleteConfirm(false);
       setSelectedStudentIds(new Set());
+      invalidateStudents();
       onRefresh();
       return true;
     } catch (error) {
@@ -299,7 +346,7 @@ export function useEnrollmentActions(
     } finally {
       setIsBulkDeleting(false);
     }
-  }, [getSelectedUserIds, onRefresh]);
+  }, [invalidateStudents, onRefresh]);
 
   return {
     isEnrolling,
@@ -307,6 +354,8 @@ export function useEnrollmentActions(
     isBulkDeleting,
     selectedStudentIds,
     setSelectedStudentIds,
+    selectedEnrollmentIds,
+    setSelectedEnrollmentIds,
     showEnrollDialog,
     setShowEnrollDialog,
     showUnenrollConfirm,
