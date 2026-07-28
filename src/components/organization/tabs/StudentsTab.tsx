@@ -279,12 +279,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3">
               {studentGroups.map(group => {
-                const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
+                // Card count comes from the server RPC — DO NOT count already-loaded
+                // rows, that ignores students on later pages / other filters.
+                const serverCount = groupCounts.get(group.id)?.total_count;
+                const countLabel = groupCountsLoading && serverCount === undefined
+                  ? "…"
+                  : groupCountsErrorKind
+                    ? "—"
+                    : String(serverCount ?? 0);
                 return (
                   <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
                     <button onClick={() => dash.tabNavigation.openGroupFolder(group.id)} className="w-full text-left" title="Открыть папку группы">
                       <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{countLabel}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
                     </button>
                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                       <button onClick={e => { e.stopPropagation(); setPanelMode("active"); setGroupFilter(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Показать учеников группы"><Filter className="w-3.5 h-3.5 text-muted-foreground" /></button>
