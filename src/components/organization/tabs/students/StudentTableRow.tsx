@@ -83,8 +83,8 @@ export const StudentTableRow = React.memo(function StudentTableRow({
                 <span className="inline-flex items-center gap-2">
                   <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
                   {student.generated_password && <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs font-mono">{student.generated_password}</span>}
-                  {student.login && student.generated_password && (
-                    <button onClick={e => { e.stopPropagation(); onCopyCredentials(student.login!, student.generated_password!); }} className="p-1 hover:bg-muted rounded transition-colors" title="Копировать логин и пароль">
+                  {student.login && (student.generated_password || onRequestCredentials) && (
+                    <button onClick={e => { e.stopPropagation(); void handleCopy(); }} disabled={loadingPw} className="p-1 hover:bg-muted rounded transition-colors disabled:opacity-50" title="Копировать логин и пароль">
                       <Copy className="w-3 h-3 text-muted-foreground" />
                     </button>
                   )}
