@@ -201,7 +201,7 @@ export function useOrganization(): UseOrganizationReturn {
   }, []);
 
   const exitAdminView = useCallback(() => {
-    localStorage.removeItem("adminViewAsOrg");
+    clearAdminViewOrg();
     setIsAdminView(false);
     setAdminViewOrgId(null);
     window.location.reload();
