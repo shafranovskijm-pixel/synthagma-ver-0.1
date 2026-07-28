@@ -23,6 +23,23 @@ export const qk = {
     studentsList: (orgId: string, courseIdsKey: string) => ["org", orgId, "students-list", courseIdsKey] as const,
     /** Префикс для инвалидации всех students-list внутри организации. */
     studentsListAll: (orgId: string) => ["org", orgId, "students-list"] as const,
+    /** Phase 3: server-side paginated students page + counters + on-demand credentials. */
+    studentsPage: (
+      orgId: string,
+      filters: {
+        search: string;
+        course: string;
+        group: string;
+        status: string;
+        docs: string;
+        archive: "active" | "archive";
+      },
+    ) => ["org", orgId, "students-page", filters] as const,
+    studentsPageAll: (orgId: string) => ["org", orgId, "students-page"] as const,
+    studentsCounts: (orgId: string) => ["org", orgId, "students-counts"] as const,
+    studentGroupCounts: (orgId: string) => ["org", orgId, "student-group-counts"] as const,
+    studentCredentials: (orgId: string, userId: string) =>
+      ["org", orgId, "student-credentials", userId] as const,
   },
   admin: {
     organizations: () => ["admin", "organizations"] as const,
