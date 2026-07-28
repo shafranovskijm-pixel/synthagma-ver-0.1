@@ -138,7 +138,10 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       if (error) throw error;
       toast.success("Группа удалена");
       if (groupFilter === groupId) setGroupFilter("all");
+      // Deleting a group nulls student_group_id on referenced profiles — refresh
+      // both the groups directory / counts and the students page rows.
       refreshGroups();
+      refresh();
     } catch { toast.error("Ошибка удаления группы"); }
   };
 
@@ -146,7 +149,10 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     try {
       const { error } = await supabase.from("profiles").update({ student_group_id: groupId } as any).eq("user_id", userId);
       if (error) throw error;
+      // Refresh both: group counts (source of truth on the card) AND the
+      // students page so the Select value / row group binding is up to date.
       refreshGroups();
+      refresh();
     } catch { toast.error("Ошибка назначения группы"); }
   };
 
