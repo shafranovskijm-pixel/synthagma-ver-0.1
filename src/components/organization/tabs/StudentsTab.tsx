@@ -216,7 +216,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <Users className="w-4 h-4" />
             Ученики
             <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {activeStudentsCount}
+              {countsLoading && activeStudentsCount === null ? "…" : countsErrorKind ? "—" : activeStudentsCount}
             </span>
           </button>
           <button
