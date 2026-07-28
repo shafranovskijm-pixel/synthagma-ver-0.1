@@ -106,7 +106,6 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       if (!userId) return;
       
       try {
-      try {
         // Check for admin view mode — BUT verify server-side that this user is
         // actually a platform admin. Otherwise a stale localStorage flag would
         // send a regular org owner into another org's data.
@@ -494,20 +493,23 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       } catch (error) {
         if (cancelled) return;
         console.error("Error fetching data:", error);
-        const network = isNetworkErr(error);
-        toast.error(
-          network
+        const kind = classifyDataError(error);
+        const message =
+          kind === "network"
             ? "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус."
-            : "Ошибка загрузки данных",
-          {
-            id: "org-data-error",
-            duration: 15000,
-            action: {
-              label: "Повторить",
-              onClick: () => setRefreshKey(prev => prev + 1),
-            },
+            : kind === "permission"
+            ? "Недостаточно прав. Обратитесь к владельцу организации."
+            : kind === "unauthorized"
+            ? "Сессия истекла. Войдите заново."
+            : "Ошибка загрузки данных";
+        toast.error(message, {
+          id: "org-data-error",
+          duration: 15000,
+          action: {
+            label: "Повторить",
+            onClick: () => setRefreshKey(prev => prev + 1),
           },
-        );
+        });
       } finally {
         if (!cancelled) {
           setIsLoadingCourses(false);
