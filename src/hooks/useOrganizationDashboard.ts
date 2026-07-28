@@ -291,10 +291,14 @@ export function useOrganizationDashboard() {
       }
       await studentActions.bulkCreateCredentials(studentsToCreate, sendEmails);
       qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
-      // Phase 4A.1: freshly generated passwords must invalidate per-user
-      // credential caches so on-demand lookups don't return stale values.
+      // Phase 4A.2: useStudents reads passwords via qc.getQueryData(...),
+      // which ignores staleness — invalidate is not enough. Fully drop the
+      // per-user credential cache so the next lookup must hit the RPC.
       for (const s of studentsToCreate) {
-        qc.invalidateQueries({ queryKey: qk.org.studentCredentials(organizationId, s.user_id) });
+        qc.removeQueries({
+          queryKey: qk.org.studentCredentials(organizationId, s.user_id),
+          exact: true,
+        });
       }
     } catch (err: any) {
       console.error("[handleBulkCreateCredentials] point-fetch failed:", err);

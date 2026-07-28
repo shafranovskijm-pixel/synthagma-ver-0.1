@@ -103,7 +103,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   React.useEffect(() => {
     if (panelMode === "archive" && archiveByMonth.length > 0) {
@@ -413,7 +413,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                         <XCircle className="w-4 h-4 mr-2" />Отчислить с курса ({enrollmentsCount})
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem onClick={() => props.onShowBulkDeleteConfirm?.(getSelectedUserIds())} className="text-destructive focus:text-destructive">
                       <Trash2 className="w-4 h-4 mr-2" />Перенести в архив
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -579,7 +579,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
 
       {settingsGroupId && <GroupSettingsDialog open={!!settingsGroupId} onOpenChange={v => { if (!v) setSettingsGroupId(null); }} groupId={settingsGroupId} organizationId={organizationId} onDeleted={() => { setSettingsGroupId(null); if (groupFilter === settingsGroupId) setGroupFilter("all"); refreshGroups(); }} onUpdated={() => refreshGroups()} />}
 
-      <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} showDeleteConfirm={showDeleteConfirm} setShowDeleteConfirm={setShowDeleteConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} onShowBulkDeleteConfirm={props.onShowBulkDeleteConfirm} />
+      <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} />
     </div>
   );
 });

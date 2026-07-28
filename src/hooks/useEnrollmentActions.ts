@@ -8,6 +8,18 @@ import { deleteStudent, fetchStudentsByUserIds } from "@/api/students";
 import { qk } from "@/lib/queryKeys";
 
 /**
+ * Phase 4A.2 — hard cap on bulk mutations that hit `.in(...)` directly.
+ * Enrollment and unenrollment go through single-statement INSERT/DELETE
+ * with `.in()` filters, so we cap the selection to keep the request small
+ * and avoid partial-success scenarios that chunked mutations would create.
+ * Point-fetch helpers (profiles, passwords, FRDO) already batch internally
+ * and are NOT bound by this limit.
+ */
+const MAX_BULK_MUTATION_SIZE = 100;
+
+
+
+/**
  * Phase 4A: selection is user_id-only.
  *
  * `selectedStudentIds` MUST contain profiles.user_id values ONLY — never
@@ -92,6 +104,10 @@ export function useEnrollmentActions(
     const userIds = Array.from(new Set(selectedUserIds)).filter(Boolean);
     if (userIds.length === 0) {
       toast.error("Выберите учеников");
+      return false;
+    }
+    if (userIds.length > MAX_BULK_MUTATION_SIZE) {
+      toast.error("За одну операцию можно обработать не более 100 учеников. Разделите выбор на несколько операций");
       return false;
     }
     if (!organizationId) return false;
@@ -209,6 +225,10 @@ export function useEnrollmentActions(
     if (ids.length === 0) {
       toast.error("Нет выбранных зачислений для отчисления");
       setShowUnenrollConfirm(false);
+      return false;
+    }
+    if (ids.length > MAX_BULK_MUTATION_SIZE) {
+      toast.error("За одну операцию можно обработать не более 100 учеников. Разделите выбор на несколько операций");
       return false;
     }
     if (!organizationId) return false;
