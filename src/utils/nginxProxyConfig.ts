@@ -34,6 +34,8 @@ map $http_origin $cors_origin {
     default "";
     # синтагма.рф (punycode) — основной домен
     "~^https?://(www\\.)?xn--80aaiswd0ak\\.xn--p1ai$"     $http_origin;
+    # sintagma.com.ru — латиничный домен (proxyFetch.ts тоже допускает)
+    "~^https?://(www\\.)?sintagma\\.com\\.ru$"             $http_origin;
     # preview / staging
     "~^https?://[a-z0-9-]+\\.twc1\\.net$"                  $http_origin;
     "~^https?://[a-z0-9-]+\\.lovable\\.app$"               $http_origin;
