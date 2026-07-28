@@ -24,26 +24,50 @@ interface StudentTableRowProps {
   studentDocsByUser: Map<string, string[]>;
   frdoStatus: Map<string, StudentFRDOStatus>;
   studentGroups: Array<{ id: string; name: string; color: string }>;
-  studentGroupMap: Map<string, string>;
+  studentGroupMap: Map<string, string | null>;
   onAssignGroup: (userId: string, groupId: string | null) => void;
   isArchiveView?: boolean;
   onArchive?: (userId: string) => void;
   onUnarchive?: (userId: string) => void;
+  /** Phase 3: on-demand password fetch. Called only when the user clicks copy. */
+  onRequestCredentials?: (userId: string) => Promise<string | null>;
 }
 
 export const StudentTableRow = React.memo(function StudentTableRow({
   student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials,
   onRemoveStudent, studentDocsByUser, frdoStatus, studentGroups, studentGroupMap, onAssignGroup,
-  isArchiveView = false, onArchive, onUnarchive,
+  isArchiveView = false, onArchive, onUnarchive, onRequestCredentials,
 }: StudentTableRowProps) {
+  const [loadingPw, setLoadingPw] = React.useState(false);
   const enrollmentsCount = student.enrollments?.length || 0;
   const userDocs = studentDocsByUser.get(student.user_id) || [];
-  const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-  const hasSnils = userDocs.includes("snils");
-  const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-  const gId = studentGroupMap.get(student.user_id);
+  // Prefer server flags; fall back to the legacy client map for callers that
+  // still populate studentDocsByUser (course-scoped views).
+  const hasPassport = student.has_passport ?? userDocs.some(t => t === "passport" || t === "birth_certificate");
+  const hasSnils = student.has_snils ?? userDocs.includes("snils");
+  const hasEducation = student.has_education ?? userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+  const gId = student.student_group_id ?? studentGroupMap.get(student.user_id) ?? null;
   const isOnline = student.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
-  const status = frdoStatus.get(student.user_id);
+  const serverFrdo = student.frdo_has_data !== undefined
+    ? { hasData: !!student.frdo_has_data, isComplete: !!student.frdo_complete, missingFields: [] as string[] }
+    : null;
+  const status = serverFrdo ?? frdoStatus.get(student.user_id);
+
+  const handleCopy = React.useCallback(async () => {
+    if (!student.login) return;
+    if (student.generated_password) {
+      onCopyCredentials(student.login, student.generated_password);
+      return;
+    }
+    if (!onRequestCredentials) return;
+    setLoadingPw(true);
+    try {
+      const pw = await onRequestCredentials(student.user_id);
+      if (pw) onCopyCredentials(student.login, pw);
+    } finally {
+      setLoadingPw(false);
+    }
+  }, [student.login, student.generated_password, student.user_id, onCopyCredentials, onRequestCredentials]);
 
   return (
     <tr className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => onViewStudent()}>
@@ -59,8 +83,8 @@ export const StudentTableRow = React.memo(function StudentTableRow({
                 <span className="inline-flex items-center gap-2">
                   <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
                   {student.generated_password && <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs font-mono">{student.generated_password}</span>}
-                  {student.login && student.generated_password && (
-                    <button onClick={e => { e.stopPropagation(); onCopyCredentials(student.login!, student.generated_password!); }} className="p-1 hover:bg-muted rounded transition-colors" title="Копировать логин и пароль">
+                  {student.login && (student.generated_password || onRequestCredentials) && (
+                    <button onClick={e => { e.stopPropagation(); void handleCopy(); }} disabled={loadingPw} className="p-1 hover:bg-muted rounded transition-colors disabled:opacity-50" title="Копировать логин и пароль">
                       <Copy className="w-3 h-3 text-muted-foreground" />
                     </button>
                   )}
@@ -133,8 +157,8 @@ export const StudentTableRow = React.memo(function StudentTableRow({
       </td>
       <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
         <div className="flex gap-2">
-          {student.login && student.generated_password && (
-            <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => onCopyCredentials(student.login!, student.generated_password!)} title="Копировать логин и пароль"><Copy className="w-4 h-4" /></Button>
+          {student.login && (student.generated_password || onRequestCredentials) && (
+            <Button variant="outline" size="sm" className="rounded-lg gap-1" disabled={loadingPw} onClick={() => void handleCopy()} title="Копировать логин и пароль"><Copy className="w-4 h-4" /></Button>
           )}
           {isArchiveView ? (
             onUnarchive && <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => onUnarchive(student.user_id)} title="Вернуть из архива"><ArchiveRestore className="w-4 h-4" /></Button>

@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,11 +48,9 @@ type PanelMode = "active" | "archive" | "groups";
 
 export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabProps) {
   const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false } = props;
-  const courseIds = courses.map(c => c.id);
   const dash = useOrgDashboard();
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
-  const { filteredStudents, isLoading, isError, error, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent, refresh } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const [panelMode, setPanelModeState] = useState<PanelMode>(() => {
     if (typeof window === "undefined") return "groups";
@@ -64,6 +61,22 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     if (stored === "active" || stored === "archive" || stored === "groups") return stored;
     return "groups";
   });
+
+  const {
+    students,
+    isLoading, isError, error, errorKind, nextPageErrorKind,
+    frdoStatus,
+    selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds,
+    statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter,
+    studentGroups, refreshGroups, studentGroupMap, groupCounts,
+    docsFilter, setDocsFilter, searchQuery, setSearchQuery,
+    removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
+    archiveStudent, unarchiveStudent, refresh,
+    loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
+    retryNextPage,
+    fetchStudentCredentialsOnDemand,
+  } = useStudents(organizationId, { enabled: panelMode !== "groups" });
+
   const setPanelMode = useCallback((mode: PanelMode) => {
     setPanelModeState(mode);
     if (mode === "active" || mode === "archive") setViewMode(mode);
@@ -89,7 +102,6 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(10);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   React.useEffect(() => {
     if (panelMode === "archive" && archiveByMonth.length > 0) {
@@ -139,36 +151,35 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const getSelectedEnrollmentsCount = useCallback(() => {
     let count = 0;
     for (const id of selectedStudentIds) {
-      const student = filteredStudents.find(s => s.user_id === id);
+      const student = students.find(s => s.user_id === id);
       if (student?.enrollments?.length) count += student.enrollments.length;
     }
     return count;
-  }, [selectedStudentIds, filteredStudents]);
+  }, [selectedStudentIds, students]);
 
   const handleExportStudents = useCallback(async () => {
     const XLSX = await import('xlsx');
-    const data = filteredStudents.map(s => ({ 'ФИО': s.name, 'Email': s.email || '', 'Логин': s.login || '', 'Пароль': s.generated_password || '', 'Курсы': s.course || 'Не зачислен', 'Прогресс (%)': s.progress, 'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—' }));
+    const data = students.map(s => ({ 'ФИО': s.name, 'Email': s.email || '', 'Логин': s.login || '', 'Пароль': s.generated_password || '', 'Курсы': s.course || 'Не зачислен', 'Прогресс (%)': s.progress, 'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—' }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Ученики');
     XLSX.writeFile(wb, `ученики_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('Список учеников экспортирован');
-  }, [filteredStudents]);
+  }, [students]);
 
   const handleGeneratePrikaz = useCallback(() => {
-    const students = filteredStudents.filter(s => selectedStudentIds.has(s.user_id));
-    if (!students.length) { toast.error("Выберите учеников"); return; }
-    generateDocument({ templateType: "prikaz", persons: students.map(s => ({ fullName: s.name })) });
-  }, [filteredStudents, selectedStudentIds, generateDocument]);
+    const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id));
+    if (!selectedStudents.length) { toast.error("Выберите учеников"); return; }
+    generateDocument({ templateType: "prikaz", persons: selectedStudents.map(s => ({ fullName: s.name })) });
+  }, [students, selectedStudentIds, generateDocument]);
 
   const handleGenerateProtokol = useCallback(() => {
-    const students = filteredStudents.filter(s => selectedStudentIds.has(s.user_id));
-    if (!students.length) { toast.error("Выберите учеников"); return; }
-    generateDocument({ templateType: "protokol", persons: students.map(s => ({ fullName: s.name, isPassed: s.status === 'completed' })) });
-  }, [filteredStudents, selectedStudentIds, generateDocument]);
+    const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id));
+    if (!selectedStudents.length) { toast.error("Выберите учеников"); return; }
+    generateDocument({ templateType: "protokol", persons: selectedStudents.map(s => ({ fullName: s.name, isPassed: s.status === 'completed' })) });
+  }, [students, selectedStudentIds, generateDocument]);
 
-  const paginatedStudents = filteredStudents.slice(0, visibleCount);
-  React.useEffect(() => { setVisibleCount(10); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter]);
+  const paginatedStudents = students;
 
   const bulkBusy = isCreatingBulkCredentials || isSendingBulkCredentials;
   const enrollmentsCount = getSelectedEnrollmentsCount();
@@ -208,7 +219,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <Archive className="w-4 h-4" />
             Архив
             <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "archive" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {archivedStudents.length}
+              {archivedCount}
             </span>
           </button>
         </div>
@@ -387,7 +398,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               </p>
               <Button variant="outline" size="sm" className="rounded-xl" onClick={refresh}>Повторить</Button>
             </div>
-          ) : filteredStudents.length === 0 ? (
+          ) : students.length === 0 ? (
             panelMode === "archive" ? (
               <div className="py-16 text-center text-muted-foreground">
                 <Archive className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -476,7 +487,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                   </tbody>
                 </table>
               </div>
-              <LoadMoreControls visibleCount={paginatedStudents.length} totalCount={filteredStudents.length} onLoadMore={n => setVisibleCount(prev => prev + n)} />
+              {(hasNextPage || totalFiltered > loadedCount) && (
+                <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-t border-border">
+                  <span className="text-sm text-muted-foreground">Показано {loadedCount} из {totalFiltered}</span>
+                  <div className="flex items-center gap-2">
+                    {nextPageErrorKind && (
+                      <Button variant="outline" size="sm" onClick={retryNextPage}>Повторить</Button>
+                    )}
+                    <Button variant="outline" size="sm" disabled={isFetchingNextPage || !hasNextPage} onClick={loadMore}>
+                      {isFetchingNextPage ? "Загрузка..." : "Показать ещё 10"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </>

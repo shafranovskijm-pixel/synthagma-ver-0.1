@@ -17,6 +17,13 @@ export interface Student {
   company_name?: string | null;
   enrollments?: StudentEnrollment[]; // All enrollments for this student
   archived_at?: string | null; // Manual archive timestamp (profiles.archived_at)
+  // Phase 3 server-side flags (present when loaded via get_organization_students_page)
+  student_group_id?: string | null;
+  has_passport?: boolean;
+  has_snils?: boolean;
+  has_education?: boolean;
+  frdo_has_data?: boolean;
+  frdo_complete?: boolean;
 }
 
 export interface StudentDocument {

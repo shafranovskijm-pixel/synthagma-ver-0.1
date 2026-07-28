@@ -14,10 +14,13 @@ interface StudentMobileCardProps {
 export const StudentMobileCard = React.memo(function StudentMobileCard({
   student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, studentDocsByUser,
 }: StudentMobileCardProps) {
+  // Prefer server-provided flags; fall back to the legacy client-side map so
+  // callers that still populate studentDocsByUser (e.g. course-scoped views)
+  // keep working.
   const userDocs = studentDocsByUser.get(student.user_id) || [];
-  const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-  const hasSnils = userDocs.includes("snils");
-  const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+  const hasPassport = student.has_passport ?? userDocs.some(t => t === "passport" || t === "birth_certificate");
+  const hasSnils = student.has_snils ?? userDocs.includes("snils");
+  const hasEducation = student.has_education ?? userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
   const enrollmentsCount = student.enrollments?.length || 0;
 
   return (

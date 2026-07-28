@@ -11011,6 +11011,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_decrypted_student_passwords_for_users: {
+        Args: { p_organization_id: string; p_user_ids: string[] }
+        Returns: {
+          decrypted_password: string
+          user_id: string
+        }[]
+      }
       get_documents_kpi: { Args: { p_organization_id: string }; Returns: Json }
       get_exolve_sip_credentials: {
         Args: { _user_id: string }
@@ -11044,6 +11051,23 @@ export type Database = {
         Returns: string[]
       }
       get_organization_core: { Args: { p_org_id: string }; Returns: Json }
+      get_organization_student_group_counts: {
+        Args: { p_organization_id: string }
+        Returns: {
+          active_count: number
+          archived_count: number
+          group_id: string
+          total_count: number
+        }[]
+      }
+      get_organization_students_counts: {
+        Args: { p_organization_id: string }
+        Returns: {
+          active_count: number
+          archived_count: number
+          total_count: number
+        }[]
+      }
       get_organization_students_page: {
         Args: {
           p_archive_mode?: string
