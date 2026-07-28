@@ -464,7 +464,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <>
               <div className="lg:hidden divide-y divide-border">
                 {paginatedStudents.map(student => (
-                  <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
+                  <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} studentDocsByUser={studentDocsByUser} />
                 ))}
               </div>
               <div className="hidden lg:block overflow-x-auto">
@@ -483,26 +483,27 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                   </tr></thead>
                   <tbody>
                     {paginatedStudents.map(student => (
-                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
+                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
                     ))}
                   </tbody>
                 </table>
               </div>
-              {(hasNextPage || totalFiltered > loadedCount) && (
-                <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-t border-border">
-                  <span className="text-sm text-muted-foreground">Показано {loadedCount} из {totalFiltered}</span>
-                  <div className="flex items-center gap-2">
-                    {nextPageErrorKind && (
-                      <Button variant="outline" size="sm" onClick={retryNextPage}>Повторить</Button>
-                    )}
-                    <Button variant="outline" size="sm" disabled={isFetchingNextPage || !hasNextPage} onClick={loadMore}>
-                      {isFetchingNextPage ? "Загрузка..." : "Показать ещё 10"}
-                    </Button>
-                  </div>
-                </div>
-              )}
             </>
           )}
+          {(panelMode === "active" || panelMode === "archive") && students.length > 0 && (hasNextPage || totalFiltered > loadedCount) && (
+            <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-t border-border">
+              <span className="text-sm text-muted-foreground">Показано {loadedCount} из {totalFiltered}</span>
+              <div className="flex items-center gap-2">
+                {nextPageErrorKind && (
+                  <Button variant="outline" size="sm" onClick={retryNextPage}>Повторить</Button>
+                )}
+                <Button variant="outline" size="sm" disabled={isFetchingNextPage || !hasNextPage} onClick={loadMore}>
+                  {isFetchingNextPage ? "Загрузка..." : "Показать ещё 10"}
+                </Button>
+              </div>
+            </div>
+          )}
+
         </>
       )}
 
