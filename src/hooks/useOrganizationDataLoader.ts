@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from "@/types/shared";
 import { fetchAllRows } from "@/utils/retryFetch";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
+import { isTransientNetworkError, classifyDataError } from "@/utils/isTransientNetworkError";
 
 const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
@@ -20,17 +21,17 @@ interface UseOrganizationDataLoaderProps {
 
 const RETRY_TOAST_ID = "org-data-retry";
 
-function isNetworkErr(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err ?? "");
-  return /Failed to fetch|NetworkError|Load failed|network|timeout|ECONN|fetch failed/i.test(msg);
-}
-
-/** Helper: run a Supabase query with up to 3 retries, increased delays */
+/**
+ * Run a Supabase query with retries — but ONLY for transient network/gateway
+ * errors. RLS, 401/403, PGRST116 and other permanent errors are surfaced
+ * immediately so the UI can show the right message instead of "Slow
+ * connection — retrying".
+ */
 async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unknown }>, label = "query"): Promise<T | null> {
+  let lastError: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
-      const delay = attempt * 3000; // 3s, 6s
-      // Notify user we are retrying instead of failing silently
+      const delay = attempt * 2000; // 2s, 4s
       toast.loading(`Медленное соединение — повторяем загрузку (${attempt + 1}/3)...`, {
         id: RETRY_TOAST_ID,
         duration: delay + 1500,
@@ -42,13 +43,19 @@ async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unkn
       if (attempt > 0) toast.dismiss(RETRY_TOAST_ID);
       return data;
     }
+    lastError = error;
     console.warn(`[retryQuery:${label}] attempt ${attempt + 1} failed:`, error);
+    if (!isTransientNetworkError(error)) {
+      // Permanent — do not spam retries or the "slow connection" toast.
+      toast.dismiss(RETRY_TOAST_ID);
+      throw error;
+    }
     if (attempt === 2) {
       toast.dismiss(RETRY_TOAST_ID);
       throw error;
     }
   }
-  return null;
+  throw lastError ?? new Error(`retryQuery:${label} exhausted`);
 }
 
 export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrganizationDataLoaderProps) {
@@ -99,11 +106,26 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       if (!userId) return;
       
       try {
-        // Check for admin view mode
+        // Check for admin view mode — BUT verify server-side that this user is
+        // actually a platform admin. Otherwise a stale localStorage flag would
+        // send a regular org owner into another org's data.
         const adminViewData = localStorage.getItem("adminViewAsOrg");
         let orgId: string | null = null;
-        
+        let isVerifiedAdmin = false;
+
         if (adminViewData) {
+          try {
+            const { data: isAdmin } = await supabase.rpc("has_role", {
+              _user_id: userId,
+              _role: "admin",
+            });
+            isVerifiedAdmin = !!isAdmin;
+          } catch {
+            isVerifiedAdmin = false;
+          }
+        }
+
+        if (adminViewData && isVerifiedAdmin) {
           const adminView = JSON.parse(adminViewData);
           orgId = adminView.id;
           if (!cancelled) {
@@ -112,31 +134,60 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             setIsAdminView(true);
           }
         } else {
+          if (adminViewData && !isVerifiedAdmin) {
+            // Stale flag from a previous admin session — clear it so we don't
+            // silently send a non-admin into another org.
+            try { localStorage.removeItem("adminViewAsOrg"); } catch { /* ignore */ }
+          }
+
           const { data: profile } = await supabase
             .from("profiles")
             .select("organization_id")
             .eq("user_id", userId)
-            .single();
-            
-          if (!profile?.organization_id) {
+            .maybeSingle();
+
+          orgId = profile?.organization_id ?? null;
+
+          // Fallback: profile has no organization_id but user is a staff
+          // member — try org_staff for a single non-expired membership.
+          if (!orgId) {
+            const { data: staffRows } = await supabase
+              .from("org_staff")
+              .select("organization_id, role, expires_at")
+              .eq("user_id", userId)
+              .or("expires_at.is.null,expires_at.gt." + new Date().toISOString());
+
+            const active = (staffRows ?? []).filter(
+              (r: any) => !r.expires_at || new Date(r.expires_at) > new Date()
+            );
+            if (active.length === 1) {
+              orgId = active[0].organization_id;
+            } else if (active.length > 1) {
+              // Ambiguous membership — do NOT silently pick one; leave orgId null
+              // so the UI shows an empty/config state instead of the wrong org.
+              console.warn(
+                "[useOrganizationDataLoader] user has multiple active org_staff memberships; org selector required",
+              );
+            }
+          }
+
+          if (!orgId) {
             if (!cancelled) setIsLoadingCourses(false);
             return;
           }
-          
-          orgId = profile.organization_id;
-          
+
           const { data: orgData } = await supabase
             .from("organizations")
             .select("name, frdo_enabled")
             .eq("id", orgId)
-            .single();
-            
+            .maybeSingle();
+
           if (orgData && !cancelled) {
             setOrganizationName(orgData.name);
             setIsFrdoEnabled(orgData.frdo_enabled || false);
           }
         }
-        
+
         if (cancelled) return;
         setOrganizationId(orgId);
 
@@ -442,20 +493,23 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
       } catch (error) {
         if (cancelled) return;
         console.error("Error fetching data:", error);
-        const network = isNetworkErr(error);
-        toast.error(
-          network
+        const kind = classifyDataError(error);
+        const message =
+          kind === "network"
             ? "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус."
-            : "Ошибка загрузки данных",
-          {
-            id: "org-data-error",
-            duration: 15000,
-            action: {
-              label: "Повторить",
-              onClick: () => setRefreshKey(prev => prev + 1),
-            },
+            : kind === "permission"
+            ? "Недостаточно прав. Обратитесь к владельцу организации."
+            : kind === "unauthorized"
+            ? "Сессия истекла. Войдите заново."
+            : "Ошибка загрузки данных";
+        toast.error(message, {
+          id: "org-data-error",
+          duration: 15000,
+          action: {
+            label: "Повторить",
+            onClick: () => setRefreshKey(prev => prev + 1),
           },
-        );
+        });
       } finally {
         if (!cancelled) {
           setIsLoadingCourses(false);

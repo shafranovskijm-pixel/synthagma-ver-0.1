@@ -49,10 +49,22 @@ export async function fetchStudents(
     coursesPromise,
   ]);
 
+  // Profiles / enrollments / courses must succeed — otherwise the UI would
+  // silently render an empty student list and the org would think everyone
+  // disappeared. Passwords are optional (decryption RPC can legitimately be
+  // unavailable), so we swallow that error only.
+  if ((coursesRes as any).error) {
+    throw (coursesRes as any).error;
+  }
+
   const passwordMap = new Map<string, string>();
-  (passwordsRes.data || []).forEach((row: any) => {
-    if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
-  });
+  if (!(passwordsRes as any).error) {
+    (passwordsRes.data || []).forEach((row: any) => {
+      if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
+    });
+  } else {
+    console.warn("[fetchStudents] passwords RPC failed:", (passwordsRes as any).error);
+  }
 
   // Fetch user roles only for users that actually have enrollments OR appear once -
   // but we still need to filter out org/admin from the full profile list.
@@ -60,8 +72,14 @@ export async function fetchStudents(
   let orgAdminUserIds = new Set<string>();
 
   if (userIds.length > 0) {
-    const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
-    orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
+    try {
+      const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
+      orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
+    } catch (err) {
+      // Role filter is not critical for correctness of the list —
+      // worst case org/admin accounts appear as "students". Log and continue.
+      console.warn("[fetchStudents] role filter failed:", err);
+    }
   }
 
   const coursesData = coursesRes.data;
@@ -75,6 +93,9 @@ export async function fetchStudents(
     userEnrollmentsMap[enrollment.user_id].push(enrollment);
   }
 
+  // Build a Map once so per-student loop is O(1) instead of O(courses).
+  const courseTitleMap = new Map<string, string>((coursesData ?? []).map((c: any) => [c.id, c.title]));
+
   const studentsList: Student[] = [];
 
   for (const profile of allProfilesData || []) {
@@ -84,21 +105,18 @@ export async function fetchStudents(
     }
 
     const userEnrollments = userEnrollmentsMap[profile.user_id] || [];
-    
+
     // Build enrollments array for this student
-    const enrollments = userEnrollments.map(enrollment => {
-      const course = coursesData?.find(c => c.id === enrollment.course_id);
-      return {
-        id: enrollment.id,
-        course_id: enrollment.course_id,
-        course_title: course?.title || "—",
-        progress: enrollment.progress || 0,
-        status: enrollment.status,
-        started_at: enrollment.started_at,
-        completed_at: enrollment.completed_at,
-        time_spent: enrollment.time_spent
-      };
-    });
+    const enrollments = userEnrollments.map(enrollment => ({
+      id: enrollment.id,
+      course_id: enrollment.course_id,
+      course_title: courseTitleMap.get(enrollment.course_id) || "—",
+      progress: enrollment.progress || 0,
+      status: enrollment.status,
+      started_at: enrollment.started_at,
+      completed_at: enrollment.completed_at,
+      time_spent: enrollment.time_spent
+    }));
 
     // Calculate aggregate progress and status
     const totalProgress = enrollments.length > 0 

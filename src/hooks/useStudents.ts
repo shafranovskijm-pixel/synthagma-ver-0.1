@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { isTransientNetworkError } from "@/utils/isTransientNetworkError";
 
 interface StudentGroup {
   id: string;
@@ -32,6 +33,8 @@ interface UseStudentsReturn {
   students: Student[];
   allProfiles: Student[];
   isLoading: boolean;
+  isError: boolean;
+  error: unknown;
   frdoStatus: Map<string, StudentFRDOStatus>;
   selectedStudentIds: Set<string>;
   setSelectedStudentIds: (ids: Set<string>) => void;
@@ -105,7 +108,7 @@ export function useStudents(
   const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
 
   // Students + per-row group map (single source of truth — fetchStudents already returns groupMap)
-  const { data: studentsData, isLoading: studentsLoading } = useQuery({
+  const { data: studentsData, isLoading: studentsLoading, isError: studentsIsError, error: studentsError } = useQuery({
     queryKey: qk.org.studentsList(organizationId ?? "none", courseIdsKey),
     queryFn: async () => {
       if (!organizationId) {
@@ -116,6 +119,10 @@ export function useStudents(
     enabled: !!organizationId,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
+    retry: (failureCount, err) => {
+      // Only retry transient network/gateway errors, and only twice.
+      return failureCount < 2 && isTransientNetworkError(err);
+    },
   });
 
   const { data: groupsData } = useQuery({
@@ -139,6 +146,7 @@ export function useStudents(
   const studentGroupMap = studentsData?.groupMap ?? new Map<string, string | null>();
   const studentGroups = groupsData ?? [];
   const isLoading = !!organizationId && studentsLoading;
+  const isError = !!organizationId && studentsIsError;
 
   // FRDO status — secondary, lightly cached
   const studentUserIdsKey = useMemo(
@@ -491,6 +499,8 @@ export function useStudents(
     students,
     allProfiles,
     isLoading,
+    isError,
+    error: studentsError,
     frdoStatus,
     selectedStudentIds,
     setSelectedStudentIds,

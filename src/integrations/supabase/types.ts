@@ -10778,6 +10778,18 @@ export type Database = {
         Args: { p_rows: Json }
         Returns: number
       }
+      can_access_course: {
+        Args: { _course_id: string; _permission?: string }
+        Returns: boolean
+      }
+      can_access_lesson: {
+        Args: { _lesson_id: string; _permission?: string }
+        Returns: boolean
+      }
+      can_access_organization: {
+        Args: { _organization_id: string; _permission?: string }
+        Returns: boolean
+      }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -11187,6 +11199,10 @@ export type Database = {
       next_reg_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number
+      }
+      normalize_org_staff_permission: {
+        Args: { _permission: string }
+        Returns: string
       }
       org_finalize_signature_review: {
         Args: { p_action: string; p_message?: string; p_signature_id: string }
