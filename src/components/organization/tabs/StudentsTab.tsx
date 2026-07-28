@@ -69,6 +69,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter,
     studentGroups, refreshGroups, studentGroupMap, groupCounts,
+    countsLoading, countsErrorKind, retryCounts,
+    groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
     removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
     archiveStudent, unarchiveStudent, refresh,
