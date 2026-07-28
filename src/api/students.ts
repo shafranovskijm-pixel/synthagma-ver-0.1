@@ -93,6 +93,9 @@ export async function fetchStudents(
     userEnrollmentsMap[enrollment.user_id].push(enrollment);
   }
 
+  // Build a Map once so per-student loop is O(1) instead of O(courses).
+  const courseTitleMap = new Map<string, string>((coursesData ?? []).map((c: any) => [c.id, c.title]));
+
   const studentsList: Student[] = [];
 
   for (const profile of allProfilesData || []) {
@@ -102,21 +105,18 @@ export async function fetchStudents(
     }
 
     const userEnrollments = userEnrollmentsMap[profile.user_id] || [];
-    
+
     // Build enrollments array for this student
-    const enrollments = userEnrollments.map(enrollment => {
-      const course = coursesData?.find(c => c.id === enrollment.course_id);
-      return {
-        id: enrollment.id,
-        course_id: enrollment.course_id,
-        course_title: course?.title || "—",
-        progress: enrollment.progress || 0,
-        status: enrollment.status,
-        started_at: enrollment.started_at,
-        completed_at: enrollment.completed_at,
-        time_spent: enrollment.time_spent
-      };
-    });
+    const enrollments = userEnrollments.map(enrollment => ({
+      id: enrollment.id,
+      course_id: enrollment.course_id,
+      course_title: courseTitleMap.get(enrollment.course_id) || "—",
+      progress: enrollment.progress || 0,
+      status: enrollment.status,
+      started_at: enrollment.started_at,
+      completed_at: enrollment.completed_at,
+      time_spent: enrollment.time_spent
+    }));
 
     // Calculate aggregate progress and status
     const totalProgress = enrollments.length > 0 
