@@ -89,6 +89,14 @@ export interface UseStudentsReturn {
   refreshGroups: () => void;
   studentGroupMap: Map<string, string | null>;
   groupCounts: Map<string, OrgStudentGroupCount>; // key: group_id (or "__none" for null)
+  // Server counts loading/error state (org-wide active/archived).
+  countsLoading: boolean;
+  countsErrorKind: UserFacingErrorKind | null;
+  retryCounts: () => void;
+  // Server counts loading/error state (per group).
+  groupCountsLoading: boolean;
+  groupCountsErrorKind: UserFacingErrorKind | null;
+  retryGroupCounts: () => void;
   docsFilter: StudentDocsFilter;
   setDocsFilter: (filter: StudentDocsFilter) => void;
   searchQuery: string;
