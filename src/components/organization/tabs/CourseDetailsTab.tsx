@@ -3,9 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { loadCourseStudents, CourseProfilesUnavailableError } from "@/api/courseStudents";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
-
 
 type LoadState = "loading" | "success" | "not_found" | "error";
 
@@ -15,7 +13,6 @@ export function CourseDetailsTab() {
   const organizationId = d.organizationId;
 
   const [course, setCourse] = useState<any>(null);
-  const [courseStudents, setCourseStudents] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<
     | "students" | "materials" | "history" | "tests" | "landing" | "settings"
     | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview"
@@ -67,52 +64,18 @@ export function CourseDetailsTab() {
       .select("*", { count: "exact", head: true })
       .eq("course_id", courseId);
 
-    // 3) Students of the course via the shared loader — errors are surfaced.
-    let students: any[] = [];
-    try {
-      students = await loadCourseStudents({ courseId, courseTitle: courseData.title });
-    } catch (err) {
-      console.error("[CourseDetailsTab] students fetch failed:", err);
-      setState("error");
-      if (err instanceof CourseProfilesUnavailableError) {
-        setErrorMessage("Зачисления найдены, но профили учеников недоступны. Проверьте права доступа к профилям.");
-        return;
-      }
-      const kind = classifyDataError(err);
-      setErrorMessage(
-        kind === "permission"
-          ? "Недостаточно прав для просмотра учеников этого курса."
-          : kind === "network"
-          ? "Не удалось загрузить учеников — проблема с сетью или прокси. Повторите попытку."
-          : "Не удалось загрузить учеников курса. Повторите попытку."
-      );
-      return;
-    }
-
-
+    // 3) Students are loaded lazily inside useCourseDetails via the paginated
+    //    RPC — CourseDetailsTab no longer prefetches the entire enrollment list.
     setCourse({
       ...courseData,
       lessonsCount: lessonsCount || 0,
-      studentsCount: students.length,
     });
-    setCourseStudents(students);
     setState("success");
   }, [courseId, organizationId]);
 
   useEffect(() => {
     loadCourse();
   }, [loadCourse]);
-
-  const refreshStudents = useCallback(async () => {
-    if (!courseId) return;
-    try {
-      const students = await loadCourseStudents({ courseId, courseTitle: course?.title ?? null });
-      setCourseStudents(students);
-      if (course) setCourse({ ...course, studentsCount: students.length });
-    } catch (err) {
-      console.error("[CourseDetailsTab] refresh students failed:", err);
-    }
-  }, [courseId, course]);
 
   const handleBack = () => {
     d.tabNavigation.setSelectedCourseId(null);
@@ -156,16 +119,17 @@ export function CourseDetailsTab() {
     <div className="animate-in fade-in duration-300">
       <CourseDetailsContent
         course={course}
-        courseStudents={courseStudents}
+        courseStudents={[]}
         organizationId={organizationId}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onEnrollStudent={() => {}}
         onCourseDeleted={handleBack}
         onCourseUpdated={() => loadCourse(false)}
-        onRefreshStudents={refreshStudents}
+        onRefreshStudents={() => { /* useCourseDetails invalidates its own queries */ }}
         onBack={handleBack}
       />
     </div>
   );
 }
+
