@@ -209,7 +209,25 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
                   )}>
                     {course.is_published ? 'Опубликован' : 'Черновик'}
                   </span>
-                  <div className="flex items-center gap-1"><Users className="w-4 h-4" />{course.studentsCount} учеников</div>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    {h.isLoadingStats ? (
+                      <span className="opacity-80">… учеников</span>
+                    ) : h.statsErrorKind ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="opacity-80">Статистика недоступна</span>
+                        <button
+                          onClick={h.retryStats}
+                          className="underline text-xs hover:opacity-100 opacity-90"
+                          type="button"
+                        >
+                          Повторить
+                        </button>
+                      </span>
+                    ) : (
+                      <>{h.totalStudents} учеников</>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
                 </div>
               </div>
@@ -518,6 +536,41 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Course-wide stats — driven exclusively by get_course_students_stats,
+          independent from the search query and status filter. */}
+      {h.isLoadingStats ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[0,1,2,3].map(i => (
+            <div key={i} className="h-16 rounded-xl bg-secondary/40 animate-pulse" />
+          ))}
+        </div>
+      ) : h.statsErrorKind ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-secondary/40 border border-border/40 text-sm text-muted-foreground">
+          <span>Статистика недоступна: {errorLabel(h.statsErrorKind).toLowerCase()}</span>
+          <Button variant="outline" size="sm" onClick={h.retryStats}>Повторить</Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="p-3 rounded-xl bg-secondary/40 border border-border/40">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Всего</div>
+            <div className="text-xl font-semibold">{h.totalStudents}</div>
+          </div>
+          <div className="p-3 rounded-xl bg-secondary/40 border border-border/40">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Активных</div>
+            <div className="text-xl font-semibold">{h.activeStudents}</div>
+          </div>
+          <div className="p-3 rounded-xl bg-secondary/40 border border-border/40">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Завершили</div>
+            <div className="text-xl font-semibold">{h.completedStudents}</div>
+          </div>
+          <div className="p-3 rounded-xl bg-secondary/40 border border-border/40">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Средний прогресс</div>
+            <div className="text-xl font-semibold">{h.avgProgress}%</div>
+          </div>
+        </div>
+      )}
+
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px] max-w-md">
