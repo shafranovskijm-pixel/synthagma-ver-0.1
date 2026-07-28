@@ -423,7 +423,7 @@ export function AdminWebinarsOverview() {
                             className="h-6 w-6 shrink-0"
                             title="Открыть кабинет организации"
                             onClick={() => {
-                              localStorage.setItem("adminViewAsOrg", w.organization_id);
+                              localStorage.setItem("adminViewAsOrg", JSON.stringify({ id: w.organization_id, name: w.organization_name || "" }));
                               window.location.href = "/organization?tab=webinars";
                             }}
                           >
