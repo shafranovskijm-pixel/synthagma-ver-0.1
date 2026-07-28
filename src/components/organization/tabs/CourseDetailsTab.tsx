@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { loadCourseStudents } from "@/api/courseStudents";
+import { classifyDataError } from "@/utils/isTransientNetworkError";
+
+type LoadState = "loading" | "success" | "not_found" | "error";
 
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
@@ -11,102 +15,98 @@ export function CourseDetailsTab() {
 
   const [course, setCourse] = useState<any>(null);
   const [courseStudents, setCourseStudents] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview">("editor");
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<
+    | "students" | "materials" | "history" | "tests" | "landing" | "settings"
+    | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview"
+  >("editor");
+  const [state, setState] = useState<LoadState>("loading");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // Reset to editor whenever a different course is opened
+  useEffect(() => { setActiveTab("editor"); }, [courseId]);
+
   useEffect(() => {
-    setActiveTab("editor");
+    if (!courseId) d.tabNavigation.setActiveTab("courses");
   }, [courseId]);
-
-  // If we landed on this tab without a course selected (e.g. after reload
-  // of an old URL, or admin impersonation entry) — bounce back to courses list.
-  useEffect(() => {
-    if (!courseId) {
-      d.tabNavigation.setActiveTab("courses");
-    }
-  }, [courseId]);
-
 
   const loadCourse = useCallback(async (withSpinner = true) => {
-    if (!courseId) return;
-    if (withSpinner) setLoading(true);
-    const { data: courseData } = await supabase
+    if (!courseId || !organizationId) return;
+    if (withSpinner) setState("loading");
+    setErrorMessage("");
+
+    // 1) Course itself — scoped to this organization.
+    const { data: courseData, error: courseError } = await supabase
       .from("courses")
       .select("*")
       .eq("id", courseId)
-      .single();
+      .eq("organization_id", organizationId)
+      .maybeSingle();
 
-    if (courseData) {
-      const { count: lessonsCount } = await supabase
-        .from("lessons")
-        .select("*", { count: "exact", head: true })
-        .eq("course_id", courseId);
-
-      const { data: enrollments } = await supabase
-        .from("enrollments")
-        .select("id, user_id, progress, status")
-        .eq("course_id", courseId);
-
-      const studentsList: any[] = [];
-      if (enrollments && enrollments.length > 0) {
-        const userIds = enrollments.map(e => e.user_id);
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, full_name, email")
-          .in("user_id", userIds);
-
-        const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-        for (const e of enrollments) {
-          const prof = profileMap.get(e.user_id);
-          studentsList.push({
-            id: e.id, user_id: e.user_id, enrollment_id: e.id,
-            name: prof?.full_name || "Без имени", email: prof?.email || "",
-            progress: e.progress || 0, status: e.status,
-          });
-        }
-      }
-
-      setCourse({
-        ...courseData,
-        lessonsCount: lessonsCount || 0,
-        studentsCount: studentsList.length,
-      });
-      setCourseStudents(studentsList);
+    if (courseError) {
+      console.error("[CourseDetailsTab] course fetch failed:", courseError);
+      const kind = classifyDataError(courseError);
+      setState("error");
+      setErrorMessage(
+        kind === "permission"
+          ? "Недостаточно прав для просмотра курса."
+          : kind === "network"
+          ? "Не удалось загрузить курс — проблема с сетью или прокси. Повторите попытку."
+          : "Не удалось загрузить курс. Повторите попытку."
+      );
+      return;
     }
-    setLoading(false);
-  }, [courseId]);
+
+    if (!courseData) {
+      setState("not_found");
+      return;
+    }
+
+    // 2) Lesson count (non-critical).
+    const { count: lessonsCount } = await supabase
+      .from("lessons")
+      .select("*", { count: "exact", head: true })
+      .eq("course_id", courseId);
+
+    // 3) Students of the course via the shared loader — errors are surfaced.
+    let students: any[] = [];
+    try {
+      students = await loadCourseStudents({ courseId, courseTitle: courseData.title });
+    } catch (err) {
+      console.error("[CourseDetailsTab] students fetch failed:", err);
+      const kind = classifyDataError(err);
+      setState("error");
+      setErrorMessage(
+        kind === "permission"
+          ? "Недостаточно прав для просмотра учеников этого курса."
+          : kind === "network"
+          ? "Не удалось загрузить учеников — проблема с сетью или прокси. Повторите попытку."
+          : "Не удалось загрузить учеников курса. Повторите попытку."
+      );
+      return;
+    }
+
+    setCourse({
+      ...courseData,
+      lessonsCount: lessonsCount || 0,
+      studentsCount: students.length,
+    });
+    setCourseStudents(students);
+    setState("success");
+  }, [courseId, organizationId]);
 
   useEffect(() => {
     loadCourse();
   }, [loadCourse]);
 
-  const refreshStudents = async () => {
+  const refreshStudents = useCallback(async () => {
     if (!courseId) return;
-    const { data: enrollments } = await supabase
-      .from("enrollments")
-      .select("id, user_id, progress, status")
-      .eq("course_id", courseId);
-    const studentsList: any[] = [];
-    if (enrollments && enrollments.length > 0) {
-      const userIds = enrollments.map(e => e.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-      for (const e of enrollments) {
-        const prof = profileMap.get(e.user_id);
-        studentsList.push({
-          id: e.id, user_id: e.user_id, enrollment_id: e.id,
-          name: prof?.full_name || "Без имени", email: prof?.email || "",
-          progress: e.progress || 0, status: e.status,
-        });
-      }
+    try {
+      const students = await loadCourseStudents({ courseId, courseTitle: course?.title ?? null });
+      setCourseStudents(students);
+      if (course) setCourse({ ...course, studentsCount: students.length });
+    } catch (err) {
+      console.error("[CourseDetailsTab] refresh students failed:", err);
     }
-    setCourseStudents(studentsList);
-    if (course) setCourse({ ...course, studentsCount: studentsList.length });
-  };
+  }, [courseId, course]);
 
   const handleBack = () => {
     d.tabNavigation.setSelectedCourseId(null);
@@ -117,25 +117,34 @@ export function CourseDetailsTab() {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
 
-  if (loading) {
+  if (state === "loading") {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
 
+  if (state === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+        <span>{errorMessage || "Не удалось загрузить курс"}</span>
+        <div className="flex items-center gap-4">
+          <button className="text-sm text-primary underline" onClick={() => loadCourse()}>
+            Повторить
+          </button>
+          <button className="text-sm underline" onClick={handleBack}>Вернуться к курсам</button>
+        </div>
+      </div>
+    );
+  }
 
-  if (!course) {
+  if (state === "not_found" || !course) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
         <span>Курс не найден или больше не доступен</span>
-        <button
-          className="text-sm text-primary underline"
-          onClick={() => { d.tabNavigation.setSelectedCourseId(null); d.tabNavigation.setActiveTab("courses"); }}
-        >
+        <button className="text-sm text-primary underline" onClick={handleBack}>
           Вернуться к курсам
         </button>
       </div>
     );
   }
-
 
   return (
     <div className="animate-in fade-in duration-300">
