@@ -89,6 +89,14 @@ export interface UseStudentsReturn {
   refreshGroups: () => void;
   studentGroupMap: Map<string, string | null>;
   groupCounts: Map<string, OrgStudentGroupCount>; // key: group_id (or "__none" for null)
+  // Server counts loading/error state (org-wide active/archived).
+  countsLoading: boolean;
+  countsErrorKind: UserFacingErrorKind | null;
+  retryCounts: () => void;
+  // Server counts loading/error state (per group).
+  groupCountsLoading: boolean;
+  groupCountsErrorKind: UserFacingErrorKind | null;
+  retryGroupCounts: () => void;
   docsFilter: StudentDocsFilter;
   setDocsFilter: (filter: StudentDocsFilter) => void;
   searchQuery: string;
@@ -104,8 +112,10 @@ export interface UseStudentsReturn {
   // Archive
   viewMode: "active" | "archive";
   setViewMode: (mode: "active" | "archive") => void;
-  activeStudentsCount: number;
-  archivedCount: number;
+  /** `null` while the counts RPC is loading or errored — UI must not show 0. */
+  activeStudentsCount: number | null;
+  /** `null` while the counts RPC is loading or errored — UI must not show 0. */
+  archivedCount: number | null;
   archiveByMonth: Array<{ key: string; label: string; students: Student[] }>;
   archiveStudent: (userId: string) => Promise<boolean>;
   unarchiveStudent: (userId: string) => Promise<boolean>;
@@ -489,8 +499,18 @@ export function useStudents(
     }
   }, [organizationId, qc]);
 
-  const activeStudentsCount = countsQuery.data?.active_count ?? 0;
-  const archivedCount = countsQuery.data?.archived_count ?? 0;
+  const activeStudentsCount = countsQuery.data ? countsQuery.data.active_count : null;
+  const archivedCount = countsQuery.data ? countsQuery.data.archived_count : null;
+
+  const countsLoading = countsQuery.isPending || countsQuery.isFetching;
+  const countsErrorKind: UserFacingErrorKind | null =
+    countsQuery.isError && !countsQuery.data ? classifyDataError(countsQuery.error) : null;
+  const retryCounts = useCallback(() => { void countsQuery.refetch(); }, [countsQuery]);
+
+  const groupCountsLoading = groupCountsQuery.isPending || groupCountsQuery.isFetching;
+  const groupCountsErrorKind: UserFacingErrorKind | null =
+    groupCountsQuery.isError && !groupCountsQuery.data ? classifyDataError(groupCountsQuery.error) : null;
+  const retryGroupCounts = useCallback(() => { void groupCountsQuery.refetch(); }, [groupCountsQuery]);
 
   return {
     students,
@@ -524,6 +544,12 @@ export function useStudents(
     refreshGroups,
     studentGroupMap,
     groupCounts,
+    countsLoading,
+    countsErrorKind,
+    retryCounts,
+    groupCountsLoading,
+    groupCountsErrorKind,
+    retryGroupCounts,
     docsFilter,
     setDocsFilter,
     searchQuery,

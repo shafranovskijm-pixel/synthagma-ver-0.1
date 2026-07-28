@@ -69,6 +69,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter,
     studentGroups, refreshGroups, studentGroupMap, groupCounts,
+    countsLoading, countsErrorKind, retryCounts,
+    groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
     removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
     archiveStudent, unarchiveStudent, refresh,
@@ -136,7 +138,10 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       if (error) throw error;
       toast.success("Группа удалена");
       if (groupFilter === groupId) setGroupFilter("all");
+      // Deleting a group nulls student_group_id on referenced profiles — refresh
+      // both the groups directory / counts and the students page rows.
       refreshGroups();
+      refresh();
     } catch { toast.error("Ошибка удаления группы"); }
   };
 
@@ -144,7 +149,10 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     try {
       const { error } = await supabase.from("profiles").update({ student_group_id: groupId } as any).eq("user_id", userId);
       if (error) throw error;
+      // Refresh both: group counts (source of truth on the card) AND the
+      // students page so the Select value / row group binding is up to date.
       refreshGroups();
+      refresh();
     } catch { toast.error("Ошибка назначения группы"); }
   };
 
@@ -208,7 +216,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <Users className="w-4 h-4" />
             Ученики
             <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {activeStudentsCount}
+              {countsLoading && activeStudentsCount === null ? "…" : countsErrorKind ? "—" : activeStudentsCount}
             </span>
           </button>
           <button
@@ -219,7 +227,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <Archive className="w-4 h-4" />
             Архив
             <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${panelMode === "archive" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-              {archivedCount}
+              {countsLoading && archivedCount === null ? "…" : countsErrorKind ? "—" : archivedCount}
             </span>
           </button>
         </div>
@@ -229,6 +237,23 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <Archive className="w-3 h-3" />
             В архиве отображаются только ученики, явно перенесённые сюда вручную или через действие «Удалить» (мягкое удаление). Завершившие обучение остаются в активном списке.
           </p>
+        )}
+        {(countsErrorKind || groupCountsErrorKind) && (
+          <div className="mt-2 text-xs text-destructive flex items-center gap-2">
+            <span>
+              {countsErrorKind === "permission" || groupCountsErrorKind === "permission"
+                ? "Нет прав на просмотр счётчиков."
+                : "Не удалось загрузить счётчики учеников."}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => { if (countsErrorKind) retryCounts(); if (groupCountsErrorKind) retryGroupCounts(); }}
+            >
+              Повторить
+            </Button>
+          </div>
         )}
       </div>
 
@@ -254,12 +279,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3">
               {studentGroups.map(group => {
-                const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
+                // Card count comes from the server RPC — DO NOT count already-loaded
+                // rows, that ignores students on later pages / other filters.
+                const serverCount = groupCounts.get(group.id)?.total_count;
+                const countLabel = groupCountsLoading && serverCount === undefined
+                  ? "…"
+                  : groupCountsErrorKind
+                    ? "—"
+                    : String(serverCount ?? 0);
                 return (
                   <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
                     <button onClick={() => dash.tabNavigation.openGroupFolder(group.id)} className="w-full text-left" title="Открыть папку группы">
                       <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{countLabel}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
                     </button>
                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                       <button onClick={e => { e.stopPropagation(); setPanelMode("active"); setGroupFilter(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Показать учеников группы"><Filter className="w-3.5 h-3.5 text-muted-foreground" /></button>
@@ -518,8 +550,13 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             {studentGroups.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {studentGroups.map(group => {
-                  const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
-                  return <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} /><div><div className="font-medium text-sm">{group.name}</div><div className="text-xs text-muted-foreground">{count} уч.{group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}{group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}</div></div></div><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="w-4 h-4" /></Button></div>;
+                  const serverCount = groupCounts.get(group.id)?.total_count;
+                  const countLabel = groupCountsLoading && serverCount === undefined
+                    ? "…"
+                    : groupCountsErrorKind
+                      ? "—"
+                      : String(serverCount ?? 0);
+                  return <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} /><div><div className="font-medium text-sm">{group.name}</div><div className="text-xs text-muted-foreground">{countLabel} уч.{group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}{group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}</div></div></div><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="w-4 h-4" /></Button></div>;
                 })}
               </div>
             )}
