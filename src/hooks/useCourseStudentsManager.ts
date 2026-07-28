@@ -23,49 +23,60 @@ export function useCourseStudentsManager(organizationId: string | null) {
     setCourseStudentsSearchQuery("");
     
     try {
-      const { data: enrollments } = await supabase
+      const { data: enrollments, error: enrollmentsError } = await supabase
         .from("enrollments")
         .select("id, user_id, progress, status")
         .eq("course_id", course.id);
+
+      if (enrollmentsError) throw enrollmentsError;
 
       // Exclude organization/admin accounts from student lists
       const enrollmentUserIds = Array.from(new Set((enrollments || []).map(e => e.user_id)));
       let excludedUserIds = new Set<string>();
       if (enrollmentUserIds.length > 0) {
-        const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
-        excludedUserIds = new Set(rolesData.map(r => r.user_id));
+        try {
+          const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
+          excludedUserIds = new Set(rolesData.map(r => r.user_id));
+        } catch (err) {
+          console.warn("[useCourseStudentsManager] role filter failed, showing all users:", err);
+        }
       }
 
       const filteredEnrollments = (enrollments || []).filter(e => !excludedUserIds.has(e.user_id));
-      
       const enrolledStudentIds = new Set(filteredEnrollments.map(e => e.user_id));
-      const enrolledList: Student[] = [];
-      
-      for (const enrollment of filteredEnrollments) {
-        const { data: profile } = await supabase
+
+      // Batch-fetch profiles in chunks of 50 UUIDs — no N+1 per user.
+      const profileMap = new Map<string, any>();
+      const targetIds = Array.from(enrolledStudentIds);
+      const BATCH = 50;
+      for (let i = 0; i < targetIds.length; i += BATCH) {
+        const slice = targetIds.slice(i, i + BATCH);
+        const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, user_id, full_name, email, login, generated_password")
-          .eq("user_id", enrollment.user_id)
-          .single();
-        
-        if (profile) {
-          enrolledList.push({
-            id: profile.id,
-            user_id: profile.user_id,
-            enrollment_id: enrollment.id,
-            name: profile.full_name || "Без имени",
-            email: profile.email || "",
-            login: profile.login || null,
-            generated_password: profile.generated_password || null,
-            course: course.title,
-            course_id: course.id,
-            progress: enrollment.progress,
-            lastActivity: null,
-            status: enrollment.status
-          });
-        }
+          .in("user_id", slice);
+        if (profilesError) throw profilesError;
+        for (const p of profiles || []) profileMap.set(p.user_id, p);
       }
-      
+
+      const enrolledList: Student[] = filteredEnrollments.map(enrollment => {
+        const profile = profileMap.get(enrollment.user_id);
+        return {
+          id: profile?.id ?? enrollment.user_id,
+          user_id: enrollment.user_id,
+          enrollment_id: enrollment.id,
+          name: profile?.full_name || "Без имени",
+          email: profile?.email || "",
+          login: profile?.login || null,
+          generated_password: profile?.generated_password || null,
+          course: course.title,
+          course_id: course.id,
+          progress: enrollment.progress,
+          lastActivity: null,
+          status: enrollment.status,
+        } as Student;
+      });
+
       setCourseStudents(enrolledList);
       
       if (organizationId) {
