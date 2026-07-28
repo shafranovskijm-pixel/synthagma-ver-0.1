@@ -152,6 +152,8 @@ export function useStudents(
   );
 
   // ---- Paginated student list (10 per page, active OR archive) ----
+  // `enabled` gates ONLY the page list. Counts/group counts keep running so
+  // sidebar/tab numbers stay correct even when the tab is on "Groups".
   const pageQuery = useInfiniteQuery({
     queryKey: qk.org.studentsPage(organizationId ?? "none", filtersKey),
     initialPageParam: 0,
@@ -199,25 +201,27 @@ export function useStudents(
   const nextPageErrorKind: UserFacingErrorKind | null =
     pageQuery.isFetchNextPageError ? classifyDataError(pageQuery.error) : null;
 
-  // ---- Org-wide counts (active / archived) — independent of filters ----
+  // ---- Org-wide counts (active / archived) — independent of filters and
+  // independent of `enabled` (Groups panel still needs these badges). ----
   const countsQuery = useQuery({
     queryKey: qk.org.studentsCounts(organizationId ?? "none"),
     queryFn: () => fetchOrganizationStudentsCounts(organizationId!),
-    enabled: !!organizationId && enabled,
+    enabled: !!organizationId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     retry: paginationRetry,
   });
 
-  // ---- Group counts ----
+  // ---- Group counts (also independent of `enabled`) ----
   const groupCountsQuery = useQuery({
     queryKey: qk.org.studentGroupCounts(organizationId ?? "none"),
     queryFn: () => fetchOrganizationStudentGroupCounts(organizationId!),
-    enabled: !!organizationId && enabled,
+    enabled: !!organizationId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     retry: paginationRetry,
   });
+
 
   const groupCounts = useMemo(() => {
     const map = new Map<string, OrgStudentGroupCount>();
