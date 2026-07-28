@@ -360,6 +360,25 @@ export function BulkFRDOExport({
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner size="lg" />
           </div>
+        ) : loadError ? (
+          <div className="space-y-4 py-6">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-destructive">
+                  {loadError.scope === "profiles" && "Не удалось загрузить учеников"}
+                  {loadError.scope === "frdo" && "Не удалось загрузить данные ФРДО"}
+                  {loadError.scope === "enrollments" && "Не удалось загрузить зачисления"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1 break-words">{loadError.message}</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" className="rounded-xl gap-2" onClick={loadData}>
+                <RefreshCcw className="w-4 h-4" />Повторить
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="space-y-6">
             {studentsWithMissingData.length > 0 && (
