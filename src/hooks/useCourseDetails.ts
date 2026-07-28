@@ -9,7 +9,21 @@ import {
   fetchCourseStudentsStats,
   fetchAvailableStudentsForCoursePage,
   type CourseStudentPageRow,
+  type AvailableStudentRow,
 } from "@/api/courseStudents";
+import { isTransientNetworkError, classifyDataError, type UserFacingErrorKind } from "@/utils/isTransientNetworkError";
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+const paginationRetry = (failureCount: number, error: unknown) =>
+  failureCount < 2 && isTransientNetworkError(error);
 
 interface Course {
   id: string;
@@ -138,10 +152,15 @@ export function useCourseDetails(
     }
   }, [course]);
 
+  // ---- Debounced search inputs (350ms). The RAW value drives the input,
+  // the debounced value drives the React Query key + RPC params.
+  const debouncedStudentsSearch = useDebouncedValue(studentsSearchQuery, 350);
+  const debouncedEnrollSearch = useDebouncedValue(enrollSearchQuery, 350);
+
   // ---- Server-side paginated students of the course ----
   const studentsQueryKey = useMemo(
-    () => ["course-students-page", course?.id, studentsSearchQuery.trim() || null, studentsStatusFilter] as const,
-    [course?.id, studentsSearchQuery, studentsStatusFilter]
+    () => ["course-students-page", course?.id, debouncedStudentsSearch.trim() || null, studentsStatusFilter] as const,
+    [course?.id, debouncedStudentsSearch, studentsStatusFilter]
   );
 
   const studentsQuery = useInfiniteQuery({
@@ -153,31 +172,57 @@ export function useCourseDetails(
         courseId: course.id,
         limit: PAGE_SIZE,
         offset: pageParam as number,
-        search: studentsSearchQuery,
+        search: debouncedStudentsSearch,
         status: studentsStatusFilter,
       }),
     getNextPageParam: (last) => last.nextOffset,
     staleTime: 30_000,
+    retry: paginationRetry,
   });
 
-  const courseStudents = useMemo<CourseStudentPageRow[]>(
-    () => (studentsQuery.data?.pages ?? []).flatMap((p) => p.rows),
-    [studentsQuery.data]
-  );
+  // Dedup by enrollment_id (fallback user_id) — invalidations / late pages
+  // must not surface the same enrollment twice.
+  const courseStudents = useMemo<CourseStudentPageRow[]>(() => {
+    const seen = new Set<string>();
+    const out: CourseStudentPageRow[] = [];
+    for (const p of studentsQuery.data?.pages ?? []) {
+      for (const r of p.rows) {
+        const key = r.enrollment_id || r.user_id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(r);
+      }
+    }
+    return out;
+  }, [studentsQuery.data]);
   const totalFilteredStudents = studentsQuery.data?.pages?.[0]?.totalFiltered ?? 0;
 
-  // ---- Course-wide stats (independent of filter, works with empty page) ----
+  const studentsErrorKind: UserFacingErrorKind | null =
+    studentsQuery.isError && courseStudents.length === 0 ? classifyDataError(studentsQuery.error) : null;
+  const nextStudentsPageErrorKind: UserFacingErrorKind | null =
+    studentsQuery.isError && courseStudents.length > 0 ? classifyDataError(studentsQuery.error) : null;
+
+  const retryStudents = useCallback(() => { void studentsQuery.refetch(); }, [studentsQuery]);
+  const retryNextStudentsPage = useCallback(() => {
+    if (!studentsQuery.isFetchingNextPage) void studentsQuery.fetchNextPage();
+  }, [studentsQuery]);
+
+  // ---- Course-wide stats ----
   const statsQuery = useQuery({
     queryKey: ["course-students-stats", course?.id],
     enabled: !!course?.id,
     queryFn: () => fetchCourseStudentsStats(course.id),
     staleTime: 30_000,
+    retry: paginationRetry,
   });
   const totalStudents = statsQuery.data?.totalStudents ?? 0;
   const activeStudents = statsQuery.data?.activeStudents ?? 0;
   const completedStudents = statsQuery.data?.completedStudents ?? 0;
   const avgProgress = Math.round(statsQuery.data?.averageProgress ?? 0);
   const completionRate = totalStudents > 0 ? Math.round((completedStudents / totalStudents) * 100) : 0;
+  const statsErrorKind: UserFacingErrorKind | null =
+    statsQuery.isError ? classifyDataError(statsQuery.error) : null;
+  const retryStats = useCallback(() => { void statsQuery.refetch(); }, [statsQuery]);
 
   const invalidateStudents = useCallback(() => {
     if (!course?.id) return;
@@ -187,10 +232,7 @@ export function useCourseDetails(
     onRefreshStudents?.();
   }, [course?.id, queryClient, onRefreshStudents]);
 
-  const loadMoreStudents = useCallback((_n?: number) => {
-    // LoadMoreControls asks for a specific chunk size; our server page is fixed
-    // at PAGE_SIZE so we fetch the next page. Repeated calls (e.g. "Все") walk
-    // additional pages naturally via subsequent clicks — good enough for now.
+  const loadMoreStudents = useCallback(() => {
     if (studentsQuery.hasNextPage && !studentsQuery.isFetchingNextPage) {
       void studentsQuery.fetchNextPage();
     }
@@ -198,8 +240,8 @@ export function useCourseDetails(
 
   // ---- Server-side paginated "available students" for the enroll popover ----
   const availableQueryKey = useMemo(
-    () => ["available-students-for-course", course?.id, enrollSearchQuery.trim() || null] as const,
-    [course?.id, enrollSearchQuery]
+    () => ["available-students-for-course", course?.id, debouncedEnrollSearch.trim() || null] as const,
+    [course?.id, debouncedEnrollSearch]
   );
 
   const availableQuery = useInfiniteQuery({
@@ -211,18 +253,36 @@ export function useCourseDetails(
         courseId: course.id,
         limit: AVAILABLE_PAGE_SIZE,
         offset: pageParam as number,
-        search: enrollSearchQuery,
+        search: debouncedEnrollSearch,
       }),
     getNextPageParam: (last) => last.nextOffset,
     staleTime: 15_000,
+    retry: paginationRetry,
   });
 
-  const availableStudents = useMemo(
-    () => (availableQuery.data?.pages ?? []).flatMap((p) => p.rows),
-    [availableQuery.data]
-  );
+  const availableStudents = useMemo<AvailableStudentRow[]>(() => {
+    const seen = new Set<string>();
+    const out: AvailableStudentRow[] = [];
+    for (const p of availableQuery.data?.pages ?? []) {
+      for (const r of p.rows) {
+        if (seen.has(r.user_id)) continue;
+        seen.add(r.user_id);
+        out.push(r);
+      }
+    }
+    return out;
+  }, [availableQuery.data]);
   const availableTotalFiltered = availableQuery.data?.pages?.[0]?.totalFiltered ?? 0;
   const isLoadingAvailable = availableQuery.isLoading || availableQuery.isFetchingNextPage;
+
+  const availableErrorKind: UserFacingErrorKind | null =
+    availableQuery.isError && availableStudents.length === 0 ? classifyDataError(availableQuery.error) : null;
+  const nextAvailablePageErrorKind: UserFacingErrorKind | null =
+    availableQuery.isError && availableStudents.length > 0 ? classifyDataError(availableQuery.error) : null;
+  const retryAvailable = useCallback(() => { void availableQuery.refetch(); }, [availableQuery]);
+  const retryNextAvailablePage = useCallback(() => {
+    if (!availableQuery.isFetchingNextPage) void availableQuery.fetchNextPage();
+  }, [availableQuery]);
 
   useEffect(() => {
     if (enrollPopoverOpen) {
@@ -242,11 +302,12 @@ export function useCourseDetails(
     setIsEnrolling(true);
     try {
       const userIds = Array.from(selectedToEnroll);
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("enrollments")
         .select("user_id")
         .eq("course_id", course.id)
         .in("user_id", userIds);
+      if (existingError) throw existingError;
       const existingIds = new Set((existing || []).map((e) => e.user_id));
       const newIds = userIds.filter((id) => !existingIds.has(id));
       if (newIds.length === 0) {
@@ -449,5 +510,16 @@ export function useCourseDetails(
     hasMoreStudents: !!studentsQuery.hasNextPage,
     loadMoreStudents,
     refreshStudents: invalidateStudents,
+    // Error branches
+    studentsErrorKind,
+    nextStudentsPageErrorKind,
+    retryStudents,
+    retryNextStudentsPage,
+    availableErrorKind,
+    nextAvailablePageErrorKind,
+    retryAvailable,
+    retryNextAvailablePage,
+    statsErrorKind,
+    retryStats,
   };
 }
