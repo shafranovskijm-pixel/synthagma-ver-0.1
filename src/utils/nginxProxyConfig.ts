@@ -80,6 +80,7 @@ server {
     location /sb-api/ {
         if ($request_method = OPTIONS) {
             add_header Access-Control-Allow-Origin  $cors_origin always;
+            add_header Vary "Origin" always;
             add_header Access-Control-Allow-Credentials "true" always;
             add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
             add_header Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, prefer, accept-profile, content-profile, range, if-match, if-none-match, x-upsert" always;
@@ -89,6 +90,7 @@ server {
             return 204;
         }
         add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Vary "Origin" always;
         add_header Access-Control-Allow-Credentials "true" always;
         add_header Access-Control-Expose-Headers "content-range, content-length, x-supabase-api-version" always;
         proxy_pass https://$sb_host/;
@@ -98,6 +100,7 @@ server {
     location /sb-functions/ {
         if ($request_method = OPTIONS) {
             add_header Access-Control-Allow-Origin  $cors_origin always;
+            add_header Vary "Origin" always;
             add_header Access-Control-Allow-Credentials "true" always;
             add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
             add_header Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version" always;
@@ -105,6 +108,7 @@ server {
             return 204;
         }
         add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Vary "Origin" always;
         add_header Access-Control-Allow-Credentials "true" always;
         proxy_pass https://$sb_host/functions/v1/;
     }
@@ -113,6 +117,7 @@ server {
     location /sb-storage/ {
         if ($request_method = OPTIONS) {
             add_header Access-Control-Allow-Origin  $cors_origin always;
+            add_header Vary "Origin" always;
             add_header Access-Control-Allow-Credentials "true" always;
             add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
             add_header Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, x-upsert, cache-control, range, tus-resumable, upload-length, upload-metadata, upload-offset" always;
@@ -120,6 +125,7 @@ server {
             return 204;
         }
         add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Vary "Origin" always;
         add_header Access-Control-Allow-Credentials "true" always;
         add_header Access-Control-Expose-Headers "content-range, content-length, etag, tus-resumable, upload-offset, upload-length" always;
         proxy_pass https://$sb_host/storage/v1/;

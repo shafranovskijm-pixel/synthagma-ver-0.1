@@ -49,10 +49,22 @@ export async function fetchStudents(
     coursesPromise,
   ]);
 
+  // Profiles / enrollments / courses must succeed — otherwise the UI would
+  // silently render an empty student list and the org would think everyone
+  // disappeared. Passwords are optional (decryption RPC can legitimately be
+  // unavailable), so we swallow that error only.
+  if ((coursesRes as any).error) {
+    throw (coursesRes as any).error;
+  }
+
   const passwordMap = new Map<string, string>();
-  (passwordsRes.data || []).forEach((row: any) => {
-    if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
-  });
+  if (!(passwordsRes as any).error) {
+    (passwordsRes.data || []).forEach((row: any) => {
+      if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
+    });
+  } else {
+    console.warn("[fetchStudents] passwords RPC failed:", (passwordsRes as any).error);
+  }
 
   // Fetch user roles only for users that actually have enrollments OR appear once -
   // but we still need to filter out org/admin from the full profile list.
@@ -60,8 +72,14 @@ export async function fetchStudents(
   let orgAdminUserIds = new Set<string>();
 
   if (userIds.length > 0) {
-    const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
-    orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
+    try {
+      const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
+      orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
+    } catch (err) {
+      // Role filter is not critical for correctness of the list —
+      // worst case org/admin accounts appear as "students". Log and continue.
+      console.warn("[fetchStudents] role filter failed:", err);
+    }
   }
 
   const coursesData = coursesRes.data;
