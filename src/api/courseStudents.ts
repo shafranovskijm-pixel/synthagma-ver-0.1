@@ -165,6 +165,32 @@ export interface CourseStudentPageRow {
   completed_at: string | null;
   time_spent: number | null;
   archived_at: string | null;
+  // Test-results aggregate — Phase 5D
+  tests_total: number;
+  tests_attempted: number;
+  tests_passed: number;
+  average_percent: number;
+  latest_score: number | null;
+  latest_max_score: number | null;
+  latest_percent: number | null;
+  latest_passing_score: number | null;
+  attempts_used: number | null;
+  last_attempt_at: string | null;
+  result_status: "passed" | "failed" | "not_started" | "no_tests";
+  test_details: TestResultDetail[];
+}
+
+export interface TestResultDetail {
+  lesson_id: string;
+  lesson_title: string;
+  score: number;
+  max_score: number;
+  percent: number;
+  passing_score: number;
+  passed: boolean;
+  attempts_used: number;
+  max_attempts: number | null;
+  completed_at: string | null;
 }
 
 export interface CourseStudentsPage {
@@ -173,23 +199,27 @@ export interface CourseStudentsPage {
   nextOffset: number | null;
 }
 
+export type CourseResultFilter = "all" | "passed" | "failed" | "not_started";
+
 export interface FetchCourseStudentsPageInput {
   courseId: string;
   limit?: number;
   offset?: number;
   search?: string | null;
   status?: "all" | "active" | "completed" | null;
+  resultFilter?: CourseResultFilter | null;
 }
 
 export async function fetchCourseStudentsPage({
-  courseId, limit = 10, offset = 0, search, status,
+  courseId, limit = 10, offset = 0, search, status, resultFilter,
 }: FetchCourseStudentsPageInput): Promise<CourseStudentsPage> {
-  const { data, error } = await supabase.rpc("get_course_students_page", {
+  const { data, error } = await supabase.rpc("get_course_student_test_results_page" as any, {
     p_course_id: courseId,
     p_limit: limit,
     p_offset: offset,
     p_search: search && search.trim() ? search.trim() : undefined,
     p_status: status && status !== "all" ? status : undefined,
+    p_result_filter: resultFilter && resultFilter !== "all" ? resultFilter : undefined,
   });
   if (error) throw error;
 
@@ -209,11 +239,24 @@ export async function fetchCourseStudentsPage({
     completed_at: r.completed_at ?? null,
     time_spent: r.time_spent ?? null,
     archived_at: r.archived_at ?? null,
+    tests_total: Number(r.tests_total ?? 0),
+    tests_attempted: Number(r.tests_attempted ?? 0),
+    tests_passed: Number(r.tests_passed ?? 0),
+    average_percent: Number(r.average_percent ?? 0),
+    latest_score: r.latest_score != null ? Number(r.latest_score) : null,
+    latest_max_score: r.latest_max_score != null ? Number(r.latest_max_score) : null,
+    latest_percent: r.latest_percent != null ? Number(r.latest_percent) : null,
+    latest_passing_score: r.latest_passing_score != null ? Number(r.latest_passing_score) : null,
+    attempts_used: r.attempts_used != null ? Number(r.attempts_used) : null,
+    last_attempt_at: r.last_attempt_at ?? null,
+    result_status: (r.result_status as CourseStudentPageRow["result_status"]) ?? "not_started",
+    test_details: Array.isArray(r.test_details) ? (r.test_details as TestResultDetail[]) : [],
   }));
 
   const nextOffset = offset + rows.length < totalFiltered ? offset + rows.length : null;
   return { rows, totalFiltered, nextOffset };
 }
+
 
 export interface CourseStudentsStats {
   totalStudents: number;
