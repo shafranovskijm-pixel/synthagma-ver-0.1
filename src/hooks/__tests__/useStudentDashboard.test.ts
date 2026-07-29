@@ -5,6 +5,8 @@ import { renderHook, act } from "@testing-library/react";
 // Mock all external dependencies
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  useLocation: () => ({ pathname: "/", search: "", hash: "", state: null }),
 }));
 
 vi.mock("next-themes", () => ({
