@@ -67,6 +67,8 @@ export function useOrganizationDashboard() {
   const {
     summary,
     courseOverviewMap,
+    hasSummaryData,
+    hasCourseOverviewData,
     isSummaryLoading,
     isCourseOverviewLoading,
     summaryErrorKind,
