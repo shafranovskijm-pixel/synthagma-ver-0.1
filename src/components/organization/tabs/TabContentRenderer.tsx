@@ -164,7 +164,14 @@ export function TabContentRenderer() {
 
       {/* Stats Tab */}
       {activeTab === "stats" && organizationId && (
-        <StatsTab organizationId={organizationId} stats={d.stats} />
+        <StatsTab
+          organizationId={organizationId}
+          stats={d.stats}
+          hasData={d.hasSummaryData}
+          isLoading={d.isSummaryLoading}
+          errorKind={d.summaryErrorKind}
+          onRetry={d.retrySummary}
+        />
       )}
 
       {/* Links Tab */}
