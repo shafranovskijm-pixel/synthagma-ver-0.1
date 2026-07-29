@@ -374,13 +374,13 @@ export function CourseDetailsContent({
             </aside>
             <div className="min-w-0">
               {activeTab === "students" && <StudentsSection h={h} />}
-              {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
               {activeTab === "history" && (
                 <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
                   <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
                 </Suspense>
               )}
-              {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} refreshCallbacks={groupsCallbacks} />}
               {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
               {activeTab === "reminders" && (
                 <CourseRemindersTab courseId={course.id} organizationId={organizationId || ""}
@@ -403,7 +403,7 @@ export function CourseDetailsContent({
       {!(showSubTabs && activeGroup === "students") && (
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
           {activeTab === "students" && <StudentsSection h={h} />}
-        {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+        {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
         {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
         {activeTab === "history" && (
           <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
@@ -456,7 +456,7 @@ export function CourseDetailsContent({
             onCompletionNotifyEmailsChange={async (v) => { h.setCompletionNotifyEmails(v || null); try { const { error } = await supabase.from("courses").update({ completion_notify_emails: v || null } as any).eq("id", course.id); if (error) throw error; onCourseUpdated?.(); } catch (e) { console.error(e); } }}
           />
         )}
-        {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+        {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} refreshCallbacks={groupsCallbacks} />}
         {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
         {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
         {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
