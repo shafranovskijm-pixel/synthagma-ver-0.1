@@ -10924,6 +10924,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_campaign_recipient_preview: {
+        Args: {
+          p_manual_emails?: string[]
+          p_organization_id: string
+          p_scope: string
+          p_source: string
+        }
+        Returns: Json
+      }
       get_course_student_test_results_page: {
         Args: {
           p_course_id: string
@@ -11495,6 +11504,25 @@ export type Database = {
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
+      }
+      resolve_campaign_recipients: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          email: string
+          recipient_name: string
+        }[]
+      }
+      resolve_email_recipient_candidates: {
+        Args: {
+          p_manual_emails: string[]
+          p_organization_id: string
+          p_scope: string
+          p_source: string
+        }
+        Returns: {
+          email: string
+          recipient_name: string
+        }[]
       }
       restore_course_snapshot: { Args: { _snapshot_id: string }; Returns: Json }
       restore_document: {
