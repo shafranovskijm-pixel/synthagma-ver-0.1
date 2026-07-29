@@ -1,3 +1,31 @@
+// =====================================================================
+// PENDING — Phase 5C.1.a (corrected in 5C.1.a.1). Do NOT deploy until
+// the accompanying RLS migration is planned. This file lives OUTSIDE
+// supabase/functions/ so Lovable does not auto-deploy it.
+//
+// 5C.1.a.1 corrections vs 5C.1.a draft:
+//   • can_access_organization is now invoked via the USER client
+//     (carries the caller's JWT). The service-role client has no
+//     auth.uid() and would always return false, so owners and
+//     sales.write staff were being denied.
+//   • has_role is also invoked via the user client with the resolved
+//     userId — we never trust a userId supplied by the body.
+//   • The FULL current pipeline (A/B sample assignment, sampleSize,
+//     subject_variant filter, ab_sample_started_at, ab_winner gating)
+//     is preserved verbatim after the authorization gate. Only the
+//     top-of-function auth check is new; downstream behaviour is
+//     unchanged.
+//   • The service-role client is only used AFTER the authorization
+//     gate succeeds, to read/mutate campaign rows, recipients and
+//     suppression list.
+//
+// Delta vs current supabase/functions/run-email-campaign/index.ts:
+//   • Auth check happens BEFORE any recipient read or campaign mutation.
+//   • Denials return 403 with no campaign name / recipients / totals.
+//   • Platform campaigns require admin (or service_role for cron).
+//   • Org campaigns require admin OR can_access_organization(org, 'sales.write').
+// =====================================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -77,35 +105,65 @@ serve(async (req: Request) => {
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Авторизация (cron вызывает с service-role key — пропускаем)
     const authHeader = req.headers.get("Authorization") || "";
-    const isCron = authHeader.includes(SERVICE_KEY);
-    if (!isCron) {
+    const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const isServiceRole = bearer.length > 0 && bearer === SERVICE_KEY;
+
+    const { campaignId }: ReqBody = await req.json().catch(() => ({ campaignId: "" }));
+    if (!campaignId) return json({ error: "campaignId required" }, 400);
+
+    // ============ AUTHORIZATION GATE (new in 5C.1.a) ============
+    // Load campaign via admin so scope/org is known; details are NOT
+    // returned to the caller on denial.
+    const { data: campaign, error: cErr } = await admin
+      .from("email_campaigns").select("*").eq("id", campaignId).maybeSingle();
+
+    let authorized = false;
+    if (isServiceRole) {
+      authorized = true;
+    } else {
+      // User client carries the caller's JWT — required for
+      // can_access_organization / has_role, both of which read auth.uid().
       const userClient = createClient(SUPABASE_URL, ANON_KEY, {
         global: { headers: { Authorization: authHeader } },
       });
       const { data: userData } = await userClient.auth.getUser();
-      if (!userData.user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (!userData?.user) return json({ error: "Unauthorized" }, 401);
+      const userId = userData.user.id;
+
+      const { data: adminRow } = await userClient.rpc("has_role", {
+        _role: "admin", _user_id: userId,
+      });
+      const isAdmin = adminRow === true;
+
+      if (!campaign) {
+        // Uniform 403: don't leak whether the UUID exists in another org.
+        authorized = false;
+      } else if (campaign.scope === "platform") {
+        authorized = isAdmin;
+      } else if (campaign.scope === "org" && campaign.organization_id) {
+        if (isAdmin) {
+          authorized = true;
+        } else {
+          const { data: writeRow } = await userClient.rpc("can_access_organization", {
+            _organization_id: campaign.organization_id,
+            _permission: "sales.write",
+          });
+          authorized = writeRow === true;
+        }
       }
     }
 
-    const { campaignId }: ReqBody = await req.json();
-    if (!campaignId) {
-      return new Response(JSON.stringify({ error: "campaignId required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authorized) return json({ error: "Forbidden" }, 403);
+    if (!campaign) return json({ error: "Кампания не найдена" }, 404);
+    // ============ END AUTHORIZATION GATE ============
 
-    const { data: campaign, error: cErr } = await admin
-      .from("email_campaigns").select("*").eq("id", campaignId).single();
-    if (cErr || !campaign) {
-      return new Response(JSON.stringify({ error: "Кампания не найдена" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // ==============================================================
+    // From here on, behaviour is IDENTICAL to the current function
+    // supabase/functions/run-email-campaign/index.ts. Any change to
+    // that file must be mirrored here until this pending file is
+    // promoted.
+    // ==============================================================
 
     // Идемпотентность
     if (campaign.status === "sending" && campaign.started_at) {
@@ -155,7 +213,6 @@ serve(async (req: Request) => {
         abAssign = new Map();
         const samplePct = Math.max(5, Math.min(50, campaign.ab_sample_percent || 20));
         const sampleSize = Math.max(2, Math.floor((allowed.length * samplePct) / 100));
-        // случайный выбор sampleSize получателей и 50/50 между a/b
         const indices = allowed.map((_, i) => i);
         for (let i = indices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -197,9 +254,7 @@ serve(async (req: Request) => {
       .eq("status", "pending");
 
     if (campaign.ab_test_enabled && campaign.subject_b && !campaign.ab_winner) {
-      // отправляем только размеченных (sample), остальные ждут выбора победителя
       pendingQuery = pendingQuery.not("subject_variant", "is", null);
-      // отметим время начала sample
       if (!campaign.ab_sample_started_at) {
         await admin.from("email_campaigns").update({
           ab_sample_started_at: new Date().toISOString(),
@@ -231,10 +286,10 @@ serve(async (req: Request) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (quota && quota.allowed === false) {
+    if (quota && (quota as any).allowed === false) {
       return new Response(JSON.stringify({
-        ok: false, quotaExceeded: true, ...quota,
-        message: `Лимит на сегодня: ${quota.daily_limit}, отправлено: ${quota.sent_today}, доступно: ${quota.remaining}. Запрошено: ${pendingCount}.`,
+        ok: false, quotaExceeded: true, ...(quota as any),
+        message: `Лимит на сегодня: ${(quota as any).daily_limit}, отправлено: ${(quota as any).sent_today}, доступно: ${(quota as any).remaining}. Запрошено: ${pendingCount}.`,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -248,7 +303,7 @@ serve(async (req: Request) => {
       for (const r of pending!) {
         try {
           await admin.functions.invoke("send-campaign-email", {
-            body: { campaignId, recipientId: r.id },
+            body: { campaignId, recipientId: (r as any).id },
           });
         } catch (e) {
           console.error("invoke send-campaign-email failed", e);
@@ -281,3 +336,9 @@ serve(async (req: Request) => {
     });
   }
 });
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}

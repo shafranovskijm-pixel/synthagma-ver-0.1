@@ -26,17 +26,15 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const RUN = readFileSync(
-  resolve(__dirname, "../../../supabase/functions-pending-5c1a/run-email-campaign/index.ts"),
-  "utf8",
-);
-const SMTP = readFileSync(
-  resolve(__dirname, "../../../supabase/functions-pending-5c1a/test-org-smtp/index.ts"),
-  "utf8",
-);
-const CURRENT_RUN = readFileSync(
   resolve(__dirname, "../../../supabase/functions/run-email-campaign/index.ts"),
   "utf8",
 );
+const SMTP = readFileSync(
+  resolve(__dirname, "../../../supabase/functions/test-org-smtp/index.ts"),
+  "utf8",
+);
+const CURRENT_RUN = RUN;
+
 
 describe("5C.1.a.1 — RPC client routing (run-email-campaign)", () => {
   it("can_access_organization is invoked via userClient (never via admin)", () => {
@@ -98,12 +96,12 @@ describe("5C.1.a.1 — RPC client routing (test-org-smtp)", () => {
     expect(SMTP).toMatch(/const recipient = smtp\.from_email/);
   });
 
-  it("uses pending-relative import path; promotion rewrites it to ../_shared", () => {
-    // Pending physical path is two levels above supabase/functions/_shared.
+  it("uses ../_shared import path after promotion", () => {
     expect(SMTP).toMatch(
-      /from "\.\.\/\.\.\/functions\/_shared\/smtp-sender\.ts"/,
+      /from "\.\.\/_shared\/smtp-sender\.ts"/,
     );
   });
+
 });
 
 describe("5C.1.a.1 — A/B pipeline preserved in pending run-email-campaign", () => {
