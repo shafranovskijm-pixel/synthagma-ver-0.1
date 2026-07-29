@@ -185,7 +185,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     return () => {
       cancelled = true;
     };
-  }, [organizationId, refreshKey, hasPreloadedData, parentReady]);
+  }, [organizationId, refreshKey, hasPreloadedData, parentReady, queryClient]);
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
