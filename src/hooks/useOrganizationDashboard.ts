@@ -57,10 +57,85 @@ export function useOrganizationDashboard() {
 
   const {
     organizationId, organizationName, isFrdoEnabled, isAdminView,
-    courses, setCourses, students, setStudents, allProfiles, setAllProfiles,
-    companies, stats, setStats, documentsStats, studentDocsByUser, refreshData,
+    courses: rawCourses, setCourses, students, setStudents, allProfiles, setAllProfiles,
+    companies, setStats, studentDocsByUser,
     isLoadingCourses,
+    refreshData: refreshLoader,
   } = dataLoader;
+
+  // React Query client — declared early so it can be referenced by the
+  // unified refresh callback below.
+  const qc = useQueryClient();
+
+  // Phase 4B.1.b — pull aggregated dashboard statistics + per-course
+  // student/lesson counts from SECURITY DEFINER RPCs instead of loading
+  // all profiles/enrollments/lessons up front.
+  const organizationSummary = useOrganizationSummary(organizationId);
+  const {
+    summary,
+    courseOverviewMap,
+    isSummaryLoading,
+    isCourseOverviewLoading,
+    summaryErrorKind,
+    courseOverviewErrorKind,
+    retrySummary,
+    retryCourseOverview,
+  } = organizationSummary;
+
+  // Derive stats from the summary RPC. When summary is unavailable we
+  // fall back to zeros — the loader no longer computes stats client-side.
+  const stats = useMemo(() => {
+    if (!summary) {
+      return { totalStudents: 0, totalCourses: 0, completedCount: 0, averageProgress: 0 };
+    }
+    return {
+      totalStudents: summary.activeStudentsCount,
+      totalCourses: summary.totalCoursesCount,
+      completedCount: summary.completedStudentsCount,
+      averageProgress: summary.averageProgress,
+    };
+  }, [summary]);
+
+  const documentsStats = useMemo(() => {
+    if (!summary) {
+      return { total: 0, withPassport: 0, withSnils: 0, withEducation: 0, complete: 0 };
+    }
+    return {
+      total: summary.documentsTotal,
+      withPassport: summary.withPassport,
+      withSnils: summary.withSnils,
+      withEducation: summary.withEducation,
+      complete: summary.documentsComplete,
+    };
+  }, [summary]);
+
+  // Merge per-course counts from the overview RPC onto the course list.
+  // Rules (see phase spec):
+  //  • if overview row exists — use it (including real zeros);
+  //  • if row is absent OR the RPC failed — keep the value the course
+  //    already carries so we never blank out known counts.
+  const courses = useMemo(() => {
+    return rawCourses.map((c) => {
+      const row = courseOverviewMap.get(c.id);
+      if (row) {
+        return { ...c, studentsCount: row.studentsCount, lessonsCount: row.lessonsCount };
+      }
+      return c;
+    });
+  }, [rawCourses, courseOverviewMap]);
+
+  // Unified refreshData: refresh the light loader AND invalidate every
+  // paginated / aggregated query key so the whole dashboard sees fresh
+  // numbers after mutations.
+  const refreshData = useCallback(() => {
+    refreshLoader();
+    if (!organizationId) return;
+    qc.invalidateQueries({ queryKey: qk.org.dashboardSummary(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentsCounts(organizationId) });
+    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
+  }, [refreshLoader, organizationId, qc]);
 
   // Update category actions with organizationId
   useEffect(() => {
