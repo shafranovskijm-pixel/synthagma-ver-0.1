@@ -171,37 +171,18 @@ export function useOrganizationDashboard() {
   // Company management
   const companyActions = useCompanyActions();
 
-  // StudentDetailCard
-  const studentDetailCard = useStudentDetailCard();
-
   // Enrollment actions
   const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshData);
 
-  // Course students manager
-  const courseStudentsManager = useCourseStudentsManager(organizationId);
-
-  // Email invitation
-  const emailInvitation = useEmailInvitation({ organizationName });
-
-  const studentCoursesDialog = useStudentCoursesDialog(courses, refreshData);
-
-  // Student management
+  // Student management (minimal — dialog + create only)
   const studentManagement = useStudentManagement({
-    organizationId, courses, students, allProfiles,
-    setStudents, setAllProfiles, setStats, onRefresh: refreshData,
+    organizationId,
+    onRefresh: refreshData,
     checkStudentLimit: () => checkLimit('student'),
   });
 
   // Student actions
   const studentActions = useStudentActions(organizationId, organizationName, refreshData);
-
-  // Student details dialog
-  const studentDetailsDialog = useStudentDetailsDialog({
-    students, allProfiles, setStudents, setAllProfiles, setStats, studentActions,
-  });
-
-  // Course details modal
-  const courseDetailsModal = useCourseDetailsModal();
 
   // Dialog hooks
   const courseDocsDialog = useCourseDocsDialog();
@@ -233,68 +214,19 @@ export function useOrganizationDashboard() {
   // Org chats
   const orgChats = useOrgUnreadChats(organizationId, user?.id || null);
 
-  // Load course students when course details modal opens
-  const loadCourseStudentsForModal = useCallback(async () => {
-    if (!courseDetailsModal.selectedCourseForDetails) return;
-    try {
-      const selectedCourse = courseDetailsModal.selectedCourseForDetails;
-      const { data: enrollments } = await supabase
-        .from("enrollments")
-        .select("id, user_id, progress, status")
-        .eq("course_id", selectedCourse.id);
-
-      const enrollmentUserIds = Array.from(new Set((enrollments || []).map(e => e.user_id)));
-      let excludedUserIds = new Set<string>();
-      if (enrollmentUserIds.length > 0) {
-        const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
-        excludedUserIds = new Set(rolesData.map(r => r.user_id));
+  // Copy login/password to clipboard (previously exposed by the removed
+  // legacy StudentDetailsDialog hook).
+  const handleCopyCredentials = useCallback(
+    async (login: string, password: string) => {
+      try {
+        await navigator.clipboard.writeText(`Логин: ${login}\nПароль: ${password}`);
+        toast.success("Логин и пароль скопированы");
+      } catch {
+        toast.error("Не удалось скопировать данные");
       }
-
-      const enrolledList: any[] = [];
-      const filteredEnrollments = (enrollments || []).filter(e => !excludedUserIds.has(e.user_id));
-      const filteredUserIds = filteredEnrollments.map(e => e.user_id);
-
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, user_id, full_name, email, login")
-        .in("user_id", filteredUserIds);
-
-      const { data: passwordData } = await supabase
-        .rpc('get_decrypted_student_passwords', { p_organization_id: organizationId });
-      const passwordMap = new Map((passwordData || []).map((p: any) => [p.user_id, p.decrypted_password]));
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-
-      for (const enrollment of filteredEnrollments) {
-        const profile = profileMap.get(enrollment.user_id);
-        if (profile) {
-          enrolledList.push({
-            id: profile.id,
-            user_id: profile.user_id,
-            enrollment_id: enrollment.id,
-            name: profile.full_name || "Без имени",
-            email: profile.email || "",
-            login: profile.login || null,
-            generated_password: passwordMap.get(profile.user_id) || null,
-            course: selectedCourse.title,
-            course_id: selectedCourse.id,
-            progress: enrollment.progress,
-            lastActivity: null,
-            status: enrollment.status
-          });
-        }
-      }
-
-      courseStudentsManager.setCourseStudentsDirectly(enrolledList);
-    } catch (error) {
-      console.error("Error loading course students:", error);
-    }
-  }, [courseDetailsModal.selectedCourseForDetails]);
-
-  useEffect(() => {
-    if (courseDetailsModal.showCourseDetailsModal && courseDetailsModal.selectedCourseForDetails) {
-      loadCourseStudentsForModal();
-    }
-  }, [courseDetailsModal.showCourseDetailsModal, courseDetailsModal.selectedCourseForDetails?.id, loadCourseStudentsForModal]);
+    },
+    [],
+  );
 
   // Derived handlers
   // (qc is already declared near the top of the hook.)
