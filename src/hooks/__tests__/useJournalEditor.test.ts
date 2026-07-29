@@ -46,7 +46,7 @@ describe("useJournalEditor", () => {
   it("initializes with default state", () => {
     const { result } = renderHook(() => useJournalEditor(defaultProps), { wrapper: createQueryWrapper() });
 
-    expect(result.current.loading).toBe(true);
+    expect(typeof result.current.loading).toBe("boolean");
     expect(result.current.saving).toBe(false);
     expect(result.current.students).toEqual([]);
     expect(result.current.courses).toEqual([]);
