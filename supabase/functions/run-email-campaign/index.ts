@@ -102,9 +102,9 @@ serve(async (req: Request) => {
       );
       if (resolveErr) {
         // Do NOT swallow into a completed/empty campaign — surface as failed.
+        console.error("resolve_campaign_recipients failed", resolveErr);
         await admin.from("email_campaigns").update({
           status: "failed",
-          error: `resolver: ${resolveErr.message}`.slice(0, 500),
         }).eq("id", campaignId);
         return json({ error: `Resolver failed: ${resolveErr.message}` }, 500);
       }
