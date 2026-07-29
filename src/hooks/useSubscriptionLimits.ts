@@ -50,7 +50,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     }
 
     try {
-      const [orgResult, coursesResult, studentsResult, trainedResult] = await Promise.all([
+      const [orgResult, coursesResult, capacityResult, trainedResult] = await Promise.all([
         supabase
           .from("organizations")
           .select("subscription_plan, custom_max_courses, custom_max_students, custom_max_trained_per_month, custom_ai_generations_limit, custom_storage_limit_bytes, custom_enabled_categories")
@@ -60,7 +60,11 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           .from("courses")
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organizationId),
-        supabase.rpc("count_org_students" as any, { org_id: organizationId }),
+        // Canonical student count — active real students, honours custom_max_students.
+        supabase.rpc("get_organization_student_capacity" as any, {
+          p_organization_id: organizationId,
+          p_requested_count: 0,
+        }),
         supabase.rpc("count_org_completions_this_month" as any, { org_id: organizationId }),
       ]);
 
@@ -79,7 +83,8 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
         setCustomEnabledCategories(Array.isArray(d.custom_enabled_categories) ? d.custom_enabled_categories : []);
       }
       setCoursesCount(coursesResult.count || 0);
-      setStudentsCount(Number(studentsResult.data) || 0);
+      const capRow: any = Array.isArray(capacityResult.data) ? capacityResult.data[0] : capacityResult.data;
+      setStudentsCount(Number(capRow?.current_students) || 0);
       setTrainedThisMonth(Number(trainedResult.data) || 0);
 
       // Calculate storage usage by scanning buckets
@@ -99,7 +104,6 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           } catch { /* bucket/path doesn't exist */ }
         };
 
-        const courseIds = (coursesResult as any)?.data?.map((c: any) => c.id) || [];
         // Re-fetch course ids since we used head:true above
         const { data: courseRows } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
         const ids = courseRows?.map(c => c.id) || [];
