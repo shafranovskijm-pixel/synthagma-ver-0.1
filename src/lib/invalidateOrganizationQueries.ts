@@ -53,6 +53,8 @@ export function invalidateOrganizationCourseOverview(
 ) {
   if (!organizationId) return;
   qc.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+}
+
 
 /**
  * Enrollment created/removed: profile set + group membership don't change,
