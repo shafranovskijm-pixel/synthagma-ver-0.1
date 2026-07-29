@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { SALUTE_VOICES, getStoredTTSSettings, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 import { toast } from "sonner";
 
 export function useLessonTTS() {

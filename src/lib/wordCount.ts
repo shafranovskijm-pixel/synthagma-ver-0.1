@@ -1,4 +1,4 @@
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 
 const READING_WPM = 200;
 

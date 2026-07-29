@@ -4,7 +4,7 @@
  */
 
 import { type LessonType, type TestQuestionLocal } from "@/components/course-builder/LessonTypeConfig";
-import { htmlToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { htmlToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 
 export interface ParsedLesson {
   id: string;

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createQueryWrapper } from "@/test/queryWrapper";
 import { renderHook, act } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -35,7 +36,7 @@ describe("useCompaniesManager", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("initializes with default state", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
 
     expect(result.current.companies).toEqual([]);
     expect(result.current.isLoading).toBe(true);
@@ -53,7 +54,7 @@ describe("useCompaniesManager", () => {
   });
 
   it("initial global doc stats are zero", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
 
     expect(result.current.globalDocStats).toEqual({
       contracts: 0,
@@ -66,7 +67,7 @@ describe("useCompaniesManager", () => {
   });
 
   it("can toggle create dialog", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
 
     act(() => { result.current.setShowCreateDialog(true); });
     expect(result.current.showCreateDialog).toBe(true);
@@ -76,14 +77,14 @@ describe("useCompaniesManager", () => {
   });
 
   it("can update search query and filter", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
 
     act(() => { result.current.setSearchQuery("тест"); });
     expect(result.current.searchQuery).toBe("тест");
   });
 
   it("can update create form fields", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
 
     act(() => { result.current.setNewCompanyName("Новая компания"); });
     expect(result.current.newCompanyName).toBe("Новая компания");
@@ -96,7 +97,7 @@ describe("useCompaniesManager", () => {
   });
 
   it("openEditDialog populates edit state", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
     const company = {
       id: "c-1", name: "Компания", inn: "111", kpp: null, ogrn: null,
       address: null, director: null, email: "test@test.com",
@@ -111,7 +112,7 @@ describe("useCompaniesManager", () => {
   });
 
   it("filteredCompanies returns empty when no companies", () => {
-    const { result } = renderHook(() => useCompaniesManager("org-1"));
+    const { result } = renderHook(() => useCompaniesManager("org-1"), { wrapper: createQueryWrapper() });
     expect(result.current.filteredCompanies).toEqual([]);
   });
 });

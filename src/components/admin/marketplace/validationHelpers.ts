@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 
 export interface ValidationRulesConfig {
   minLessons: number;

@@ -4,7 +4,7 @@ import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInli
 import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { Eye, FileText, Video, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 import type { TestQuestion } from "@/hooks/useLessonEditor";
 
 interface LessonPreviewDialogProps {

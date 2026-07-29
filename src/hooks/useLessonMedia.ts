@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/block-editor";
 import { useBackgroundUploads } from "@/contexts/BackgroundUploadsContext";
 
 const SIZE_100MB = 100 * 1024 * 1024;

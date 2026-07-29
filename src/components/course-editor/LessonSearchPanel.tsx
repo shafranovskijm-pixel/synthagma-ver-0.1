@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronUp, ChevronDown, X } from "lucide-react";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 
 interface Props {
   open: boolean;

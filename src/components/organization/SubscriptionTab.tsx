@@ -169,7 +169,7 @@ export function SubscriptionTab() {
                 </CardContent></Card>
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-medium"><Users className="w-4 h-4 text-primary" />Ученики</div>
+                    <div className="flex items-center gap-2 text-sm font-medium"><Users className="w-4 h-4 text-primary" />Новых учеников в месяце</div>
                     <span className="text-sm text-muted-foreground">{s.subscriptionLimits.usage.studentsCount} / {s.subscriptionLimits.limits.maxStudents === -1 ? "∞" : s.subscriptionLimits.limits.maxStudents}</span>
                   </div>
                   <Progress value={s.subscriptionLimits.limits.maxStudents === -1 ? 0 : s.studentsPercent} className="h-2" />
