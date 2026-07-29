@@ -195,9 +195,15 @@ export function useOrganizationDashboard() {
   // Company management
   const companyActions = useCompanyActions();
 
-  // Enrollment actions — this hook also handles bulk archive, so it needs
-  // full student-population invalidation (rows + counts + summary + overview).
-  const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshStudentPopulation);
+  // Enrollment actions — bulk enroll/unenroll only touch enrollment-derived
+  // data (rows + summary + course overview). Bulk archive changes the
+  // population, so it gets the wider refresh.
+  const enrollmentActions = useEnrollmentActions(
+    organizationId,
+    organizationName,
+    refreshEnrollmentData,
+    refreshStudentPopulation,
+  );
 
   // Student management (creation flow only). Creating a profile changes
   // the population, group membership (nulls), summary, and — when a course
