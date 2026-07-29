@@ -82,6 +82,24 @@ export function CourseDetailsTab() {
     d.tabNavigation.setActiveTab("courses");
   };
 
+  // Deleting a course affects the base course list, dashboard summary,
+  // course overview, and enrollment-derived rows simultaneously — refresh
+  // everything before we navigate back.
+  const handleCourseDeleted = useCallback(() => {
+    d.refreshData();
+    handleBack();
+  }, [d]);
+
+  // Adding/removing lessons inside a course changes lessonsCount on the
+  // overview RPC. Invalidate only that key on unmount so the returning
+  // course list re-renders with fresh studentsCount / lessonsCount, without
+  // triggering the base loader or student-population refetches.
+  useEffect(() => {
+    return () => {
+      invalidateOrganizationCourseOverview(qc, organizationId);
+    };
+  }, [qc, organizationId]);
+
   if (!courseId || !organizationId) {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
