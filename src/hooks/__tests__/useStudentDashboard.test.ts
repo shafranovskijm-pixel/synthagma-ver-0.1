@@ -31,37 +31,36 @@ vi.mock("@/hooks/usePullToRefresh", () => ({
   }),
 }));
 
-const mockFrom = vi.fn().mockReturnValue({
-  select: vi.fn().mockReturnValue({
-    eq: vi.fn().mockReturnValue({
-      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-      single: vi.fn().mockResolvedValue({ data: null, error: null }),
-      in: vi.fn().mockReturnValue({
-        order: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+vi.mock("@/integrations/supabase/client", () => {
+  const mockFrom = vi.fn().mockReturnValue({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        in: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
           }),
         }),
       }),
+      in: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
     }),
-    in: vi.fn().mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+    update: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ data: null, error: null }),
     }),
-  }),
-  update: vi.fn().mockReturnValue({
-    eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-  }),
-});
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: mockFrom,
-    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-    functions: {
-      invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
+  });
+  return {
+    supabase: {
+      from: mockFrom,
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      functions: { invoke: vi.fn().mockResolvedValue({ data: null, error: null }) },
     },
-  },
-}));
+  };
+});
 
 vi.mock("sonner", () => ({
   toast: {
