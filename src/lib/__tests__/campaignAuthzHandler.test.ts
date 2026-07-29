@@ -96,12 +96,12 @@ describe("5C.1.a.1 — RPC client routing (test-org-smtp)", () => {
     expect(SMTP).toMatch(/const recipient = smtp\.from_email/);
   });
 
-  it("uses pending-relative import path; promotion rewrites it to ../_shared", () => {
-    // Pending physical path is two levels above supabase/functions/_shared.
+  it("uses ../_shared import path after promotion", () => {
     expect(SMTP).toMatch(
-      /from "\.\.\/\.\.\/functions\/_shared\/smtp-sender\.ts"/,
+      /from "\.\.\/_shared\/smtp-sender\.ts"/,
     );
   });
+
 });
 
 describe("5C.1.a.1 — A/B pipeline preserved in pending run-email-campaign", () => {
