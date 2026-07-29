@@ -40,6 +40,8 @@ export const qk = {
     studentGroupCounts: (orgId: string) => ["org", orgId, "student-group-counts"] as const,
     studentCredentials: (orgId: string, userId: string) =>
       ["org", orgId, "student-credentials", userId] as const,
+    dashboardSummary: (orgId: string) => ["org", orgId, "dashboard-summary"] as const,
+    courseOverview: (orgId: string) => ["org", orgId, "course-overview"] as const,
   },
   admin: {
     organizations: () => ["admin", "organizations"] as const,
