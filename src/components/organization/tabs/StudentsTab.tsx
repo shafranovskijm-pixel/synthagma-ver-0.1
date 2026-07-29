@@ -150,10 +150,11 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     try {
       const { error } = await supabase.from("profiles").update({ student_group_id: groupId } as any).eq("user_id", userId);
       if (error) throw error;
-      // Refresh both: group counts (source of truth on the card) AND the
-      // students page so the Select value / row group binding is up to date.
+      // Refresh group counts (source of truth on the card) AND the paginated
+      // rows so the Select value / row group binding is up to date. Reassigning
+      // a group doesn't change org totals, summary or course overview.
       refreshGroups();
-      refresh();
+      refreshRows();
     } catch { toast.error("Ошибка назначения группы"); }
   };
 
