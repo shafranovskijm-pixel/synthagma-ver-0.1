@@ -120,7 +120,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
       const { error } = await supabase.from("enrollments").insert(toEnroll.map((uid: string) => ({ user_id: uid, course_id: courseId, status: "active", progress: 0, time_spent: 0 })));
       if (error) throw error;
       toast.success(`Зачислено ${toEnroll.length} уч. из группы`);
-      onRefreshStudents?.(); loadGroups();
+      onEnrollmentChanged?.(); loadGroups();
     } catch { toast.error("Ошибка зачисления группы"); }
     finally { setEnrollingGroupId(null); }
   };
