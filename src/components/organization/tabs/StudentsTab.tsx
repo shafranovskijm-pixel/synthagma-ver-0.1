@@ -73,7 +73,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
     removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
-    archiveStudent, unarchiveStudent, refresh,
+    archiveStudent, unarchiveStudent, refresh, refreshRows,
     loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
     retryNextPage,
     fetchStudentCredentialsOnDemand,
