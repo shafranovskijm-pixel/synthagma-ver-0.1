@@ -81,6 +81,17 @@ interface IdentityDocumentRecord {
 
 export type { ConsentRecord, GeneratedConsentRecord, VerificationRecord, DocumentRecord, IdentityDocumentRecord };
 
+interface StudentCardData {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  login?: string | null;
+  company_name?: string | null;
+  generated_password?: string | null;
+  last_visit_at?: string | null;
+}
+
 interface EnrollmentInfo {
   id: string;
   course_id: string;
