@@ -11,6 +11,7 @@ type LoadState = "loading" | "success" | "not_found" | "error";
 
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
+  const qc = useQueryClient();
   const courseId = d.tabNavigation.selectedCourseId;
   const organizationId = d.organizationId;
 
