@@ -18,17 +18,76 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { course_id, user_id, enrollment_id } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { course_id: bodyCourseId, user_id: bodyUserId, enrollment_id } = body ?? {};
 
-    if (!course_id || !user_id) {
+    if (!bodyCourseId || !bodyUserId || !enrollment_id) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // --- Idempotency: skip если уже отправляли для этого enrollment/course ---
-    const dedupKey = `course-completion:${enrollment_id || user_id}:${course_id}`;
+    // --- Server-side authorization: only the student who owns the enrollment can trigger this ---
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: authData, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !authData?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerId = authData.user.id;
+    if (callerId !== bodyUserId) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Verify enrollment ownership, course match, and completion status BEFORE claiming dedup key.
+    const { data: enrollment } = await supabaseAdmin
+      .from("enrollments")
+      .select("id, user_id, course_id, status")
+      .eq("id", enrollment_id)
+      .maybeSingle();
+
+    if (!enrollment || enrollment.user_id !== callerId || enrollment.course_id !== bodyCourseId) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (enrollment.status !== "completed") {
+      return new Response(JSON.stringify({ error: "not_completed" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Trusted values (derived from verified enrollment, not the body).
+    const course_id = enrollment.course_id as string;
+    const user_id = enrollment.user_id as string;
+
+    // --- Idempotency: after auth+enrollment check, so forged requests can't pre-claim the key ---
+    const dedupKey = `course-completion:${enrollment_id}:${course_id}`;
     const claimed = await claimDedupKey(dedupKey);
     if (!claimed) {
       return new Response(JSON.stringify({ success: true, deduped: true, dedupKey }), {
@@ -36,12 +95,6 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
 
     const { data: course, error: courseErr } = await supabaseAdmin
       .from("courses")
@@ -55,6 +108,7 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // Personal in-app notification for the student — milestone, no opt-out
     await notifyStudent({
