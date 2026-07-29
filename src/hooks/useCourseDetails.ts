@@ -100,6 +100,8 @@ export function useCourseDetails(
   // Server-side filters
   const [studentsSearchQuery, setStudentsSearchQuery] = useState("");
   const [studentsStatusFilter, setStudentsStatusFilter] = useState<"all" | "active" | "completed">("all");
+  const [studentsResultFilter, setStudentsResultFilter] = useState<"all" | "passed" | "failed" | "not_started">("all");
+
 
   // Enroll popover
   const [enrollPopoverOpen, setEnrollPopoverOpen] = useState(false);
@@ -159,8 +161,8 @@ export function useCourseDetails(
 
   // ---- Server-side paginated students of the course ----
   const studentsQueryKey = useMemo(
-    () => ["course-students-page", course?.id, debouncedStudentsSearch.trim() || null, studentsStatusFilter] as const,
-    [course?.id, debouncedStudentsSearch, studentsStatusFilter]
+    () => ["course-students-page", course?.id, debouncedStudentsSearch.trim() || null, studentsStatusFilter, studentsResultFilter] as const,
+    [course?.id, debouncedStudentsSearch, studentsStatusFilter, studentsResultFilter]
   );
 
   const studentsQuery = useInfiniteQuery({
@@ -174,11 +176,13 @@ export function useCourseDetails(
         offset: pageParam as number,
         search: debouncedStudentsSearch,
         status: studentsStatusFilter,
+        resultFilter: studentsResultFilter,
       }),
     getNextPageParam: (last) => last.nextOffset,
     staleTime: 30_000,
     retry: paginationRetry,
   });
+
 
   // Dedup by enrollment_id (fallback user_id) — invalidations / late pages
   // must not surface the same enrollment twice.
@@ -518,6 +522,8 @@ export function useCourseDetails(
     totalFilteredStudents,
     studentsSearchQuery, setStudentsSearchQuery,
     studentsStatusFilter, setStudentsStatusFilter,
+    studentsResultFilter, setStudentsResultFilter,
+
     isLoadingStudents: studentsQuery.isLoading,
     isFetchingMoreStudents: studentsQuery.isFetchingNextPage,
     hasMoreStudents: !!studentsQuery.hasNextPage,

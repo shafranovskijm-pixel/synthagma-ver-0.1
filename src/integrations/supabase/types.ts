@@ -10924,6 +10924,46 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_course_student_test_results_page: {
+        Args: {
+          p_course_id: string
+          p_limit?: number
+          p_offset?: number
+          p_result_filter?: string
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          active_count: number
+          archived_at: string
+          attempts_used: number
+          average_percent: number
+          average_progress: number
+          completed_at: string
+          completed_count: number
+          email: string
+          enrollment_id: string
+          full_name: string
+          id: string
+          last_attempt_at: string
+          latest_max_score: number
+          latest_passing_score: number
+          latest_percent: number
+          latest_score: number
+          login: string
+          progress: number
+          result_status: string
+          started_at: string
+          status: string
+          test_details: Json
+          tests_attempted: number
+          tests_passed: number
+          tests_total: number
+          time_spent: number
+          total_count: number
+          user_id: string
+        }[]
+      }
       get_course_students_page: {
         Args: {
           p_course_id: string
