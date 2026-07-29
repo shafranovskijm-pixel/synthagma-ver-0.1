@@ -25,8 +25,12 @@ import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTa
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { formatCourseTestResult, safePercent } from "@/lib/courseTestResult";
+import type { CourseStudentPageRow, TestResultDetail } from "@/api/courseStudents";
 
 import { useCourseDetails } from "@/hooks/useCourseDetails";
+
 // Lazy-loaded heavy chunks. We expose the import factories so we can also
 // prefetch them in the background as soon as the course card opens — this
 // makes the "Конструктор" / "Превью" tabs feel instant instead of waiting
