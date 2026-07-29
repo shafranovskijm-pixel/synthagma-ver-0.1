@@ -11051,6 +11051,28 @@ export type Database = {
         Returns: string[]
       }
       get_organization_core: { Args: { p_org_id: string }; Returns: Json }
+      get_organization_course_overview: {
+        Args: { p_organization_id: string }
+        Returns: {
+          course_id: string
+          lessons_count: number
+          students_count: number
+        }[]
+      }
+      get_organization_dashboard_summary: {
+        Args: { p_organization_id: string }
+        Returns: {
+          active_students_count: number
+          average_progress: number
+          completed_students_count: number
+          documents_complete: number
+          documents_total: number
+          total_courses_count: number
+          with_education: number
+          with_passport: number
+          with_snils: number
+        }[]
+      }
       get_organization_student_group_counts: {
         Args: { p_organization_id: string }
         Returns: {
