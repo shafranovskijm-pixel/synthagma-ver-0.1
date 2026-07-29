@@ -1,3 +1,30 @@
+// =====================================================================
+// PENDING — Phase 5C.1.a (corrected in 5C.1.a.1). Do NOT deploy until
+// the accompanying RLS migration is planned.
+//
+// 5C.1.a.1 corrections vs 5C.1.a draft:
+//   • can_access_organization is invoked via the USER client
+//     (Authorization header propagated). The service-role client has no
+//     auth.uid(), so it always returned false → owners were being denied.
+//   • has_role is invoked via the user client with the JWT-resolved userId.
+//   • The service-role client is used ONLY after the authorization gate
+//     passes, to read decrypted SMTP and update is_verified/last_test_*.
+//   • body.to is IGNORED for org tests — the test always goes to the
+//     stored from_email, so a caller cannot exfiltrate via arbitrary
+//     recipient.
+//   • is_verified / last_test_at / last_test_error are only touched
+//     when the caller is authorized; a 401/403 leaves the row untouched.
+//   • Platform-scope test now requires admin (previously any authenticated user).
+//   • Org-scope test requires admin OR can_access_organization(org, 'sales.write').
+//
+// IMPORTANT — import path on promotion:
+//   This file uses "../_shared/smtp-sender.ts" because it
+//   physically lives in supabase/functions-pending-5c1a/test-org-smtp/.
+//   When promoted to supabase/functions/test-org-smtp/index.ts, the
+//   import MUST be rewritten to "../_shared/smtp-sender.ts". See
+//   supabase/functions-pending-5c1a/PROMOTION.md for the exact steps.
+// =====================================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail, sendPlatformEmail, getPlatformSmtpConfig } from "../_shared/smtp-sender.ts";
@@ -10,7 +37,7 @@ const corsHeaders = {
 interface ReqBody {
   organizationId?: string;
   scope?: "platform" | "org";
-  to?: string; // для platform-теста (если не задан — берём SMTP_FROM)
+  // body.to intentionally not read — org tests always send to from_email.
 }
 
 serve(async (req: Request) => {
@@ -22,102 +49,82 @@ serve(async (req: Request) => {
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const authHeader = req.headers.get("Authorization") || "";
+    const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const isServiceRole = bearer.length > 0 && bearer === SERVICE_KEY;
+
+    // User client carries the caller's JWT and MUST be used for
+    // auth.getUser(), has_role() and can_access_organization().
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    let isAdmin = false;
+    if (!isServiceRole) {
+      const { data: userData } = await userClient.auth.getUser();
+      if (!userData?.user) return json({ error: "Unauthorized" }, 401);
+      const userId = userData.user.id;
+      const { data: adminRow } = await userClient.rpc("has_role", {
+        _role: "admin", _user_id: userId,
       });
-    }
-
-    const body: ReqBody = await req.json().catch(() => ({}));
-    const scope = body.scope || (body.organizationId ? "org" : "platform");
-
-    // ========== PLATFORM SMTP TEST ==========
-    if (scope === "platform") {
-      let cfg;
-      try {
-        cfg = getPlatformSmtpConfig();
-      } catch (e) {
-        return new Response(JSON.stringify({ success: false, error: (e as Error).message }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const recipient = body.to || cfg.from_email;
-      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-          <h1 style="color:#0EA5A4">Платформенный SMTP работает! ✅</h1>
-          <p>Это тестовое письмо для проверки настроек платформенного SMTP.</p>
-          <hr style="border:1px solid #e2e8f0;margin:20px 0">
-          <p style="color:#64748b;font-size:12px">
-            Сервер: ${cfg.host}:${cfg.port}<br>
-            От кого: ${cfg.from_email}<br>
-            Время: ${new Date().toLocaleString("ru-RU")}
-          </p>
-        </div>
-      </body></html>`;
-
-      const res = await sendPlatformEmail({
-        to: recipient,
-        subject: "✅ Тест платформенного SMTP — Sintagma",
-        html,
-        skipRateLimit: true,
-      });
-
-      return new Response(
-        JSON.stringify({ success: res.ok, error: res.error, sent_to: recipient }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // ========== ORG SMTP TEST ==========
-    if (!body.organizationId) {
-      return new Response(JSON.stringify({ error: "organizationId required for scope=org" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      isAdmin = adminRow === true;
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const body: ReqBody = await req.json().catch(() => ({}));
+    const scope = body.scope || (body.organizationId ? "org" : "platform");
 
-    const userClientRpc = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: smtpData, error: smtpError } = await userClientRpc.rpc("get_decrypted_org_smtp", {
+    // ============ PLATFORM TEST (admin or service_role) ============
+    if (scope === "platform") {
+      if (!isServiceRole && !isAdmin) return json({ error: "Forbidden" }, 403);
+
+      let cfg;
+      try { cfg = getPlatformSmtpConfig(); }
+      catch (e) { return json({ success: false, error: (e as Error).message }, 200); }
+
+      const recipient = cfg.from_email;
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h1 style="color:#0EA5A4">Платформенный SMTP работает! ✅</h1>
+          <p>Тестовое письмо (${new Date().toLocaleString("ru-RU")}).</p>
+        </div></body></html>`;
+      const res = await sendPlatformEmail({
+        to: recipient,
+        subject: "✅ Тест платформенного SMTP — Sintagma",
+        html, skipRateLimit: true,
+      });
+      return json({ success: res.ok, error: res.error, sent_to: recipient }, 200);
+    }
+
+    // ============ ORG TEST (admin OR sales.write OR service_role) ============
+    if (!body.organizationId) return json({ error: "organizationId required" }, 400);
+
+    let orgAuthorized = false;
+    if (isServiceRole || isAdmin) {
+      orgAuthorized = true;
+    } else {
+      const { data: writeRow } = await userClient.rpc("can_access_organization", {
+        _organization_id: body.organizationId,
+        _permission: "sales.write",
+      });
+      orgAuthorized = writeRow === true;
+    }
+    if (!orgAuthorized) return json({ error: "Forbidden" }, 403);
+
+    // Only after auth: use service_role to read decrypted SMTP.
+    const { data: smtpData, error: smtpError } = await admin.rpc("get_decrypted_org_smtp", {
       p_organization_id: body.organizationId,
     });
-    if (smtpError) {
-      return new Response(JSON.stringify({ error: smtpError.message }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (smtpError) return json({ error: smtpError.message }, 500);
     const smtp = (smtpData || [])[0];
-    if (!smtp) {
-      return new Response(JSON.stringify({ error: "SMTP не настроен" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!smtp) return json({ error: "SMTP не настроен" }, 404);
 
+    // Recipient is ALWAYS the stored from_email — user cannot supply body.to.
+    const recipient = smtp.from_email;
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
         <h1 style="color:#0EA5A4">SMTP работает! ✅</h1>
-        <p>Это тестовое письмо из вашей рассылочной системы Sintagma.</p>
-        <p>Если вы видите это письмо в своём ящике — значит SMTP-настройки введены корректно и вы можете запускать кампании.</p>
-        <hr style="border:1px solid #e2e8f0;margin:20px 0">
-        <p style="color:#64748b;font-size:12px">
-          Сервер: ${smtp.host}:${smtp.port}<br>
-          От кого: ${smtp.from_email}<br>
-          Время: ${new Date().toLocaleString("ru-RU")}
-        </p>
-      </div>
-    </body></html>`;
+        <p>Тестовое письмо от Sintagma (${new Date().toLocaleString("ru-RU")}).</p>
+      </div></body></html>`;
 
     let testError: string | null = null;
     try {
@@ -125,30 +132,25 @@ serve(async (req: Request) => {
         host: smtp.host, port: smtp.port, username: smtp.username,
         password: smtp.password, encryption: smtp.encryption,
         from_email: smtp.from_email, from_name: smtp.from_name,
-      }, {
-        to: smtp.from_email,
-        subject: "✅ Тест SMTP — Sintagma",
-        html,
-      });
-    } catch (e) {
-      testError = (e as Error).message;
-    }
+      }, { to: recipient, subject: "✅ Тест SMTP — Sintagma", html });
+    } catch (e) { testError = (e as Error).message; }
 
+    // Touch is_verified only when authorized (we are, at this point).
     await admin.from("org_smtp_settings").update({
       is_verified: testError === null,
       last_test_at: new Date().toISOString(),
       last_test_error: testError,
     }).eq("organization_id", body.organizationId);
 
-    return new Response(
-      JSON.stringify({ success: testError === null, error: testError, sent_to: smtp.from_email }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ success: testError === null, error: testError, sent_to: recipient }, 200);
   } catch (e) {
     console.error("test-org-smtp error", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: (e as Error).message }, 500);
   }
 });
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
