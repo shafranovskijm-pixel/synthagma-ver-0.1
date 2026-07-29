@@ -19,9 +19,12 @@ import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog 
 import { CourseCard } from "./courses/CourseCardView";
 import { CourseCatalogCard } from "./courses/CourseCatalogCard";
 import { CategoryFolder } from "./courses/CategoryFolder";
+import { CourseCountsStateContext, type CourseCountsState } from "./courses/courseCountsState";
 import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { QuickStartCard } from "@/components/organization/QuickStartCard";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { courseOverviewErrorMessage } from "./summaryStateMessages";
 
 interface CoursesTabProps {
   organizationId: string;
