@@ -21,7 +21,7 @@ interface StudentTableRowProps {
   onViewStudent: () => void;
   onCopyCredentials: (login: string, password: string) => void;
   onRemoveStudent: (userId: string) => void;
-  studentDocsByUser: Map<string, string[]>;
+  studentDocsByUser?: Map<string, string[]>;
   frdoStatus: Map<string, StudentFRDOStatus>;
   studentGroups: Array<{ id: string; name: string; color: string }>;
   studentGroupMap: Map<string, string | null>;

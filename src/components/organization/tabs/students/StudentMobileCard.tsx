@@ -9,7 +9,7 @@ interface StudentMobileCardProps {
   onViewStudent: () => void;
   onCopyCredentials: (login: string, password: string) => void;
   onRequestCredentials?: (userId: string) => Promise<string | null>;
-  studentDocsByUser: Map<string, string[]>;
+  studentDocsByUser?: Map<string, string[]>;
 }
 
 export const StudentMobileCard = React.memo(function StudentMobileCard({
