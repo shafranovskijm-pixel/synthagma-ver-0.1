@@ -171,25 +171,8 @@ const JoinByLink = () => {
     setIsSubmitting(true);
 
     try {
-      // Pre-check student limit
-      const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: linkData.organization_id });
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('subscription_plan')
-        .eq('id', linkData.organization_id)
-        .single();
-
-      const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
-      const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
-      const count = Number(currentCount) || 0;
-
-      if (maxStudents !== -1 && count >= maxStudents) {
-        toast.error("Регистрация невозможна", { description: "Организация достигла лимита учеников. Обратитесь к администратору." });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Use edge function to register student (public branch via registration_token)
+      // No client-side plan matrix. Final capacity decision belongs to
+      // the server (edge → create_student_profile_with_capacity).
       const { data: result, error: registerError } = await safeInvoke<any>('register-student', {
         body: {
           email,
@@ -201,9 +184,29 @@ const JoinByLink = () => {
       });
 
       if (registerError) throw registerError;
-      if (result?.error) throw new Error(result.error);
+      const errCode = (result && result.code) as string | undefined;
+      const errText = (result && (result.error as string | undefined)) || undefined;
+      if (errText) {
+        if (errCode === "STUDENT_LIMIT_EXCEEDED") {
+          toast.error("Регистрация невозможна", {
+            description: "Организация достигла лимита учеников. Обратитесь к администратору.",
+          });
+        } else if (errCode === "STUDENT_ARCHIVED") {
+          toast.error("Учётная запись отключена", {
+            description: "Обратитесь к администратору вашей организации.",
+          });
+        } else if (errCode === "PROFILE_IN_OTHER_ORG") {
+          toast.error("Email уже используется", {
+            description: "Этот email уже привязан к другой организации.",
+          });
+        } else {
+          toast.error("Ошибка регистрации", { description: errText });
+        }
+        setIsSubmitting(false);
+        return;
+      }
 
-      // Sign in using the auth email (login@student.local) returned by the edge function
+      // Sign in using the auth email returned by the edge function
       const authEmail = result?.login ? `${result.login}@student.local` : email;
       const authPassword = result?.password || password;
       const { error: signInError } = await supabase.auth.signInWithPassword({
