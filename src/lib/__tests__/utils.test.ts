@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { cn } from "@/lib/utils";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { cn, getCourseDetailsPath, getAdminAwareBackPath } from "@/lib/utils";
 
 describe("cn utility", () => {
   it("merges class names", () => {
