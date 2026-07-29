@@ -91,6 +91,22 @@ export function useCourseLearning() {
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
+  // Держим completedIdsRef синхронно с lessonProgress: сброс, повторная загрузка,
+  // обновления от useLessonTest — всё попадает в ref, из которого читает
+  // markLessonProgress вместо устаревшего замыкания.
+  useEffect(() => {
+    completedIdsRef.current = new Set(
+      lessonProgress.filter(p => p.completed).map(p => p.lesson_id),
+    );
+  }, [lessonProgress]);
+
+  // Сбрасываем "one-shot" защиту завершения курса при смене курса/enrollment,
+  // чтобы повторный вход в тот же курс мог снова корректно завершиться.
+  useEffect(() => {
+    courseCompletionStartedRef.current = { value: false };
+    markInFlightRef.current = new Set();
+  }, [enrollmentId]);
+
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
 
