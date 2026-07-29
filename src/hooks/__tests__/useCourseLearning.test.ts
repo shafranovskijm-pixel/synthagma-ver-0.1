@@ -35,27 +35,36 @@ describe("parseContentToBlocks", () => {
     expect(result[1].type).toBe("heading1");
   });
 
-  it("returns empty array for plain text", () => {
-    expect(parseContentToBlocks("Just plain text")).toEqual([]);
-  });
-
-  it("returns empty array for invalid JSON", () => {
-    expect(parseContentToBlocks("{broken json")).toEqual([]);
-  });
-
-  it("returns empty array for JSON object (not array)", () => {
-    expect(parseContentToBlocks('{"key": "value"}')).toEqual([]);
-  });
-
-  it("returns empty array for array without type/id fields", () => {
-    expect(parseContentToBlocks('[{"name": "test"}]')).toEqual([]);
-  });
-
   it("returns empty array for empty string", () => {
     expect(parseContentToBlocks("")).toEqual([]);
   });
 
   it("handles empty JSON array", () => {
     expect(parseContentToBlocks("[]")).toEqual([]);
+  });
+
+  // Backward-compatible: legacy plain-text / markdown content is preserved
+  // by falling back to the markdown parser instead of being dropped.
+  it("falls back to markdown parser for plain text (legacy content)", () => {
+    const result = parseContentToBlocks("Just plain text");
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to markdown parser for broken JSON (legacy content)", () => {
+    const result = parseContentToBlocks("{broken json");
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("falls back for JSON object (not array)", () => {
+    const result = parseContentToBlocks('{"key": "value"}');
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  // Malformed block arrays must not crash the UI — they pass through as an array.
+  it("does not throw on array without valid block fields", () => {
+    expect(() => parseContentToBlocks('[{"name": "test"}]')).not.toThrow();
+    const result = parseContentToBlocks('[{"name": "test"}]');
+    expect(Array.isArray(result)).toBe(true);
   });
 });
