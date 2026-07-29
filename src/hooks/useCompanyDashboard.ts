@@ -170,19 +170,17 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     setAddingEmployee(true);
 
     try {
-      const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: company.organization_id });
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('subscription_plan')
-        .eq('id', company.organization_id)
-        .single();
-
-      const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
-      const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
-      const count = Number(currentCount) || 0;
-
-      if (maxStudents !== -1 && count >= maxStudents) {
-        toast.error("Лимит учеников", { description: `Максимум ${maxStudents} учеников на текущем тарифе. Обратитесь к организации.` });
+      // Server-canonical capacity preflight. Final decision belongs to
+      // the edge function (create_student_profile_with_capacity).
+      const { data: capRows } = await supabase.rpc(
+        "get_organization_student_capacity" as any,
+        { p_organization_id: company.organization_id, p_requested_count: 1 },
+      );
+      const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
+      if (cap && !cap.is_unlimited && !cap.can_add) {
+        toast.error("Лимит учеников", {
+          description: `Достигнут лимит: ${cap.current_students} из ${cap.max_students}. Обратитесь к организации.`,
+        });
         setAddingEmployee(false);
         return;
       }
@@ -197,6 +195,15 @@ export function useCompanyDashboard(viewAsUserId?: string) {
       });
 
       if (error) throw error;
+      if ((result as any)?.error) {
+        const code = (result as any).code;
+        if (code === "STUDENT_LIMIT_EXCEEDED") {
+          toast.error("Лимит учеников", { description: (result as any).error });
+        } else {
+          toast.error("Ошибка", { description: (result as any).error });
+        }
+        return;
+      }
 
       toast.success("Сотрудник добавлен", { description: `${fullName} зарегистрирован в системе` });
 

@@ -67,20 +67,16 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
   const handleImport = async () => {
     setImporting(true);
 
-    // Pre-check student limit
-    const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: organizationId });
-    const { data: orgData } = await supabase
-      .from('organizations')
-      .select('subscription_plan')
-      .eq('id', organizationId)
-      .single();
-
-    const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
-    const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
-    const count = Number(currentCount) || 0;
-
-    if (maxStudents !== -1 && count + rows.length > maxStudents) {
-      showLimitToast(`Превышен лимит учеников. Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${rows.length}.`);
+    // Server-canonical capacity preflight. Server enforces per-row.
+    const { data: capRows } = await supabase.rpc(
+      "get_organization_student_capacity" as any,
+      { p_organization_id: organizationId, p_requested_count: rows.length },
+    );
+    const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
+    if (cap && !cap.is_unlimited && !cap.can_add) {
+      showLimitToast(
+        `Достигнут лимит учеников: ${cap.current_students} из ${cap.max_students}. Импорт: ${rows.length}.`,
+      );
       setImporting(false);
       return;
     }

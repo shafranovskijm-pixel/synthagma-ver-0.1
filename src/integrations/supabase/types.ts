@@ -10846,6 +10846,20 @@ export type Database = {
         }
         Returns: string
       }
+      create_student_profile_with_capacity: {
+        Args: {
+          p_company_id: string
+          p_email: string
+          p_full_name: string
+          p_generated_password: string
+          p_login: string
+          p_organization_id: string
+          p_region: string
+          p_student_group_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       current_company_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
