@@ -275,8 +275,13 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                 <div
                   key={n.id}
                   className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
-                  onClick={() => {
-                    markAsRead(n.id);
+                  onClick={async () => {
+                    try {
+                      await markAsRead(n.id);
+                    } catch (err) {
+                      console.error("markAsRead failed, aborting navigation", err);
+                      return;
+                    }
                     if (n.type === "subscription_expiry" && n.related_id) {
                       setIsOpen(false);
                       navigate(`/invoice/${n.related_id}`);
