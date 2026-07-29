@@ -324,13 +324,13 @@ export function useOrganizationDashboard() {
     user, signOut, handleLogout, isMobile,
     // Org data
     organizationId, organizationName, isFrdoEnabled, isAdminView,
-    courses, setCourses, students, setStudents, allProfiles, setAllProfiles,
-    companies, stats, setStats, documentsStats, studentDocsByUser, refreshData,
+    courses, setCourses,
+    companies, stats, documentsStats, refreshData,
     isLoadingCourses,
     // Phase 4B.1.b — aggregate summary state (loading / error / retry).
     // UI wiring (loading skeletons + error banners on StatsCards etc.) is
-    // scheduled for 4B.1.c; these fields are exposed now so consumers can
-    // start using them without another API shape change.
+    // scheduled for 4B.1.c.2; these fields are exposed now so consumers
+    // can start using them without another API shape change.
     isSummaryLoading, summaryErrorKind, retrySummary,
     isCourseOverviewLoading, courseOverviewErrorKind, retryCourseOverview,
     // Features & limits
@@ -348,24 +348,14 @@ export function useOrganizationDashboard() {
     registrationLinks,
     // Companies
     companyActions, handleCompanyCreate, handleCompanySave,
-    // Student detail card
-    studentDetailCard, handleViewStudent,
+    // Student navigation
+    handleViewStudent, handleCopyCredentials,
     // Enrollments
     enrollmentActions, getSelectedEnrollmentsCount, handleBulkUnenroll,
-    // Course students
-    courseStudentsManager,
-    // Email invitation
-    emailInvitation,
-    // Student courses dialog
-    studentCoursesDialog,
-    // Student management
+    // Student management (minimal — Add Student dialog only)
     studentManagement,
     // Student actions
     studentActions, handleBulkSendCredentials, handleBulkCreateCredentials,
-    // Student details dialog
-    studentDetailsDialog,
-    // Course details modal
-    courseDetailsModal, loadCourseStudentsForModal,
     // Doc dialogs
     courseDocsDialog, studentDocsDialog,
     // Dashboard settings
