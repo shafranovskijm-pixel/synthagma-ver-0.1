@@ -18,7 +18,15 @@ export const GROUP_COLORS = [
   "#8b5cf6", "#ef4444", "#14b8a6", "#f97316", "#06b6d4",
 ];
 
-export function useCourseGroups(courseId: string, organizationId: string, onRefreshStudents?: () => void) {
+export interface CourseGroupRefreshCallbacks {
+  onEnrollmentChanged?: () => void;
+  onGroupingChanged?: () => void;
+  onStudentPopulationChanged?: () => void;
+  onGroupDirectoryChanged?: () => void;
+}
+
+export function useCourseGroups(courseId: string, organizationId: string, callbacks?: CourseGroupRefreshCallbacks) {
+  const { onEnrollmentChanged, onGroupingChanged, onStudentPopulationChanged, onGroupDirectoryChanged } = callbacks || {};
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollingGroupId, setEnrollingGroupId] = useState<string | null>(null);
@@ -95,6 +103,7 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
       toast.success("Группа создана, ссылка скопирована");
       setShowCreateDialog(false); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); setNewGroupStartDate(undefined); setNewGroupEndDate(undefined);
       loadGroups();
+      onGroupDirectoryChanged?.();
     } catch { toast.error("Ошибка создания группы"); }
     finally { setIsCreating(false); }
   };
@@ -112,7 +121,7 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
       const { error } = await supabase.from("enrollments").insert(toEnroll.map((uid: string) => ({ user_id: uid, course_id: courseId, status: "active", progress: 0, time_spent: 0 })));
       if (error) throw error;
       toast.success(`Зачислено ${toEnroll.length} уч. из группы`);
-      onRefreshStudents?.(); loadGroups();
+      onEnrollmentChanged?.(); loadGroups();
     } catch { toast.error("Ошибка зачисления группы"); }
     finally { setEnrollingGroupId(null); }
   };
@@ -124,6 +133,7 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
       if (error) throw error;
       setGroups(prev => prev.map(g => g.id === groupId ? { ...g, [field]: value } : g));
       toast.success("Дата обновлена");
+      onGroupDirectoryChanged?.();
     } catch { toast.error("Ошибка обновления даты"); }
   };
 
@@ -147,7 +157,7 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
     try {
       for (const uid of Array.from(selectedStudentIds)) { await supabase.from("profiles").update({ student_group_id: selectedGroupForAdd.id } as any).eq("user_id", uid); }
       toast.success(`${selectedStudentIds.size} уч. добавлено в группу`);
-      setShowAddStudentsDialog(false); loadGroups(); onRefreshStudents?.();
+      setShowAddStudentsDialog(false); loadGroups(); onGroupingChanged?.();
     } catch { toast.error("Ошибка добавления учеников"); }
     finally { setAddingStudents(false); }
   };
@@ -163,7 +173,7 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
       if (data?.error) { toast.error(data.error); return; }
       toast.success(data?.message || "Ученик создан и добавлен в группу");
       setNewStudentName(""); setNewStudentEmail(""); setShowNewStudentForm(false);
-      handleOpenAddStudents(selectedGroupForAdd); loadGroups(); onRefreshStudents?.();
+      handleOpenAddStudents(selectedGroupForAdd); loadGroups(); onStudentPopulationChanged?.();
     } catch (err: any) { toast.error("Ошибка создания ученика: " + (err.message || "")); }
     finally { setCreatingStudent(false); }
   };
@@ -178,7 +188,8 @@ export function useCourseGroups(courseId: string, organizationId: string, onRefr
       if (error) throw error;
       setGroups(prev => prev.filter(g => g.id !== groupId));
       toast.success("Группа удалена");
-      onRefreshStudents?.();
+      onGroupingChanged?.();
+      onGroupDirectoryChanged?.();
     } catch (err: any) {
       toast.error("Ошибка удаления группы: " + (err.message || ""));
     }

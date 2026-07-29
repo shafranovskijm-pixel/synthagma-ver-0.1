@@ -28,6 +28,8 @@ import {
   invalidateOrganizationStudentRows,
   invalidateOrganizationEnrollmentData,
   invalidateOrganizationStudentPopulation,
+  invalidateOrganizationStudentGrouping,
+  invalidateOrganizationGroupDirectory,
 } from "@/lib/invalidateOrganizationQueries";
 import { toast } from "sonner";
 
@@ -143,6 +145,19 @@ export function useOrganizationDashboard() {
 
   const refreshStudentPopulation = useCallback(() => {
     invalidateOrganizationStudentPopulation(qc, organizationId);
+  }, [qc, organizationId]);
+
+  // Student ↔ group binding changed (assign/move between groups). Only the
+  // paginated rows and per-group counters need to be refreshed.
+  const refreshStudentGrouping = useCallback(() => {
+    invalidateOrganizationStudentGrouping(qc, organizationId);
+  }, [qc, organizationId]);
+
+  // Group directory (create/rename/delete). Membership-derived counters
+  // are handled by refreshStudentGrouping when the same mutation also
+  // changes bindings (e.g. deleting a group nulls student_group_id).
+  const refreshGroupDirectory = useCallback(() => {
+    invalidateOrganizationGroupDirectory(qc, organizationId);
   }, [qc, organizationId]);
 
   // Broad manual refresh — used by the toolbar "Обновить" button and by
@@ -374,6 +389,7 @@ export function useOrganizationDashboard() {
     // the base loader (courses/categories/companies) does not re-fetch
     // after every student-scoped change.
     refreshBaseData, refreshStudentRows, refreshEnrollmentData, refreshStudentPopulation,
+    refreshStudentGrouping, refreshGroupDirectory,
     isLoadingCourses,
     // Phase 4B.1.c.2.a — honest loading/error/success state for the
     // aggregated summary + course overview RPCs. `stats`/`documentsStats`

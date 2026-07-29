@@ -579,7 +579,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         </DialogContent>
       </Dialog>
 
-      {settingsGroupId && <GroupSettingsDialog open={!!settingsGroupId} onOpenChange={v => { if (!v) setSettingsGroupId(null); }} groupId={settingsGroupId} organizationId={organizationId} onDeleted={() => { setSettingsGroupId(null); if (groupFilter === settingsGroupId) setGroupFilter("all"); refreshGroups(); }} onUpdated={() => refreshGroups()} />}
+      {settingsGroupId && <GroupSettingsDialog open={!!settingsGroupId} onOpenChange={v => { if (!v) setSettingsGroupId(null); }} groupId={settingsGroupId} organizationId={organizationId} onDeleted={() => { setSettingsGroupId(null); if (groupFilter === settingsGroupId) setGroupFilter("all"); refreshGroups(); refreshRows(); }} onUpdated={() => refreshGroups()} />}
 
       <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} />
     </div>

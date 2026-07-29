@@ -55,6 +55,36 @@ export function invalidateOrganizationCourseOverview(
   qc.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
 }
 
+/**
+ * Student ↔ group binding changed (assign/reassign/unassign) — the paginated
+ * rows carry the group id and the per-group counters change, but the group
+ * directory itself, org-wide active/archived totals, dashboard summary and
+ * course overview do not.
+ */
+export function invalidateOrganizationStudentGrouping(
+  qc: QueryClient,
+  organizationId: string | null | undefined,
+) {
+  if (!organizationId) return;
+  qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+  qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
+}
+
+/**
+ * Group directory changed (create/update metadata/delete). Only the groups
+ * list itself needs to be re-read — membership-derived counters are handled
+ * by invalidateOrganizationStudentGrouping when the same mutation also
+ * changes group binding.
+ */
+export function invalidateOrganizationGroupDirectory(
+  qc: QueryClient,
+  organizationId: string | null | undefined,
+) {
+  if (!organizationId) return;
+  qc.invalidateQueries({ queryKey: qk.org.studentGroups(organizationId) });
+}
+
+
 
 /**
  * Enrollment created/removed: profile set + group membership don't change,

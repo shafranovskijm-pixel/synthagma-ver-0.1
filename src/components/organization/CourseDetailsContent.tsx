@@ -89,14 +89,36 @@ interface CourseDetailsContentProps {
   course: Course; courseStudents: Student[]; organizationId: string | null;
   activeTab: CourseTabKey;
   onTabChange: (tab: CourseTabKey) => void;
-  onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void; onRefreshStudents?: () => void;
+  onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void;
+  /** Enrollment membership changed (bulk enroll/unenroll, group enrollment, request approval). */
+  onEnrollmentChanged?: () => void;
+  /** Student ↔ group binding changed (assign/move between groups). */
+  onStudentGroupingChanged?: () => void;
+  /** Student population changed (create new profile inside a group). */
+  onStudentPopulationChanged?: () => void;
+  /** Group directory changed (create/update/delete a group). */
+  onGroupDirectoryChanged?: () => void;
   onBack?: () => void;
 }
 
-export function CourseDetailsContent({ course, courseStudents, organizationId, activeTab, onTabChange, onEnrollStudent, onCourseDeleted, onCourseUpdated, onRefreshStudents, onBack }: CourseDetailsContentProps) {
+export function CourseDetailsContent({
+  course, courseStudents, organizationId, activeTab, onTabChange, onEnrollStudent,
+  onCourseDeleted, onCourseUpdated,
+  onEnrollmentChanged, onStudentGroupingChanged, onStudentPopulationChanged, onGroupDirectoryChanged,
+  onBack,
+}: CourseDetailsContentProps) {
   const { isEnabled } = useOrgFeatures(organizationId);
   const isFrdoEnabled = isEnabled('frdo');
-  const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
+  // useCourseDetails covers course-scoped enrollment mutations (bulk
+  // enroll/unenroll/progress reset) — enrollment invalidations only.
+  const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onEnrollmentChanged, onCourseDeleted);
+
+  const groupsCallbacks = {
+    onEnrollmentChanged,
+    onGroupingChanged: onStudentGroupingChanged,
+    onStudentPopulationChanged,
+    onGroupDirectoryChanged,
+  };
 
   // Prefetch heavy chunks (course builder + preview) in the background as soon
   // as the course card mounts. By the time the user clicks "Конструктор" or
@@ -352,13 +374,13 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
             </aside>
             <div className="min-w-0">
               {activeTab === "students" && <StudentsSection h={h} />}
-              {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
               {activeTab === "history" && (
                 <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
                   <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
                 </Suspense>
               )}
-              {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} refreshCallbacks={groupsCallbacks} />}
               {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
               {activeTab === "reminders" && (
                 <CourseRemindersTab courseId={course.id} organizationId={organizationId || ""}
@@ -381,7 +403,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
       {!(showSubTabs && activeGroup === "students") && (
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
           {activeTab === "students" && <StudentsSection h={h} />}
-        {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+        {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
         {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
         {activeTab === "history" && (
           <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
@@ -434,7 +456,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
             onCompletionNotifyEmailsChange={async (v) => { h.setCompletionNotifyEmails(v || null); try { const { error } = await supabase.from("courses").update({ completion_notify_emails: v || null } as any).eq("id", course.id); if (error) throw error; onCourseUpdated?.(); } catch (e) { console.error(e); } }}
           />
         )}
-        {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+        {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} refreshCallbacks={groupsCallbacks} />}
         {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
         {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
         {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}

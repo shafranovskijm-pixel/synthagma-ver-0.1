@@ -10,12 +10,16 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon, Users, UserPlus, Check, Plus, Copy, Link as LinkIcon, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { useCourseGroups, GROUP_COLORS } from "@/hooks/useCourseGroups";
+import { useCourseGroups, GROUP_COLORS, type CourseGroupRefreshCallbacks } from "@/hooks/useCourseGroups";
 
-interface CourseGroupsTabProps { courseId: string; organizationId: string; onRefreshStudents?: () => void; }
+interface CourseGroupsTabProps {
+  courseId: string;
+  organizationId: string;
+  refreshCallbacks?: CourseGroupRefreshCallbacks;
+}
 
-export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }: CourseGroupsTabProps) {
-  const h = useCourseGroups(courseId, organizationId, onRefreshStudents);
+export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: CourseGroupsTabProps) {
+  const h = useCourseGroups(courseId, organizationId, refreshCallbacks);
 
   const addStudentsDialog = (
     <Dialog open={h.showAddStudentsDialog} onOpenChange={h.setShowAddStudentsDialog}>
