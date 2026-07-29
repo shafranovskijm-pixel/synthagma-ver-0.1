@@ -96,6 +96,8 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   useEffect(() => {
     if (hasPreloadedData && refreshKey === 0) return; // Skip initial fetch — but allow manual refresh
 
+    let cancelled = false;
+
     const load = async () => {
       if (!organizationId) {
         setIsLoading(false);
@@ -109,7 +111,23 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
           fetchCourses(organizationId),
           fetchCategories(organizationId)
         ]);
-        setCourses(coursesData);
+
+        // Preserve known counts across the base list refresh so a later
+        // overview failure doesn't reset counters to zero.
+        setCourses((prev) => {
+          const previousCounts = new Map(
+            prev.map((course) => [
+              course.id,
+              { studentsCount: course.studentsCount, lessonsCount: course.lessonsCount },
+            ])
+          );
+          return coursesData.map((course) => {
+            const known = previousCounts.get(course.id);
+            return known
+              ? { ...course, studentsCount: known.studentsCount, lessonsCount: known.lessonsCount }
+              : course;
+          });
+        });
         setCategories(categoriesData);
 
         // Phase 4B.1.b — pull per-course counts from the aggregate RPC
@@ -124,6 +142,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
               staleTime: 30_000,
             })
             .then((rows) => {
+              if (cancelled) return;
               const map = new Map(rows.map((r) => [r.courseId, r]));
               setCourses((prev) =>
                 prev.map((c) => {
@@ -136,10 +155,12 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
               );
             })
             .catch((e) => {
+              if (cancelled) return;
               console.warn("[useCourses] course overview failed, keeping known counts:", e);
             });
         }
       } catch (err: any) {
+        if (cancelled) return;
         console.error("Error loading courses:", err);
         // If we already have courses displayed, don't show fatal error
         setCourses(prev => {
@@ -151,11 +172,17 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
           return prev;
         });
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [organizationId, refreshKey, hasPreloadedData, parentReady]);
 
   // Filtered courses
