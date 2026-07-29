@@ -147,6 +147,19 @@ export function useOrganizationDashboard() {
     invalidateOrganizationStudentPopulation(qc, organizationId);
   }, [qc, organizationId]);
 
+  // Student ↔ group binding changed (assign/move between groups). Only the
+  // paginated rows and per-group counters need to be refreshed.
+  const refreshStudentGrouping = useCallback(() => {
+    invalidateOrganizationStudentGrouping(qc, organizationId);
+  }, [qc, organizationId]);
+
+  // Group directory (create/rename/delete). Membership-derived counters
+  // are handled by refreshStudentGrouping when the same mutation also
+  // changes bindings (e.g. deleting a group nulls student_group_id).
+  const refreshGroupDirectory = useCallback(() => {
+    invalidateOrganizationGroupDirectory(qc, organizationId);
+  }, [qc, organizationId]);
+
   // Broad manual refresh — used by the toolbar "Обновить" button and by
   // top-level flows (e.g. course deletion) that touch both base loader
   // data and student aggregates.
