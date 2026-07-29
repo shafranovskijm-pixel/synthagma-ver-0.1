@@ -587,7 +587,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
             <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
               {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent || scheduleEnabled}>
+            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent || scheduleEnabled || recipients.previewReady === false}>
               {saving ? "Создание..." : `Запустить сейчас (${recipients.count})`}
             </Button>
           </DialogFooter>
