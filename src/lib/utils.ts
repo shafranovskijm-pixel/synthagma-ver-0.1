@@ -14,8 +14,11 @@ export function getAdminAwareBackPath(defaultPath = "/organization") {
  * Возвращает путь к встроенному (в дашборд) представлению курса с открытой
  * вкладкой «Подробности курса». Это исключает «одностраничный» режим
  * без бокового меню.
+ *
+ * Всегда возвращает /organization: даже в режиме adminViewAsOrg администратор
+ * остаётся в интерфейсе OrganizationDashboard на маршруте /organization.
+ * Путь /admin используется только для выхода назад (см. getAdminAwareBackPath).
  */
 export function getCourseDetailsPath(courseId: string) {
-  const base = localStorage.getItem("adminViewAsOrg") ? "/admin" : "/organization";
-  return `${base}?tab=course-details&courseId=${courseId}`;
+  return `/organization?tab=course-details&courseId=${courseId}`;
 }
