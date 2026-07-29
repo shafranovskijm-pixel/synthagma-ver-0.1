@@ -124,13 +124,15 @@ export function CourseDetailsTab() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onEnrollStudent={() => {}}
-        onCourseDeleted={handleBack}
+        onCourseDeleted={handleCourseDeleted}
         onCourseUpdated={() => loadCourse(false)}
         onRefreshStudents={() => {
-          // Phase 4B.1.c.2.b — students changed inside this course:
-          // refresh org-wide student rows + aggregates, but skip the base
-          // loader (courses/categories/companies are unaffected).
-          d.refreshStudentPopulation();
+          // Phase 4B.1.c.2.b.1 — enrollment-scoped changes inside a course
+          // (enroll/unenroll/progress reset) don't change the student
+          // population, group counts or archive counters. Use the narrower
+          // enrollment refresh so we don't invalidate studentsCounts /
+          // studentGroupCounts on every mutation.
+          d.refreshEnrollmentData();
         }}
         onBack={handleBack}
       />
