@@ -73,6 +73,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -121,16 +122,21 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'org_notifications',
           filter: `organization_id=eq.${organizationId}` }, (payload) => {
-          setNotifications(prev => [payload.new as Notification, ...prev]);
+          const incoming = payload.new as Notification;
+          setNotifications(prev => {
+            if (prev.some(n => n.id === incoming.id)) return prev;
+            return [incoming, ...prev];
+          });
           playNotificationSound();
         })
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
+      return () => { try { supabase.removeChannel(channel); } catch { /* ignore */ } };
     }
   }, [organizationId, soundEnabled]);
 
   const loadNotifications = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const { data, error } = await supabase
         .from("org_notifications")
@@ -142,30 +148,34 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
       setNotifications(data || []);
     } catch (error) {
       console.error("Error loading notifications:", error);
+      setLoadError(error instanceof Error ? error.message : "Не удалось загрузить уведомления");
     } finally {
       setIsLoading(false);
     }
   };
 
   const markAsRead = async (id: string) => {
-    try {
-      await supabase.from("org_notifications").update({ is_read: true }).eq("id", id);
-      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
-    } catch (error) {
+    const { error } = await supabase.from("org_notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
       console.error("Error marking as read:", error);
+      toast.error("Не удалось отметить как прочитанное");
+      return;
     }
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
   };
 
   const markAllAsRead = async () => {
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
     if (unreadIds.length === 0) return;
-    try {
-      await supabase.from("org_notifications").update({ is_read: true }).in("id", unreadIds);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    } catch (error) {
+    const { error } = await supabase.from("org_notifications").update({ is_read: true }).in("id", unreadIds);
+    if (error) {
       console.error("Error marking all as read:", error);
+      toast.error("Не удалось отметить все как прочитанные");
+      return;
     }
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
+
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
