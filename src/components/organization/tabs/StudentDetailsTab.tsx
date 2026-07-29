@@ -159,6 +159,7 @@ export function StudentDetailsTab() {
     loadStudent(true);
   }, [loadStudent]);
 
+  const qc = useQueryClient();
   const h = useStudentDetailCardLogic({
     isOpen: !!student,
     student,
@@ -166,6 +167,12 @@ export function StudentDetailsTab() {
     enrollments,
     onStudentUpdated: () => {
       loadStudent(false);
+      // Row-level changes (name, credentials, verification, block) surface
+      // in the paginated student list — refresh those rows.
+      d.refreshStudentRows();
+    },
+    onStudentDocumentsUpdated: () => {
+      invalidateOrganizationDocumentData(qc, organizationId);
     },
   });
 
