@@ -155,7 +155,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
     try {
       for (const uid of Array.from(selectedStudentIds)) { await supabase.from("profiles").update({ student_group_id: selectedGroupForAdd.id } as any).eq("user_id", uid); }
       toast.success(`${selectedStudentIds.size} уч. добавлено в группу`);
-      setShowAddStudentsDialog(false); loadGroups(); onRefreshStudents?.();
+      setShowAddStudentsDialog(false); loadGroups(); onGroupingChanged?.();
     } catch { toast.error("Ошибка добавления учеников"); }
     finally { setAddingStudents(false); }
   };
