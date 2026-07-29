@@ -64,6 +64,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   const [isLoading, setIsLoading] = useState(!hasPreloadedData && !parentReady);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const queryClient = useQueryClient();
   
   // Filters
   const [filter, setFilter] = useState<CourseFilter>("all");
