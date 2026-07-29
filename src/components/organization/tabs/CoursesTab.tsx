@@ -576,5 +576,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       />
       </>
     </div>
+    </CourseCountsStateContext.Provider>
   );
 });
