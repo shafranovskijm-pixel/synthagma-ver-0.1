@@ -5,9 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-// xlsx is dynamically imported inside the file handler to keep it out of the main bundle
 
 export type RecipientSource = "students" | "companies" | "organizations" | "companies_db" | "manual";
 
@@ -15,6 +14,16 @@ export interface RecipientPickerValue {
   source: RecipientSource;
   manualEmails: string[];
   count: number;
+  /** true once server preview has succeeded for the current inputs */
+  previewReady?: boolean;
+}
+
+interface PreviewResult {
+  input_count: number;
+  invalid_count: number;
+  duplicate_count: number;
+  suppressed_count: number;
+  eligible_count: number;
 }
 
 interface Props {
@@ -26,58 +35,78 @@ interface Props {
 
 export function RecipientPicker({ scope, organizationId, value, onChange }: Props) {
   const [manualText, setManualText] = useState(value.manualEmails.join("\n"));
-  const [autoCount, setAutoCount] = useState<number | null>(null);
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<{ code: "permission" | "network" | "input"; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Recompute auto count
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (value.source === "manual") { setAutoCount(null); return; }
-      try {
-        if (scope === "platform") {
-          if (value.source === "organizations") {
-            const { count } = await supabase.from("organizations").select("id", { count: "exact", head: true }).not("email", "is", null);
-            if (!cancelled) setAutoCount(count ?? 0);
-          } else if (value.source === "companies_db") {
-            // sales_companies_db may not exist yet — fall back to 0
-            const { count, error } = await supabase
-              .from("sales_companies_db" as any)
-              .select("id", { count: "exact", head: true })
-              .not("email", "is", null);
-            if (!cancelled) setAutoCount(error ? 0 : (count ?? 0));
-          }
-        } else if (organizationId) {
-          if (value.source === "students") {
-            const { count } = await supabase
-              .from("profiles")
-              .select("user_id", { count: "exact", head: true })
-              .eq("organization_id", organizationId)
-              .not("email", "is", null);
-            if (!cancelled) setAutoCount(count ?? 0);
-          } else if (value.source === "companies") {
-            const { count } = await supabase
-              .from("companies")
-              .select("id", { count: "exact", head: true })
-              .eq("organization_id", organizationId)
-              .not("email", "is", null);
-            if (!cancelled) setAutoCount(count ?? 0);
-          }
-        }
-      } catch {
-        if (!cancelled) setAutoCount(0);
+  // Debounce timer for manual input
+  const debounceRef = useRef<number | null>(null);
+
+  const fetchPreview = async (
+    source: RecipientSource,
+    manualEmails: string[],
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc(
+        "get_campaign_recipient_preview",
+        {
+          p_scope: scope === "platform" ? "platform" : "org",
+          p_organization_id: scope === "platform" ? null : organizationId,
+          p_source: source,
+          p_manual_emails: source === "manual" ? manualEmails : null,
+        },
+      );
+      if (rpcErr) {
+        const msg = rpcErr.message || "Ошибка запроса";
+        const isPerm = /permission denied|42501|Forbidden/i.test(msg);
+        setError({ code: isPerm ? "permission" : "network", message: msg });
+        setPreview(null);
+        // NOTE: do not silently show 0 — leave count as previous, mark previewReady=false
+        onChange({ ...value, source, manualEmails, previewReady: false });
+        return;
       }
+      const p = (data as any) as PreviewResult;
+      setPreview(p);
+      onChange({
+        ...value,
+        source,
+        manualEmails,
+        count: p?.eligible_count ?? 0,
+        previewReady: true,
+      });
+    } catch (e: any) {
+      setError({ code: "network", message: e?.message || "Сетевая ошибка" });
+      setPreview(null);
+      onChange({ ...value, source, manualEmails, previewReady: false });
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => { cancelled = true; };
+  };
+
+  // Preview for auto sources — runs whenever source/scope/org changes
+  useEffect(() => {
+    if (value.source === "manual") return;
+    if (scope === "org" && !organizationId) return;
+    fetchPreview(value.source, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.source, scope, organizationId]);
 
-  // Propagate count
+  // Manual: 350ms debounce
   useEffect(() => {
-    const c = value.source === "manual" ? value.manualEmails.length : (autoCount ?? 0);
-    if (c !== value.count) onChange({ ...value, count: c });
+    if (value.source !== "manual") return;
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      const emails = parseManual(manualText);
+      fetchPreview("manual", emails);
+    }, 350);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoCount, value.source, value.manualEmails.length]);
+  }, [manualText, value.source]);
 
   const sources: { value: RecipientSource; label: string }[] = scope === "platform"
     ? [
@@ -96,7 +125,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
       text
         .split(/[,;\s\n]+/)
         .map(s => s.trim().toLowerCase())
-        .filter(s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+        .filter(Boolean)
     ));
   };
 
@@ -107,7 +136,6 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       if (!ws) throw new Error("Файл пустой");
-      // массив массивов, без шапки — будем искать email-подобные строки в любой колонке
       const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
       const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const collected: string[] = [];
@@ -122,16 +150,20 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         toast.error("В файле не найдено валидных email-адресов");
         return;
       }
-      // объединяем с уже введёнными
       const existing = parseManual(manualText);
       const merged = Array.from(new Set([...existing, ...unique]));
       setManualText(merged.join("\n"));
-      onChange({ ...value, manualEmails: merged, count: merged.length });
       toast.success(`Импортировано ${unique.length} адресов (всего ${merged.length})`);
     } catch (e: any) {
       toast.error("Ошибка импорта: " + (e?.message || "не удалось прочитать файл"));
     }
   };
+
+  const showExclusions = preview && (
+    (preview.duplicate_count ?? 0) > 0 ||
+    (preview.invalid_count ?? 0) > 0 ||
+    (preview.suppressed_count ?? 0) > 0
+  );
 
   return (
     <div className="space-y-3">
@@ -139,7 +171,11 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         <Label>Источник получателей</Label>
         <Select
           value={value.source}
-          onValueChange={(v) => onChange({ ...value, source: v as RecipientSource })}
+          onValueChange={(v) => {
+            const src = v as RecipientSource;
+            // Reset previewReady until the new source is verified
+            onChange({ ...value, source: src, previewReady: false });
+          }}
         >
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -148,7 +184,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         </Select>
       </div>
 
-      {value.source === "manual" ? (
+      {value.source === "manual" && (
         <div>
           <div className="flex items-center justify-between mb-1">
             <Label>Email-адреса (по одному на строку, через запятую или пробел)</Label>
@@ -176,23 +212,46 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           <Textarea
             rows={6}
             value={manualText}
-            onChange={(e) => {
-              setManualText(e.target.value);
-              const emails = parseManual(e.target.value);
-              onChange({ ...value, manualEmails: emails, count: emails.length });
-            }}
+            onChange={(e) => setManualText(e.target.value)}
             placeholder="user1@example.com&#10;user2@example.com"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Распознано валидных адресов: <Badge variant="secondary">{value.manualEmails.length}</Badge>
-            {" · "}Поддерживаются файлы CSV, XLS, XLSX (email ищется в любой колонке)
-          </p>
         </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Будет отправлено получателям: <Badge variant="secondary">{autoCount ?? "..."}</Badge>
-        </p>
       )}
+
+      {/* Preview status line */}
+      <div className="text-sm space-y-1">
+        {loading && (
+          <p className="text-muted-foreground flex items-center gap-1">
+            <Loader2 className="w-3 h-3 animate-spin" /> Проверяю получателей…
+          </p>
+        )}
+        {!loading && error && (
+          <p className="text-destructive flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            {error.code === "permission"
+              ? "Недостаточно прав для расчёта получателей"
+              : `Не удалось проверить получателей: ${error.message}`}
+          </p>
+        )}
+        {!loading && !error && preview && (
+          <>
+            <p className="text-muted-foreground">
+              К отправке: <Badge variant="secondary">{preview.eligible_count}</Badge>
+            </p>
+            {showExclusions && (
+              <p className="text-xs text-muted-foreground">
+                Исключено:
+                {preview.duplicate_count > 0 && <> дубликаты {preview.duplicate_count},</>}
+                {preview.invalid_count > 0 && <> некорректные {preview.invalid_count},</>}
+                {preview.suppressed_count > 0 && <> отписавшиеся {preview.suppressed_count}</>}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground/70">
+              Итоговое количество повторно проверяется при запуске.
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
