@@ -10,7 +10,8 @@ import { logStudentDeletion } from "@/utils/logStudentDeletion";
 export function useStudentActions(
   organizationId: string | null,
   organizationName: string,
-  onRefresh: () => void
+  onRefreshRows: () => void,
+  onRefreshPopulation: () => void,
 ) {
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
   const [isSendingCredentialsEmail, setIsSendingCredentialsEmail] = useState(false);
@@ -102,7 +103,7 @@ export function useStudentActions(
       if (data?.error) throw new Error(data.error);
       
       toast.success(`Создан логин: ${login}`);
-      onRefresh();
+      onRefreshRows();
       return { login, password };
     } catch (error) {
       console.error("Error creating credentials:", error);
@@ -111,7 +112,7 @@ export function useStudentActions(
     } finally {
       setIsCreatingCredentials(false);
     }
-  }, [onRefresh]);
+  }, [onRefreshRows]);
 
   const deleteStudentCompletely = useCallback(async (userId: string) => {
     setIsDeletingStudent(true);
@@ -124,14 +125,14 @@ export function useStudentActions(
       if (error) throw error;
       await logStudentDeletion({ userId, deletionType: "soft", reason: "deleteStudentCompletely" });
       toast.success("Ученик перенесён в архив");
-      onRefresh();
+      onRefreshPopulation();
     } catch (error) {
       console.error("Error archiving student:", error);
       toast.error("Ошибка переноса в архив");
     } finally {
       setIsDeletingStudent(false);
     }
-  }, [onRefresh]);
+  }, [onRefreshPopulation]);
 
   const bulkSendCredentials = useCallback(async (students: Student[]) => {
     const studentsToSend = students.filter(s => s.login && s.generated_password && s.email);
@@ -246,7 +247,7 @@ export function useStudentActions(
           message += `. Отправлено писем: ${emailsSent}`;
         }
         toast.success(message);
-        onRefresh();
+        onRefreshRows();
       }
       if (errorCount > 0) {
         toast.error(`Ошибки: ${errorCount}`);
@@ -256,7 +257,7 @@ export function useStudentActions(
     } finally {
       setIsCreatingBulkCredentials(false);
     }
-  }, [onRefresh, organizationName]);
+  }, [onRefreshRows, organizationName]);
 
   const bulkSendDocReminders = useCallback(async () => {
     if (!organizationId) return;

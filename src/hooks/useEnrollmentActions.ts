@@ -6,6 +6,7 @@ import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { Student, Course } from "@/types/shared";
 import { deleteStudent, fetchStudentsByUserIds } from "@/api/students";
 import { qk } from "@/lib/queryKeys";
+import { invalidateOrganizationEnrollmentData } from "@/lib/invalidateOrganizationQueries";
 
 /**
  * Phase 4A.2 — hard cap on bulk mutations that hit `.in(...)` directly.
@@ -48,11 +49,13 @@ export function useEnrollmentActions(
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [enrollCourseId, setEnrollCourseId] = useState<string>("");
 
-  const invalidateStudents = useCallback(() => {
-    if (!organizationId) return;
-    qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentsCounts(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
+  // Phase 4B.1.c.2.b — `onRefresh` (refreshStudentPopulation) already
+  // invalidates studentsPage/counts/summary/overview at the org level.
+  // We only add the narrower enrollment helper here for the one flow that
+  // does NOT call onRefresh (deleteEnrollment) — everything else relies on
+  // the callback.
+  const invalidateEnrollment = useCallback(() => {
+    invalidateOrganizationEnrollmentData(qc, organizationId);
   }, [qc, organizationId]);
 
   const invalidateCourse = useCallback((courseId: string | null | undefined) => {
@@ -202,7 +205,7 @@ export function useEnrollmentActions(
       setShowEnrollDialog(false);
       setSelectedStudentIds(new Set());
       setEnrollCourseId("");
-      invalidateStudents();
+      // onRefresh (refreshStudentPopulation) covers studentsPage/counts/summary/overview.
       invalidateCourse(courseId);
       onRefresh();
       return true;
@@ -213,7 +216,7 @@ export function useEnrollmentActions(
     } finally {
       setIsEnrolling(false);
     }
-  }, [organizationId, organizationName, invalidateStudents, invalidateCourse, onRefresh]);
+  }, [organizationId, organizationName, invalidateCourse, onRefresh]);
 
   /**
    * Bulk unenroll — takes explicit enrollment IDs. NEVER derives them from a
@@ -328,7 +331,7 @@ export function useEnrollmentActions(
       setShowUnenrollConfirm(false);
       setSelectedStudentIds(new Set());
       setSelectedEnrollmentIds([]);
-      invalidateStudents();
+      // onRefresh (refreshStudentPopulation) covers studentsPage/counts/summary/overview.
       for (const courseId of new Set(rows.map(r => r.course_id))) {
         invalidateCourse(courseId);
       }
@@ -341,7 +344,7 @@ export function useEnrollmentActions(
     } finally {
       setIsUnenrolling(false);
     }
-  }, [organizationId, organizationName, invalidateStudents, invalidateCourse, onRefresh]);
+  }, [organizationId, organizationName, invalidateCourse, onRefresh]);
 
   const getSelectedEnrollmentsCount = useCallback(
     () => selectedEnrollmentIds.length,
@@ -360,13 +363,13 @@ export function useEnrollmentActions(
       const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
       if (error) throw error;
       setStudents(prev => prev.filter(s => s.enrollment_id !== enrollmentId));
-      invalidateStudents();
+      invalidateEnrollment();
       toast.success("Ученик удалён из курса");
     } catch (error) {
       console.error("Error deleting enrollment:", error);
       toast.error("Ошибка удаления");
     }
-  }, [invalidateStudents]);
+  }, [invalidateEnrollment]);
 
   /**
    * Bulk delete — takes explicit user_ids from the selection. Never converts
@@ -394,7 +397,7 @@ export function useEnrollmentActions(
 
       setShowBulkDeleteConfirm(false);
       setSelectedStudentIds(new Set());
-      invalidateStudents();
+      // onRefresh (refreshStudentPopulation) covers all downstream keys.
       onRefresh();
       return true;
     } catch (error) {
@@ -404,7 +407,7 @@ export function useEnrollmentActions(
     } finally {
       setIsBulkDeleting(false);
     }
-  }, [invalidateStudents, onRefresh]);
+  }, [onRefresh]);
 
   return {
     isEnrolling,
