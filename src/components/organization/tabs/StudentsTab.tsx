@@ -138,10 +138,11 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       if (error) throw error;
       toast.success("Группа удалена");
       if (groupFilter === groupId) setGroupFilter("all");
-      // Deleting a group nulls student_group_id on referenced profiles — refresh
-      // both the groups directory / counts and the students page rows.
+      // Deleting a group nulls student_group_id on referenced profiles —
+      // refresh the groups directory / counts and the paginated rows only.
+      // Student totals, dashboard summary and course overview don't change.
       refreshGroups();
-      refresh();
+      refreshRows();
     } catch { toast.error("Ошибка удаления группы"); }
   };
 
