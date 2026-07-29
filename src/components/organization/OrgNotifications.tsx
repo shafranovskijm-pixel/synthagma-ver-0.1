@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { getCourseDetailsPath } from "@/lib/utils";
 import {
   Bell,
   Video,
@@ -15,6 +16,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { toast } from "sonner";
 import {
   Popover,
   PopoverContent,
@@ -36,7 +38,7 @@ interface OrgNotificationsProps {
 
 type TabKey = "all" | "tasks" | "payments";
 
-const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task"];
+const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task", "course_completed"];
 const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "subscription_expiry", "order"];
 
 function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
@@ -44,6 +46,7 @@ function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
   if (tab === "tasks") return notifications.filter(n => TASK_TYPES.some(t => n.type.includes(t)));
   return notifications.filter(n => PAYMENT_TYPES.some(t => n.type.includes(t)));
 }
+
 
 function getInitials(title: string) {
   const words = title.split(" ").filter(Boolean);
