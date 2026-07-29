@@ -522,6 +522,8 @@ export function useCourseDetails(
     totalFilteredStudents,
     studentsSearchQuery, setStudentsSearchQuery,
     studentsStatusFilter, setStudentsStatusFilter,
+    studentsResultFilter, setStudentsResultFilter,
+
     isLoadingStudents: studentsQuery.isLoading,
     isFetchingMoreStudents: studentsQuery.isFetchingNextPage,
     hasMoreStudents: !!studentsQuery.hasNextPage,
