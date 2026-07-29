@@ -198,8 +198,16 @@ export interface ImportResultRow {
 
 export async function downloadImportResults(results: ImportResultRow[]) {
   const XLSX = await import("xlsx");
+  const statusLabel: Record<ImportResultStatus, string> = {
+    created: "Создан",
+    existing: "Уже существовал",
+    student_limit_exceeded: "Превышен месячный лимит",
+    archived: "В архиве",
+    profile_in_other_org: "В другой организации",
+    other_error: "Ошибка",
+  };
   const rows = results.map(r => ({
-    Статус: r.success ? "OK" : "Ошибка",
+    Статус: statusLabel[r.status] ?? (r.success ? "OK" : "Ошибка"),
     ФИО: r.full_name,
     Логин: r.login || "",
     Пароль: r.password || "",
@@ -209,6 +217,11 @@ export async function downloadImportResults(results: ImportResultRow[]) {
     "Курсы не найдены": r.courses_missing.join("; "),
     Ошибка: r.error || "",
   }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "results");
+  XLSX.writeFile(wb, "students_import_results.xlsx");
+}
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "results");
