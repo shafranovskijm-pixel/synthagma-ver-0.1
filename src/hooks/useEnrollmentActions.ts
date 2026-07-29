@@ -332,11 +332,11 @@ export function useEnrollmentActions(
       setShowUnenrollConfirm(false);
       setSelectedStudentIds(new Set());
       setSelectedEnrollmentIds([]);
-      // onRefresh (refreshStudentPopulation) covers studentsPage/counts/summary/overview.
+      // onEnrollmentChanged (refreshEnrollmentData) covers studentsPage + summary + overview.
       for (const courseId of new Set(rows.map(r => r.course_id))) {
         invalidateCourse(courseId);
       }
-      onRefresh();
+      onEnrollmentChanged();
       return true;
     } catch (error) {
       console.error("Error unenrolling:", error);
@@ -345,7 +345,7 @@ export function useEnrollmentActions(
     } finally {
       setIsUnenrolling(false);
     }
-  }, [organizationId, organizationName, invalidateCourse, onRefresh]);
+  }, [organizationId, organizationName, invalidateCourse, onEnrollmentChanged]);
 
   const getSelectedEnrollmentsCount = useCallback(
     () => selectedEnrollmentIds.length,
