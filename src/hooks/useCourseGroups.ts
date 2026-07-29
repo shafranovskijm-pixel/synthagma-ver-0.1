@@ -186,7 +186,8 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
       if (error) throw error;
       setGroups(prev => prev.filter(g => g.id !== groupId));
       toast.success("Группа удалена");
-      onRefreshStudents?.();
+      onGroupingChanged?.();
+      onGroupDirectoryChanged?.();
     } catch (err: any) {
       toast.error("Ошибка удаления группы: " + (err.message || ""));
     }
