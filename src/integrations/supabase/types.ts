@@ -11073,6 +11073,18 @@ export type Database = {
           with_snils: number
         }[]
       }
+      get_organization_student_capacity: {
+        Args: { p_organization_id: string; p_requested_count?: number }
+        Returns: {
+          can_add: boolean
+          current_students: number
+          is_unlimited: boolean
+          limit_source: string
+          max_students: number
+          remaining_students: number
+          subscription_plan: string
+        }[]
+      }
       get_organization_student_group_counts: {
         Args: { p_organization_id: string }
         Returns: {
