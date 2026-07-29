@@ -332,7 +332,9 @@ export function useOrganizationDashboard() {
         return;
       }
       await studentActions.bulkCreateCredentials(studentsToCreate, sendEmails);
-      qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+      // Row-level invalidation is already performed by useStudentActions
+      // via onRefreshRows (invalidateOrganizationStudentRows). Do not
+      // duplicate qc.invalidateQueries on studentsPageAll here.
       // Phase 4A.2: useStudents reads passwords via qc.getQueryData(...),
       // which ignores staleness — invalidate is not enough. Fully drop the
       // per-user credential cache so the next lookup must hit the RPC.
