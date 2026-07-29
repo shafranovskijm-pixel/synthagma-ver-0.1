@@ -34,7 +34,8 @@ const MAX_BULK_MUTATION_SIZE = 100;
 export function useEnrollmentActions(
   organizationId: string | null,
   organizationName: string,
-  onRefresh: () => void,
+  onEnrollmentChanged: () => void,
+  onPopulationChanged: () => void,
 ) {
   const qc = useQueryClient();
   const [isEnrolling, setIsEnrolling] = useState(false);
