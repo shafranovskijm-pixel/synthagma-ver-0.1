@@ -103,6 +103,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
       toast.success("Группа создана, ссылка скопирована");
       setShowCreateDialog(false); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); setNewGroupStartDate(undefined); setNewGroupEndDate(undefined);
       loadGroups();
+      onGroupDirectoryChanged?.();
     } catch { toast.error("Ошибка создания группы"); }
     finally { setIsCreating(false); }
   };
