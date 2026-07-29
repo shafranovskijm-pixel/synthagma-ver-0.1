@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
@@ -14,6 +14,7 @@ import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useStudentDetailCard } from "@/hooks/useStudentDetailCard";
 import { useStudentDetailsDialog } from "@/hooks/useStudentDetailsDialog";
 import { useOrganizationDataLoader } from "@/hooks/useOrganizationDataLoader";
+import { useOrganizationSummary } from "@/hooks/useOrganizationSummary";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useOrganizationsTab } from "@/hooks/useOrganizationsTab";
 import { useEmailInvitation } from "@/hooks/useEmailInvitation";
