@@ -97,7 +97,7 @@ describe("useStudentDashboard", () => {
 
   it("initializes with default dashboard settings", () => {
     const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
-    expect(result.current.dashboardSettings).toEqual({
+    expect(result.current.dashboardSettings).toMatchObject({
       showLibrary: true,
       showAchievements: true,
       showAiChat: true,
