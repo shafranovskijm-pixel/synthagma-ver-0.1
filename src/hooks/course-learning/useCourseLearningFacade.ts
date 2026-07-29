@@ -63,6 +63,14 @@ export function useCourseLearning() {
   const [lessonContents, setLessonContents] = useState<Record<string, string | null>>({});
   const contentLoadingRef = useRef<Set<string>>(new Set());
 
+  // Refs для устранения гонки при последовательном autoAdvance:
+  // completedIdsRef всегда содержит актуальный набор завершённых lesson_id,
+  // markInFlightRef — мьютекс для параллельных markLessonComplete,
+  // courseCompletionStartedRef — защита от повторного handleCourseCompletion.
+  const completedIdsRef = useRef<Set<string>>(new Set());
+  const markInFlightRef = useRef<Set<string>>(new Set());
+  const courseCompletionStartedRef = useRef<{ value: boolean }>({ value: false });
+
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
