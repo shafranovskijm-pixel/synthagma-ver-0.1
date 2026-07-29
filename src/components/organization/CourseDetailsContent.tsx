@@ -487,6 +487,8 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
   const total = h.totalFilteredStudents;
   const remaining = Math.max(0, total - courseStudents.length);
   const nextChunk = Math.min(10, remaining);
+  const [detailsStudent, setDetailsStudent] = useState<CourseStudentPageRow | null>(null);
+
 
   const availableRemaining = Math.max(0, h.availableTotalFiltered - h.availableStudents.length);
   const availableNextChunk = Math.min(20, availableRemaining);
