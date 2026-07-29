@@ -1,9 +1,11 @@
 import { useCallback, useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
+import { invalidateOrganizationCourseOverview } from "@/lib/invalidateOrganizationQueries";
 
 type LoadState = "loading" | "success" | "not_found" | "error";
 
