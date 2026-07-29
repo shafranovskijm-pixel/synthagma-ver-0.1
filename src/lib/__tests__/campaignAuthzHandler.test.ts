@@ -26,17 +26,15 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const RUN = readFileSync(
-  resolve(__dirname, "../../../supabase/functions-pending-5c1a/run-email-campaign/index.ts"),
-  "utf8",
-);
-const SMTP = readFileSync(
-  resolve(__dirname, "../../../supabase/functions-pending-5c1a/test-org-smtp/index.ts"),
-  "utf8",
-);
-const CURRENT_RUN = readFileSync(
   resolve(__dirname, "../../../supabase/functions/run-email-campaign/index.ts"),
   "utf8",
 );
+const SMTP = readFileSync(
+  resolve(__dirname, "../../../supabase/functions/test-org-smtp/index.ts"),
+  "utf8",
+);
+const CURRENT_RUN = RUN;
+
 
 describe("5C.1.a.1 — RPC client routing (run-email-campaign)", () => {
   it("can_access_organization is invoked via userClient (never via admin)", () => {
