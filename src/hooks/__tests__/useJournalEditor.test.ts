@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createQueryWrapper } from "@/test/queryWrapper";
 import { renderHook, act } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -43,7 +44,7 @@ describe("useJournalEditor", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("initializes with default state", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
 
     expect(result.current.loading).toBe(true);
     expect(result.current.saving).toBe(false);
@@ -58,12 +59,12 @@ describe("useJournalEditor", () => {
   });
 
   it("generates 7 dates for the week", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     expect(result.current.dates).toHaveLength(7);
   });
 
   it("isAttendanceJournal is true for attendance type", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     expect(result.current.isAttendanceJournal).toBe(true);
   });
 
@@ -82,37 +83,37 @@ describe("useJournalEditor", () => {
   });
 
   it("can toggle create dialog", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setShowCreateDialog(true); });
     expect(result.current.showCreateDialog).toBe(true);
   });
 
   it("can toggle delete dialog", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setShowDeleteDialog(true); });
     expect(result.current.showDeleteDialog).toBe(true);
   });
 
   it("can update selected course", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setSelectedCourse("course-1"); });
     expect(result.current.selectedCourse).toBe("course-1");
   });
 
   it("can change week start and dates update", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     const newWeek = new Date(2025, 0, 6); // Monday
     act(() => { result.current.setWeekStart(newWeek); });
     expect(result.current.dates).toHaveLength(7);
   });
 
   it("getEntryValue returns empty string for missing entry", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     expect(result.current.getEntryValue("user-1", new Date())).toBe("");
   });
 
   it("newJournalTitle defaults to journalTitle prop", () => {
-    const { result } = renderHook(() => useJournalEditor(defaultProps));
+    const { result } = renderHook(() => useJournalEditor(defaultProps, { wrapper: createQueryWrapper() }));
     expect(result.current.newJournalTitle).toBe("Журнал посещаемости");
   });
 });

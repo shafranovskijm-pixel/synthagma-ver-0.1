@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createQueryWrapper } from "@/test/queryWrapper";
 import { renderHook, act } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -48,7 +49,7 @@ describe("useContractGenerator", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("initializes with default state", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
 
     expect(result.current.isLoading).toBe(true);
     expect(result.current.isGenerating).toBe(false);
@@ -63,7 +64,7 @@ describe("useContractGenerator", () => {
   });
 
   it("formats price correctly", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
 
     expect(result.current.formatPrice("1000")).toBe("1\u00A0000,00");
     expect(result.current.formatPrice("0")).toBe("0,00");
@@ -72,7 +73,7 @@ describe("useContractGenerator", () => {
   });
 
   it("can add and remove programs", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
 
     expect(result.current.selectedPrograms).toHaveLength(1);
 
@@ -92,7 +93,7 @@ describe("useContractGenerator", () => {
   });
 
   it("can update program fields", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
 
     act(() => { result.current.updateProgram(0, { courseId: "course-1", price: "5000", studentsCount: "10" }); });
     expect(result.current.selectedPrograms[0].courseId).toBe("course-1");
@@ -101,7 +102,7 @@ describe("useContractGenerator", () => {
   });
 
   it("backward compat: setSelectedCourseId updates first program", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
 
     act(() => { result.current.setSelectedCourseId("course-1"); });
     expect(result.current.selectedCourseId).toBe("course-1");
@@ -125,7 +126,7 @@ describe("useContractGenerator", () => {
   });
 
   it("contractDate defaults to today and service dates exist", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
     const today = new Date().toISOString().slice(0, 10);
     expect(result.current.contractDate).toBe(today);
     expect(result.current.serviceStartDate).toBe(today);
@@ -133,13 +134,13 @@ describe("useContractGenerator", () => {
   });
 
   it("can toggle preview", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setShowPreview(true); });
     expect(result.current.showPreview).toBe(true);
   });
 
   it("computes totalPrice from multiple programs", () => {
-    const { result } = renderHook(() => useContractGenerator(defaultProps));
+    const { result } = renderHook(() => useContractGenerator(defaultProps, { wrapper: createQueryWrapper() }));
 
     act(() => {
       result.current.updateProgram(0, { courseId: "c1", price: "1000", studentsCount: "2" });

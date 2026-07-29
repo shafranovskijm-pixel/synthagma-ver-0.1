@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createQueryWrapper } from "@/test/queryWrapper";
 import { renderHook, act } from "@testing-library/react";
 
 // Mock all external dependencies
@@ -78,7 +79,7 @@ describe("useStudentDashboard", () => {
   });
 
   it("initializes with correct default state", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
 
     expect(result.current.activeTab).toBe("courses");
     expect(result.current.loading).toBe(true);
@@ -94,7 +95,7 @@ describe("useStudentDashboard", () => {
   });
 
   it("initializes with default dashboard settings", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     expect(result.current.dashboardSettings).toEqual({
       showLibrary: true,
       showAchievements: true,
@@ -103,13 +104,13 @@ describe("useStudentDashboard", () => {
   });
 
   it("has initial AI chat message", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].role).toBe("assistant");
   });
 
   it("can toggle active tab", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setActiveTab("chat"); });
     expect(result.current.activeTab).toBe("chat");
     act(() => { result.current.setActiveTab("store"); });
@@ -117,7 +118,7 @@ describe("useStudentDashboard", () => {
   });
 
   it("can toggle modal states", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setShowVideoIdentification(true); });
     expect(result.current.showVideoIdentification).toBe(true);
     act(() => { result.current.setShowAchievements(true); });
@@ -127,21 +128,21 @@ describe("useStudentDashboard", () => {
   });
 
   it("can update input value", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     act(() => { result.current.setInputValue("Привет!"); });
     expect(result.current.inputValue).toBe("Привет!");
   });
 
   it("detects preview mode from localStorage", () => {
     localStorage.setItem("previewStudentDashboard", "true");
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     expect(result.current.isPreviewMode).toBe(true);
     // Should be cleaned up
     expect(localStorage.getItem("previewStudentDashboard")).toBeNull();
   });
 
   it("provides formatTime utility", () => {
-    const { result } = renderHook(() => useStudentDashboard());
+    const { result } = renderHook(() => useStudentDashboard(, { wrapper: createQueryWrapper() }));
     expect(typeof result.current.formatTime).toBe("function");
   });
 });
