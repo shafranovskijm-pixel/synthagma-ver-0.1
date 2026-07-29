@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
-import { 
+import {
   fetchCourses,
-  fetchCourseStudentCounts,
-  fetchCourseLessonCounts,
   fetchCategories,
   createCourse,
   updateCourse,
@@ -15,6 +14,8 @@ import {
   updateCategory,
   deleteCategory
 } from "@/api/courses";
+import { fetchOrganizationCourseOverview } from "@/api/organizationSummary";
+import { qk } from "@/lib/queryKeys";
 import { toast } from "sonner";
 
 interface UseCoursesReturn {
@@ -63,6 +64,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   const [isLoading, setIsLoading] = useState(!hasPreloadedData && !parentReady);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const queryClient = useQueryClient();
   
   // Filters
   const [filter, setFilter] = useState<CourseFilter>("all");
@@ -110,18 +112,33 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
         setCourses(coursesData);
         setCategories(categoriesData);
 
-        // Lazy-load student counts and lesson counts after rendering courses
-        const courseIds = coursesData.map(c => c.id);
-        Promise.all([
-          fetchCourseStudentCounts(courseIds),
-          fetchCourseLessonCounts(courseIds),
-        ]).then(([studentMap, lessonMap]) => {
-          setCourses(prev => prev.map(c => ({
-            ...c,
-            studentsCount: studentMap.get(c.id) ?? c.studentsCount ?? 0,
-            lessonsCount: lessonMap.get(c.id) ?? c.lessonsCount ?? 0,
-          })));
-        });
+        // Phase 4B.1.b — pull per-course counts from the aggregate RPC
+        // (get_organization_course_overview) via React Query cache so
+        // useOrganizationSummary and useCourses share one in-flight
+        // request. Errors keep already-known counts.
+        if (organizationId) {
+          queryClient
+            .fetchQuery({
+              queryKey: qk.org.courseOverview(organizationId),
+              queryFn: () => fetchOrganizationCourseOverview(organizationId),
+              staleTime: 30_000,
+            })
+            .then((rows) => {
+              const map = new Map(rows.map((r) => [r.courseId, r]));
+              setCourses((prev) =>
+                prev.map((c) => {
+                  const row = map.get(c.id);
+                  if (row) {
+                    return { ...c, studentsCount: row.studentsCount, lessonsCount: row.lessonsCount };
+                  }
+                  return c;
+                })
+              );
+            })
+            .catch((e) => {
+              console.warn("[useCourses] course overview failed, keeping known counts:", e);
+            });
+        }
       } catch (err: any) {
         console.error("Error loading courses:", err);
         // If we already have courses displayed, don't show fatal error
@@ -172,9 +189,20 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     });
   }, [courses, searchQuery, filter, categoryFilter]);
 
+  const invalidateSummaryAndOverview = useCallback(() => {
+    if (!organizationId) return;
+    queryClient.invalidateQueries({ queryKey: qk.org.dashboardSummary(organizationId) });
+    queryClient.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+  }, [organizationId, queryClient]);
+
+  const invalidateCourseOverview = useCallback(() => {
+    if (!organizationId) return;
+    queryClient.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+  }, [organizationId, queryClient]);
+
   const create = useCallback(async (
-    title: string, 
-    description?: string, 
+    title: string,
+    description?: string,
     categoryId?: string
   ): Promise<Course | null> => {
     if (!organizationId) return null;
@@ -183,55 +211,60 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     if (course) {
       toast.success("Курс создан");
       setRefreshKey(prev => prev + 1);
+      invalidateSummaryAndOverview();
     } else {
       toast.error("Ошибка создания курса");
     }
     return course;
-  }, [organizationId]);
+  }, [organizationId, invalidateSummaryAndOverview]);
 
   const update = useCallback(async (courseId: string, updates: Partial<Course>): Promise<boolean> => {
     const success = await updateCourse(courseId, updates);
     if (success) {
       toast.success("Курс обновлён");
       setRefreshKey(prev => prev + 1);
+      invalidateCourseOverview();
     } else {
       toast.error("Ошибка обновления курса");
     }
     return success;
-  }, []);
+  }, [invalidateCourseOverview]);
 
   const remove = useCallback(async (courseId: string): Promise<boolean> => {
     const success = await deleteCourse(courseId);
     if (success) {
       toast.success("Курс удалён");
       setRefreshKey(prev => prev + 1);
+      invalidateSummaryAndOverview();
     } else {
       toast.error("Ошибка удаления курса");
     }
     return success;
-  }, []);
+  }, [invalidateSummaryAndOverview]);
 
   const publish = useCallback(async (courseId: string, isPublished: boolean): Promise<boolean> => {
     const success = await publishCourse(courseId, isPublished);
     if (success) {
       toast.success(isPublished ? "Курс опубликован" : "Курс снят с публикации");
       setRefreshKey(prev => prev + 1);
+      invalidateCourseOverview();
     } else {
       toast.error("Ошибка изменения статуса публикации");
     }
     return success;
-  }, []);
+  }, [invalidateCourseOverview]);
 
   const duplicate = useCallback(async (courseId: string): Promise<Course | null> => {
     const course = await duplicateCourse(courseId);
     if (course) {
       toast.success("Курс скопирован");
       setRefreshKey(prev => prev + 1);
+      invalidateSummaryAndOverview();
     } else {
       toast.error("Ошибка копирования курса");
     }
     return course;
-  }, []);
+  }, [invalidateSummaryAndOverview]);
 
   const createCat = useCallback(async (name: string, color: string): Promise<CourseCategory | null> => {
     if (!organizationId) return null;
