@@ -4,14 +4,10 @@ import {
   AddStudentDialog,
   EnrollDialog,
   CategoryDialog,
-  InviteEmailDialog,
-  StudentDetailsDialog,
-  StudentCoursesDialog,
   OrgDetailsDialog,
   AddCompanyDialog,
   EditCompanyDialog,
   CreateLinkDialog,
-  CourseStudentsDialog
 } from "./index";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
@@ -19,7 +15,6 @@ import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload
 
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import {} from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -84,55 +79,6 @@ export function DialogsContainer() {
         }}
       />
 
-      {/* CourseDetailsModal removed — now a full page at /organization/course/:courseId */}
-
-      <CourseStudentsDialog
-        open={d.courseStudentsManager.showCourseStudentsDialog}
-        onOpenChange={d.courseStudentsManager.setShowCourseStudentsDialog}
-        course={d.courseStudentsManager.selectedCourse}
-        courseStudents={d.courseStudentsManager.courseStudents}
-        availableStudents={d.courseStudentsManager.availableStudentsForCourse}
-        organizationId={d.organizationId}
-        isLoading={d.courseStudentsManager.isLoadingCourseStudents}
-        selectedStudentsToAdd={d.courseStudentsManager.selectedStudentsToAdd}
-        onToggleStudentSelection={d.courseStudentsManager.toggleStudentSelection}
-        onAddStudentsToCourse={d.courseStudentsManager.addStudentsToCourse}
-        isAddingStudents={d.courseStudentsManager.isAddingStudentsToCourse}
-        onRemoveFromCourse={d.courseStudentsManager.removeStudentFromCourse}
-        onShowInviteEmailDialog={() => d.emailInvitation.setShowInviteEmailDialog(true)}
-        onShowStudentDocs={d.studentDocsDialog.openStudentDocs}
-        onRefresh={d.refreshData}
-      />
-
-      <InviteEmailDialog
-        open={d.emailInvitation.showInviteEmailDialog}
-        onOpenChange={d.emailInvitation.setShowInviteEmailDialog}
-        courseTitle={d.courseStudentsManager.selectedCourse?.title}
-        isSending={d.emailInvitation.isSendingInvitation}
-        onSend={async (email) => { await d.emailInvitation.sendInvitationDirect(email, d.courseStudentsManager.selectedCourse); }}
-      />
-
-      <StudentDetailsDialog
-        open={d.studentDetailsDialog.showStudentDialog}
-        onOpenChange={d.studentDetailsDialog.setShowStudentDialog}
-        studentDetails={d.studentDetailsDialog.selectedStudent}
-        isLoading={d.studentDetailsDialog.isLoadingStudentDetails}
-        companies={d.companies}
-        studentCompanyId={d.studentDetailsDialog.studentCompanyId}
-        onStudentCompanyIdChange={d.studentDetailsDialog.setStudentCompanyId}
-        isSavingStudentCompany={d.studentDetailsDialog.isSavingStudentCompany}
-        onAttachToCompany={d.studentDetailsDialog.handleAttachStudentToCompany}
-        isCreatingCredentials={d.studentActions.isCreatingCredentials}
-        onCreateCredentials={d.studentDetailsDialog.handleCreateStudentCredentials}
-        isSendingCredentials={d.studentActions.isSendingCredentials}
-        onSendCredentials={d.studentDetailsDialog.handleSendCredentials}
-        isSendingCredentialsEmail={d.studentActions.isSendingCredentialsEmail}
-        onSendCredentialsEmail={d.studentDetailsDialog.handleSendCredentialsEmail}
-        isDeletingStudent={d.studentActions.isDeletingStudent}
-        onDeleteStudent={d.studentDetailsDialog.handleDeleteStudentCompletely}
-        onCopyCredentials={d.studentDetailsDialog.handleCopyCredentials}
-      />
-
       <AddCompanyDialog
         open={d.companyActions.showAddCompanyDialog}
         onOpenChange={d.companyActions.setShowAddCompanyDialog}
@@ -173,24 +119,6 @@ export function DialogsContainer() {
         organization={d.organizationsTab.selectedOrg}
         students={d.organizationsTab.orgStudents}
         isLoading={d.organizationsTab.isLoadingOrgDetails}
-      />
-
-      <StudentCoursesDialog
-        open={d.studentCoursesDialog.showStudentCoursesDialog}
-        onOpenChange={d.studentCoursesDialog.setShowStudentCoursesDialog}
-        student={d.studentCoursesDialog.selectedStudentForCourses}
-        isLoading={d.studentCoursesDialog.isLoadingStudentCourses}
-        studentEnrollments={d.studentCoursesDialog.studentEnrollments}
-        availableCourses={d.studentCoursesDialog.availableCoursesForStudent}
-        selectedCoursesToAdd={d.studentCoursesDialog.selectedCoursesToAdd}
-        searchQuery={d.studentCoursesDialog.studentCoursesSearchQuery}
-        onSearchQueryChange={d.studentCoursesDialog.setStudentCoursesSearchQuery}
-        onToggleCourseSelection={d.studentCoursesDialog.toggleCourseSelection}
-        isAddingCourses={d.studentCoursesDialog.isAddingCoursesToStudent}
-        onAddCourses={d.studentCoursesDialog.addCourses}
-        onRemoveEnrollment={d.studentCoursesDialog.removeEnrollment}
-        onResetProgress={d.studentCoursesDialog.resetProgress}
-        getCategoryById={d.getCategoryById}
       />
 
       <CreateLinkDialog
@@ -234,8 +162,6 @@ export function DialogsContainer() {
         />
       )}
 
-      {/* Student Detail Card — now a full page at /organization/student/:studentId */}
-      
       <BulkFRDOExport
         isOpen={d.enrollmentActions.showBulkFRDOExport}
         onOpenChange={d.enrollmentActions.setShowBulkFRDOExport}

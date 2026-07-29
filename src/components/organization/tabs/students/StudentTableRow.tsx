@@ -21,7 +21,7 @@ interface StudentTableRowProps {
   onViewStudent: () => void;
   onCopyCredentials: (login: string, password: string) => void;
   onRemoveStudent: (userId: string) => void;
-  studentDocsByUser: Map<string, string[]>;
+  studentDocsByUser?: Map<string, string[]>;
   frdoStatus: Map<string, StudentFRDOStatus>;
   studentGroups: Array<{ id: string; name: string; color: string }>;
   studentGroupMap: Map<string, string | null>;
@@ -40,7 +40,7 @@ export const StudentTableRow = React.memo(function StudentTableRow({
 }: StudentTableRowProps) {
   const [loadingPw, setLoadingPw] = React.useState(false);
   const enrollmentsCount = student.enrollments?.length || 0;
-  const userDocs = studentDocsByUser.get(student.user_id) || [];
+  const userDocs = studentDocsByUser?.get(student.user_id) || [];
   // Prefer server flags; fall back to the legacy client map for callers that
   // still populate studentDocsByUser (course-scoped views).
   const hasPassport = student.has_passport ?? userDocs.some(t => t === "passport" || t === "birth_certificate");

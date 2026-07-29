@@ -106,9 +106,8 @@ export function TabContentRenderer() {
         <StudentsTab
           organizationId={organizationId}
           courses={d.courses}
-          studentDocsByUser={d.studentDocsByUser}
           onViewStudent={d.handleViewStudent}
-          onCopyCredentials={d.studentDetailsDialog.handleCopyCredentials}
+          onCopyCredentials={d.handleCopyCredentials}
           onBulkCreateCredentials={d.handleBulkCreateCredentials}
           onBulkSendCredentials={d.handleBulkSendCredentials}
           onBulkSendDocReminders={d.studentActions.bulkSendDocReminders}

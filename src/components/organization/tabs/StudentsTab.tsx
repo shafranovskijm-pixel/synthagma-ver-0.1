@@ -26,7 +26,7 @@ import { StudentConfirmDialogs } from "./students/StudentConfirmDialogs";
 interface StudentsTabProps {
   organizationId: string;
   courses: Course[];
-  studentDocsByUser: Map<string, string[]>;
+  studentDocsByUser?: Map<string, string[]>;
   onViewStudent: (student: Student) => void;
   onCopyCredentials: (login: string, password: string) => void;
   onBulkCreateCredentials?: (userIds: string[]) => Promise<void>;

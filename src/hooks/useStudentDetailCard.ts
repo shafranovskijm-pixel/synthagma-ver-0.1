@@ -9,49 +9,12 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Student } from "@/types/shared";
 
-// ─── Original dashboard-level hook (manages open/close of StudentDetailCard dialog) ───
-interface StudentCardData {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-  login?: string | null;
-  company_name?: string | null;
-  generated_password?: string | null;
-  last_visit_at?: string | null;
-}
-
-interface StudentCardEnrollment {
-  id: string;
-  course_id: string;
-  course_title: string;
-  progress: number;
-  status: string;
-  started_at: string;
-  completed_at?: string | null;
-  time_spent: number;
-  access_days?: number | null;
-  expires_at?: string | null;
-}
-
-export function useStudentDetailCard() {
-  const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
-  const [studentDetailCardData, setStudentDetailCardData] = useState<StudentCardData | null>(null);
-  const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<StudentCardEnrollment[]>([]);
-
-  // viewStudent is now handled at the dashboard level via tabNavigation
-  const viewStudent = useCallback(async (_student: Student) => {
-    // no-op: overridden in useOrganizationDashboard
-  }, []);
-
-  return {
-    showStudentDetailCard,
-    setShowStudentDetailCard,
-    studentDetailCardData,
-    studentDetailCardEnrollments,
-    viewStudent,
-  };
-}
+// ─── Dashboard-level useStudentDetailCard() hook removed in phase 4B.1.c.1.
+// The organization dashboard now navigates to /organization/student/:id via
+// tabNavigation.openStudentDetails, so the old open/close state is dead code.
+// Only useStudentDetailCardLogic (component-level logic used by the full-page
+// StudentDetailsTab / OrganizationStudentDetails / AdminUserDetails) remains
+// below.
 
 // ─── New component-level hook (extracted logic from StudentDetailCard component) ───
 
@@ -117,6 +80,17 @@ interface IdentityDocumentRecord {
 }
 
 export type { ConsentRecord, GeneratedConsentRecord, VerificationRecord, DocumentRecord, IdentityDocumentRecord };
+
+interface StudentCardData {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  login?: string | null;
+  company_name?: string | null;
+  generated_password?: string | null;
+  last_visit_at?: string | null;
+}
 
 interface EnrollmentInfo {
   id: string;

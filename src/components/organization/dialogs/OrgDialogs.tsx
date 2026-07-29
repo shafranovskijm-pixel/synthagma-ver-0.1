@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { XCircle, Send, Mail } from "lucide-react";
+import { XCircle } from "lucide-react";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -122,33 +122,3 @@ export function CategoryDialog({ open, onOpenChange, isCreating, onCreate }: Cat
   );
 }
 
-// Invite Email Dialog
-interface InviteEmailDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  courseTitle?: string;
-  isSending: boolean;
-  onSend: (email: string) => void;
-}
-
-export function InviteEmailDialog({ open, onOpenChange, courseTitle, isSending, onSend }: InviteEmailDialogProps) {
-  const [email, setEmail] = useState("");
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) setEmail(""); onOpenChange(v); }}>
-      <DialogContent className="rounded-2xl">
-        <DialogHeader><DialogTitle className="font-display">Отправить приглашение на курс</DialogTitle></DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Email получателя</Label>
-            <Input type="email" placeholder="student@example.com" className="rounded-xl" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          {courseTitle && <p className="text-sm text-muted-foreground">Курс: <strong>{courseTitle}</strong></p>}
-          <Button className="w-full btn-gradient rounded-xl" onClick={() => onSend(email)} disabled={isSending || !email.includes("@")}>
-            {isSending ? (<><SigmaSpinner size="sm" className="mr-2" />Отправка...</>) : (<><Mail className="w-4 h-4 mr-2" />Отправить приглашение</>)}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
