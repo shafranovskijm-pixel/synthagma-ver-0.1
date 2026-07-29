@@ -189,9 +189,20 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     });
   }, [courses, searchQuery, filter, categoryFilter]);
 
+  const invalidateSummaryAndOverview = useCallback(() => {
+    if (!organizationId) return;
+    queryClient.invalidateQueries({ queryKey: qk.org.dashboardSummary(organizationId) });
+    queryClient.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+  }, [organizationId, queryClient]);
+
+  const invalidateCourseOverview = useCallback(() => {
+    if (!organizationId) return;
+    queryClient.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+  }, [organizationId, queryClient]);
+
   const create = useCallback(async (
-    title: string, 
-    description?: string, 
+    title: string,
+    description?: string,
     categoryId?: string
   ): Promise<Course | null> => {
     if (!organizationId) return null;
@@ -200,55 +211,60 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     if (course) {
       toast.success("Курс создан");
       setRefreshKey(prev => prev + 1);
+      invalidateSummaryAndOverview();
     } else {
       toast.error("Ошибка создания курса");
     }
     return course;
-  }, [organizationId]);
+  }, [organizationId, invalidateSummaryAndOverview]);
 
   const update = useCallback(async (courseId: string, updates: Partial<Course>): Promise<boolean> => {
     const success = await updateCourse(courseId, updates);
     if (success) {
       toast.success("Курс обновлён");
       setRefreshKey(prev => prev + 1);
+      invalidateCourseOverview();
     } else {
       toast.error("Ошибка обновления курса");
     }
     return success;
-  }, []);
+  }, [invalidateCourseOverview]);
 
   const remove = useCallback(async (courseId: string): Promise<boolean> => {
     const success = await deleteCourse(courseId);
     if (success) {
       toast.success("Курс удалён");
       setRefreshKey(prev => prev + 1);
+      invalidateSummaryAndOverview();
     } else {
       toast.error("Ошибка удаления курса");
     }
     return success;
-  }, []);
+  }, [invalidateSummaryAndOverview]);
 
   const publish = useCallback(async (courseId: string, isPublished: boolean): Promise<boolean> => {
     const success = await publishCourse(courseId, isPublished);
     if (success) {
       toast.success(isPublished ? "Курс опубликован" : "Курс снят с публикации");
       setRefreshKey(prev => prev + 1);
+      invalidateCourseOverview();
     } else {
       toast.error("Ошибка изменения статуса публикации");
     }
     return success;
-  }, []);
+  }, [invalidateCourseOverview]);
 
   const duplicate = useCallback(async (courseId: string): Promise<Course | null> => {
     const course = await duplicateCourse(courseId);
     if (course) {
       toast.success("Курс скопирован");
       setRefreshKey(prev => prev + 1);
+      invalidateSummaryAndOverview();
     } else {
       toast.error("Ошибка копирования курса");
     }
     return course;
-  }, []);
+  }, [invalidateSummaryAndOverview]);
 
   const createCat = useCallback(async (name: string, color: string): Promise<CourseCategory | null> => {
     if (!organizationId) return null;
