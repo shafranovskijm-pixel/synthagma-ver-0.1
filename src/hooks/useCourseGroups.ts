@@ -18,7 +18,15 @@ export const GROUP_COLORS = [
   "#8b5cf6", "#ef4444", "#14b8a6", "#f97316", "#06b6d4",
 ];
 
-export function useCourseGroups(courseId: string, organizationId: string, onRefreshStudents?: () => void) {
+export interface CourseGroupRefreshCallbacks {
+  onEnrollmentChanged?: () => void;
+  onGroupingChanged?: () => void;
+  onStudentPopulationChanged?: () => void;
+  onGroupDirectoryChanged?: () => void;
+}
+
+export function useCourseGroups(courseId: string, organizationId: string, callbacks?: CourseGroupRefreshCallbacks) {
+  const { onEnrollmentChanged, onGroupingChanged, onStudentPopulationChanged, onGroupDirectoryChanged } = callbacks || {};
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollingGroupId, setEnrollingGroupId] = useState<string | null>(null);
