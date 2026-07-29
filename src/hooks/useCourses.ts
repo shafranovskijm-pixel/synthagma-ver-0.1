@@ -112,18 +112,33 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
         setCourses(coursesData);
         setCategories(categoriesData);
 
-        // Lazy-load student counts and lesson counts after rendering courses
-        const courseIds = coursesData.map(c => c.id);
-        Promise.all([
-          fetchCourseStudentCounts(courseIds),
-          fetchCourseLessonCounts(courseIds),
-        ]).then(([studentMap, lessonMap]) => {
-          setCourses(prev => prev.map(c => ({
-            ...c,
-            studentsCount: studentMap.get(c.id) ?? c.studentsCount ?? 0,
-            lessonsCount: lessonMap.get(c.id) ?? c.lessonsCount ?? 0,
-          })));
-        });
+        // Phase 4B.1.b — pull per-course counts from the aggregate RPC
+        // (get_organization_course_overview) via React Query cache so
+        // useOrganizationSummary and useCourses share one in-flight
+        // request. Errors keep already-known counts.
+        if (organizationId) {
+          queryClient
+            .fetchQuery({
+              queryKey: qk.org.courseOverview(organizationId),
+              queryFn: () => fetchOrganizationCourseOverview(organizationId),
+              staleTime: 30_000,
+            })
+            .then((rows) => {
+              const map = new Map(rows.map((r) => [r.courseId, r]));
+              setCourses((prev) =>
+                prev.map((c) => {
+                  const row = map.get(c.id);
+                  if (row) {
+                    return { ...c, studentsCount: row.studentsCount, lessonsCount: row.lessonsCount };
+                  }
+                  return c;
+                })
+              );
+            })
+            .catch((e) => {
+              console.warn("[useCourses] course overview failed, keeping known counts:", e);
+            });
+        }
       } catch (err: any) {
         console.error("Error loading courses:", err);
         // If we already have courses displayed, don't show fatal error
