@@ -147,14 +147,16 @@ export function CourseDetailsTab() {
         onEnrollStudent={() => {}}
         onCourseDeleted={handleCourseDeleted}
         onCourseUpdated={() => loadCourse(false)}
-        onRefreshStudents={() => {
-          // Phase 4B.1.c.2.b.1 — enrollment-scoped changes inside a course
-          // (enroll/unenroll/progress reset) don't change the student
-          // population, group counts or archive counters. Use the narrower
-          // enrollment refresh so we don't invalidate studentsCounts /
-          // studentGroupCounts on every mutation.
-          d.refreshEnrollmentData();
-        }}
+        // Phase 4B.1.c.2.b.2 — separate callbacks per mutation kind so
+        // course-scoped changes never invalidate wider dashboard state.
+        //   enrollment       — bulk enroll/unenroll, request approval, group enrollment
+        //   grouping         — students moved into a group
+        //   population       — new student profile created in a group
+        //   group directory  — group create/rename/delete/date-edit
+        onEnrollmentChanged={d.refreshEnrollmentData}
+        onStudentGroupingChanged={d.refreshStudentGrouping}
+        onStudentPopulationChanged={d.refreshStudentPopulation}
+        onGroupDirectoryChanged={d.refreshGroupDirectory}
         onBack={handleBack}
       />
     </div>
