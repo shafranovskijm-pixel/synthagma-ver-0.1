@@ -94,44 +94,53 @@ serve(async (req) => {
     const studentGroupId: string | null = enrollmentCfg.student_group_id ?? null;
     const sendEmail: boolean = enrollmentCfg.send_credentials_email !== false;
 
-    // ── Лимит учеников ─────────────────────────────────────────
-    const planLimits: Record<string, number> = {
-      free: 10, start: 100, standard: 200, professional: 1000, maximum: -1,
-    };
+    // ── Организация (метаданные для уведомлений/писем) ─────────
     const { data: orgData } = await admin
       .from("organizations")
-      .select("subscription_plan, custom_max_students, name, telegram_notify_enabled, telegram_notify_chat_id")
+      .select("name, telegram_notify_enabled, telegram_notify_chat_id")
       .eq("id", course.organization_id)
       .maybeSingle();
 
-    const plan = (orgData as any)?.subscription_plan || "free";
-    const customMax = (orgData as any)?.custom_max_students;
-    const maxStudents = customMax != null ? customMax : (planLimits[plan] ?? 10);
-
-    if (maxStudents !== -1) {
-      const { data: countResult } = await admin.rpc("count_org_students", { org_id: course.organization_id });
-      if (Number(countResult) >= maxStudents) {
-        return json({ error: "Достигнут лимит учеников у организации. Обратитесь к администратору школы." }, 400);
-      }
-    }
-
-    // ── Проверка существующего пользователя по email профиля ──
+    // ── Existing profile in same org → idempotent, no new slot ──
+    const normalizedEmail = body.email.trim().toLowerCase();
     const { data: existingProfile } = await admin
       .from("profiles")
-      .select("user_id, organization_id")
-      .eq("email", body.email.toLowerCase())
+      .select("user_id, organization_id, archived_at")
+      .eq("email", normalizedEmail)
       .eq("organization_id", course.organization_id)
       .maybeSingle();
 
+    // Do NOT reveal PII to anonymous callers: no login/password returned
+    // for existing accounts; just proceed to enroll them silently.
     let userId: string;
     let createdNew = false;
     let login = "";
     let password = "";
 
     if (existingProfile) {
+      if (existingProfile.archived_at) {
+        return json({ error: "Ваша учётная запись отключена. Обратитесь к администратору школы." }, 403);
+      }
       userId = existingProfile.user_id;
     } else {
-      // Создаём auth-пользователя
+      // ── Server-canonical capacity preflight (read-only) ─────
+      const { data: capacityRow, error: capacityError } = await admin.rpc(
+        "get_organization_student_capacity",
+        { p_organization_id: course.organization_id, p_requested_count: 1 },
+      );
+      if (capacityError) {
+        console.error("capacity lookup err:", capacityError);
+        return json({ error: "Не удалось проверить вместимость организации." }, 500);
+      }
+      const capacity: any = Array.isArray(capacityRow) ? capacityRow[0] : capacityRow;
+      if (capacity && !capacity.is_unlimited && !capacity.can_add) {
+        return json({
+          error: "Достигнут лимит учеников у организации. Обратитесь к администратору школы.",
+          code: "STUDENT_LIMIT_EXCEEDED",
+        }, 409);
+      }
+
+      // Create auth-user
       login = await generateLogin(admin);
       password = generatePassword();
       const authEmail = `${login}@student.local`;
@@ -142,25 +151,42 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: body.full_name },
       });
-      if (authErr || !authData.user) return json({ error: "Не удалось создать пользователя: " + (authErr?.message ?? "unknown") }, 500);
+      if (authErr || !authData.user) {
+        return json({ error: "Не удалось создать пользователя: " + (authErr?.message ?? "unknown") }, 500);
+      }
       userId = authData.user.id;
-      createdNew = true;
 
-      const { error: profileErr } = await admin.from("profiles").upsert({
-        user_id: userId,
-        full_name: body.full_name.trim(),
-        email: body.email.toLowerCase(),
-        login,
-        generated_password: password,
-        organization_id: course.organization_id,
-        student_group_id: studentGroupId,
-      }, { onConflict: "user_id" });
-      if (profileErr) {
-        console.error("profile upsert err:", profileErr);
-        return json({ error: "Ошибка профиля: " + profileErr.message }, 500);
+      // Atomic capacity claim + profile + role
+      const { data: claimRes, error: claimErr } = await admin.rpc(
+        "create_student_profile_with_capacity",
+        {
+          p_organization_id: course.organization_id,
+          p_user_id: userId,
+          p_full_name: body.full_name.trim(),
+          p_email: normalizedEmail,
+          p_login: login,
+          p_generated_password: password,
+          p_company_id: null,
+          p_student_group_id: studentGroupId,
+          p_region: null,
+        },
+      );
+
+      const claim: any = claimRes;
+      if (claimErr || !claim || !claim.success) {
+        // Rollback the auth-user we just created.
+        try { await admin.auth.admin.deleteUser(userId); } catch {}
+        console.error("claim err:", claimErr, claim);
+        if (claim?.code === "STUDENT_LIMIT_EXCEEDED") {
+          return json({
+            error: "Достигнут лимит учеников у организации. Обратитесь к администратору школы.",
+            code: "STUDENT_LIMIT_EXCEEDED",
+          }, 409);
+        }
+        return json({ error: "Ошибка регистрации: " + (claim?.message || claimErr?.message || "unknown") }, 500);
       }
 
-      await admin.from("user_roles").insert({ user_id: userId, role: "student" });
+      createdNew = true;
     }
 
     // ── Зачисление ─────────────────────────────────────────────
