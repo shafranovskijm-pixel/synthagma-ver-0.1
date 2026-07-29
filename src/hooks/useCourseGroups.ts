@@ -133,6 +133,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
       if (error) throw error;
       setGroups(prev => prev.map(g => g.id === groupId ? { ...g, [field]: value } : g));
       toast.success("Дата обновлена");
+      onGroupDirectoryChanged?.();
     } catch { toast.error("Ошибка обновления даты"); }
   };
 
