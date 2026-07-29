@@ -304,7 +304,7 @@ export function useOrganizationDashboard() {
   }, [courseDetailsModal.showCourseDetailsModal, courseDetailsModal.selectedCourseForDetails?.id, loadCourseStudentsForModal]);
 
   // Derived handlers
-  const qc = useQueryClient();
+  // (qc is already declared near the top of the hook.)
   const handleLogout = async () => await signOut();
   const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount();
   const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(enrollmentActions.selectedEnrollmentIds);
