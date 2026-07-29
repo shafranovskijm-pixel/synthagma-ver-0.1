@@ -97,7 +97,7 @@ describe("5C.1.c.1 — send-campaign-email service-role gate", () => {
 describe("5C.1.c.1 — org-create-contract-signature ordering", () => {
   it("sales.write authorization runs BEFORE any admin.from insert / SMTP send", () => {
     const permIdx = CONTRACT.indexOf(`_permission: "sales.write"`);
-    const smtpIdx = CONTRACT.indexOf("sendSmtpEmail");
+    const smtpIdx = CONTRACT.indexOf("await sendSmtpEmail(");
     const smtpReadIdx = CONTRACT.indexOf(`admin.rpc("get_decrypted_org_smtp"`);
     expect(permIdx).toBeGreaterThan(-1);
     expect(smtpIdx).toBeGreaterThan(permIdx);
@@ -106,7 +106,7 @@ describe("5C.1.c.1 — org-create-contract-signature ordering", () => {
 
   it("claim_org_email_quota is called before sendSmtpEmail", () => {
     const claimIdx = CONTRACT.indexOf("claim_org_email_quota");
-    const smtpIdx = CONTRACT.indexOf("sendSmtpEmail");
+    const smtpIdx = CONTRACT.indexOf("await sendSmtpEmail(");
     expect(claimIdx).toBeGreaterThan(-1);
     expect(smtpIdx).toBeGreaterThan(claimIdx);
   });
