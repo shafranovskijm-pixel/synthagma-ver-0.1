@@ -1,29 +1,14 @@
 // =====================================================================
-// PENDING — Phase 5C.1.a (corrected in 5C.1.a.1). Do NOT deploy until
-// the accompanying RLS migration is planned. This file lives OUTSIDE
-// supabase/functions/ so Lovable does not auto-deploy it.
+// Phase 5C.1.b — canonical recipient resolver.
+// Recipient list is computed exclusively by the SQL RPC
+// public.resolve_campaign_recipients(campaign_id). The Edge Function no
+// longer contains its own resolveRecipients(); dedup, invalid-email
+// filtering and suppressions are all handled by the RPC so that preview
+// and materialization stay consistent.
 //
-// 5C.1.a.1 corrections vs 5C.1.a draft:
-//   • can_access_organization is now invoked via the USER client
-//     (carries the caller's JWT). The service-role client has no
-//     auth.uid() and would always return false, so owners and
-//     sales.write staff were being denied.
-//   • has_role is also invoked via the user client with the resolved
-//     userId — we never trust a userId supplied by the body.
-//   • The FULL current pipeline (A/B sample assignment, sampleSize,
-//     subject_variant filter, ab_sample_started_at, ab_winner gating)
-//     is preserved verbatim after the authorization gate. Only the
-//     top-of-function auth check is new; downstream behaviour is
-//     unchanged.
-//   • The service-role client is only used AFTER the authorization
-//     gate succeeds, to read/mutate campaign rows, recipients and
-//     suppression list.
-//
-// Delta vs current supabase/functions/run-email-campaign/index.ts:
-//   • Auth check happens BEFORE any recipient read or campaign mutation.
-//   • Denials return 403 with no campaign name / recipients / totals.
-//   • Platform campaigns require admin (or service_role for cron).
-//   • Org campaigns require admin OR can_access_organization(org, 'sales.write').
+// Preserved verbatim from 5C.1.a: authorization gate (user client),
+// A/B sample assignment, quota, paused/scheduled/idempotency,
+// SEND_DELAY_MS pacing, EdgeRuntime.waitUntil.
 // =====================================================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -37,64 +22,6 @@ const corsHeaders = {
 interface ReqBody { campaignId: string; }
 
 const SEND_DELAY_MS = 1500;
-
-function isValidEmail(s: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-}
-
-async function resolveRecipients(
-  admin: ReturnType<typeof createClient>,
-  campaign: any,
-): Promise<Array<{ email: string; name: string }>> {
-  const source: string = campaign.recipient_source;
-  const orgId: string | null = campaign.organization_id;
-
-  if (source === "manual") {
-    const emails: string[] = Array.isArray(campaign.manual_emails) ? campaign.manual_emails : [];
-    return emails
-      .map((e) => String(e).trim().toLowerCase())
-      .filter(isValidEmail)
-      .map((email) => ({ email, name: "" }));
-  }
-
-  if (source === "organizations") {
-    const { data } = await admin.from("organizations").select("name, email").not("email", "is", null);
-    return (data || [])
-      .filter((r: any) => isValidEmail(r.email))
-      .map((r: any) => ({ email: String(r.email).trim().toLowerCase(), name: r.name || "" }));
-  }
-
-  if (source === "companies_db") {
-    const { data } = await admin.from("sales_companies_db" as any).select("name, email").not("email", "is", null);
-    return (data || [])
-      .filter((r: any) => isValidEmail(r.email))
-      .map((r: any) => ({ email: String(r.email).trim().toLowerCase(), name: r.name || "" }));
-  }
-
-  if (!orgId) return [];
-
-  if (source === "students") {
-    const { data } = await admin.from("profiles")
-      .select("full_name, email")
-      .eq("organization_id", orgId)
-      .not("email", "is", null);
-    return (data || [])
-      .filter((r: any) => isValidEmail(r.email))
-      .map((r: any) => ({ email: String(r.email).trim().toLowerCase(), name: r.full_name || "" }));
-  }
-
-  if (source === "companies") {
-    const { data } = await admin.from("companies")
-      .select("name, email")
-      .eq("organization_id", orgId)
-      .not("email", "is", null);
-    return (data || [])
-      .filter((r: any) => isValidEmail(r.email))
-      .map((r: any) => ({ email: String(r.email).trim().toLowerCase(), name: r.name || "" }));
-  }
-
-  return [];
-}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -112,18 +39,14 @@ serve(async (req: Request) => {
     const { campaignId }: ReqBody = await req.json().catch(() => ({ campaignId: "" }));
     if (!campaignId) return json({ error: "campaignId required" }, 400);
 
-    // ============ AUTHORIZATION GATE (new in 5C.1.a) ============
-    // Load campaign via admin so scope/org is known; details are NOT
-    // returned to the caller on denial.
-    const { data: campaign, error: cErr } = await admin
+    // ============ AUTHORIZATION GATE (5C.1.a) ============
+    const { data: campaign } = await admin
       .from("email_campaigns").select("*").eq("id", campaignId).maybeSingle();
 
     let authorized = false;
     if (isServiceRole) {
       authorized = true;
     } else {
-      // User client carries the caller's JWT — required for
-      // can_access_organization / has_role, both of which read auth.uid().
       const userClient = createClient(SUPABASE_URL, ANON_KEY, {
         global: { headers: { Authorization: authHeader } },
       });
@@ -137,7 +60,6 @@ serve(async (req: Request) => {
       const isAdmin = adminRow === true;
 
       if (!campaign) {
-        // Uniform 403: don't leak whether the UUID exists in another org.
         authorized = false;
       } else if (campaign.scope === "platform") {
         authorized = isAdmin;
@@ -156,58 +78,40 @@ serve(async (req: Request) => {
 
     if (!authorized) return json({ error: "Forbidden" }, 403);
     if (!campaign) return json({ error: "Кампания не найдена" }, 404);
-    // ============ END AUTHORIZATION GATE ============
 
-    // ==============================================================
-    // From here on, behaviour is IDENTICAL to the current function
-    // supabase/functions/run-email-campaign/index.ts. Any change to
-    // that file must be mirrored here until this pending file is
-    // promoted.
-    // ==============================================================
-
-    // Идемпотентность
+    // Idempotency
     if (campaign.status === "sending" && campaign.started_at) {
       const startedMs = new Date(campaign.started_at).getTime();
       if (Date.now() - startedMs < 5 * 60 * 1000) {
-        return new Response(JSON.stringify({
-          ok: true, alreadyRunning: true,
-          message: "Кампания уже отправляется (идёт фоновая обработка)",
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return json({ ok: true, alreadyRunning: true, message: "Кампания уже отправляется (идёт фоновая обработка)" }, 200);
       }
     }
 
-    // ============ Заполнение получателей (если ещё не было) ============
+    // ============ Materialize recipients via canonical resolver ============
     const { count: existingCount } = await admin
       .from("email_campaign_recipients")
       .select("id", { count: "exact", head: true })
       .eq("campaign_id", campaignId);
 
     if ((existingCount || 0) === 0) {
-      const all = await resolveRecipients(admin, campaign);
-
-      // Дедупликация по email
-      const seen = new Set<string>();
-      const unique = all.filter((r) => {
-        if (seen.has(r.email)) return false;
-        seen.add(r.email);
-        return true;
-      });
-
-      // Фильтр по suppression-листу
-      const scopeKey0 = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
-      let allowed = unique;
-      if (unique.length > 0) {
-        const emails = unique.map((r) => r.email);
-        const { data: suppRows } = await admin
-          .from("email_suppressions")
-          .select("email")
-          .in("email", emails)
-          .in("scope", [scopeKey0, "platform"]);
-        const suppSet = new Set((suppRows || []).map((r: any) => String(r.email).toLowerCase()));
-        allowed = unique.filter((r) => !suppSet.has(r.email));
+      // Canonical resolver — dedup, invalid-email filter and suppressions
+      // are ALL applied server-side inside resolve_campaign_recipients.
+      const { data: resolved, error: resolveErr } = await admin.rpc(
+        "resolve_campaign_recipients",
+        { p_campaign_id: campaignId },
+      );
+      if (resolveErr) {
+        // Do NOT swallow into a completed/empty campaign — surface as failed.
+        await admin.from("email_campaigns").update({
+          status: "failed",
+          error: `resolver: ${resolveErr.message}`.slice(0, 500),
+        }).eq("id", campaignId);
+        return json({ error: `Resolver failed: ${resolveErr.message}` }, 500);
       }
+      const allowed: Array<{ email: string; recipient_name: string | null }> =
+        Array.isArray(resolved) ? resolved as any : [];
 
-      // ============ A/B-тест: размечаем sample получателей ============
+      // A/B sample assignment
       let abAssign: Map<string, "a" | "b"> | null = null;
       if (campaign.ab_test_enabled && campaign.subject_b) {
         abAssign = new Map();
@@ -224,29 +128,43 @@ serve(async (req: Request) => {
         }
       }
 
-      // Вставка партиями по 500
+      // Insert (batches of 500) — unique index (campaign_id, email) + upsert-ignore
+      // prevents concurrent-run duplicates.
       if (allowed.length > 0) {
         const rows = allowed.map((r) => ({
           campaign_id: campaignId,
           email: r.email,
-          recipient_name: r.name,
+          recipient_name: r.recipient_name ?? "",
           status: "pending" as const,
           subject_variant: abAssign?.get(r.email) || null,
         }));
         const BATCH = 500;
         for (let i = 0; i < rows.length; i += BATCH) {
           const slice = rows.slice(i, i + BATCH);
-          const { error: insErr } = await admin.from("email_campaign_recipients").insert(slice);
-          if (insErr) console.error("recipients insert error", insErr);
+          const { error: insErr } = await admin
+            .from("email_campaign_recipients")
+            .upsert(slice, { onConflict: "campaign_id,email", ignoreDuplicates: true });
+          if (insErr) {
+            await admin.from("email_campaigns").update({
+              status: "failed",
+              error: `recipients insert: ${insErr.message}`.slice(0, 500),
+            }).eq("id", campaignId);
+            throw new Error(`recipients insert failed: ${insErr.message}`);
+          }
         }
       }
 
+      // total_recipients = actual persisted rows, not resolver payload length
+      const { count: actualCount } = await admin
+        .from("email_campaign_recipients")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId);
       await admin.from("email_campaigns").update({
-        total_recipients: allowed.length,
+        total_recipients: actualCount || 0,
       }).eq("id", campaignId);
     }
 
-    // ============ A/B-тест: на первом запуске отправляем только sample ============
+    // ============ A/B: on first pass send only the sample ============
     let pendingQuery = admin
       .from("email_campaign_recipients")
       .select("id, subject_variant")
@@ -263,37 +181,31 @@ serve(async (req: Request) => {
     }
 
     const { data: pending } = await pendingQuery;
-
     const pendingCount = pending?.length || 0;
     if (pendingCount === 0) {
       await admin.from("email_campaigns").update({
         status: "completed",
         completed_at: new Date().toISOString(),
       }).eq("id", campaignId);
-      return new Response(JSON.stringify({ ok: true, message: "Нет получателей в очереди" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ ok: true, message: "Нет получателей в очереди" }, 200);
     }
 
-    // Проверяем квоту
+    // Quota
     const scopeKey = campaign.scope === "platform" ? "platform" : campaign.organization_id;
     const { data: quota, error: qErr } = await admin.rpc("consume_email_quota", {
       p_scope_key: scopeKey,
       p_count: pendingCount,
     });
     if (qErr) {
-      return new Response(JSON.stringify({ error: "Ошибка квоты: " + qErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Ошибка квоты: " + qErr.message }, 500);
     }
     if (quota && (quota as any).allowed === false) {
-      return new Response(JSON.stringify({
+      return json({
         ok: false, quotaExceeded: true, ...(quota as any),
         message: `Лимит на сегодня: ${(quota as any).daily_limit}, отправлено: ${(quota as any).sent_today}, доступно: ${(quota as any).remaining}. Запрошено: ${pendingCount}.`,
-      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }, 200);
     }
 
-    // Помечаем кампанию как sending
     await admin.from("email_campaigns").update({
       status: "sending",
       started_at: campaign.started_at || new Date().toISOString(),
@@ -326,14 +238,10 @@ serve(async (req: Request) => {
       EdgeRuntime.waitUntil(runner);
     }
 
-    return new Response(JSON.stringify({ ok: true, started: pendingCount, quota }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ ok: true, started: pendingCount, quota }, 200);
   } catch (e) {
     console.error("run-email-campaign error", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: (e as Error).message }, 500);
   }
 });
 
