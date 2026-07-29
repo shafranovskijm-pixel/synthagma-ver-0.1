@@ -28,6 +28,8 @@ import {
   invalidateOrganizationStudentRows,
   invalidateOrganizationEnrollmentData,
   invalidateOrganizationStudentPopulation,
+  invalidateOrganizationStudentGrouping,
+  invalidateOrganizationGroupDirectory,
 } from "@/lib/invalidateOrganizationQueries";
 import { toast } from "sonner";
 
