@@ -64,6 +64,25 @@ serve(async (req: Request) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
+    // ============ Phase 5C.1.c: sales.write on THIS org, before any service-role writes/SMTP ============
+    // Prevents students, sales.read-only staff, expired staff, and users from OTHER orgs
+    // from creating a signature that would send SMTP through this org's SMTP settings.
+    const { data: canWrite, error: canWriteErr } = await userClient.rpc("can_access_organization", {
+      _organization_id: body.organization_id,
+      _permission: "sales.write",
+    });
+    if (canWriteErr) {
+      console.error("can_access_organization check failed", canWriteErr);
+      return new Response(JSON.stringify({ error: "Ошибка проверки доступа" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (canWrite !== true) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     // 1. Получаем имя отправителя
@@ -143,6 +162,32 @@ serve(async (req: Request) => {
       .replace(/\{\{document_title\}\}/g, body.document_title)
       .replace(/\{\{recipient_name\}\}/g, body.recipient_name);
 
+    // 7b. ============ Phase 5C.1.c: atomic transactional quota claim BEFORE SMTP ============
+    // Even transactional (contract) sends must not exceed the 50/day sender cap.
+    // Server derives organization_id + hashed sender key; client cannot influence it.
+    // Quota is claimed BEFORE sendSmtpEmail. If SMTP later fails, quota is not
+    // rolled back — we count SMTP attempts, not successful deliveries.
+    const { data: quota, error: qErr } = await admin.rpc("claim_org_email_quota", {
+      p_organization_id: body.organization_id,
+      p_count: 1,
+      p_message_kind: "transactional",
+    });
+    if (qErr) {
+      console.error("claim_org_email_quota failed", qErr);
+      throw new Error("Ошибка проверки лимита отправки");
+    }
+    if (!quota || (quota as any).allowed !== true) {
+      const q = (quota as any) || {};
+      return new Response(JSON.stringify({
+        error: "DAILY_EMAIL_LIMIT",
+        message: `Дневной лимит отправителя исчерпан (лимит: ${q.effective_daily_limit ?? 50}, отправлено: ${q.sent_today ?? 0}). Договор сохранён как черновик, повторите отправку позже.`,
+        signature_id: sig.id,
+        quota: q,
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 8. Отправляем
     await sendSmtpEmail(smtp, { to: body.recipient_email, subject, html });
 
@@ -151,13 +196,6 @@ serve(async (req: Request) => {
       status: "sent",
       sent_at: new Date().toISOString(),
     }).eq("id", sig.id);
-
-    // 10. Списываем квоту (skip_warmup для транзакционных)
-    await admin.rpc("consume_email_quota", {
-      p_scope_key: "org:" + body.organization_id,
-      p_count: 1,
-      p_skip_warmup: true,
-    });
 
     return new Response(JSON.stringify({ signature_id: sig.id, signing_url: signUrl }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

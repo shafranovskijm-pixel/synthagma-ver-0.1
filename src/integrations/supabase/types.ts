@@ -5975,6 +5975,7 @@ export type Database = {
           password_encrypted: string
           port: number
           provider_daily_limit: number
+          safe_warmup_enabled: boolean
           updated_at: string
           username: string
         }
@@ -5991,6 +5992,7 @@ export type Database = {
           password_encrypted: string
           port?: number
           provider_daily_limit?: number
+          safe_warmup_enabled?: boolean
           updated_at?: string
           username: string
         }
@@ -6007,6 +6009,7 @@ export type Database = {
           password_encrypted?: string
           port?: number
           provider_daily_limit?: number
+          safe_warmup_enabled?: boolean
           updated_at?: string
           username?: string
         }
@@ -10709,6 +10712,11 @@ export type Database = {
     Functions: {
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
+      _org_email_sender_key: {
+        Args: { _organization_id: string }
+        Returns: string
+      }
+      _org_email_warmup_limit: { Args: { _day: number }; Returns: number }
       _webinar_rate_check: {
         Args: {
           p_action: string
@@ -10798,6 +10806,14 @@ export type Database = {
         Returns: boolean
       }
       claim_notification_dedup: { Args: { _key: string }; Returns: boolean }
+      claim_org_email_quota: {
+        Args: {
+          p_count: number
+          p_message_kind: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
       consume_email_quota: {
@@ -11111,6 +11127,10 @@ export type Database = {
       get_next_document_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number
+      }
+      get_org_email_delivery_status: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       get_org_staff_permissions: {
         Args: { _organization_id: string; _user_id: string }

@@ -13,6 +13,8 @@ export interface OrgSmtpSettings {
   is_verified: boolean;
   last_test_at: string | null;
   last_test_error: string | null;
+  provider_daily_limit: number;
+  safe_warmup_enabled: boolean;
 }
 
 export function useOrgSmtp(organizationId: string | null) {
@@ -27,7 +29,7 @@ export function useOrgSmtp(organizationId: string | null) {
     try {
       const { data } = await supabase
         .from("org_smtp_settings")
-        .select("organization_id, host, port, username, from_email, from_name, encryption, is_verified, last_test_at, last_test_error")
+        .select("organization_id, host, port, username, from_email, from_name, encryption, is_verified, last_test_at, last_test_error, provider_daily_limit, safe_warmup_enabled")
         .eq("organization_id", organizationId)
         .maybeSingle();
       setSettings(data as OrgSmtpSettings | null);
@@ -41,10 +43,14 @@ export function useOrgSmtp(organizationId: string | null) {
   const save = useCallback(async (input: {
     host: string; port: number; username: string; password?: string;
     from_email: string; from_name?: string; encryption: string;
+    provider_daily_limit?: number;
+    safe_warmup_enabled?: boolean;
   }) => {
     if (!organizationId) return false;
     setSaving(true);
     try {
+      // Server enforces 1..50 via CHECK constraint; clamp client-side for a nicer UX message.
+      const cap = Math.max(1, Math.min(50, Math.round(input.provider_daily_limit ?? 50)));
       const payload: any = {
         organization_id: organizationId,
         host: input.host.trim(),
@@ -53,6 +59,8 @@ export function useOrgSmtp(organizationId: string | null) {
         from_email: input.from_email.trim(),
         from_name: input.from_name?.trim() || null,
         encryption: input.encryption,
+        provider_daily_limit: cap,
+        safe_warmup_enabled: input.safe_warmup_enabled ?? true,
         is_verified: false,
       };
       if (input.password && input.password.trim()) {

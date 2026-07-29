@@ -16,6 +16,21 @@ serve(async (req: Request) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // ============ Phase 5C.1.c: strict service-role gate ============
+  // send-campaign-email must ONLY be invoked by run-email-campaign (which uses
+  // the service-role key). Direct calls from browser/authenticated sessions
+  // must be rejected before any JSON parsing, DB reads, or state mutation —
+  // otherwise an authenticated user could dispatch emails and mutate recipient
+  // status by hitting this URL directly.
+  const authHeader = req.headers.get("Authorization") || "";
+  const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!bearer || bearer !== SERVICE_KEY) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
   let recipientId: string | null = null;
@@ -35,8 +50,12 @@ serve(async (req: Request) => {
       .from("email_campaigns").select("*").eq("id", campaignId).single();
     if (cErr || !campaign) throw new Error("Кампания не найдена");
 
+    // Recipient must belong to the campaign — protects against id-guessing.
     const { data: recipient, error: rErr } = await admin
-      .from("email_campaign_recipients").select("*").eq("id", recipientId).single();
+      .from("email_campaign_recipients").select("*")
+      .eq("id", recipientId)
+      .eq("campaign_id", campaignId)
+      .single();
     if (rErr || !recipient) throw new Error("Получатель не найден");
 
     // ============ Suppression check ============

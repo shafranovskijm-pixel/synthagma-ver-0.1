@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertCircle, Mail, TestTube2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CheckCircle2, AlertCircle, Mail, TestTube2, ShieldCheck } from "lucide-react";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -23,6 +24,8 @@ export function OrgSmtpSettings({ organizationId }: Props) {
   const [fromEmail, setFromEmail] = useState("");
   const [fromName, setFromName] = useState("");
   const [encryption, setEncryption] = useState("tls");
+  const [dailyLimit, setDailyLimit] = useState(50);
+  const [safeWarmup, setSafeWarmup] = useState(true);
 
   useEffect(() => {
     if (settings) {
@@ -32,11 +35,18 @@ export function OrgSmtpSettings({ organizationId }: Props) {
       setFromEmail(settings.from_email);
       setFromName(settings.from_name || "");
       setEncryption(settings.encryption);
+      setDailyLimit(settings.provider_daily_limit ?? 50);
+      setSafeWarmup(settings.safe_warmup_enabled ?? true);
     }
   }, [settings]);
 
   const handleSave = async () => {
-    await save({ host, port, username, password, from_email: fromEmail, from_name: fromName, encryption });
+    await save({
+      host, port, username, password,
+      from_email: fromEmail, from_name: fromName, encryption,
+      provider_daily_limit: dailyLimit,
+      safe_warmup_enabled: safeWarmup,
+    });
     setPassword("");
   };
 
@@ -55,7 +65,7 @@ export function OrgSmtpSettings({ organizationId }: Props) {
               Рекомендуем: Yandex 360 (Бизнес), Mail.ru для бизнеса, Timeweb, Beget.
             </p>
             <p className="text-xs text-muted-foreground">
-              ⚠️ Начните с прогрева — первые дни лимит небольшой (10 → 20 → 40 ...), это снижает риск попасть в спам.
+              ⚠️ Начните с прогрева — первые дни лимит небольшой (10 → 20 → 30 → 40 → 50), это снижает риск попасть в спам.
             </p>
           </CardContent>
         </Card>
@@ -113,6 +123,39 @@ export function OrgSmtpSettings({ organizationId }: Props) {
                   <SelectItem value="none">Без шифрования (не рекомендуется)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Лимит писем в сутки (1–50)</Label>
+              <Select value={String(dailyLimit)} onValueChange={(v) => setDailyLimit(parseInt(v, 10))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="40">40</SelectItem>
+                  <SelectItem value="50">50 (максимум)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Больше 50 писем в сутки с одного адреса не допускается — это защита от спам-фильтров.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/40">
+            <ShieldCheck className="w-5 h-5 text-primary mt-0.5" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="safe-warmup" className="font-medium cursor-pointer">
+                  Безопасный прогрев — рекомендуется
+                </Label>
+                <Switch id="safe-warmup" checked={safeWarmup} onCheckedChange={setSafeWarmup} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {safeWarmup
+                  ? "Прогрев постепенно увеличивает лимит: 10, 20, 30, 40 и до 50 писем в сутки."
+                  : "Можно отправлять до выбранного лимита сразу, но не более 50 писем в сутки."}
+              </p>
             </div>
           </div>
 

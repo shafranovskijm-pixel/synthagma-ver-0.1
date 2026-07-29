@@ -224,19 +224,35 @@ serve(async (req: Request) => {
       return json({ ok: true, message: "Нет получателей в очереди" }, 200);
     }
 
-    // Quota
-    const scopeKey = campaign.scope === "platform" ? "platform" : campaign.organization_id;
-    const { data: quota, error: qErr } = await admin.rpc("consume_email_quota", {
-      p_scope_key: scopeKey,
-      p_count: pendingCount,
-    });
-    if (qErr) {
-      return json({ error: "Ошибка квоты: " + qErr.message }, 500);
+    // ============ Quota (5C.1.c) ============
+    // Platform: keep existing broadcast quota (consume_email_quota with 'platform').
+    // Org: server-derived atomic claim keyed by hashed sender email. Client cannot
+    // pass a scope_key or skip_warmup override.
+    let quota: any = null;
+    if (campaign.scope === "platform") {
+      const { data: pq, error: pqErr } = await admin.rpc("consume_email_quota", {
+        p_scope_key: "platform",
+        p_count: pendingCount,
+      });
+      if (pqErr) return json({ error: "Ошибка квоты: " + pqErr.message }, 500);
+      quota = pq;
+    } else {
+      if (!campaign.organization_id) {
+        return json({ error: "org campaign без organization_id" }, 500);
+      }
+      const { data: cq, error: cqErr } = await admin.rpc("claim_org_email_quota", {
+        p_organization_id: campaign.organization_id,
+        p_count: pendingCount,
+        p_message_kind: "marketing",
+      });
+      if (cqErr) return json({ error: "Ошибка квоты: " + cqErr.message }, 500);
+      quota = cq;
     }
+
     if (quota && (quota as any).allowed === false) {
       return json({
         ok: false, quotaExceeded: true, ...(quota as any),
-        message: `Лимит на сегодня: ${(quota as any).daily_limit}, отправлено: ${(quota as any).sent_today}, доступно: ${(quota as any).remaining}. Запрошено: ${pendingCount}.`,
+        message: `Дневной лимит отправителя: ${(quota as any).effective_daily_limit ?? (quota as any).daily_limit}, отправлено: ${(quota as any).sent_today}, доступно: ${(quota as any).remaining}. Запрошено: ${pendingCount}.`,
       }, 200);
     }
 
