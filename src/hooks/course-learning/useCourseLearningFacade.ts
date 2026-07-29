@@ -280,26 +280,46 @@ export function useCourseLearning() {
       if (autoAdvance) goToNextLesson();
       return;
     }
-    if (isLessonCompleted(currentLesson.id)) { if (autoAdvance) goToNextLesson(); return; }
 
-    await saveLessonTime();
-    const { error } = await supabase.from('lesson_progress').upsert({
-      lesson_id: currentLesson.id, user_id: user.id, completed: true, completed_at: new Date().toISOString()
-    }, { onConflict: 'user_id,lesson_id' });
-
-    if (error) {
-      const { error: insertError } = await supabase.from('lesson_progress').insert({
-        lesson_id: currentLesson.id, user_id: user.id, completed: true, completed_at: new Date().toISOString()
-      });
-      if (insertError) { console.error('Error:', insertError); toast.error('Ошибка сохранения прогресса'); return; }
-    }
-
-    setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== currentLesson.id), { lesson_id: currentLesson.id, completed: true }]);
-    const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
-    await supabase.from('enrollments').update({ progress: newProgress }).eq('id', enrollmentId);
-
-    if (newProgress >= 100) { await handleCourseCompletion(); } else { toast.success('Урок завершён!'); }
-    if (autoAdvance) goToNextLesson();
+    const lessonId = currentLesson.id;
+    await markLessonProgress({
+      lessonId,
+      userId: user.id,
+      enrollmentId,
+      totalLessons: lessons.length,
+      autoAdvance,
+      state: {
+        inFlight: markInFlightRef.current,
+        completed: completedIdsRef.current,
+        courseCompletionStarted: courseCompletionStartedRef.current,
+      },
+      deps: {
+        saveLessonTime: () => saveLessonTime(),
+        upsertLessonProgress: async (lid, uid) => {
+          const { error } = await supabase.from('lesson_progress').upsert({
+            lesson_id: lid, user_id: uid, completed: true, completed_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,lesson_id' });
+          if (!error) return { error: null };
+          // Legacy fallback: некоторые окружения не имеют уникального индекса,
+          // используемого onConflict. Пробуем обычный insert.
+          const { error: insertError } = await supabase.from('lesson_progress').insert({
+            lesson_id: lid, user_id: uid, completed: true, completed_at: new Date().toISOString(),
+          });
+          return { error: insertError ?? null };
+        },
+        updateEnrollmentProgress: async (eid, progress) => {
+          const { error } = await supabase.from('enrollments').update({ progress }).eq('id', eid);
+          return { error: error ?? null };
+        },
+        handleCourseCompletion: () => handleCourseCompletion(),
+        goToNextLesson,
+        onProgressUpdated: (completedIds) => {
+          setLessonProgress(completedIds.map(id => ({ lesson_id: id, completed: true })));
+        },
+        toastSuccess: (msg) => toast.success(msg),
+        toastError: (msg) => toast.error(msg),
+      },
+    });
   };
 
   const resetCourseProgress = async () => {
