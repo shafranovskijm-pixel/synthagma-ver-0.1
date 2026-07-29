@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { cacheCourseData, getCachedCourseData } from "@/utils/courseCache";
 import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
-import { ContentBlock, parseLessonContent } from "@/components/course-builder/BlockEditor";
+import { parseLessonContent } from "@/components/course-builder/block-editor/parsers";
+import type { ContentBlock } from "@/components/course-builder/block-editor/types";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
 import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 

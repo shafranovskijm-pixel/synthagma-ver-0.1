@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save, Eye, FileType2, Clock, Hash, Search } from "lucide-react";
 import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
-import { BlockEditor } from "@/components/course-builder/BlockEditor";
+import { BlockEditor } from "@/components/course-builder/block-editor/BlockEditorMain";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
