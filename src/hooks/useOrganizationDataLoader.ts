@@ -1,15 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from "@/types/shared";
+import { Course, Company, CourseCategory } from "@/types/shared";
 import { isTransientNetworkError, classifyDataError } from "@/utils/isTransientNetworkError";
 import { resolveAdminViewOrg } from "@/utils/adminViewOrg";
-
-interface FrdoStatus {
-  hasData: boolean;
-  isComplete: boolean;
-  missingFields: string[];
-}
 
 interface UseOrganizationDataLoaderProps {
   userId: string | undefined;
@@ -19,14 +13,9 @@ interface UseOrganizationDataLoaderProps {
 const RETRY_TOAST_ID = "org-data-retry";
 
 /**
- * Phase 4B.1.b — light loader.
+ * Phase 4B.1.c.1 — light loader.
  *
- * At normal dashboard open we NO LONGER load:
- *   - all profiles / enrollments / user_roles / lessons;
- *   - decrypted passwords;
- *   - student_identity_documents / student_frdo_data.
- *
- * Only these light requests happen:
+ * Only lightweight per-organization data is loaded here:
  *   - resolve current organization (admin-view or profile/org_staff fallback);
  *   - organization row (name, frdo_enabled);
  *   - courses (without student/lesson counts — those come from
@@ -34,10 +23,11 @@ const RETRY_TOAST_ID = "org-data-retry";
  *   - course_categories;
  *   - companies.
  *
- * Legacy fields (`students`, `allProfiles`, `stats`, `documentsStats`,
- * `studentDocsByUser`, `studentFrdoStatus`, `isLoadingStudents`) remain
- * exposed as EMPTY compatibility state so legacy dialogs keep compiling.
- * Their final removal is scheduled for phase 4B.1.c.
+ * All previously exposed compatibility state
+ * (students / allProfiles / stats / documentsStats / studentDocsByUser /
+ * studentFrdoStatus / isLoadingStudents) was removed once every legacy
+ * consumer was deleted in 4B.1.c.1. Server-side StudentsTab pagination and
+ * useOrganizationSummary own that data now.
  */
 
 async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unknown }>, label = "query"): Promise<T | null> {
@@ -83,44 +73,11 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
 
-  // ==== Compatibility state (empty, no network load) ====
-  // Will be removed entirely in 4B.1.c together with legacy consumers.
-  const [students, setStudents] = useState<Student[]>([]);
-  const [allProfiles, setAllProfiles] = useState<Student[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalStudents: 0,
-    totalCourses: 0,
-    completedCount: 0,
-    averageProgress: 0
-  });
-  const [documentsStats, setDocumentsStats] = useState<DocumentsStats>({
-    total: 0,
-    withPassport: 0,
-    withSnils: 0,
-    withEducation: 0,
-    complete: 0
-  });
-  const [studentDocsByUser] = useState<Map<string, string[]>>(new Map());
-  const [studentFrdoStatus] = useState<Map<string, FrdoStatus>>(new Map());
-  // isLoadingStudents is intentionally always false: there is no global
-  // student load anymore. Server-side StudentsTab pagination reports its
-  // own loading state independently.
-  const isLoadingStudents = false;
-
   const [refreshKey, setRefreshKey] = useState(0);
 
   const refreshData = useCallback(() => {
     setRefreshKey(prev => prev + 1);
   }, []);
-
-  // Clear compatibility state whenever the resolved organization changes,
-  // so leftover data from another org can never leak across a switch.
-  useEffect(() => {
-    setStudents([]);
-    setAllProfiles([]);
-    setStats({ totalStudents: 0, totalCourses: 0, completedCount: 0, averageProgress: 0 });
-    setDocumentsStats({ total: 0, withPassport: 0, withSnils: 0, withEducation: 0, complete: 0 });
-  }, [organizationId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -293,20 +250,9 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
     adminViewOrgId,
     courses,
     setCourses,
-    students,
-    setStudents,
-    allProfiles,
-    setAllProfiles,
     companies,
     setCompanies,
     isLoadingCourses,
-    isLoadingStudents,
-    stats,
-    setStats,
-    documentsStats,
-    setDocumentsStats,
-    studentDocsByUser,
-    studentFrdoStatus,
     refreshKey,
     refreshData,
   };
