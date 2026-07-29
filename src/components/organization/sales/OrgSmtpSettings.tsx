@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function OrgSmtpSettings({ organizationId }: Props) {
-  const { settings, loading, save, saving, testConnection, testing } = useOrgSmtp(organizationId);
+  const { settings, loading, loaded, loadErrorKind, retryLoad, save, saving, testConnection, testing } = useOrgSmtp(organizationId);
   const [host, setHost] = useState("");
   const [port, setPort] = useState(587);
   const [username, setUsername] = useState("");
