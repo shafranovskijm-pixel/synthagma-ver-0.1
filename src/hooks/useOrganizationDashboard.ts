@@ -195,9 +195,15 @@ export function useOrganizationDashboard() {
   // Company management
   const companyActions = useCompanyActions();
 
-  // Enrollment actions — this hook also handles bulk archive, so it needs
-  // full student-population invalidation (rows + counts + summary + overview).
-  const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshStudentPopulation);
+  // Enrollment actions — bulk enroll/unenroll only touch enrollment-derived
+  // data (rows + summary + course overview). Bulk archive changes the
+  // population, so it gets the wider refresh.
+  const enrollmentActions = useEnrollmentActions(
+    organizationId,
+    organizationName,
+    refreshEnrollmentData,
+    refreshStudentPopulation,
+  );
 
   // Student management (creation flow only). Creating a profile changes
   // the population, group membership (nulls), summary, and — when a course
@@ -326,7 +332,9 @@ export function useOrganizationDashboard() {
         return;
       }
       await studentActions.bulkCreateCredentials(studentsToCreate, sendEmails);
-      qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
+      // Row-level invalidation is already performed by useStudentActions
+      // via onRefreshRows (invalidateOrganizationStudentRows). Do not
+      // duplicate qc.invalidateQueries on studentsPageAll here.
       // Phase 4A.2: useStudents reads passwords via qc.getQueryData(...),
       // which ignores staleness — invalidate is not enough. Fully drop the
       // per-user credential cache so the next lookup must hit the RPC.

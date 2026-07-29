@@ -43,6 +43,20 @@ export function invalidateOrganizationAggregates(
 }
 
 /**
+ * Course overview only — lesson counts / per-course student counts.
+ * Used after leaving the course editor so returning to the list refreshes
+ * lessonsCount without touching studentsPage, counts or the base loader.
+ */
+export function invalidateOrganizationCourseOverview(
+  qc: QueryClient,
+  organizationId: string | null | undefined,
+) {
+  if (!organizationId) return;
+  qc.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
+}
+
+
+/**
  * Enrollment created/removed: profile set + group membership don't change,
  * so we skip counts/groupCounts. Rows change (enrolled course label,
  * status, progress), summary changes (enrolled/completed stats), course

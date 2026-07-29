@@ -34,7 +34,8 @@ const MAX_BULK_MUTATION_SIZE = 100;
 export function useEnrollmentActions(
   organizationId: string | null,
   organizationName: string,
-  onRefresh: () => void,
+  onEnrollmentChanged: () => void,
+  onPopulationChanged: () => void,
 ) {
   const qc = useQueryClient();
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -205,9 +206,9 @@ export function useEnrollmentActions(
       setShowEnrollDialog(false);
       setSelectedStudentIds(new Set());
       setEnrollCourseId("");
-      // onRefresh (refreshStudentPopulation) covers studentsPage/counts/summary/overview.
+      // onEnrollmentChanged (refreshEnrollmentData) covers studentsPage + summary + overview.
       invalidateCourse(courseId);
-      onRefresh();
+      onEnrollmentChanged();
       return true;
     } catch (error) {
       console.error("Error enrolling students:", error);
@@ -216,7 +217,7 @@ export function useEnrollmentActions(
     } finally {
       setIsEnrolling(false);
     }
-  }, [organizationId, organizationName, invalidateCourse, onRefresh]);
+  }, [organizationId, organizationName, invalidateCourse, onEnrollmentChanged]);
 
   /**
    * Bulk unenroll — takes explicit enrollment IDs. NEVER derives them from a
@@ -331,11 +332,11 @@ export function useEnrollmentActions(
       setShowUnenrollConfirm(false);
       setSelectedStudentIds(new Set());
       setSelectedEnrollmentIds([]);
-      // onRefresh (refreshStudentPopulation) covers studentsPage/counts/summary/overview.
+      // onEnrollmentChanged (refreshEnrollmentData) covers studentsPage + summary + overview.
       for (const courseId of new Set(rows.map(r => r.course_id))) {
         invalidateCourse(courseId);
       }
-      onRefresh();
+      onEnrollmentChanged();
       return true;
     } catch (error) {
       console.error("Error unenrolling:", error);
@@ -344,7 +345,7 @@ export function useEnrollmentActions(
     } finally {
       setIsUnenrolling(false);
     }
-  }, [organizationId, organizationName, invalidateCourse, onRefresh]);
+  }, [organizationId, organizationName, invalidateCourse, onEnrollmentChanged]);
 
   const getSelectedEnrollmentsCount = useCallback(
     () => selectedEnrollmentIds.length,
@@ -397,8 +398,8 @@ export function useEnrollmentActions(
 
       setShowBulkDeleteConfirm(false);
       setSelectedStudentIds(new Set());
-      // onRefresh (refreshStudentPopulation) covers all downstream keys.
-      onRefresh();
+      // onPopulationChanged covers studentsPage + counts + groupCounts + summary + overview.
+      onPopulationChanged();
       return true;
     } catch (error) {
       console.error("Error bulk archiving:", error);
@@ -407,7 +408,7 @@ export function useEnrollmentActions(
     } finally {
       setIsBulkDeleting(false);
     }
-  }, [onRefresh]);
+  }, [onPopulationChanged]);
 
   return {
     isEnrolling,

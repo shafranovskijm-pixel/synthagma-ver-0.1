@@ -73,7 +73,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
     removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
-    archiveStudent, unarchiveStudent, refresh,
+    archiveStudent, unarchiveStudent, refresh, refreshRows,
     loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
     retryNextPage,
     fetchStudentCredentialsOnDemand,
@@ -138,10 +138,11 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       if (error) throw error;
       toast.success("Группа удалена");
       if (groupFilter === groupId) setGroupFilter("all");
-      // Deleting a group nulls student_group_id on referenced profiles — refresh
-      // both the groups directory / counts and the students page rows.
+      // Deleting a group nulls student_group_id on referenced profiles —
+      // refresh the groups directory / counts and the paginated rows only.
+      // Student totals, dashboard summary and course overview don't change.
       refreshGroups();
-      refresh();
+      refreshRows();
     } catch { toast.error("Ошибка удаления группы"); }
   };
 
@@ -149,10 +150,11 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     try {
       const { error } = await supabase.from("profiles").update({ student_group_id: groupId } as any).eq("user_id", userId);
       if (error) throw error;
-      // Refresh both: group counts (source of truth on the card) AND the
-      // students page so the Select value / row group binding is up to date.
+      // Refresh group counts (source of truth on the card) AND the paginated
+      // rows so the Select value / row group binding is up to date. Reassigning
+      // a group doesn't change org totals, summary or course overview.
       refreshGroups();
-      refresh();
+      refreshRows();
     } catch { toast.error("Ошибка назначения группы"); }
   };
 

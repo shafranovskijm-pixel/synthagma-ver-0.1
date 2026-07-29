@@ -84,6 +84,7 @@ export interface UseStudentsReturn {
   toggleSelectAll: (filteredList: Student[]) => void;
   getSelectedUserIds: () => string[];
   refresh: () => void;
+  refreshRows: () => void;
   // Filters
   statusFilter: StudentStatusFilter;
   setStatusFilter: (filter: StudentStatusFilter) => void;
@@ -551,6 +552,7 @@ export function useStudents(
     toggleSelectAll,
     getSelectedUserIds,
     refresh,
+    refreshRows,
     statusFilter,
     setStatusFilter,
     courseFilter,

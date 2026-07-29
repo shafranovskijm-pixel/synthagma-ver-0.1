@@ -1,14 +1,17 @@
 import { useCallback, useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
+import { invalidateOrganizationCourseOverview } from "@/lib/invalidateOrganizationQueries";
 
 type LoadState = "loading" | "success" | "not_found" | "error";
 
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
+  const qc = useQueryClient();
   const courseId = d.tabNavigation.selectedCourseId;
   const organizationId = d.organizationId;
 
@@ -82,6 +85,24 @@ export function CourseDetailsTab() {
     d.tabNavigation.setActiveTab("courses");
   };
 
+  // Deleting a course affects the base course list, dashboard summary,
+  // course overview, and enrollment-derived rows simultaneously — refresh
+  // everything before we navigate back.
+  const handleCourseDeleted = useCallback(() => {
+    d.refreshData();
+    handleBack();
+  }, [d]);
+
+  // Adding/removing lessons inside a course changes lessonsCount on the
+  // overview RPC. Invalidate only that key on unmount so the returning
+  // course list re-renders with fresh studentsCount / lessonsCount, without
+  // triggering the base loader or student-population refetches.
+  useEffect(() => {
+    return () => {
+      invalidateOrganizationCourseOverview(qc, organizationId);
+    };
+  }, [qc, organizationId]);
+
   if (!courseId || !organizationId) {
     return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
@@ -124,13 +145,15 @@ export function CourseDetailsTab() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onEnrollStudent={() => {}}
-        onCourseDeleted={handleBack}
+        onCourseDeleted={handleCourseDeleted}
         onCourseUpdated={() => loadCourse(false)}
         onRefreshStudents={() => {
-          // Phase 4B.1.c.2.b — students changed inside this course:
-          // refresh org-wide student rows + aggregates, but skip the base
-          // loader (courses/categories/companies are unaffected).
-          d.refreshStudentPopulation();
+          // Phase 4B.1.c.2.b.1 — enrollment-scoped changes inside a course
+          // (enroll/unenroll/progress reset) don't change the student
+          // population, group counts or archive counters. Use the narrower
+          // enrollment refresh so we don't invalidate studentsCounts /
+          // studentGroupCounts on every mutation.
+          d.refreshEnrollmentData();
         }}
         onBack={handleBack}
       />
