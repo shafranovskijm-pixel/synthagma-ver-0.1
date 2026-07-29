@@ -175,8 +175,17 @@ export async function downloadStudentsTemplate() {
   XLSX.writeFile(wb, "students_template.xlsx");
 }
 
+export type ImportResultStatus =
+  | "created"
+  | "existing"
+  | "student_limit_exceeded"
+  | "archived"
+  | "profile_in_other_org"
+  | "other_error";
+
 export interface ImportResultRow {
   success: boolean;
+  status: ImportResultStatus;
   full_name: string;
   login?: string;
   password?: string;
