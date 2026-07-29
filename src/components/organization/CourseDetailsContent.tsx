@@ -618,6 +618,21 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 text-xs">
+          {(["all", "passed", "failed", "not_started"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => h.setStudentsResultFilter(k)}
+              className={cn(
+                "px-3 py-1.5 rounded-md transition-colors",
+                h.studentsResultFilter === k ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Фильтр по результатам тестов"
+            >
+              {k === "all" ? "Все результаты" : k === "passed" ? "Сдали" : k === "failed" ? "Не сдали" : "Не проходили"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {h.isLoadingStudents && courseStudents.length === 0 ? (
@@ -628,18 +643,11 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
           <Button variant="outline" size="sm" onClick={h.retryStudents}>Повторить</Button>
         </div>
       ) : courseStudents.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>{h.studentsSearchQuery || h.studentsStatusFilter !== "all" ? "Никто не найден по заданным фильтрам" : "Нет зачисленных учеников"}</p></div>
+        <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>{h.studentsSearchQuery || h.studentsStatusFilter !== "all" || h.studentsResultFilter !== "all" ? "Никто не найден по заданным фильтрам" : "Нет зачисленных учеников"}</p></div>
       ) : (
         <>
           <div className="space-y-2">{courseStudents.map((s: any) => (
-            <div key={s.enrollment_id || s.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
-              <div><div className="font-medium">{s.name}</div><div className="text-sm text-muted-foreground">{s.email}</div></div>
-              <div className="flex items-center gap-4">
-                <div className="text-right"><div className="text-sm font-medium">{Math.min(s.progress, 100)}%</div><Progress value={Math.min(s.progress, 100)} className="w-24 h-2" /></div>
-                <span className={`px-2 py-1 rounded-full text-xs ${s.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'}`}>{s.status === 'completed' ? 'Завершил' : 'Активный'}</span>
-                {s.progress > 0 && s.enrollment_id && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => h.setResetConfirmStudent(s)} title="Сбросить прогресс"><RotateCcw className="w-4 h-4" /></Button>}
-              </div>
-            </div>
+            <CourseStudentRow key={s.enrollment_id || s.id} student={s} onOpenDetails={setDetailsStudent} onResetProgress={h.setResetConfirmStudent} />
           ))}</div>
           <div className="flex flex-col items-center gap-2 pt-2">
             <div className="text-xs text-muted-foreground">Показано {courseStudents.length} из {total}</div>
@@ -661,7 +669,9 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
           </div>
         </>
       )}
+      <CourseStudentTestDetailsDialog student={detailsStudent} onClose={() => setDetailsStudent(null)} />
     </div>
   );
 }
+
 
