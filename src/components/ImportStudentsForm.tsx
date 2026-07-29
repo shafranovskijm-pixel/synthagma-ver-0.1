@@ -142,20 +142,53 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       return;
     }
 
+    // Dedup within file by email/login (trim + lowercase). Rows without both
+    // email and login are NOT deduplicated (homonymy is possible).
+    const seenEmail = new Set<string>();
+    const seenLogin = new Set<string>();
+    const dedupedRows: typeof parsed.rows = [];
+    const dupSkipped: ImportResultRow[] = [];
+    for (const row of parsed.rows) {
+      const emailKey = (row.email || "").trim().toLowerCase();
+      const loginKey = (row.login || "").trim().toLowerCase();
+      const hasKey = !!(emailKey || loginKey);
+      if (hasKey) {
+        if ((emailKey && seenEmail.has(emailKey)) || (loginKey && seenLogin.has(loginKey))) {
+          dupSkipped.push({
+            success: false,
+            status: "other_error",
+            full_name: row.full_name || `(строка ${row.rowIndex})`,
+            login: row.login,
+            email: row.email,
+            group_name: row.group_name,
+            courses_enrolled: 0,
+            courses_missing: [],
+            error: "Дубликат в файле (email/логин уже встречались выше)",
+          });
+          continue;
+        }
+        if (emailKey) seenEmail.add(emailKey);
+        if (loginKey) seenLogin.add(loginKey);
+      }
+      dedupedRows.push(row);
+    }
+    if (dupSkipped.length > 0) {
+      toast.warning(`В файле найдено ${dupSkipped.length} дублей по email/логину — они пропущены`);
+    }
+
     setIsImporting(true);
     setResults([]);
-    setProgress({ current: 0, total: parsed.rows.length });
+    setProgress({ current: 0, total: dedupedRows.length });
 
     try {
       // Server-canonical capacity preflight (informational only).
       // Часть строк может быть уже существующими учениками — они не расходуют месячный слот.
-      // Финальное решение принимает сервер по каждой строке, поэтому здесь только предупреждаем.
       const { data: capRows } = await supabase.rpc(
         "get_organization_student_capacity" as any,
         { p_organization_id: organizationId, p_requested_count: 0 },
       );
       const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
-      if (cap && !cap.is_unlimited && (cap.remaining_students ?? 0) < parsed.rows.length) {
+      if (cap && !cap.is_unlimited && (cap.remaining_students ?? 0) < dedupedRows.length) {
         toast.warning(
           `Осталось ${cap.remaining_students} новых учеников в месяце (${cap.current_students}/${cap.max_students}). ` +
           `Уже существующие лимит не расходуют — импорт продолжится.`,
@@ -163,22 +196,20 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
         );
       }
 
-      const out: ImportResultRow[] = [];
+      const out: ImportResultRow[] = [...dupSkipped];
 
-      for (let i = 0; i < parsed.rows.length; i++) {
-        const row = parsed.rows[i];
-        setProgress({ current: i, total: parsed.rows.length });
+      for (let i = 0; i < dedupedRows.length; i++) {
+        const row = dedupedRows[i];
+        setProgress({ current: i, total: dedupedRows.length });
 
         try {
           if (!row.full_name) throw new Error("Пустое ФИО");
 
-          // Resolve group
           let groupId: string | undefined;
           if (row.group_name) {
             groupId = await resolveGroupId(row.group_name, organizationId);
           }
 
-          // Resolve courses
           const courseIds: string[] = [];
           const missing: string[] = [];
           row.course_titles.forEach(title => {
@@ -201,32 +232,63 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
               no_login: !row.email,
             },
           });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
 
-          const userId: string | undefined = data?.user_id;
+          // Classify server response.
+          const serverCode: string | undefined = data?.code || (error as any)?.code;
+          const serverError: string | undefined = data?.error || (error as any)?.message;
 
-          // Extra course enrollments
-          let enrolled = firstCourse ? 1 : 0;
-          if (userId && courseIds.length > 1) {
-            const extras = courseIds.slice(1).map(cid => ({ user_id: userId, course_id: cid, status: "active" }));
-            const { error: eErr } = await supabase.from("enrollments").upsert(extras, { onConflict: "user_id,course_id", ignoreDuplicates: true });
-            if (!eErr) enrolled += extras.length;
+          if (error && !data) throw error;
+
+          if (serverCode === "STUDENT_LIMIT_EXCEEDED") {
+            out.push({
+              success: false, status: "student_limit_exceeded",
+              full_name: row.full_name, login: row.login, email: row.email,
+              group_name: row.group_name, courses_enrolled: 0, courses_missing: missing,
+              error: serverError || "Достигнут месячный лимит новых учеников",
+            });
+          } else if (serverCode === "STUDENT_ARCHIVED") {
+            out.push({
+              success: false, status: "archived",
+              full_name: row.full_name, login: row.login, email: row.email,
+              group_name: row.group_name, courses_enrolled: 0, courses_missing: missing,
+              error: serverError || "Ученик в архиве",
+            });
+          } else if (serverCode === "PROFILE_IN_OTHER_ORG") {
+            out.push({
+              success: false, status: "profile_in_other_org",
+              full_name: row.full_name, login: row.login, email: row.email,
+              group_name: row.group_name, courses_enrolled: 0, courses_missing: missing,
+              error: serverError || "Профиль пользователя уже в другой организации",
+            });
+          } else if (data?.error || (!data?.user_id && !data?.success)) {
+            throw new Error(serverError || "Ошибка создания");
+          } else {
+            const userId: string | undefined = data?.user_id;
+            const isExisting = !!data?.is_existing;
+
+            let enrolled = firstCourse ? 1 : 0;
+            if (userId && courseIds.length > 1) {
+              const extras = courseIds.slice(1).map(cid => ({ user_id: userId, course_id: cid, status: "active" }));
+              const { error: eErr } = await supabase.from("enrollments").upsert(extras, { onConflict: "user_id,course_id", ignoreDuplicates: true });
+              if (!eErr) enrolled += extras.length;
+            }
+
+            out.push({
+              success: true,
+              status: isExisting ? "existing" : "created",
+              full_name: row.full_name,
+              login: data?.login || row.login,
+              password: data?.password || row.password,
+              email: row.email,
+              group_name: row.group_name,
+              courses_enrolled: enrolled,
+              courses_missing: missing,
+            });
           }
-
-          out.push({
-            success: true,
-            full_name: row.full_name,
-            login: data?.login || row.login,
-            password: data?.password || row.password,
-            email: row.email,
-            group_name: row.group_name,
-            courses_enrolled: enrolled,
-            courses_missing: missing,
-          });
         } catch (err: any) {
           out.push({
             success: false,
+            status: "other_error",
             full_name: row.full_name || `(строка ${row.rowIndex})`,
             login: row.login,
             email: row.email,
@@ -240,7 +302,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
         setResults([...out]);
       }
 
-      setProgress({ current: parsed.rows.length, total: parsed.rows.length });
+      setProgress({ current: dedupedRows.length, total: dedupedRows.length });
       setShowResults(true);
       const ok = out.filter(r => r.success).length;
       const fail = out.length - ok;

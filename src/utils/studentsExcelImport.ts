@@ -175,8 +175,17 @@ export async function downloadStudentsTemplate() {
   XLSX.writeFile(wb, "students_template.xlsx");
 }
 
+export type ImportResultStatus =
+  | "created"
+  | "existing"
+  | "student_limit_exceeded"
+  | "archived"
+  | "profile_in_other_org"
+  | "other_error";
+
 export interface ImportResultRow {
   success: boolean;
+  status: ImportResultStatus;
   full_name: string;
   login?: string;
   password?: string;
@@ -189,8 +198,16 @@ export interface ImportResultRow {
 
 export async function downloadImportResults(results: ImportResultRow[]) {
   const XLSX = await import("xlsx");
+  const statusLabel: Record<ImportResultStatus, string> = {
+    created: "Создан",
+    existing: "Уже существовал",
+    student_limit_exceeded: "Превышен месячный лимит",
+    archived: "В архиве",
+    profile_in_other_org: "В другой организации",
+    other_error: "Ошибка",
+  };
   const rows = results.map(r => ({
-    Статус: r.success ? "OK" : "Ошибка",
+    Статус: statusLabel[r.status] ?? (r.success ? "OK" : "Ошибка"),
     ФИО: r.full_name,
     Логин: r.login || "",
     Пароль: r.password || "",
