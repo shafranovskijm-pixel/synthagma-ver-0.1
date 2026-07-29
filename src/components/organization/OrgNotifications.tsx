@@ -159,7 +159,8 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
     if (error) {
       console.error("Error marking as read:", error);
       toast.error("Не удалось отметить как прочитанное");
-      return;
+      // Не маскируем локально как прочитанное и сообщаем вызывающему коду об ошибке.
+      throw error;
     }
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
   };
