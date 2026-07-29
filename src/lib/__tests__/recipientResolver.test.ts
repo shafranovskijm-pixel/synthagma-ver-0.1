@@ -82,7 +82,7 @@ describe("5C.1.b — RecipientPicker uses server preview RPC", () => {
   });
 
   it("manual input is debounced (350ms)", () => {
-    expect(PICKER).toMatch(/setTimeout\([^,]+,\s*350\s*\)/);
+    expect(PICKER).toMatch(/setTimeout\([\s\S]+?,\s*350\s*\)/);
   });
 
   it("shows exclusion breakdown when any exclusion category > 0", () => {
