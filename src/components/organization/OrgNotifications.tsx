@@ -257,6 +257,12 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner />
           </div>
+        ) : loadError ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm mb-3">Не удалось загрузить уведомления</p>
+            <Button variant="outline" size="sm" onClick={loadNotifications}>Повторить</Button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -279,9 +285,13 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                       // CounterpartiesSection reads this on mount to expand the right contract
                       sessionStorage.setItem("openSignatureId", n.related_id);
                       navigate(`/organization?tab=org-documents`);
+                    } else if (n.type === "course_completed" && n.related_id) {
+                      setIsOpen(false);
+                      navigate(getCourseDetailsPath(n.related_id));
                     }
                   }}
                 >
+
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${getAvatarColor(n.id)}`}>
                       {getInitials(n.title)}
