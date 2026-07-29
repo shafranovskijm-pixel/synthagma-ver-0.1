@@ -1,4 +1,4 @@
-import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks } from "@/components/course-builder/block-editor";
 import { isHtmlContent, parseHtmlCourse } from "@/utils/htmlCourseParser";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";

@@ -6452,6 +6452,7 @@ export type Database = {
           month_start: string
           organization_id: string
           storage_bytes: number
+          students_added_count: number
           updated_at: string
         }
         Insert: {
@@ -6462,6 +6463,7 @@ export type Database = {
           month_start?: string
           organization_id: string
           storage_bytes?: number
+          students_added_count?: number
           updated_at?: string
         }
         Update: {
@@ -6472,6 +6474,7 @@ export type Database = {
           month_start?: string
           organization_id?: string
           storage_bytes?: number
+          students_added_count?: number
           updated_at?: string
         }
         Relationships: [

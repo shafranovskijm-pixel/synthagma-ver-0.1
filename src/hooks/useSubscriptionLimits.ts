@@ -214,7 +214,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     if (canAddStudent) return { allowed: true, message: '' };
     return {
       allowed: false,
-      message: `Лимит тарифа "${planInfo.name}": ${limits.maxStudents} учеников. Перейдите на следующий тариф.`,
+      message: `Лимит тарифа "${planInfo.name}": ${limits.maxStudents} новых учеников в месяц. Перейдите на следующий тариф.`,
     };
   }, [canCreateCourse, canAddStudent, canCompleteCourse, planInfo.name, limits]);
 

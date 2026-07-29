@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
-import { ContentBlock, BlockRenderer, parseLessonContent } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, BlockRenderer, parseLessonContent } from "@/components/course-builder/block-editor";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { cn } from "@/lib/utils";
 import { useCoursePreview } from "@/hooks/useCoursePreview";

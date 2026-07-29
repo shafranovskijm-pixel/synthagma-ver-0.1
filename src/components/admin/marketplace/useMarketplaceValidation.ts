@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 import type { ValidationRules, AiPrompts } from "../MarketplaceSettingsTab";
 import {
   checkCriticalError, validateCourseIssues, validateCourseIssuesSimple,

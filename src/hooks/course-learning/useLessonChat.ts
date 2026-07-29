@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 import type { Course, Lesson } from "./types";
 
 interface ChatMessage {

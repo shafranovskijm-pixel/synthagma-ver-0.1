@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { BlockRenderer } from "@/components/course-builder/BlockEditor";
+import { BlockRenderer } from "@/components/course-builder/block-editor";
 import { cn } from "@/lib/utils";
 import { TTSSettingsDialog, SALUTE_VOICES, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";

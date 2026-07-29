@@ -1,6 +1,6 @@
 import { safeInvoke } from "@/utils/safeInvoke";
 import { supabase } from "@/integrations/supabase/client";
-import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 
 // ── Types ──
 

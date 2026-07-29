@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
-import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
 import { initExternalSupabase, getExternalSupabase } from "@/integrations/external-supabase/client";
 

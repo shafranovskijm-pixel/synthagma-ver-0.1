@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare, BookCheck, Sparkles,
 } from "lucide-react";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 
 export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice" | "feedback" | "homework" | "ai_avatar";
 

@@ -11,7 +11,6 @@ import {
   SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { showLimitToast } from "@/utils/limitToast";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
@@ -148,19 +147,20 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
     setProgress({ current: 0, total: parsed.rows.length });
 
     try {
-      // Server-canonical capacity preflight (informational).
-      // Final decision is enforced per-row by the edge function.
+      // Server-canonical capacity preflight (informational only).
+      // Часть строк может быть уже существующими учениками — они не расходуют месячный слот.
+      // Финальное решение принимает сервер по каждой строке, поэтому здесь только предупреждаем.
       const { data: capRows } = await supabase.rpc(
         "get_organization_student_capacity" as any,
-        { p_organization_id: organizationId, p_requested_count: parsed.rows.length },
+        { p_organization_id: organizationId, p_requested_count: 0 },
       );
       const cap: any = Array.isArray(capRows) ? capRows[0] : capRows;
-      if (cap && !cap.is_unlimited && !cap.can_add) {
-        showLimitToast(
-          `Достигнут лимит учеников: ${cap.current_students} из ${cap.max_students}. Импорт: ${parsed.rows.length}.`,
+      if (cap && !cap.is_unlimited && (cap.remaining_students ?? 0) < parsed.rows.length) {
+        toast.warning(
+          `Осталось ${cap.remaining_students} новых учеников в месяце (${cap.current_students}/${cap.max_students}). ` +
+          `Уже существующие лимит не расходуют — импорт продолжится.`,
+          { duration: 6000 },
         );
-        setIsImporting(false);
-        return;
       }
 
       const out: ImportResultRow[] = [];

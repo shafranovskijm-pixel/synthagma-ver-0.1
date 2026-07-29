@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ContentBlock, parseLessonContent } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, parseLessonContent } from "@/components/course-builder/block-editor";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { toast } from "sonner";

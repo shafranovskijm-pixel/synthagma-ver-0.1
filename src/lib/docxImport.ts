@@ -1,5 +1,5 @@
 import { htmlToBlocks } from "@/components/course-builder/block-editor/parsers";
-import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 
 export interface DocxImportResult {
   blocks: ContentBlock[];

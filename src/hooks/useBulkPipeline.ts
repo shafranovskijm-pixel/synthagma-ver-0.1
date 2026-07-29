@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 import { type MarketplacePrompts, getMarketplacePrompts } from "@/components/admin/MarketplaceSettings";
 import {
   type PipelineCourse, type LogEntry, type PipelineSummary,
