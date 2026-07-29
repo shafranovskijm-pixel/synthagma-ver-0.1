@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
-import { 
+import {
   fetchCourses,
-  fetchCourseStudentCounts,
-  fetchCourseLessonCounts,
   fetchCategories,
   createCourse,
   updateCourse,
@@ -15,6 +14,8 @@ import {
   updateCategory,
   deleteCategory
 } from "@/api/courses";
+import { fetchOrganizationCourseOverview } from "@/api/organizationSummary";
+import { qk } from "@/lib/queryKeys";
 import { toast } from "sonner";
 
 interface UseCoursesReturn {
