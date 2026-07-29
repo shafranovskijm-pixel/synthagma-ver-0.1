@@ -1,10 +1,17 @@
 // =====================================================================
-// Phase 5C.1.b — canonical recipient resolver.
-// Recipient list is computed exclusively by the SQL RPC
-// public.resolve_campaign_recipients(campaign_id). The Edge Function no
-// longer contains its own resolveRecipients(); dedup, invalid-email
-// filtering and suppressions are all handled by the RPC so that preview
-// and materialization stay consistent.
+// Phase 5C.1.b.1 — corrective updates on top of 5C.1.b.
+//
+// Hardened error handling: every critical SELECT/COUNT/UPDATE now
+// checks its `error` field. A failure NEVER downgrades the campaign
+// to `completed` with total_recipients=0. Resolver / count / pending /
+// leftover errors surface as `failed` (before send) or `paused`
+// (after partial send) with a diagnostic 500. Internal SQL error
+// details are logged server-side and not echoed back to the caller.
+//
+// TODO (5C.1.d): atomic campaign-run claim before reading pending +
+// SMTP dispatch. The unique index (campaign_id, email) guarantees no
+// duplicate recipient rows under concurrent runs, but does NOT yet
+// guarantee no duplicate SMTP dispatch when two invocations race.
 //
 // Preserved verbatim from 5C.1.a: authorization gate (user client),
 // A/B sample assignment, quota, paused/scheduled/idempotency,
@@ -40,8 +47,12 @@ serve(async (req: Request) => {
     if (!campaignId) return json({ error: "campaignId required" }, 400);
 
     // ============ AUTHORIZATION GATE (5C.1.a) ============
-    const { data: campaign } = await admin
+    const { data: campaign, error: campErr } = await admin
       .from("email_campaigns").select("*").eq("id", campaignId).maybeSingle();
+    if (campErr) {
+      console.error("campaign lookup failed", campErr);
+      return json({ error: "Ошибка загрузки кампании" }, 500);
+    }
 
     let authorized = false;
     if (isServiceRole) {
@@ -88,10 +99,15 @@ serve(async (req: Request) => {
     }
 
     // ============ Materialize recipients via canonical resolver ============
-    const { count: existingCount } = await admin
+    const { count: existingCount, error: existingErr } = await admin
       .from("email_campaign_recipients")
       .select("id", { count: "exact", head: true })
       .eq("campaign_id", campaignId);
+    if (existingErr) {
+      console.error("existingCount failed", existingErr);
+      await admin.from("email_campaigns").update({ status: "failed" }).eq("id", campaignId);
+      return json({ error: "Не удалось проверить существующих получателей" }, 500);
+    }
 
     if ((existingCount || 0) === 0) {
       // Canonical resolver — dedup, invalid-email filter and suppressions
@@ -129,7 +145,8 @@ serve(async (req: Request) => {
       }
 
       // Insert (batches of 500) — unique index (campaign_id, email) + upsert-ignore
-      // prevents concurrent-run duplicates.
+      // guarantees no duplicate recipient rows. (Does NOT yet guarantee no
+      // duplicate SMTP dispatch — see 5C.1.d TODO above.)
       if (allowed.length > 0) {
         const rows = allowed.map((r) => ({
           campaign_id: campaignId,
@@ -149,19 +166,30 @@ serve(async (req: Request) => {
             await admin.from("email_campaigns").update({
               status: "failed",
             }).eq("id", campaignId);
-            throw new Error(`recipients insert failed: ${insErr.message}`);
+            return json({ error: "Не удалось записать получателей" }, 500);
           }
         }
       }
 
-      // total_recipients = actual persisted rows, not resolver payload length
-      const { count: actualCount } = await admin
+      // total_recipients = actual persisted rows, not resolver payload length.
+      // On count-error we must NOT write 0 — that would fake an empty campaign.
+      const { count: actualCount, error: actualErr } = await admin
         .from("email_campaign_recipients")
         .select("id", { count: "exact", head: true })
         .eq("campaign_id", campaignId);
-      await admin.from("email_campaigns").update({
+      if (actualErr) {
+        console.error("actualCount failed", actualErr);
+        await admin.from("email_campaigns").update({ status: "failed" }).eq("id", campaignId);
+        return json({ error: "Не удалось подсчитать получателей" }, 500);
+      }
+      const { error: totalUpdErr } = await admin.from("email_campaigns").update({
         total_recipients: actualCount || 0,
       }).eq("id", campaignId);
+      if (totalUpdErr) {
+        console.error("total_recipients update failed", totalUpdErr);
+        await admin.from("email_campaigns").update({ status: "failed" }).eq("id", campaignId);
+        return json({ error: "Не удалось обновить total_recipients" }, 500);
+      }
     }
 
     // ============ A/B: on first pass send only the sample ============
@@ -180,7 +208,13 @@ serve(async (req: Request) => {
       }
     }
 
-    const { data: pending } = await pendingQuery;
+    const { data: pending, error: pendingErr } = await pendingQuery;
+    // Critical: an error MUST NOT be interpreted as "0 pending, mark completed".
+    if (pendingErr) {
+      console.error("pendingQuery failed", pendingErr);
+      await admin.from("email_campaigns").update({ status: "failed" }).eq("id", campaignId);
+      return json({ error: "Не удалось получить очередь отправки" }, 500);
+    }
     const pendingCount = pending?.length || 0;
     if (pendingCount === 0) {
       await admin.from("email_campaigns").update({
@@ -223,8 +257,18 @@ serve(async (req: Request) => {
         await new Promise((res) => setTimeout(res, SEND_DELAY_MS));
       }
 
-      const { data: leftovers } = await admin.from("email_campaign_recipients")
+      // After partial send: if we can't verify leftovers, DO NOT mark completed.
+      // Fall back to `paused` — the scheduled resume will retry.
+      const { data: leftovers, error: leftErr } = await admin.from("email_campaign_recipients")
         .select("id").eq("campaign_id", campaignId).eq("status", "pending");
+      if (leftErr) {
+        console.error("leftovers query failed — parking as paused", leftErr);
+        await admin.from("email_campaigns").update({
+          status: "paused",
+          completed_at: null,
+        }).eq("id", campaignId);
+        return;
+      }
       const leftCount = leftovers?.length || 0;
       await admin.from("email_campaigns").update({
         status: leftCount === 0 ? "completed" : "paused",

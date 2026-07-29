@@ -11524,6 +11524,18 @@ export type Database = {
           recipient_name: string
         }[]
       }
+      resolve_email_recipient_raw_candidates: {
+        Args: {
+          p_manual_emails: string[]
+          p_organization_id: string
+          p_scope: string
+          p_source: string
+        }
+        Returns: {
+          email_raw: string
+          name_raw: string
+        }[]
+      }
       restore_course_snapshot: { Args: { _snapshot_id: string }; Returns: Json }
       restore_document: {
         Args: { p_id: string; p_table: string }

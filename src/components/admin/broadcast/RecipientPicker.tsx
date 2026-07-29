@@ -12,6 +12,7 @@ export type RecipientSource = "students" | "companies" | "organizations" | "comp
 
 export interface RecipientPickerValue {
   source: RecipientSource;
+  /** Raw normalized tokens — duplicates preserved so the server can report duplicate_count. */
   manualEmails: string[];
   count: number;
   /** true once server preview has succeeded for the current inputs */
@@ -33,6 +34,15 @@ interface Props {
   onChange: (v: RecipientPickerValue) => void;
 }
 
+// Parse raw manual tokens WITHOUT deduplication — the server owns duplicate stats.
+// Trims + lower-cases so preview and materialization use identical normalization.
+function parseManualRaw(text: string): string[] {
+  return text
+    .split(/[,;\s\n]+/)
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function RecipientPicker({ scope, organizationId, value, onChange }: Props) {
   const [manualText, setManualText] = useState(value.manualEmails.join("\n"));
   const [preview, setPreview] = useState<PreviewResult | null>(null);
@@ -42,15 +52,36 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
 
   // Debounce timer for manual input
   const debounceRef = useRef<number | null>(null);
+  // Monotonic request id — only the last in-flight request may commit state.
+  const requestSeqRef = useRef(0);
+  // AbortController for the current preview request.
+  const abortRef = useRef<AbortController | null>(null);
+  // Track mounted state to avoid post-unmount setState.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (abortRef.current) abortRef.current.abort();
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const fetchPreview = async (
     source: RecipientSource,
     manualEmails: string[],
   ) => {
+    // Invalidate any in-flight request.
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const mySeq = ++requestSeqRef.current;
+
     setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcErr } = await supabase.rpc(
+      // Supabase JS v2 supports AbortSignal via .abortSignal(ac.signal); we still guard by seq.
+      const q = supabase.rpc(
         "get_campaign_recipient_preview",
         {
           p_scope: scope === "platform" ? "platform" : "org",
@@ -59,12 +90,18 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           p_manual_emails: source === "manual" ? manualEmails : null,
         },
       );
+      // @ts-ignore — .abortSignal is available on the PostgrestFilterBuilder
+      const withSignal = typeof (q as any).abortSignal === "function" ? (q as any).abortSignal(ac.signal) : q;
+      const { data, error: rpcErr } = await withSignal;
+
+      // Stale response — a newer request has been issued; drop.
+      if (mySeq !== requestSeqRef.current || !mountedRef.current || ac.signal.aborted) return;
+
       if (rpcErr) {
         const msg = rpcErr.message || "Ошибка запроса";
         const isPerm = /permission denied|42501|Forbidden/i.test(msg);
         setError({ code: isPerm ? "permission" : "network", message: msg });
         setPreview(null);
-        // NOTE: do not silently show 0 — leave count as previous, mark previewReady=false
         onChange({ ...value, source, manualEmails, previewReady: false });
         return;
       }
@@ -78,28 +115,35 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         previewReady: true,
       });
     } catch (e: any) {
+      if (mySeq !== requestSeqRef.current || !mountedRef.current || ac.signal.aborted) return;
       setError({ code: "network", message: e?.message || "Сетевая ошибка" });
       setPreview(null);
       onChange({ ...value, source, manualEmails, previewReady: false });
     } finally {
-      setLoading(false);
+      if (mySeq === requestSeqRef.current && mountedRef.current) setLoading(false);
     }
   };
 
-  // Preview for auto sources — runs whenever source/scope/org changes
+  // Preview for auto sources — runs whenever source/scope/org changes.
+  // Any pending manual request is invalidated by fetchPreview's abort.
   useEffect(() => {
     if (value.source === "manual") return;
     if (scope === "org" && !organizationId) return;
+    // Immediately block launch: previewReady=false until new response arrives.
+    if (value.previewReady !== false) {
+      onChange({ ...value, previewReady: false });
+    }
     fetchPreview(value.source, []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.source, scope, organizationId]);
 
-  // Manual: 350ms debounce
+  // Manual: 350ms debounce for the RPC only. previewReady=false is set
+  // synchronously in the Textarea onChange handler (see below).
   useEffect(() => {
     if (value.source !== "manual") return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      const emails = parseManual(manualText);
+      const emails = parseManualRaw(manualText);
       fetchPreview("manual", emails);
     }, 350);
     return () => {
@@ -120,15 +164,6 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         { value: "manual", label: "Ручной список email" },
       ];
 
-  const parseManual = (text: string) => {
-    return Array.from(new Set(
-      text
-        .split(/[,;\s\n]+/)
-        .map(s => s.trim().toLowerCase())
-        .filter(Boolean)
-    ));
-  };
-
   const handleFileImport = async (file: File) => {
     try {
       const XLSX = await import("xlsx");
@@ -138,6 +173,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
       if (!ws) throw new Error("Файл пустой");
       const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
       const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Preserve duplicates: the server-side preview reports duplicate_count.
       const collected: string[] = [];
       for (const row of rows) {
         for (const cell of row) {
@@ -145,15 +181,16 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           if (emailRe.test(v)) collected.push(v);
         }
       }
-      const unique = Array.from(new Set(collected));
-      if (unique.length === 0) {
+      if (collected.length === 0) {
         toast.error("В файле не найдено валидных email-адресов");
         return;
       }
-      const existing = parseManual(manualText);
-      const merged = Array.from(new Set([...existing, ...unique]));
+      const existing = parseManualRaw(manualText);
+      const merged = [...existing, ...collected];
       setManualText(merged.join("\n"));
-      toast.success(`Импортировано ${unique.length} адресов (всего ${merged.length})`);
+      // Immediately mark preview stale — server will report duplicates.
+      onChange({ ...value, source: "manual", manualEmails: merged, previewReady: false });
+      toast.success(`Импортировано ${collected.length} адресов (всего ${merged.length})`);
     } catch (e: any) {
       toast.error("Ошибка импорта: " + (e?.message || "не удалось прочитать файл"));
     }
@@ -173,7 +210,8 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           value={value.source}
           onValueChange={(v) => {
             const src = v as RecipientSource;
-            // Reset previewReady until the new source is verified
+            // Reset previewReady until the new source is verified.
+            // fetchPreview will abort any in-flight request on the old source.
             onChange({ ...value, source: src, previewReady: false });
           }}
         >
@@ -212,13 +250,28 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           <Textarea
             rows={6}
             value={manualText}
-            onChange={(e) => setManualText(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setManualText(next);
+              // SYNCHRONOUS lockout: parent must see previewReady=false in
+              // the same render cycle so the Run button disables before
+              // the 350ms debounce fires. Also propagate the raw parsed
+              // tokens so late-arriving RPC responses cannot repopulate
+              // the launch payload from a stale value.
+              const parsed = parseManualRaw(next);
+              onChange({
+                ...value,
+                source: "manual",
+                manualEmails: parsed,
+                previewReady: false,
+              });
+            }}
             placeholder="user1@example.com&#10;user2@example.com"
           />
         </div>
       )}
 
-      {/* Preview status line */}
+      {/* Preview status line — `loading` implies previewReady=false in the parent */}
       <div className="text-sm space-y-1">
         {loading && (
           <p className="text-muted-foreground flex items-center gap-1">

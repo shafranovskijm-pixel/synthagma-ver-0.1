@@ -1,5 +1,6 @@
 /**
- * Contract tests for Phase 5C.1.b — canonical recipient resolver.
+ * Contract tests for Phase 5C.1.b + 5C.1.b.1 (corrective) —
+ * canonical recipient resolver.
  *
  * We cannot execute Deno / Postgres from vitest, so these tests verify
  * structural / textual contracts of the promoted Edge Function and the
@@ -36,13 +37,10 @@ describe("5C.1.b — Edge Function delegates recipient resolution to RPC", () =>
   });
 
   it("does NOT re-filter suppressions in Edge (resolver owns it)", () => {
-    // The old code called `.from("email_suppressions").select(...)` — that
-    // path must be removed to guarantee a single filtering source.
     expect(RUN).not.toMatch(/from\("email_suppressions"\)/);
   });
 
   it("resolver errors do NOT downgrade the campaign to completed/empty", () => {
-    // On resolver error, status is set to 'failed' and a 500 is returned.
     expect(RUN).toMatch(/status:\s*"failed"/);
     expect(RUN).toMatch(/Resolver failed:/);
   });
@@ -53,10 +51,57 @@ describe("5C.1.b — Edge Function delegates recipient resolution to RPC", () =>
   });
 
   it("total_recipients is computed from actual persisted rows", () => {
-    // The `count` query must happen AFTER the batched upsert, then be
-    // written into email_campaigns.total_recipients.
     expect(RUN).toMatch(/count:\s*actualCount/);
     expect(RUN).toMatch(/total_recipients:\s*actualCount \|\| 0/);
+  });
+});
+
+describe("5C.1.b.1 — corrective: hardened error handling in Edge Function", () => {
+  it("checks error on existingCount and fails without downgrading", () => {
+    expect(RUN).toMatch(/existingCount,\s*error:\s*existingErr/);
+    expect(RUN).toMatch(/existingErr[\s\S]{0,200}status:\s*"failed"/);
+  });
+
+  it("checks error on actualCount and does NOT write total_recipients=0 on failure", () => {
+    expect(RUN).toMatch(/actualCount,\s*error:\s*actualErr/);
+    expect(RUN).toMatch(/actualErr[\s\S]{0,200}status:\s*"failed"/);
+  });
+
+  it("pendingQuery error does NOT mark campaign as completed", () => {
+    expect(RUN).toMatch(/data:\s*pending,\s*error:\s*pendingErr/);
+    expect(RUN).toMatch(/pendingErr[\s\S]{0,200}status:\s*"failed"/);
+  });
+
+  it("leftovers error parks campaign as paused, NOT completed", () => {
+    expect(RUN).toMatch(/leftovers,\s*error:\s*leftErr/);
+    // On leftErr, status is 'paused' (not completed).
+    expect(RUN).toMatch(/leftErr[\s\S]{0,300}status:\s*"paused"/);
+  });
+
+  it("total_recipients UPDATE error is surfaced as failed", () => {
+    expect(RUN).toMatch(/totalUpdErr/);
+  });
+
+  it("does NOT leak raw internal messages beyond the resolver channel", () => {
+    // Existing/actual/pending/leftovers paths return a user-facing string,
+    // not the raw pg error object.
+    expect(RUN).toMatch(/Не удалось проверить существующих получателей/);
+    expect(RUN).toMatch(/Не удалось подсчитать получателей/);
+    expect(RUN).toMatch(/Не удалось получить очередь отправки/);
+  });
+
+  it("carries a 5C.1.d TODO for atomic campaign-run claim", () => {
+    expect(RUN).toMatch(/5C\.1\.d/);
+    expect(RUN).toMatch(/atomic campaign-run claim/i);
+  });
+});
+
+describe("5C.1.b.1 — unique index guards duplicate recipient rows only", () => {
+  // Renamed from the earlier "concurrent double-send" phrasing.
+  // The unique index prevents duplicate rows; it does NOT yet
+  // prevent duplicate SMTP dispatch under concurrent invocations.
+  it("upsert onConflict enforces recipient-row uniqueness", () => {
+    expect(RUN).toMatch(/onConflict:\s*"campaign_id,email"/);
   });
 });
 
@@ -81,7 +126,7 @@ describe("5C.1.b — RecipientPicker uses server preview RPC", () => {
     expect(PICKER).toMatch(/permission denied\|42501\|Forbidden/);
   });
 
-  it("manual input is debounced (350ms)", () => {
+  it("manual input is debounced (350ms) — RPC only", () => {
     expect(PICKER).toMatch(/setTimeout\([\s\S]+?,\s*350\s*\)/);
   });
 
@@ -89,6 +134,53 @@ describe("5C.1.b — RecipientPicker uses server preview RPC", () => {
     expect(PICKER).toMatch(/duplicate_count/);
     expect(PICKER).toMatch(/invalid_count/);
     expect(PICKER).toMatch(/suppressed_count/);
+  });
+});
+
+describe("5C.1.b.1 — RecipientPicker: race + stale-response protection", () => {
+  it("Textarea onChange synchronously marks previewReady=false", () => {
+    // The Textarea's onChange body must call onChange({..., previewReady: false })
+    // BEFORE the debounce timer fires.
+    expect(PICKER).toMatch(
+      /onChange=\{\(e\)\s*=>\s*\{[\s\S]+?previewReady:\s*false[\s\S]+?\}\}/,
+    );
+  });
+
+  it("parses raw manual tokens WITHOUT Set-based dedup", () => {
+    // parseManualRaw must NOT wrap the result in `new Set(...)`.
+    const fn = PICKER.match(/function parseManualRaw[\s\S]+?\n\}/);
+    expect(fn, "parseManualRaw not found").toBeTruthy();
+    expect(fn![0]).not.toMatch(/new Set\(/);
+  });
+
+  it("file import preserves duplicates so the server can count them", () => {
+    // Old code deduped with `new Set(collected)`; corrective phase must not.
+    const handler = PICKER.match(/handleFileImport[\s\S]+?\n  \};/);
+    expect(handler, "handleFileImport not found").toBeTruthy();
+    expect(handler![0]).not.toMatch(/Array\.from\(new Set\(collected\)\)/);
+    expect(handler![0]).not.toMatch(/new Set\(\[\.\.\.existing,\s*\.\.\.unique\]\)/);
+  });
+
+  it("uses a monotonic request sequence guard", () => {
+    expect(PICKER).toMatch(/requestSeqRef/);
+    expect(PICKER).toMatch(/mySeq\s*!==\s*requestSeqRef\.current/);
+  });
+
+  it("aborts previous request via AbortController", () => {
+    expect(PICKER).toMatch(/new AbortController\(\)/);
+    expect(PICKER).toMatch(/abortRef\.current\.abort\(\)/);
+  });
+
+  it("tracks mounted state and guards setState after unmount", () => {
+    expect(PICKER).toMatch(/mountedRef/);
+    expect(PICKER).toMatch(/!mountedRef\.current/);
+  });
+
+  it("source/scope/organizationId change invalidates the previous preview", () => {
+    // The auto-source effect must mark previewReady=false before firing
+    // the new RPC (so the launch button locks in the same render).
+    expect(PICKER).toMatch(/value\.source,\s*scope,\s*organizationId/);
+    expect(PICKER).toMatch(/onChange\(\{\s*\.\.\.value,\s*previewReady:\s*false\s*\}\)/);
   });
 });
 
