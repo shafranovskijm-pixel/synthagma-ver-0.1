@@ -13,7 +13,10 @@ vi.mock("@/integrations/supabase/client", () => ({
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
+      startAutoRefresh: vi.fn(),
+      stopAutoRefresh: vi.fn(),
     },
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
