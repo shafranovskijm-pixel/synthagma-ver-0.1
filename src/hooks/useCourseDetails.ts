@@ -161,8 +161,8 @@ export function useCourseDetails(
 
   // ---- Server-side paginated students of the course ----
   const studentsQueryKey = useMemo(
-    () => ["course-students-page", course?.id, debouncedStudentsSearch.trim() || null, studentsStatusFilter] as const,
-    [course?.id, debouncedStudentsSearch, studentsStatusFilter]
+    () => ["course-students-page", course?.id, debouncedStudentsSearch.trim() || null, studentsStatusFilter, studentsResultFilter] as const,
+    [course?.id, debouncedStudentsSearch, studentsStatusFilter, studentsResultFilter]
   );
 
   const studentsQuery = useInfiniteQuery({
@@ -176,11 +176,13 @@ export function useCourseDetails(
         offset: pageParam as number,
         search: debouncedStudentsSearch,
         status: studentsStatusFilter,
+        resultFilter: studentsResultFilter,
       }),
     getNextPageParam: (last) => last.nextOffset,
     staleTime: 30_000,
     retry: paginationRetry,
   });
+
 
   // Dedup by enrollment_id (fallback user_id) — invalidations / late pages
   // must not surface the same enrollment twice.
