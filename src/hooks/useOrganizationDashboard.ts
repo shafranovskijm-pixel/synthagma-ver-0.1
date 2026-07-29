@@ -389,6 +389,7 @@ export function useOrganizationDashboard() {
     // the base loader (courses/categories/companies) does not re-fetch
     // after every student-scoped change.
     refreshBaseData, refreshStudentRows, refreshEnrollmentData, refreshStudentPopulation,
+    refreshStudentGrouping, refreshGroupDirectory,
     isLoadingCourses,
     // Phase 4B.1.c.2.a — honest loading/error/success state for the
     // aggregated summary + course overview RPCs. `stats`/`documentsStats`
