@@ -206,9 +206,9 @@ export function useEnrollmentActions(
       setShowEnrollDialog(false);
       setSelectedStudentIds(new Set());
       setEnrollCourseId("");
-      // onRefresh (refreshStudentPopulation) covers studentsPage/counts/summary/overview.
+      // onEnrollmentChanged (refreshEnrollmentData) covers studentsPage + summary + overview.
       invalidateCourse(courseId);
-      onRefresh();
+      onEnrollmentChanged();
       return true;
     } catch (error) {
       console.error("Error enrolling students:", error);
@@ -217,7 +217,7 @@ export function useEnrollmentActions(
     } finally {
       setIsEnrolling(false);
     }
-  }, [organizationId, organizationName, invalidateCourse, onRefresh]);
+  }, [organizationId, organizationName, invalidateCourse, onEnrollmentChanged]);
 
   /**
    * Bulk unenroll — takes explicit enrollment IDs. NEVER derives them from a
