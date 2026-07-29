@@ -44,64 +44,10 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
   }));
 }
 
-/** Fetch lesson counts for courses separately (non-blocking). */
-export async function fetchCourseLessonCounts(courseIds: string[]): Promise<Map<string, number>> {
-  const countMap = new Map<string, number>();
-  if (courseIds.length === 0) return countMap;
-
-  try {
-    const { data } = await supabase
-      .from("lessons")
-      .select("course_id")
-      .in("course_id", courseIds);
-
-    if (!data || data.length === 0) return countMap;
-
-    for (const row of data) {
-      countMap.set(row.course_id, (countMap.get(row.course_id) || 0) + 1);
-    }
-  } catch (e) {
-    // non-fatal: lesson counts load silently
-  }
-
-  return countMap;
-}
-
-/** Fetch student counts for courses separately (non-blocking). */
-export async function fetchCourseStudentCounts(courseIds: string[]): Promise<Map<string, number>> {
-  const studentCountMap = new Map<string, number>();
-  if (courseIds.length === 0) return studentCountMap;
-
-  try {
-    const { data: enrollments } = await supabase
-      .from("enrollments")
-      .select("course_id, user_id")
-      .in("course_id", courseIds);
-
-    if (!enrollments || enrollments.length === 0) return studentCountMap;
-
-    const enrollmentUserIds = Array.from(new Set(enrollments.map(e => e.user_id)));
-    let orgAdminUserIds = new Set<string>();
-    try {
-      const rolesData = await fetchUserRolesBatched(enrollmentUserIds, ["organization", "admin"]);
-      orgAdminUserIds = new Set(rolesData.map(r => r.user_id));
-    } catch (e) {
-    }
-
-    for (const courseId of courseIds) {
-      const uniqueStudents = new Set(
-        enrollments
-          .filter(e => e.course_id === courseId && !orgAdminUserIds.has(e.user_id))
-          .map(e => e.user_id)
-      );
-      studentCountMap.set(courseId, uniqueStudents.size);
-    }
-  } catch (e) {
-    // non-fatal: student counts load silently
-  }
-
-  return studentCountMap;
-}
+// Phase 4B.1.b: fetchCourseLessonCounts / fetchCourseStudentCounts removed.
+// Per-course counts now come from the SECURITY DEFINER RPC
+// get_organization_course_overview via src/api/organizationSummary.ts,
+// which returns both counts in a single round-trip.
 
 export async function fetchCourse(courseId: string): Promise<Course | null> {
   const { data, error } = await supabase
