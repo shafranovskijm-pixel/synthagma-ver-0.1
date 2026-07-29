@@ -145,9 +145,9 @@ serve(async (req: Request) => {
             .from("email_campaign_recipients")
             .upsert(slice, { onConflict: "campaign_id,email", ignoreDuplicates: true });
           if (insErr) {
+            console.error("recipients upsert failed", insErr);
             await admin.from("email_campaigns").update({
               status: "failed",
-              error: `recipients insert: ${insErr.message}`.slice(0, 500),
             }).eq("id", campaignId);
             throw new Error(`recipients insert failed: ${insErr.message}`);
           }
