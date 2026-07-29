@@ -10717,6 +10717,17 @@ export type Database = {
         Returns: string
       }
       _org_email_warmup_limit: { Args: { _day: number }; Returns: number }
+      _phase_5c1c1_merge_legacy_quotas: {
+        Args: never
+        Returns: {
+          final_today: number
+          final_total: number
+          legacy_today: number
+          legacy_total: number
+          org_count: number
+          sender_hash: string
+        }[]
+      }
       _webinar_rate_check: {
         Args: {
           p_action: string
