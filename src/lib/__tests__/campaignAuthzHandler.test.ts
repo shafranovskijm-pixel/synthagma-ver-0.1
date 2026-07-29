@@ -88,7 +88,12 @@ describe("5C.1.a.1 — RPC client routing (test-org-smtp)", () => {
   });
 
   it("body.to is NOT read (org recipient is always stored from_email)", () => {
-    expect(SMTP).not.toMatch(/body\.to/);
+    // Strip comments before checking — the pending file explains in a
+    // comment why body.to is not read.
+    const stripped = SMTP
+      .replace(/\/\/[^\n]*/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(stripped).not.toMatch(/body\.to\b/);
     // Recipient must be assigned from smtp.from_email.
     expect(SMTP).toMatch(/const recipient = smtp\.from_email/);
   });
