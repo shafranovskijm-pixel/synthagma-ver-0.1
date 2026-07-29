@@ -19,6 +19,7 @@ import { useLessonTTS } from "./useLessonTTS";
 import { useLessonChat } from "./useLessonChat";
 import { useLessonTest } from "./useLessonTest";
 import { useLessonVideo } from "./useLessonVideo";
+import { markLessonProgress } from "./markLessonProgress";
 import { getOptionText } from "./types";
 
 /**
