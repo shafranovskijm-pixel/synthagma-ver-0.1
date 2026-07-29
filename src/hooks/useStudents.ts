@@ -551,6 +551,7 @@ export function useStudents(
     toggleSelectAll,
     getSelectedUserIds,
     refresh,
+    refreshRows,
     statusFilter,
     setStatusFilter,
     courseFilter,
