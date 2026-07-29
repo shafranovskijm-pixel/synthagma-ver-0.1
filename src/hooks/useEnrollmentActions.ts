@@ -398,8 +398,8 @@ export function useEnrollmentActions(
 
       setShowBulkDeleteConfirm(false);
       setSelectedStudentIds(new Set());
-      // onRefresh (refreshStudentPopulation) covers all downstream keys.
-      onRefresh();
+      // onPopulationChanged covers studentsPage + counts + groupCounts + summary + overview.
+      onPopulationChanged();
       return true;
     } catch (error) {
       console.error("Error bulk archiving:", error);
@@ -408,7 +408,7 @@ export function useEnrollmentActions(
     } finally {
       setIsBulkDeleting(false);
     }
-  }, [onRefresh]);
+  }, [onPopulationChanged]);
 
   return {
     isEnrolling,
