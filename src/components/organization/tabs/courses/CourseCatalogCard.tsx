@@ -1,4 +1,5 @@
 import React from "react";
+import { CountValue } from "./courseCountsState";
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
@@ -125,8 +126,8 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
           </span>
         )}
         <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
-          <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{course.studentsCount || 0} учеников</div>
-          <div className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{course.lessonsCount || 0} уроков</div>
+          <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /><CountValue value={course.studentsCount} suffix=" учеников" /></div>
+          <div className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /><CountValue value={course.lessonsCount} suffix=" уроков" /></div>
         </div>
       </div>
     </div>

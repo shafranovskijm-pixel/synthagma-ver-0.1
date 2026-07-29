@@ -67,6 +67,8 @@ export function useOrganizationDashboard() {
   const {
     summary,
     courseOverviewMap,
+    hasSummaryData,
+    hasCourseOverviewData,
     isSummaryLoading,
     isCourseOverviewLoading,
     summaryErrorKind,
@@ -327,12 +329,12 @@ export function useOrganizationDashboard() {
     courses, setCourses,
     companies, stats, documentsStats, refreshData,
     isLoadingCourses,
-    // Phase 4B.1.b — aggregate summary state (loading / error / retry).
-    // UI wiring (loading skeletons + error banners on StatsCards etc.) is
-    // scheduled for 4B.1.c.2; these fields are exposed now so consumers
-    // can start using them without another API shape change.
-    isSummaryLoading, summaryErrorKind, retrySummary,
-    isCourseOverviewLoading, courseOverviewErrorKind, retryCourseOverview,
+    // Phase 4B.1.c.2.a — honest loading/error/success state for the
+    // aggregated summary + course overview RPCs. `stats`/`documentsStats`
+    // still carry numeric zeros for shape-compat, but consumers must use
+    // hasSummaryData/hasCourseOverviewData to decide when to trust them.
+    hasSummaryData, isSummaryLoading, summaryErrorKind, retrySummary,
+    hasCourseOverviewData, isCourseOverviewLoading, courseOverviewErrorKind, retryCourseOverview,
     // Features & limits
     isEnabled, checkLimit, subscriptionLimits,
     // UI state

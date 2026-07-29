@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CountValue } from "./courseCountsState";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -89,8 +90,8 @@ export const CourseCard = React.memo(function CourseCard({
               />
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1"><Users className="w-3 h-3" />{course.studentsCount || 0}</div>
-              <div className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{course.lessonsCount || 0}</div>
+              <div className="flex items-center gap-1"><Users className="w-3 h-3" /><CountValue value={course.studentsCount} /></div>
+              <div className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><CountValue value={course.lessonsCount} /></div>
             </div>
           </div>
         ) : (
@@ -103,8 +104,8 @@ export const CourseCard = React.memo(function CourseCard({
             </div>
             {course.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{course.description}</p>}
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-              <div className="flex items-center gap-1"><Users className="w-3 h-3" />{course.studentsCount || 0}</div>
-              <div className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{course.lessonsCount || 0}</div>
+              <div className="flex items-center gap-1"><Users className="w-3 h-3" /><CountValue value={course.studentsCount} /></div>
+              <div className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><CountValue value={course.lessonsCount} /></div>
             </div>
           </>
         )}

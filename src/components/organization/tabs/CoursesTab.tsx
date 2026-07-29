@@ -19,9 +19,12 @@ import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog 
 import { CourseCard } from "./courses/CourseCardView";
 import { CourseCatalogCard } from "./courses/CourseCatalogCard";
 import { CategoryFolder } from "./courses/CategoryFolder";
+import { CourseCountsStateContext, type CourseCountsState } from "./courses/courseCountsState";
 import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { QuickStartCard } from "@/components/organization/QuickStartCard";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { courseOverviewErrorMessage } from "./summaryStateMessages";
 
 interface CoursesTabProps {
   organizationId: string;
@@ -370,12 +373,33 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     return groups;
   }, [filteredCourses, categories]);
 
+  // Phase 4B.1.c.2.a — derive counts state from dashboard flags.
+  // Ready wins over loading (cached data present), and loading wins over
+  // error (first ever load in progress).
+  const countsState: CourseCountsState =
+    dashboard.hasCourseOverviewData ? "ready"
+    : dashboard.isCourseOverviewLoading ? "loading"
+    : dashboard.courseOverviewErrorKind ? "error"
+    : "loading";
+  const overviewErrorBanner = dashboard.courseOverviewErrorKind && !dashboard.hasCourseOverviewData;
+
   return (
+    <CourseCountsStateContext.Provider value={countsState}>
     <div className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
       {/* Quick start checklist for new orgs */}
       <QuickStartCard />
+
+      {overviewErrorBanner && (
+        <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+          <div className="flex-1 text-sm text-muted-foreground">{courseOverviewErrorMessage(dashboard.courseOverviewErrorKind)}</div>
+          <Button size="sm" variant="outline" className="gap-2" onClick={dashboard.retryCourseOverview}>
+            <RefreshCw className="w-3.5 h-3.5" /> Повторить
+          </Button>
+        </div>
+      )}
 
       {/* Courses content */}
       <>
@@ -552,5 +576,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       />
       </>
     </div>
+    </CourseCountsStateContext.Provider>
   );
 });

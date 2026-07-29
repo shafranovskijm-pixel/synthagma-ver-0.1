@@ -76,8 +76,24 @@ export function TabContentRenderer() {
   return (
     <>
       {/* Stats cards */}
-      {shouldShowStatsCards && <StatsCards stats={d.stats} />}
-      {activeTab === "students" && d.subscriptionLimits?.plan !== 'free' && <DocumentsStatsCards stats={d.documentsStats} />}
+      {shouldShowStatsCards && (
+        <StatsCards
+          stats={d.stats}
+          hasData={d.hasSummaryData}
+          isLoading={d.isSummaryLoading}
+          errorKind={d.summaryErrorKind}
+          onRetry={d.retrySummary}
+        />
+      )}
+      {activeTab === "students" && d.subscriptionLimits?.plan !== 'free' && (
+        <DocumentsStatsCards
+          stats={d.documentsStats}
+          hasData={d.hasSummaryData}
+          isLoading={d.isSummaryLoading}
+          errorKind={d.summaryErrorKind}
+          onRetry={d.retrySummary}
+        />
+      )}
 
       {/* Courses Tab */}
       {activeTab === "courses" && organizationId && (
@@ -148,7 +164,14 @@ export function TabContentRenderer() {
 
       {/* Stats Tab */}
       {activeTab === "stats" && organizationId && (
-        <StatsTab organizationId={organizationId} stats={d.stats} />
+        <StatsTab
+          organizationId={organizationId}
+          stats={d.stats}
+          hasData={d.hasSummaryData}
+          isLoading={d.isSummaryLoading}
+          errorKind={d.summaryErrorKind}
+          onRetry={d.retrySummary}
+        />
       )}
 
       {/* Links Tab */}

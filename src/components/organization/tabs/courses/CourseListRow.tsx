@@ -1,4 +1,5 @@
 import React from "react";
+import { CountValue } from "./courseCountsState";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -71,13 +72,13 @@ export function SortableCourseListRow({ course, isSelected, onToggleSelect, onCl
       <td className="px-6 py-4">
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
           <Users className="w-3 h-3" />
-          {course.studentsCount || 0}
+          <CountValue value={course.studentsCount} />
         </span>
       </td>
       <td className="px-6 py-4">
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
           <BookOpen className="w-3 h-3" />
-          {course.lessonsCount || 0}
+          <CountValue value={course.lessonsCount} />
         </span>
       </td>
       <td className="px-6 py-4">

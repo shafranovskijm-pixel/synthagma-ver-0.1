@@ -1,8 +1,18 @@
 /**
- * Phase 4B.1.a — React Query hook exposing the two aggregate RPCs
- * (dashboard summary + course overview) as independent queries.
+ * Phase 4B.1.a / 4B.1.c.2.a — React Query hook exposing the two aggregate
+ * RPCs (dashboard summary + course overview) as independent queries.
  *
- * Not yet consumed by any UI — that wiring happens in 4B.1.b.
+ * Semantics (see phase 4B.1.c.2.a):
+ *  • hasSummaryData / hasCourseOverviewData — strict "server responded at
+ *    least once". An empty array from course overview still counts as data.
+ *  • isSummaryLoading / isCourseOverviewLoading — waiting for the FIRST
+ *    payload only. A background refetch with existing data must NOT
+ *    replace the UI with a skeleton.
+ *  • summaryErrorKind / courseOverviewErrorKind — only exposed when we
+ *    have no usable data. If React Query still has cached data from a
+ *    previous success, we suppress the error and keep showing it.
+ *  • retry policy unchanged — at most 2 attempts for transient network
+ *    errors only; 401/403/42501 are never retried.
  */
 
 import { useMemo } from "react";
@@ -30,9 +40,15 @@ export interface UseOrganizationSummaryResult {
   courseOverviewRows: OrganizationCourseOverviewRow[];
   courseOverviewMap: Map<string, OrganizationCourseOverviewRow>;
 
+  /** Strict "server responded at least once" flags. */
+  hasSummaryData: boolean;
+  hasCourseOverviewData: boolean;
+
+  /** Waiting for the FIRST payload only. Background refetch does not count. */
   isSummaryLoading: boolean;
   isCourseOverviewLoading: boolean;
 
+  /** Only set when we have no usable data to display. */
   summaryErrorKind: UserFacingErrorKind | null;
   courseOverviewErrorKind: UserFacingErrorKind | null;
 
@@ -61,6 +77,25 @@ export function useOrganizationSummary(
     retry: shouldRetry,
   });
 
+  // "Have data" is defined by React Query's `data !== undefined`. An empty
+  // course overview array is a legitimate server response — we must NOT
+  // downgrade it to "no data" via rows.length checks.
+  const hasSummaryData = summaryQuery.data !== undefined;
+  const hasCourseOverviewData = overviewQuery.data !== undefined;
+
+  // First-load semantics: waiting for the initial payload.
+  // React Query v5: isLoading === (isPending && isFetching), which is
+  // exactly what "first load, no cached data yet" means.
+  const isSummaryLoading = summaryQuery.isLoading && !hasSummaryData;
+  const isCourseOverviewLoading = overviewQuery.isLoading && !hasCourseOverviewData;
+
+  // Only surface an error if we have no usable data. If a background refetch
+  // failed but we still hold cached data, keep showing that data.
+  const summaryErrorKind: UserFacingErrorKind | null =
+    summaryQuery.isError && !hasSummaryData ? classifyDataError(summaryQuery.error) : null;
+  const courseOverviewErrorKind: UserFacingErrorKind | null =
+    overviewQuery.isError && !hasCourseOverviewData ? classifyDataError(overviewQuery.error) : null;
+
   const courseOverviewRows = overviewQuery.data ?? [];
   const courseOverviewMap = useMemo(() => {
     const map = new Map<string, OrganizationCourseOverviewRow>();
@@ -74,10 +109,12 @@ export function useOrganizationSummary(
     summary: summaryQuery.data,
     courseOverviewRows,
     courseOverviewMap,
-    isSummaryLoading: summaryQuery.isLoading,
-    isCourseOverviewLoading: overviewQuery.isLoading,
-    summaryErrorKind: summaryQuery.error ? classifyDataError(summaryQuery.error) : null,
-    courseOverviewErrorKind: overviewQuery.error ? classifyDataError(overviewQuery.error) : null,
+    hasSummaryData,
+    hasCourseOverviewData,
+    isSummaryLoading,
+    isCourseOverviewLoading,
+    summaryErrorKind,
+    courseOverviewErrorKind,
     retrySummary: () => {
       void summaryQuery.refetch();
     },
