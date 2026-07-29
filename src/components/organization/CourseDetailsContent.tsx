@@ -89,14 +89,36 @@ interface CourseDetailsContentProps {
   course: Course; courseStudents: Student[]; organizationId: string | null;
   activeTab: CourseTabKey;
   onTabChange: (tab: CourseTabKey) => void;
-  onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void; onRefreshStudents?: () => void;
+  onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void;
+  /** Enrollment membership changed (bulk enroll/unenroll, group enrollment, request approval). */
+  onEnrollmentChanged?: () => void;
+  /** Student ↔ group binding changed (assign/move between groups). */
+  onStudentGroupingChanged?: () => void;
+  /** Student population changed (create new profile inside a group). */
+  onStudentPopulationChanged?: () => void;
+  /** Group directory changed (create/update/delete a group). */
+  onGroupDirectoryChanged?: () => void;
   onBack?: () => void;
 }
 
-export function CourseDetailsContent({ course, courseStudents, organizationId, activeTab, onTabChange, onEnrollStudent, onCourseDeleted, onCourseUpdated, onRefreshStudents, onBack }: CourseDetailsContentProps) {
+export function CourseDetailsContent({
+  course, courseStudents, organizationId, activeTab, onTabChange, onEnrollStudent,
+  onCourseDeleted, onCourseUpdated,
+  onEnrollmentChanged, onStudentGroupingChanged, onStudentPopulationChanged, onGroupDirectoryChanged,
+  onBack,
+}: CourseDetailsContentProps) {
   const { isEnabled } = useOrgFeatures(organizationId);
   const isFrdoEnabled = isEnabled('frdo');
-  const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
+  // useCourseDetails covers course-scoped enrollment mutations (bulk
+  // enroll/unenroll/progress reset) — enrollment invalidations only.
+  const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onEnrollmentChanged, onCourseDeleted);
+
+  const groupsCallbacks = {
+    onEnrollmentChanged,
+    onGroupingChanged: onStudentGroupingChanged,
+    onStudentPopulationChanged,
+    onGroupDirectoryChanged,
+  };
 
   // Prefetch heavy chunks (course builder + preview) in the background as soon
   // as the course card mounts. By the time the user clicks "Конструктор" or
