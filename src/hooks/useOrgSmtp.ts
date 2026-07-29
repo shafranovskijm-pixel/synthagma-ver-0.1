@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { classifyDataError, type UserFacingErrorKind } from "@/utils/isTransientNetworkError";
 
 export interface OrgSmtpSettings {
   organization_id: string;
@@ -17,28 +18,59 @@ export interface OrgSmtpSettings {
   safe_warmup_enabled: boolean;
 }
 
+/**
+ * Phase 5C.1.c.1: distinguish "SMTP not configured" (data===null AND no error)
+ * from "failed to read SMTP" (SELECT error). Never mask an RLS/network failure
+ * as "not configured", never overwrite loaded settings on background refetch
+ * failure.
+ */
 export function useOrgSmtp(organizationId: string | null) {
   const [settings, setSettings] = useState<OrgSmtpSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadErrorKind, setLoadErrorKind] = useState<UserFacingErrorKind | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const hasDataRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!organizationId) return;
-    setLoading(true);
+    const isInitial = !hasDataRef.current;
+    if (isInitial) setLoading(true);
+    else setRefreshing(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("org_smtp_settings")
         .select("organization_id, host, port, username, from_email, from_name, encryption, is_verified, last_test_at, last_test_error, provider_daily_limit, safe_warmup_enabled")
         .eq("organization_id", organizationId)
         .maybeSingle();
+      if (error) {
+        setLoadErrorKind(classifyDataError(error));
+        // Do NOT overwrite existing settings on a background refetch error.
+        if (isInitial) setSettings(null);
+        return;
+      }
       setSettings(data as OrgSmtpSettings | null);
+      setLoadErrorKind(null);
+      hasDataRef.current = true;
+      setLoaded(true);
+    } catch (err) {
+      setLoadErrorKind(classifyDataError(err));
+      if (isInitial) setSettings(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [organizationId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    hasDataRef.current = false;
+    setSettings(null);
+    setLoaded(false);
+    setLoadErrorKind(null);
+    refresh();
+  }, [refresh]);
 
   const save = useCallback(async (input: {
     host: string; port: number; username: string; password?: string;
@@ -49,7 +81,6 @@ export function useOrgSmtp(organizationId: string | null) {
     if (!organizationId) return false;
     setSaving(true);
     try {
-      // Server enforces 1..50 via CHECK constraint; clamp client-side for a nicer UX message.
       const cap = Math.max(1, Math.min(50, Math.round(input.provider_daily_limit ?? 50)));
       const payload: any = {
         organization_id: organizationId,
@@ -102,5 +133,17 @@ export function useOrgSmtp(organizationId: string | null) {
     }
   }, [organizationId, refresh]);
 
-  return { settings, loading, save, saving, testConnection, testing, refresh };
+  return {
+    settings,
+    loading,
+    refreshing,
+    loaded,
+    loadErrorKind,
+    retryLoad: refresh,
+    save,
+    saving,
+    testConnection,
+    testing,
+    refresh,
+  };
 }

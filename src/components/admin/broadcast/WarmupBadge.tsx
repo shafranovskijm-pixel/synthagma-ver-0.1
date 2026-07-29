@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Flame, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Flame, TrendingUp, AlertTriangle, MailX, RefreshCw } from "lucide-react";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 
 interface WarmupBadgeProps {
@@ -7,13 +8,56 @@ interface WarmupBadgeProps {
 }
 
 export function WarmupBadge({ scopeKey }: WarmupBadgeProps) {
-  const { status, loading } = useEmailWarmup(scopeKey);
+  const { status, loading, errorKind, retry } = useEmailWarmup(scopeKey);
 
-  if (loading || !status) {
+  if (loading) {
     return (
       <Card>
         <CardContent className="p-4">
           <p className="text-sm text-muted-foreground">Загрузка прогрева...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (errorKind && !status) {
+    const message =
+      errorKind === "permission" || errorKind === "unauthorized"
+        ? "Нет доступа к данным о прогреве этого отправителя."
+        : errorKind === "network"
+        ? "Не удалось загрузить статус прогрева. Проверьте соединение."
+        : "Не удалось загрузить статус прогрева.";
+    return (
+      <Card>
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4" />
+            {message}
+          </div>
+          <Button size="sm" variant="outline" onClick={retry} className="gap-2">
+            <RefreshCw className="w-3 h-3" /> Повторить
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!status) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Прогрев недоступен.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (status.configured === false) {
+    return (
+      <Card>
+        <CardContent className="p-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <MailX className="w-4 h-4" />
+          SMTP не настроен — запуск рассылки недоступен.
         </CardContent>
       </Card>
     );

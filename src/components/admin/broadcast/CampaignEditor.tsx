@@ -105,8 +105,21 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [abSamplePercent, setAbSamplePercent] = useState(20);
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
-  const { status: warmup } = useEmailWarmup(scopeKey || null);
+  const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
+    useEmailWarmup(scopeKey || null);
   const tooMany = warmup && recipients.count > warmup.remaining;
+  // Phase 5C.1.c.1: block immediate launch while quota is unknown.
+  // Background refetches keep `warmup` populated, so only initial loading blocks.
+  const quotaUnknown = !warmup && (warmupLoading || !!warmupError);
+  const quotaNotConfigured = scope === "org" && !!warmup && warmup.configured === false;
+  const quotaBlocksLaunch = quotaUnknown || quotaNotConfigured;
+  const quotaBlockReason = quotaUnknown
+    ? (warmupError
+        ? "Не удалось получить данные о лимите отправителя. Повторите загрузку."
+        : "Проверяем лимит отправителя…")
+    : quotaNotConfigured
+    ? "SMTP этой организации не настроен — рассылку запустить нельзя."
+    : null;
 
   // Apply initial data when dialog opens
   useEffect(() => {
@@ -587,9 +600,31 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
             <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
               {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent || scheduleEnabled || recipients.previewReady === false}>
+            <Button
+              onClick={() => handleSave(true)}
+              disabled={
+                saving ||
+                !!tooMany ||
+                recipients.count === 0 ||
+                !consent ||
+                scheduleEnabled ||
+                recipients.previewReady === false ||
+                quotaBlocksLaunch
+              }
+              data-testid="campaign-launch-button"
+            >
               {saving ? "Создание..." : `Запустить сейчас (${recipients.count})`}
             </Button>
+            {quotaBlocksLaunch && quotaBlockReason && (
+              <div className="w-full flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+                <span data-testid="campaign-quota-reason">{quotaBlockReason}</span>
+                {warmupError && (
+                  <Button size="sm" variant="outline" onClick={warmupRetry}>
+                    Повторить
+                  </Button>
+                )}
+              </div>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

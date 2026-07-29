@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function OrgSmtpSettings({ organizationId }: Props) {
-  const { settings, loading, save, saving, testConnection, testing } = useOrgSmtp(organizationId);
+  const { settings, loading, loaded, loadErrorKind, retryLoad, save, saving, testConnection, testing } = useOrgSmtp(organizationId);
   const [host, setHost] = useState("");
   const [port, setPort] = useState(587);
   const [username, setUsername] = useState("");
@@ -52,9 +52,29 @@ export function OrgSmtpSettings({ organizationId }: Props) {
 
   if (loading) return <p className="text-sm text-muted-foreground">Загрузка SMTP-настроек...</p>;
 
+  // Phase 5C.1.c.1: access/network error is NOT the same as "SMTP not configured".
+  if (loadErrorKind && !settings && !loaded) {
+    const message =
+      loadErrorKind === "permission" || loadErrorKind === "unauthorized"
+        ? "Нет доступа к SMTP-настройкам этой организации."
+        : loadErrorKind === "network"
+        ? "Не удалось загрузить SMTP-настройки. Проверьте соединение."
+        : "Не удалось загрузить SMTP-настройки.";
+    return (
+      <Card className="border-destructive/30 bg-destructive/5">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2 text-destructive font-medium">
+            <AlertCircle className="w-4 h-4" /> {message}
+          </div>
+          <Button size="sm" variant="outline" onClick={retryLoad}>Повторить</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {!settings && (
+      {loaded && !settings && (
         <Card className="border-orange-500/30 bg-orange-500/5">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-orange-600 font-medium">
@@ -70,6 +90,7 @@ export function OrgSmtpSettings({ organizationId }: Props) {
           </CardContent>
         </Card>
       )}
+
 
       <Card>
         <CardHeader>
