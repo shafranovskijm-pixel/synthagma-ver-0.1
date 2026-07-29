@@ -600,9 +600,31 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
             <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
               {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent || scheduleEnabled || recipients.previewReady === false}>
+            <Button
+              onClick={() => handleSave(true)}
+              disabled={
+                saving ||
+                !!tooMany ||
+                recipients.count === 0 ||
+                !consent ||
+                scheduleEnabled ||
+                recipients.previewReady === false ||
+                quotaBlocksLaunch
+              }
+              data-testid="campaign-launch-button"
+            >
               {saving ? "Создание..." : `Запустить сейчас (${recipients.count})`}
             </Button>
+            {quotaBlocksLaunch && quotaBlockReason && (
+              <div className="w-full flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+                <span data-testid="campaign-quota-reason">{quotaBlockReason}</span>
+                {warmupError && (
+                  <Button size="sm" variant="outline" onClick={warmupRetry}>
+                    Повторить
+                  </Button>
+                )}
+              </div>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
