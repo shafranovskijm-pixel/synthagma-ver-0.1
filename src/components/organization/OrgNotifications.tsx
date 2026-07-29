@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { getCourseDetailsPath } from "@/lib/utils";
 import {
   Bell,
   Video,
@@ -15,6 +16,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { toast } from "sonner";
 import {
   Popover,
   PopoverContent,
@@ -36,7 +38,7 @@ interface OrgNotificationsProps {
 
 type TabKey = "all" | "tasks" | "payments";
 
-const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task"];
+const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task", "course_completed"];
 const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "subscription_expiry", "order"];
 
 function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
@@ -44,6 +46,7 @@ function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
   if (tab === "tasks") return notifications.filter(n => TASK_TYPES.some(t => n.type.includes(t)));
   return notifications.filter(n => PAYMENT_TYPES.some(t => n.type.includes(t)));
 }
+
 
 function getInitials(title: string) {
   const words = title.split(" ").filter(Boolean);
@@ -70,6 +73,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -118,16 +122,21 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'org_notifications',
           filter: `organization_id=eq.${organizationId}` }, (payload) => {
-          setNotifications(prev => [payload.new as Notification, ...prev]);
+          const incoming = payload.new as Notification;
+          setNotifications(prev => {
+            if (prev.some(n => n.id === incoming.id)) return prev;
+            return [incoming, ...prev];
+          });
           playNotificationSound();
         })
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
+      return () => { try { supabase.removeChannel(channel); } catch { /* ignore */ } };
     }
   }, [organizationId, soundEnabled]);
 
   const loadNotifications = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const { data, error } = await supabase
         .from("org_notifications")
@@ -139,30 +148,34 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
       setNotifications(data || []);
     } catch (error) {
       console.error("Error loading notifications:", error);
+      setLoadError(error instanceof Error ? error.message : "Не удалось загрузить уведомления");
     } finally {
       setIsLoading(false);
     }
   };
 
   const markAsRead = async (id: string) => {
-    try {
-      await supabase.from("org_notifications").update({ is_read: true }).eq("id", id);
-      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
-    } catch (error) {
+    const { error } = await supabase.from("org_notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
       console.error("Error marking as read:", error);
+      toast.error("Не удалось отметить как прочитанное");
+      return;
     }
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
   };
 
   const markAllAsRead = async () => {
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
     if (unreadIds.length === 0) return;
-    try {
-      await supabase.from("org_notifications").update({ is_read: true }).in("id", unreadIds);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    } catch (error) {
+    const { error } = await supabase.from("org_notifications").update({ is_read: true }).in("id", unreadIds);
+    if (error) {
       console.error("Error marking all as read:", error);
+      toast.error("Не удалось отметить все как прочитанные");
+      return;
     }
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
+
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -244,6 +257,12 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
           <div className="flex items-center justify-center py-12">
             <SigmaSpinner />
           </div>
+        ) : loadError ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm mb-3">Не удалось загрузить уведомления</p>
+            <Button variant="outline" size="sm" onClick={loadNotifications}>Повторить</Button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -266,9 +285,13 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                       // CounterpartiesSection reads this on mount to expand the right contract
                       sessionStorage.setItem("openSignatureId", n.related_id);
                       navigate(`/organization?tab=org-documents`);
+                    } else if (n.type === "course_completed" && n.related_id) {
+                      setIsOpen(false);
+                      navigate(getCourseDetailsPath(n.related_id));
                     }
                   }}
                 >
+
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${getAvatarColor(n.id)}`}>
                       {getInitials(n.title)}

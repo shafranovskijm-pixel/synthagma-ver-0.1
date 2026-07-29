@@ -148,7 +148,21 @@ export function useCourseLearning() {
         }
       }
 
-      await supabase.from('enrollments').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', enrollmentId);
+      // Persist completion first — the DB trigger creates the organization notification
+      // regardless of what happens with the Edge Function/email path.
+      const { data: updatedEnrollment, error: enrollmentUpdateErr } = await supabase
+        .from('enrollments')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', enrollmentId)
+        .select('id, status')
+        .maybeSingle();
+
+      if (enrollmentUpdateErr || !updatedEnrollment) {
+        console.error('[course-completion] failed to mark enrollment completed:', enrollmentUpdateErr);
+        toast.error('Не удалось завершить курс. Попробуйте ещё раз.');
+        return;
+      }
+
       const protocolName = await generateAttestationProtocol({
         organizationId: org.id, organizationName: org.name, directorName: org.director_name, directorPosition: org.director_position,
         studentName: profile.full_name || 'Слушатель', courseName: course.title, courseDuration: course.duration,
@@ -156,16 +170,25 @@ export function useCourseLearning() {
       });
       if (protocolName) toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
 
-      // Always invoke — edge function sends student email based on their prefs,
-      // and only sends to org/extras when course.notify_on_completion=true.
-      // Клиентский guard: не вызываем повторно из той же вкладки (StrictMode / re-mount).
+      // Best-effort email/edge notification. Failure here MUST NOT undo the completion
+      // or the DB-triggered organization notification.
       const notifyKey = `notified:course-completion:${enrollmentId}:${courseId}`;
-      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(notifyKey)) {
-        // уже вызывали в этой сессии — сервер и так дедуплицирует, но экономим RTT
-      } else {
-        try { sessionStorage.setItem(notifyKey, '1'); } catch (_) { /* ignore */ }
-        try { await safeInvoke('notify-course-completion', { body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id } }); } catch (e) { console.error('Notification error:', e); }
+      const alreadyNotified = typeof sessionStorage !== 'undefined' && sessionStorage.getItem(notifyKey);
+      if (!alreadyNotified) {
+        try {
+          const result = await safeInvoke('notify-course-completion', {
+            body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id },
+          });
+          if (result.error) {
+            console.error('[course-completion] notify edge error:', result.error);
+          } else {
+            try { sessionStorage.setItem(notifyKey, '1'); } catch (_) { /* ignore */ }
+          }
+        } catch (e) {
+          console.error('[course-completion] notify edge exception:', e);
+        }
       }
+
 
     } catch (error) { console.error('Error handling course completion:', error); }
   };
