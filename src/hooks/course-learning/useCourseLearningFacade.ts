@@ -19,6 +19,7 @@ import { useLessonTTS } from "./useLessonTTS";
 import { useLessonChat } from "./useLessonChat";
 import { useLessonTest } from "./useLessonTest";
 import { useLessonVideo } from "./useLessonVideo";
+import { markLessonProgress } from "./markLessonProgress";
 import { getOptionText } from "./types";
 
 /**
@@ -62,6 +63,14 @@ export function useCourseLearning() {
   const [lessonContents, setLessonContents] = useState<Record<string, string | null>>({});
   const contentLoadingRef = useRef<Set<string>>(new Set());
 
+  // Refs для устранения гонки при последовательном autoAdvance:
+  // completedIdsRef всегда содержит актуальный набор завершённых lesson_id,
+  // markInFlightRef — мьютекс для параллельных markLessonComplete,
+  // courseCompletionStartedRef — защита от повторного handleCourseCompletion.
+  const completedIdsRef = useRef<Set<string>>(new Set());
+  const markInFlightRef = useRef<Set<string>>(new Set());
+  const courseCompletionStartedRef = useRef<{ value: boolean }>({ value: false });
+
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,6 +90,22 @@ export function useCourseLearning() {
     : (undefined as unknown as Lesson);
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+
+  // Держим completedIdsRef синхронно с lessonProgress: сброс, повторная загрузка,
+  // обновления от useLessonTest — всё попадает в ref, из которого читает
+  // markLessonProgress вместо устаревшего замыкания.
+  useEffect(() => {
+    completedIdsRef.current = new Set(
+      lessonProgress.filter(p => p.completed).map(p => p.lesson_id),
+    );
+  }, [lessonProgress]);
+
+  // Сбрасываем "one-shot" защиту завершения курса при смене курса/enrollment,
+  // чтобы повторный вход в тот же курс мог снова корректно завершиться.
+  useEffect(() => {
+    courseCompletionStartedRef.current = { value: false };
+    markInFlightRef.current = new Set();
+  }, [enrollmentId]);
 
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
@@ -255,26 +280,46 @@ export function useCourseLearning() {
       if (autoAdvance) goToNextLesson();
       return;
     }
-    if (isLessonCompleted(currentLesson.id)) { if (autoAdvance) goToNextLesson(); return; }
 
-    await saveLessonTime();
-    const { error } = await supabase.from('lesson_progress').upsert({
-      lesson_id: currentLesson.id, user_id: user.id, completed: true, completed_at: new Date().toISOString()
-    }, { onConflict: 'user_id,lesson_id' });
-
-    if (error) {
-      const { error: insertError } = await supabase.from('lesson_progress').insert({
-        lesson_id: currentLesson.id, user_id: user.id, completed: true, completed_at: new Date().toISOString()
-      });
-      if (insertError) { console.error('Error:', insertError); toast.error('Ошибка сохранения прогресса'); return; }
-    }
-
-    setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== currentLesson.id), { lesson_id: currentLesson.id, completed: true }]);
-    const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
-    await supabase.from('enrollments').update({ progress: newProgress }).eq('id', enrollmentId);
-
-    if (newProgress >= 100) { await handleCourseCompletion(); } else { toast.success('Урок завершён!'); }
-    if (autoAdvance) goToNextLesson();
+    const lessonId = currentLesson.id;
+    await markLessonProgress({
+      lessonId,
+      userId: user.id,
+      enrollmentId,
+      totalLessons: lessons.length,
+      autoAdvance,
+      state: {
+        inFlight: markInFlightRef.current,
+        completed: completedIdsRef.current,
+        courseCompletionStarted: courseCompletionStartedRef.current,
+      },
+      deps: {
+        saveLessonTime: () => saveLessonTime(),
+        upsertLessonProgress: async (lid, uid) => {
+          const { error } = await supabase.from('lesson_progress').upsert({
+            lesson_id: lid, user_id: uid, completed: true, completed_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,lesson_id' });
+          if (!error) return { error: null };
+          // Legacy fallback: некоторые окружения не имеют уникального индекса,
+          // используемого onConflict. Пробуем обычный insert.
+          const { error: insertError } = await supabase.from('lesson_progress').insert({
+            lesson_id: lid, user_id: uid, completed: true, completed_at: new Date().toISOString(),
+          });
+          return { error: insertError ?? null };
+        },
+        updateEnrollmentProgress: async (eid, progress) => {
+          const { error } = await supabase.from('enrollments').update({ progress }).eq('id', eid);
+          return { error: error ?? null };
+        },
+        handleCourseCompletion: () => handleCourseCompletion(),
+        goToNextLesson,
+        onProgressUpdated: (completedIds) => {
+          setLessonProgress(completedIds.map(id => ({ lesson_id: id, completed: true })));
+        },
+        toastSuccess: (msg) => toast.success(msg),
+        toastError: (msg) => toast.error(msg),
+      },
+    });
   };
 
   const resetCourseProgress = async () => {
