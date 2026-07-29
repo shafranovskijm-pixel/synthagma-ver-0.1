@@ -4,6 +4,8 @@ import { ArrowLeft, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateOrganizationDocumentData } from "@/lib/invalidateOrganizationQueries";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudentDetailCardLogic } from "@/hooks/useStudentDetailCard";
@@ -157,6 +159,7 @@ export function StudentDetailsTab() {
     loadStudent(true);
   }, [loadStudent]);
 
+  const qc = useQueryClient();
   const h = useStudentDetailCardLogic({
     isOpen: !!student,
     student,
@@ -164,6 +167,12 @@ export function StudentDetailsTab() {
     enrollments,
     onStudentUpdated: () => {
       loadStudent(false);
+      // Row-level changes (name, credentials, verification, block) surface
+      // in the paginated student list — refresh those rows.
+      d.refreshStudentRows();
+    },
+    onStudentDocumentsUpdated: () => {
+      invalidateOrganizationDocumentData(qc, organizationId);
     },
   });
 

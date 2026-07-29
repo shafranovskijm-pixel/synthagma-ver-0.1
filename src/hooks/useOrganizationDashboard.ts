@@ -24,6 +24,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchStudentsByUserIds, fetchStudentPasswordsForUsers } from "@/api/students";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/queryKeys";
+import {
+  invalidateOrganizationStudentRows,
+  invalidateOrganizationEnrollmentData,
+  invalidateOrganizationStudentPopulation,
+} from "@/lib/invalidateOrganizationQueries";
 import { toast } from "sonner";
 
 export function useOrganizationDashboard() {
@@ -119,18 +124,35 @@ export function useOrganizationDashboard() {
     });
   }, [rawCourses, courseOverviewMap]);
 
-  // Unified refreshData: refresh the light loader AND invalidate every
-  // paginated / aggregated query key so the whole dashboard sees fresh
-  // numbers after mutations.
+  // Phase 4B.1.c.2.b — split refresh callbacks. Callers pick the smallest
+  // one that matches their mutation so we never re-fetch base courses /
+  // categories / companies (the loader) after a student-scoped change,
+  // and never invalidate counts / group-counts / course overview when they
+  // haven't changed.
+  const refreshBaseData = useCallback(() => {
+    refreshLoader();
+  }, [refreshLoader]);
+
+  const refreshStudentRows = useCallback(() => {
+    invalidateOrganizationStudentRows(qc, organizationId);
+  }, [qc, organizationId]);
+
+  const refreshEnrollmentData = useCallback(() => {
+    invalidateOrganizationEnrollmentData(qc, organizationId);
+  }, [qc, organizationId]);
+
+  const refreshStudentPopulation = useCallback(() => {
+    invalidateOrganizationStudentPopulation(qc, organizationId);
+  }, [qc, organizationId]);
+
+  // Broad manual refresh — used by the toolbar "Обновить" button and by
+  // top-level flows (e.g. course deletion) that touch both base loader
+  // data and student aggregates.
   const refreshData = useCallback(() => {
     refreshLoader();
-    if (!organizationId) return;
-    qc.invalidateQueries({ queryKey: qk.org.dashboardSummary(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.courseOverview(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentsCounts(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
-  }, [refreshLoader, organizationId, qc]);
+    invalidateOrganizationStudentPopulation(qc, organizationId);
+  }, [refreshLoader, qc, organizationId]);
+
 
   // Update category actions with organizationId
   useEffect(() => {
@@ -173,18 +195,29 @@ export function useOrganizationDashboard() {
   // Company management
   const companyActions = useCompanyActions();
 
-  // Enrollment actions
-  const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshData);
+  // Enrollment actions — this hook also handles bulk archive, so it needs
+  // full student-population invalidation (rows + counts + summary + overview).
+  const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshStudentPopulation);
 
-  // Student management (minimal — dialog + create only)
+  // Student management (creation flow only). Creating a profile changes
+  // the population, group membership (nulls), summary, and — when a course
+  // is picked — the course overview.
   const studentManagement = useStudentManagement({
     organizationId,
-    onRefresh: refreshData,
+    onRefresh: refreshStudentPopulation,
     checkStudentLimit: () => checkLimit('student'),
   });
 
-  // Student actions
-  const studentActions = useStudentActions(organizationId, organizationName, refreshData);
+  // Student actions — split into two callbacks:
+  //  • onRefreshRows        — credential / profile-row updates (rows only).
+  //  • onRefreshPopulation  — soft-delete/archive (rows+counts+aggregates).
+  const studentActions = useStudentActions(
+    organizationId,
+    organizationName,
+    refreshStudentRows,
+    refreshStudentPopulation,
+  );
+
 
   // Dialog hooks
   const courseDocsDialog = useCourseDocsDialog();
@@ -328,6 +361,11 @@ export function useOrganizationDashboard() {
     organizationId, organizationName, isFrdoEnabled, isAdminView,
     courses, setCourses,
     companies, stats, documentsStats, refreshData,
+    // Phase 4B.1.c.2.b — granular refresh helpers for mutation-specific
+    // invalidation. Consumers should prefer these over `refreshData` so
+    // the base loader (courses/categories/companies) does not re-fetch
+    // after every student-scoped change.
+    refreshBaseData, refreshStudentRows, refreshEnrollmentData, refreshStudentPopulation,
     isLoadingCourses,
     // Phase 4B.1.c.2.a — honest loading/error/success state for the
     // aggregated summary + course overview RPCs. `stats`/`documentsStats`

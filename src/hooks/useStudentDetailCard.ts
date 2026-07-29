@@ -113,10 +113,16 @@ interface UseStudentDetailCardLogicProps {
   organizationId: string;
   enrollments?: EnrollmentInfo[];
   onStudentUpdated?: () => void;
+  /**
+   * Phase 4B.1.c.2.b — fired after identity documents are added / removed.
+   * Callers should invalidate document-related org queries here without
+   * touching enrollment / course-overview keys.
+   */
+  onStudentDocumentsUpdated?: () => void;
 }
 
 export function useStudentDetailCardLogic({
-  isOpen, student, organizationId, enrollments = [], onStudentUpdated,
+  isOpen, student, organizationId, enrollments = [], onStudentUpdated, onStudentDocumentsUpdated,
 }: UseStudentDetailCardLogicProps) {
   const [activeTab, setActiveTab] = useState("profile");
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
@@ -399,7 +405,7 @@ export function useStudentDetailCardLogic({
       const docNames: Record<string, string> = { passport: "Паспорт", birth_certificate: "Свидетельство о рождении", snils: "СНИЛС", education_document: "Документ об образовании" };
       const { error: insertError } = await supabase.from("student_identity_documents").insert({ user_id: student.user_id, organization_id: organizationId, type: selectedDocType, name: docNames[selectedDocType] || file.name, file_url: fileName, file_path: fileName });
       if (insertError) throw insertError;
-      toast.success("Документ загружен"); loadStudentData();
+      toast.success("Документ загружен"); loadStudentData(); onStudentDocumentsUpdated?.();
     } catch (error) { console.error("Error uploading:", error); toast.error("Ошибка загрузки"); }
     finally { setUploadingType(null); setSelectedDocType(null); if (fileInputRef.current) fileInputRef.current.value = ""; }
   };
@@ -408,7 +414,7 @@ export function useStudentDetailCardLogic({
     try {
       if (doc.file_url) { const path = extractStoragePath(doc.file_url, "student-documents"); if (path) await supabase.storage.from("student-documents").remove([path]); }
       const { error } = await supabase.from("student_identity_documents").delete().eq("id", doc.id);
-      if (error) throw error; toast.success("Документ удалён"); loadStudentData();
+      if (error) throw error; toast.success("Документ удалён"); loadStudentData(); onStudentDocumentsUpdated?.();
     } catch (error) { console.error("Error deleting:", error); toast.error("Ошибка удаления"); }
   };
 

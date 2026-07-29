@@ -21,6 +21,12 @@ import {
 } from "@/api/students";
 import { toast } from "sonner";
 import { qk } from "@/lib/queryKeys";
+import {
+  invalidateOrganizationStudentRows,
+  invalidateOrganizationStudentCounters,
+  invalidateOrganizationEnrollmentData,
+  invalidateOrganizationStudentPopulation,
+} from "@/lib/invalidateOrganizationQueries";
 
 interface StudentGroup {
   id: string;
@@ -319,17 +325,27 @@ export function useStudents(
 
 
   // ---- Mutations & helpers ----
-  const invalidateStudents = useCallback(() => {
-    if (!organizationId) return;
-    qc.invalidateQueries({ queryKey: qk.org.studentsPageAll(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentsCounts(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
+  // Phase 4B.1.c.2.b — targeted invalidation per mutation type. `refreshRows`
+  // is a lightweight helper for row-level updates that don't change counts
+  // or aggregates (e.g. re-assigning a group).
+  const invalidatePopulation = useCallback(() => {
+    invalidateOrganizationStudentPopulation(qc, organizationId);
   }, [qc, organizationId]);
+
+  const invalidateEnrollment = useCallback(() => {
+    invalidateOrganizationEnrollmentData(qc, organizationId);
+  }, [qc, organizationId]);
+
+  const invalidateRows = useCallback(() => {
+    invalidateOrganizationStudentRows(qc, organizationId);
+  }, [qc, organizationId]);
+
+  const refreshRows = invalidateRows;
 
   const refreshGroups = useCallback(() => {
     if (!organizationId) return;
     qc.invalidateQueries({ queryKey: qk.org.studentGroups(organizationId) });
-    qc.invalidateQueries({ queryKey: qk.org.studentGroupCounts(organizationId) });
+    invalidateOrganizationStudentCounters(qc, organizationId);
   }, [qc, organizationId]);
 
   const toggleSelection = useCallback((uniqueId: string) => {
@@ -367,25 +383,25 @@ export function useStudents(
     if (result.data?.is_no_login) toast.success(result.data.message || "Ученик добавлен");
     else if (result.data?.is_existing) toast.success(result.data.message || "Ученик зачислен на курс");
     else toast.success(`Ученик создан. Пароль: ${result.data?.password} (сохраните его!)`);
-    invalidateStudents();
+    invalidatePopulation();
     return true;
-  }, [organizationId, invalidateStudents]);
+  }, [organizationId, invalidatePopulation]);
 
   const enrollToCourse = useCallback(async (userId: string, courseId: string): Promise<boolean> => {
     const result = await enrollStudent(userId, courseId);
     if (!result.success) { toast.error(result.error || "Ошибка зачисления"); return false; }
     toast.success("Ученик зачислен на курс");
-    invalidateStudents();
+    invalidateEnrollment();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateEnrollment]);
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
     const success = await apiUnenrollStudent(enrollmentId);
     if (!success) { toast.error("Ошибка отчисления"); return false; }
     toast.success("Ученик отчислен с курса");
-    invalidateStudents();
+    invalidateEnrollment();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateEnrollment]);
 
   const bulkEnroll = useCallback(async (courseId: string) => {
     const userIds = getSelectedUserIds();
@@ -393,9 +409,9 @@ export function useStudents(
     if (result.success > 0) toast.success(`Зачислено: ${result.success} учеников`);
     if (result.failed > 0) toast.error(`Ошибок: ${result.failed}`);
     setSelectedStudentIds(new Set());
-    invalidateStudents();
+    invalidateEnrollment();
     return result;
-  }, [getSelectedUserIds, invalidateStudents]);
+  }, [getSelectedUserIds, invalidateEnrollment]);
 
   const bulkUnenroll = useCallback(async () => {
     const enrollmentIds = Array.from(selectedStudentIds).map(id => {
@@ -406,9 +422,9 @@ export function useStudents(
     if (result.success > 0) toast.success(`Отчислено: ${result.success} учеников`);
     if (result.failed > 0) toast.error(`Ошибок: ${result.failed}`);
     setSelectedStudentIds(new Set());
-    invalidateStudents();
+    invalidateEnrollment();
     return result;
-  }, [selectedStudentIds, students, invalidateStudents]);
+  }, [selectedStudentIds, students, invalidateEnrollment]);
 
   const bulkDelete = useCallback(async () => {
     const userIds = getSelectedUserIds();
@@ -420,17 +436,17 @@ export function useStudents(
     if (success > 0) toast.success(`Удалено: ${success} учеников`);
     if (failed > 0) toast.error(`Ошибок: ${failed}`);
     setSelectedStudentIds(new Set());
-    invalidateStudents();
+    invalidatePopulation();
     return { success, failed };
-  }, [getSelectedUserIds, invalidateStudents]);
+  }, [getSelectedUserIds, invalidatePopulation]);
 
   const updateCompany = useCallback(async (userId: string, companyId: string | null) => {
     const ok = await updateStudentCompany(userId, companyId);
     if (!ok) { toast.error("Ошибка обновления компании"); return false; }
     toast.success("Компания обновлена");
-    invalidateStudents();
+    invalidateRows();
     return true;
-  }, [invalidateStudents]);
+  }, [invalidateRows]);
 
   const dropFromSelection = useCallback((userId: string) => {
     setSelectedStudentIds(prev => {
@@ -446,29 +462,30 @@ export function useStudents(
     if (!ok) { toast.error("Ошибка удаления ученика"); return false; }
     toast.success("Ученик удалён");
     dropFromSelection(userId);
-    invalidateStudents();
+    invalidatePopulation();
     return true;
-  }, [invalidateStudents, dropFromSelection]);
+  }, [invalidatePopulation, dropFromSelection]);
 
-  const refresh = useCallback(() => { invalidateStudents(); }, [invalidateStudents]);
+  const refresh = useCallback(() => { invalidatePopulation(); }, [invalidatePopulation]);
 
   const archiveStudent = useCallback(async (userId: string) => {
     const ok = await setStudentArchived(userId, true);
     if (!ok) { toast.error("Не удалось перенести в архив"); return false; }
     toast.success("Ученик перенесён в архив");
     dropFromSelection(userId);
-    invalidateStudents();
+    invalidatePopulation();
     return true;
-  }, [invalidateStudents, dropFromSelection]);
+  }, [invalidatePopulation, dropFromSelection]);
 
   const unarchiveStudent = useCallback(async (userId: string) => {
     const ok = await setStudentArchived(userId, false);
     if (!ok) { toast.error("Не удалось вернуть из архива"); return false; }
     toast.success("Ученик возвращён из архива");
     dropFromSelection(userId);
-    invalidateStudents();
+    invalidatePopulation();
     return true;
-  }, [invalidateStudents, dropFromSelection]);
+  }, [invalidatePopulation, dropFromSelection]);
+
 
 
   // ---- Pagination controls ----

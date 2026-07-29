@@ -126,7 +126,12 @@ export function CourseDetailsTab() {
         onEnrollStudent={() => {}}
         onCourseDeleted={handleBack}
         onCourseUpdated={() => loadCourse(false)}
-        onRefreshStudents={() => { /* useCourseDetails invalidates its own queries */ }}
+        onRefreshStudents={() => {
+          // Phase 4B.1.c.2.b — students changed inside this course:
+          // refresh org-wide student rows + aggregates, but skip the base
+          // loader (courses/categories/companies are unaffected).
+          d.refreshStudentPopulation();
+        }}
         onBack={handleBack}
       />
     </div>
