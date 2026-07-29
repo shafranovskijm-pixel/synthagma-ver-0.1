@@ -171,7 +171,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
       if (data?.error) { toast.error(data.error); return; }
       toast.success(data?.message || "Ученик создан и добавлен в группу");
       setNewStudentName(""); setNewStudentEmail(""); setShowNewStudentForm(false);
-      handleOpenAddStudents(selectedGroupForAdd); loadGroups(); onRefreshStudents?.();
+      handleOpenAddStudents(selectedGroupForAdd); loadGroups(); onStudentPopulationChanged?.();
     } catch (err: any) { toast.error("Ошибка создания ученика: " + (err.message || "")); }
     finally { setCreatingStudent(false); }
   };
