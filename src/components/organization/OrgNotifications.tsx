@@ -159,7 +159,8 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
     if (error) {
       console.error("Error marking as read:", error);
       toast.error("Не удалось отметить как прочитанное");
-      return;
+      // Не маскируем локально как прочитанное и сообщаем вызывающему коду об ошибке.
+      throw error;
     }
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
   };
@@ -275,8 +276,13 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                 <div
                   key={n.id}
                   className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
-                  onClick={() => {
-                    markAsRead(n.id);
+                  onClick={async () => {
+                    try {
+                      await markAsRead(n.id);
+                    } catch (err) {
+                      console.error("markAsRead failed, aborting navigation", err);
+                      return;
+                    }
                     if (n.type === "subscription_expiry" && n.related_id) {
                       setIsOpen(false);
                       navigate(`/invoice/${n.related_id}`);
