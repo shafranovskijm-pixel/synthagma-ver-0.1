@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import type { Course, CourseCategory, Enrollment } from "@/types";
 
 // ============= Courses API =============
