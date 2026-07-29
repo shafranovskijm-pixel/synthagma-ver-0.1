@@ -100,6 +100,8 @@ export function useCourseDetails(
   // Server-side filters
   const [studentsSearchQuery, setStudentsSearchQuery] = useState("");
   const [studentsStatusFilter, setStudentsStatusFilter] = useState<"all" | "active" | "completed">("all");
+  const [studentsResultFilter, setStudentsResultFilter] = useState<"all" | "passed" | "failed" | "not_started">("all");
+
 
   // Enroll popover
   const [enrollPopoverOpen, setEnrollPopoverOpen] = useState(false);
