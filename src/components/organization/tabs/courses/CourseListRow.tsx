@@ -1,4 +1,5 @@
 import React from "react";
+import { CountValue } from "./courseCountsState";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
