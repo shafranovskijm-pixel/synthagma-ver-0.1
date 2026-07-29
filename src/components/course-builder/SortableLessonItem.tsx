@@ -15,8 +15,9 @@ import { useLessonTTS } from "@/hooks/useLessonTTS";
 
 import { toast } from "sonner";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
-import { BlockEditor, blocksToJson } from "@/components/course-builder/block-editor";
-import type { ContentBlock } from "@/components/course-builder/block-editor";
+import { BlockEditor } from "@/components/course-builder/block-editor/BlockEditorMain";
+import { blocksToJson } from "@/components/course-builder/block-editor/parsers";
+import type { ContentBlock } from "@/components/course-builder/block-editor/types";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { useSortable } from "@dnd-kit/sortable";
