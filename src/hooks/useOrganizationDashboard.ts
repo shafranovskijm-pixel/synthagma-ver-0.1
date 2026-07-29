@@ -50,8 +50,8 @@ export function useOrganizationDashboard() {
 
   const {
     organizationId, organizationName, isFrdoEnabled, isAdminView,
-    courses: rawCourses, setCourses, students, setStudents, allProfiles, setAllProfiles,
-    companies, setStats, studentDocsByUser,
+    courses: rawCourses, setCourses,
+    companies,
     isLoadingCourses,
     refreshData: refreshLoader,
   } = dataLoader;
