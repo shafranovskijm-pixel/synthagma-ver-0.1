@@ -15,7 +15,8 @@ import { useLessonTTS } from "@/hooks/useLessonTTS";
 
 import { toast } from "sonner";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
-import { BlockEditor, blocksToJson, ContentBlock } from "@/components/course-builder/BlockEditor";
+import { BlockEditor, blocksToJson } from "@/components/course-builder/block-editor";
+import type { ContentBlock } from "@/components/course-builder/block-editor";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { useSortable } from "@dnd-kit/sortable";

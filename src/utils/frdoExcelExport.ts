@@ -310,6 +310,9 @@ export async function exportFRDOExcel(
 export function formatDateForFRDO(dateStr: string): string {
   if (!dateStr) return "";
   try {
+    // Treat plain YYYY-MM-DD as a calendar date (no timezone shift).
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
+    if (m) return `${m[3]}.${m[2]}.${m[1]}`;
     return format(new Date(dateStr), "dd.MM.yyyy");
   } catch {
     return dateStr;
