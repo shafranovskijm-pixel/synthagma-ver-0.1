@@ -680,4 +680,118 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
   );
 }
 
+function toneClass(tone: "success" | "danger" | "neutral" | "muted"): string {
+  switch (tone) {
+    case "success": return "bg-sigma-green/10 text-sigma-green border-sigma-green/20";
+    case "danger":  return "bg-destructive/10 text-destructive border-destructive/20";
+    case "neutral": return "bg-secondary text-foreground border-border";
+    case "muted":
+    default:        return "bg-muted text-muted-foreground border-transparent";
+  }
+}
+
+function CourseStudentRow({
+  student, onOpenDetails, onResetProgress,
+}: {
+  student: CourseStudentPageRow;
+  onOpenDetails: (s: CourseStudentPageRow) => void;
+  onResetProgress: (s: CourseStudentPageRow) => void;
+}) {
+  const badge = formatCourseTestResult(student);
+  const progressPct = Math.min(student.progress ?? 0, 100);
+  const isClickable = student.tests_total > 0 && student.tests_attempted > 0;
+  return (
+    <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl gap-3">
+      <div className="min-w-0 flex-1">
+        <div className="font-medium truncate">{student.name}</div>
+        <div className="text-sm text-muted-foreground truncate">{student.email}</div>
+        <div className="text-xs text-muted-foreground mt-1">
+          {progressPct >= 100
+            ? "Курс завершён"
+            : `Пройдено ${Math.round(progressPct)}% курса`}
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={!isClickable}
+          onClick={() => isClickable && onOpenDetails(student)}
+          className={cn(
+            "text-right rounded-lg px-3 py-2 border transition-colors",
+            toneClass(badge.tone),
+            isClickable ? "hover:brightness-95 cursor-pointer" : "cursor-default"
+          )}
+          title={isClickable ? "Показать подробности" : undefined}
+        >
+          <div className="text-sm font-semibold whitespace-nowrap">{badge.title}</div>
+          {badge.subtitle && (
+            <div className="text-[11px] opacity-80 whitespace-nowrap">{badge.subtitle}</div>
+          )}
+        </button>
+        <span className={`px-2 py-1 rounded-full text-xs ${student.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'}`}>
+          {student.status === 'completed' ? 'Завершил' : 'Активный'}
+        </span>
+        {student.progress > 0 && student.enrollment_id && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={() => onResetProgress(student)}
+            title="Сбросить прогресс"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CourseStudentTestDetailsDialog({
+  student, onClose,
+}: { student: CourseStudentPageRow | null; onClose: () => void }) {
+  const details: TestResultDetail[] = student?.test_details ?? [];
+  return (
+    <Dialog open={!!student} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="rounded-2xl max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Результаты тестирования</DialogTitle>
+          <DialogDescription>{student?.name}</DialogDescription>
+        </DialogHeader>
+        {details.length === 0 ? (
+          <div className="py-6 text-sm text-muted-foreground text-center">Нет данных о попытках.</div>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {details.map((d) => {
+              const percent = safePercent(d.score, d.max_score, d.percent);
+              return (
+                <div key={d.lesson_id} className="rounded-xl border border-border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-sm truncate">{d.lesson_title || "Тест"}</div>
+                    <span className={cn(
+                      "text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap",
+                      d.passed ? "bg-sigma-green/10 text-sigma-green border-sigma-green/20"
+                               : "bg-destructive/10 text-destructive border-destructive/20"
+                    )}>
+                      {d.passed ? "Сдан" : "Не сдан"}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <div>Баллы: <span className="text-foreground font-medium">{d.score} из {d.max_score}</span></div>
+                    <div>Результат: <span className="text-foreground font-medium">{percent != null ? `${percent}%` : "—"}</span></div>
+                    <div>Проходной балл: <span className="text-foreground font-medium">{d.passing_score}%</span></div>
+                    <div>Попыток: <span className="text-foreground font-medium">{d.attempts_used}{d.max_attempts ? ` из ${d.max_attempts}` : ""}</span></div>
+                    <div className="col-span-2">Дата: <span className="text-foreground font-medium">{d.completed_at ? new Date(d.completed_at).toLocaleString("ru-RU") : "—"}</span></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 
