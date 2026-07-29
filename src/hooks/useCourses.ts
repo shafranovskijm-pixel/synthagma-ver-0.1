@@ -112,6 +112,8 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
           fetchCategories(organizationId)
         ]);
 
+        if (cancelled) return;
+
         // Preserve known counts across the base list refresh so a later
         // overview failure doesn't reset counters to zero.
         setCourses((prev) => {
@@ -183,7 +185,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     return () => {
       cancelled = true;
     };
-  }, [organizationId, refreshKey, hasPreloadedData, parentReady]);
+  }, [organizationId, refreshKey, hasPreloadedData, parentReady, queryClient]);
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
