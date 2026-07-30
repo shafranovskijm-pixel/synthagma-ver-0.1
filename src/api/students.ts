@@ -534,10 +534,17 @@ export async function fetchOrganizationStudentsCounts(
   } as any);
   if (error) throw error;
   const row = (data ?? [])[0] as any | undefined;
+  // Phase 5D.1 — a missing row is NOT a real zero. Surfacing 0/0/0 here made
+  // organizations look empty after a partially failed RPC call.
+  if (!row) {
+    throw new Error(
+      `get_organization_students_counts вернул пустой результат для организации ${organizationId}`,
+    );
+  }
   return {
-    active_count: Number(row?.active_count ?? 0),
-    archived_count: Number(row?.archived_count ?? 0),
-    total_count: Number(row?.total_count ?? 0),
+    active_count: Number(row.active_count ?? 0),
+    archived_count: Number(row.archived_count ?? 0),
+    total_count: Number(row.total_count ?? 0),
   };
 }
 
