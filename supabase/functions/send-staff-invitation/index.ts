@@ -296,25 +296,33 @@ serve(async (req) => {
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      return new Response(JSON.stringify({ error: insertError.message }), {
+      return new Response(JSON.stringify({ error: "Не удалось создать приглашение" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Build accept URL — по умолчанию синтагма.рф (punycode), т.к. sintagma.com.ru не работает в РФ без VPN.
+    // Build accept URL.
+    // Production по умолчанию — синтагма.рф (punycode), т.к. sintagma.com.ru не работает в РФ без VPN.
+    // PUBLIC_APP_URL (если задан) имеет приоритет.
+    const publicAppUrl = (Deno.env.get("PUBLIC_APP_URL") || "").replace(/\/+$/, "");
+    const defaultOrigin = /^https:\/\/[^/]+$/.test(publicAppUrl) ? publicAppUrl : "https://xn--80aaiswd0ak.xn--p1ai";
     const rawOrigin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, '') || "";
     const allowedOriginPatterns = [
       /^https:\/\/xn--80aaiswd0ak\.xn--p1ai$/,
       /^https:\/\/синтагма\.рф$/,
+      // тестовые/служебные окружения
       /^http:\/\/localhost(:\d+)?$/,
+      /^https:\/\/sintagma\.online$/,
+      /^https:\/\/[a-z0-9-]+\.twc1\.net$/,
       /^https:\/\/[a-z0-9-]+\.lovable\.(app|dev)$/,
       /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.lovable\.app$/,
       /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
     ];
     const origin = allowedOriginPatterns.some((r) => r.test(rawOrigin))
       ? rawOrigin
-      : "https://xn--80aaiswd0ak.xn--p1ai";
+      : defaultOrigin;
     const acceptUrl = `${origin}/accept-invitation?token=${token}`;
+
 
     const html = buildHtml({
       recipientName: recipient_name,
