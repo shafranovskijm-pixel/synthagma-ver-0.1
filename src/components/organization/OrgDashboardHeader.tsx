@@ -222,8 +222,15 @@ export function OrgDashboardHeader() {
           {/* Radio */}
           <RadioPlayerButton />
 
-          {/* Что нового — bell с бейджем */}
-          <AnnouncementsBell />
+          {/* Новости платформы */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="hover:scale-105 transition-transform">
+                <AnnouncementsBell />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Новости платформы</TooltipContent>
+          </Tooltip>
 
           {/* Notifications */}
           {organizationId && (
@@ -233,7 +240,7 @@ export function OrgDashboardHeader() {
                   <OrgNotifications organizationId={organizationId} />
                 </div>
               </TooltipTrigger>
-              <TooltipContent>Уведомления</TooltipContent>
+              <TooltipContent>Уведомления об обучении</TooltipContent>
             </Tooltip>
           )}
 
