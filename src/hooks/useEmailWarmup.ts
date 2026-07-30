@@ -25,7 +25,10 @@ const UUID_RE = /^[0-9a-f-]{36}$/i;
  *  - Surface `errorKind` via classifyDataError instead of silently returning null.
  *  - On background refetch failure, keep the previously loaded status intact.
  *  - `configured === false` is a valid status (SMTP not set), not an error.
- *  - Never leave the hook in an eternal `loading=true` after an error.
+ *
+ * Phase 5C.1.c.2:
+ *  - Request sequence guard: a response from a previous `scopeKey` (or a previous
+ *    in-flight request for the same key) must never mutate status/loading/errorKind.
  */
 export function useEmailWarmup(scopeKey: string | null) {
   const [status, setStatus] = useState<WarmupStatus | null>(null);
@@ -33,15 +36,21 @@ export function useEmailWarmup(scopeKey: string | null) {
   const [refreshing, setRefreshing] = useState(false);
   const [errorKind, setErrorKind] = useState<UserFacingErrorKind | null>(null);
   const hasDataRef = useRef(false);
+  const seqRef = useRef(0);
+  const scopeRef = useRef<string | null>(scopeKey);
 
   const refresh = useCallback(async () => {
     if (!scopeKey) return;
+    const seq = ++seqRef.current;
+    scopeRef.current = scopeKey;
+    const isCurrent = () => seqRef.current === seq && scopeRef.current === scopeKey;
     const isInitial = !hasDataRef.current;
     if (isInitial) setLoading(true);
     else setRefreshing(true);
     try {
       if (scopeKey === "platform") {
         const { data, error } = await supabase.rpc("get_warmup_status", { p_scope_key: "platform" });
+        if (!isCurrent()) return;
         if (error) {
           setErrorKind(classifyDataError(error));
           if (isInitial) setStatus(null);
@@ -56,6 +65,7 @@ export function useEmailWarmup(scopeKey: string | null) {
         const { data, error } = await supabase.rpc("get_org_email_delivery_status", {
           p_organization_id: scopeKey,
         });
+        if (!isCurrent()) return;
         if (error) {
           setErrorKind(classifyDataError(error));
           if (isInitial) setStatus(null);
@@ -109,20 +119,28 @@ export function useEmailWarmup(scopeKey: string | null) {
         hasDataRef.current = true;
       }
     } catch (err) {
+      if (!isCurrent()) return;
       setErrorKind(classifyDataError(err));
       if (isInitial) setStatus(null);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      // Only the latest request may clear the loading flags.
+      if (isCurrent()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [scopeKey]);
 
   useEffect(() => {
+    // Invalidate any in-flight request belonging to the previous scopeKey.
+    seqRef.current++;
+    scopeRef.current = scopeKey;
     hasDataRef.current = false;
     setStatus(null);
     setErrorKind(null);
+    setRefreshing(false);
     refresh();
-  }, [refresh]);
+  }, [refresh, scopeKey]);
 
   return { status, loading, refreshing, errorKind, refresh, retry: refresh };
 }
