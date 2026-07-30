@@ -99,6 +99,8 @@ export interface UseStudentsReturn {
   // Server counts loading/error state (org-wide active/archived).
   countsLoading: boolean;
   countsErrorKind: UserFacingErrorKind | null;
+  /** counts.active_count > 0 but the unfiltered first page is empty. */
+  countsInconsistent: boolean;
   retryCounts: () => void;
   // Server counts loading/error state (per group).
   groupCountsLoading: boolean;
@@ -582,6 +584,7 @@ export function useStudents(
     groupCounts,
     countsLoading,
     countsErrorKind,
+    countsInconsistent,
     retryCounts,
     groupCountsLoading,
     groupCountsErrorKind,
