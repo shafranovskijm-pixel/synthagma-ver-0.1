@@ -10738,6 +10738,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      accept_org_staff_invitation: {
+        Args: {
+          _display_name?: string
+          _token: string
+          _user_email: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       add_signature_comment_by_token: {
         Args: {
           p_author_name: string
@@ -11381,6 +11390,10 @@ export type Database = {
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
         Args: { p_email: string; p_scope: string }
+        Returns: boolean
+      }
+      is_org_owner: {
+        Args: { _organization_id: string; _user_id: string }
         Returns: boolean
       }
       is_student_profile: {

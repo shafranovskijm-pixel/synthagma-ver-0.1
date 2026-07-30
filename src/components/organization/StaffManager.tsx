@@ -42,11 +42,14 @@ const ROLES = [
   { value: "sales_manager", label: "Менеджер по продажам", icon: Shield, color: "bg-fuchsia-500/10 text-fuchsia-600", description: "Доступ только к разделу «Продажи»: воронка, лиды, КП, договоры, рассылки и компании" },
 ];
 
-const INVITATION_ROLES: StaffInvitationRole[] = ROLES.map(r => ({
+// Роль «Владелец» намеренно исключена: передача владения выполняется
+// только через OwnershipTransfer (Phase 5D.2).
+const INVITATION_ROLES: StaffInvitationRole[] = ROLES.filter(r => r.value !== "owner").map(r => ({
   value: r.value,
   label: r.label,
   description: r.description,
 }));
+
 
 const VISIBILITY = [
   { value: "all", label: "Все ученики" },
