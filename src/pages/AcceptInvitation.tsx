@@ -1,74 +1,168 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { CheckCircle2, AlertCircle, Mail, LogIn, UserPlus } from "lucide-react";
+import { CheckCircle2, AlertCircle, Mail, LogIn, UserPlus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-type Stage = "checking" | "needs_login" | "needs_signup" | "ready" | "accepting" | "success" | "error";
+type Stage =
+  | "checking"
+  | "needs_login"
+  | "needs_signup"
+  | "email_mismatch"
+  | "ready"
+  | "accepting"
+  | "success"
+  | "error";
+
+interface AcceptError {
+  message: string;
+  code?: string;
+  requestId?: string;
+  retryable?: boolean;
+}
+
+/** Достаёт JSON-тело из FunctionsHttpError, чтобы не показывать "non-2xx status code". */
+export async function extractFunctionError(error: unknown, data?: any): Promise<AcceptError> {
+  if (data && typeof data === "object" && (data as any).error) {
+    return {
+      message: String((data as any).error),
+      code: (data as any).code,
+      requestId: (data as any).request_id,
+    };
+  }
+  const anyErr = error as any;
+  const ctx = anyErr?.context;
+  if (ctx && typeof ctx.json === "function") {
+    try {
+      const body = await ctx.json();
+      if (body?.error) {
+        return { message: String(body.error), code: body.code, requestId: body.request_id };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const status: number | undefined = ctx?.status;
+  if (status === 401) return { message: "Сессия истекла — войдите повторно", code: "SESSION_EXPIRED" };
+  if (status === 404) return { message: "Приглашение не найдено", code: "NOT_FOUND" };
+  if (status === 409) return { message: "Приглашение уже принято", code: "ALREADY_ACCEPTED" };
+  if (status === 410) return { message: "Срок действия приглашения истёк", code: "EXPIRED" };
+  if (status && status >= 500) return { message: "Внутренняя ошибка сервера. Попробуйте позже.", code: "INTERNAL" };
+
+  const raw = String(anyErr?.message || "");
+  if (/failed to fetch|network/i.test(raw)) {
+    return { message: "Нет соединения с сервером. Проверьте интернет и повторите.", code: "NETWORK", retryable: true };
+  }
+  if (!raw || /non-2xx status code/i.test(raw)) {
+    return { message: "Не удалось принять приглашение. Попробуйте ещё раз.", code: "UNKNOWN", retryable: true };
+  }
+  return { message: raw };
+}
 
 export default function AcceptInvitation() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get("token") || "";
+  const nextPath = `/accept-invitation?token=${token}`;
 
   const [stage, setStage] = useState<Stage>("checking");
   const [errorMsg, setErrorMsg] = useState("");
+  const [errorCode, setErrorCode] = useState<string | undefined>();
+  const [requestId, setRequestId] = useState<string | undefined>();
+  const [canRetry, setCanRetry] = useState(false);
   const [redirectPath, setRedirectPath] = useState("/");
   const [invitationEmail, setInvitationEmail] = useState("");
+  const [currentEmail, setCurrentEmail] = useState("");
   const [invitationType, setInvitationType] = useState<string>("");
-  const [invitationFullName, setInvitationFullName] = useState<string>("");
 
-  // Signup fields for "sales" invitations
+  // Signup fields
   const [suFullName, setSuFullName] = useState("");
   const [suEmail, setSuEmail] = useState("");
   const [suPassword, setSuPassword] = useState("");
   const [suBusy, setSuBusy] = useState(false);
 
+  const failWith = (e: AcceptError) => {
+    setErrorMsg(e.message);
+    setErrorCode(e.code);
+    setRequestId(e.requestId);
+    setCanRetry(!!e.retryable);
+    setStage("error");
+  };
+
   useEffect(() => {
     const init = async () => {
       if (!token) {
-        setErrorMsg("Не указан токен приглашения");
-        setStage("error");
+        failWith({ message: "Не указан токен приглашения", code: "BAD_REQUEST" });
         return;
       }
       const { data, error } = await supabase.rpc("lookup_staff_invitation", { _token: token });
       const inv = Array.isArray(data) ? data[0] : data;
       if (error || !inv) {
-        setErrorMsg("Приглашение не найдено или ссылка неверна");
-        setStage("error");
+        failWith({ message: "Приглашение не найдено или ссылка неверна", code: "NOT_FOUND" });
         return;
       }
       if (inv.accepted_at) {
-        setErrorMsg("Это приглашение уже было принято");
-        setStage("error");
+        failWith({ message: "Это приглашение уже было принято", code: "ALREADY_ACCEPTED" });
         return;
       }
       if (new Date(inv.expires_at).getTime() < Date.now()) {
-        setErrorMsg("Срок действия приглашения истёк");
-        setStage("error");
+        failWith({ message: "Срок действия приглашения истёк", code: "EXPIRED" });
         return;
       }
-      setInvitationEmail(inv.email || "");
+      const invEmail = (inv.email || "").toLowerCase();
+      setInvitationEmail(invEmail);
       setInvitationType(inv.invitation_type || "");
-      setInvitationFullName(inv.full_name || "");
       setSuFullName(inv.full_name || "");
+      setSuEmail(inv.invitation_type === "sales" ? "" : invEmail);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setStage(inv.invitation_type === "sales" ? "needs_signup" : "needs_login");
-      } else {
-        setStage("ready");
+        setStage(inv.invitation_type === "sales" || inv.invitation_type === "organization" ? "needs_signup" : "needs_login");
+        return;
       }
+      const sessionEmail = (session.user.email || "").toLowerCase();
+      setCurrentEmail(sessionEmail);
+      if (inv.invitation_type !== "sales" && sessionEmail !== invEmail) {
+        setStage("email_mismatch");
+        return;
+      }
+      setStage("ready");
     };
     init();
   }, [token]);
 
+  const switchAccount = async () => {
+    await supabase.auth.signOut();
+    navigate(`/login?next=${encodeURIComponent(nextPath)}`);
+  };
+
+  const acceptNow = useCallback(async () => {
+    setStage("accepting");
+    try {
+      const { data, error } = await supabase.functions.invoke("accept-staff-invitation", {
+        body: { token },
+      });
+      if (error || (data as any)?.error) {
+        failWith(await extractFunctionError(error, data));
+        return;
+      }
+      const redirect = (data as any)?.redirect || "/";
+      setRedirectPath(redirect);
+      setStage("success");
+      toast.success("Приглашение принято");
+      setTimeout(() => navigate(redirect), 1500);
+    } catch (e) {
+      failWith(await extractFunctionError(e));
+    }
+  }, [token, navigate]);
+
   const handleSignUpAndAccept = async () => {
-    if (!suEmail.trim() || !suPassword || !suFullName.trim()) {
+    const targetEmail = invitationType === "sales" ? suEmail.trim().toLowerCase() : invitationEmail;
+    if (!targetEmail || !suPassword || !suFullName.trim()) {
       toast.error("Заполните все поля");
       return;
     }
@@ -79,10 +173,10 @@ export default function AcceptInvitation() {
     setSuBusy(true);
     try {
       const { data: signUp, error: suErr } = await supabase.auth.signUp({
-        email: suEmail.trim().toLowerCase(),
+        email: targetEmail,
         password: suPassword,
         options: {
-          emailRedirectTo: `${window.location.origin}/accept-invitation?token=${token}`,
+          emailRedirectTo: `${window.location.origin}${nextPath}`,
           data: { full_name: suFullName.trim() },
         },
       });
@@ -90,47 +184,20 @@ export default function AcceptInvitation() {
         toast.error(suErr.message);
         return;
       }
-      // If session immediate (auto-confirm), accept right away
-      if (signUp.session) {
-        setStage("accepting");
-        await acceptNow();
-      } else {
-        // Try sign-in (auto-confirm might still allow this)
+      if (!signUp.session) {
         const { data: signIn, error: siErr } = await supabase.auth.signInWithPassword({
-          email: suEmail.trim().toLowerCase(),
+          email: targetEmail,
           password: suPassword,
         });
         if (siErr || !signIn.session) {
-          toast.success("Подтвердите email и снова откройте ссылку");
+          toast.success("Подтвердите email и снова откройте ссылку из письма");
           return;
         }
-        setStage("accepting");
-        await acceptNow();
       }
+      setCurrentEmail(targetEmail);
+      await acceptNow();
     } finally {
       setSuBusy(false);
-    }
-  };
-
-  const acceptNow = async () => {
-    setStage("accepting");
-    try {
-      const { data, error } = await supabase.functions.invoke("accept-staff-invitation", {
-        body: { token },
-      });
-      if (error || data?.error) {
-        const msg = data?.error || error?.message || "Не удалось принять приглашение";
-        setErrorMsg(msg);
-        setStage("error");
-        return;
-      }
-      setRedirectPath(data?.redirect || "/");
-      setStage("success");
-      toast.success("Приглашение принято");
-      setTimeout(() => navigate(data?.redirect || "/"), 2000);
-    } catch (e: any) {
-      setErrorMsg(e?.message || "Ошибка");
-      setStage("error");
     }
   };
 
@@ -147,9 +214,6 @@ export default function AcceptInvitation() {
           {invitationType !== "sales" && invitationEmail && (
             <p className="text-sm text-muted-foreground">Для адреса <strong>{invitationEmail}</strong></p>
           )}
-          {invitationType === "sales" && (
-            <p className="text-sm text-muted-foreground">Зарегистрируйтесь, чтобы получить доступ к CRM Синтагмы.</p>
-          )}
         </div>
 
         {stage === "checking" && (
@@ -162,10 +226,24 @@ export default function AcceptInvitation() {
               Чтобы принять приглашение, войдите в аккаунт под этим email.
             </p>
             <Button asChild className="w-full gap-2">
-              <Link to={`/login?next=${encodeURIComponent(`/accept-invitation?token=${token}`)}`}>
+              <Link to={`/login?next=${encodeURIComponent(nextPath)}`}>
                 <LogIn className="w-4 h-4" />
                 Войти и принять
               </Link>
+            </Button>
+          </div>
+        )}
+
+        {stage === "email_mismatch" && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 space-y-2 text-sm">
+              <p className="font-medium text-destructive">Вы вошли под другим адресом</p>
+              <p className="text-muted-foreground">Приглашение: <strong>{invitationEmail}</strong></p>
+              <p className="text-muted-foreground">Текущий аккаунт: <strong>{currentEmail}</strong></p>
+            </div>
+            <Button onClick={switchAccount} className="w-full gap-2">
+              <LogIn className="w-4 h-4" />
+              Войти другим аккаунтом
             </Button>
           </div>
         )}
@@ -178,7 +256,18 @@ export default function AcceptInvitation() {
             </div>
             <div>
               <Label>Email</Label>
-              <Input type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@example.com" />
+              <Input
+                type="email"
+                value={invitationType === "sales" ? suEmail : invitationEmail}
+                onChange={e => setSuEmail(e.target.value)}
+                disabled={invitationType !== "sales"}
+                placeholder="you@example.com"
+              />
+              {invitationType !== "sales" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Регистрация возможна только на адрес приглашения.
+                </p>
+              )}
             </div>
             <div>
               <Label>Пароль</Label>
@@ -190,7 +279,7 @@ export default function AcceptInvitation() {
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               Уже есть аккаунт?{" "}
-              <Link to={`/login?next=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="text-primary underline">
+              <Link to={`/login?next=${encodeURIComponent(nextPath)}`} className="text-primary underline">
                 Войти
               </Link>
             </p>
@@ -199,9 +288,10 @@ export default function AcceptInvitation() {
 
         {stage === "ready" && (
           <div className="space-y-4">
-            <p className="text-sm text-center text-muted-foreground">
-              Нажмите кнопку, чтобы подтвердить вступление в команду.
-            </p>
+            <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-1">
+              <p className="text-muted-foreground">Приглашение: <strong>{invitationEmail || "—"}</strong></p>
+              <p className="text-muted-foreground">Текущий аккаунт: <strong>{currentEmail || "—"}</strong></p>
+            </div>
             <Button onClick={acceptNow} className="w-full">Принять приглашение</Button>
           </div>
         )}
@@ -227,9 +317,24 @@ export default function AcceptInvitation() {
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <AlertCircle className="w-12 h-12 text-destructive" />
             <p className="font-medium text-destructive">{errorMsg}</p>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/">На главную</Link>
-            </Button>
+            {requestId && (
+              <p className="text-xs text-muted-foreground">Код обращения: {requestId}</p>
+            )}
+            <div className="flex flex-wrap gap-2 justify-center">
+              {canRetry && (
+                <Button size="sm" onClick={acceptNow} className="gap-2">
+                  <RefreshCw className="w-4 h-4" /> Повторить
+                </Button>
+              )}
+              {(errorCode === "SESSION_EXPIRED" || errorCode === "NO_SESSION" || errorCode === "EMAIL_MISMATCH") && (
+                <Button size="sm" variant="outline" onClick={switchAccount} className="gap-2">
+                  <LogIn className="w-4 h-4" /> Войти другим аккаунтом
+                </Button>
+              )}
+              <Button asChild variant="outline" size="sm">
+                <Link to="/">На главную</Link>
+              </Button>
+            </div>
           </div>
         )}
       </div>
