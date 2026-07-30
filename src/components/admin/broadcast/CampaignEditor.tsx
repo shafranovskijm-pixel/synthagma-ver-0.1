@@ -16,6 +16,8 @@ import { ru } from "date-fns/locale";
 import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
 import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
+import { computeQuotaGate } from "@/lib/emailQuotaGate";
+
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
 
