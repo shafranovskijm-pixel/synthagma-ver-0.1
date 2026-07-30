@@ -154,6 +154,103 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
+    // ===== Phase 5D.2 — серверная авторизация ДО любых service-role записей =====
+    const forbidden = (message: string) => new Response(JSON.stringify({ error: message, code: "FORBIDDEN" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+    if (role === "owner") {
+      return forbidden("Роль «Владелец» нельзя выдать через приглашение");
+    }
+    if (invitation_type === "organization" && !organization_id) {
+      return new Response(JSON.stringify({ error: "Не указана организация" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (invitation_type === "company" && !company_id) {
+      return new Response(JSON.stringify({ error: "Не указана компания" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (invitation_type !== "organization" && organization_id) {
+      return new Response(JSON.stringify({ error: "organization_id недопустим для этого типа приглашения" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (invitation_type !== "company" && company_id) {
+      return new Response(JSON.stringify({ error: "company_id недопустим для этого типа приглашения" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: inviterRoleRow, error: inviterRoleErr } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", inviter.id)
+      .maybeSingle();
+    if (inviterRoleErr) {
+      console.error("role lookup error:", inviterRoleErr.message);
+      return new Response(JSON.stringify({ error: "Внутренняя ошибка сервера" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const isGlobalAdmin = inviterRoleRow?.role === "admin";
+
+    if (!isGlobalAdmin) {
+      if (invitation_type === "admin" || invitation_type === "sales") {
+        return forbidden("Недостаточно прав для создания приглашения");
+      }
+
+      if (invitation_type === "organization") {
+        const { data: ownerCheck, error: ownerErr } = await admin
+          .rpc("is_org_owner", { _user_id: inviter.id, _organization_id: organization_id });
+        if (ownerErr) {
+          console.error("is_org_owner error:", ownerErr.message);
+          return new Response(JSON.stringify({ error: "Внутренняя ошибка сервера" }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        let allowed = !!ownerCheck;
+        if (!allowed) {
+          const { data: staffRow } = await admin
+            .from("org_staff")
+            .select("role, expires_at")
+            .eq("organization_id", organization_id)
+            .eq("user_id", inviter.id)
+            .maybeSingle();
+          const active = staffRow && (!staffRow.expires_at || new Date(staffRow.expires_at) > new Date());
+          if (active) {
+            const { data: permOk } = await admin.rpc("has_org_staff_permission", {
+              _user_id: inviter.id,
+              _organization_id: organization_id,
+              _permission: "staff.write",
+            });
+            allowed = !!permOk;
+          }
+        }
+        if (!allowed) return forbidden("Недостаточно прав для приглашения сотрудников этой организации");
+      }
+
+      if (invitation_type === "company") {
+        const { data: companyRow, error: companyErr } = await admin
+          .from("companies")
+          .select("user_id")
+          .eq("id", company_id)
+          .maybeSingle();
+        if (companyErr) {
+          console.error("company lookup error:", companyErr.message);
+          return new Response(JSON.stringify({ error: "Внутренняя ошибка сервера" }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (!companyRow || companyRow.user_id !== inviter.id) {
+          return forbidden("Недостаточно прав для приглашения в эту компанию");
+        }
+      }
+    }
+    // ===== /авторизация =====
+
+
     // Inviter name + organization name
     const { data: inviterProfile } = await admin
       .from("profiles")
