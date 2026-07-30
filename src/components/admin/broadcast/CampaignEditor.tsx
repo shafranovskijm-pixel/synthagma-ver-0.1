@@ -108,24 +108,15 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
     useEmailWarmup(scopeKey || null);
   const tooMany = warmup && recipients.count > warmup.remaining;
-  // Phase 5C.1.c.2: for org scope the launch is blocked whenever the quota is
-  // unknown (no organizationId, no status yet, initial loading, initial error).
-  // A background refetch with an existing status never blocks.
-  const orgMissingId = scope === "org" && !organizationId;
-  const quotaUnknown = scope === "org"
-    ? (orgMissingId || !warmup)
-    : (!warmup && (warmupLoading || !!warmupError));
-  const quotaNotConfigured = scope === "org" && !!warmup && warmup.configured === false;
-  const quotaBlocksLaunch = quotaUnknown || quotaNotConfigured;
-  const quotaBlockReason = orgMissingId
-    ? "Организация не выбрана — рассылку запустить нельзя."
-    : quotaUnknown
-    ? (warmupError
-        ? "Не удалось получить данные о лимите отправителя. Повторите загрузку."
-        : "Проверяем лимит отправителя…")
-    : quotaNotConfigured
-    ? "SMTP этой организации не настроен — рассылку запустить нельзя."
-    : null;
+  // Phase 5C.1.c.2: quota gate logic lives in one testable place.
+  const { blocksLaunch: quotaBlocksLaunch, reason: quotaBlockReason } = computeQuotaGate({
+    scope,
+    organizationId,
+    status: warmup,
+    loading: warmupLoading,
+    errorKind: warmupError,
+  });
+
 
 
   // Apply initial data when dialog opens
