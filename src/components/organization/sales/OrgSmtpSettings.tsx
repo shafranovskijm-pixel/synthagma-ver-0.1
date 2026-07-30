@@ -27,8 +27,22 @@ export function OrgSmtpSettings({ organizationId }: Props) {
   const [dailyLimit, setDailyLimit] = useState(50);
   const [safeWarmup, setSafeWarmup] = useState(true);
 
+  // Phase 5C.1.c.2: reset the form whenever the organization changes so that no
+  // field (especially the password) leaks between organizations.
   useEffect(() => {
-    if (settings) {
+    setHost("");
+    setPort(587);
+    setUsername("");
+    setPassword("");
+    setFromEmail("");
+    setFromName("");
+    setEncryption("tls");
+    setDailyLimit(50);
+    setSafeWarmup(true);
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (settings && settings.organization_id === organizationId) {
       setHost(settings.host);
       setPort(settings.port);
       setUsername(settings.username);
@@ -38,7 +52,8 @@ export function OrgSmtpSettings({ organizationId }: Props) {
       setDailyLimit(settings.provider_daily_limit ?? 50);
       setSafeWarmup(settings.safe_warmup_enabled ?? true);
     }
-  }, [settings]);
+  }, [settings, organizationId]);
+
 
   const handleSave = async () => {
     await save({

@@ -16,6 +16,8 @@ import { ru } from "date-fns/locale";
 import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
 import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
+import { computeQuotaGate } from "@/lib/emailQuotaGate";
+
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
 
@@ -108,18 +110,16 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
     useEmailWarmup(scopeKey || null);
   const tooMany = warmup && recipients.count > warmup.remaining;
-  // Phase 5C.1.c.1: block immediate launch while quota is unknown.
-  // Background refetches keep `warmup` populated, so only initial loading blocks.
-  const quotaUnknown = !warmup && (warmupLoading || !!warmupError);
-  const quotaNotConfigured = scope === "org" && !!warmup && warmup.configured === false;
-  const quotaBlocksLaunch = quotaUnknown || quotaNotConfigured;
-  const quotaBlockReason = quotaUnknown
-    ? (warmupError
-        ? "Не удалось получить данные о лимите отправителя. Повторите загрузку."
-        : "Проверяем лимит отправителя…")
-    : quotaNotConfigured
-    ? "SMTP этой организации не настроен — рассылку запустить нельзя."
-    : null;
+  // Phase 5C.1.c.2: quota gate logic lives in one testable place.
+  const { blocksLaunch: quotaBlocksLaunch, reason: quotaBlockReason } = computeQuotaGate({
+    scope,
+    organizationId,
+    status: warmup,
+    loading: warmupLoading,
+    errorKind: warmupError,
+  });
+
+
 
   // Apply initial data when dialog opens
   useEffect(() => {

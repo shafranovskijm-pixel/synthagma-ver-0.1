@@ -20,9 +20,12 @@ export interface OrgSmtpSettings {
 
 /**
  * Phase 5C.1.c.1: distinguish "SMTP not configured" (data===null AND no error)
- * from "failed to read SMTP" (SELECT error). Never mask an RLS/network failure
- * as "not configured", never overwrite loaded settings on background refetch
- * failure.
+ * from "failed to read SMTP" (SELECT error).
+ *
+ * Phase 5C.1.c.2: stale-response guard — a SELECT belonging to a previous
+ * organizationId must never write settings, clear errors or toggle the loading
+ * flags of the current request. Settings whose organization_id no longer matches
+ * are discarded.
  */
 export function useOrgSmtp(organizationId: string | null) {
   const [settings, setSettings] = useState<OrgSmtpSettings | null>(null);
@@ -33,9 +36,14 @@ export function useOrgSmtp(organizationId: string | null) {
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const hasDataRef = useRef(false);
+  const seqRef = useRef(0);
+  const orgRef = useRef<string | null>(organizationId);
 
   const refresh = useCallback(async () => {
     if (!organizationId) return;
+    const seq = ++seqRef.current;
+    orgRef.current = organizationId;
+    const isCurrent = () => seqRef.current === seq && orgRef.current === organizationId;
     const isInitial = !hasDataRef.current;
     if (isInitial) setLoading(true);
     else setRefreshing(true);
@@ -45,32 +53,43 @@ export function useOrgSmtp(organizationId: string | null) {
         .select("organization_id, host, port, username, from_email, from_name, encryption, is_verified, last_test_at, last_test_error, provider_daily_limit, safe_warmup_enabled")
         .eq("organization_id", organizationId)
         .maybeSingle();
+      if (!isCurrent()) return;
       if (error) {
         setLoadErrorKind(classifyDataError(error));
         // Do NOT overwrite existing settings on a background refetch error.
         if (isInitial) setSettings(null);
         return;
       }
-      setSettings(data as OrgSmtpSettings | null);
+      const row = data as OrgSmtpSettings | null;
+      // Defensive: never accept a row belonging to another organization.
+      if (row && row.organization_id !== organizationId) return;
+      setSettings(row);
       setLoadErrorKind(null);
       hasDataRef.current = true;
       setLoaded(true);
     } catch (err) {
+      if (!isCurrent()) return;
       setLoadErrorKind(classifyDataError(err));
       if (isInitial) setSettings(null);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isCurrent()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [organizationId]);
 
   useEffect(() => {
+    seqRef.current++;
+    orgRef.current = organizationId;
     hasDataRef.current = false;
     setSettings(null);
     setLoaded(false);
     setLoadErrorKind(null);
+    setRefreshing(false);
+    setLoading(true);
     refresh();
-  }, [refresh]);
+  }, [refresh, organizationId]);
 
   const save = useCallback(async (input: {
     host: string; port: number; username: string; password?: string;
