@@ -32,6 +32,8 @@ const RETRY_TOAST_ID = "org-data-retry";
 
 async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unknown }>, label = "query"): Promise<T | null> {
   let lastError: unknown = null;
+  // Phase 5D.1 — at most 2 retries (3 attempts) and only for transient
+  // network errors. 401/403/42501 fail immediately.
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       const delay = attempt * 2000; // 2s, 4s
@@ -60,6 +62,14 @@ async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unkn
   throw lastError ?? new Error(`retryQuery:${label} exhausted`);
 }
 
+function describeError(error: unknown): string {
+  const kind = classifyDataError(error);
+  if (kind === "network") return "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус.";
+  if (kind === "permission") return "Недостаточно прав. Обратитесь к владельцу организации.";
+  if (kind === "unauthorized") return "Сессия истекла. Войдите заново.";
+  return "Ошибка загрузки данных";
+}
+
 export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrganizationDataLoaderProps) {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState("Организация");
@@ -67,11 +77,16 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
   const [isAdminView, setIsAdminView] = useState(false);
   const [adminViewOrgId, setAdminViewOrgId] = useState<string | null>(null);
+  /** True when resolveAdminViewOrg could not confirm the admin role (transient). */
+  const [adminResolutionUnknown, setAdminResolutionUnknown] = useState(false);
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
 
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [companiesError, setCompaniesError] = useState<string | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -92,11 +107,31 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         if (resolution.status === "admin") {
           orgId = resolution.view.id;
           if (!cancelled) {
+            setAdminResolutionUnknown(false);
             setAdminViewOrgId(resolution.view.id);
             setOrganizationName(resolution.view.name);
             setIsAdminView(true);
           }
+        } else if (resolution.status === "unknown") {
+          // Phase 5D.1 — NEVER fall back to the admin's own profile org here.
+          // Keep the selected organization + adminViewAsOrg flag and ask the
+          // user to retry; no data of any other organization is loaded.
+          if (!cancelled) {
+            setAdminResolutionUnknown(true);
+            setIsAdminView(true);
+            setIsLoadingCourses(false);
+            toast.error("Не удалось подтвердить режим просмотра", {
+              id: "admin-view-unknown",
+              duration: Infinity,
+              action: { label: "Повторить", onClick: () => setRefreshKey(prev => prev + 1) },
+            });
+          }
+          return;
         } else {
+          // status: "none" | "not_admin" — normal profile / org_staff resolution.
+          if (!cancelled) setAdminResolutionUnknown(false);
+          toast.dismiss("admin-view-unknown");
+
           const { data: profile } = await supabase
             .from("profiles")
             .select("organization_id")
@@ -128,23 +163,13 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             if (!cancelled) setIsLoadingCourses(false);
             return;
           }
-
-          const { data: orgData } = await supabase
-            .from("organizations")
-            .select("name, frdo_enabled")
-            .eq("id", orgId)
-            .maybeSingle();
-
-          if (orgData && !cancelled) {
-            setOrganizationName(orgData.name);
-            setIsFrdoEnabled(orgData.frdo_enabled || false);
-          }
         }
 
-        if (cancelled) return;
+        if (cancelled || !orgId) return;
+        toast.dismiss("admin-view-unknown");
         setOrganizationId(orgId);
 
-        // Re-fetch organization row in admin-view too (name + frdo_enabled).
+        // Organization row (name + frdo_enabled) — optional metadata.
         const { data: selectedOrgData } = await supabase
           .from("organizations")
           .select("name, frdo_enabled")
@@ -156,9 +181,9 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           setIsFrdoEnabled(selectedOrgData.frdo_enabled || false);
         }
 
-        // Light-only queries. Student/lesson counts come from the aggregate
-        // RPC in useOrganizationSummary, not from here.
-        const [coursesData, categoriesData, companiesData] = await Promise.all([
+        // Phase 5D.1 — independent result sets. A failing optional query
+        // (categories / companies) must never hide the courses list.
+        const [coursesResult, categoriesResult, companiesResult] = await Promise.allSettled([
           retryQuery(
             () => supabase
               .from("courses")
@@ -187,42 +212,59 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
         if (cancelled) return;
 
-        if (onCategoriesLoaded) onCategoriesLoaded((categoriesData || []) as CourseCategory[]);
-        setCompanies((companiesData || []) as Company[]);
+        // --- optional: categories ---
+        if (categoriesResult.status === "fulfilled") {
+          setCategoriesError(null);
+          if (onCategoriesLoaded) onCategoriesLoaded((categoriesResult.value || []) as CourseCategory[]);
+        } else {
+          console.error("[org-data] categories failed:", categoriesResult.reason);
+          setCategoriesError(describeError(categoriesResult.reason));
+        }
 
-        const rawCourses = (coursesData || []) as Array<{ id: string; title: string; description: string | null; is_published: boolean; created_at: string; category_id: string | null; duration: string | null; cover_image_url: string | null; skip_video_identification: boolean | null; sequential_lessons: boolean; allow_video_seek: boolean; price: number }>;
-        const coursesWithStats = rawCourses.map((course) => ({
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          is_published: course.is_published,
-          created_at: course.created_at,
-          lessonsCount: 0, // filled by useOrganizationSummary.courseOverview
-          studentsCount: 0, // filled by useOrganizationSummary.courseOverview
-          duration: course.duration || "—",
-          category_id: course.category_id,
-          cover_image_url: course.cover_image_url || null,
-          skip_video_identification: course.skip_video_identification ?? false,
-          sequential_lessons: course.sequential_lessons ?? false,
-          allow_video_seek: course.allow_video_seek ?? true,
-          price: course.price ?? 0,
-        }));
+        // --- optional: companies (keep previous successful data) ---
+        if (companiesResult.status === "fulfilled") {
+          setCompaniesError(null);
+          setCompanies((companiesResult.value || []) as Company[]);
+        } else {
+          console.error("[org-data] companies failed:", companiesResult.reason);
+          setCompaniesError(describeError(companiesResult.reason));
+        }
 
-        setCourses(coursesWithStats);
-        setIsLoadingCourses(false);
+        // --- required: courses ---
+        if (coursesResult.status === "fulfilled") {
+          setCoursesError(null);
+          const rawCourses = (coursesResult.value || []) as Array<{ id: string; title: string; description: string | null; is_published: boolean; created_at: string; category_id: string | null; duration: string | null; cover_image_url: string | null; skip_video_identification: boolean | null; sequential_lessons: boolean; allow_video_seek: boolean; price: number }>;
+          setCourses(rawCourses.map((course) => ({
+            id: course.id,
+            title: course.title,
+            description: course.description,
+            is_published: course.is_published,
+            created_at: course.created_at,
+            lessonsCount: 0, // filled by useOrganizationSummary.courseOverview
+            studentsCount: 0, // filled by useOrganizationSummary.courseOverview
+            duration: course.duration || "—",
+            category_id: course.category_id,
+            cover_image_url: course.cover_image_url || null,
+            skip_video_identification: course.skip_video_identification ?? false,
+            sequential_lessons: course.sequential_lessons ?? false,
+            allow_video_seek: course.allow_video_seek ?? true,
+            price: course.price ?? 0,
+          })));
+        } else {
+          // Background refetch keeps previously loaded courses on screen.
+          console.error("[org-data] courses failed:", coursesResult.reason);
+          setCoursesError(describeError(coursesResult.reason));
+          toast.error(describeError(coursesResult.reason), {
+            id: "org-data-error",
+            duration: 15000,
+            action: { label: "Повторить", onClick: () => setRefreshKey(prev => prev + 1) },
+          });
+        }
       } catch (error) {
         if (cancelled) return;
         console.error("Error fetching data:", error);
-        const kind = classifyDataError(error);
-        const message =
-          kind === "network"
-            ? "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус."
-            : kind === "permission"
-            ? "Недостаточно прав. Обратитесь к владельцу организации."
-            : kind === "unauthorized"
-            ? "Сессия истекла. Войдите заново."
-            : "Ошибка загрузки данных";
-        toast.error(message, {
+        setCoursesError(describeError(error));
+        toast.error(describeError(error), {
           id: "org-data-error",
           duration: 15000,
           action: {
@@ -248,11 +290,15 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
     isFrdoEnabled,
     isAdminView,
     adminViewOrgId,
+    adminResolutionUnknown,
     courses,
     setCourses,
     companies,
     setCompanies,
     isLoadingCourses,
+    coursesError,
+    categoriesError,
+    companiesError,
     refreshKey,
     refreshData,
   };
