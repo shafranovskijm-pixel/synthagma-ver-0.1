@@ -520,6 +520,23 @@ export function useStudents(
   const activeStudentsCount = countsQuery.data ? countsQuery.data.active_count : null;
   const archivedCount = countsQuery.data ? countsQuery.data.archived_count : null;
 
+  // Phase 5D.1 — counts say there are students, but the unfiltered first page
+  // came back empty: that is a data inconsistency, not an empty state.
+  const noFiltersActive =
+    !trimmedSearch &&
+    courseFilter === "all" &&
+    groupFilter === "all" &&
+    statusFilter === "all" &&
+    docsFilter === "all";
+  const countsInconsistent =
+    viewMode === "active" &&
+    noFiltersActive &&
+    !!countsQuery.data &&
+    countsQuery.data.active_count > 0 &&
+    pageQuery.isSuccess &&
+    !pageQuery.isFetching &&
+    students.length === 0;
+
   const countsLoading = countsQuery.isPending || countsQuery.isFetching;
   const countsErrorKind: UserFacingErrorKind | null =
     countsQuery.isError && !countsQuery.data ? classifyDataError(countsQuery.error) : null;
