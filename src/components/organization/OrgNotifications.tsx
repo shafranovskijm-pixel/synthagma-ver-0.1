@@ -196,7 +196,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Уведомления" className="relative rounded-full h-10 w-10">
+        <Button variant="ghost" size="icon" aria-label="Уведомления об обучении" className="relative rounded-full h-10 w-10">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -208,7 +208,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
       <PopoverContent className="w-[420px] p-0 rounded-2xl" align="end" sideOffset={8}>
         {/* Header */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
-          <h3 className="font-bold text-lg">Уведомления</h3>
+          <h3 className="font-bold text-lg">Уведомления об обучении</h3>
           {unreadCount > 0 && (
             <Button
               variant="ghost"

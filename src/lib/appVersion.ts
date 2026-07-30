@@ -11,10 +11,10 @@
  * сообщать, какая версия загружена у них в браузере (если кто-то видит
  * старую — нужен Ctrl+Shift+R для сброса кеша).
  */
-export const APP_VERSION = "1.0.79";
+export const APP_VERSION = "1.0.81";
 
 /**
  * Дата сборки в коротком формате DD.MM. Обновляйте вручную вместе с APP_VERSION.
  * Помогает понять, насколько свежий билд загружен у клиента.
  */
-export const BUILD_DATE_SHORT = "20.07";
+export const BUILD_DATE_SHORT = "30.07";

@@ -98,10 +98,10 @@ export function AnnouncementsBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          aria-label="Что нового"
+          aria-label="Новости платформы"
           className="relative flex h-9 w-9 items-center justify-center rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
         >
-          <Bell className="w-5 h-5" />
+          <Megaphone className="w-5 h-5" />
           {unseenCount > 0 && (
             <span
               className={cn(
