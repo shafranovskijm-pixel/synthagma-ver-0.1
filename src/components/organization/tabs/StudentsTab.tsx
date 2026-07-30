@@ -69,7 +69,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter,
     studentGroups, refreshGroups, studentGroupMap, groupCounts,
-    countsLoading, countsErrorKind, retryCounts,
+    countsLoading, countsErrorKind, countsInconsistent, retryCounts,
     groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
     removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
@@ -444,6 +444,15 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                 })()}
               </p>
               <Button variant="outline" size="sm" className="rounded-xl" onClick={refresh}>Повторить</Button>
+            </div>
+          ) : countsInconsistent ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+              <XCircle className="w-10 h-10 opacity-60" />
+              <p className="font-medium text-foreground">Данные учеников не согласованы</p>
+              <p className="text-sm max-w-md text-center">
+                По счётчику в организации есть ученики, но список вернулся пустым. Это ошибка загрузки, а не отсутствие учеников.
+              </p>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => { refresh(); retryCounts(); }}>Повторить</Button>
             </div>
           ) : students.length === 0 ? (
             panelMode === "archive" ? (
