@@ -209,11 +209,13 @@ describe("5C.1.c.2 — OrgSmtpSettings form reset on organization switch", () =>
     await waitFor(() => expect(screen.getByText("SMTP не настроен")).toBeInTheDocument());
 
     const hostB = screen.getByPlaceholderText("smtp.yandex.ru") as HTMLInputElement;
-    const userB = screen.getByPlaceholderText("noreply@example.ru") as HTMLInputElement;
+    const [userB, fromB] = screen.getAllByPlaceholderText("noreply@example.ru") as HTMLInputElement[];
     const passB = screen.getByPlaceholderText("••••••••") as HTMLInputElement;
     expect(hostB.value).toBe("");
     expect(userB.value).toBe("");
+    expect(fromB.value).toBe("");
     expect(passB.value).toBe("");
+
   });
 });
 
