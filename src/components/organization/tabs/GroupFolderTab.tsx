@@ -407,12 +407,32 @@ function FolderContents({ folder, students, viewMode, onBack }: { folder: Folder
       </div>
 
       {folder === "docs" ? (
-        <div className="p-8 text-center text-sm text-muted-foreground space-y-2">
-          <Sparkles className="w-8 h-8 mx-auto text-primary/60" />
-          <p className="font-medium text-foreground">Автогенерация пакета документов группы — в разработке</p>
-          <p>Скоро появятся: титульный лист, журнал занятий, расписание, приказы о зачислении/отчислении, протокол аттестации, книга регистрации выдачи документов и пропуски. Пока доступен «Список обучающихся» в шапке группы.</p>
+        <div className="p-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Единая система документов группы. Все документы связаны с группой и её учениками — данные переиспользуются
+            для журналов и выгрузки в ФИС ФРДО.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {getGroupDocumentTypes("docs").map(t => (
+              <div key={t.key} className="p-3 rounded-xl border border-border bg-card flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{t.title}</span>
+                    <Badge variant={t.status === "ready" ? "default" : "outline"} className="rounded-full text-[10px]">
+                      {t.status === "ready" ? "Доступно" : "Скоро"}
+                    </Badge>
+                  </div>
+                  {t.hint && <div className="mt-0.5 text-xs text-muted-foreground">{t.hint}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : students.length === 0 ? (
+
         <div className="p-8 text-center text-sm text-muted-foreground">В группе ещё нет учеников.</div>
       ) : viewMode === "grid" ? (
         <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
