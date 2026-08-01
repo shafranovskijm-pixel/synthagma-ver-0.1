@@ -215,7 +215,9 @@ export function useStudentDashboard() {
         showLibrary: s.showLibrary === true,
         showAchievements: s.showAchievements === true,
         showAiChat: s.showAiChat === true,
-        showRadio: s.showRadio !== false,
+        showRadio: s.showRadio === true,
+        showAnnouncements: s.showAnnouncements === true,
+
         catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
         studentTheme: (s.studentTheme as string | null) ?? null,
       });
