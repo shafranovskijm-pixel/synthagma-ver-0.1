@@ -54,11 +54,20 @@ export function OrgDashboardHeader() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const newIndicators = useOrgNewIndicators(organizationId);
 
+  const [showRadio, setShowRadio] = useState(false);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
+
   useEffect(() => {
     if (!organizationId) return;
-    supabase.from("organizations").select("paid_until").eq("id", organizationId).single()
-      .then(({ data }) => { if (data?.paid_until) setPaidUntil(data.paid_until); });
+    supabase.from("organizations").select("paid_until, student_dashboard_settings").eq("id", organizationId).single()
+      .then(({ data }) => {
+        if (data?.paid_until) setPaidUntil(data.paid_until);
+        const s = (data?.student_dashboard_settings ?? null) as Record<string, unknown> | null;
+        setShowRadio(s?.showRadio === true);
+        setShowAnnouncements(s?.showAnnouncements === true);
+      });
   }, [organizationId]);
+
 
   useEffect(() => {
     if (!authUser?.id) return;
@@ -220,17 +229,20 @@ export function OrgDashboardHeader() {
           </button>
 
           {/* Radio */}
-          <RadioPlayerButton />
+          {showRadio && <RadioPlayerButton />}
 
           {/* Новости платформы */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="hover:scale-105 transition-transform">
-                <AnnouncementsBell />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Новости платформы</TooltipContent>
-          </Tooltip>
+          {showAnnouncements && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="hover:scale-105 transition-transform">
+                  <AnnouncementsBell />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Новости платформы</TooltipContent>
+            </Tooltip>
+          )}
+
 
           {/* Notifications */}
           {organizationId && (
