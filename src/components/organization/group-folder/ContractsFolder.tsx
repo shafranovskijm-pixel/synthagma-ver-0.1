@@ -92,10 +92,12 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           <div className="p-10 text-center">
             <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
             <div className="text-sm text-muted-foreground mb-3">В папке ещё нет договоров</div>
-            <div className="flex items-center justify-center gap-2">
-              <Button size="sm" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />Сгенерировать</Button>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button size="sm" onClick={() => setQuickOpen(true)} disabled={students.length === 0} className="gap-1.5"><Zap className="w-4 h-4" />Быстрая генерация</Button>
+              <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />Расширенный режим</Button>
               <Button size="sm" variant="outline" onClick={() => setUpOpen(true)} className="gap-1.5"><Upload className="w-4 h-4" />Загрузить</Button>
             </div>
+
           </div>
         ) : (
           <Table>
