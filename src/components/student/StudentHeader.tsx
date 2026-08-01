@@ -23,6 +23,8 @@ interface StudentHeaderProps {
   isVideoIdentified: boolean;
   showAchievements: boolean;
   showRadio?: boolean;
+  showAnnouncements?: boolean;
+
   onShowVideoId: () => void;
   onShowConsent: () => void;
   onShowDocs: () => void;
@@ -32,7 +34,7 @@ interface StudentHeaderProps {
 
 export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
-  pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = true,
+  pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = false, showAnnouncements = false,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
   onProfileClick,
 }: StudentHeaderProps) {
@@ -94,8 +96,9 @@ export function StudentHeader({
         {showRadio && <RadioPlayerButton />}
 
 
-        {/* Что нового — bell с бейджем */}
-        <AnnouncementsBell />
+        {/* Новости платформы — скрыто по умолчанию */}
+        {showAnnouncements && <AnnouncementsBell />}
+
 
         {/* Personal notifications */}
         {user?.id && <StudentNotifications userId={user.id} />}

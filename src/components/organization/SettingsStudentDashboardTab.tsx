@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Save, Settings, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, LayoutGrid, Radio, Pencil } from "lucide-react";
+  Trophy, MessageCircle, LayoutGrid, Radio, Megaphone, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
@@ -17,6 +17,7 @@ interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   showRadio: boolean;
+  showAnnouncements: boolean;
   showWebinars: boolean;
   showTrainers: boolean;
   catalogMode: "catalog" | "assigned";
@@ -27,11 +28,13 @@ interface StudentDashboardSettings {
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
-  showRadio: true,
+  showRadio: false,
+  showAnnouncements: false,
   showWebinars: false,
   showTrainers: false,
   catalogMode: "catalog",
   studentTheme: null };
+
 
 interface Props {
   organizationId: string;
@@ -57,7 +60,9 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         setSettings({
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
-          showRadio: s.showRadio !== false,
+          showRadio: s.showRadio === true,
+          showAnnouncements: s.showAnnouncements === true,
+
           showWebinars: false,
           showTrainers: false,
           catalogMode: s.catalogMode || "catalog",
@@ -180,6 +185,26 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showRadio ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
+
+        <div className="flex items-center justify-between py-3 border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Megaphone className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium">Новости платформы</p>
+              <p className="text-sm text-muted-foreground">Кнопка новостей платформы в шапке ученика</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setSettings(prev => ({ ...prev, showAnnouncements: !prev.showAnnouncements }))}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAnnouncements ? 'bg-primary' : 'bg-muted'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAnnouncements ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+
 
         <div className="flex items-center justify-between py-3 border-t border-border">
           <div className="flex items-center gap-3">

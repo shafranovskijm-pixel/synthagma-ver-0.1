@@ -456,6 +456,8 @@ export default function StudentDashboard() {
           isVideoIdentified={isVideoIdentified}
           showAchievements={dashboardSettings.showAchievements}
           showRadio={dashboardSettings.showRadio}
+          showAnnouncements={dashboardSettings.showAnnouncements}
+
           onShowVideoId={() => setShowVideoIdentification(true)}
           onShowConsent={() => setShowConsentForm(true)}
           onShowDocs={() => setShowDocumentsUpload(true)}
