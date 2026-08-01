@@ -29,9 +29,11 @@ interface Props {
 export function ContractsFolder({ organizationId, groupId, groupName, students }: Props) {
   const { contracts, loading, refresh, remove } = useGroupContracts(organizationId, groupId);
   const [genOpen, setGenOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [toDelete, setToDelete] = useState<string | null>(null);
+
 
   const stats = useMemo(() => ({
     total: contracts.length,
