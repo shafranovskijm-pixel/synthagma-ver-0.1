@@ -23,6 +23,8 @@ interface StudentHeaderProps {
   isVideoIdentified: boolean;
   showAchievements: boolean;
   showRadio?: boolean;
+  showAnnouncements?: boolean;
+
   onShowVideoId: () => void;
   onShowConsent: () => void;
   onShowDocs: () => void;
