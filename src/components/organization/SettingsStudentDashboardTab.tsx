@@ -189,6 +189,26 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         <div className="flex items-center justify-between py-3 border-t border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Megaphone className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium">Новости платформы</p>
+              <p className="text-sm text-muted-foreground">Кнопка новостей платформы в шапке ученика</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setSettings(prev => ({ ...prev, showAnnouncements: !prev.showAnnouncements }))}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAnnouncements ? 'bg-primary' : 'bg-muted'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAnnouncements ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+
+
+        <div className="flex items-center justify-between py-3 border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <LayoutGrid className="w-5 h-5 text-primary" />
             </div>
             <div>
