@@ -17,6 +17,7 @@ interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   showRadio: boolean;
+  showAnnouncements: boolean;
   showWebinars: boolean;
   showTrainers: boolean;
   catalogMode: "catalog" | "assigned";
@@ -27,11 +28,13 @@ interface StudentDashboardSettings {
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
-  showRadio: true,
+  showRadio: false,
+  showAnnouncements: false,
   showWebinars: false,
   showTrainers: false,
   catalogMode: "catalog",
   studentTheme: null };
+
 
 interface Props {
   organizationId: string;
