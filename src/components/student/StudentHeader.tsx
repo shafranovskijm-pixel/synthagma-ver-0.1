@@ -96,8 +96,9 @@ export function StudentHeader({
         {showRadio && <RadioPlayerButton />}
 
 
-        {/* Что нового — bell с бейджем */}
-        <AnnouncementsBell />
+        {/* Новости платформы — скрыто по умолчанию */}
+        {showAnnouncements && <AnnouncementsBell />}
+
 
         {/* Personal notifications */}
         {user?.id && <StudentNotifications userId={user.id} />}
