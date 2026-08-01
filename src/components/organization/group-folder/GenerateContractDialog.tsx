@@ -373,8 +373,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       <Dialog open={open} onOpenChange={o => !o && onClose()}>
         <DialogContent className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-6 pb-3">
-            <DialogTitle className="flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" />Сгенерировать договор</DialogTitle>
-            <DialogDescription>Группа «{groupName}». Заполните мастер по шагам.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" />{quick ? "Быстрая генерация договора" : "Сгенерировать договор"}</DialogTitle>
+            <DialogDescription>
+              {quick
+                ? `Группа «${groupName}»: шаблон по умолчанию, все ученики (${students.length}), сегодняшняя дата, авто-номер. Проверьте и сохраните.`
+                : `Группа «${groupName}». Заполните мастер по шагам.`}
+            </DialogDescription>
+
           </DialogHeader>
 
           {/* Stepper */}
