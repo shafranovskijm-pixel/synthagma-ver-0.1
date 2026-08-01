@@ -46,12 +46,13 @@ interface StudentRow {
 type FolderKey = "contracts" | "passports" | "snils" | "exams" | "docs";
 
 const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }> = {
-  contracts: { title: "Договоры", icon: FileSignature, hint: "Договоры с учениками группы" },
+  contracts: { title: GROUP_DOCUMENT_TYPE_MAP.contract.title, icon: FileSignature, hint: GROUP_DOCUMENT_TYPE_MAP.contract.hint || "Договоры с учениками группы" },
   passports: { title: "Паспорта", icon: IdCard, hint: "Сканы паспортов учеников" },
   snils: { title: "СНИЛС", icon: IdCard, hint: "Сканы СНИЛС учеников" },
   exams: { title: "Экзамены", icon: GraduationCap, hint: "Попытки и результаты аттестации" },
-  docs: { title: "Документы группы", icon: FileText, hint: "Приказы, протоколы, списки (в разработке)" },
+  docs: { title: "Документы группы", icon: FileText, hint: "Приказы, журналы, ведомости, книга регистрации" },
 };
+
 
 export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps) {
   const d = useOrgDashboard();
