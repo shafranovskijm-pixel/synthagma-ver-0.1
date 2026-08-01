@@ -69,7 +69,7 @@ const STEPS = [
   { id: 5, title: "Номер и проверка", icon: Check },
 ];
 
-export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated }: Props) {
+export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false }: Props) {
   const [step, setStep] = useState(1);
 
   const [templates, setTemplates] = useState<Template[]>([]);
