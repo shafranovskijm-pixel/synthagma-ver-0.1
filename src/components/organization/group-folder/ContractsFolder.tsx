@@ -50,15 +50,21 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
     <div className="space-y-4">
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
+        <Button className="gap-1.5 rounded-xl" onClick={() => setQuickOpen(true)} disabled={students.length === 0}>
+          <Zap className="w-4 h-4" /> Быстрая генерация
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="gap-1.5 rounded-xl">
+            <Button variant="outline" className="gap-1.5 rounded-xl">
               Добавить <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuItem onClick={() => setQuickOpen(true)} className="gap-2" disabled={students.length === 0}>
+              <Zap className="w-4 h-4" /> Быстрая генерация
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setGenOpen(true)} className="gap-2">
-              <FileSignature className="w-4 h-4" /> Сгенерировать договор
+              <FileSignature className="w-4 h-4" /> Расширенный режим (мастер)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUpOpen(true)} className="gap-2">
               <Upload className="w-4 h-4" /> Загрузить готовый договор
@@ -70,6 +76,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+
 
           <Badge variant="secondary" className="rounded-full">Всего: {stats.total}</Badge>
           <Badge variant="secondary" className="rounded-full gap-1"><User className="w-3 h-3" />{stats.individual}</Badge>
