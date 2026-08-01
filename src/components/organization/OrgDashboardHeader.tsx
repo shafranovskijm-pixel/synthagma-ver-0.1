@@ -229,17 +229,20 @@ export function OrgDashboardHeader() {
           </button>
 
           {/* Radio */}
-          <RadioPlayerButton />
+          {showRadio && <RadioPlayerButton />}
 
           {/* Новости платформы */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="hover:scale-105 transition-transform">
-                <AnnouncementsBell />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Новости платформы</TooltipContent>
-          </Tooltip>
+          {showAnnouncements && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="hover:scale-105 transition-transform">
+                  <AnnouncementsBell />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Новости платформы</TooltipContent>
+            </Tooltip>
+          )}
+
 
           {/* Notifications */}
           {organizationId && (
