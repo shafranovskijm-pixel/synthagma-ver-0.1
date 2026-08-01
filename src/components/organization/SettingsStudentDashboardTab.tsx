@@ -60,7 +60,9 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         setSettings({
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
-          showRadio: s.showRadio !== false,
+          showRadio: s.showRadio === true,
+          showAnnouncements: s.showAnnouncements === true,
+
           showWebinars: false,
           showTrainers: false,
           catalogMode: s.catalogMode || "catalog",
