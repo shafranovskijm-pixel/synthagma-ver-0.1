@@ -34,7 +34,7 @@ interface StudentHeaderProps {
 
 export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
-  pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = true,
+  pendingCount, pendingReasons, isVideoIdentified, showAchievements, showRadio = false, showAnnouncements = false,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
   onProfileClick,
 }: StudentHeaderProps) {
