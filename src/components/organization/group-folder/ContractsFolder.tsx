@@ -152,6 +152,19 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
         onClose={() => setGenOpen(false)}
         onGenerated={refresh}
       />
+      {quickOpen && (
+        <GenerateContractDialog
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
+          open={quickOpen}
+          quick
+          onClose={() => setQuickOpen(false)}
+          onGenerated={refresh}
+        />
+      )}
+
       <UploadContractDialog
         organizationId={organizationId}
         groupId={groupId}
