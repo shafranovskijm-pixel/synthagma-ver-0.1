@@ -12,6 +12,8 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ContractsFolder } from "@/components/organization/group-folder/ContractsFolder";
+import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
+
 
 type ViewMode = "grid" | "list" | "table";
 
