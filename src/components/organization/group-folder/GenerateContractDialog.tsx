@@ -48,7 +48,13 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onGenerated: () => void;
+  /**
+   * Быстрая генерация: шаблон по умолчанию, все ученики группы,
+   * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
+   */
+  quick?: boolean;
 }
+
 
 type CounterpartyType = "individual" | "legal";
 type NumberMode = "auto" | "manual" | "none";
@@ -63,7 +69,7 @@ const STEPS = [
   { id: 5, title: "Номер и проверка", icon: Check },
 ];
 
-export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated }: Props) {
+export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false }: Props) {
   const [step, setStep] = useState(1);
 
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -98,6 +104,17 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   useEffect(() => {
     if (!open) return;
     setStep(1);
+    if (quick) {
+      // Быстрая генерация: физлица (ученики группы), все ученики, сегодня, авто-номер
+      setCounterparty("individual");
+      const ids = students.map(s => s.user_id);
+      setMultiStudentIds(ids);
+      setPrimaryStudentId(ids[0] || "");
+      setCompanyId("");
+      setDate(new Date().toISOString().slice(0, 10));
+      setNumberMode("auto");
+      setNumberManual("");
+    }
     (async () => {
       const [tplRes, coRes, orgRes, crsRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
@@ -110,12 +127,21 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       setCompanies((coRes.data || []) as Company[]);
       setOrgReq(orgRes.data || null);
       setCourses((crsRes.data || []) as Course[]);
-      // Preselect default template
-      const def = tpls.find(t => t.is_default);
-      if (def && !templateId) setTemplateId(def.id);
+      // Preselect default template (в быстром режиме — всегда шаблон по умолчанию)
+      const def = tpls.find(t => t.is_default) || (quick ? tpls[0] : undefined);
+      if (def && (quick || !templateId)) setTemplateId(def.id);
+      if (quick) {
+        if (!def) {
+          toast.error("Нет шаблона договора", { description: "Загрузите шаблон, затем повторите быструю генерацию" });
+        } else {
+          // Сразу к шагу проверки и генерации
+          setStep(5);
+        }
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, organizationId]);
+  }, [open, organizationId, quick]);
+
 
   useEffect(() => {
     if (!courseId) { setPlan(null); return; }
@@ -347,8 +373,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       <Dialog open={open} onOpenChange={o => !o && onClose()}>
         <DialogContent className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-6 pb-3">
-            <DialogTitle className="flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" />Сгенерировать договор</DialogTitle>
-            <DialogDescription>Группа «{groupName}». Заполните мастер по шагам.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" />{quick ? "Быстрая генерация договора" : "Сгенерировать договор"}</DialogTitle>
+            <DialogDescription>
+              {quick
+                ? `Группа «${groupName}»: шаблон по умолчанию, все ученики (${students.length}), сегодняшняя дата, авто-номер. Проверьте и сохраните.`
+                : `Группа «${groupName}». Заполните мастер по шагам.`}
+            </DialogDescription>
+
           </DialogHeader>
 
           {/* Stepper */}

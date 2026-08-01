@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown } from "lucide-react";
+import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 import { useGroupContracts } from "@/hooks/useGroupContracts";
@@ -29,9 +29,11 @@ interface Props {
 export function ContractsFolder({ organizationId, groupId, groupName, students }: Props) {
   const { contracts, loading, refresh, remove } = useGroupContracts(organizationId, groupId);
   const [genOpen, setGenOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [toDelete, setToDelete] = useState<string | null>(null);
+
 
   const stats = useMemo(() => ({
     total: contracts.length,
@@ -48,15 +50,21 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
     <div className="space-y-4">
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
+        <Button className="gap-1.5 rounded-xl" onClick={() => setQuickOpen(true)} disabled={students.length === 0}>
+          <Zap className="w-4 h-4" /> Быстрая генерация
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="gap-1.5 rounded-xl">
+            <Button variant="outline" className="gap-1.5 rounded-xl">
               Добавить <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuItem onClick={() => setQuickOpen(true)} className="gap-2" disabled={students.length === 0}>
+              <Zap className="w-4 h-4" /> Быстрая генерация
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setGenOpen(true)} className="gap-2">
-              <FileSignature className="w-4 h-4" /> Сгенерировать договор
+              <FileSignature className="w-4 h-4" /> Расширенный режим (мастер)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUpOpen(true)} className="gap-2">
               <Upload className="w-4 h-4" /> Загрузить готовый договор
@@ -68,6 +76,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+
 
           <Badge variant="secondary" className="rounded-full">Всего: {stats.total}</Badge>
           <Badge variant="secondary" className="rounded-full gap-1"><User className="w-3 h-3" />{stats.individual}</Badge>
@@ -83,10 +92,12 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           <div className="p-10 text-center">
             <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
             <div className="text-sm text-muted-foreground mb-3">В папке ещё нет договоров</div>
-            <div className="flex items-center justify-center gap-2">
-              <Button size="sm" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />Сгенерировать</Button>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button size="sm" onClick={() => setQuickOpen(true)} disabled={students.length === 0} className="gap-1.5"><Zap className="w-4 h-4" />Быстрая генерация</Button>
+              <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />Расширенный режим</Button>
               <Button size="sm" variant="outline" onClick={() => setUpOpen(true)} className="gap-1.5"><Upload className="w-4 h-4" />Загрузить</Button>
             </div>
+
           </div>
         ) : (
           <Table>
@@ -141,6 +152,19 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
         onClose={() => setGenOpen(false)}
         onGenerated={refresh}
       />
+      {quickOpen && (
+        <GenerateContractDialog
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
+          open={quickOpen}
+          quick
+          onClose={() => setQuickOpen(false)}
+          onGenerated={refresh}
+        />
+      )}
+
       <UploadContractDialog
         organizationId={organizationId}
         groupId={groupId}
