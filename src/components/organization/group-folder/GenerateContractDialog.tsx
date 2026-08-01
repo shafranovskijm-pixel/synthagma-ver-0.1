@@ -48,7 +48,13 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onGenerated: () => void;
+  /**
+   * Быстрая генерация: шаблон по умолчанию, все ученики группы,
+   * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
+   */
+  quick?: boolean;
 }
+
 
 type CounterpartyType = "individual" | "legal";
 type NumberMode = "auto" | "manual" | "none";
