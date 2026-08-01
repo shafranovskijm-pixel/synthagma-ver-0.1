@@ -63,9 +63,11 @@ interface DashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   showRadio: boolean;
+  showAnnouncements: boolean;
   catalogMode: "catalog" | "assigned";
   studentTheme: string | null;
 }
+
 
 type RequiredDocumentType = "passport" | "birth_certificate" | "snils" | "education_document";
 
