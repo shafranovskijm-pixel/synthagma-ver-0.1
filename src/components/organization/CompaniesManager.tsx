@@ -62,6 +62,14 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const paginatedCompanies = cm.filteredCompanies.slice(0, visibleCount);
   const [reconciliationCompany, setReconciliationCompany] = useState<any>(null);
 
+  // Кнопка «Добавить компанию» в шапке дашборда шлёт глобальное событие
+  useEffect(() => {
+    const handler = () => cm.setShowCreateDialog(true);
+    window.addEventListener("org-add-company", handler);
+    return () => window.removeEventListener("org-add-company", handler);
+  }, [cm.setShowCreateDialog]);
+
+
   const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
     localStorage.setItem('orgViewAsCompany', JSON.stringify({
