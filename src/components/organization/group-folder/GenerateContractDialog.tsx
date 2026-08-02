@@ -29,9 +29,14 @@ import {
 } from "lucide-react";
 import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
+import {
+  templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
+  planContractJobs, type ContractScenario, type ScenarioStudent,
+} from "@/lib/contracts/scenarios";
+import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 
-interface Student { user_id: string; full_name: string; email?: string | null; }
-interface Template { id: string; name: string; body_html: string; is_default?: boolean | null; updated_at?: string | null; }
+interface Student { user_id: string; full_name: string; email?: string | null; passport?: string | null; address?: string | null; phone?: string | null; }
+interface Template { id: string; name: string; body_html: string; is_default?: boolean | null; updated_at?: string | null; counterparty_type?: string | null; version?: number | null; }
 interface Company {
   id: string; name: string;
   inn: string | null; kpp: string | null; ogrn: string | null;
@@ -56,7 +61,7 @@ interface Props {
 }
 
 
-type CounterpartyType = "individual" | "legal";
+type CounterpartyType = ContractScenario;
 type NumberMode = "auto" | "manual" | "none";
 
 const RAW_KEYS = new Set(["students_table", "programs_table", "training_plan"]);
@@ -117,7 +122,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     }
     (async () => {
       const [tplRes, coRes, orgRes, crsRes] = await Promise.all([
-        (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
+        (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
         (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
@@ -127,8 +132,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       setCompanies((coRes.data || []) as Company[]);
       setOrgReq(orgRes.data || null);
       setCourses((crsRes.data || []) as Course[]);
-      // Preselect default template (в быстром режиме — всегда шаблон по умолчанию)
-      const def = tpls.find(t => t.is_default) || (quick ? tpls[0] : undefined);
+      // Шаблон по умолчанию выбирается с учётом сценария (физлицо / компания)
+      const def = pickDefaultTemplate(tpls, quick ? "individual" : counterparty);
       if (def && (quick || !templateId)) setTemplateId(def.id);
       if (quick) {
         if (!def) {
