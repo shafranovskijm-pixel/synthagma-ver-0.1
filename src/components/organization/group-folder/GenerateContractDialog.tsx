@@ -340,6 +340,14 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     return findMissingVariables(selectedTpl.body_html, previewVariables);
   }, [selectedTpl, previewVariables]);
 
+  /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
+  const variableGaps = useMemo(
+    () => templateVariableGaps(allTplVars, previewVariables as Record<string, unknown>),
+    [allTplVars, previewVariables],
+  );
+
+
+
   const knownKeys = new Set([
     "org_name","org_inn","org_kpp","org_ogrn","org_address","org_director_name","org_director_position","org_director_acting",
     "org_bank_name","org_bank_bik","org_bank_account","org_bank_corr_account","org_email","org_phone",
