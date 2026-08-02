@@ -383,6 +383,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           groupName={group?.name || ""}
           students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
         />
+      ) : openFolder === "docs" ? (
+        <div className="space-y-4">
+          <Button variant="ghost" size="sm" onClick={() => setOpenFolder(null)} className="gap-1.5 rounded-xl">
+            <ArrowLeft className="w-4 h-4" /> К папкам
+          </Button>
+          <GroupDocumentsFolder
+            organizationId={organizationId}
+            groupId={groupId}
+            ctx={generationContext}
+            defaultPrice={group?.default_price ?? null}
+            missingFields={missingDocFields}
+          />
+        </div>
       ) : (
         <FolderContents
           folder={openFolder}
