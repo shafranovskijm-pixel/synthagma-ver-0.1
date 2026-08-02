@@ -82,7 +82,7 @@ export function GroupDocumentsFolder({
    * Пакет: договоры создаёт GenerateContractDialog (сценарии),
    * остальные 9 документов группы генерируются ровно один раз после успеха.
    */
-  const handleContractsGenerated = async (result?: { scenario: "individual" | "company"; count: number }) => {
+  const handleContractsGenerated = async (result?: { scenario: "individual" | "legal"; count: number }) => {
     const scenario = result?.scenario ?? "individual";
     const count = result?.count ?? 0;
     if (!shouldGeneratePackageDocs({ contractsDone: true, contractCount: count, docsGenerated: false })) {
@@ -162,7 +162,7 @@ export function GroupDocumentsFolder({
 
       <div className="text-xs text-muted-foreground">
         Пакет: сначала выберите сценарий договора — физлицо даёт {describePackagePlan("individual", students.length)},
-        компания — {describePackagePlan("company", students.length)}.
+        компания — {describePackagePlan("legal", students.length)}.
       </div>
 
       {/* List */}

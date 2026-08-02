@@ -23,12 +23,12 @@ describe("group docs package", () => {
 
   it("честно описывает план для физлица и компании", () => {
     expect(describePackagePlan("individual", 3)).toBe("3 договор(ов) + 9 документов группы");
-    expect(describePackagePlan("company", 3)).toBe("1 договор + 9 документов группы");
+    expect(describePackagePlan("legal", 3)).toBe("1 договор + 9 документов группы");
   });
 
   it("итоговый toast отражает сценарий", () => {
     expect(packageResultMessage("individual", 3, 9)).toContain("договоров: 3");
-    expect(packageResultMessage("company", 1, 9)).toContain("договор: 1");
+    expect(packageResultMessage("legal", 1, 9)).toContain("договор: 1");
   });
 
   it("документы не генерируются без успешных договоров и только один раз", () => {

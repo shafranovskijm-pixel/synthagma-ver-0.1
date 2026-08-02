@@ -7,7 +7,7 @@
 import { GROUP_DOCUMENT_TYPES } from "./groupDocuments";
 import type { DocType } from "./schema";
 
-export type ContractScenarioKind = "individual" | "company";
+export type ContractScenarioKind = "individual" | "legal";
 
 /** Типы документов пакета: только folder=docs, без contract, каждый ровно один раз. */
 export function buildPackageDocTypes(): DocType[] {
