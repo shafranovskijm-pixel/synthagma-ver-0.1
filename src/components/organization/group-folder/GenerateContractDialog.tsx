@@ -53,7 +53,8 @@ interface Props {
   students: Student[];
   open: boolean;
   onClose: () => void;
-  onGenerated: () => void;
+  /** Вызывается один раз после успешного создания всей партии договоров. */
+  onGenerated: (result?: { scenario: ContractScenario; count: number }) => void;
   /**
    * Быстрая генерация: шаблон по умолчанию, все ученики группы,
    * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
