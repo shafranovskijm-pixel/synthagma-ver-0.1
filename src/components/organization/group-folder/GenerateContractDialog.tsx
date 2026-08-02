@@ -968,7 +968,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                 ? proceed.reason
                 : step === 5 && blockers.length > 0
                   ? `Не заполнено: ${blockers.map(b => b.label).join(", ")}`
-                  : `Шаг ${step} из ${STEPS.length}`}
+                  : step === 5 && leftoverPlaceholders.length > 0
+                    ? `Остались незаполненные переменные: ${leftoverPlaceholders.slice(0, 6).join(", ")}`
+                    : `Шаг ${step} из ${STEPS.length}`}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={onClose} disabled={busy}>Отмена</Button>
@@ -982,7 +984,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   Далее<ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={generate} disabled={busy || !selectedTpl || blockers.length > 0} className="gap-1.5">
+                <Button onClick={generate} disabled={busy || generateDisabled} className="gap-1.5">
                   <FileSignature className="w-4 h-4" />
                   {busy
                     ? "Генерация…"
