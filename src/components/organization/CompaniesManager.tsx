@@ -248,7 +248,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                     {company.inn && <div>ИНН: {company.inn}</div>}
                     <div className="flex items-center gap-1"><Users className="w-3 h-3" />{company.studentsCount} учеников</div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           ) : (
