@@ -198,11 +198,30 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
         toast.error("Часть полей не сохранилась", { description: notPersisted.join(", ") });
         return;
       }
-      setSettings(saved as any as GroupSettings);
-      setSeatLimitEnabled(!!saved.max_seats && saved.max_seats > 0);
+      // Контрольное перечитывание строки из БД: закрываем диалог только если
+      // значения реально лежат в таблице (защита от «тихого» откате апдейта).
+      const { data: fresh, error: refetchError } = await supabase
+        .from("student_groups")
+        .select("*")
+        .eq("id", groupId)
+        .maybeSingle();
+      if (refetchError || !fresh) {
+        console.error("[GroupSettings] refetch after save failed", { groupId, refetchError });
+        toast.error("Не удалось перечитать настройки", { description: refetchError?.message || "Обновите страницу." });
+        return;
+      }
+      const stillMissing = verifySavedSettings(patch, fresh as any);
+      if (stillMissing.length > 0) {
+        console.error("[GroupSettings] fields missing after refetch", { groupId, stillMissing, patch, fresh });
+        toast.error("Часть полей не сохранилась", { description: stillMissing.join(", ") });
+        return;
+      }
+      setSettings(fresh as any as GroupSettings);
+      setSeatLimitEnabled(!!(fresh as any).max_seats && (fresh as any).max_seats > 0);
       toast.success("Настройки сохранены");
       onUpdated?.();
       onOpenChange(false);
+
     } catch (e: any) {
       console.error("[GroupSettings] save exception", { groupId, patch, e });
       toast.error("Ошибка сохранения", { description: e?.message || undefined });
