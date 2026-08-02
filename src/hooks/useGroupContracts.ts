@@ -16,6 +16,9 @@ export interface GroupContractRow {
   company_id: string | null;
   counterparty_type: "individual" | "legal" | null;
   template_id: string | null;
+  template_version: number | null;
+  body_html: string | null;
+  students: Array<{ user_id: string; full_name: string; email?: string | null }>;
   variables: Record<string, any>;
   created_at: string;
   // enriched client-side
