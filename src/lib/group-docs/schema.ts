@@ -44,6 +44,9 @@ export interface GenerationContext {
     birth_date?: string;
     gender?: "М" | "Ж";
     passport?: string;
+    /** Структурированный паспорт (приоритетнее строки passport) */
+    passport_series?: string;
+    passport_number?: string;
     snils?: string;
     citizenship?: string;
     email?: string;
