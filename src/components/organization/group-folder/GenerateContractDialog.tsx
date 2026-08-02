@@ -102,6 +102,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [courseHoursOverride, setCourseHoursOverride] = useState<string>("");
   const [courseFormOverride, setCourseFormOverride] = useState<string>("");
 
+  const [studentDetails, setStudentDetails] = useState<Map<string, { passport: string | null; address: string | null; phone: string | null }>>(new Map());
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -121,12 +122,19 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       setNumberManual("");
     }
     (async () => {
-      const [tplRes, coRes, orgRes, crsRes] = await Promise.all([
+      const [tplRes, coRes, orgRes, crsRes, profRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
         (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
+        (supabase as any).from("profiles").select("user_id, passport_series, passport_number, address, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
       ]);
+      const details = new Map<string, { passport: string | null; address: string | null; phone: string | null }>();
+      (profRes?.data || []).forEach((r: any) => {
+        const passport = [r.passport_series, r.passport_number].filter(Boolean).join(" ") || null;
+        details.set(r.user_id, { passport, address: r.address || null, phone: r.phone || null });
+      });
+      setStudentDetails(details);
       const tpls = (tplRes.data || []) as Template[];
       setTemplates(tpls);
       setCompanies((coRes.data || []) as Company[]);
@@ -273,11 +281,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         user_id: s!.user_id,
         full_name: s!.full_name,
         email: s!.email ?? null,
-        passport: s!.passport ?? null,
-        address: s!.address ?? null,
-        phone: s!.phone ?? null,
+        passport: s!.passport ?? studentDetails.get(s!.user_id)?.passport ?? null,
+        address: s!.address ?? studentDetails.get(s!.user_id)?.address ?? null,
+        phone: s!.phone ?? studentDetails.get(s!.user_id)?.phone ?? null,
       }));
-  }, [multiStudentIds, primaryStudent, students]);
+  }, [multiStudentIds, primaryStudent, students, studentDetails]);
 
   const scenarioIssues = useMemo(() => validateScenario(counterparty, {
     org: orgReq,
@@ -331,9 +339,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     }
   };
 
-  const resolveNumber = async (): Promise<string> => {
+  const resolveNumber = async (index = 0): Promise<string> => {
     if (numberMode === "none") return "";
-    if (numberMode === "manual") return numberManual.trim();
+    if (numberMode === "manual") {
+      const base = numberManual.trim();
+      // Ручной номер уникален только для одного документа: остальным добавляем суффикс.
+      return index === 0 ? base : `${base}-${index + 1}`;
+    }
     try {
       const year = new Date(date || Date.now()).getFullYear();
       const { data, error } = await (supabase as any).rpc("get_next_document_number", {
@@ -368,8 +380,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
       const produced: Array<{ name: string; html: string }> = [];
 
-      for (const job of jobs) {
-        const number = await resolveNumber();
+      for (const [index, job] of jobs.entries()) {
+        const number = await resolveNumber(index);
         const vars = buildVariables(number, job.students);
         const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
         const title = number ? `Договор № ${number}` : job.label;
