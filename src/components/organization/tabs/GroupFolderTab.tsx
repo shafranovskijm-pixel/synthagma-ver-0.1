@@ -75,6 +75,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const folderParam = searchParams.get("folder");
   const openFolder = (["contracts","passports","snils","exams","docs"] as const).includes(folderParam as any) ? (folderParam as FolderKey) : null;
   const setOpenFolder = useCallback((f: FolderKey | null) => {
