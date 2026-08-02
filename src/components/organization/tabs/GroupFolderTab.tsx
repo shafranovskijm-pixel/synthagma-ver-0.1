@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings } from "lucide-react";
+import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -400,7 +400,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                     {group.start_date ? format(new Date(group.start_date), "dd.MM.yyyy") : "—"} — {group.end_date ? format(new Date(group.end_date), "dd.MM.yyyy") : "—"}
                   </span>
                 )}
+                <span className="inline-flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  {resolvedProgramTitle || courseInfo?.title || "Курс не привязан"}
+                  {resolvedProgramHours ? ` · ${resolvedProgramHours} ч.` : ""}
+                </span>
               </div>
+
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -453,8 +459,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             defaultPrice={group?.default_price ?? null}
             missingFields={missingDocFields}
             blockingFields={blockingDocFields}
+            courseId={group?.course_id ?? null}
             onOpenGroupSettings={() => setSettingsOpen(true)}
           />
+
         </div>
       ) : (
         <FolderContents

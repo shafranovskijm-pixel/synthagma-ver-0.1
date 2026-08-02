@@ -32,7 +32,7 @@ import {
 import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
 import {
-  templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
+  templateMatchesScenario, templateUsableForScenario, pickDefaultTemplate, validateScenario, blockingMissing,
   planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
 import { canProceedStep, nextStep, prevStep, type WizardState } from "@/lib/contracts/wizardFlow";
@@ -62,7 +62,18 @@ interface Props {
    * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
    */
   quick?: boolean;
+  /** Предзаполнение из настроек группы: курс, программа, часы, форма, цена, даты. */
+  groupDefaults?: {
+    courseId?: string | null;
+    programTitle?: string | null;
+    programHours?: number | string | null;
+    programForm?: string | null;
+    price?: number | null;
+    startDate?: string | null;
+    endDate?: string | null;
+  };
 }
+
 
 
 type CounterpartyType = ContractScenario;
@@ -78,7 +89,7 @@ const STEPS = [
   { id: 5, title: "Номер и проверка", icon: Check },
 ];
 
-export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false }: Props) {
+export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false, groupDefaults }: Props) {
   const [step, setStep] = useState(1);
 
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -107,6 +118,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [planOpen, setPlanOpen] = useState(false);
   const [courseHoursOverride, setCourseHoursOverride] = useState<string>("");
   const [courseFormOverride, setCourseFormOverride] = useState<string>("");
+  /** Название программы из настроек группы (приоритетнее курса). */
+  const [programTitleOverride, setProgramTitleOverride] = useState<string>("");
 
   const [studentDetails, setStudentDetails] = useState<Map<string, { passport: string | null; address: string | null; phone: string | null }>>(new Map());
   /** Правки паспорта/адреса/телефона прямо в мастере — попадают в variables snapshot. */
@@ -120,11 +133,18 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setStep(1);
     setScenarioChosen(false);
     setStudentOverrides({});
+    // Предзаполнение из настроек группы
+    setCourseId(groupDefaults?.courseId || "");
+    setProgramTitleOverride(groupDefaults?.programTitle || "");
+    setCourseHoursOverride(groupDefaults?.programHours ? String(groupDefaults.programHours) : "");
+    setCourseFormOverride(groupDefaults?.programForm || "");
+    setPrice(groupDefaults?.price ? String(groupDefaults.price) : "");
+    setDate(groupDefaults?.startDate || new Date().toISOString().slice(0, 10));
     if (quick) {
-      setDate(new Date().toISOString().slice(0, 10));
       setNumberMode("auto");
       setNumberManual("");
     }
+
     (async () => {
       const [tplRes, coRes, orgRes, crsRes, profRes, frdoRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
@@ -177,9 +197,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setMultiStudentIds(ids);
     setPrimaryStudentId(ids[0] || "");
     if (scenario === "individual") setCompanyId("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(groupDefaults?.startDate || new Date().toISOString().slice(0, 10));
     setNumberMode("auto");
-    const def = pickDefaultTemplate(templates, scenario);
+    const usable = templates.filter(t => templateUsableForScenario(t.counterparty_type, extractVariables(t.body_html), scenario));
+    const def = pickDefaultTemplate(usable, scenario);
     if (def) setTemplateId(def.id);
     return def;
   };
@@ -194,8 +215,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         .eq("course_id", courseId)
         .maybeSingle();
       setPlan((data as TrainingPlan) || null);
-      setCourseHoursOverride(data?.hours != null ? String(data.hours) : "");
-      setCourseFormOverride(data?.form || "");
+      // Нет учебного плана — не стираем значения из настроек группы
+      setCourseHoursOverride(data?.hours != null ? String(data.hours) : (groupDefaults?.programHours ? String(groupDefaults.programHours) : ""));
+      setCourseFormOverride(data?.form || groupDefaults?.programForm || "");
     })();
   }, [courseId]);
 
@@ -205,8 +227,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setPreviewNumber(`${numberPrefix || ""}__auto__`);
   }, [numberMode, numberPrefix, numberManual]);
 
+  // Шаблон пригоден, только если тип совпадает и нет плейсхолдеров чужого сценария.
   const scenarioTemplates = useMemo(
-    () => templates.filter(t => templateMatchesScenario(t.counterparty_type, counterparty)),
+    () => templates.filter(t => templateUsableForScenario(t.counterparty_type, extractVariables(t.body_html), counterparty)),
     [templates, counterparty],
   );
 
@@ -214,9 +237,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   useEffect(() => {
     if (!templates.length) return;
     if (templateId && scenarioTemplates.some(t => t.id === templateId)) return;
-    setTemplateId(pickDefaultTemplate(templates, counterparty)?.id || "");
+    setTemplateId(pickDefaultTemplate(scenarioTemplates, counterparty)?.id || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [counterparty, templates]);
+
 
   const selectedTpl = scenarioTemplates.find(t => t.id === templateId);
   const selectedCompany = companies.find(c => c.id === companyId);
@@ -248,7 +272,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const programHours = courseHoursOverride || (plan?.hours != null ? String(plan.hours) : "") || (selectedCourse?.duration || "");
   const programForm = courseFormOverride || plan?.form || "";
-  const programTitle = plan?.title || selectedCourse?.title || "";
+  const programTitle = programTitleOverride || plan?.title || selectedCourse?.title || "";
 
   const allTplVars = useMemo(() => selectedTpl ? extractVariables(selectedTpl.body_html) : [], [selectedTpl]);
   const tplVarSet = useMemo(() => new Set(allTplVars), [allTplVars]);
@@ -342,6 +366,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (!selectedTpl) return [] as string[];
     return findMissingVariables(selectedTpl.body_html, previewVariables);
   }, [selectedTpl, previewVariables]);
+
+  /** Нерешённые {{placeholder}} в готовом HTML — жёсткий стоп генерации. */
+  const leftoverPlaceholders = useMemo(() => findUnresolvedPlaceholders(previewHtml), [previewHtml]);
+  const generateDisabled = !selectedTpl || blockers.length > 0 || leftoverPlaceholders.length > 0;
 
   /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
   const variableGaps = useMemo(
@@ -940,7 +968,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                 ? proceed.reason
                 : step === 5 && blockers.length > 0
                   ? `Не заполнено: ${blockers.map(b => b.label).join(", ")}`
-                  : `Шаг ${step} из ${STEPS.length}`}
+                  : step === 5 && leftoverPlaceholders.length > 0
+                    ? `Остались незаполненные переменные: ${leftoverPlaceholders.slice(0, 6).join(", ")}`
+                    : `Шаг ${step} из ${STEPS.length}`}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={onClose} disabled={busy}>Отмена</Button>
@@ -954,7 +984,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   Далее<ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={generate} disabled={busy || !selectedTpl || blockers.length > 0} className="gap-1.5">
+                <Button onClick={generate} disabled={busy || generateDisabled} className="gap-1.5">
                   <FileSignature className="w-4 h-4" />
                   {busy
                     ? "Генерация…"

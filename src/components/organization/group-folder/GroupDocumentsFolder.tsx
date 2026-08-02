@@ -16,6 +16,7 @@ import {
   describePackagePlan,
   packageResultMessage,
   shouldGeneratePackageDocs,
+  missingDocRequirements,
 } from "@/lib/group-docs/packageTypes";
 import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
 import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
@@ -34,6 +35,8 @@ interface Props {
   missingFields?: string[];
   /** Критичные незаполненные поля — генерация полностью блокируется. */
   blockingFields?: string[];
+  /** Курс, привязанный к группе — подставляется в мастер договора. */
+  courseId?: string | null;
   onOpenGroupSettings?: () => void;
 }
 
@@ -49,6 +52,7 @@ export function GroupDocumentsFolder({
   defaultPrice,
   missingFields = [],
   blockingFields = [],
+  courseId = null,
   onOpenGroupSettings,
 }: Props) {
   const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
@@ -62,15 +66,34 @@ export function GroupDocumentsFolder({
     return map;
   }, []);
 
-  const blocked = blockingFields.length > 0;
+  /** Пакет требует ВСЕХ полей группы: любое незаполненное поле блокирует. */
+  const packageBlockers = useMemo(
+    () => Array.from(new Set([...blockingFields, ...missingFields])),
+    [blockingFields, missingFields],
+  );
+  const blocked = packageBlockers.length > 0;
 
-  const run = async (types: DocType[]) => {
+  /** Источник для проверки требований конкретного документа. */
+  const reqSource = useMemo(() => ({
+    org_name: ctx?.organization.name,
+    org_director_name: ctx?.organization.director_name,
+    group_number: ctx?.group.number,
+    program_title: ctx?.group.program_title,
+    program_hours: ctx?.group.program_hours,
+    start_date: ctx?.group.start_date,
+    end_date: ctx?.group.end_date,
+    students_count: ctx?.students.length || 0,
+  }), [ctx]);
+
+  const run = async (types: DocType[], docBlockers?: string[]) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
-    if (blocked) {
-      toast.error("Заполните обязательные данные группы", { description: blockingFields.join(", ") });
+    const gate = docBlockers ?? packageBlockers;
+    if (gate.length > 0) {
+      toast.error("Заполните обязательные данные группы", { description: gate.join(", ") });
       return false;
     }
     if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
+
     setBusy(true);
     try {
       const docs = types.length === 1
@@ -141,23 +164,36 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: blockingFields.join(", ") }); return; } setPackageOpen(true); }}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setPackageOpen(true); }}>
           <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked}>
+            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx}>
               Отдельный документ <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-72">
-            {DOC_TYPES.map(t => (
-              <DropdownMenuItem key={t.key} className="gap-2" onClick={() => run([t.key as DocType])}>
-                <FileText className="w-4 h-4" /> {t.title}
-              </DropdownMenuItem>
-            ))}
+          <DropdownMenuContent align="start" className="w-80">
+            {DOC_TYPES.map(t => {
+              const docMissing = missingDocRequirements(t.key, reqSource);
+              return (
+                <DropdownMenuItem
+                  key={t.key}
+                  className="gap-2"
+                  disabled={docMissing.length > 0}
+                  onClick={() => run([t.key as DocType], docMissing)}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="flex-1">{t.title}</span>
+                  {docMissing.length > 0 && (
+                    <span className="text-xs text-muted-foreground">нужно: {docMissing[0]}</span>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
+
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <span>Стоимость, ₽</span>
           <Input
@@ -224,6 +260,15 @@ export function GroupDocumentsFolder({
           groupId={groupId}
           groupName={groupName}
           students={students}
+          groupDefaults={{
+            courseId: courseId,
+            programTitle: ctx?.group.program_title ?? null,
+            programHours: ctx?.group.program_hours ?? null,
+            programForm: ctx?.group.program_form ?? null,
+            price: defaultPrice ?? null,
+            startDate: ctx?.group.start_date ?? null,
+            endDate: ctx?.group.end_date ?? null,
+          }}
           open={packageOpen}
           quick
           onClose={() => setPackageOpen(false)}

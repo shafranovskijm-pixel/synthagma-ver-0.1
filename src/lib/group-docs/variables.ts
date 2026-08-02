@@ -50,13 +50,17 @@ function esc(s: string): string {
 /** Split "Серия 4010 Номер 123456" or "4010 123456" */
 function splitPassport(p?: string): { series: string; number: string } {
   if (!p) return { series: "", number: "" };
-  const m = p.match(/серия\s*([0-9]+)\s*номер\s*([0-9]+)/i);
-  if (m) return { series: m[1], number: m[2] };
+  const m = p.match(/серия\s*([0-9\s]+?)\s*(?:номер|№)\s*([0-9\s]+)/i);
+  if (m) return { series: m[1].replace(/\s+/g, ""), number: m[2].replace(/\s+/g, "") };
+  const digits = p.replace(/\D/g, "");
+  // Российский паспорт: 4 цифры серии + 6 цифр номера («40 10 123456» → «4010» / «123456»).
+  if (digits.length === 10) return { series: digits.slice(0, 4), number: digits.slice(4) };
   const parts = p.replace(/[^\d\s]/g, " ").trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return { series: parts[0], number: parts[1] };
+  if (parts.length >= 2) return { series: parts[0], number: parts.slice(1).join("") };
   if (parts.length === 1) return { series: parts[0], number: "" };
   return { series: p, number: "" };
 }
+
 
 /**
  * Паспорт ученика: структурированные поля приоритетнее разбора строки.

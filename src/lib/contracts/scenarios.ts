@@ -249,3 +249,29 @@ export function templateVariableGaps(
     .filter(k => isBlank(values[k]))
     .map(k => ({ key: k, label: VARIABLE_LABELS[k] || k }));
 }
+
+/** Плейсхолдеры, жёстко привязанные к сценарию. */
+export const SCENARIO_PLACEHOLDERS: Record<ContractScenario, string[]> = {
+  individual: ["individual_name", "individual_passport", "individual_address", "individual_phone", "individual_email"],
+  legal: ["company_name", "company_inn", "company_kpp", "company_ogrn", "company_address", "company_director"],
+};
+
+/** Плейсхолдеры чужого сценария внутри шаблона — такой шаблон нельзя использовать. */
+export function crossScenarioPlaceholders(templateVars: string[], scenario: ContractScenario): string[] {
+  const other: ContractScenario = scenario === "individual" ? "legal" : "individual";
+  const foreign = new Set(SCENARIO_PLACEHOLDERS[other]);
+  return templateVars.filter(v => foreign.has(v));
+}
+
+/**
+ * Шаблон пригоден для сценария: тип совпадает (или any) И
+ * в теле нет плейсхолдеров противоположного сценария.
+ */
+export function templateUsableForScenario(
+  templateType: string | null | undefined,
+  templateVars: string[],
+  scenario: ContractScenario,
+): boolean {
+  if (!templateMatchesScenario(templateType, scenario)) return false;
+  return crossScenarioPlaceholders(templateVars, scenario).length === 0;
+}

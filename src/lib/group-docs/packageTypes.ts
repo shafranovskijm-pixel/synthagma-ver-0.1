@@ -58,3 +58,52 @@ export interface PackageOrchestrationState {
 export function shouldGeneratePackageDocs(st: PackageOrchestrationState): boolean {
   return st.contractsDone && st.contractCount > 0 && !st.docsGenerated;
 }
+
+/** Обязательные данные для конкретного документа группы. */
+export const DOC_REQUIRED_KEYS: Record<string, string[]> = {
+  enrollment_order: ["org_name", "org_director_name", "group_number", "program_title", "program_hours", "start_date"],
+  expulsion_order: ["org_name", "org_director_name", "group_number", "program_title", "end_date"],
+  student_list: ["org_name", "group_number", "program_title", "students"],
+  class_journal: ["org_name", "group_number", "program_title", "program_hours", "students"],
+  schedule: ["group_number", "program_title", "start_date", "end_date"],
+  attestation_sheet: ["org_name", "group_number", "program_title", "students"],
+  registration_book: ["org_name", "program_title", "students"],
+  title_page: ["org_name", "group_number", "program_title"],
+  pass: ["org_name", "group_number", "students"],
+};
+
+export const REQUIRED_KEY_LABELS: Record<string, string> = {
+  org_name: "название учебного центра",
+  org_director_name: "руководитель учебного центра",
+  group_number: "номер группы",
+  program_title: "название программы",
+  program_hours: "объём часов",
+  start_date: "дата начала обучения",
+  end_date: "дата окончания обучения",
+  students: "ученики в группе",
+};
+
+export interface DocRequirementSource {
+  org_name?: string | null;
+  org_director_name?: string | null;
+  group_number?: string | null;
+  program_title?: string | null;
+  program_hours?: number | string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  students_count?: number;
+}
+
+/** Незаполненные обязательные поля конкретного документа (человеческие подписи). */
+export function missingDocRequirements(docType: string, src: DocRequirementSource): string[] {
+  const keys = DOC_REQUIRED_KEYS[docType] || [];
+  const out: string[] = [];
+  for (const key of keys) {
+    const value = key === "students" ? (src.students_count || 0) : (src as Record<string, unknown>)[key];
+    const blank = key === "students"
+      ? !value
+      : value === null || value === undefined || String(value).trim() === "" || String(value) === "0";
+    if (blank) out.push(REQUIRED_KEY_LABELS[key] || key);
+  }
+  return out;
+}

@@ -11726,6 +11726,41 @@ export type Database = {
         Args: { p_html: string; p_revision_id: string }
         Returns: undefined
       }
+      update_student_group_settings: {
+        Args: { p_group_id: string; p_patch: Json }
+        Returns: {
+          block_resubmit: boolean
+          block_student_dialogs: boolean
+          color: string | null
+          course_id: string | null
+          created_at: string
+          curator_id: string | null
+          default_price: number | null
+          enable_channel: boolean
+          enable_group_chat: boolean
+          end_date: string | null
+          group_number: string | null
+          id: string
+          limit_access_time: boolean
+          max_seats: number | null
+          name: string
+          organization_id: string
+          program_form: string | null
+          program_hours: number | null
+          program_title: string | null
+          schedule_access: boolean
+          show_locked_lessons: boolean
+          start_date: string | null
+          strict_order: boolean
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "student_groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upgrade_to_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: undefined
