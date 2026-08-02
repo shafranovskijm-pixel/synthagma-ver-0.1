@@ -1,0 +1,168 @@
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { FileText, Eye, Download, Trash2, Sparkles, ChevronDown, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import { toast } from "sonner";
+
+import { generateDocument, generatePackage, downloadHtml, previewHtml } from "@/lib/group-docs/generate";
+import { GROUP_DOCUMENT_TYPES } from "@/lib/group-docs/groupDocuments";
+import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
+import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
+
+interface Props {
+  organizationId: string;
+  groupId: string;
+  ctx: GenerationContext | null;
+  defaultPrice?: number | null;
+  /** Незаполненные поля группы/организации, о которых стоит предупредить менеджера. */
+  missingFields?: string[];
+  onOpenGroupSettings?: () => void;
+}
+
+const DOC_TYPES = GROUP_DOCUMENT_TYPES.filter(t => t.folder === "docs");
+const ALL_TYPES: DocType[] = GROUP_DOCUMENT_TYPES.map(t => t.key as DocType);
+
+export function GroupDocumentsFolder({ organizationId, groupId, ctx, defaultPrice, missingFields = [], onOpenGroupSettings }: Props) {
+  const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
+  const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
+  const [busy, setBusy] = useState(false);
+
+  const typeTitle = useMemo(() => {
+    const map = new Map<string, string>();
+    GROUP_DOCUMENT_TYPES.forEach(t => map.set(t.key, t.title));
+    return map;
+  }, []);
+
+  const run = async (types: DocType[]) => {
+    if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return; }
+    if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return; }
+    setBusy(true);
+    try {
+      const docs = types.length === 1
+        ? [generateDocument(ctx, types[0], { totalPrice: price })]
+        : generatePackage(ctx, types, { totalPrice: price });
+      const ok = await saveGenerated(docs);
+      if (ok) toast.success(docs.length === 1 ? "Документ сформирован" : `Сформировано документов: ${docs.length}`);
+    } catch (e: any) {
+      toast.error("Ошибка генерации: " + (e?.message || ""));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openDoc = (row: GroupDocumentRow, download = false) => {
+    if (!row.html) { toast.error("HTML документа не сохранён"); return; }
+    const doc = {
+      id: row.id,
+      doc_type: row.doc_type as DocType,
+      name: row.name,
+      document_number: row.document_number,
+      document_date: row.document_date || "",
+      variables: (row.variables || {}) as Record<string, string>,
+      html: row.html,
+      status: "active" as const,
+      created_at: row.created_at,
+    };
+    if (download) downloadHtml(doc); else previewHtml(doc);
+  };
+
+  return (
+    <div className="space-y-4">
+      {missingFields.length > 0 && (
+        <Card className="p-4 rounded-2xl border-border bg-muted/40">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+            <div className="text-sm">
+              <div className="font-medium">Заполните данные, чтобы документы были без пропусков</div>
+              <div className="text-muted-foreground mt-0.5">Не заполнено: {missingFields.join(", ")}</div>
+              {onOpenGroupSettings && (
+                <Button variant="outline" size="sm" className="mt-2 rounded-xl" onClick={onOpenGroupSettings}>
+                  Открыть настройки группы
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx} onClick={() => run(ALL_TYPES)}>
+          <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx}>
+              Отдельный документ <ChevronDown className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-72">
+            {DOC_TYPES.map(t => (
+              <DropdownMenuItem key={t.key} className="gap-2" onClick={() => run([t.key as DocType])}>
+                <FileText className="w-4 h-4" /> {t.title}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <span>Стоимость, ₽</span>
+          <Input
+            type="number"
+            min={0}
+            value={price}
+            onChange={e => setPrice(Number(e.target.value) || 0)}
+            className="w-28 h-9 rounded-xl"
+          />
+        </div>
+        <Badge variant="secondary" className="rounded-full ml-auto">Файлов: {documents.length}</Badge>
+      </div>
+
+      {/* List */}
+      <div className="border border-border rounded-2xl bg-card overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Загрузка…</div>
+        ) : documents.length === 0 ? (
+          <div className="p-10 text-center">
+            <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
+            <div className="text-sm text-muted-foreground">
+              Документов пока нет. Нажмите «Сгенерировать пакет» — реквизиты подставятся из профиля учебного центра, настроек группы и карточек учеников.
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {documents.map(row => (
+              <div key={row.id} className="flex items-center gap-3 p-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{row.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {typeTitle.get(row.doc_type) || row.doc_type}
+                    {row.document_date ? ` · ${format(new Date(row.document_date), "d MMM yyyy", { locale: ru })}` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row)}>
+                    <Eye className="w-3.5 h-3.5" /> Превью
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row, true)}>
+                    <Download className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => remove(row.id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -12,6 +12,8 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ContractsFolder } from "@/components/organization/group-folder/ContractsFolder";
+import { GroupDocumentsFolder } from "@/components/organization/group-folder/GroupDocumentsFolder";
+import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
 
 
@@ -28,6 +30,11 @@ interface GroupData {
   color: string | null;
   start_date: string | null;
   end_date: string | null;
+  group_number: string | null;
+  program_title: string | null;
+  program_hours: number | null;
+  program_form: string | null;
+  default_price: number | null;
 }
 
 interface StudentRow {
@@ -35,10 +42,20 @@ interface StudentRow {
   full_name: string;
   email: string | null;
   login: string | null;
+  phone: string | null;
   documents: {
     passport: number;
     snils: number;
   };
+  frdo?: {
+    birth_date: string | null;
+    gender: string | null;
+    snils: string | null;
+    citizenship_code: string | null;
+    education_level: string | null;
+    passport_series: string | null;
+    passport_number: string | null;
+  } | null;
   contracts_count: number;
   test_attempts_count: number;
 }
@@ -60,6 +77,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const folderParam = searchParams.get("folder");
   const openFolder = (["contracts","passports","snils","exams","docs"] as const).includes(folderParam as any) ? (folderParam as FolderKey) : null;
   const setOpenFolder = useCallback((f: FolderKey | null) => {
@@ -93,15 +111,22 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       try {
         const { data: groupData } = await supabase
           .from("student_groups")
-          .select("id, name, color, start_date, end_date")
+          .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, default_price")
           .eq("id", groupId)
           .maybeSingle();
         if (cancelled) return;
-        setGroup(groupData as GroupData | null);
+        setGroup(groupData as any as GroupData | null);
+
+        const { data: orgRow } = await supabase
+          .from("organizations")
+          .select("id, name, inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
+          .eq("id", organizationId)
+          .maybeSingle();
+        if (!cancelled) setOrgInfo(orgRow as any);
 
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id, full_name, email, login")
+          .select("user_id, full_name, email, login, phone")
           .eq("organization_id", organizationId)
           .eq("student_group_id", groupId);
 
@@ -111,7 +136,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           return;
         }
 
-        const [docsRes, contractsRes, attemptsRes] = await Promise.all([
+        const [docsRes, contractsRes, attemptsRes, frdoRes] = await Promise.all([
           (supabase as any)
             .from("student_identity_documents")
             .select("user_id, document_type")
@@ -124,6 +149,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           (supabase as any)
             .from("test_attempts")
             .select("id, user_id")
+            .in("user_id", userIds),
+          (supabase as any)
+            .from("student_frdo_data")
+            .select("user_id, birth_date, gender, snils, citizenship_code, education_level, passport_series, passport_number")
             .in("user_id", userIds),
         ]);
 
@@ -143,13 +172,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         for (const row of (attemptsRes.data as any[]) || []) {
           attemptsByUser.set(row.user_id, (attemptsByUser.get(row.user_id) || 0) + 1);
         }
+        const frdoByUser = new Map<string, any>();
+        for (const row of (frdoRes.data as any[]) || []) {
+          frdoByUser.set(row.user_id, row);
+        }
 
         const rows: StudentRow[] = (profiles || []).map((p: any) => ({
           user_id: p.user_id,
           full_name: p.full_name || "—",
           email: p.email,
           login: p.login,
+          phone: p.phone ?? null,
           documents: docsByUser.get(p.user_id) || { passport: 0, snils: 0 },
+          frdo: frdoByUser.get(p.user_id) || null,
           contracts_count: contractsByUser.get(p.user_id) || 0,
           test_attempts_count: attemptsByUser.get(p.user_id) || 0,
         }));
@@ -171,6 +206,64 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     }
     return { passports, snils, contracts, exams };
   }, [students]);
+
+  /** Контекст генерации документов группы: организация + группа + ученики. */
+  const generationContext = useMemo<GenerationContext | null>(() => {
+    if (!group) return null;
+    return {
+      organization: {
+        name: orgInfo?.name || "",
+        inn: orgInfo?.inn || "",
+        kpp: orgInfo?.kpp || "",
+        ogrn: orgInfo?.ogrn || "",
+        address: orgInfo?.legal_address || orgInfo?.actual_address || "",
+        director_name: orgInfo?.director_name || "",
+        director_position: orgInfo?.director_position || "Директор",
+        bank_name: orgInfo?.bank_name || "",
+        bank_bik: orgInfo?.bank_bik || "",
+        bank_account: orgInfo?.bank_account || "",
+        bank_corr_account: orgInfo?.bank_corr_account || "",
+        email: orgInfo?.email || "",
+        phone: orgInfo?.phone || "",
+      },
+      group: {
+        id: group.id,
+        name: group.name,
+        number: group.group_number || group.name,
+        start_date: group.start_date || "",
+        end_date: group.end_date || "",
+        program_title: group.program_title || "",
+        program_hours: group.program_hours || 0,
+        program_form: group.program_form || "Очно-заочная с применением ДОТ",
+        color: group.color || undefined,
+      },
+      students: students.map(s => ({
+        user_id: s.user_id,
+        full_name: s.full_name,
+        birth_date: s.frdo?.birth_date || undefined,
+        gender: (s.frdo?.gender === "Ж" || s.frdo?.gender === "female" ? "Ж" : s.frdo?.gender ? "М" : undefined) as "М" | "Ж" | undefined,
+        passport: [s.frdo?.passport_series, s.frdo?.passport_number].filter(Boolean).join(" ") || undefined,
+        snils: s.frdo?.snils || undefined,
+        citizenship: s.frdo?.citizenship_code || undefined,
+        email: s.email || undefined,
+        phone: s.phone || undefined,
+        education: s.frdo?.education_level || undefined,
+      })),
+    };
+  }, [group, orgInfo, students]);
+
+  const missingDocFields = useMemo(() => {
+    const missing: string[] = [];
+    if (!group?.program_title) missing.push("название программы");
+    if (!group?.program_hours) missing.push("объём часов");
+    if (!group?.group_number) missing.push("номер группы");
+    if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
+    if (!orgInfo?.inn) missing.push("ИНН учебного центра");
+    if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
+    return missing;
+  }, [group, orgInfo]);
+
+
 
   const generateStudentsListDoc = () => {
     const rows = students.map((s, i) => `
@@ -290,6 +383,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           groupName={group?.name || ""}
           students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
         />
+      ) : openFolder === "docs" ? (
+        <div className="space-y-4">
+          <Button variant="ghost" size="sm" onClick={() => setOpenFolder(null)} className="gap-1.5 rounded-xl">
+            <ArrowLeft className="w-4 h-4" /> К папкам
+          </Button>
+          <GroupDocumentsFolder
+            organizationId={organizationId}
+            groupId={groupId}
+            ctx={generationContext}
+            defaultPrice={group?.default_price ?? null}
+            missingFields={missingDocFields}
+          />
+        </div>
       ) : (
         <FolderContents
           folder={openFolder}

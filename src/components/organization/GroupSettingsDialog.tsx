@@ -16,6 +16,11 @@ interface GroupSettings {
   color: string | null;
   start_date: string | null;
   end_date: string | null;
+  group_number: string | null;
+  program_title: string | null;
+  program_hours: number | null;
+  program_form: string | null;
+  default_price: number | null;
   max_seats: number | null;
   curator_id: string | null;
   strict_order: boolean;
@@ -123,6 +128,11 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           color: settings.color,
           start_date: settings.start_date,
           end_date: settings.end_date,
+          group_number: settings.group_number,
+          program_title: settings.program_title,
+          program_hours: settings.program_hours,
+          program_form: settings.program_form,
+          default_price: settings.default_price,
           max_seats: seatLimitEnabled ? (settings.max_seats || 30) : null,
           strict_order: settings.strict_order,
           limit_access_time: settings.limit_access_time,
@@ -238,6 +248,67 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                           />
                         </div>
                       </div>
+
+                      {/* Данные программы — используются при генерации документов группы */}
+                      <div className="rounded-xl border border-border p-4 space-y-3">
+                        <div>
+                          <div className="text-sm font-medium">Данные для документов группы</div>
+                          <div className="text-xs text-muted-foreground">Подставляются в договоры, приказы, журналы и ведомости</div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-sm font-medium mb-1.5 block">Номер группы</label>
+                            <Input
+                              value={settings.group_number || ""}
+                              onChange={e => update({ group_number: e.target.value || null })}
+                              placeholder="УЦ-4/2026"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1.5 block">Объём программы, часов</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={settings.program_hours ?? ""}
+                              onChange={e => update({ program_hours: e.target.value ? Number(e.target.value) : null })}
+                              placeholder="72"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-medium mb-1.5 block">Название программы</label>
+                            <Input
+                              value={settings.program_title || ""}
+                              onChange={e => update({ program_title: e.target.value || null })}
+                              placeholder="Охрана труда для руководителей и специалистов"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1.5 block">Форма обучения</label>
+                            <Input
+                              value={settings.program_form || ""}
+                              onChange={e => update({ program_form: e.target.value || null })}
+                              placeholder="Очно-заочная с применением ДОТ"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1.5 block">Стоимость обучения, ₽</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={settings.default_price ?? ""}
+                              onChange={e => update({ default_price: e.target.value ? Number(e.target.value) : null })}
+                              placeholder="0"
+                              className="rounded-lg"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+
 
                       <SettingRow
                         label="Ограничить кол-во мест"
