@@ -118,6 +118,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [planOpen, setPlanOpen] = useState(false);
   const [courseHoursOverride, setCourseHoursOverride] = useState<string>("");
   const [courseFormOverride, setCourseFormOverride] = useState<string>("");
+  /** Название программы из настроек группы (приоритетнее курса). */
+  const [programTitleOverride, setProgramTitleOverride] = useState<string>("");
 
   const [studentDetails, setStudentDetails] = useState<Map<string, { passport: string | null; address: string | null; phone: string | null }>>(new Map());
   /** Правки паспорта/адреса/телефона прямо в мастере — попадают в variables snapshot. */
@@ -131,11 +133,18 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setStep(1);
     setScenarioChosen(false);
     setStudentOverrides({});
+    // Предзаполнение из настроек группы
+    setCourseId(groupDefaults?.courseId || "");
+    setProgramTitleOverride(groupDefaults?.programTitle || "");
+    setCourseHoursOverride(groupDefaults?.programHours ? String(groupDefaults.programHours) : "");
+    setCourseFormOverride(groupDefaults?.programForm || "");
+    setPrice(groupDefaults?.price ? String(groupDefaults.price) : "");
+    setDate(groupDefaults?.startDate || new Date().toISOString().slice(0, 10));
     if (quick) {
-      setDate(new Date().toISOString().slice(0, 10));
       setNumberMode("auto");
       setNumberManual("");
     }
+
     (async () => {
       const [tplRes, coRes, orgRes, crsRes, profRes, frdoRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
