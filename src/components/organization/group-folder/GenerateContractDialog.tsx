@@ -706,6 +706,39 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     <div className="text-xs text-muted-foreground">
                       Выбрано: {multiStudentIds.length || (primaryStudent ? 1 : 0)}. Список идёт в <code>{`{{students_table}}`}</code>.
                     </div>
+
+                    {scenarioStudents.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <Label className="text-xs">Паспорт, адрес и телефон обучающихся</Label>
+                        <div className="text-xs text-muted-foreground">
+                          Пустые поля можно заполнить прямо здесь — значения сохранятся в договоре.
+                        </div>
+                        <div className="rounded-xl border border-border divide-y divide-border max-h-[300px] overflow-y-auto">
+                          {scenarioStudents.map(s => (
+                            <div key={s.user_id} className="p-3 space-y-2">
+                              <div className="text-sm font-medium">{s.full_name}</div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <Input
+                                  placeholder="Паспорт (серия и номер)"
+                                  value={studentOverrides[s.user_id]?.passport ?? s.passport ?? ""}
+                                  onChange={e => setStudentOverrides(p => ({ ...p, [s.user_id]: { ...p[s.user_id], passport: e.target.value } }))}
+                                />
+                                <Input
+                                  placeholder="Адрес регистрации"
+                                  value={studentOverrides[s.user_id]?.address ?? s.address ?? ""}
+                                  onChange={e => setStudentOverrides(p => ({ ...p, [s.user_id]: { ...p[s.user_id], address: e.target.value } }))}
+                                />
+                                <Input
+                                  placeholder="Телефон"
+                                  value={studentOverrides[s.user_id]?.phone ?? s.phone ?? ""}
+                                  onChange={e => setStudentOverrides(p => ({ ...p, [s.user_id]: { ...p[s.user_id], phone: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
