@@ -31,7 +31,7 @@ import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
 import {
   templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
-  planContractJobs, type ContractScenario, type ScenarioStudent,
+  planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 
@@ -83,6 +83,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [courses, setCourses] = useState<Course[]>([]);
 
   const [counterparty, setCounterparty] = useState<CounterpartyType>("individual");
+  /** Сценарий выбран пользователем явно — без этого дальше не пускаем (в т.ч. в quick-режиме). */
+  const [scenarioChosen, setScenarioChosen] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
   const [multiStudentIds, setMultiStudentIds] = useState<string[]>([]);
   const [primaryStudentId, setPrimaryStudentId] = useState<string>("");
@@ -103,6 +105,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [courseFormOverride, setCourseFormOverride] = useState<string>("");
 
   const [studentDetails, setStudentDetails] = useState<Map<string, { passport: string | null; address: string | null; phone: string | null }>>(new Map());
+  /** Правки паспорта/адреса/телефона прямо в мастере — попадают в variables snapshot. */
+  const [studentOverrides, setStudentOverrides] = useState<Record<string, { passport?: string; address?: string; phone?: string }>>({});
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -110,29 +114,43 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   useEffect(() => {
     if (!open) return;
     setStep(1);
+    setScenarioChosen(false);
+    setStudentOverrides({});
     if (quick) {
-      // Быстрая генерация: физлица (ученики группы), все ученики, сегодня, авто-номер
-      setCounterparty("individual");
-      const ids = students.map(s => s.user_id);
-      setMultiStudentIds(ids);
-      setPrimaryStudentId(ids[0] || "");
-      setCompanyId("");
       setDate(new Date().toISOString().slice(0, 10));
       setNumberMode("auto");
       setNumberManual("");
     }
     (async () => {
-      const [tplRes, coRes, orgRes, crsRes, profRes] = await Promise.all([
+      const [tplRes, coRes, orgRes, crsRes, profRes, frdoRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
         (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
-        (supabase as any).from("profiles").select("user_id, passport_series, passport_number, address, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
+        // В profiles паспорта/адреса нет — только телефон.
+        (supabase as any).from("profiles").select("user_id, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
+        // Паспортные данные живут в student_frdo_data (user_id + organization_id).
+        (supabase as any).from("student_frdo_data").select("user_id, passport_series, passport_number").eq("organization_id", organizationId),
       ]);
+
+      for (const [label, res] of [
+        ["шаблоны договоров", tplRes], ["компании", coRes], ["реквизиты учебного центра", orgRes],
+        ["курсы", crsRes], ["профили учеников", profRes], ["паспортные данные (ФРДО)", frdoRes],
+      ] as Array<[string, any]>) {
+        if (res?.error) {
+          console.error(`[GenerateContractDialog] ошибка загрузки: ${label}`, res.error);
+          toast.error(`Не удалось загрузить: ${label}`, { description: res.error.message });
+        }
+      }
+
       const details = new Map<string, { passport: string | null; address: string | null; phone: string | null }>();
       (profRes?.data || []).forEach((r: any) => {
+        details.set(r.user_id, { passport: null, address: null, phone: r.phone || null });
+      });
+      (frdoRes?.data || []).forEach((r: any) => {
         const passport = [r.passport_series, r.passport_number].filter(Boolean).join(" ") || null;
-        details.set(r.user_id, { passport, address: r.address || null, phone: r.phone || null });
+        const prev = details.get(r.user_id);
+        details.set(r.user_id, { passport, address: prev?.address ?? null, phone: prev?.phone ?? null });
       });
       setStudentDetails(details);
       const tpls = (tplRes.data || []) as Template[];
@@ -140,20 +158,28 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       setCompanies((coRes.data || []) as Company[]);
       setOrgReq(orgRes.data || null);
       setCourses((crsRes.data || []) as Course[]);
-      // Шаблон по умолчанию выбирается с учётом сценария (физлицо / компания)
-      const def = pickDefaultTemplate(tpls, quick ? "individual" : counterparty);
-      if (def && (quick || !templateId)) setTemplateId(def.id);
-      if (quick) {
-        if (!def) {
-          toast.error("Нет шаблона договора", { description: "Загрузите шаблон, затем повторите быструю генерацию" });
-        } else {
-          // Сразу к шагу проверки и генерации
-          setStep(5);
-        }
+      if (quick && tpls.length === 0) {
+        toast.error("Нет шаблона договора", { description: "Загрузите шаблон, затем повторите быструю генерацию" });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId, quick]);
+
+  /**
+   * Быстрая генерация: автозаполнение применяется ТОЛЬКО после явного выбора сценария —
+   * все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию сценария.
+   */
+  const applyQuickDefaults = (scenario: CounterpartyType) => {
+    const ids = students.map(s => s.user_id);
+    setMultiStudentIds(ids);
+    setPrimaryStudentId(ids[0] || "");
+    if (scenario === "individual") setCompanyId("");
+    setDate(new Date().toISOString().slice(0, 10));
+    setNumberMode("auto");
+    const def = pickDefaultTemplate(templates, scenario);
+    if (def) setTemplateId(def.id);
+    return def;
+  };
 
 
   useEffect(() => {
@@ -265,27 +291,36 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     return { ...base, ...extra };
   };
 
-  const previewVariables = useMemo(() => buildVariables(previewNumber || ""), [previewNumber, orgReq, date, groupName, programTitle, programHours, programForm, price, counterparty, primaryStudent, selectedCompany, selectedStudentRows, plan, extra]);
-
-  const previewHtml = useMemo(() => {
-    if (!selectedTpl) return "";
-    return renderTemplate(selectedTpl.body_html, previewVariables, RAW_KEYS);
-  }, [selectedTpl, previewVariables]);
 
   const scenarioStudents = useMemo<ScenarioStudent[]>(() => {
     const ids = multiStudentIds.length ? multiStudentIds : (primaryStudent ? [primaryStudent.user_id] : []);
     return ids
       .map(id => students.find(s => s.user_id === id))
       .filter(Boolean)
-      .map(s => ({
-        user_id: s!.user_id,
-        full_name: s!.full_name,
-        email: s!.email ?? null,
-        passport: s!.passport ?? studentDetails.get(s!.user_id)?.passport ?? null,
-        address: s!.address ?? studentDetails.get(s!.user_id)?.address ?? null,
-        phone: s!.phone ?? studentDetails.get(s!.user_id)?.phone ?? null,
-      }));
-  }, [multiStudentIds, primaryStudent, students, studentDetails]);
+      .map(s => {
+        const ov = studentOverrides[s!.user_id] || {};
+        const det = studentDetails.get(s!.user_id);
+        return {
+          user_id: s!.user_id,
+          full_name: s!.full_name,
+          email: s!.email ?? null,
+          passport: (ov.passport ?? "").trim() || s!.passport || det?.passport || null,
+          address: (ov.address ?? "").trim() || s!.address || det?.address || null,
+          phone: (ov.phone ?? "").trim() || s!.phone || det?.phone || null,
+        };
+      });
+  }, [multiStudentIds, primaryStudent, students, studentDetails, studentOverrides]);
+
+  const previewVariables = useMemo(
+    () => buildVariables(previewNumber || "", scenarioStudents.length ? scenarioStudents : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [previewNumber, orgReq, date, groupName, programTitle, programHours, programForm, price, counterparty, scenarioStudents, selectedCompany, selectedStudentRows, plan, extra],
+  );
+
+  const previewHtml = useMemo(() => {
+    if (!selectedTpl) return "";
+    return renderTemplate(selectedTpl.body_html, previewVariables, RAW_KEYS);
+  }, [selectedTpl, previewVariables]);
 
   const scenarioIssues = useMemo(() => validateScenario(counterparty, {
     org: orgReq,
