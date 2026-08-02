@@ -350,42 +350,77 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const generate = async () => {
     if (!selectedTpl) { toast.error("Выберите шаблон"); return; }
+    if (blockers.length > 0) {
+      toast.error("Заполните обязательные данные", { description: blockers.map(b => b.label).join(", ") });
+      return;
+    }
     setBusy(true);
     try {
-      const number = await resolveNumber();
-      const vars = buildVariables(number);
-      const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
-      const title = number ? `Договор ${number}` : "Договор";
-      const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
-
-      const safe = title.replace(/[^\w.\-]+/g, "_").slice(0, 60) || "contract";
-      const fileName = `${safe}.pdf`;
-      const targetKey = counterparty === "individual" ? (primaryStudent?.user_id || "group") : `company_${companyId}`;
-      const storagePath = `${organizationId}/contracts/${groupId}/${targetKey}/${Date.now()}_${fileName}`;
-
-      const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
-        body: { html: fullDoc, fileName, storagePath },
+      const jobs = planContractJobs(counterparty, {
+        org: orgReq,
+        students: scenarioStudents,
+        company: selectedCompany || null,
+        programTitle,
+        price,
+        date,
+        templateId,
       });
-      if (pdfErr) throw pdfErr;
-      if (!pdfRes?.path) throw new Error("PDF не был сохранён");
 
-      const { error: insErr } = await (supabase as any).from("org_contracts").insert({
-        organization_id: organizationId,
-        student_user_id: counterparty === "individual" ? (primaryStudent?.user_id || null) : null,
-        student_group_id: groupId,
-        company_id: counterparty === "legal" ? companyId : null,
-        counterparty_type: counterparty,
-        template_id: templateId,
-        variables: vars,
-        name: title || selectedTpl.name,
-        contract_number: number || null,
-        contract_date: date || null,
-        file_path: pdfRes.path,
-        status: "active",
-      });
-      if (insErr) throw insErr;
+      const produced: Array<{ name: string; html: string }> = [];
 
-      toast.success("Договор сгенерирован" + (number ? ` (№ ${number})` : ""));
+      for (const job of jobs) {
+        const number = await resolveNumber();
+        const vars = buildVariables(number, job.students);
+        const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
+        const title = number ? `Договор № ${number}` : job.label;
+        const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
+
+        const safe = `${title} ${counterparty === "individual" ? job.students[0]?.full_name || "" : ""}`.trim();
+        const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.\-]+/g, "_");
+        const storagePath = `${organizationId}/contracts/${groupId}/${job.key}/${Date.now()}_${fileName}`;
+
+        const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
+          body: { html: fullDoc, fileName, storagePath },
+        });
+        if (pdfErr) throw pdfErr;
+        if (!pdfRes?.path) throw new Error("PDF не был сохранён");
+
+        const { error: insErr } = await (supabase as any).from("org_contracts").insert({
+          organization_id: organizationId,
+          student_user_id: job.studentUserId,
+          student_group_id: groupId,
+          company_id: job.companyId,
+          counterparty_type: counterparty,
+          template_id: templateId,
+          template_version: selectedTpl.version ?? null,
+          variables: vars,
+          students: job.students.map(st => ({ user_id: st.user_id, full_name: st.full_name, email: st.email || null })),
+          body_html: fullDoc,
+          name: counterparty === "individual" ? `${title} — ${job.students[0]?.full_name || ""}`.trim() : title,
+          contract_number: number || null,
+          contract_date: date || null,
+          file_path: pdfRes.path,
+          status: "active",
+        });
+        if (insErr) throw insErr;
+
+        produced.push({ name: counterparty === "individual" ? `${title} ${job.students[0]?.full_name || ""}`.trim() : title, html: fullDoc });
+      }
+
+      // Скачиваем редактируемые DOCX: один документ — файл, несколько — ZIP.
+      try {
+        if (produced.length === 1) {
+          const blob = await htmlToDocxBlob(produced[0].html);
+          downloadBlob(blob, sanitizeFileName(produced[0].name, "docx"));
+        } else if (produced.length > 1) {
+          const blob = await htmlDocsToZipBlob(produced);
+          downloadBlob(blob, sanitizeFileName(`Договоры ${groupName}`, "zip"));
+        }
+      } catch (e: any) {
+        toast.error("DOCX не сформирован, но договоры сохранены", { description: e?.message });
+      }
+
+      toast.success(produced.length === 1 ? "Договор сгенерирован" : `Сгенерировано договоров: ${produced.length}`);
       onGenerated();
       onClose();
     } catch (e: any) {
@@ -488,7 +523,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     )}>
                     <User className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Физическое лицо</div>
-                    <div className="text-xs text-muted-foreground mt-1">Ученик группы заключает договор от своего имени</div>
+                    <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
                   </button>
                   <button type="button" onClick={() => setCounterparty("legal")}
                     className={cn(
@@ -496,8 +531,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                       counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                     )}>
                     <Building2 className="w-6 h-6 text-primary mb-2" />
-                    <div className="text-base font-semibold">Юридическое лицо</div>
-                    <div className="text-xs text-muted-foreground mt-1">Компания-заказчик оплачивает обучение сотрудников</div>
+                    <div className="text-base font-semibold">Компания</div>
+                    <div className="text-xs text-muted-foreground mt-1">Один договор с заказчиком и списком слушателей в приложении</div>
                   </button>
                 </div>
               </div>
@@ -725,6 +760,30 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     </div>
                   )}
 
+                  {blockers.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Генерация заблокирована. Заполните: {blockers.map(b => b.label).join(", ")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {warnings.length > 0 && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Договор можно выпустить, но в нём будут пропуски: {warnings.map(b => b.label).join(", ")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {counterparty === "individual" && scenarioStudents.length > 1 && (
+                    <Alert>
+                      <FileSignature className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Будет создано {scenarioStudents.length} отдельных договоров — по одному на каждого ученика. Скачается ZIP с DOCX.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   {selectedTpl && missing.length > 0 && (
                     <Alert>
                       <AlertTriangle className="h-4 w-4" />
@@ -758,7 +817,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
           <DialogFooter className="p-4 border-t border-border flex-row items-center gap-2 sm:justify-between">
             <div className="text-xs text-muted-foreground">
-              {!proceed.ok && proceed.reason ? proceed.reason : `Шаг ${step} из ${STEPS.length}`}
+              {!proceed.ok && proceed.reason
+                ? proceed.reason
+                : step === 5 && blockers.length > 0
+                  ? `Не заполнено: ${blockers.map(b => b.label).join(", ")}`
+                  : `Шаг ${step} из ${STEPS.length}`}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={onClose} disabled={busy}>Отмена</Button>
@@ -772,8 +835,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   Далее<ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={generate} disabled={busy || !selectedTpl} className="gap-1.5">
-                  <FileSignature className="w-4 h-4" />{busy ? "Генерация…" : "Сгенерировать и сохранить"}
+                <Button onClick={generate} disabled={busy || !selectedTpl || blockers.length > 0} className="gap-1.5">
+                  <FileSignature className="w-4 h-4" />
+                  {busy
+                    ? "Генерация…"
+                    : counterparty === "individual" && scenarioStudents.length > 1
+                      ? `Сгенерировать ${scenarioStudents.length} договора`
+                      : "Сгенерировать и сохранить"}
                 </Button>
               )}
             </div>
