@@ -11,12 +11,23 @@ import { toast } from "sonner";
 
 import { generateDocument, generatePackage, downloadHtml, previewHtml } from "@/lib/group-docs/generate";
 import { GROUP_DOCUMENT_TYPES } from "@/lib/group-docs/groupDocuments";
+import {
+  PACKAGE_DOC_TYPES,
+  describePackagePlan,
+  packageResultMessage,
+  shouldGeneratePackageDocs,
+} from "@/lib/group-docs/packageTypes";
 import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
 import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
+import { GenerateContractDialog } from "./GenerateContractDialog";
+
+interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 
 interface Props {
   organizationId: string;
   groupId: string;
+  groupName: string;
+  students: FolderStudent[];
   ctx: GenerationContext | null;
   defaultPrice?: number | null;
   /** Незаполненные поля группы/организации, о которых стоит предупредить менеджера. */
@@ -24,13 +35,23 @@ interface Props {
   onOpenGroupSettings?: () => void;
 }
 
-const DOC_TYPES = GROUP_DOCUMENT_TYPES.filter(t => t.folder === "docs");
-const ALL_TYPES: DocType[] = GROUP_DOCUMENT_TYPES.map(t => t.key as DocType);
+/** В отдельном меню — только документы папки «docs». Договоры живут в папке «Договоры». */
+const DOC_TYPES = GROUP_DOCUMENT_TYPES.filter(t => t.folder === "docs" && t.key !== "contract");
 
-export function GroupDocumentsFolder({ organizationId, groupId, ctx, defaultPrice, missingFields = [], onOpenGroupSettings }: Props) {
+export function GroupDocumentsFolder({
+  organizationId,
+  groupId,
+  groupName,
+  students,
+  ctx,
+  defaultPrice,
+  missingFields = [],
+  onOpenGroupSettings,
+}: Props) {
   const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
   const [busy, setBusy] = useState(false);
+  const [packageOpen, setPackageOpen] = useState(false);
 
   const typeTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -39,20 +60,37 @@ export function GroupDocumentsFolder({ organizationId, groupId, ctx, defaultPric
   }, []);
 
   const run = async (types: DocType[]) => {
-    if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return; }
-    if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return; }
+    if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
+    if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
     setBusy(true);
     try {
       const docs = types.length === 1
         ? [generateDocument(ctx, types[0], { totalPrice: price })]
         : generatePackage(ctx, types, { totalPrice: price });
       const ok = await saveGenerated(docs);
-      if (ok) toast.success(docs.length === 1 ? "Документ сформирован" : `Сформировано документов: ${docs.length}`);
+      if (ok && types.length === 1) toast.success("Документ сформирован");
+      return ok;
     } catch (e: any) {
       toast.error("Ошибка генерации: " + (e?.message || ""));
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * Пакет: договоры создаёт GenerateContractDialog (сценарии),
+   * остальные 9 документов группы генерируются ровно один раз после успеха.
+   */
+  const handleContractsGenerated = async (result?: { scenario: "individual" | "company"; count: number }) => {
+    const scenario = result?.scenario ?? "individual";
+    const count = result?.count ?? 0;
+    if (!shouldGeneratePackageDocs({ contractsDone: true, contractCount: count, docsGenerated: false })) {
+      toast.error("Договоры не созданы — остальные документы пакета не сформированы");
+      return;
+    }
+    const ok = await run(PACKAGE_DOC_TYPES);
+    if (ok) toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
   };
 
   const openDoc = (row: GroupDocumentRow, download = false) => {
@@ -92,7 +130,7 @@ export function GroupDocumentsFolder({ organizationId, groupId, ctx, defaultPric
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx} onClick={() => run(ALL_TYPES)}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx} onClick={() => setPackageOpen(true)}>
           <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
         </Button>
         <DropdownMenu>
@@ -120,6 +158,11 @@ export function GroupDocumentsFolder({ organizationId, groupId, ctx, defaultPric
           />
         </div>
         <Badge variant="secondary" className="rounded-full ml-auto">Файлов: {documents.length}</Badge>
+      </div>
+
+      <div className="text-xs text-muted-foreground">
+        Пакет: сначала выберите сценарий договора — физлицо даёт {describePackagePlan("individual", students.length)},
+        компания — {describePackagePlan("company", students.length)}.
       </div>
 
       {/* List */}
@@ -163,6 +206,19 @@ export function GroupDocumentsFolder({ organizationId, groupId, ctx, defaultPric
           </div>
         )}
       </div>
+
+      {packageOpen && (
+        <GenerateContractDialog
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
+          open={packageOpen}
+          quick
+          onClose={() => setPackageOpen(false)}
+          onGenerated={handleContractsGenerated}
+        />
+      )}
     </div>
   );
 }
