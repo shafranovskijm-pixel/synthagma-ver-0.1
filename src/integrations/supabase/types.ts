@@ -5427,6 +5427,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           body_html: string
+          counterparty_type: string
           created_at: string
           id: string
           is_active: boolean
@@ -5440,6 +5441,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           body_html: string
+          counterparty_type?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -5453,6 +5455,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           body_html?: string
+          counterparty_type?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -5475,6 +5478,7 @@ export type Database = {
       }
       org_contracts: {
         Row: {
+          body_html: string | null
           company_id: string | null
           contract_date: string | null
           contract_number: string | null
@@ -5488,11 +5492,14 @@ export type Database = {
           status: string
           student_group_id: string | null
           student_user_id: string | null
+          students: Json
           template_id: string | null
+          template_version: number | null
           updated_at: string
           variables: Json
         }
         Insert: {
+          body_html?: string | null
           company_id?: string | null
           contract_date?: string | null
           contract_number?: string | null
@@ -5506,11 +5513,14 @@ export type Database = {
           status?: string
           student_group_id?: string | null
           student_user_id?: string | null
+          students?: Json
           template_id?: string | null
+          template_version?: number | null
           updated_at?: string
           variables?: Json
         }
         Update: {
+          body_html?: string | null
           company_id?: string | null
           contract_date?: string | null
           contract_number?: string | null
@@ -5524,7 +5534,9 @@ export type Database = {
           status?: string
           student_group_id?: string | null
           student_user_id?: string | null
+          students?: Json
           template_id?: string | null
+          template_version?: number | null
           updated_at?: string
           variables?: Json
         }
