@@ -16,6 +16,7 @@ import {
   describePackagePlan,
   packageResultMessage,
   shouldGeneratePackageDocs,
+  missingDocRequirements,
 } from "@/lib/group-docs/packageTypes";
 import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
 import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
