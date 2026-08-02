@@ -4018,6 +4018,71 @@ export type Database = {
           },
         ]
       }
+      group_documents: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          doc_type: string
+          document_date: string | null
+          document_number: string | null
+          file_path: string | null
+          group_id: string
+          html: string | null
+          id: string
+          name: string
+          organization_id: string
+          status: string
+          student_user_id: string | null
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_type: string
+          document_date?: string | null
+          document_number?: string | null
+          file_path?: string | null
+          group_id: string
+          html?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          status?: string
+          student_user_id?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_type?: string
+          document_date?: string | null
+          document_number?: string | null
+          file_path?: string | null
+          group_id?: string
+          html?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          status?: string
+          student_user_id?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_documents_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homework_submissions: {
         Row: {
           attachments: Json | null
@@ -9248,14 +9313,19 @@ export type Database = {
           color: string | null
           created_at: string
           curator_id: string | null
+          default_price: number | null
           enable_channel: boolean
           enable_group_chat: boolean
           end_date: string | null
+          group_number: string | null
           id: string
           limit_access_time: boolean
           max_seats: number | null
           name: string
           organization_id: string
+          program_form: string | null
+          program_hours: number | null
+          program_title: string | null
           schedule_access: boolean
           show_locked_lessons: boolean
           start_date: string | null
@@ -9268,14 +9338,19 @@ export type Database = {
           color?: string | null
           created_at?: string
           curator_id?: string | null
+          default_price?: number | null
           enable_channel?: boolean
           enable_group_chat?: boolean
           end_date?: string | null
+          group_number?: string | null
           id?: string
           limit_access_time?: boolean
           max_seats?: number | null
           name: string
           organization_id: string
+          program_form?: string | null
+          program_hours?: number | null
+          program_title?: string | null
           schedule_access?: boolean
           show_locked_lessons?: boolean
           start_date?: string | null
@@ -9288,14 +9363,19 @@ export type Database = {
           color?: string | null
           created_at?: string
           curator_id?: string | null
+          default_price?: number | null
           enable_channel?: boolean
           enable_group_chat?: boolean
           end_date?: string | null
+          group_number?: string | null
           id?: string
           limit_access_time?: boolean
           max_seats?: number | null
           name?: string
           organization_id?: string
+          program_form?: string | null
+          program_hours?: number | null
+          program_title?: string | null
           schedule_access?: boolean
           show_locked_lessons?: boolean
           start_date?: string | null
