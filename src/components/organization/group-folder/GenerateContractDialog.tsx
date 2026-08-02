@@ -487,7 +487,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   // ── Step validation ───────────────────────────────────────
   const canProceed = (s: number): { ok: boolean; reason?: string } => {
-    if (s === 1) return { ok: !!counterparty };
+    if (s === 1) return scenarioChosen ? { ok: true } : { ok: false, reason: "Выберите сценарий договора" };
     if (s === 2) return selectedTpl ? { ok: true } : { ok: false, reason: "Выберите шаблон договора" };
     if (s === 3) {
       if (counterparty === "individual") {
@@ -502,6 +502,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   };
 
   const goNext = () => {
+    // Быстрая генерация: после явного выбора сценария автозаполняем и сразу к проверке.
+    if (step === 1 && quick) {
+      const def = applyQuickDefaults(counterparty);
+      if (!def) { setStep(2); return; }
+      setStep(5);
+      return;
+    }
     // Skip step 4 if not needed
     let next = step + 1;
     if (next === 4 && !programStepNeeded) next = 5;
