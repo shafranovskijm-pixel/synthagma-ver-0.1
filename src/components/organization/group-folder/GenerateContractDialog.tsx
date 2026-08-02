@@ -577,20 +577,25 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             {step === 1 && (
               <div className="max-w-xl mx-auto space-y-4 pt-6">
                 <Label className="text-base">Кто заказчик по договору?</Label>
+                {quick && (
+                  <p className="text-xs text-muted-foreground">
+                    Быстрая генерация: выберите сценарий — остальные данные (все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию) подставятся автоматически.
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setCounterparty("individual")}
+                  <button type="button" onClick={() => { setCounterparty("individual"); setScenarioChosen(true); }}
                     className={cn(
                       "p-5 rounded-2xl border-2 text-left transition-all",
-                      counterparty === "individual" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      scenarioChosen && counterparty === "individual" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                     )}>
                     <User className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Физическое лицо</div>
                     <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
                   </button>
-                  <button type="button" onClick={() => setCounterparty("legal")}
+                  <button type="button" onClick={() => { setCounterparty("legal"); setScenarioChosen(true); }}
                     className={cn(
                       "p-5 rounded-2xl border-2 text-left transition-all",
-                      counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      scenarioChosen && counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                     )}>
                     <Building2 className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Компания</div>
