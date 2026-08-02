@@ -215,8 +215,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         .eq("course_id", courseId)
         .maybeSingle();
       setPlan((data as TrainingPlan) || null);
-      setCourseHoursOverride(data?.hours != null ? String(data.hours) : "");
-      setCourseFormOverride(data?.form || "");
+      // Нет учебного плана — не стираем значения из настроек группы
+      setCourseHoursOverride(data?.hours != null ? String(data.hours) : (groupDefaults?.programHours ? String(groupDefaults.programHours) : ""));
+      setCourseFormOverride(data?.form || groupDefaults?.programForm || "");
     })();
   }, [courseId]);
 
