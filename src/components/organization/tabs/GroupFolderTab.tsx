@@ -108,15 +108,22 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       try {
         const { data: groupData } = await supabase
           .from("student_groups")
-          .select("id, name, color, start_date, end_date")
+          .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, default_price")
           .eq("id", groupId)
           .maybeSingle();
         if (cancelled) return;
-        setGroup(groupData as GroupData | null);
+        setGroup(groupData as any as GroupData | null);
+
+        const { data: orgRow } = await supabase
+          .from("organizations")
+          .select("id, name, inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
+          .eq("id", organizationId)
+          .maybeSingle();
+        if (!cancelled) setOrgInfo(orgRow as any);
 
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id, full_name, email, login")
+          .select("user_id, full_name, email, login, phone")
           .eq("organization_id", organizationId)
           .eq("student_group_id", groupId);
 
@@ -126,7 +133,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           return;
         }
 
-        const [docsRes, contractsRes, attemptsRes] = await Promise.all([
+        const [docsRes, contractsRes, attemptsRes, frdoRes] = await Promise.all([
           (supabase as any)
             .from("student_identity_documents")
             .select("user_id, document_type")
@@ -139,6 +146,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           (supabase as any)
             .from("test_attempts")
             .select("id, user_id")
+            .in("user_id", userIds),
+          (supabase as any)
+            .from("student_frdo_data")
+            .select("user_id, birth_date, gender, snils, citizenship_code, education_level, passport_series, passport_number")
             .in("user_id", userIds),
         ]);
 
@@ -158,13 +169,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         for (const row of (attemptsRes.data as any[]) || []) {
           attemptsByUser.set(row.user_id, (attemptsByUser.get(row.user_id) || 0) + 1);
         }
+        const frdoByUser = new Map<string, any>();
+        for (const row of (frdoRes.data as any[]) || []) {
+          frdoByUser.set(row.user_id, row);
+        }
 
         const rows: StudentRow[] = (profiles || []).map((p: any) => ({
           user_id: p.user_id,
           full_name: p.full_name || "—",
           email: p.email,
           login: p.login,
+          phone: p.phone ?? null,
           documents: docsByUser.get(p.user_id) || { passport: 0, snils: 0 },
+          frdo: frdoByUser.get(p.user_id) || null,
           contracts_count: contractsByUser.get(p.user_id) || 0,
           test_attempts_count: attemptsByUser.get(p.user_id) || 0,
         }));
