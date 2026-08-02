@@ -53,7 +53,7 @@ describe("contract scenarios", () => {
     expect(keys).toContain("students");
   });
 
-  it("компания: требуются название и ИНН заказчика", () => {
+  it("компания: требуются название, ИНН, адрес и подписант заказчика", () => {
     const noCompany = blockingMissing(validateScenario("legal", base)).map(m => m.key);
     expect(noCompany).toContain("company");
 
@@ -62,8 +62,23 @@ describe("contract scenarios", () => {
     ).map(m => m.key);
     expect(badInn).toContain("company_inn");
 
-    const ok = blockingMissing(
+    // Адрес и подписант компании — тоже blocking (второй проход).
+    const partial = blockingMissing(
       validateScenario("legal", { ...base, company: { id: "c1", name: "ООО Ромашка", inn: "7701" } }),
+    ).map(m => m.key);
+    expect(partial).toEqual(expect.arrayContaining(["company_address", "company_director"]));
+
+    const ok = blockingMissing(
+      validateScenario("legal", {
+        ...base,
+        company: {
+          id: "c1",
+          name: "ООО Ромашка",
+          inn: "7701",
+          address: "г. Москва, ул. Ленина, 1",
+          director: "Иванов И.И.",
+        },
+      }),
     );
     expect(ok).toHaveLength(0);
   });

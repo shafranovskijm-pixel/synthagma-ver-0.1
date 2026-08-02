@@ -33,6 +33,7 @@ import {
   templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
   planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
+import { canProceedStep, nextStep, prevStep, type WizardState } from "@/lib/contracts/wizardFlow";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 
 interface Student { user_id: string; full_name: string; email?: string | null; passport?: string | null; address?: string | null; phone?: string | null; }
@@ -125,7 +126,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       const [tplRes, coRes, orgRes, crsRes, profRes, frdoRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
-        (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
+        (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, email, phone, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
         // В profiles паспорта/адреса нет — только телефон.
         (supabase as any).from("profiles").select("user_id, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
@@ -485,40 +486,29 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     }
   };
 
-  // ── Step validation ───────────────────────────────────────
-  const canProceed = (s: number): { ok: boolean; reason?: string } => {
-    if (s === 1) return scenarioChosen ? { ok: true } : { ok: false, reason: "Выберите сценарий договора" };
-    if (s === 2) return selectedTpl ? { ok: true } : { ok: false, reason: "Выберите шаблон договора" };
-    if (s === 3) {
-      if (counterparty === "individual") {
-        if (!primaryStudent && multiStudentIds.length === 0) return { ok: false, reason: "Выберите хотя бы одного ученика" };
-        return { ok: true };
-      }
-      if (!companyId) return { ok: false, reason: "Выберите компанию-заказчика" };
-      return { ok: true };
-    }
-    if (s === 4) return { ok: true };
-    return { ok: true };
+  // ── Step validation (чистая логика в src/lib/contracts/wizardFlow.ts) ──
+  const wizardState: WizardState = {
+    step,
+    scenarioChosen,
+    counterparty,
+    hasTemplate: !!selectedTpl,
+    hasPrimaryStudent: !!primaryStudent,
+    multiStudentCount: multiStudentIds.length,
+    hasCompany: !!companyId,
   };
+  const canProceed = (s: number) => canProceedStep(s, { ...wizardState, step: s });
 
   const goNext = () => {
-    // Быстрая генерация: после явного выбора сценария автозаполняем и сразу к проверке.
+    // Быстрая генерация: только ПОСЛЕ явного выбора сценария автозаполняем и сразу к проверке.
     if (step === 1 && quick) {
+      if (!canProceed(1).ok) return;
       const def = applyQuickDefaults(counterparty);
-      if (!def) { setStep(2); return; }
-      setStep(5);
+      setStep(def ? 5 : 2);
       return;
     }
-    // Skip step 4 if not needed
-    let next = step + 1;
-    if (next === 4 && !programStepNeeded) next = 5;
-    setStep(Math.min(5, next));
+    setStep(nextStep(wizardState, { quick, programStepNeeded }));
   };
-  const goBack = () => {
-    let prev = step - 1;
-    if (prev === 4 && !programStepNeeded) prev = 3;
-    setStep(Math.max(1, prev));
-  };
+  const goBack = () => setStep(prevStep(step, programStepNeeded));
 
   const proceed = canProceed(step);
 
