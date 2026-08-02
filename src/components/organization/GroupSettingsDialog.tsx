@@ -16,6 +16,11 @@ interface GroupSettings {
   color: string | null;
   start_date: string | null;
   end_date: string | null;
+  group_number: string | null;
+  program_title: string | null;
+  program_hours: number | null;
+  program_form: string | null;
+  default_price: number | null;
   max_seats: number | null;
   curator_id: string | null;
   strict_order: boolean;
