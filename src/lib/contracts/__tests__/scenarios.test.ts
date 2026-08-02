@@ -76,7 +76,7 @@ describe("contract scenarios", () => {
           name: "ООО Ромашка",
           inn: "7701",
           address: "г. Москва, ул. Ленина, 1",
-          signer_name: "Иванов И.И.",
+          director: "Иванов И.И.",
         },
       }),
     );
