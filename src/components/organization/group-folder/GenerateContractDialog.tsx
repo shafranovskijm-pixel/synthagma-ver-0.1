@@ -62,7 +62,18 @@ interface Props {
    * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
    */
   quick?: boolean;
+  /** Предзаполнение из настроек группы: курс, программа, часы, форма, цена, даты. */
+  groupDefaults?: {
+    courseId?: string | null;
+    programTitle?: string | null;
+    programHours?: number | string | null;
+    programForm?: string | null;
+    price?: number | null;
+    startDate?: string | null;
+    endDate?: string | null;
+  };
 }
+
 
 
 type CounterpartyType = ContractScenario;
