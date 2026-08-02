@@ -168,7 +168,20 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setPreviewNumber(`${numberPrefix || ""}__auto__`);
   }, [numberMode, numberPrefix, numberManual]);
 
-  const selectedTpl = templates.find(t => t.id === templateId);
+  const scenarioTemplates = useMemo(
+    () => templates.filter(t => templateMatchesScenario(t.counterparty_type, counterparty)),
+    [templates, counterparty],
+  );
+
+  // При смене сценария договор всегда переключается на подходящий шаблон.
+  useEffect(() => {
+    if (!templates.length) return;
+    if (templateId && scenarioTemplates.some(t => t.id === templateId)) return;
+    setTemplateId(pickDefaultTemplate(templates, counterparty)?.id || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counterparty, templates]);
+
+  const selectedTpl = scenarioTemplates.find(t => t.id === templateId);
   const selectedCompany = companies.find(c => c.id === companyId);
   const selectedCourse = courses.find(c => c.id === courseId);
 
@@ -270,9 +283,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const setDefaultTemplate = async (id: string) => {
     try {
-      await (supabase as any).from("org_contract_templates").update({ is_default: false }).eq("organization_id", organizationId);
+      const scope = templates.find(t => t.id === id)?.counterparty_type || "any";
+      await (supabase as any).from("org_contract_templates")
+        .update({ is_default: false })
+        .eq("organization_id", organizationId)
+        .eq("counterparty_type", scope);
       await (supabase as any).from("org_contract_templates").update({ is_default: true }).eq("id", id);
-      setTemplates(prev => prev.map(t => ({ ...t, is_default: t.id === id })));
+      setTemplates(prev => prev.map(t => (t.counterparty_type === scope ? { ...t, is_default: t.id === id } : t)));
       toast.success("Шаблон по умолчанию обновлён");
     } catch (e: any) {
       toast.error("Не удалось обновить", { description: e?.message });
@@ -454,15 +471,19 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             {step === 2 && (
               <div className="space-y-3 pt-2">
                 <Label>Выберите шаблон договора</Label>
-                {templates.length === 0 ? (
+                {scenarioTemplates.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border p-8 text-center">
                     <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
-                    <div className="text-sm text-muted-foreground mb-3">В организации ещё нет шаблонов договоров</div>
+                    <div className="text-sm text-muted-foreground mb-3">
+                      {templates.length === 0
+                        ? "В организации ещё нет шаблонов договоров"
+                        : `Нет шаблонов для сценария «${counterparty === "individual" ? "Физическое лицо" : "Компания"}»`}
+                    </div>
                     <div className="text-xs text-muted-foreground">Закройте это окно и нажмите «Загрузить шаблон» в папке договоров.</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {templates.map(t => {
+                    {scenarioTemplates.map(t => {
                       const active = t.id === templateId;
                       return (
                         <div key={t.id}
@@ -476,6 +497,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                               <div className="text-sm font-medium truncate flex items-center gap-1.5">
                                 {t.name}
                                 {t.is_default && <Badge variant="secondary" className="text-[10px] rounded-full">по умолчанию</Badge>}
+                                <Badge variant="outline" className="text-[10px] rounded-full">
+                                  {t.counterparty_type === "individual" ? "физлицо" : t.counterparty_type === "legal" ? "компания" : "универсальный"}
+                                </Badge>
                               </div>
                               <div className="text-xs text-muted-foreground mt-0.5">
                                 {extractVariables(t.body_html).length} переменных
