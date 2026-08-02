@@ -257,6 +257,15 @@ export function GroupDocumentsFolder({
           groupId={groupId}
           groupName={groupName}
           students={students}
+          groupDefaults={{
+            courseId: groupDefaults?.courseId ?? null,
+            programTitle: ctx?.group.program_title ?? null,
+            programHours: ctx?.group.program_hours ?? null,
+            programForm: ctx?.group.program_form ?? null,
+            price: defaultPrice ?? null,
+            startDate: ctx?.group.start_date ?? null,
+            endDate: ctx?.group.end_date ?? null,
+          }}
           open={packageOpen}
           quick
           onClose={() => setPackageOpen(false)}
