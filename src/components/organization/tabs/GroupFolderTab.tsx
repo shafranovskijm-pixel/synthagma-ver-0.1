@@ -28,6 +28,11 @@ interface GroupData {
   color: string | null;
   start_date: string | null;
   end_date: string | null;
+  group_number: string | null;
+  program_title: string | null;
+  program_hours: number | null;
+  program_form: string | null;
+  default_price: number | null;
 }
 
 interface StudentRow {
@@ -35,10 +40,20 @@ interface StudentRow {
   full_name: string;
   email: string | null;
   login: string | null;
+  phone: string | null;
   documents: {
     passport: number;
     snils: number;
   };
+  frdo?: {
+    birth_date: string | null;
+    gender: string | null;
+    snils: string | null;
+    citizenship_code: string | null;
+    education_level: string | null;
+    passport_series: string | null;
+    passport_number: string | null;
+  } | null;
   contracts_count: number;
   test_attempts_count: number;
 }
