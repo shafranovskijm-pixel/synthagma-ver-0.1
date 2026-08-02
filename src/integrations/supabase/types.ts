@@ -9323,6 +9323,7 @@ export type Database = {
           block_resubmit: boolean
           block_student_dialogs: boolean
           color: string | null
+          course_id: string | null
           created_at: string
           curator_id: string | null
           default_price: number | null
@@ -9348,6 +9349,7 @@ export type Database = {
           block_resubmit?: boolean
           block_student_dialogs?: boolean
           color?: string | null
+          course_id?: string | null
           created_at?: string
           curator_id?: string | null
           default_price?: number | null
@@ -9373,6 +9375,7 @@ export type Database = {
           block_resubmit?: boolean
           block_student_dialogs?: boolean
           color?: string | null
+          course_id?: string | null
           created_at?: string
           curator_id?: string | null
           default_price?: number | null
@@ -9395,6 +9398,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_groups_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_groups_organization_id_fkey"
             columns: ["organization_id"]
