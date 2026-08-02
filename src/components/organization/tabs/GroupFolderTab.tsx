@@ -391,6 +391,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           <GroupDocumentsFolder
             organizationId={organizationId}
             groupId={groupId}
+            groupName={group?.name || ""}
+            students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
             ctx={generationContext}
             defaultPrice={group?.default_price ?? null}
             missingFields={missingDocFields}
