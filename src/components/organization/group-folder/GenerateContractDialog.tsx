@@ -205,8 +205,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setPreviewNumber(`${numberPrefix || ""}__auto__`);
   }, [numberMode, numberPrefix, numberManual]);
 
+  // Шаблон пригоден, только если тип совпадает и нет плейсхолдеров чужого сценария.
   const scenarioTemplates = useMemo(
-    () => templates.filter(t => templateMatchesScenario(t.counterparty_type, counterparty)),
+    () => templates.filter(t => templateUsableForScenario(t.counterparty_type, extractVariables(t.body_html), counterparty)),
     [templates, counterparty],
   );
 
@@ -214,9 +215,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   useEffect(() => {
     if (!templates.length) return;
     if (templateId && scenarioTemplates.some(t => t.id === templateId)) return;
-    setTemplateId(pickDefaultTemplate(templates, counterparty)?.id || "");
+    setTemplateId(pickDefaultTemplate(scenarioTemplates, counterparty)?.id || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [counterparty, templates]);
+
 
   const selectedTpl = scenarioTemplates.find(t => t.id === templateId);
   const selectedCompany = companies.find(c => c.id === companyId);
