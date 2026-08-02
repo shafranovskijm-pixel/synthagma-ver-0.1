@@ -89,19 +89,27 @@ export function verifySavedSettings(
   saved: Partial<GroupSettingsFormValues> | null,
 ): string[] {
   if (!saved) return ["строка группы не возвращена сервером"];
-  const checks: Array<[string, unknown]> = [
+  const checks: Array<[keyof GroupSettingsFormValues, unknown]> = [
+    ["course_id", saved.course_id],
+    ["start_date", saved.start_date],
+    ["end_date", saved.end_date],
     ["group_number", saved.group_number],
     ["program_title", saved.program_title],
     ["program_hours", saved.program_hours],
     ["program_form", saved.program_form],
     ["default_price", saved.default_price],
-    ["course_id", saved.course_id],
   ];
   const bad: string[] = [];
   for (const [key, value] of checks) {
     const expected = patch[key];
-    if (typeof expected !== "string" || expected === "") continue;
-    if (value === null || value === undefined || String(value).trim() === "") bad.push(key);
+    if (expected === undefined) continue;
+    const expectedValue = expected === "" ? null : expected;
+    const actualValue = value === "" || value === undefined ? null : value;
+    const numeric = key === "program_hours" || key === "default_price";
+    const equal = numeric && expectedValue !== null && actualValue !== null
+      ? Number(expectedValue) === Number(actualValue)
+      : String(actualValue ?? "") === String(expectedValue ?? "");
+    if (!equal) bad.push(String(key));
   }
   return bad;
 }

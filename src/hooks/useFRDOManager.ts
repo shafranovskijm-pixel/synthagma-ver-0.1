@@ -30,6 +30,20 @@ const REQUIRED_FIELDS = [
   { key: "birth_date", label: "Дата рождения" }, { key: "gender", label: "Пол" }, { key: "snils", label: "СНИЛС" },
 ];
 
+const EXPORT_TIMEOUT_MS = 20_000;
+
+function withExportTimeout<T>(promise: Promise<T>): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(
+        () => reject(new Error("Файл не удалось подготовить за 20 секунд. Повторите выгрузку или выгрузите меньше записей.")),
+        EXPORT_TIMEOUT_MS,
+      );
+    }),
+  ]);
+}
+
 export function useFRDOManager(organizationId: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
@@ -129,6 +143,25 @@ export function useFRDOManager(organizationId: string) {
     if (exportUserIds.size === 0) { toast.error("Нет студентов для экспорта"); return; }
     setIsExporting(true);
     try {
+      const blocked: string[] = [];
+      for (const userId of exportUserIds) {
+        const student = students.find(s => s.user_id === userId);
+        if (!student) continue;
+        const missing = [...getFrdoStatus(userId).missingFields];
+        const enrollments = enrollmentsMap.get(userId) || [];
+        if (enrollments.length === 0) missing.push("Курс");
+        if (missing.length > 0) blocked.push(`${student.name}: ${missing.join(", ")}`);
+      }
+      if (blocked.length > 0) {
+        const preview = blocked.slice(0, 3).join("; ");
+        const remainder = blocked.length > 3 ? ` Ещё записей: ${blocked.length - 3}.` : "";
+        toast.error("Выгрузка заблокирована: заполните обязательные поля", {
+          description: `${preview}.${remainder}`,
+          duration: 12_000,
+        });
+        return;
+      }
+
       const year = new Date().getFullYear();
       const { count: baseCount } = await supabase.from("education_document_records").select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
       let docCounter = baseCount || 0;
@@ -185,7 +218,7 @@ export function useFRDOManager(organizationId: string) {
         else filteredEnrollments.forEach(e => processEnrollment(e));
       }
       if (rows.length === 0) { toast.error("Нет данных для экспорта — все строки пустые"); setIsExporting(false); return; }
-      await exportFRDOExcel(rows, exportType);
+      await withExportTimeout(exportFRDOExcel(rows, exportType));
       toast.success(
         skippedEmpty > 0
           ? `Экспортировано ${rows.length} записей. Пропущено пустых: ${skippedEmpty}`
