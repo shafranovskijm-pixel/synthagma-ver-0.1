@@ -33,6 +33,7 @@ import {
   templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
   planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
+import { canProceedStep, nextStep, prevStep, type WizardState } from "@/lib/contracts/wizardFlow";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 
 interface Student { user_id: string; full_name: string; email?: string | null; passport?: string | null; address?: string | null; phone?: string | null; }
