@@ -21,6 +21,7 @@ interface GroupSettings {
   program_hours: number | null;
   program_form: string | null;
   default_price: number | null;
+  course_id: string | null;
   max_seats: number | null;
   curator_id: string | null;
   strict_order: boolean;
@@ -32,6 +33,15 @@ interface GroupSettings {
   enable_group_chat: boolean;
   block_student_dialogs: boolean;
 }
+
+interface CourseOption {
+  id: string;
+  title: string;
+  duration: number | null;
+  frdo_duration_hours: number | null;
+  training_form: string | null;
+}
+
 
 interface GroupSettingsDialogProps {
   open: boolean;
