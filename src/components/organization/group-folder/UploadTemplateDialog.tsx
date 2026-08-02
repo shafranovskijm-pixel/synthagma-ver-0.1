@@ -32,6 +32,7 @@ const SKIP = "__skip__";
 export function UploadTemplateDialog({ organizationId, open, onClose, onCreated }: Props) {
   const [step, setStep] = useState<Step>("upload");
   const [name, setName] = useState("");
+  const [counterpartyType, setCounterpartyType] = useState<"individual" | "legal" | "any">("any");
   const [html, setHtml] = useState("");
   const [slots, setSlots] = useState<TemplateSlot[]>([]);
   const [mappings, setMappings] = useState<Record<string, SlotMapping>>({});
@@ -153,6 +154,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
         .insert({
           organization_id: organizationId,
           name: name.trim(),
+          counterparty_type: counterpartyType,
           body_html: bodyHtml,
           variables: { detected: usedKeys, imported_at: new Date().toISOString() },
           is_default: false,
@@ -201,6 +203,28 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
               <div className="space-y-1.5">
                 <Label>Название шаблона</Label>
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Договор с юр. лицом (ГОРЭЛТЕХ)" />
+                <div className="pt-2 space-y-1.5">
+                  <Label>Для какого сценария договора</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                      { v: "individual", t: "Физлицо" },
+                      { v: "legal", t: "Компания" },
+                      { v: "any", t: "Универсальный" },
+                    ] as const).map(o => (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => setCounterpartyType(o.v)}
+                        className={`text-xs py-2 rounded-xl border transition ${counterpartyType === o.v ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                      >
+                        {o.t}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Шаблон будет предлагаться только в выбранном сценарии генерации договора.
+                  </div>
+                </div>
               </div>
               <div
                 className="border-2 border-dashed border-border rounded-2xl p-10 text-center hover:border-primary/50 transition cursor-pointer"
