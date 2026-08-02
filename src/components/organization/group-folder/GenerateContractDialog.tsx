@@ -860,6 +860,23 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     </div>
                   )}
 
+                  {variableGaps.length > 0 && (
+                    <div className="rounded-xl border border-amber-300/70 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900 p-3 space-y-2">
+                      <div className="text-xs font-medium">Незаполненные переменные шаблона ({variableGaps.length})</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {variableGaps.map(g => (
+                          <span key={g.key} className="text-xs px-2 py-0.5 rounded bg-background border border-border" title={`{{${g.key}}}`}>
+                            {g.label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Банковские и прочие реквизиты подставляются из настроек организации; ученические поля можно заполнить на шаге «Стороны».
+                      </div>
+                    </div>
+                  )}
+
+
                   {blockers.length > 0 && (
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
