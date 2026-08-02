@@ -205,6 +205,64 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     return { passports, snils, contracts, exams };
   }, [students]);
 
+  /** Контекст генерации документов группы: организация + группа + ученики. */
+  const generationContext = useMemo<GenerationContext | null>(() => {
+    if (!group) return null;
+    return {
+      organization: {
+        name: orgInfo?.name || "",
+        inn: orgInfo?.inn || "",
+        kpp: orgInfo?.kpp || "",
+        ogrn: orgInfo?.ogrn || "",
+        address: orgInfo?.legal_address || orgInfo?.actual_address || "",
+        director_name: orgInfo?.director_name || "",
+        director_position: orgInfo?.director_position || "Директор",
+        bank_name: orgInfo?.bank_name || "",
+        bank_bik: orgInfo?.bank_bik || "",
+        bank_account: orgInfo?.bank_account || "",
+        bank_corr_account: orgInfo?.bank_corr_account || "",
+        email: orgInfo?.email || "",
+        phone: orgInfo?.phone || "",
+      },
+      group: {
+        id: group.id,
+        name: group.name,
+        number: group.group_number || group.name,
+        start_date: group.start_date || "",
+        end_date: group.end_date || "",
+        program_title: group.program_title || "",
+        program_hours: group.program_hours || 0,
+        program_form: group.program_form || "Очно-заочная с применением ДОТ",
+        color: group.color || undefined,
+      },
+      students: students.map(s => ({
+        user_id: s.user_id,
+        full_name: s.full_name,
+        birth_date: s.frdo?.birth_date || undefined,
+        gender: (s.frdo?.gender === "Ж" || s.frdo?.gender === "female" ? "Ж" : s.frdo?.gender ? "М" : undefined) as "М" | "Ж" | undefined,
+        passport: [s.frdo?.passport_series, s.frdo?.passport_number].filter(Boolean).join(" ") || undefined,
+        snils: s.frdo?.snils || undefined,
+        citizenship: s.frdo?.citizenship_code || undefined,
+        email: s.email || undefined,
+        phone: s.phone || undefined,
+        education: s.frdo?.education_level || undefined,
+      })),
+    };
+  }, [group, orgInfo, students]);
+
+  const missingDocFields = useMemo(() => {
+    const missing: string[] = [];
+    if (!group?.program_title) missing.push("название программы");
+    if (!group?.program_hours) missing.push("объём часов");
+    if (!group?.group_number) missing.push("номер группы");
+    if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
+    if (!orgInfo?.inn) missing.push("ИНН учебного центра");
+    if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
+    return missing;
+  }, [group, orgInfo]);
+
+
+
   const generateStudentsListDoc = () => {
     const rows = students.map((s, i) => `
       <tr>
