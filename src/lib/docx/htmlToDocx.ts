@@ -120,7 +120,8 @@ function paragraphXml(el: Element, opts: { styleId?: string; listPrefix?: string
 }
 
 function cellXml(cell: Element, widthPct: number): string {
-  const inner = blocksXml(cell);
+  const hasBlocks = Array.from(cell.children).some(c => BLOCK_TAGS.has(c.tagName.toUpperCase()));
+  const inner = hasBlocks ? blocksXml(cell) : paragraphXml(cell);
   const body = inner || "<w:p/>";
   const shading = cell.tagName.toUpperCase() === "TH" ? '<w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>' : "";
   const span = Number(cell.getAttribute("colspan") || "1");
