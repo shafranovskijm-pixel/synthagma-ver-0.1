@@ -133,6 +133,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           program_hours: settings.program_hours,
           program_form: settings.program_form,
           default_price: settings.default_price,
+          max_seats: seatLimitEnabled ? (settings.max_seats || 30) : null,
           strict_order: settings.strict_order,
           limit_access_time: settings.limit_access_time,
           schedule_access: settings.schedule_access,
