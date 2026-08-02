@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupCourseDefaults, resolveUniqueCommonCourseId } from "../groupSettings";
+import { groupCourseDefaults, resolveUniqueCommonCourseId, verifySavedSettings } from "../groupSettings";
 
 describe("group course defaults", () => {
   it("предзаполняет группу данными выбранного курса", () => {
@@ -51,5 +51,47 @@ describe("unique common course fallback", () => {
       { user_id: "u1", course_id: "c2" },
       { user_id: "u2", course_id: "c2" },
     ], ["u1", "u2"])).toBeNull();
+  });
+});
+
+describe("saved group settings verification", () => {
+  const patch = {
+    course_id: "course-1",
+    start_date: "2026-08-03",
+    end_date: "2026-08-07",
+    group_number: "ДЕМО-02/2026",
+    program_title: "Проектирование",
+    program_hours: "32",
+    program_form: "Очная",
+    default_price: "15000",
+  };
+
+  it("проверяет точное равенство всех документных полей", () => {
+    expect(verifySavedSettings(patch, {
+      course_id: "course-1",
+      start_date: "2026-08-03",
+      end_date: "2026-08-07",
+      group_number: "ДЕМО-02/2026",
+      program_title: "Проектирование",
+      program_hours: 32,
+      program_form: "Очная",
+      default_price: 15000,
+    })).toEqual([]);
+  });
+
+  it("возвращает поля с отличающимися значениями", () => {
+    expect(verifySavedSettings(patch, {
+      course_id: null,
+      start_date: null,
+      end_date: "2026-08-08",
+      group_number: "ДРУГОЙ",
+      program_title: null,
+      program_hours: 16,
+      program_form: "Заочная",
+      default_price: 0,
+    })).toEqual([
+      "course_id", "start_date", "end_date", "group_number",
+      "program_title", "program_hours", "program_form", "default_price",
+    ]);
   });
 });
