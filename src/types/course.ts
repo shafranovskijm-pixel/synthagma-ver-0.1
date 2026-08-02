@@ -9,6 +9,7 @@ export interface Course {
   organization_id?: string;
   category_id?: string | null;
   duration?: string | null;
+  frdo_duration_hours?: number | null;
   skip_video_identification?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;

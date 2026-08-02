@@ -543,7 +543,18 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (step === 1 && quick) {
       if (!canProceed(1).ok) return;
       const def = applyQuickDefaults(counterparty);
-      setStep(def ? 5 : 2);
+      const quickState: WizardState = {
+        ...wizardState,
+        hasTemplate: !!def,
+        hasPrimaryStudent: students.length > 0,
+        multiStudentCount: students.length,
+        hasCompany: !!companyId,
+      };
+      setStep(nextStep(quickState, {
+        quick: true,
+        programStepNeeded,
+        quickDefaultsReady: !!def,
+      }));
       return;
     }
     setStep(nextStep(wizardState, { quick, programStepNeeded }));

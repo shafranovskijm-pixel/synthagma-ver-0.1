@@ -22,6 +22,7 @@ import { StudentTableRow } from "./students/StudentTableRow";
 import { StudentMobileCard } from "./students/StudentMobileCard";
 import { StudentsEmptyState } from "./students/StudentsEmptyState";
 import { StudentConfirmDialogs } from "./students/StudentConfirmDialogs";
+import { groupCourseDefaults } from "@/lib/groups/groupSettings";
 
 interface StudentsTabProps {
   organizationId: string;
@@ -100,6 +101,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [newGroupColor, setNewGroupColor] = useState("#6366f1");
   const [newGroupStartDate, setNewGroupStartDate] = useState("");
   const [newGroupEndDate, setNewGroupEndDate] = useState("");
+  const [newGroupCourseId, setNewGroupCourseId] = useState("");
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
@@ -124,10 +126,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
     try {
-      const { error } = await supabase.from("student_groups").insert({ name: newGroupName.trim(), color: newGroupColor, organization_id: organizationId, start_date: newGroupStartDate || null, end_date: newGroupEndDate || null } as any);
+      const selectedCourse = courses.find(course => course.id === newGroupCourseId) as any;
+      const courseDefaults = groupCourseDefaults(selectedCourse);
+      const { error } = await supabase.from("student_groups").insert({
+        name: newGroupName.trim(),
+        color: newGroupColor,
+        organization_id: organizationId,
+        start_date: newGroupStartDate || null,
+        end_date: newGroupEndDate || null,
+        ...courseDefaults,
+      } as any);
       if (error) throw error;
       toast.success("Группа создана");
-      setNewGroupName(""); setNewGroupStartDate(""); setNewGroupEndDate("");
+      setNewGroupName(""); setNewGroupStartDate(""); setNewGroupEndDate(""); setNewGroupCourseId("");
       refreshGroups();
     } catch { toast.error("Ошибка создания группы"); }
   };
@@ -569,6 +580,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
           <DialogHeader><DialogTitle>Управление группами</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2"><Input placeholder="Название группы..." value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="flex-1" onKeyDown={e => e.key === "Enter" && handleCreateGroup()} /><input type="color" value={newGroupColor} onChange={e => setNewGroupColor(e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer" /></div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Курс группы</label>
+              <Select value={newGroupCourseId || "none"} onValueChange={value => setNewGroupCourseId(value === "none" ? "" : value)}>
+                <SelectTrigger><SelectValue placeholder="Выберите курс" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без привязки к курсу</SelectItem>
+                  {courses.map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Название программы, часы и форма обучения подставятся из курса; их можно изменить в настройках группы.</p>
+            </div>
             <div className="flex gap-2"><div className="flex-1"><label className="text-xs text-muted-foreground mb-1 block">Дата начала</label><Input type="date" value={newGroupStartDate} onChange={e => setNewGroupStartDate(e.target.value)} /></div><div className="flex-1"><label className="text-xs text-muted-foreground mb-1 block">Дата окончания</label><Input type="date" value={newGroupEndDate} onChange={e => setNewGroupEndDate(e.target.value)} /></div></div>
             <Button onClick={handleCreateGroup} className="w-full rounded-xl gap-2"><Plus className="w-4 h-4" />Создать группу</Button>
             {studentGroups.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p> : (

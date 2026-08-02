@@ -16,6 +16,7 @@ import { GroupDocumentsFolder } from "@/components/organization/group-folder/Gro
 import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
+import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
 
 
 type ViewMode = "grid" | "list" | "table";
@@ -154,13 +155,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             .from("enrollments")
             .select("course_id, user_id")
             .in("user_id", userIds);
-          const tally = new Map<string, number>();
-          for (const row of (enrollments as any[]) || []) {
-            if (!row.course_id) continue;
-            tally.set(row.course_id, (tally.get(row.course_id) || 0) + 1);
-          }
-          const best = [...tally.entries()].sort((a, b) => b[1] - a[1])[0];
-          resolvedCourseId = best ? best[0] : null;
+          resolvedCourseId = resolveUniqueCommonCourseId((enrollments as any[]) || [], userIds);
         }
         if (resolvedCourseId) {
           const { data: courseRow } = await supabase
@@ -459,7 +454,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             defaultPrice={group?.default_price ?? null}
             missingFields={missingDocFields}
             blockingFields={blockingDocFields}
-            courseId={group?.course_id ?? null}
+            courseId={group?.course_id || courseInfo?.id || null}
             onOpenGroupSettings={() => setSettingsOpen(true)}
           />
 

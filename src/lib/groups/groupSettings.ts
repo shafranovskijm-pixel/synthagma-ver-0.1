@@ -105,3 +105,66 @@ export function verifySavedSettings(
   }
   return bad;
 }
+
+export interface GroupCourseDefaultsSource {
+  id: string;
+  title?: string | null;
+  duration?: string | number | null;
+  frdo_duration_hours?: string | number | null;
+  training_form?: string | null;
+}
+
+/** Поля группы, которые безопасно предзаполнить при выборе курса в момент создания. */
+export function groupCourseDefaults(course: GroupCourseDefaultsSource | null | undefined) {
+  if (!course) {
+    return {
+      course_id: null,
+      program_title: null,
+      program_hours: null,
+      program_form: null,
+    };
+  }
+
+  const rawHours = course.frdo_duration_hours ?? course.duration;
+  const match = rawHours == null ? null : String(rawHours).replace(",", ".").match(/\d+(?:\.\d+)?/);
+  const parsedHours = match ? Math.round(Number(match[0])) : 0;
+
+  return {
+    course_id: course.id,
+    program_title: course.title?.trim() || null,
+    program_hours: Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : null,
+    program_form: course.training_form?.trim() || null,
+  };
+}
+
+export interface EnrollmentCourseLink {
+  user_id: string;
+  course_id: string | null;
+}
+
+/**
+ * Резервная привязка допустима только если у каждого ученика группы есть один
+ * и тот же курс и такой общий курс ровно один. «Самый частый» курс использовать
+ * нельзя: он может принадлежать лишь части группы и попасть в документы ошибочно.
+ */
+export function resolveUniqueCommonCourseId(
+  enrollments: EnrollmentCourseLink[],
+  groupUserIds: string[],
+): string | null {
+  const requiredUsers = new Set(groupUserIds.filter(Boolean));
+  if (requiredUsers.size === 0) return null;
+
+  const usersByCourse = new Map<string, Set<string>>();
+  for (const row of enrollments) {
+    if (!row.course_id || !requiredUsers.has(row.user_id)) continue;
+    const users = usersByCourse.get(row.course_id) ?? new Set<string>();
+    users.add(row.user_id);
+    usersByCourse.set(row.course_id, users);
+  }
+
+  const common = [...usersByCourse.entries()]
+    .filter(([, users]) => users.size === requiredUsers.size)
+    .map(([courseId]) => courseId);
+
+  return common.length === 1 ? common[0] : null;
+}
