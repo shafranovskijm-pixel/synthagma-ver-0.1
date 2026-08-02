@@ -58,6 +58,30 @@ function splitPassport(p?: string): { series: string; number: string } {
   return { series: p, number: "" };
 }
 
+/**
+ * Паспорт ученика: структурированные поля приоритетнее разбора строки.
+ */
+export function resolvePassport(s: {
+  passport?: string;
+  passport_series?: string | null;
+  passport_number?: string | null;
+}): { series: string; number: string } {
+  const series = (s.passport_series || "").trim();
+  const number = (s.passport_number || "").trim();
+  if (series || number) return { series, number };
+  return splitPassport(s.passport);
+}
+
+/** Паспорт одной строкой: "1234 567890" */
+export function passportString(s: {
+  passport?: string;
+  passport_series?: string | null;
+  passport_number?: string | null;
+}): string {
+  const pp = resolvePassport(s);
+  return [pp.series, pp.number].filter(Boolean).join(" ") || (s.passport || "");
+}
+
 function shortName(full: string): string {
   // "Дроздов Дмитрий Викторович" → "Д.В. Дроздов"
   const parts = full.trim().split(/\s+/);
@@ -107,7 +131,7 @@ function buildStudentsTable(students: GenerationContext["students"]): string {
   if (!students.length) return "<p>Нет обучающихся</p>";
   const rows = students
     .map((s, i) => {
-      const pp = splitPassport(s.passport);
+      const pp = resolvePassport(s);
       return (
         `<tr><td style="text-align:center">${i + 1}</td>` +
         `<td>${esc(s.full_name)}</td>` +
@@ -152,7 +176,7 @@ function buildStudentListDetailRows(
 ): string {
   return students
     .map((s, i) => {
-      const pp = splitPassport(s.passport);
+      const pp = resolvePassport(s);
       return (
         `<tr><td style="text-align:center">${i + 1}</td>` +
         `<td>${esc(s.full_name)}</td>` +
@@ -203,7 +227,7 @@ function buildRegistrationRows(
 ): string {
   return students
     .map((s, i) => {
-      const pp = splitPassport(s.passport);
+      const pp = resolvePassport(s);
       const passportStr = pp.series
         ? `серия ${pp.series} № ${pp.number}`
         : s.passport || "";
@@ -287,7 +311,7 @@ export function buildVariables(
         .filter(Boolean)
         .join("<br/>")
     : [
-        primary?.passport ? `Паспорт: ${primary.passport}` : "",
+        primary && passportString(primary) ? `Паспорт: ${passportString(primary)}` : "",
         primary?.address ? `Адрес: ${primary.address}` : "",
         primary?.phone ? `Тел.: ${primary.phone}` : "",
         primary?.email ? `E-mail: ${primary.email}` : "",
@@ -345,7 +369,7 @@ export function buildVariables(
     individual_name: primary?.full_name || "",
     individual_birth_date: primary?.birth_date || "",
     individual_gender: primary?.gender || "",
-    individual_passport: primary?.passport || "",
+    individual_passport: primary ? passportString(primary) : "",
     individual_snils: primary?.snils || "",
     individual_citizenship: primary?.citizenship || "Российская Федерация",
     individual_email: primary?.email || "",

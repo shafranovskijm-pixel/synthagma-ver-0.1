@@ -121,6 +121,14 @@ export function OrgSalesManager() {
     if (!AVAILABLE_SECTIONS.includes(section)) setSection('overview');
   }, [section]);
 
+  // Кнопка «Новая сделка» в шапке дашборда шлёт глобальное событие
+  useEffect(() => {
+    const handler = () => setSection(AVAILABLE_SECTIONS.includes('kanban') ? 'kanban' : 'deals');
+    window.addEventListener('org-sales-create-deal', handler);
+    return () => window.removeEventListener('org-sales-create-deal', handler);
+  }, []);
+
+
   const [taskPrefill, setTaskPrefill] = useState<{ name: string; inn?: string | null } | null>(null);
   const [dealSelectedInn, setDealSelectedInn] = useState<string | null>(null);
   const [activityDialog, setActivityDialog] = useState<{

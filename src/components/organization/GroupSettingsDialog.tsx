@@ -21,6 +21,7 @@ interface GroupSettings {
   program_hours: number | null;
   program_form: string | null;
   default_price: number | null;
+  course_id: string | null;
   max_seats: number | null;
   curator_id: string | null;
   strict_order: boolean;
@@ -32,6 +33,15 @@ interface GroupSettings {
   enable_group_chat: boolean;
   block_student_dialogs: boolean;
 }
+
+interface CourseOption {
+  id: string;
+  title: string;
+  duration: number | null;
+  frdo_duration_hours: number | null;
+  training_form: string | null;
+}
+
 
 interface GroupSettingsDialogProps {
   open: boolean;
@@ -91,11 +101,13 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<GroupSettings | null>(null);
   const [seatLimitEnabled, setSeatLimitEnabled] = useState(false);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
 
   useEffect(() => {
     if (!open || !groupId) return;
     setActiveTab("general");
     loadSettings();
+    loadCourses();
   }, [open, groupId]);
 
   const loadSettings = async () => {
@@ -117,14 +129,48 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
     }
   };
 
+  const loadCourses = async () => {
+    if (!organizationId) return;
+    const { data, error } = await supabase
+      .from("courses")
+      .select("id, title, duration, frdo_duration_hours, training_form")
+      .eq("organization_id", organizationId)
+      .order("title");
+    if (error) {
+      console.error("[GroupSettings] courses load failed", error);
+      return;
+    }
+    setCourses((data || []) as any as CourseOption[]);
+  };
+
+  /** Привязка курса подтягивает программу/часы/форму, если поля пустые */
+  const applyCourse = (courseId: string | null) => {
+    const course = courses.find(c => c.id === courseId);
+    setSettings(prev => {
+      if (!prev) return prev;
+      if (!course) return { ...prev, course_id: null };
+      return {
+        ...prev,
+        course_id: course.id,
+        program_title: prev.program_title || course.title || null,
+        program_hours: prev.program_hours ?? (course.frdo_duration_hours ?? course.duration ?? null),
+        program_form: prev.program_form || course.training_form || null,
+      };
+    });
+  };
+
   const handleSave = async () => {
     if (!settings) return;
+    if (!settings.name.trim()) {
+      toast.error("Укажите название группы");
+      return;
+    }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("student_groups")
         .update({
-          name: settings.name,
+          name: settings.name.trim(),
           color: settings.color,
           start_date: settings.start_date,
           end_date: settings.end_date,
@@ -133,6 +179,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           program_hours: settings.program_hours,
           program_form: settings.program_form,
           default_price: settings.default_price,
+          course_id: settings.course_id,
           max_seats: seatLimitEnabled ? (settings.max_seats || 30) : null,
           strict_order: settings.strict_order,
           limit_access_time: settings.limit_access_time,
@@ -142,17 +189,30 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           enable_channel: settings.enable_channel,
           enable_group_chat: settings.enable_group_chat,
           block_student_dialogs: settings.block_student_dialogs } as any)
-        .eq("id", groupId);
+        .eq("id", groupId)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      // Тихий отказ RLS: запрос прошёл, но ни одна строка не обновлена
+      if (!data) {
+        toast.error("Не удалось сохранить настройки", {
+          description: "Нет прав на изменение этой группы или группа удалена. Обновите страницу и попробуйте снова.",
+        });
+        return;
+      }
+      // Перечитываем состояние из БД, чтобы UI не показывал несохранённые значения
+      await loadSettings();
       toast.success("Настройки сохранены");
       onUpdated?.();
       onOpenChange(false);
-    } catch {
-      toast.error("Ошибка сохранения");
+    } catch (e: any) {
+      console.error("[GroupSettings] save failed", e);
+      toast.error("Ошибка сохранения", { description: e?.message || undefined });
     } finally {
       setSaving(false);
     }
   };
+
 
   const handleDelete = async () => {
     if (!confirm("Удалить группу? Ученики останутся без группы.")) return;
@@ -255,7 +315,24 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                           <div className="text-sm font-medium">Данные для документов группы</div>
                           <div className="text-xs text-muted-foreground">Подставляются в договоры, приказы, журналы и ведомости</div>
                         </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1.5 block">Курс (программа) группы</label>
+                          <select
+                            value={settings.course_id || ""}
+                            onChange={e => applyCourse(e.target.value || null)}
+                            className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                          >
+                            <option value="">Не выбран</option>
+                            {courses.map(c => (
+                              <option key={c.id} value={c.id}>{c.title}</option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Используется в документах группы: название программы, объём часов и форма обучения подтягиваются автоматически.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
                           <div>
                             <label className="text-sm font-medium mb-1.5 block">Номер группы</label>
                             <Input

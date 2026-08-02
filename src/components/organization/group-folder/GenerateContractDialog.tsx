@@ -22,6 +22,8 @@ import {
   buildProgramsTable,
   type TemplateVariables,
 } from "@/lib/templateRenderer";
+import { BUILTIN_CONTRACT_TEMPLATES, isBuiltinTemplateId } from "@/lib/contracts/builtinTemplates";
+import { findUnresolvedPlaceholders } from "@/lib/contracts/placeholders";
 import { toast } from "sonner";
 import {
   FileSignature, AlertTriangle, Building2, User, BookOpen, Hash,
@@ -155,14 +157,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         details.set(r.user_id, { passport, address: prev?.address ?? null, phone: prev?.phone ?? null });
       });
       setStudentDetails(details);
-      const tpls = (tplRes.data || []) as Template[];
+      // Встроенные шаблоны доступны всегда — как fallback, если своих ещё нет.
+      const tpls = [...((tplRes.data || []) as Template[]), ...(BUILTIN_CONTRACT_TEMPLATES as any as Template[])];
       setTemplates(tpls);
       setCompanies((coRes.data || []) as Company[]);
       setOrgReq(orgRes.data || null);
       setCourses((crsRes.data || []) as Course[]);
-      if (quick && tpls.length === 0) {
-        toast.error("Нет шаблона договора", { description: "Загрузите шаблон, затем повторите быструю генерацию" });
-      }
+
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId, quick]);
@@ -371,6 +372,12 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const setDefaultTemplate = async (id: string) => {
     try {
+      if (isBuiltinTemplateId(id)) {
+        toast.info("Встроенный шаблон нельзя сделать шаблоном по умолчанию", {
+          description: "Загрузите свой шаблон, чтобы закрепить его за сценарием",
+        });
+        return;
+      }
       const scope = templates.find(t => t.id === id)?.counterparty_type || "any";
       await (supabase as any).from("org_contract_templates")
         .update({ is_default: false })
@@ -429,6 +436,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         const number = await resolveNumber(index);
         const vars = buildVariables(number, job.students);
         const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
+        const leftover = findUnresolvedPlaceholders(bodyHtml);
+        if (leftover.length > 0) {
+          throw new Error(`Не заполнены переменные шаблона: ${leftover.join(", ")}`);
+        }
         const title = number ? `Договор № ${number}` : job.label;
         const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
 
@@ -448,7 +459,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
           student_group_id: groupId,
           company_id: job.companyId,
           counterparty_type: counterparty,
-          template_id: templateId,
+          template_id: isBuiltinTemplateId(templateId) ? null : templateId,
           template_version: selectedTpl.version ?? null,
           variables: vars,
           students: job.students.map(st => ({ user_id: st.user_id, full_name: st.full_name, email: st.email || null })),

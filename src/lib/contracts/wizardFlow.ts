@@ -38,19 +38,26 @@ export function canProceedStep(s: number, st: WizardState): ProceedResult {
 
 /**
  * Следующий шаг. quick=true уходит на финальную проверку только когда
- * сценарий выбран и автозаполнение возможно (quickDefaultsReady).
+ * сценарий выбран, автозаполнение возможно (quickDefaultsReady) и
+ * обязательные для сценария данные уже есть (компания / ученики).
  */
 export function nextStep(
   st: WizardState,
   opts: { quick?: boolean; programStepNeeded?: boolean; quickDefaultsReady?: boolean } = {},
-): number {
+) {
   const { quick = false, programStepNeeded = true, quickDefaultsReady = false } = opts;
   if (!canProceedStep(st.step, st).ok) return st.step;
-  if (st.step === 1 && quick) return quickDefaultsReady ? 5 : 2;
+  if (st.step === 1 && quick) {
+    if (!st.hasTemplate) return 2;
+    // Нет обязательных данных сценария — ведём на шаг выбора, а не на финал
+    if (!canProceedStep(3, st).ok) return 3;
+    return quickDefaultsReady ? 5 : 2;
+  }
   let next = st.step + 1;
   if (next === 4 && !programStepNeeded) next = 5;
   return Math.min(5, next);
 }
+
 
 export function prevStep(step: number, programStepNeeded = true): number {
   let prev = step - 1;
