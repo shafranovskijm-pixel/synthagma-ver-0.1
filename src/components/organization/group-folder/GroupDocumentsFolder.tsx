@@ -35,6 +35,8 @@ interface Props {
   missingFields?: string[];
   /** Критичные незаполненные поля — генерация полностью блокируется. */
   blockingFields?: string[];
+  /** Курс, привязанный к группе — подставляется в мастер договора. */
+  courseId?: string | null;
   onOpenGroupSettings?: () => void;
 }
 
@@ -50,6 +52,7 @@ export function GroupDocumentsFolder({
   defaultPrice,
   missingFields = [],
   blockingFields = [],
+  courseId = null,
   onOpenGroupSettings,
 }: Props) {
   const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
