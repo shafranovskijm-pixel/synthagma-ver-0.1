@@ -138,10 +138,10 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           <Button variant="outline" className="rounded-xl gap-2 text-muted-foreground" onClick={handleHideSection}>
             <EyeOff className="w-4 h-4" />Скрыть раздел
           </Button>
-          <Button className="btn-gradient rounded-xl gap-2" onClick={() => cm.setShowCreateDialog(true)}>
-            <Plus className="w-4 h-4" />Добавить компанию
-          </Button>
+          {/* «Добавить компанию» живёт только в шапке дашборда (событие org-add-company),
+              чтобы две кнопки не накладывались друг на друга и не перехватывали клик. */}
         </div>
+
       </div>
 
       {/* Search and View Toggle */}
