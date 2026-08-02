@@ -400,7 +400,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                     {group.start_date ? format(new Date(group.start_date), "dd.MM.yyyy") : "—"} — {group.end_date ? format(new Date(group.end_date), "dd.MM.yyyy") : "—"}
                   </span>
                 )}
+                <span className="inline-flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  {resolvedProgramTitle || courseInfo?.title || "Курс не привязан"}
+                  {resolvedProgramHours ? ` · ${resolvedProgramHours} ч.` : ""}
+                </span>
               </div>
+
             </div>
           </div>
           <div className="flex items-center gap-2">
