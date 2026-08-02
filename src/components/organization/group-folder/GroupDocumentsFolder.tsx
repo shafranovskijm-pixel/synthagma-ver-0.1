@@ -62,15 +62,34 @@ export function GroupDocumentsFolder({
     return map;
   }, []);
 
-  const blocked = blockingFields.length > 0;
+  /** Пакет требует ВСЕХ полей группы: любое незаполненное поле блокирует. */
+  const packageBlockers = useMemo(
+    () => Array.from(new Set([...blockingFields, ...missingFields])),
+    [blockingFields, missingFields],
+  );
+  const blocked = packageBlockers.length > 0;
 
-  const run = async (types: DocType[]) => {
+  /** Источник для проверки требований конкретного документа. */
+  const reqSource = useMemo(() => ({
+    org_name: ctx?.organization.name,
+    org_director_name: ctx?.organization.director_name,
+    group_number: ctx?.group.number,
+    program_title: ctx?.group.program_title,
+    program_hours: ctx?.group.program_hours,
+    start_date: ctx?.group.start_date,
+    end_date: ctx?.group.end_date,
+    students_count: ctx?.students.length || 0,
+  }), [ctx]);
+
+  const run = async (types: DocType[], docBlockers?: string[]) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
-    if (blocked) {
-      toast.error("Заполните обязательные данные группы", { description: blockingFields.join(", ") });
+    const gate = docBlockers ?? packageBlockers;
+    if (gate.length > 0) {
+      toast.error("Заполните обязательные данные группы", { description: gate.join(", ") });
       return false;
     }
     if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
+
     setBusy(true);
     try {
       const docs = types.length === 1
