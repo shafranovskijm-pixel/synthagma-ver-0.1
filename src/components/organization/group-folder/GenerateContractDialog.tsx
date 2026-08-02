@@ -197,7 +197,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setMultiStudentIds(ids);
     setPrimaryStudentId(ids[0] || "");
     if (scenario === "individual") setCompanyId("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(groupDefaults?.startDate || new Date().toISOString().slice(0, 10));
     setNumberMode("auto");
     const usable = templates.filter(t => templateUsableForScenario(t.counterparty_type, extractVariables(t.body_html), scenario));
     const def = pickDefaultTemplate(usable, scenario);
