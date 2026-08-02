@@ -19,14 +19,31 @@ describe("contract wizard flow", () => {
   });
 
   it("quick-режим после выбора сценария идёт на финальную проверку", () => {
-    const st = { ...base, step: 1, scenarioChosen: true };
+    const st = { ...base, step: 1, scenarioChosen: true, hasTemplate: true, hasPrimaryStudent: true };
     expect(nextStep(st, { quick: true, quickDefaultsReady: true })).toBe(5);
   });
 
   it("quick-режим без готовых автоданных идёт на шаг выбора шаблона", () => {
-    const st = { ...base, step: 1, scenarioChosen: true };
+    const st = { ...base, step: 1, scenarioChosen: true, hasTemplate: true, hasPrimaryStudent: true };
     expect(nextStep(st, { quick: true, quickDefaultsReady: false })).toBe(2);
   });
+
+  it("quick-режим без шаблона идёт на шаг 2", () => {
+    const st = { ...base, step: 1, scenarioChosen: true, hasTemplate: false };
+    expect(nextStep(st, { quick: true, quickDefaultsReady: true })).toBe(2);
+  });
+
+  it("quick-режим для компании без выбранного заказчика идёт на шаг 3", () => {
+    const st = { ...base, step: 1, scenarioChosen: true, hasTemplate: true, counterparty: "legal" as const, hasCompany: false };
+    expect(nextStep(st, { quick: true, quickDefaultsReady: true })).toBe(3);
+    expect(nextStep({ ...st, hasCompany: true }, { quick: true, quickDefaultsReady: true })).toBe(5);
+  });
+
+  it("quick-режим для физлица без учеников идёт на шаг 3", () => {
+    const st = { ...base, step: 1, scenarioChosen: true, hasTemplate: true };
+    expect(nextStep(st, { quick: true, quickDefaultsReady: true })).toBe(3);
+  });
+
 
   it("обычный режим требует шаблон на шаге 2", () => {
     const st = { ...base, step: 2, scenarioChosen: true, hasTemplate: false };
