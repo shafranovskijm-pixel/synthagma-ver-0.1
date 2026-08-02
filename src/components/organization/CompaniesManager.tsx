@@ -138,10 +138,10 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           <Button variant="outline" className="rounded-xl gap-2 text-muted-foreground" onClick={handleHideSection}>
             <EyeOff className="w-4 h-4" />Скрыть раздел
           </Button>
-          <Button className="btn-gradient rounded-xl gap-2" onClick={() => cm.setShowCreateDialog(true)}>
-            <Plus className="w-4 h-4" />Добавить компанию
-          </Button>
+          {/* «Добавить компанию» живёт только в шапке дашборда (событие org-add-company),
+              чтобы две кнопки не накладывались друг на друга и не перехватывали клик. */}
         </div>
+
       </div>
 
       {/* Search and View Toggle */}
@@ -219,7 +219,21 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           {lg.viewMode === 'grid' ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {paginatedCompanies.map((company) => (
-                <button key={company.id} className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group" onClick={() => dm.openCompanyDetail(company)}>
+                <div
+                  key={company.id}
+                  role="button"
+                  tabIndex={0}
+                  data-testid={`company-card-${company.id}`}
+                  className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={() => dm.openCompanyDetail(company)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      dm.openCompanyDetail(company);
+                    }
+                  }}
+                >
+
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
                     <div className="flex items-center gap-1">
@@ -234,7 +248,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                     {company.inn && <div>ИНН: {company.inn}</div>}
                     <div className="flex items-center gap-1"><Users className="w-3 h-3" />{company.studentsCount} учеников</div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           ) : (
