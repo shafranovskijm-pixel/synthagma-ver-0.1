@@ -272,7 +272,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const programHours = courseHoursOverride || (plan?.hours != null ? String(plan.hours) : "") || (selectedCourse?.duration || "");
   const programForm = courseFormOverride || plan?.form || "";
-  const programTitle = plan?.title || selectedCourse?.title || "";
+  const programTitle = programTitleOverride || plan?.title || selectedCourse?.title || "";
 
   const allTplVars = useMemo(() => selectedTpl ? extractVariables(selectedTpl.body_html) : [], [selectedTpl]);
   const tplVarSet = useMemo(() => new Set(allTplVars), [allTplVars]);
