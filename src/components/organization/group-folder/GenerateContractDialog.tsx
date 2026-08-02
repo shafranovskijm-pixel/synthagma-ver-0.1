@@ -29,9 +29,14 @@ import {
 } from "lucide-react";
 import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
+import {
+  templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
+  planContractJobs, type ContractScenario, type ScenarioStudent,
+} from "@/lib/contracts/scenarios";
+import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 
-interface Student { user_id: string; full_name: string; email?: string | null; }
-interface Template { id: string; name: string; body_html: string; is_default?: boolean | null; updated_at?: string | null; }
+interface Student { user_id: string; full_name: string; email?: string | null; passport?: string | null; address?: string | null; phone?: string | null; }
+interface Template { id: string; name: string; body_html: string; is_default?: boolean | null; updated_at?: string | null; counterparty_type?: string | null; version?: number | null; }
 interface Company {
   id: string; name: string;
   inn: string | null; kpp: string | null; ogrn: string | null;
@@ -56,7 +61,7 @@ interface Props {
 }
 
 
-type CounterpartyType = "individual" | "legal";
+type CounterpartyType = ContractScenario;
 type NumberMode = "auto" | "manual" | "none";
 
 const RAW_KEYS = new Set(["students_table", "programs_table", "training_plan"]);
@@ -97,6 +102,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [courseHoursOverride, setCourseHoursOverride] = useState<string>("");
   const [courseFormOverride, setCourseFormOverride] = useState<string>("");
 
+  const [studentDetails, setStudentDetails] = useState<Map<string, { passport: string | null; address: string | null; phone: string | null }>>(new Map());
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -116,19 +122,26 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       setNumberManual("");
     }
     (async () => {
-      const [tplRes, coRes, orgRes, crsRes] = await Promise.all([
-        (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
+      const [tplRes, coRes, orgRes, crsRes, profRes] = await Promise.all([
+        (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
         (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
+        (supabase as any).from("profiles").select("user_id, passport_series, passport_number, address, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
       ]);
+      const details = new Map<string, { passport: string | null; address: string | null; phone: string | null }>();
+      (profRes?.data || []).forEach((r: any) => {
+        const passport = [r.passport_series, r.passport_number].filter(Boolean).join(" ") || null;
+        details.set(r.user_id, { passport, address: r.address || null, phone: r.phone || null });
+      });
+      setStudentDetails(details);
       const tpls = (tplRes.data || []) as Template[];
       setTemplates(tpls);
       setCompanies((coRes.data || []) as Company[]);
       setOrgReq(orgRes.data || null);
       setCourses((crsRes.data || []) as Course[]);
-      // Preselect default template (в быстром режиме — всегда шаблон по умолчанию)
-      const def = tpls.find(t => t.is_default) || (quick ? tpls[0] : undefined);
+      // Шаблон по умолчанию выбирается с учётом сценария (физлицо / компания)
+      const def = pickDefaultTemplate(tpls, quick ? "individual" : counterparty);
       if (def && (quick || !templateId)) setTemplateId(def.id);
       if (quick) {
         if (!def) {
@@ -163,7 +176,20 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setPreviewNumber(`${numberPrefix || ""}__auto__`);
   }, [numberMode, numberPrefix, numberManual]);
 
-  const selectedTpl = templates.find(t => t.id === templateId);
+  const scenarioTemplates = useMemo(
+    () => templates.filter(t => templateMatchesScenario(t.counterparty_type, counterparty)),
+    [templates, counterparty],
+  );
+
+  // При смене сценария договор всегда переключается на подходящий шаблон.
+  useEffect(() => {
+    if (!templates.length) return;
+    if (templateId && scenarioTemplates.some(t => t.id === templateId)) return;
+    setTemplateId(pickDefaultTemplate(templates, counterparty)?.id || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counterparty, templates]);
+
+  const selectedTpl = scenarioTemplates.find(t => t.id === templateId);
   const selectedCompany = companies.find(c => c.id === companyId);
   const selectedCourse = courses.find(c => c.id === courseId);
 
@@ -202,7 +228,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     [tplVarSet],
   );
 
-  const buildVariables = (numberValue: string): TemplateVariables => {
+  const buildVariables = (numberValue: string, jobStudents?: ScenarioStudent[]): TemplateVariables => {
+    const rows = (jobStudents
+      ? jobStudents.map(s => ({ full_name: s.full_name, email: s.email, program: programTitle }))
+      : selectedStudentRows);
+    const person = jobStudents ? jobStudents[0] : primaryStudent;
     const base: TemplateVariables = {
       ...(orgReq ? buildOrgVariables(orgReq) : {}),
       contract_number: numberValue,
@@ -217,14 +247,17 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       total_price: price ? formatMoney(Number(price)) : "",
       total_price_words: price ? moneyToWords(Number(price)) : "",
       price: price ? formatMoney(Number(price)) : "",
-      students_count: selectedStudentRows.length || (counterparty === "individual" && primaryStudent ? 1 : 0),
-      students_table: buildStudentsTable(selectedStudentRows),
-      programs_table: buildProgramsTable(programTitle ? [{ title: programTitle, hours: programHours ? Number(programHours) : null, form: programForm, count: selectedStudentRows.length || null }] : []),
+      students_count: rows.length,
+      students_table: buildStudentsTable(rows),
+      programs_table: buildProgramsTable(programTitle ? [{ title: programTitle, hours: programHours ? Number(programHours) : null, form: programForm, count: rows.length || null }] : []),
       training_plan: plan?.plan_html || "",
     };
-    if (counterparty === "individual" && primaryStudent) {
-      base.individual_name = primaryStudent.full_name;
-      base.individual_email = primaryStudent.email || "";
+    if (counterparty === "individual" && person) {
+      base.individual_name = person.full_name;
+      base.individual_email = person.email || "";
+      base.individual_passport = (person as any).passport || "";
+      base.individual_address = (person as any).address || "";
+      base.individual_phone = (person as any).phone || "";
     }
     if (counterparty === "legal" && selectedCompany) {
       Object.assign(base, buildCompanyVariables(selectedCompany));
@@ -238,6 +271,34 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (!selectedTpl) return "";
     return renderTemplate(selectedTpl.body_html, previewVariables, RAW_KEYS);
   }, [selectedTpl, previewVariables]);
+
+  const scenarioStudents = useMemo<ScenarioStudent[]>(() => {
+    const ids = multiStudentIds.length ? multiStudentIds : (primaryStudent ? [primaryStudent.user_id] : []);
+    return ids
+      .map(id => students.find(s => s.user_id === id))
+      .filter(Boolean)
+      .map(s => ({
+        user_id: s!.user_id,
+        full_name: s!.full_name,
+        email: s!.email ?? null,
+        passport: s!.passport ?? studentDetails.get(s!.user_id)?.passport ?? null,
+        address: s!.address ?? studentDetails.get(s!.user_id)?.address ?? null,
+        phone: s!.phone ?? studentDetails.get(s!.user_id)?.phone ?? null,
+      }));
+  }, [multiStudentIds, primaryStudent, students, studentDetails]);
+
+  const scenarioIssues = useMemo(() => validateScenario(counterparty, {
+    org: orgReq,
+    students: scenarioStudents,
+    company: selectedCompany || null,
+    programTitle,
+    price,
+    date,
+    templateId,
+  }), [counterparty, orgReq, scenarioStudents, selectedCompany, programTitle, price, date, templateId]);
+
+  const blockers = useMemo(() => blockingMissing(scenarioIssues), [scenarioIssues]);
+  const warnings = useMemo(() => scenarioIssues.filter(i => !i.blocking), [scenarioIssues]);
 
   const missing = useMemo(() => {
     if (!selectedTpl) return [] as string[];
@@ -265,18 +326,26 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const setDefaultTemplate = async (id: string) => {
     try {
-      await (supabase as any).from("org_contract_templates").update({ is_default: false }).eq("organization_id", organizationId);
+      const scope = templates.find(t => t.id === id)?.counterparty_type || "any";
+      await (supabase as any).from("org_contract_templates")
+        .update({ is_default: false })
+        .eq("organization_id", organizationId)
+        .eq("counterparty_type", scope);
       await (supabase as any).from("org_contract_templates").update({ is_default: true }).eq("id", id);
-      setTemplates(prev => prev.map(t => ({ ...t, is_default: t.id === id })));
+      setTemplates(prev => prev.map(t => (t.counterparty_type === scope ? { ...t, is_default: t.id === id } : t)));
       toast.success("Шаблон по умолчанию обновлён");
     } catch (e: any) {
       toast.error("Не удалось обновить", { description: e?.message });
     }
   };
 
-  const resolveNumber = async (): Promise<string> => {
+  const resolveNumber = async (index = 0): Promise<string> => {
     if (numberMode === "none") return "";
-    if (numberMode === "manual") return numberManual.trim();
+    if (numberMode === "manual") {
+      const base = numberManual.trim();
+      // Ручной номер уникален только для одного документа: остальным добавляем суффикс.
+      return index === 0 ? base : `${base}-${index + 1}`;
+    }
     try {
       const year = new Date(date || Date.now()).getFullYear();
       const { data, error } = await (supabase as any).rpc("get_next_document_number", {
@@ -293,42 +362,77 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   const generate = async () => {
     if (!selectedTpl) { toast.error("Выберите шаблон"); return; }
+    if (blockers.length > 0) {
+      toast.error("Заполните обязательные данные", { description: blockers.map(b => b.label).join(", ") });
+      return;
+    }
     setBusy(true);
     try {
-      const number = await resolveNumber();
-      const vars = buildVariables(number);
-      const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
-      const title = number ? `Договор ${number}` : "Договор";
-      const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
-
-      const safe = title.replace(/[^\w.\-]+/g, "_").slice(0, 60) || "contract";
-      const fileName = `${safe}.pdf`;
-      const targetKey = counterparty === "individual" ? (primaryStudent?.user_id || "group") : `company_${companyId}`;
-      const storagePath = `${organizationId}/contracts/${groupId}/${targetKey}/${Date.now()}_${fileName}`;
-
-      const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
-        body: { html: fullDoc, fileName, storagePath },
+      const jobs = planContractJobs(counterparty, {
+        org: orgReq,
+        students: scenarioStudents,
+        company: selectedCompany || null,
+        programTitle,
+        price,
+        date,
+        templateId,
       });
-      if (pdfErr) throw pdfErr;
-      if (!pdfRes?.path) throw new Error("PDF не был сохранён");
 
-      const { error: insErr } = await (supabase as any).from("org_contracts").insert({
-        organization_id: organizationId,
-        student_user_id: counterparty === "individual" ? (primaryStudent?.user_id || null) : null,
-        student_group_id: groupId,
-        company_id: counterparty === "legal" ? companyId : null,
-        counterparty_type: counterparty,
-        template_id: templateId,
-        variables: vars,
-        name: title || selectedTpl.name,
-        contract_number: number || null,
-        contract_date: date || null,
-        file_path: pdfRes.path,
-        status: "active",
-      });
-      if (insErr) throw insErr;
+      const produced: Array<{ name: string; html: string }> = [];
 
-      toast.success("Договор сгенерирован" + (number ? ` (№ ${number})` : ""));
+      for (const [index, job] of jobs.entries()) {
+        const number = await resolveNumber(index);
+        const vars = buildVariables(number, job.students);
+        const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
+        const title = number ? `Договор № ${number}` : job.label;
+        const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
+
+        const safe = `${title} ${counterparty === "individual" ? job.students[0]?.full_name || "" : ""}`.trim();
+        const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.\-]+/g, "_");
+        const storagePath = `${organizationId}/contracts/${groupId}/${job.key}/${Date.now()}_${fileName}`;
+
+        const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
+          body: { html: fullDoc, fileName, storagePath },
+        });
+        if (pdfErr) throw pdfErr;
+        if (!pdfRes?.path) throw new Error("PDF не был сохранён");
+
+        const { error: insErr } = await (supabase as any).from("org_contracts").insert({
+          organization_id: organizationId,
+          student_user_id: job.studentUserId,
+          student_group_id: groupId,
+          company_id: job.companyId,
+          counterparty_type: counterparty,
+          template_id: templateId,
+          template_version: selectedTpl.version ?? null,
+          variables: vars,
+          students: job.students.map(st => ({ user_id: st.user_id, full_name: st.full_name, email: st.email || null })),
+          body_html: fullDoc,
+          name: counterparty === "individual" ? `${title} — ${job.students[0]?.full_name || ""}`.trim() : title,
+          contract_number: number || null,
+          contract_date: date || null,
+          file_path: pdfRes.path,
+          status: "active",
+        });
+        if (insErr) throw insErr;
+
+        produced.push({ name: counterparty === "individual" ? `${title} ${job.students[0]?.full_name || ""}`.trim() : title, html: fullDoc });
+      }
+
+      // Скачиваем редактируемые DOCX: один документ — файл, несколько — ZIP.
+      try {
+        if (produced.length === 1) {
+          const blob = await htmlToDocxBlob(produced[0].html);
+          downloadBlob(blob, sanitizeFileName(produced[0].name, "docx"));
+        } else if (produced.length > 1) {
+          const blob = await htmlDocsToZipBlob(produced);
+          downloadBlob(blob, sanitizeFileName(`Договоры ${groupName}`, "zip"));
+        }
+      } catch (e: any) {
+        toast.error("DOCX не сформирован, но договоры сохранены", { description: e?.message });
+      }
+
+      toast.success(produced.length === 1 ? "Договор сгенерирован" : `Сгенерировано договоров: ${produced.length}`);
       onGenerated();
       onClose();
     } catch (e: any) {
@@ -431,7 +535,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     )}>
                     <User className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Физическое лицо</div>
-                    <div className="text-xs text-muted-foreground mt-1">Ученик группы заключает договор от своего имени</div>
+                    <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
                   </button>
                   <button type="button" onClick={() => setCounterparty("legal")}
                     className={cn(
@@ -439,8 +543,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                       counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                     )}>
                     <Building2 className="w-6 h-6 text-primary mb-2" />
-                    <div className="text-base font-semibold">Юридическое лицо</div>
-                    <div className="text-xs text-muted-foreground mt-1">Компания-заказчик оплачивает обучение сотрудников</div>
+                    <div className="text-base font-semibold">Компания</div>
+                    <div className="text-xs text-muted-foreground mt-1">Один договор с заказчиком и списком слушателей в приложении</div>
                   </button>
                 </div>
               </div>
@@ -449,15 +553,19 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             {step === 2 && (
               <div className="space-y-3 pt-2">
                 <Label>Выберите шаблон договора</Label>
-                {templates.length === 0 ? (
+                {scenarioTemplates.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border p-8 text-center">
                     <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
-                    <div className="text-sm text-muted-foreground mb-3">В организации ещё нет шаблонов договоров</div>
+                    <div className="text-sm text-muted-foreground mb-3">
+                      {templates.length === 0
+                        ? "В организации ещё нет шаблонов договоров"
+                        : `Нет шаблонов для сценария «${counterparty === "individual" ? "Физическое лицо" : "Компания"}»`}
+                    </div>
                     <div className="text-xs text-muted-foreground">Закройте это окно и нажмите «Загрузить шаблон» в папке договоров.</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {templates.map(t => {
+                    {scenarioTemplates.map(t => {
                       const active = t.id === templateId;
                       return (
                         <div key={t.id}
@@ -471,6 +579,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                               <div className="text-sm font-medium truncate flex items-center gap-1.5">
                                 {t.name}
                                 {t.is_default && <Badge variant="secondary" className="text-[10px] rounded-full">по умолчанию</Badge>}
+                                <Badge variant="outline" className="text-[10px] rounded-full">
+                                  {t.counterparty_type === "individual" ? "физлицо" : t.counterparty_type === "legal" ? "компания" : "универсальный"}
+                                </Badge>
                               </div>
                               <div className="text-xs text-muted-foreground mt-0.5">
                                 {extractVariables(t.body_html).length} переменных
@@ -661,6 +772,30 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     </div>
                   )}
 
+                  {blockers.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Генерация заблокирована. Заполните: {blockers.map(b => b.label).join(", ")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {warnings.length > 0 && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Договор можно выпустить, но в нём будут пропуски: {warnings.map(b => b.label).join(", ")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {counterparty === "individual" && scenarioStudents.length > 1 && (
+                    <Alert>
+                      <FileSignature className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Будет создано {scenarioStudents.length} отдельных договоров — по одному на каждого ученика. Скачается ZIP с DOCX.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   {selectedTpl && missing.length > 0 && (
                     <Alert>
                       <AlertTriangle className="h-4 w-4" />
@@ -694,7 +829,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
           <DialogFooter className="p-4 border-t border-border flex-row items-center gap-2 sm:justify-between">
             <div className="text-xs text-muted-foreground">
-              {!proceed.ok && proceed.reason ? proceed.reason : `Шаг ${step} из ${STEPS.length}`}
+              {!proceed.ok && proceed.reason
+                ? proceed.reason
+                : step === 5 && blockers.length > 0
+                  ? `Не заполнено: ${blockers.map(b => b.label).join(", ")}`
+                  : `Шаг ${step} из ${STEPS.length}`}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={onClose} disabled={busy}>Отмена</Button>
@@ -708,8 +847,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   Далее<ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={generate} disabled={busy || !selectedTpl} className="gap-1.5">
-                  <FileSignature className="w-4 h-4" />{busy ? "Генерация…" : "Сгенерировать и сохранить"}
+                <Button onClick={generate} disabled={busy || !selectedTpl || blockers.length > 0} className="gap-1.5">
+                  <FileSignature className="w-4 h-4" />
+                  {busy
+                    ? "Генерация…"
+                    : counterparty === "individual" && scenarioStudents.length > 1
+                      ? `Сгенерировать ${scenarioStudents.length} договора`
+                      : "Сгенерировать и сохранить"}
                 </Button>
               )}
             </div>
