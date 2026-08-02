@@ -453,8 +453,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             defaultPrice={group?.default_price ?? null}
             missingFields={missingDocFields}
             blockingFields={blockingDocFields}
+            courseId={group?.course_id ?? null}
             onOpenGroupSettings={() => setSettingsOpen(true)}
           />
+
         </div>
       ) : (
         <FolderContents
