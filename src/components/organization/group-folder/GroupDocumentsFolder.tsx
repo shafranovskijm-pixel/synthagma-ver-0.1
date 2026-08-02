@@ -32,6 +32,8 @@ interface Props {
   defaultPrice?: number | null;
   /** Незаполненные поля группы/организации, о которых стоит предупредить менеджера. */
   missingFields?: string[];
+  /** Критичные незаполненные поля — генерация полностью блокируется. */
+  blockingFields?: string[];
   onOpenGroupSettings?: () => void;
 }
 
@@ -46,6 +48,7 @@ export function GroupDocumentsFolder({
   ctx,
   defaultPrice,
   missingFields = [],
+  blockingFields = [],
   onOpenGroupSettings,
 }: Props) {
   const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
@@ -59,8 +62,14 @@ export function GroupDocumentsFolder({
     return map;
   }, []);
 
+  const blocked = blockingFields.length > 0;
+
   const run = async (types: DocType[]) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
+    if (blocked) {
+      toast.error("Заполните обязательные данные группы", { description: blockingFields.join(", ") });
+      return false;
+    }
     if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
     setBusy(true);
     try {
@@ -116,7 +125,9 @@ export function GroupDocumentsFolder({
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 mt-0.5 text-primary shrink-0" />
             <div className="text-sm">
-              <div className="font-medium">Заполните данные, чтобы документы были без пропусков</div>
+              <div className="font-medium">
+                {blocked ? "Генерация недоступна: заполните обязательные данные" : "Заполните данные, чтобы документы были без пропусков"}
+              </div>
               <div className="text-muted-foreground mt-0.5">Не заполнено: {missingFields.join(", ")}</div>
               {onOpenGroupSettings && (
                 <Button variant="outline" size="sm" className="mt-2 rounded-xl" onClick={onOpenGroupSettings}>
@@ -130,12 +141,12 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx} onClick={() => setPackageOpen(true)}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: blockingFields.join(", ") }); return; } setPackageOpen(true); }}>
           <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx}>
+            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked}>
               Отдельный документ <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
