@@ -166,52 +166,49 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       return;
     }
     setSaving(true);
+    const patch = buildGroupSettingsPatch(settings as any, seatLimitEnabled);
     try {
-      const { data, error } = await supabase
-        .from("student_groups")
-        .update({
-          name: settings.name.trim(),
-          color: settings.color,
-          start_date: settings.start_date,
-          end_date: settings.end_date,
-          group_number: settings.group_number,
-          program_title: settings.program_title,
-          program_hours: settings.program_hours,
-          program_form: settings.program_form,
-          default_price: settings.default_price,
-          course_id: settings.course_id,
-          max_seats: seatLimitEnabled ? (settings.max_seats || 30) : null,
-          strict_order: settings.strict_order,
-          limit_access_time: settings.limit_access_time,
-          schedule_access: settings.schedule_access,
-          block_resubmit: settings.block_resubmit,
-          show_locked_lessons: settings.show_locked_lessons,
-          enable_channel: settings.enable_channel,
-          enable_group_chat: settings.enable_group_chat,
-          block_student_dialogs: settings.block_student_dialogs } as any)
-        .eq("id", groupId)
-        .select("id")
-        .maybeSingle();
-      if (error) throw error;
-      // Тихий отказ RLS: запрос прошёл, но ни одна строка не обновлена
-      if (!data) {
+      // Сохранение через серверную функцию: она сама проверяет права и
+      // возвращает обновлённую строку, поэтому «тихий» отказ RLS невозможен.
+      const { data, error } = await (supabase as any).rpc("update_student_group_settings", {
+        p_group_id: groupId,
+        p_patch: patch,
+      });
+      if (error) {
+        console.error("[GroupSettings] save failed", { groupId, organizationId, patch, error });
         toast.error("Не удалось сохранить настройки", {
-          description: "Нет прав на изменение этой группы или группа удалена. Обновите страницу и попробуйте снова.",
+          description:
+            error.message?.includes("access_denied")
+              ? "Нет прав на изменение этой группы."
+              : error.message || undefined,
         });
         return;
       }
-      // Перечитываем состояние из БД, чтобы UI не показывал несохранённые значения
-      await loadSettings();
+      const saved = Array.isArray(data) ? data[0] : data;
+      if (!saved) {
+        console.error("[GroupSettings] save returned no row", { groupId, patch });
+        toast.error("Не удалось сохранить настройки", { description: "Группа не найдена. Обновите страницу." });
+        return;
+      }
+      const notPersisted = verifySavedSettings(patch, saved as any);
+      if (notPersisted.length > 0) {
+        console.error("[GroupSettings] fields not persisted", { groupId, notPersisted, patch, saved });
+        toast.error("Часть полей не сохранилась", { description: notPersisted.join(", ") });
+        return;
+      }
+      setSettings(saved as any as GroupSettings);
+      setSeatLimitEnabled(!!saved.max_seats && saved.max_seats > 0);
       toast.success("Настройки сохранены");
       onUpdated?.();
       onOpenChange(false);
     } catch (e: any) {
-      console.error("[GroupSettings] save failed", e);
+      console.error("[GroupSettings] save exception", { groupId, patch, e });
       toast.error("Ошибка сохранения", { description: e?.message || undefined });
     } finally {
       setSaving(false);
     }
   };
+
 
 
   const handleDelete = async () => {
