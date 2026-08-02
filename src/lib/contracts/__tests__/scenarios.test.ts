@@ -66,7 +66,7 @@ describe("contract scenarios", () => {
     const partial = blockingMissing(
       validateScenario("legal", { ...base, company: { id: "c1", name: "ООО Ромашка", inn: "7701" } }),
     ).map(m => m.key);
-    expect(partial).toEqual(expect.arrayContaining(["company_address", "company_signer"]));
+    expect(partial).toEqual(expect.arrayContaining(["company_address", "company_director"]));
 
     const ok = blockingMissing(
       validateScenario("legal", {
