@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon } from "lucide-react";
+import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { ContractsFolder } from "@/components/organization/group-folder/Contract
 import { GroupDocumentsFolder } from "@/components/organization/group-folder/GroupDocumentsFolder";
 import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
+import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 
 
 type ViewMode = "grid" | "list" | "table";
@@ -35,6 +36,15 @@ interface GroupData {
   program_hours: number | null;
   program_form: string | null;
   default_price: number | null;
+  course_id: string | null;
+}
+
+interface CourseInfo {
+  id: string;
+  title: string | null;
+  duration: number | null;
+  frdo_duration_hours: number | null;
+  training_form: string | null;
 }
 
 interface StudentRow {
@@ -78,6 +88,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
+  const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const folderParam = searchParams.get("folder");
   const openFolder = (["contracts","passports","snils","exams","docs"] as const).includes(folderParam as any) ? (folderParam as FolderKey) : null;
   const setOpenFolder = useCallback((f: FolderKey | null) => {
@@ -111,7 +124,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       try {
         const { data: groupData } = await supabase
           .from("student_groups")
-          .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, default_price")
+          .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, default_price, course_id")
           .eq("id", groupId)
           .maybeSingle();
         if (cancelled) return;
@@ -124,6 +137,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           .maybeSingle();
         if (!cancelled) setOrgInfo(orgRow as any);
 
+        // Курс группы: явная привязка, иначе — общий курс по зачислениям учеников
+        const linkedCourseId = (groupData as any)?.course_id as string | null;
+
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, full_name, email, login, phone")
@@ -131,6 +147,32 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           .eq("student_group_id", groupId);
 
         const userIds = (profiles || []).map((p: any) => p.user_id);
+
+        let resolvedCourseId: string | null = linkedCourseId;
+        if (!resolvedCourseId && userIds.length > 0) {
+          const { data: enrollments } = await (supabase as any)
+            .from("enrollments")
+            .select("course_id, user_id")
+            .in("user_id", userIds);
+          const tally = new Map<string, number>();
+          for (const row of (enrollments as any[]) || []) {
+            if (!row.course_id) continue;
+            tally.set(row.course_id, (tally.get(row.course_id) || 0) + 1);
+          }
+          const best = [...tally.entries()].sort((a, b) => b[1] - a[1])[0];
+          resolvedCourseId = best ? best[0] : null;
+        }
+        if (resolvedCourseId) {
+          const { data: courseRow } = await supabase
+            .from("courses")
+            .select("id, title, duration, frdo_duration_hours, training_form")
+            .eq("id", resolvedCourseId)
+            .maybeSingle();
+          if (!cancelled) setCourseInfo((courseRow as any) || null);
+        } else if (!cancelled) {
+          setCourseInfo(null);
+        }
+
         if (userIds.length === 0) {
           if (!cancelled) setStudents([]);
           return;
@@ -194,7 +236,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       }
     })();
     return () => { cancelled = true; };
-  }, [organizationId, groupId]);
+  }, [organizationId, groupId, reloadKey]);
 
   const counts = useMemo(() => {
     let passports = 0, snils = 0, contracts = 0, exams = 0;
@@ -232,9 +274,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         number: group.group_number || group.name,
         start_date: group.start_date || "",
         end_date: group.end_date || "",
-        program_title: group.program_title || "",
-        program_hours: group.program_hours || 0,
-        program_form: group.program_form || "Очно-заочная с применением ДОТ",
+        program_title: group.program_title || courseInfo?.title || "",
+        program_hours: group.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0,
+        program_form: group.program_form || courseInfo?.training_form || "Очно-заочная с применением ДОТ",
         color: group.color || undefined,
       },
       students: students.map(s => ({
@@ -243,6 +285,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         birth_date: s.frdo?.birth_date || undefined,
         gender: (s.frdo?.gender === "Ж" || s.frdo?.gender === "female" ? "Ж" : s.frdo?.gender ? "М" : undefined) as "М" | "Ж" | undefined,
         passport: [s.frdo?.passport_series, s.frdo?.passport_number].filter(Boolean).join(" ") || undefined,
+        passport_series: s.frdo?.passport_series || undefined,
+        passport_number: s.frdo?.passport_number || undefined,
         snils: s.frdo?.snils || undefined,
         citizenship: s.frdo?.citizenship_code || undefined,
         email: s.email || undefined,
@@ -250,18 +294,27 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         education: s.frdo?.education_level || undefined,
       })),
     };
-  }, [group, orgInfo, students]);
+  }, [group, orgInfo, students, courseInfo]);
 
-  const missingDocFields = useMemo(() => {
+  const resolvedProgramTitle = group?.program_title || courseInfo?.title || "";
+  const resolvedProgramHours = group?.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0;
+
+  /** Критичные поля: без них документы бессмысленны — генерация блокируется. */
+  const blockingDocFields = useMemo(() => {
     const missing: string[] = [];
-    if (!group?.program_title) missing.push("название программы");
-    if (!group?.program_hours) missing.push("объём часов");
-    if (!group?.group_number) missing.push("номер группы");
-    if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
+    if (!resolvedProgramTitle) missing.push("название программы (или курс группы)");
+    if (!resolvedProgramHours) missing.push("объём часов");
     if (!orgInfo?.inn) missing.push("ИНН учебного центра");
     if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
     return missing;
-  }, [group, orgInfo]);
+  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo]);
+
+  const missingDocFields = useMemo(() => {
+    const missing = [...blockingDocFields];
+    if (!group?.group_number) missing.push("номер группы");
+    if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
+    return missing;
+  }, [blockingDocFields, group]);
 
 
 
@@ -351,6 +404,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setSettingsOpen(true)}>
+              <Settings className="w-4 h-4" /> Настройки группы
+            </Button>
             <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => {
               if (openFolder) setOpenFolder(null);
               else backToStudentsGroups();
@@ -396,6 +452,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             ctx={generationContext}
             defaultPrice={group?.default_price ?? null}
             missingFields={missingDocFields}
+            blockingFields={blockingDocFields}
+            onOpenGroupSettings={() => setSettingsOpen(true)}
           />
         </div>
       ) : (
@@ -406,6 +464,15 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           onBack={() => setOpenFolder(null)}
         />
       )}
+
+      <GroupSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        groupId={groupId}
+        organizationId={organizationId}
+        onUpdated={() => setReloadKey(k => k + 1)}
+        onDeleted={() => backToStudentsGroups()}
+      />
     </div>
   );
 }
