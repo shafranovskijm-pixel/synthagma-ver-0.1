@@ -367,6 +367,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     return findMissingVariables(selectedTpl.body_html, previewVariables);
   }, [selectedTpl, previewVariables]);
 
+  /** Нерешённые {{placeholder}} в готовом HTML — жёсткий стоп генерации. */
+  const leftoverPlaceholders = useMemo(() => findUnresolvedPlaceholders(previewHtml), [previewHtml]);
+  const generateDisabled = !selectedTpl || blockers.length > 0 || leftoverPlaceholders.length > 0;
+
   /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
   const variableGaps = useMemo(
     () => templateVariableGaps(allTplVars, previewVariables as Record<string, unknown>),
