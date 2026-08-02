@@ -179,7 +179,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (scenario === "individual") setCompanyId("");
     setDate(new Date().toISOString().slice(0, 10));
     setNumberMode("auto");
-    const def = pickDefaultTemplate(templates, scenario);
+    const usable = templates.filter(t => templateUsableForScenario(t.counterparty_type, extractVariables(t.body_html), scenario));
+    const def = pickDefaultTemplate(usable, scenario);
     if (def) setTemplateId(def.id);
     return def;
   };
