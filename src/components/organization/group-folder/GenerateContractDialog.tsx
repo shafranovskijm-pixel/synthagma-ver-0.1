@@ -478,7 +478,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       }
 
       toast.success(produced.length === 1 ? "Договор сгенерирован" : `Сгенерировано договоров: ${produced.length}`);
-      onGenerated();
+      onGenerated({ scenario: counterparty, count: produced.length });
       onClose();
     } catch (e: any) {
       toast.error("Ошибка генерации", { description: e?.message });
