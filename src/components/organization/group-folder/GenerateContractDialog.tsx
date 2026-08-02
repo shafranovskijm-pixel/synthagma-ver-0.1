@@ -32,7 +32,7 @@ import {
 import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
 import {
-  templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
+  templateMatchesScenario, templateUsableForScenario, pickDefaultTemplate, validateScenario, blockingMissing,
   planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
 import { canProceedStep, nextStep, prevStep, type WizardState } from "@/lib/contracts/wizardFlow";
