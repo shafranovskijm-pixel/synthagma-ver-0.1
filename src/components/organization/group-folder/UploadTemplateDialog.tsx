@@ -13,6 +13,7 @@ import {
   importWordAsHtml,
   detectSlots,
   applyMappings,
+  extractPlaceholders,
   type TemplateSlot,
   type SlotMapping,
 } from "@/lib/contractTemplateImport";
@@ -35,6 +36,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
   const [counterpartyType, setCounterpartyType] = useState<"individual" | "legal" | "any">("any");
   const [html, setHtml] = useState("");
   const [slots, setSlots] = useState<TemplateSlot[]>([]);
+  const [placeholders, setPlaceholders] = useState<string[]>([]);
   const [mappings, setMappings] = useState<Record<string, SlotMapping>>({});
   const [importing, setImporting] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
@@ -45,7 +47,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
 
   useEffect(() => {
     if (open) {
-      setStep("upload"); setName(""); setHtml(""); setSlots([]); setMappings({});
+      setStep("upload"); setName(""); setHtml(""); setSlots([]); setPlaceholders([]); setMappings({});
     }
   }, [open]);
 
@@ -56,8 +58,10 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
       const { html: h, warnings } = await importWordAsHtml(file);
       if (warnings.length) console.warn("mammoth warnings:", warnings);
       const s = detectSlots(h);
+      const ph = extractPlaceholders(h);
       setHtml(h);
       setSlots(s);
+      setPlaceholders(ph);
       // Prefill mappings from local hints
       const init: Record<string, SlotMapping> = {};
       for (const slot of s) {
@@ -146,9 +150,11 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
     setSaving(true);
     try {
       const bodyHtml = applyMappings(html, slots, mappings);
-      const usedKeys = Array.from(new Set(
-        Object.values(mappings).filter(m => m.action === "map" && m.key).map(m => m.key!),
-      ));
+      const usedKeys = Array.from(new Set([
+        ...Object.values(mappings).filter(m => m.action === "map" && m.key).map(m => m.key!),
+        // Готовые {{...}} из исходного файла — тоже полноценные переменные шаблона.
+        ...extractPlaceholders(bodyHtml),
+      ]));
       const { data, error } = await (supabase as any)
         .from("org_contract_templates")
         .insert({
@@ -265,6 +271,11 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
                       {slots.length - mappedCount} без переменной
                     </Badge>
                   )}
+                  {placeholders.length > 0 && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Check className="w-3 h-3" /> {placeholders.length} готовых {"{{...}}"}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 flex-wrap">
                   <div className="flex items-center rounded-md border border-border overflow-hidden mr-2">
@@ -292,9 +303,23 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
               <div className="flex-1 min-h-0 border border-border rounded-xl overflow-y-auto bg-muted/20">
 
                 <div className="p-3 space-y-2">
+                  {placeholders.length > 0 && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20 dark:border-emerald-900 p-3">
+                      <div className="text-sm font-medium mb-1.5">Переменные уже есть в файле — распознаны автоматически</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {placeholders.map(k => (
+                          <span key={k} className="font-mono text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                            {`{{${k}}}`}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {slots.length === 0 && (
                     <div className="p-8 text-center text-sm text-muted-foreground">
-                      Слотов не найдено. Возможно, в шаблоне уже стоят переменные <code>{`{{...}}`}</code>, или заглушки записаны в нестандартном виде.
+                      {placeholders.length > 0
+                        ? "Дополнительных «дыр» не найдено — шаблон уже готов, можно переходить к проверке и сохранению."
+                        : <>Слотов не найдено. Возможно, заглушки записаны в нестандартном виде — добавьте <code>{`{{переменные}}`}</code> вручную или отметьте места подчёркиваниями.</>}
                     </div>
                   )}
                   {slots.map((s, idx) => {
@@ -386,7 +411,7 @@ export function UploadTemplateDialog({ organizationId, open, onClose, onCreated 
           )}
           <Button variant="ghost" onClick={onClose} disabled={saving}>Отмена</Button>
           {step === "quiz" && (
-            <Button onClick={() => setStep("review")} disabled={slots.length === 0}>
+            <Button onClick={() => setStep("review")} disabled={slots.length === 0 && placeholders.length === 0}>
               Далее <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           )}

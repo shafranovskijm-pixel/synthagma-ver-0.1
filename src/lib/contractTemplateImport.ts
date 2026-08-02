@@ -188,3 +188,17 @@ export function applyMappings(html: string, slots: TemplateSlot[], mappings: Rec
   }
   return out;
 }
+
+/**
+ * Прямые плейсхолдеры вида {{variable_name}}, которые уже стоят в загруженном шаблоне.
+ * Такой шаблон корректен сам по себе: слотов-заглушек в нём может не быть вовсе.
+ */
+export function extractPlaceholders(html: string): string[] {
+  const out: string[] = [];
+  const re = /\{\{\s*&?\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    if (!out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
+}

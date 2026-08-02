@@ -31,7 +31,7 @@ import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
 import {
   templateMatchesScenario, pickDefaultTemplate, validateScenario, blockingMissing,
-  planContractJobs, type ContractScenario, type ScenarioStudent,
+  planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 
@@ -83,6 +83,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [courses, setCourses] = useState<Course[]>([]);
 
   const [counterparty, setCounterparty] = useState<CounterpartyType>("individual");
+  /** Сценарий выбран пользователем явно — без этого дальше не пускаем (в т.ч. в quick-режиме). */
+  const [scenarioChosen, setScenarioChosen] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
   const [multiStudentIds, setMultiStudentIds] = useState<string[]>([]);
   const [primaryStudentId, setPrimaryStudentId] = useState<string>("");
@@ -103,6 +105,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [courseFormOverride, setCourseFormOverride] = useState<string>("");
 
   const [studentDetails, setStudentDetails] = useState<Map<string, { passport: string | null; address: string | null; phone: string | null }>>(new Map());
+  /** Правки паспорта/адреса/телефона прямо в мастере — попадают в variables snapshot. */
+  const [studentOverrides, setStudentOverrides] = useState<Record<string, { passport?: string; address?: string; phone?: string }>>({});
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -110,29 +114,43 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   useEffect(() => {
     if (!open) return;
     setStep(1);
+    setScenarioChosen(false);
+    setStudentOverrides({});
     if (quick) {
-      // Быстрая генерация: физлица (ученики группы), все ученики, сегодня, авто-номер
-      setCounterparty("individual");
-      const ids = students.map(s => s.user_id);
-      setMultiStudentIds(ids);
-      setPrimaryStudentId(ids[0] || "");
-      setCompanyId("");
       setDate(new Date().toISOString().slice(0, 10));
       setNumberMode("auto");
       setNumberManual("");
     }
     (async () => {
-      const [tplRes, coRes, orgRes, crsRes, profRes] = await Promise.all([
+      const [tplRes, coRes, orgRes, crsRes, profRes, frdoRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
         (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
-        (supabase as any).from("profiles").select("user_id, passport_series, passport_number, address, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
+        // В profiles паспорта/адреса нет — только телефон.
+        (supabase as any).from("profiles").select("user_id, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
+        // Паспортные данные живут в student_frdo_data (user_id + organization_id).
+        (supabase as any).from("student_frdo_data").select("user_id, passport_series, passport_number").eq("organization_id", organizationId),
       ]);
+
+      for (const [label, res] of [
+        ["шаблоны договоров", tplRes], ["компании", coRes], ["реквизиты учебного центра", orgRes],
+        ["курсы", crsRes], ["профили учеников", profRes], ["паспортные данные (ФРДО)", frdoRes],
+      ] as Array<[string, any]>) {
+        if (res?.error) {
+          console.error(`[GenerateContractDialog] ошибка загрузки: ${label}`, res.error);
+          toast.error(`Не удалось загрузить: ${label}`, { description: res.error.message });
+        }
+      }
+
       const details = new Map<string, { passport: string | null; address: string | null; phone: string | null }>();
       (profRes?.data || []).forEach((r: any) => {
+        details.set(r.user_id, { passport: null, address: null, phone: r.phone || null });
+      });
+      (frdoRes?.data || []).forEach((r: any) => {
         const passport = [r.passport_series, r.passport_number].filter(Boolean).join(" ") || null;
-        details.set(r.user_id, { passport, address: r.address || null, phone: r.phone || null });
+        const prev = details.get(r.user_id);
+        details.set(r.user_id, { passport, address: prev?.address ?? null, phone: prev?.phone ?? null });
       });
       setStudentDetails(details);
       const tpls = (tplRes.data || []) as Template[];
@@ -140,20 +158,28 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       setCompanies((coRes.data || []) as Company[]);
       setOrgReq(orgRes.data || null);
       setCourses((crsRes.data || []) as Course[]);
-      // Шаблон по умолчанию выбирается с учётом сценария (физлицо / компания)
-      const def = pickDefaultTemplate(tpls, quick ? "individual" : counterparty);
-      if (def && (quick || !templateId)) setTemplateId(def.id);
-      if (quick) {
-        if (!def) {
-          toast.error("Нет шаблона договора", { description: "Загрузите шаблон, затем повторите быструю генерацию" });
-        } else {
-          // Сразу к шагу проверки и генерации
-          setStep(5);
-        }
+      if (quick && tpls.length === 0) {
+        toast.error("Нет шаблона договора", { description: "Загрузите шаблон, затем повторите быструю генерацию" });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId, quick]);
+
+  /**
+   * Быстрая генерация: автозаполнение применяется ТОЛЬКО после явного выбора сценария —
+   * все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию сценария.
+   */
+  const applyQuickDefaults = (scenario: CounterpartyType) => {
+    const ids = students.map(s => s.user_id);
+    setMultiStudentIds(ids);
+    setPrimaryStudentId(ids[0] || "");
+    if (scenario === "individual") setCompanyId("");
+    setDate(new Date().toISOString().slice(0, 10));
+    setNumberMode("auto");
+    const def = pickDefaultTemplate(templates, scenario);
+    if (def) setTemplateId(def.id);
+    return def;
+  };
 
 
   useEffect(() => {
@@ -265,27 +291,36 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     return { ...base, ...extra };
   };
 
-  const previewVariables = useMemo(() => buildVariables(previewNumber || ""), [previewNumber, orgReq, date, groupName, programTitle, programHours, programForm, price, counterparty, primaryStudent, selectedCompany, selectedStudentRows, plan, extra]);
-
-  const previewHtml = useMemo(() => {
-    if (!selectedTpl) return "";
-    return renderTemplate(selectedTpl.body_html, previewVariables, RAW_KEYS);
-  }, [selectedTpl, previewVariables]);
 
   const scenarioStudents = useMemo<ScenarioStudent[]>(() => {
     const ids = multiStudentIds.length ? multiStudentIds : (primaryStudent ? [primaryStudent.user_id] : []);
     return ids
       .map(id => students.find(s => s.user_id === id))
       .filter(Boolean)
-      .map(s => ({
-        user_id: s!.user_id,
-        full_name: s!.full_name,
-        email: s!.email ?? null,
-        passport: s!.passport ?? studentDetails.get(s!.user_id)?.passport ?? null,
-        address: s!.address ?? studentDetails.get(s!.user_id)?.address ?? null,
-        phone: s!.phone ?? studentDetails.get(s!.user_id)?.phone ?? null,
-      }));
-  }, [multiStudentIds, primaryStudent, students, studentDetails]);
+      .map(s => {
+        const ov = studentOverrides[s!.user_id] || {};
+        const det = studentDetails.get(s!.user_id);
+        return {
+          user_id: s!.user_id,
+          full_name: s!.full_name,
+          email: s!.email ?? null,
+          passport: (ov.passport ?? "").trim() || s!.passport || det?.passport || null,
+          address: (ov.address ?? "").trim() || s!.address || det?.address || null,
+          phone: (ov.phone ?? "").trim() || s!.phone || det?.phone || null,
+        };
+      });
+  }, [multiStudentIds, primaryStudent, students, studentDetails, studentOverrides]);
+
+  const previewVariables = useMemo(
+    () => buildVariables(previewNumber || "", scenarioStudents.length ? scenarioStudents : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [previewNumber, orgReq, date, groupName, programTitle, programHours, programForm, price, counterparty, scenarioStudents, selectedCompany, selectedStudentRows, plan, extra],
+  );
+
+  const previewHtml = useMemo(() => {
+    if (!selectedTpl) return "";
+    return renderTemplate(selectedTpl.body_html, previewVariables, RAW_KEYS);
+  }, [selectedTpl, previewVariables]);
 
   const scenarioIssues = useMemo(() => validateScenario(counterparty, {
     org: orgReq,
@@ -304,6 +339,14 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (!selectedTpl) return [] as string[];
     return findMissingVariables(selectedTpl.body_html, previewVariables);
   }, [selectedTpl, previewVariables]);
+
+  /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
+  const variableGaps = useMemo(
+    () => templateVariableGaps(allTplVars, previewVariables as Record<string, unknown>),
+    [allTplVars, previewVariables],
+  );
+
+
 
   const knownKeys = new Set([
     "org_name","org_inn","org_kpp","org_ogrn","org_address","org_director_name","org_director_position","org_director_acting",
@@ -444,7 +487,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   // ── Step validation ───────────────────────────────────────
   const canProceed = (s: number): { ok: boolean; reason?: string } => {
-    if (s === 1) return { ok: !!counterparty };
+    if (s === 1) return scenarioChosen ? { ok: true } : { ok: false, reason: "Выберите сценарий договора" };
     if (s === 2) return selectedTpl ? { ok: true } : { ok: false, reason: "Выберите шаблон договора" };
     if (s === 3) {
       if (counterparty === "individual") {
@@ -459,6 +502,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   };
 
   const goNext = () => {
+    // Быстрая генерация: после явного выбора сценария автозаполняем и сразу к проверке.
+    if (step === 1 && quick) {
+      const def = applyQuickDefaults(counterparty);
+      if (!def) { setStep(2); return; }
+      setStep(5);
+      return;
+    }
     // Skip step 4 if not needed
     let next = step + 1;
     if (next === 4 && !programStepNeeded) next = 5;
@@ -527,20 +577,25 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             {step === 1 && (
               <div className="max-w-xl mx-auto space-y-4 pt-6">
                 <Label className="text-base">Кто заказчик по договору?</Label>
+                {quick && (
+                  <p className="text-xs text-muted-foreground">
+                    Быстрая генерация: выберите сценарий — остальные данные (все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию) подставятся автоматически.
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setCounterparty("individual")}
+                  <button type="button" onClick={() => { setCounterparty("individual"); setScenarioChosen(true); }}
                     className={cn(
                       "p-5 rounded-2xl border-2 text-left transition-all",
-                      counterparty === "individual" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      scenarioChosen && counterparty === "individual" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                     )}>
                     <User className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Физическое лицо</div>
                     <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
                   </button>
-                  <button type="button" onClick={() => setCounterparty("legal")}
+                  <button type="button" onClick={() => { setCounterparty("legal"); setScenarioChosen(true); }}
                     className={cn(
                       "p-5 rounded-2xl border-2 text-left transition-all",
-                      counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      scenarioChosen && counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                     )}>
                     <Building2 className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Компания</div>
@@ -651,6 +706,39 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     <div className="text-xs text-muted-foreground">
                       Выбрано: {multiStudentIds.length || (primaryStudent ? 1 : 0)}. Список идёт в <code>{`{{students_table}}`}</code>.
                     </div>
+
+                    {scenarioStudents.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <Label className="text-xs">Паспорт, адрес и телефон обучающихся</Label>
+                        <div className="text-xs text-muted-foreground">
+                          Пустые поля можно заполнить прямо здесь — значения сохранятся в договоре.
+                        </div>
+                        <div className="rounded-xl border border-border divide-y divide-border max-h-[300px] overflow-y-auto">
+                          {scenarioStudents.map(s => (
+                            <div key={s.user_id} className="p-3 space-y-2">
+                              <div className="text-sm font-medium">{s.full_name}</div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <Input
+                                  placeholder="Паспорт (серия и номер)"
+                                  value={studentOverrides[s.user_id]?.passport ?? s.passport ?? ""}
+                                  onChange={e => setStudentOverrides(p => ({ ...p, [s.user_id]: { ...p[s.user_id], passport: e.target.value } }))}
+                                />
+                                <Input
+                                  placeholder="Адрес регистрации"
+                                  value={studentOverrides[s.user_id]?.address ?? s.address ?? ""}
+                                  onChange={e => setStudentOverrides(p => ({ ...p, [s.user_id]: { ...p[s.user_id], address: e.target.value } }))}
+                                />
+                                <Input
+                                  placeholder="Телефон"
+                                  value={studentOverrides[s.user_id]?.phone ?? s.phone ?? ""}
+                                  onChange={e => setStudentOverrides(p => ({ ...p, [s.user_id]: { ...p[s.user_id], phone: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -771,6 +859,23 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                       ))}
                     </div>
                   )}
+
+                  {variableGaps.length > 0 && (
+                    <div className="rounded-xl border border-amber-300/70 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900 p-3 space-y-2">
+                      <div className="text-xs font-medium">Незаполненные переменные шаблона ({variableGaps.length})</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {variableGaps.map(g => (
+                          <span key={g.key} className="text-xs px-2 py-0.5 rounded bg-background border border-border" title={`{{${g.key}}}`}>
+                            {g.label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Банковские и прочие реквизиты подставляются из настроек организации; ученические поля можно заполнить на шаге «Стороны».
+                      </div>
+                    </div>
+                  )}
+
 
                   {blockers.length > 0 && (
                     <Alert variant="destructive">

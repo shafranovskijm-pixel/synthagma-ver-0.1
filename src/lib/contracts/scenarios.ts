@@ -123,6 +123,12 @@ export function validateScenario(scenario: ContractScenario, input: ScenarioInpu
       if (isBlank(s.passport)) {
         missing.push({ key: `student_${s.user_id}_passport`, label: `паспорт: ${s.full_name || s.user_id}`, blocking: false });
       }
+      if (isBlank(s.address)) {
+        missing.push({ key: `student_${s.user_id}_address`, label: `адрес: ${s.full_name || s.user_id}`, blocking: false });
+      }
+      if (isBlank(s.phone)) {
+        missing.push({ key: `student_${s.user_id}_phone`, label: `телефон: ${s.full_name || s.user_id}`, blocking: false });
+      }
     });
   } else {
     if (!input.company) {
@@ -130,8 +136,8 @@ export function validateScenario(scenario: ContractScenario, input: ScenarioInpu
     } else {
       if (isBlank(input.company.name)) missing.push({ key: "company_name", label: "название компании", blocking: true });
       if (isBlank(input.company.inn)) missing.push({ key: "company_inn", label: "ИНН компании", blocking: true });
-      if (isBlank(input.company.address)) missing.push({ key: "company_address", label: "адрес компании", blocking: false });
-      if (isBlank(input.company.director)) missing.push({ key: "company_director", label: "подписант компании", blocking: false });
+      if (isBlank(input.company.address)) missing.push({ key: "company_address", label: "адрес компании", blocking: true });
+      if (isBlank(input.company.director)) missing.push({ key: "company_director", label: "подписант компании", blocking: true });
     }
   }
 
@@ -186,4 +192,60 @@ export function planContractJobs(scenario: ContractScenario, input: ScenarioInpu
       label: `Договор — ${company?.name || "заказчик"}`,
     },
   ];
+}
+
+/** Человеческие названия переменных шаблона — для явного показа пропусков перед генерацией. */
+export const VARIABLE_LABELS: Record<string, string> = {
+  org_name: "название учебного центра",
+  org_inn: "ИНН учебного центра",
+  org_kpp: "КПП учебного центра",
+  org_ogrn: "ОГРН учебного центра",
+  org_address: "адрес учебного центра",
+  org_director_name: "руководитель учебного центра",
+  org_director_position: "должность руководителя",
+  org_bank_name: "банк учебного центра",
+  org_bank_bik: "БИК банка",
+  org_bank_account: "расчётный счёт",
+  org_bank_corr_account: "корр. счёт",
+  org_email: "email учебного центра",
+  org_phone: "телефон учебного центра",
+  company_name: "название компании",
+  company_inn: "ИНН компании",
+  company_kpp: "КПП компании",
+  company_ogrn: "ОГРН компании",
+  company_address: "адрес компании",
+  company_director: "подписант компании",
+  individual_name: "ФИО обучающегося",
+  individual_passport: "паспорт обучающегося",
+  individual_address: "адрес обучающегося",
+  individual_phone: "телефон обучающегося",
+  individual_email: "email обучающегося",
+  contract_number: "номер договора",
+  contract_date: "дата договора",
+  course_title: "программа обучения",
+  course_hours: "объём часов",
+  program_title: "программа обучения",
+  program_hours: "объём часов",
+  program_form: "форма обучения",
+  total_price: "стоимость",
+  total_price_words: "стоимость прописью",
+  price: "стоимость",
+};
+
+export interface VariableGap {
+  key: string;
+  label: string;
+}
+
+/**
+ * Переменные, которые есть в выбранном шаблоне, но не заполнены значениями.
+ * Показываются пользователю перед генерацией (банковские реквизиты и прочее).
+ */
+export function templateVariableGaps(
+  templateVars: string[],
+  values: Record<string, unknown>,
+): VariableGap[] {
+  return templateVars
+    .filter(k => isBlank(values[k]))
+    .map(k => ({ key: k, label: VARIABLE_LABELS[k] || k }));
 }
