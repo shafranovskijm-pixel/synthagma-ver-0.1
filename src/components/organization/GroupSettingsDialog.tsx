@@ -315,7 +315,24 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                           <div className="text-sm font-medium">Данные для документов группы</div>
                           <div className="text-xs text-muted-foreground">Подставляются в договоры, приказы, журналы и ведомости</div>
                         </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1.5 block">Курс (программа) группы</label>
+                          <select
+                            value={settings.course_id || ""}
+                            onChange={e => applyCourse(e.target.value || null)}
+                            className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                          >
+                            <option value="">Не выбран</option>
+                            {courses.map(c => (
+                              <option key={c.id} value={c.id}>{c.title}</option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Используется в документах группы: название программы, объём часов и форма обучения подтягиваются автоматически.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
                           <div>
                             <label className="text-sm font-medium mb-1.5 block">Номер группы</label>
                             <Input
