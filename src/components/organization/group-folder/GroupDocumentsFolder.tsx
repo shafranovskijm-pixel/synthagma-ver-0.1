@@ -160,23 +160,36 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: blockingFields.join(", ") }); return; } setPackageOpen(true); }}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setPackageOpen(true); }}>
           <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked}>
+            <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx}>
               Отдельный документ <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-72">
-            {DOC_TYPES.map(t => (
-              <DropdownMenuItem key={t.key} className="gap-2" onClick={() => run([t.key as DocType])}>
-                <FileText className="w-4 h-4" /> {t.title}
-              </DropdownMenuItem>
-            ))}
+          <DropdownMenuContent align="start" className="w-80">
+            {DOC_TYPES.map(t => {
+              const docMissing = missingDocRequirements(t.key, reqSource);
+              return (
+                <DropdownMenuItem
+                  key={t.key}
+                  className="gap-2"
+                  disabled={docMissing.length > 0}
+                  onClick={() => run([t.key as DocType], docMissing)}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="flex-1">{t.title}</span>
+                  {docMissing.length > 0 && (
+                    <span className="text-xs text-muted-foreground">нужно: {docMissing[0]}</span>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
+
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <span>Стоимость, ₽</span>
           <Input
