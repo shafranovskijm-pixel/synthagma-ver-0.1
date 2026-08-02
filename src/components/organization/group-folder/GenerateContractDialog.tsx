@@ -220,7 +220,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     [tplVarSet],
   );
 
-  const buildVariables = (numberValue: string): TemplateVariables => {
+  const buildVariables = (numberValue: string, jobStudents?: ScenarioStudent[]): TemplateVariables => {
+    const rows = (jobStudents
+      ? jobStudents.map(s => ({ full_name: s.full_name, email: s.email, program: programTitle }))
+      : selectedStudentRows);
+    const person = jobStudents ? jobStudents[0] : primaryStudent;
     const base: TemplateVariables = {
       ...(orgReq ? buildOrgVariables(orgReq) : {}),
       contract_number: numberValue,
@@ -235,14 +239,17 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       total_price: price ? formatMoney(Number(price)) : "",
       total_price_words: price ? moneyToWords(Number(price)) : "",
       price: price ? formatMoney(Number(price)) : "",
-      students_count: selectedStudentRows.length || (counterparty === "individual" && primaryStudent ? 1 : 0),
-      students_table: buildStudentsTable(selectedStudentRows),
-      programs_table: buildProgramsTable(programTitle ? [{ title: programTitle, hours: programHours ? Number(programHours) : null, form: programForm, count: selectedStudentRows.length || null }] : []),
+      students_count: rows.length,
+      students_table: buildStudentsTable(rows),
+      programs_table: buildProgramsTable(programTitle ? [{ title: programTitle, hours: programHours ? Number(programHours) : null, form: programForm, count: rows.length || null }] : []),
       training_plan: plan?.plan_html || "",
     };
-    if (counterparty === "individual" && primaryStudent) {
-      base.individual_name = primaryStudent.full_name;
-      base.individual_email = primaryStudent.email || "";
+    if (counterparty === "individual" && person) {
+      base.individual_name = person.full_name;
+      base.individual_email = person.email || "";
+      base.individual_passport = (person as any).passport || "";
+      base.individual_address = (person as any).address || "";
+      base.individual_phone = (person as any).phone || "";
     }
     if (counterparty === "legal" && selectedCompany) {
       Object.assign(base, buildCompanyVariables(selectedCompany));
@@ -256,6 +263,34 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (!selectedTpl) return "";
     return renderTemplate(selectedTpl.body_html, previewVariables, RAW_KEYS);
   }, [selectedTpl, previewVariables]);
+
+  const scenarioStudents = useMemo<ScenarioStudent[]>(() => {
+    const ids = multiStudentIds.length ? multiStudentIds : (primaryStudent ? [primaryStudent.user_id] : []);
+    return ids
+      .map(id => students.find(s => s.user_id === id))
+      .filter(Boolean)
+      .map(s => ({
+        user_id: s!.user_id,
+        full_name: s!.full_name,
+        email: s!.email ?? null,
+        passport: s!.passport ?? null,
+        address: s!.address ?? null,
+        phone: s!.phone ?? null,
+      }));
+  }, [multiStudentIds, primaryStudent, students]);
+
+  const scenarioIssues = useMemo(() => validateScenario(counterparty, {
+    org: orgReq,
+    students: scenarioStudents,
+    company: selectedCompany || null,
+    programTitle,
+    price,
+    date,
+    templateId,
+  }), [counterparty, orgReq, scenarioStudents, selectedCompany, programTitle, price, date, templateId]);
+
+  const blockers = useMemo(() => blockingMissing(scenarioIssues), [scenarioIssues]);
+  const warnings = useMemo(() => scenarioIssues.filter(i => !i.blocking), [scenarioIssues]);
 
   const missing = useMemo(() => {
     if (!selectedTpl) return [] as string[];
