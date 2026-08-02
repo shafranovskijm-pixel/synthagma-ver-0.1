@@ -261,7 +261,7 @@ export function GroupDocumentsFolder({
           groupName={groupName}
           students={students}
           groupDefaults={{
-            courseId: groupDefaults?.courseId ?? null,
+            courseId: courseId,
             programTitle: ctx?.group.program_title ?? null,
             programHours: ctx?.group.program_hours ?? null,
             programForm: ctx?.group.program_form ?? null,
