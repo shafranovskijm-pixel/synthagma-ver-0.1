@@ -125,7 +125,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       const [tplRes, coRes, orgRes, crsRes, profRes, frdoRes] = await Promise.all([
         (supabase as any).from("org_contract_templates").select("id, name, body_html, is_default, updated_at, counterparty_type, version").eq("organization_id", organizationId).order("is_default", { ascending: false }).order("name"),
         (supabase as any).from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
-        (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
+        (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, email, phone, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
         // В profiles паспорта/адреса нет — только телефон.
         (supabase as any).from("profiles").select("user_id, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
