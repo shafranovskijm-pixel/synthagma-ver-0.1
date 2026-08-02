@@ -32,7 +32,7 @@ const STYLE = `
   .doc .row { display: flex; justify-content: space-between; }
 </style>`;
 
-const SIGN_BLOCK = `
+const signBlock = (customerBlock: string, signer: string) => `
 <h2>Реквизиты и подписи сторон</h2>
 <table class="req">
   <tr>
@@ -49,8 +49,8 @@ const SIGN_BLOCK = `
     </td>
     <td>
       <b>Заказчик</b><br/>
-      {{customer_block}}<br/><br/>
-      _______________ / {{customer_signer}} /
+      ${customerBlock}<br/><br/>
+      _______________ / ${signer} /
     </td>
   </tr>
 </table>`;
@@ -102,7 +102,7 @@ export const BUILTIN_CONTRACT_TEMPLATES: BuiltinContractTemplate[] = [
 телефон {{individual_phone}}, e-mail {{individual_email}}, именуемый далее «Заказчик»
 (он же «Слушатель»), с другой стороны, заключили настоящий договор о нижеследующем.</p>
 ${COMMON_BODY}
-${SIGN_BLOCK}
+${signBlock('{{individual_name}}<br/>Паспорт: {{individual_passport}}<br/>Адрес: {{individual_address}}<br/>Тел.: {{individual_phone}}<br/>E-mail: {{individual_email}}', '{{individual_name}}')}
 </div>`,
   },
   {
@@ -124,7 +124,7 @@ ${SIGN_BLOCK}
 ${COMMON_BODY}
 <h2>5. Список слушателей</h2>
 {{students_table}}
-${SIGN_BLOCK}
+${signBlock('{{company_name}}<br/>ИНН {{company_inn}} / КПП {{company_kpp}}<br/>ОГРН {{company_ogrn}}<br/>Адрес: {{company_address}}', '{{company_director}}')}
 </div>`,
   },
 ];
