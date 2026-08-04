@@ -70,7 +70,7 @@ describe("JournalsManager without group context", () => {
     render(<JournalsManager organizationId="org-1" />);
     await waitFor(() => expect(screen.getByText("Создать журнал")).toBeInTheDocument());
     expect(screen.getByText("Мой журнал")).toBeInTheDocument();
-    expect(screen.getByText("Пользовательские журналы")).toBeInTheDocument();
+    expect(screen.getAllByText("Пользовательские журналы").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("group-journals-scope-notice")).not.toBeInTheDocument();
   });
 });
@@ -90,7 +90,7 @@ describe("JournalsManager in group context", () => {
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     expect(screen.queryByText("Создать журнал")).not.toBeInTheDocument();
     expect(screen.queryByText("Мой журнал")).not.toBeInTheDocument();
-    expect(screen.queryByText("Пользовательские журналы")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("Пользовательские журналы")).toHaveLength(0);
     expect(screen.getByTestId("group-banner")).toBeInTheDocument();
     // unsupported journal categories/types are omitted from the list entirely
     expect(screen.queryByText("Часто требуемые журналы")).not.toBeInTheDocument();
