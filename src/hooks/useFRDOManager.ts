@@ -6,6 +6,7 @@ import { detectGenderFromMiddleName, generateDocumentNumber, generateRegNumber }
 import { buildDPORow, buildPORow, exportFRDOExcel, formatDateForFRDO } from "@/utils/frdoExcelExport";
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { filterByGroupMembers } from "@/lib/groups/groupContext";
+import { FRDO_REQUIRED_FIELDS, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 
 interface Student { user_id: string; name: string; email: string; course?: string | null; course_id?: string | null; }
 interface FRDOData {
@@ -26,10 +27,8 @@ interface Course {
 }
 type FRDOStatus = "all" | "complete" | "incomplete" | "empty";
 
-const REQUIRED_FIELDS = [
-  { key: "last_name", label: "Фамилия" }, { key: "first_name", label: "Имя" },
-  { key: "birth_date", label: "Дата рождения" }, { key: "gender", label: "Пол" }, { key: "snils", label: "СНИЛС" },
-];
+/** Единый список обязательных полей — общий с рабочим пространством группы. */
+const REQUIRED_FIELDS = FRDO_REQUIRED_FIELDS;
 
 const EXPORT_TIMEOUT_MS = 20_000;
 
@@ -130,11 +129,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
 
   const getFrdoStatus = (userId: string): { status: FRDOStatus; missingFields: string[] } => {
     const data = frdoDataMap.get(userId);
-    if (!data) return { status: "empty", missingFields: REQUIRED_FIELDS.map(f => f.label) };
-    const missing: string[] = [];
-    for (const field of REQUIRED_FIELDS) { if (!data[field.key as keyof FRDOData]) missing.push(field.label); }
-    if (missing.length === 0) return { status: "complete", missingFields: [] };
-    return { status: "incomplete", missingFields: missing };
+    return resolveFrdoReadiness(data as any);
   };
 
   // Фильтрация по фактическим участникам группы (не по совпадению курса).
