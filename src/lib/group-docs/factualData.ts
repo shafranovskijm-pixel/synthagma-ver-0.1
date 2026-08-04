@@ -315,6 +315,23 @@ export interface DocDataReadiness {
   /** Финальный статус недоступен (данных нет/неполные). Черновик разрешён. */
   finalBlocked: boolean;
   warning?: string;
+  /** Охват: сколько учеников/записей покрыто источником, строкой для UI. */
+  coverage: string;
+  /** Сколько учеников покрыто источником (для покрытия по людям). */
+  coveredStudents: number;
+  studentCount: number;
+}
+
+export const DATA_DRIVEN_DOC_LIST: readonly string[] = [
+  "class_journal",
+  "attestation_sheet",
+  "registration_book",
+  "schedule",
+];
+
+function coverageText(covered: number, total: number, unit = "учеников"): string {
+  if (total === 0) return "нет учеников в группе";
+  return `${covered} из ${total} ${unit}`;
 }
 
 const DATA_DRIVEN_DOC_TYPES = [
@@ -335,14 +352,26 @@ export function documentDataReadiness(
 ): DocDataReadiness | null {
   if (!isDataDrivenDoc(docType)) return null;
   const f = factual || emptyFactualData();
+  const courseNote = f.courseLinked ? "" : ` ${NO_COURSE_WARNING}`;
+  const extra = f.warnings.length ? ` ${f.warnings.join(" ")}` : "";
+
   if (docType === "class_journal") {
     const count = f.lessonCompletions.length;
+    const covered = new Set(f.lessonCompletions.map((l) => l.user_id)).size;
     return {
       docType,
       source: JOURNAL_SOURCE_LABEL,
       recordCount: count,
-      finalBlocked: count === 0,
-      warning: count === 0 ? "Нет завершённых уроков — журнал будет пустым бланком." : undefined,
+      coverage: coverageText(covered, studentCount),
+      coveredStudents: covered,
+      studentCount,
+      finalBlocked: count === 0 || covered < studentCount || studentCount === 0,
+      warning:
+        count === 0
+          ? `Нет завершённых уроков — журнал будет пустым бланком.${courseNote}${extra}`.trim()
+          : covered < studentCount
+            ? `Прохождение есть только у ${covered} из ${studentCount} учеников.${extra}`.trim()
+            : extra.trim() || undefined,
     };
   }
   if (docType === "attestation_sheet") {
@@ -351,23 +380,37 @@ export function documentDataReadiness(
       docType,
       source: ATTESTATION_SOURCE_LABEL,
       recordCount: withResult,
+      coverage: coverageText(withResult, studentCount),
+      coveredStudents: withResult,
+      studentCount,
       finalBlocked: withResult < studentCount || studentCount === 0,
       warning:
         withResult === 0
-          ? "Нет результатов итогового теста — оценки не подставляются."
+          ? `Нет результатов итогового теста — оценки не подставляются.${courseNote}${extra}`.trim()
           : withResult < studentCount
-            ? `Результаты есть только у ${withResult} из ${studentCount} учеников.`
-            : undefined,
+            ? `Результаты есть только у ${withResult} из ${studentCount} учеников.${extra}`.trim()
+            : extra.trim() || undefined,
     };
   }
   if (docType === "registration_book") {
     const count = f.registration.length;
+    const covered = new Set(
+      f.registration.map((r) => r.user_id).filter(Boolean) as string[],
+    ).size;
     return {
       docType,
       source: REGISTRATION_SOURCE_LABEL,
       recordCount: count,
-      finalBlocked: count === 0,
-      warning: count === 0 ? "Документы об образовании ещё не выданы." : undefined,
+      coverage: coverageText(covered, studentCount),
+      coveredStudents: covered,
+      studentCount,
+      finalBlocked: count === 0 || covered < studentCount || studentCount === 0,
+      warning:
+        count === 0
+          ? `Документы об образовании ещё не выданы.${courseNote}${extra}`.trim()
+          : covered < studentCount
+            ? `Документы выданы только ${covered} из ${studentCount} учеников.${extra}`.trim()
+            : extra.trim() || undefined,
     };
   }
   const count = f.schedule.length;
@@ -375,6 +418,9 @@ export function documentDataReadiness(
     docType,
     source: SCHEDULE_SOURCE_LABEL,
     recordCount: count,
+    coverage: count === 0 ? "занятий не задано" : `${count} занятий`,
+    coveredStudents: 0,
+    studentCount,
     finalBlocked: count === 0,
     warning: count === 0 ? SCHEDULE_EMPTY_NOTICE : undefined,
   };
