@@ -15,7 +15,7 @@ describe("groupContext", () => {
   });
 
   it("builds group folder path with and without folder", () => {
-    expect(groupFolderPath("g-1")).toBe("/organization?tab=students&studentsView=groups&groupId=g-1");
+    expect(groupFolderPath("g-1")).toBe("/organization?tab=group-folder&studentsView=groups&groupId=g-1");
     expect(groupFolderPath("g-1", "docs")).toContain("&folder=docs");
   });
 
