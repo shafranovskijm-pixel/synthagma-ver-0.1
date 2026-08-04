@@ -41,7 +41,7 @@ describe("смена компании", () => {
   });
 
   it("сохраняет поля договора и группы, не относящиеся к компании", () => {
-    const base = { ...initialDocxScalars({ group_number: "Д-7", program_form: "Очная" }, "2026-08-03"), TRAINING_ADDR: "СПб" };
+    const base = { ...initialDocxScalars({ program_form: "Очная" }, "2026-08-03"), DOC_NO: "Д-7", TRAINING_ADDR: "СПб" };
     const next = applyCompanySelection(base, A);
     expect(next.DOC_NO).toBe("Д-7");
     expect(next.TRAINING_ADDR).toBe("СПб");
