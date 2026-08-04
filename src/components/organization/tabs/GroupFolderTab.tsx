@@ -17,6 +17,8 @@ import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
+import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
+
 
 
 type ViewMode = "grid" | "list" | "table";
