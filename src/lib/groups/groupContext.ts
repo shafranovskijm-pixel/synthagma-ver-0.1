@@ -11,9 +11,27 @@ export interface GroupContextParams {
   returnToGroupId?: string | null;
 }
 
-/** Ссылка на карточку ученика организации. */
-export function studentDetailsPath(userId: string): string {
-  return `/organization?tab=student-details&studentId=${encodeURIComponent(userId)}`;
+/**
+ * Ссылка на карточку ученика организации.
+ * Если передан контекст группы, returnToGroupId сохраняется, чтобы после правки
+ * оператор вернулся ровно в ту папку группы, из которой ушёл.
+ */
+export function studentDetailsPath(userId: string, ctx?: GroupContextParams): string {
+  const params = new URLSearchParams();
+  params.set("tab", "student-details");
+  params.set("studentId", userId);
+  const back = ctx?.returnToGroupId ?? ctx?.groupId;
+  if (back) params.set("returnToGroupId", back);
+  if (ctx?.courseId) params.set("courseId", ctx.courseId);
+  return `/organization?${params.toString()}`;
+}
+
+/** Ссылка на раздел «Компании»; при companyId сразу открывается карточка этой компании. */
+export function companiesPath(companyId?: string | null): string {
+  const params = new URLSearchParams();
+  params.set("tab", "companies");
+  if (companyId) params.set("companyId", companyId);
+  return `/organization?${params.toString()}`;
 }
 
 /** Ссылка на карточку курса организации. */
@@ -22,11 +40,12 @@ export function courseDetailsPathForGroup(courseId: string): string {
 }
 
 /** Ссылка на папку группы (в т.ч. на конкретную вложенную папку). */
-export function groupFolderPath(groupId: string, folder?: string | null): string {
+export function groupFolderPath(groupId: string, folder?: string | null, opts?: { settings?: boolean }): string {
   // tab=group-folder открывает саму папку группы по прямой ссылке
   // (tab=students показал бы только список групп).
   const base = `/organization?tab=group-folder&studentsView=groups&groupId=${encodeURIComponent(groupId)}`;
-  return folder ? `${base}&folder=${encodeURIComponent(folder)}` : base;
+  const withFolder = folder ? `${base}&folder=${encodeURIComponent(folder)}` : base;
+  return opts?.settings ? `${withFolder}&groupSettings=1` : withFolder;
 }
 
 /** Ссылка на вкладку организации с прокинутым контекстом группы. */

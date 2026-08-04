@@ -3,7 +3,8 @@
  * Шаг «Готовность данных» блокирует генерацию до заполнения обязательных полей.
  * PDF здесь не создаётся: сервер возвращает честный статус «PDF недоступен».
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { localDateIso } from "@/lib/date/localDate";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,8 @@ import {
   type RegistryTemplate,
 } from "@/lib/contracts/docxContract";
 import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
-import { groupFolderPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import { companiesPath, groupFolderPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import { useNavigate } from "react-router-dom";
 
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
@@ -70,25 +72,37 @@ interface StudentRow {
   program: string;
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => localDateIso();
 
 /**
  * Подпись источника значения + реальное действие «где это исправить».
  * Ручная правка честно называется снимком (snapshot) этого договора.
  */
-function SourceHint({ fieldKey, groupId, edited }: { fieldKey: string; groupId?: string; edited?: boolean }) {
+function SourceLink({ to, children, onLeave }: { to: string; children: React.ReactNode; onLeave: (to: string) => void }) {
+  return (
+    <a
+      className="underline hover:text-foreground"
+      href={to}
+      onClick={(e) => { e.preventDefault(); onLeave(to); }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function SourceHint({ fieldKey, groupId, companyId, edited, onLeave }: { fieldKey: string; groupId?: string; companyId?: string; edited?: boolean; onLeave: (to: string) => void }) {
   const source = DOCX_FIELD_SOURCES[fieldKey] || "manual";
   const action =
     source === "company"
-      ? { text: "Изменить в карточке компании", href: "/organization?tab=companies" }
+      ? { text: "Изменить в карточке компании", href: companiesPath(companyId || null) }
       : source === "group"
-        ? { text: "Изменить в настройках группы", href: groupId ? groupFolderPath(groupId) : null }
+        ? { text: "Изменить в настройках группы", href: groupId ? groupFolderPath(groupId, null, { settings: true }) : null }
         : null;
   return (
     <p className="text-[11px] text-muted-foreground">
       Источник: {fieldSourceLabel(fieldKey)}
       {action && action.href && (
-        <> · <a className="underline hover:text-foreground" href={action.href}>{action.text}</a></>
+        <> · <SourceLink to={action.href} onLeave={onLeave}>{action.text}</SourceLink></>
       )}
       {edited && <> · правка сохранится только как снимок (snapshot) этого договора</>}
     </p>
@@ -113,6 +127,12 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const [scheduleHint, setScheduleHint] = useState<string>("");
   const [curriculumMatched, setCurriculumMatched] = useState<boolean>(false);
   const [manualKeys, setManualKeys] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
+  /**
+   * SPA-переход к источнику истины: диалог закрывается, полный reload страницы
+   * не выполняется (черновик мастера не теряется из-за перезагрузки приложения).
+   */
+  const goToSource = useCallback((to: string) => { onClose(); navigate(to); }, [navigate, onClose]);
 
   const setField = (key: string, value: string) =>
     setScalars((prev) => {
@@ -219,7 +239,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const draft: DocxContractDraft = useMemo(() => {
     const programs = curricula.map((title) => ({
       PROG_TITLE: title,
-      PROG_FORM: scalars.PROG_FORM || "Очная",
+      PROG_FORM: scalars.PROG_FORM || "",
       PROG_COUNT: String(rows.filter((r) => r.program === title).length),
     }));
     const studentRows = rows.map((r) => ({
@@ -386,7 +406,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <div key={key} className="space-y-1.5">
                       <Label htmlFor={key}>{label}</Label>
                       <Input id={key} value={scalars[key] || ""} onChange={(e) => setField(key, e.target.value)} />
-                      <SourceHint fieldKey={key} groupId={groupId} edited={manualKeys.has(key)} />
+                      <SourceHint fieldKey={key} groupId={groupId} companyId={companyId} edited={manualKeys.has(key)} onLeave={goToSource} />
                     </div>
                   ))}
                 </div>
@@ -409,7 +429,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                       readOnly
                       disabled
                     />
-                    <SourceHint fieldKey="DOC_NO" groupId={groupId} />
+                    <SourceHint fieldKey="DOC_NO" groupId={groupId} companyId={companyId} onLeave={goToSource} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_DATE_ISO">Дата договора</Label>
@@ -424,12 +444,12 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   <div className="space-y-1.5">
                     <Label htmlFor="TRAINING_ADDR">Место обучения</Label>
                     <Input id="TRAINING_ADDR" value={scalars.TRAINING_ADDR || ""} onChange={(e) => setField("TRAINING_ADDR", e.target.value)} />
-                    <SourceHint fieldKey="TRAINING_ADDR" groupId={groupId} edited={manualKeys.has("TRAINING_ADDR")} />
+                    <SourceHint fieldKey="TRAINING_ADDR" groupId={groupId} companyId={companyId} edited={manualKeys.has("TRAINING_ADDR")} onLeave={goToSource} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="SCHEDULE">Режим занятий</Label>
                     <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} />
-                    <SourceHint fieldKey="SCHEDULE" groupId={groupId} edited={manualKeys.has("SCHEDULE")} />
+                    <SourceHint fieldKey="SCHEDULE" groupId={groupId} companyId={companyId} edited={manualKeys.has("SCHEDULE")} onLeave={goToSource} />
                     {scheduleHint && (
                       <p className="text-[11px] text-muted-foreground">
                         Справочно из группы: {scheduleHint}. Это не режим занятий — сформулируйте его в настройках группы.
@@ -529,21 +549,21 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                           </SelectContent>
                         </Select>
                         <p className="text-[11px] text-muted-foreground">
-                          Источник: Данные ФИС ФРДО · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a>
+                          Источник: Данные ФИС ФРДО · <SourceLink to={studentDetailsPath(r.user_id, { groupId, returnToGroupId: groupId })} onLeave={goToSource}>Изменить в карточке ученика</SourceLink>
                         </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`contacts-${i}`}>Контакты</Label>
                         <Input id={`contacts-${i}`} value={r.contacts} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, contacts: e.target.value } : x))} />
                         <p className="text-[11px] text-muted-foreground">
-                          Источник: Профиль ученика · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a>
+                          Источник: Профиль ученика · <SourceLink to={studentDetailsPath(r.user_id, { groupId, returnToGroupId: groupId })} onLeave={goToSource}>Изменить в карточке ученика</SourceLink>
                         </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pos-${i}`}>Должность</Label>
                         <Input id={`pos-${i}`} value={r.position} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, position: e.target.value } : x))} />
                         <p className="text-[11px] text-muted-foreground">
-                          Источник: Профиль ученика · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a> · правка здесь — снимок (snapshot) этого договора
+                          Источник: Профиль ученика · <SourceLink to={studentDetailsPath(r.user_id, { groupId, returnToGroupId: groupId })} onLeave={goToSource}>Изменить в карточке ученика</SourceLink> · правка здесь — снимок (snapshot) этого договора
                         </p>
                       </div>
 

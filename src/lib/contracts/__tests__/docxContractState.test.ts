@@ -142,8 +142,13 @@ describe("источники истины Синтагмы", () => {
     expect(s.CUST_REP_SHORT).toBe("Иванов И. И.");
   });
 
-  it("почтовый адрес падает обратно на юридический", () => {
-    expect(companyScalars({ address: "юр" }).CUST_POST_ADDR).toBe("юр");
+  it("почтовый адрес НЕ подставляется из юридического (fail closed)", () => {
+    expect(companyScalars({ address: "юр" }).CUST_POST_ADDR).toBe("");
+    expect(companyScalars({ address: "юр", postal_address: "почт" }).CUST_POST_ADDR).toBe("почт");
+  });
+
+  it("форма обучения без значения в группе остаётся пустой", () => {
+    expect(initialDocxScalars({ program_form: null }, "2026-08-03").PROG_FORM).toBe("");
   });
 
   it("место обучения и режим занятий берутся из группы", () => {

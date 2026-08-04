@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { localDateIso } from "@/lib/date/localDate";
 import { createQueryWrapper } from "@/test/queryWrapper";
 import { renderHook, act } from "@testing-library/react";
 
@@ -127,7 +128,7 @@ describe("useContractGenerator", () => {
 
   it("contractDate defaults to today and service dates exist", () => {
     const { result } = renderHook(() => useContractGenerator(defaultProps), { wrapper: createQueryWrapper() });
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateIso();
     expect(result.current.contractDate).toBe(today);
     expect(result.current.serviceStartDate).toBe(today);
     expect(result.current.serviceEndDate).toBeTruthy();

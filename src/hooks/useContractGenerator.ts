@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { localDateIso, localDateIsoPlusMonths } from "@/lib/date/localDate";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -117,12 +118,10 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const [individualData, setIndividualData] = useState<IndividualData>({ fullName: '', passport: '', address: '', phone: '', email: '' });
   const [selectedPrograms, setSelectedPrograms] = useState<SelectedProgram[]>([{ courseId: "", price: "", studentsCount: "1" }]);
   const [contractNumber, setContractNumber] = useState("");
-  const [contractDate, setContractDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [contractDate, setContractDate] = useState(localDateIso());
   const [additionalTerms, setAdditionalTerms] = useState("");
-  const [serviceStartDate, setServiceStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [serviceEndDate, setServiceEndDate] = useState(() => {
-    const d = new Date(); d.setMonth(d.getMonth() + 1); return format(d, "yyyy-MM-dd");
-  });
+  const [serviceStartDate, setServiceStartDate] = useState(localDateIso());
+  const [serviceEndDate, setServiceEndDate] = useState(() => localDateIsoPlusMonths(1));
 
   // Backward-compat aliases for first program
   const selectedCourseId = selectedPrograms[0]?.courseId || "";
