@@ -279,7 +279,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         ogrn: orgInfo?.ogrn || "",
         address: orgInfo?.legal_address || orgInfo?.actual_address || "",
         director_name: orgInfo?.director_name || "",
-        director_position: orgInfo?.director_position || "Директор",
+        // Fail-closed: должность руководителя только из реквизитов организации.
+        director_position: orgInfo?.director_position || "",
         bank_name: orgInfo?.bank_name || "",
         bank_bik: orgInfo?.bank_bik || "",
         bank_account: orgInfo?.bank_account || "",
@@ -330,8 +331,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!resolvedProgramHours) missing.push("объём часов");
     if (!orgInfo?.inn) missing.push("ИНН учебного центра");
     if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
+    // Юридически обязательные поля без «типовых» подстановок.
+    if (!orgInfo?.director_position) missing.push("должность руководителя учебного центра");
+    if (!group?.program_form) missing.push("форма обучения группы");
     return missing;
-  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo]);
+  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form]);
 
   const missingDocFields = useMemo(() => {
     const missing = [...blockingDocFields];
@@ -339,6 +343,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
     return missing;
   }, [blockingDocFields, group]);
+
 
 
 

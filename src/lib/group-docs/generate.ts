@@ -8,9 +8,14 @@ import {
   type DocumentFillMode,
   type GroupFactualData,
 } from "./factualData";
+import { requiresDocumentNumber } from "./documentNumbers";
+import { localDateIso } from "@/lib/date/localDate";
 
 export interface GenerateOptions {
+  /** Явный номер (уже зарезервированный сервером). */
   documentNumber?: string;
+  /** Карта зарезервированных номеров по типу документа (для пакета). */
+  numbers?: Record<string, string>;
   documentDate?: string;
   primaryStudentIndex?: number;
   totalPrice?: number;
@@ -24,15 +29,6 @@ export interface GenerateOptions {
   packageVersion?: number | null;
 }
 
-let seq = 100;
-
-function nextNumber(prefix: string, year: number): string {
-  seq += 1;
-  // Client style: УЦ-4/2026 for orders, 2026-101 for contracts
-  if (prefix === "УЦ-") return `УЦ-${seq}/${year}`;
-  return `${year}-${String(seq).padStart(3, "0")}`;
-}
-
 export function generateDocument(
   ctx: GenerationContext,
   docType: DocType,
@@ -41,14 +37,15 @@ export function generateDocument(
   const tpl = getTemplate(docType);
   if (!tpl) throw new Error(`Нет шаблона для типа: ${docType}`);
 
-  const year = new Date().getFullYear();
-  const defaultPrefix =
-    docType === "contract" ? "" :
-    docType.includes("order") ? "УЦ-" :
-    "";
+  // Номера выдаёт только сервер (get_next_document_number). Клиентских счётчиков нет.
+  const documentNumber = String(opts.documentNumber || opts.numbers?.[docType] || "").trim();
+  if (requiresDocumentNumber(docType) && !documentNumber) {
+    throw new Error(
+      `Номер документа не зарезервирован на сервере (${docType}) — генерация отменена`,
+    );
+  }
+  const documentDate = opts.documentDate || localDateIso();
 
-  const documentNumber = opts.documentNumber || nextNumber(defaultPrefix, year);
-  const documentDate = opts.documentDate || new Date().toISOString().slice(0, 10);
 
   const mode: DocumentFillMode = opts.mode ?? "blank";
   const variables = buildVariables(ctx, {

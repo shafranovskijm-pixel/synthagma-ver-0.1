@@ -355,7 +355,8 @@ export function buildVariables(
     individual_gender: primary?.gender || "",
     individual_passport: primary ? passportString(primary) : "",
     individual_snils: primary?.snils || "",
-    individual_citizenship: primary?.citizenship || "Российская Федерация",
+    // Fail-closed: гражданство только из данных ученика (ФРДО), без подстановки «РФ».
+    individual_citizenship: primary?.citizenship || "",
     individual_email: primary?.email || "",
     individual_phone: primary?.phone || "",
     individual_education: primary?.education || "",
