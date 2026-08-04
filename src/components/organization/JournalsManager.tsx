@@ -16,6 +16,8 @@ import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { JournalCreationWizard } from "./JournalCreationWizard";
 import { IdentificationJournal } from "./IdentificationJournal";
 import { GroupContextBanner } from "./GroupContextBanner";
+import { GroupJournalGate } from "./GroupJournalGate";
+import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 // ── Types & Constants ──
 
@@ -75,21 +77,34 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [editingCustomJournal, setEditingCustomJournal] = useState<CustomJournal | null>(null);
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
+  const [groupStatus, setGroupStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   // Фактические участники группы (не по совпадению курса): нужны для фильтрации авто-журналов.
+  // Важно: loading и «нет контекста» — разные состояния, иначе журнал успеет показать всю организацию.
   useEffect(() => {
-    if (!groupId) { setGroupMemberUserIds(null); return; }
+    if (!groupId) { setGroupMemberUserIds(null); setGroupStatus("ready"); setGroupError(null); return; }
     let cancelled = false;
+    setGroupMemberUserIds(null);
+    setGroupStatus("loading");
+    setGroupError(null);
     (async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .select("user_id")
         .eq("organization_id", organizationId)
         .eq("student_group_id", groupId);
-      if (!cancelled) setGroupMemberUserIds(((data as any[]) || []).map((r) => r.user_id));
+      if (cancelled) return;
+      if (error) { setGroupStatus("error"); setGroupError(error.message || "Ошибка загрузки состава группы"); return; }
+      setGroupMemberUserIds(((data as any[]) || []).map((r) => r.user_id));
+      setGroupStatus("ready");
     })();
     return () => { cancelled = true; };
   }, [groupId, organizationId]);
+
+  const groupContext: GroupJournalContext | null = groupId
+    ? { groupId, courseId: courseId || null, memberUserIds: groupMemberUserIds, status: groupStatus, errorMessage: groupError }
+    : null;
 
   useEffect(() => {
     const saved = localStorage.getItem(`custom_journals_${organizationId}`);
@@ -132,14 +147,23 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
 
   // Render active auto journal — контекст группы должен быть виден на каждом экране
   const activeView = (() => {
-    if (activeAutoJournal === "attendance") return <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupMemberUserIds={groupId ? groupMemberUserIds : null} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeAutoJournal === "current_control") return <AutoGradesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeAutoJournal === "final_attestation") return <AutoFinalAttestationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeAutoJournal === "document_registration") return <AutoDocumentRegistrationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeAutoJournal === "copies_duplicates") return <CopiesDuplicatesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeAutoJournal === "education_documents") return <EducationDocumentsJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeAutoJournal === "identification") return <IdentificationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-    if (activeJournal) return <JournalEditor organizationId={organizationId} journalType={activeJournal.type} journalTitle={activeJournal.title} onClose={() => setActiveJournal(null)} />;
+    const gate = (journalType: string, node: React.ReactNode, onClose?: () => void) => (
+      <GroupJournalGate journalType={journalType} groupContext={groupContext} onClose={onClose}>
+        {node}
+      </GroupJournalGate>
+    );
+    const closeAuto = () => setActiveAutoJournal(null);
+    if (activeAutoJournal === "attendance") return gate("attendance", <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "current_control") return gate("current_control", <AutoGradesJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "final_attestation") return gate("final_attestation", <AutoFinalAttestationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "document_registration") return gate("document_registration", <AutoDocumentRegistrationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "copies_duplicates") return gate("copies_duplicates", <CopiesDuplicatesJournal organizationId={organizationId} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "education_documents") return gate("education_documents", <EducationDocumentsJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "identification") return gate("identification", <IdentificationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeJournal) {
+      const close = () => setActiveJournal(null);
+      return gate(activeJournal.type, <JournalEditor organizationId={organizationId} journalType={activeJournal.type} journalTitle={activeJournal.title} onClose={close} />, close);
+    }
     return null;
   })();
 
