@@ -22,15 +22,19 @@ import {
   applyCompanySelection,
   evaluateDocxReadiness,
   fetchDocxTemplates,
+  fieldSourceLabel,
   formatContractDateRu,
   generateDocxContract,
   groupDatesText,
   initialDocxScalars,
   isDocxDraftReady,
+  matchGroupCurriculum,
+  studentRowFromSources,
   type DocxContractDraft,
   type RegistryTemplate,
 } from "@/lib/contracts/docxContract";
 import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
+
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
 
