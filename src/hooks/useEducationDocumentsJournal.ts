@@ -563,7 +563,7 @@ export function useEducationDocumentsJournal({
 
   return {
     // State
-    loading, saving, records, searchQuery, setSearchQuery,
+    loading, saving, records: scopedRecords, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
     dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
