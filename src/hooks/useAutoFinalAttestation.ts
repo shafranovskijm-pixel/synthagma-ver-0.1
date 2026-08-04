@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { filterByGroupContext, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface AttemptQuestion {
   id: string; question: string; options: (string | { text: string })[]; correct_answer: number | null; explanation?: string | null;
@@ -25,7 +26,7 @@ export interface FinalAttestationRecord {
 
 interface Course { id: string; title: string; }
 
-export function useAutoFinalAttestation(organizationId: string) {
+export function useAutoFinalAttestation(organizationId: string, groupContext?: GroupJournalContext | null) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<FinalAttestationRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
