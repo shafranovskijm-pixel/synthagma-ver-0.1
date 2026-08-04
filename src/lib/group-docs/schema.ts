@@ -36,6 +36,8 @@ export interface GenerationContext {
     program_title: string;
     program_hours: number;
     program_form: string;
+    /** Режим занятий из настроек группы. Пусто = условие в договоре нейтральное. */
+    schedule_text?: string | null;
     color?: string;
   };
   students: Array<{

@@ -335,6 +335,11 @@ export function buildVariables(
     program_title: ctx.group.program_title,
     program_hours: String(ctx.group.program_hours),
     program_form: ctx.group.program_form,
+    // Режим занятий берётся ТОЛЬКО из настроек группы: legacy-договор не
+    // утверждает несуществующее время обучения.
+    schedule_text: ctx.group.schedule_text
+      ? `Режим занятий: ${ctx.group.schedule_text}.`
+      : "Режим занятий в настройках группы не задан.",
     start_date: formatDateShort(ctx.group.start_date),
     end_date: formatDateShort(ctx.group.end_date),
     start_date_ru: formatDateRu(ctx.group.start_date),
