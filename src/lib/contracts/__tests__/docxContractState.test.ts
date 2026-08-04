@@ -8,6 +8,9 @@ import {
   groupDatesText,
   groupScheduleText,
   initialDocxScalars,
+  matchGroupCurriculum,
+  studentRowFromSources,
+  GORELTECH_CURRICULA,
   DEFAULT_PAYMENT_CLAUSE,
 } from "../docxContract";
 
