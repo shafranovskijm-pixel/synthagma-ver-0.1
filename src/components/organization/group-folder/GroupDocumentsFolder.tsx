@@ -127,9 +127,30 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
+      // Номера резервируются на сервере ДО генерации. Ошибка нумерации —
+      // ничего не сохраняем и не выдаём как final.
+      let numbers: Record<string, string> = {};
+      try {
+        numbers = await reserveGroupDocumentNumbers(types, new Date().getFullYear(), async (seqKey, year) => {
+          const { data, error } = await (supabase as any).rpc("get_next_document_number", {
+            p_org: organizationId,
+            p_doc_type: seqKey,
+            p_year: year,
+          });
+          if (error) throw error;
+          return Number(data);
+        });
+      } catch (e: any) {
+        toast.error("Не удалось получить номер документа", {
+          description: e?.message || "Автонумерация недоступна — документы не сохранены",
+        });
+        return false;
+      }
+
       const genOpts = {
         totalPrice: price,
         mode,
+        numbers,
         factual: mode === "data" ? factual : null,
         requestedStatus: mode === "data" ? ("final" as const) : ("draft" as const),
       };
@@ -151,6 +172,7 @@ export function GroupDocumentsFolder({
     } finally {
       setBusy(false);
     }
+
   };
 
   /**
