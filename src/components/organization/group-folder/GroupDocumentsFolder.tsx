@@ -27,6 +27,7 @@ import {
   documentDataReadiness,
   type DocumentFillMode,
 } from "@/lib/group-docs/factualData";
+import { batchStatusLabel, groupDocumentBatches } from "@/lib/group-docs/factualResolvers";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 
@@ -77,6 +78,9 @@ export function GroupDocumentsFolder({
     useMemo(() => students.map(s => s.user_id), [students]),
   );
 
+  /** Документы группируются по партии: версия, дата, автор, Текущая/Предыдущая. */
+  const batches = useMemo(() => groupDocumentBatches(documents), [documents]);
+
   const typeTitle = useMemo(() => {
     const map = new Map<string, string>();
     GROUP_DOCUMENT_TYPES.forEach(t => map.set(t.key, t.title));
@@ -108,7 +112,7 @@ export function GroupDocumentsFolder({
       PACKAGE_DOC_TYPES.map(t => ({
         type: t,
         info: documentDataReadiness(t, factual, students.length),
-      })).filter(r => r.info && r.info.finalBlocked),
+      })).filter((r): r is { type: DocType; info: NonNullable<typeof r.info> } => !!r.info),
     [factual, students.length],
   );
 
@@ -123,21 +127,23 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
-      const batchId = crypto.randomUUID();
       const genOpts = {
         totalPrice: price,
         mode,
         factual: mode === "data" ? factual : null,
         requestedStatus: mode === "data" ? ("final" as const) : ("draft" as const),
-        packageBatchId: batchId,
-        packageVersion: 1,
       };
       const docs = types.length === 1
         ? [generateDocument(ctx, types[0], genOpts)]
         : generatePackage(ctx, types, genOpts);
-      const ok = await saveGenerated(docs, { batchId, version: 1 });
+      const res = await saveGenerated(docs);
+      const ok = !!res;
       if (ok) onDataChanged?.();
-      if (ok && types.length === 1) toast.success("Документ сформирован");
+      if (ok && types.length === 1) {
+        toast.success(`Документ сформирован (версия ${res!.version ?? "—"})`);
+      } else if (ok) {
+        toast.success(`Пакет сохранён как версия ${res!.version ?? "—"} (текущая)`);
+      }
       return ok;
     } catch (e: any) {
       toast.error("Ошибка генерации: " + (e?.message || ""));
@@ -218,12 +224,25 @@ export function GroupDocumentsFolder({
             : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
         </div>
         <div className="text-xs text-muted-foreground mt-1">{LEGACY_LAYOUT_NOTICE}</div>
-        {mode === "data" && readiness.length > 0 && (
-          <div className="mt-3 text-xs text-muted-foreground space-y-1">
-            <div className="font-medium text-foreground">Данных недостаточно — документы останутся черновиками:</div>
+        {mode === "data" && (
+          <div className="mt-3 text-xs space-y-2">
+            <div className="font-medium text-foreground">Источники и готовность данных перед генерацией:</div>
+            {factual.warnings.map(w => (
+              <div key={w} className="text-destructive">· {w}</div>
+            ))}
             {readiness.map(r => (
-              <div key={r.type}>
-                · {typeTitle.get(r.type) || r.type}: {r.info?.warning || r.info?.source}
+              <div key={r.type} className="rounded-xl border border-border p-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{typeTitle.get(r.type) || r.type}</span>
+                  <Badge variant={r.info.finalBlocked ? "secondary" : "default"} className="rounded-full text-[10px]">
+                    {r.info.finalBlocked ? "Черновик" : "Готово к итоговому"}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    записей: {r.info.recordCount} · охват: {r.info.coverage}
+                  </span>
+                </div>
+                <div className="text-muted-foreground mt-0.5">Источник: {r.info.source}</div>
+                {r.info.warning && <div className="text-muted-foreground mt-0.5">{r.info.warning}</div>}
               </div>
             ))}
           </div>
@@ -293,7 +312,26 @@ export function GroupDocumentsFolder({
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {documents.map(row => (
+            {batches.map(batch => (
+              <div key={batch.batchId ?? "legacy"}>
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-muted/40 text-xs">
+                  <span className="font-medium">{batch.label}</span>
+                  <Badge
+                    variant={batch.isCurrent ? "default" : "secondary"}
+                    className="rounded-full text-[10px]"
+                  >
+                    {batchStatusLabel(batch)}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    {format(new Date(batch.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
+                  </span>
+                  {batch.createdBy && (
+                    <span className="text-muted-foreground">автор: {batch.createdBy.slice(0, 8)}…</span>
+                  )}
+                  <span className="text-muted-foreground ml-auto">файлов: {batch.rows.length}</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {batch.rows.map(row => (
               <div key={row.id} className="flex items-center gap-3 p-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4" />
@@ -328,6 +366,9 @@ export function GroupDocumentsFolder({
                   <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => { await remove(row.id); onDataChanged?.(); }}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
+                </div>
+              </div>
+                  ))}
                 </div>
               </div>
             ))}

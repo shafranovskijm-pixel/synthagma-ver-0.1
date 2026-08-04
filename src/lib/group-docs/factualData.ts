@@ -62,18 +62,32 @@ export interface GroupFactualData {
   attestation: AttestationFact[];
   registration: RegistrationFact[];
   schedule: ScheduleFact[];
+  /** Курс привязан к группе — без него snapshot всегда пустой. */
+  courseLinked: boolean;
+  /** Честные предупреждения об источниках (курс не привязан, нет финального теста и т.д.). */
+  warnings: string[];
 }
 
-export function emptyFactualData(): GroupFactualData {
-  return { lessonCompletions: [], attestation: [], registration: [], schedule: [] };
+export const NO_COURSE_WARNING =
+  "Курс не привязан к группе: данные прохождения, тестов и документов не собираются. Привяжите курс в настройках группы.";
+
+export function emptyFactualData(warnings: string[] = []): GroupFactualData {
+  return {
+    lessonCompletions: [],
+    attestation: [],
+    registration: [],
+    schedule: [],
+    courseLinked: false,
+    warnings,
+  };
 }
 
 export const JOURNAL_SOURCE_LABEL =
   "Прохождение онлайн-курса (lesson_progress). Это не отметки физической посещаемости.";
 export const ATTESTATION_SOURCE_LABEL =
-  "Результаты итогового теста (test_attempts, лучшая попытка, порог 70%).";
+  "Лучшая попытка ФИНАЛЬНОГО теста курса (последний урок type='test' по order_index, test_attempts). Порог 70%.";
 export const REGISTRATION_SOURCE_LABEL =
-  "Выданные документы об образовании (education_document_records) + данные ФИС ФРДО.";
+  "Выданные документы об образовании (education_document_records по зачислениям этого курса) + нормализованные данные ФИС ФРДО и документы личности.";
 export const SCHEDULE_SOURCE_LABEL =
   "Структурированные занятия группы. Без них выдаётся пустой рабочий бланк.";
 
@@ -103,14 +117,38 @@ interface StudentLike {
   phone?: string;
 }
 
-/** Даты-колонки журнала: только фактические дни завершения уроков. */
-export function journalDateColumns(facts: LessonCompletionFact[], limit = 8): string[] {
+/** Все фактические дни завершения уроков — без молчаливой потери данных. */
+export function journalAllDates(facts: LessonCompletionFact[]): string[] {
   const set = new Set<string>();
   for (const f of facts) {
     const d = (f.date || "").slice(0, 10);
     if (d) set.add(d);
   }
-  return [...set].sort().slice(0, limit);
+  return [...set].sort();
+}
+
+/**
+ * Даты-колонки журнала. Возвращает ВСЕ фактические даты: журнал не должен
+ * молча выбрасывать дни. Если дат больше пороговых, документ разбивается
+ * на страницы (см. journalDatePages) — данные не теряются.
+ */
+export function journalDateColumns(facts: LessonCompletionFact[]): string[] {
+  return journalAllDates(facts);
+}
+
+/** Разбивка дат на страницы журнала по perPage колонок — все даты остаются. */
+export function journalDatePages(dates: string[], perPage = 8): string[][] {
+  if (dates.length === 0) return [];
+  const pages: string[][] = [];
+  for (let i = 0; i < dates.length; i += perPage) pages.push(dates.slice(i, i + perPage));
+  return pages;
+}
+
+/** Явное предупреждение о разбивке на страницы вместо тихой обрезки. */
+export function journalOverflowNotice(dates: string[], perPage = 8): string | null {
+  if (dates.length <= perPage) return null;
+  const pages = journalDatePages(dates, perPage).length;
+  return `Фактических дат занятий: ${dates.length}. Журнал разбит на ${pages} страниц(ы) по ${perPage} колонок — ни одна дата не потеряна.`;
 }
 
 export function buildJournalHead(dates: string[]): string {
@@ -277,6 +315,23 @@ export interface DocDataReadiness {
   /** Финальный статус недоступен (данных нет/неполные). Черновик разрешён. */
   finalBlocked: boolean;
   warning?: string;
+  /** Охват: сколько учеников/записей покрыто источником, строкой для UI. */
+  coverage: string;
+  /** Сколько учеников покрыто источником (для покрытия по людям). */
+  coveredStudents: number;
+  studentCount: number;
+}
+
+export const DATA_DRIVEN_DOC_LIST: readonly string[] = [
+  "class_journal",
+  "attestation_sheet",
+  "registration_book",
+  "schedule",
+];
+
+function coverageText(covered: number, total: number, unit = "учеников"): string {
+  if (total === 0) return "нет учеников в группе";
+  return `${covered} из ${total} ${unit}`;
 }
 
 const DATA_DRIVEN_DOC_TYPES = [
@@ -297,14 +352,26 @@ export function documentDataReadiness(
 ): DocDataReadiness | null {
   if (!isDataDrivenDoc(docType)) return null;
   const f = factual || emptyFactualData();
+  const courseNote = f.courseLinked ? "" : ` ${NO_COURSE_WARNING}`;
+  const extra = f.warnings.length ? ` ${f.warnings.join(" ")}` : "";
+
   if (docType === "class_journal") {
     const count = f.lessonCompletions.length;
+    const covered = new Set(f.lessonCompletions.map((l) => l.user_id)).size;
     return {
       docType,
       source: JOURNAL_SOURCE_LABEL,
       recordCount: count,
-      finalBlocked: count === 0,
-      warning: count === 0 ? "Нет завершённых уроков — журнал будет пустым бланком." : undefined,
+      coverage: coverageText(covered, studentCount),
+      coveredStudents: covered,
+      studentCount,
+      finalBlocked: count === 0 || covered < studentCount || studentCount === 0,
+      warning:
+        count === 0
+          ? `Нет завершённых уроков — журнал будет пустым бланком.${courseNote}${extra}`.trim()
+          : covered < studentCount
+            ? `Прохождение есть только у ${covered} из ${studentCount} учеников.${extra}`.trim()
+            : extra.trim() || undefined,
     };
   }
   if (docType === "attestation_sheet") {
@@ -313,23 +380,37 @@ export function documentDataReadiness(
       docType,
       source: ATTESTATION_SOURCE_LABEL,
       recordCount: withResult,
+      coverage: coverageText(withResult, studentCount),
+      coveredStudents: withResult,
+      studentCount,
       finalBlocked: withResult < studentCount || studentCount === 0,
       warning:
         withResult === 0
-          ? "Нет результатов итогового теста — оценки не подставляются."
+          ? `Нет результатов итогового теста — оценки не подставляются.${courseNote}${extra}`.trim()
           : withResult < studentCount
-            ? `Результаты есть только у ${withResult} из ${studentCount} учеников.`
-            : undefined,
+            ? `Результаты есть только у ${withResult} из ${studentCount} учеников.${extra}`.trim()
+            : extra.trim() || undefined,
     };
   }
   if (docType === "registration_book") {
     const count = f.registration.length;
+    const covered = new Set(
+      f.registration.map((r) => r.user_id).filter(Boolean) as string[],
+    ).size;
     return {
       docType,
       source: REGISTRATION_SOURCE_LABEL,
       recordCount: count,
-      finalBlocked: count === 0,
-      warning: count === 0 ? "Документы об образовании ещё не выданы." : undefined,
+      coverage: coverageText(covered, studentCount),
+      coveredStudents: covered,
+      studentCount,
+      finalBlocked: count === 0 || covered < studentCount || studentCount === 0,
+      warning:
+        count === 0
+          ? `Документы об образовании ещё не выданы.${courseNote}${extra}`.trim()
+          : covered < studentCount
+            ? `Документы выданы только ${covered} из ${studentCount} учеников.${extra}`.trim()
+            : extra.trim() || undefined,
     };
   }
   const count = f.schedule.length;
@@ -337,6 +418,9 @@ export function documentDataReadiness(
     docType,
     source: SCHEDULE_SOURCE_LABEL,
     recordCount: count,
+    coverage: count === 0 ? "занятий не задано" : `${count} занятий`,
+    coveredStudents: 0,
+    studentCount,
     finalBlocked: count === 0,
     warning: count === 0 ? SCHEDULE_EMPTY_NOTICE : undefined,
   };

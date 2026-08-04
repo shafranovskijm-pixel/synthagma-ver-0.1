@@ -22,6 +22,8 @@ export interface GroupDocumentRow {
   source_note?: string | null;
   package_batch_id?: string | null;
   package_version?: number | null;
+  is_current?: boolean | null;
+  created_by?: string | null;
 }
 
 export function useGroupDocuments(organizationId: string | null, groupId: string | null) {
@@ -50,34 +52,42 @@ export function useGroupDocuments(organizationId: string | null, groupId: string
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const saveGenerated = useCallback(async (docs: GeneratedDocument[], batch?: { batchId?: string | null; version?: number | null }) => {
-    if (!organizationId || !groupId || docs.length === 0) return false;
-    const { data: userRes } = await supabase.auth.getUser();
-    const rows = docs.map(d => ({
-      organization_id: organizationId,
-      group_id: groupId,
+  /**
+   * Атомарное создание партии документов через RPC:
+   * версия = max(version)+1 по группе, новая партия current,
+   * предыдущие версионированные партии становятся previous.
+   * Записи без package_batch_id (созданные до версионирования) не изменяются.
+   */
+  const saveGenerated = useCallback(async (docs: GeneratedDocument[]) => {
+    if (!organizationId || !groupId || docs.length === 0) return null;
+    const payload = docs.map(d => ({
       doc_type: d.doc_type,
       name: d.name,
-      document_number: d.document_number,
-      document_date: d.document_date,
+      document_number: d.document_number ?? null,
+      document_date: d.document_date ?? null,
       variables: d.variables,
       html: d.html,
-      status: "active",
       doc_status: d.doc_status,
       fill_mode: d.fill_mode,
       layout_format: d.layout_format,
       source_note: d.source_note ?? null,
-      package_batch_id: batch?.batchId ?? d.package_batch_id ?? null,
-      package_version: batch?.version ?? d.package_version ?? null,
-      created_by: userRes?.user?.id || null,
     }));
-    const { error } = await (supabase as any).from("group_documents").insert(rows);
+    const { data, error } = await (supabase as any).rpc("create_group_document_batch", {
+      p_organization_id: organizationId,
+      p_group_id: groupId,
+      p_docs: payload,
+    });
     if (error) {
       toast.error("Не удалось сохранить документы: " + error.message);
-      return false;
+      return null;
     }
+    const row = Array.isArray(data) ? data[0] : data;
     await refresh();
-    return true;
+    return {
+      batchId: (row?.batch_id as string) || null,
+      version: Number(row?.batch_version) || null,
+      insertedCount: Number(row?.inserted_count) || payload.length,
+    };
   }, [organizationId, groupId, refresh]);
 
   const remove = useCallback(async (id: string) => {
