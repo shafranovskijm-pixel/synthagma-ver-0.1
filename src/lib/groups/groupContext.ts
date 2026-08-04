@@ -23,7 +23,9 @@ export function courseDetailsPathForGroup(courseId: string): string {
 
 /** Ссылка на папку группы (в т.ч. на конкретную вложенную папку). */
 export function groupFolderPath(groupId: string, folder?: string | null): string {
-  const base = `/organization?tab=students&studentsView=groups&groupId=${encodeURIComponent(groupId)}`;
+  // tab=group-folder открывает саму папку группы по прямой ссылке
+  // (tab=students показал бы только список групп).
+  const base = `/organization?tab=group-folder&studentsView=groups&groupId=${encodeURIComponent(groupId)}`;
   return folder ? `${base}&folder=${encodeURIComponent(folder)}` : base;
 }
 

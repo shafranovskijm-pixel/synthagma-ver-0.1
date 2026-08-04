@@ -80,7 +80,7 @@ describe("group context navigation", () => {
 
   it("back link from the banner returns to the exact group folder", () => {
     const back = q(groupFolderPath(GROUP));
-    expect(back.get("tab")).toBe("students");
+    expect(back.get("tab")).toBe("group-folder");
     expect(back.get("studentsView")).toBe("groups");
     expect(back.get("groupId")).toBe(GROUP);
   });
