@@ -72,6 +72,29 @@ interface StudentRow {
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Подпись источника значения + реальное действие «где это исправить».
+ * Ручная правка честно называется снимком (snapshot) этого договора.
+ */
+function SourceHint({ fieldKey, groupId, edited }: { fieldKey: string; groupId?: string; edited?: boolean }) {
+  const source = DOCX_FIELD_SOURCES[fieldKey] || "manual";
+  const action =
+    source === "company"
+      ? { text: "Изменить в карточке компании", href: "/organization?tab=companies" }
+      : source === "group"
+        ? { text: "Изменить в настройках группы", href: groupId ? groupFolderPath(groupId) : null }
+        : null;
+  return (
+    <p className="text-[11px] text-muted-foreground">
+      Источник: {fieldSourceLabel(fieldKey)}
+      {action && action.href && (
+        <> · <a className="underline hover:text-foreground" href={action.href}>{action.text}</a></>
+      )}
+      {edited && <> · правка сохранится только как снимок (snapshot) этого договора</>}
+    </p>
+  );
+}
+
 export function GenerateDocxContractDialog({ open, onClose, organizationId, groupId, groupName, students, onGenerated }: Props) {
   const [templates, setTemplates] = useState<RegistryTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState<string>("");
@@ -363,13 +386,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <div key={key} className="space-y-1.5">
                       <Label htmlFor={key}>{label}</Label>
                       <Input id={key} value={scalars[key] || ""} onChange={(e) => setField(key, e.target.value)} />
-                      <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel(key)}</p>
+                      <SourceHint fieldKey={key} groupId={groupId} edited={manualKeys.has(key)} />
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Данные подставляются из карточки компании. Чтобы они заполнялись автоматически, заполните раздел
-                  «Реквизиты для документов» в карточке компании.
+                  Значения берутся только из карточки компании: должность подписанта и основание полномочий
+                  не подставляются «по умолчанию». Заполните раздел «Реквизиты для документов» в карточке компании,
+                  иначе договор нельзя сформировать.
                 </p>
               </div>
 
@@ -379,13 +403,13 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_NO">Номер договора</Label>
-                    <div className="flex gap-2">
-                      <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} placeholder="Зарезервируйте номер" />
-                      <Button type="button" variant="outline" onClick={reserveNumber} disabled={numberBusy}>
-                        {numberBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Номер"}
-                      </Button>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("DOC_NO")}</p>
+                    <Input
+                      id="DOC_NO"
+                      value={assignedNumber || "будет назначен автоматически"}
+                      readOnly
+                      disabled
+                    />
+                    <SourceHint fieldKey="DOC_NO" groupId={groupId} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_DATE_ISO">Дата договора</Label>
@@ -400,12 +424,17 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   <div className="space-y-1.5">
                     <Label htmlFor="TRAINING_ADDR">Место обучения</Label>
                     <Input id="TRAINING_ADDR" value={scalars.TRAINING_ADDR || ""} onChange={(e) => setField("TRAINING_ADDR", e.target.value)} />
-                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("TRAINING_ADDR")}</p>
+                    <SourceHint fieldKey="TRAINING_ADDR" groupId={groupId} edited={manualKeys.has("TRAINING_ADDR")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="SCHEDULE">Режим занятий</Label>
                     <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} />
-                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("SCHEDULE")}</p>
+                    <SourceHint fieldKey="SCHEDULE" groupId={groupId} edited={manualKeys.has("SCHEDULE")} />
+                    {scheduleHint && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Справочно из группы: {scheduleHint}. Это не режим занятий — сформулируйте его в настройках группы.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -450,6 +479,16 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
               {/* Приложения */}
               <div className="space-y-2">
                 <div className="text-sm font-semibold">Приложения (учебные планы)</div>
+                {!curriculumMatched && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    <AlertTitle>Учебный план не определён автоматически</AlertTitle>
+                    <AlertDescription>
+                      Название программы группы (или курса) не совпадает точно ни с одним планом шаблона.
+                      Выберите план вручную — договор не будет сформирован без выбранного приложения.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="space-y-2">
                   {GORELTECH_CURRICULA.map((title) => (
                     <label key={title} className="flex items-start gap-2 text-sm">
@@ -489,17 +528,23 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-[11px] text-muted-foreground">Источник: Данные ФИС ФРДО</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Источник: Данные ФИС ФРДО · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a>
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`contacts-${i}`}>Контакты</Label>
                         <Input id={`contacts-${i}`} value={r.contacts} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, contacts: e.target.value } : x))} />
-                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Источник: Профиль ученика · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a>
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pos-${i}`}>Должность</Label>
                         <Input id={`pos-${i}`} value={r.position} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, position: e.target.value } : x))} />
-                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Источник: Профиль ученика · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a> · правка здесь — снимок (snapshot) этого договора
+                        </p>
                       </div>
 
                       <div className="space-y-1.5">
