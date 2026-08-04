@@ -15,14 +15,16 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useDocumentRegistrationJournal, DOCUMENT_TYPE_LABELS } from "@/hooks/useDocumentRegistrationJournal";
+import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface AutoDocumentRegistrationJournalProps {
   organizationId: string;
   onClose: () => void;
+  groupContext?: GroupJournalContext | null;
 }
 
-export function AutoDocumentRegistrationJournal({ organizationId, onClose }: AutoDocumentRegistrationJournalProps) {
-  const h = useDocumentRegistrationJournal(organizationId);
+export function AutoDocumentRegistrationJournal({ organizationId, onClose, groupContext }: AutoDocumentRegistrationJournalProps) {
+  const h = useDocumentRegistrationJournal(organizationId, groupContext);
 
   if (h.loading) return <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div>;
 

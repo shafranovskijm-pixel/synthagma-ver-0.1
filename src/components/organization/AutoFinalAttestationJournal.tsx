@@ -12,11 +12,12 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useAutoFinalAttestation } from "@/hooks/useAutoFinalAttestation";
+import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
-interface AutoFinalAttestationJournalProps { organizationId: string; onClose: () => void; }
+interface AutoFinalAttestationJournalProps { organizationId: string; onClose: () => void; groupContext?: GroupJournalContext | null; }
 
-export function AutoFinalAttestationJournal({ organizationId, onClose }: AutoFinalAttestationJournalProps) {
-  const h = useAutoFinalAttestation(organizationId);
+export function AutoFinalAttestationJournal({ organizationId, onClose, groupContext }: AutoFinalAttestationJournalProps) {
+  const h = useAutoFinalAttestation(organizationId, groupContext);
 
   if (h.loading) return <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div>;
 
