@@ -112,14 +112,30 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   }, [organizationId]);
 
 
+  const inGroupContext = isGroupJournalContextActive({ groupId, returnToGroupId });
+  const customGuard = resolveCustomJournalGuard({ groupId, returnToGroupId });
+  const manualEditorGuard = resolveManualJournalEditorGuard({ groupId, returnToGroupId });
+
   const saveCustomJournals = (journals: CustomJournal[]) => { localStorage.setItem(`custom_journals_${organizationId}`, JSON.stringify(journals)); setCustomJournals(journals); };
 
+  const openCreateWizard = () => {
+    if (customGuard.blocked) { toast.error(customGuard.reason!); return; }
+    setShowCreateWizard(true);
+  };
+
+  const openManualJournal = (type: string, title: string) => {
+    if (manualEditorGuard.blocked) { toast.error(manualEditorGuard.reason!); return; }
+    setActiveJournal({ type, title });
+  };
+
   const handleSaveJournal = (data: { id?: string; title: string; description: string; fields: string[] }) => {
+    if (customGuard.blocked) { toast.error(customGuard.reason!); setShowCreateWizard(false); setEditingCustomJournal(null); return; }
     if (data.id) { saveCustomJournals(customJournals.map((j) => j.id === data.id ? { ...j, ...data } : j)); setEditingCustomJournal(null); toast.success("Журнал обновлён"); }
     else { saveCustomJournals([...customJournals, { id: `custom_${Date.now()}`, title: data.title, description: data.description, fields: data.fields, createdAt: new Date().toISOString() }]); setShowCreateWizard(false); toast.success("Журнал создан"); }
   };
 
-  const handleDeleteCustomJournal = (journalId: string) => { saveCustomJournals(customJournals.filter((j) => j.id !== journalId)); localStorage.removeItem(`journal_${journalId}_${organizationId}`); toast.success("Журнал удалён"); };
+  const handleDeleteCustomJournal = (journalId: string) => { if (customGuard.blocked) { toast.error(customGuard.reason!); return; } saveCustomJournals(customJournals.filter((j) => j.id !== journalId)); localStorage.removeItem(`journal_${journalId}_${organizationId}`); toast.success("Журнал удалён"); };
+
 
   useEffect(() => {
     (async () => {
