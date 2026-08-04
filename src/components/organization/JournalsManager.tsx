@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ClipboardList, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Search, FileText, Users, BookOpen, Award, FileCheck, Shield, Copy, UserCheck, Briefcase, ClipboardCheck, Download, Plus, Edit, BarChart3, Trash2, Settings, Camera } from "lucide-react";
+import { ClipboardList, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Search, FileText, Users, BookOpen, Award, FileCheck, Shield, Copy, UserCheck, Briefcase, ClipboardCheck, Download, Plus, Edit, BarChart3, Trash2, Settings, Camera, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { JournalEditor } from "./JournalEditor";
@@ -17,7 +17,14 @@ import { JournalCreationWizard } from "./JournalCreationWizard";
 import { IdentificationJournal } from "./IdentificationJournal";
 import { GroupContextBanner } from "./GroupContextBanner";
 import { GroupJournalGate } from "./GroupJournalGate";
-import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import {
+  type GroupJournalContext,
+  isGroupJournalContextActive,
+  isGroupSupportedJournal,
+  resolveCustomJournalGuard,
+  resolveManualJournalEditorGuard,
+} from "@/lib/journals/groupJournalContext";
+
 
 // ── Types & Constants ──
 
@@ -112,14 +119,30 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   }, [organizationId]);
 
 
+  const inGroupContext = isGroupJournalContextActive({ groupId, returnToGroupId });
+  const customGuard = resolveCustomJournalGuard({ groupId, returnToGroupId });
+  const manualEditorGuard = resolveManualJournalEditorGuard({ groupId, returnToGroupId });
+
   const saveCustomJournals = (journals: CustomJournal[]) => { localStorage.setItem(`custom_journals_${organizationId}`, JSON.stringify(journals)); setCustomJournals(journals); };
 
+  const openCreateWizard = () => {
+    if (customGuard.blocked) { toast.error(customGuard.reason!); return; }
+    setShowCreateWizard(true);
+  };
+
+  const openManualJournal = (type: string, title: string) => {
+    if (manualEditorGuard.blocked) { toast.error(manualEditorGuard.reason!); return; }
+    setActiveJournal({ type, title });
+  };
+
   const handleSaveJournal = (data: { id?: string; title: string; description: string; fields: string[] }) => {
+    if (customGuard.blocked) { toast.error(customGuard.reason!); setShowCreateWizard(false); setEditingCustomJournal(null); return; }
     if (data.id) { saveCustomJournals(customJournals.map((j) => j.id === data.id ? { ...j, ...data } : j)); setEditingCustomJournal(null); toast.success("Журнал обновлён"); }
     else { saveCustomJournals([...customJournals, { id: `custom_${Date.now()}`, title: data.title, description: data.description, fields: data.fields, createdAt: new Date().toISOString() }]); setShowCreateWizard(false); toast.success("Журнал создан"); }
   };
 
-  const handleDeleteCustomJournal = (journalId: string) => { saveCustomJournals(customJournals.filter((j) => j.id !== journalId)); localStorage.removeItem(`journal_${journalId}_${organizationId}`); toast.success("Журнал удалён"); };
+  const handleDeleteCustomJournal = (journalId: string) => { if (customGuard.blocked) { toast.error(customGuard.reason!); return; } saveCustomJournals(customJournals.filter((j) => j.id !== journalId)); localStorage.removeItem(`journal_${journalId}_${organizationId}`); toast.success("Журнал удалён"); };
+
 
   useEffect(() => {
     (async () => {
@@ -141,9 +164,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     } catch (error) { console.error("Error deleting journals:", error); toast.error("Ошибка при удалении"); }
   };
 
+  // В контексте группы показываем только журналы, которые надёжно ограничиваются
+  // составом группы (group_id + course_id + участники). Остальные скрыты.
   const filteredCategories = JOURNAL_CATEGORIES.map((cat) => ({
-    ...cat, journals: cat.journals.filter((j) => j.title.toLowerCase().includes(searchQuery.toLowerCase()) || j.description.toLowerCase().includes(searchQuery.toLowerCase())),
+    ...cat,
+    journals: cat.journals
+      .filter((j) => !inGroupContext || isGroupSupportedJournal(j.id))
+      .filter((j) => j.title.toLowerCase().includes(searchQuery.toLowerCase()) || j.description.toLowerCase().includes(searchQuery.toLowerCase())),
   })).filter((cat) => cat.journals.length > 0);
+
 
   // Render active auto journal — контекст группы должен быть виден на каждом экране
   const activeView = (() => {
@@ -192,19 +221,32 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button variant="outline" onClick={() => setActiveAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
-              <Button onClick={() => setShowCreateWizard(true)} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
+              {!inGroupContext && (
+                <Button onClick={openCreateWizard} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
+              )}
             </div>
+
           </div>
         </div>
         <div className="p-6 pt-4">
+          {inGroupContext && (
+            <div className="mb-3 flex items-start gap-3 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10" data-testid="group-journals-scope-notice">
+              <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Открыты журналы этой группы. Показаны только журналы, которые ограничиваются составом группы и её курсом.
+                Пользовательские и ручные журналы организации здесь недоступны — откройте раздел «Журналы» без контекста группы.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { icon: ClipboardCheck, title: "Обязательные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов" },
               { icon: BarChart3, title: "Автоматическое заполнение", desc: "Данные из курсов подтягиваются автоматически" },
               { icon: BookOpen, title: "Электронные журналы онлайн", desc: "Ведите учёт прямо в браузере с еженедельной сеткой" },
               { icon: Download, title: "Экспорт и шаблоны", desc: "Скачайте готовые шаблоны или выгрузите журналы в Excel" },
-              { icon: Settings, title: "Пользовательские журналы", desc: "Создавайте свои журналы с произвольными полями" },
+              ...(inGroupContext ? [] : [{ icon: Settings, title: "Пользовательские журналы", desc: "Создавайте свои журналы с произвольными полями" }]),
               { icon: Camera, title: "Видеоидентификация", desc: "Верификация личности студентов с фотографиями" },
+
             ].map((feature, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-secondary/40">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><feature.icon className="w-4 h-4 text-primary" /></div>
@@ -238,7 +280,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
                 <CollapsibleContent>
                   <div className="border-t border-border">
                     {category.journals.map((journal) => (
-                      <JournalRow key={journal.id} journal={journal} onAutoClick={() => setActiveAutoJournal(journal.id)} onManualClick={() => setActiveJournal({ type: journal.id, title: journal.title })} onDeleteClick={() => setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required })} hasAutoMode={!!AUTO_JOURNALS[journal.id]} isSpecial={SPECIAL_JOURNALS.has(journal.id)} />
+                      <JournalRow key={journal.id} journal={journal} onAutoClick={() => setActiveAutoJournal(journal.id)} onManualClick={() => openManualJournal(journal.id, journal.title)} onDeleteClick={() => setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required })} hasAutoMode={!!AUTO_JOURNALS[journal.id]} isSpecial={SPECIAL_JOURNALS.has(journal.id)} inGroupContext={inGroupContext} />
                     ))}
                   </div>
                 </CollapsibleContent>
@@ -249,14 +291,14 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       </div>
 
       {/* Custom Journals */}
-      {customJournals.length > 0 && (
+      {!inGroupContext && customJournals.length > 0 && (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="flex items-center gap-3 p-4 border-b border-border"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><FileText className="w-5 h-5 text-primary" /></div><div><h3 className="font-semibold">Пользовательские журналы</h3><p className="text-sm text-muted-foreground">{customJournals.length} журналов</p></div></div>
           <div>{customJournals.map((journal) => (
             <div key={journal.id} className="flex items-start justify-between p-4 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
               <div className="flex items-start gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5"><FileText className="w-4 h-4 text-primary" /></div><div className="min-w-0 flex-1"><span className="font-medium">{journal.title}</span><p className="text-sm text-muted-foreground mt-1">{journal.description}</p></div></div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                <Button variant="default" size="sm" className="rounded-lg" onClick={() => setActiveJournal({ type: journal.id, title: journal.title })}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
+                <Button variant="default" size="sm" className="rounded-lg" onClick={() => openManualJournal(journal.id, journal.title)}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
                 <Button variant="outline" size="icon" className="rounded-lg" onClick={() => setEditingCustomJournal(journal)} title="Настроить журнал"><Settings className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteCustomJournal(journal.id)} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>
               </div>
@@ -271,15 +313,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
         <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={handleDeleteJournals} className="bg-destructive hover:bg-destructive/90">Удалить</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
-      <JournalCreationWizard open={showCreateWizard || !!editingCustomJournal} onClose={() => { setShowCreateWizard(false); setEditingCustomJournal(null); }} onComplete={handleSaveJournal} editingJournal={editingCustomJournal} />
+      <JournalCreationWizard open={!customGuard.blocked && (showCreateWizard || !!editingCustomJournal)} onClose={() => { setShowCreateWizard(false); setEditingCustomJournal(null); }} onComplete={handleSaveJournal} editingJournal={editingCustomJournal} />
     </div>
   );
 }
 
 // ── Journal Row ──
 
-function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAutoMode, isSpecial }: {
-  journal: JournalItem; onAutoClick: () => void; onManualClick: () => void; onDeleteClick: () => void; hasAutoMode: boolean; isSpecial: boolean;
+function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAutoMode, isSpecial, inGroupContext = false }: {
+  journal: JournalItem; onAutoClick: () => void; onManualClick: () => void; onDeleteClick: () => void; hasAutoMode: boolean; isSpecial: boolean; inGroupContext?: boolean;
 }) {
   return (
     <div className="flex items-start justify-between p-4 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
@@ -295,16 +337,22 @@ function JournalRow({ journal, onAutoClick, onManualClick, onDeleteClick, hasAut
       <div className="flex items-center gap-2 flex-shrink-0 ml-4">
         {hasAutoMode ? (
           <>
-            <Button variant="default" size="sm" className="rounded-lg" onClick={onAutoClick}><BarChart3 className="w-4 h-4 mr-2" />Автоматический</Button>
-            <Button variant="outline" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Ручной</Button>
+            <Button variant="default" size="sm" className="rounded-lg" onClick={onAutoClick}><BarChart3 className="w-4 h-4 mr-2" />{inGroupContext ? "Открыть по группе" : "Автоматический"}</Button>
+            {!inGroupContext && (
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Ручной</Button>
+            )}
           </>
         ) : isSpecial ? (
           <Button variant="default" size="sm" className="rounded-lg" onClick={onAutoClick}><Edit className="w-4 h-4 mr-2" />Вести журнал</Button>
+        ) : inGroupContext ? (
+          <Button variant="outline" size="sm" className="rounded-lg" disabled title="Журнал ведётся по организации и не ограничивается составом группы">
+            <Lock className="w-4 h-4 mr-2" />Недоступно в группе
+          </Button>
         ) : (
           <Button variant="default" size="sm" className="rounded-lg" onClick={onManualClick}><Edit className="w-4 h-4 mr-2" />Вести онлайн</Button>
         )}
         <Button variant="outline" size="sm" className="rounded-lg"><Download className="w-4 h-4 mr-2" />Шаблон</Button>
-        {!journal.required && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
+        {!journal.required && !inGroupContext && <Button variant="ghost" size="icon" className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDeleteClick} title="Удалить журнал"><Trash2 className="w-4 h-4" /></Button>}
       </div>
     </div>
   );
