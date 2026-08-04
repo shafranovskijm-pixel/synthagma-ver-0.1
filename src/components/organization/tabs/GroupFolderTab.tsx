@@ -233,16 +233,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     return () => { cancelled = true; };
   }, [organizationId, groupId, reloadKey]);
 
-  const counts = useMemo(() => {
-    let passports = 0, snils = 0, contracts = 0, exams = 0;
-    for (const s of students) {
-      passports += s.documents.passport;
-      snils += s.documents.snils;
-      contracts += s.contracts_count;
-      exams += s.test_attempts_count;
-    }
-    return { passports, snils, contracts, exams };
-  }, [students]);
+  // Счётчики папок читаются из тех же таблиц, что и содержимое папок.
+  const { counts, refresh: refreshCounts } = useGroupFolderCounts(organizationId, groupId);
+
 
   /** Контекст генерации документов группы: организация + группа + ученики. */
   const generationContext = useMemo<GenerationContext | null>(() => {
