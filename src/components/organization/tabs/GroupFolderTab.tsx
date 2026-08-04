@@ -358,7 +358,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     { key: "passports", count: counts.passports },
     { key: "snils", count: counts.snils },
     { key: "exams", count: counts.exams },
-    { key: "docs", count: 0 },
+    { key: "docs", count: counts.docs },
   ];
 
   return (
