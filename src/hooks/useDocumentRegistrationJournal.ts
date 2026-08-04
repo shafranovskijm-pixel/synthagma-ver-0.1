@@ -259,8 +259,15 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
   }, [editingRecord, records]);
 
   const handleAddDocument = useCallback(async () => {
+    // Fail-closed: в контексте группы несвязанная запись не создаётся вовсе.
+    if (manualAddGuard.blocked) {
+      toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
+      setShowAddDialog(false);
+      return;
+    }
     if (!newDocument.document_name.trim()) { toast.error("Введите наименование документа"); return; }
     setSaving(true);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Пользователь не авторизован"); return; }
