@@ -38,6 +38,8 @@ interface Props {
   /** Курс, привязанный к группе — подставляется в мастер договора. */
   courseId?: string | null;
   onOpenGroupSettings?: () => void;
+  /** Вызывается после генерации/удаления документов — чтобы обновить счётчики папок. */
+  onDataChanged?: () => void;
 }
 
 /** В отдельном меню — только документы папки «docs». Договоры живут в папке «Договоры». */
@@ -54,6 +56,7 @@ export function GroupDocumentsFolder({
   blockingFields = [],
   courseId = null,
   onOpenGroupSettings,
+  onDataChanged,
 }: Props) {
   const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
@@ -100,6 +103,7 @@ export function GroupDocumentsFolder({
         ? [generateDocument(ctx, types[0], { totalPrice: price })]
         : generatePackage(ctx, types, { totalPrice: price });
       const ok = await saveGenerated(docs);
+      if (ok) onDataChanged?.();
       if (ok && types.length === 1) toast.success("Документ сформирован");
       return ok;
     } catch (e: any) {
@@ -121,6 +125,7 @@ export function GroupDocumentsFolder({
       toast.error("Договоры не созданы — остальные документы пакета не сформированы");
       return;
     }
+    onDataChanged?.();
     const ok = await run(PACKAGE_DOC_TYPES);
     if (ok) toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
   };
@@ -244,7 +249,7 @@ export function GroupDocumentsFolder({
                   <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row, true)}>
                     <Download className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => remove(row.id)}>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => { await remove(row.id); onDataChanged?.(); }}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
