@@ -92,12 +92,11 @@ describe("JournalsManager in group context", () => {
     expect(screen.queryByText("Мой журнал")).not.toBeInTheDocument();
     expect(screen.queryByText("Пользовательские журналы")).not.toBeInTheDocument();
     expect(screen.getByTestId("group-banner")).toBeInTheDocument();
-    // unsupported journal types are omitted from the list entirely
-    expect(screen.queryByText("Журнал учёта выдачи бланков строгой отчётности")).not.toBeInTheDocument();
-    expect(screen.queryByText("Журнал стажировки / практики")).not.toBeInTheDocument();
-    // supported group-bound journals stay available
-    expect(screen.getByText("Журнал учёта посещаемости занятий")).toBeInTheDocument();
-    expect(screen.getByText("Журнал регистрации документов об образовании")).toBeInTheDocument();
+    // unsupported journal categories/types are omitted from the list entirely
+    expect(screen.queryByText("Часто требуемые журналы")).not.toBeInTheDocument();
+    expect(screen.getByText("Обязательные журналы", { selector: "h3" })).toBeInTheDocument();
+    // 6 required journals minus the unsupported "бланки строгой отчётности"
+    expect(screen.getByText(/^5 журналов/)).toBeInTheDocument();
   });
 
   it("hides group context only when neither groupId nor returnToGroupId is present", async () => {
