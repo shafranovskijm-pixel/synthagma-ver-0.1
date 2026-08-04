@@ -12,6 +12,7 @@ import { useGroupContracts, type GroupContractRow } from "@/hooks/useGroupContra
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 import { toast } from "sonner";
 import { GenerateContractDialog } from "./GenerateContractDialog";
+import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
 import { ContractPreviewDialog } from "./ContractPreviewDialog";
 import { UploadContractDialog } from "./UploadContractDialog";
 import { UploadTemplateDialog } from "./UploadTemplateDialog";
