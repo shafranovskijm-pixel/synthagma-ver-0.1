@@ -164,9 +164,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     } catch (error) { console.error("Error deleting journals:", error); toast.error("Ошибка при удалении"); }
   };
 
+  // В контексте группы показываем только журналы, которые надёжно ограничиваются
+  // составом группы (group_id + course_id + участники). Остальные скрыты.
   const filteredCategories = JOURNAL_CATEGORIES.map((cat) => ({
-    ...cat, journals: cat.journals.filter((j) => j.title.toLowerCase().includes(searchQuery.toLowerCase()) || j.description.toLowerCase().includes(searchQuery.toLowerCase())),
+    ...cat,
+    journals: cat.journals
+      .filter((j) => !inGroupContext || isGroupSupportedJournal(j.id))
+      .filter((j) => j.title.toLowerCase().includes(searchQuery.toLowerCase()) || j.description.toLowerCase().includes(searchQuery.toLowerCase())),
   })).filter((cat) => cat.journals.length > 0);
+
 
   // Render active auto journal — контекст группы должен быть виден на каждом экране
   const activeView = (() => {
