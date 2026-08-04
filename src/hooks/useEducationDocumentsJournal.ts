@@ -320,7 +320,7 @@ export function useEducationDocumentsJournal({
   const generateRegNumber = async () => {
     const year = formData.issue_date.getFullYear();
     const docType = formData.document_type || "doc";
-    let nextNumber = 1;
+    let nextNumber = 0;
     try {
       const { data, error } = await supabase.rpc("next_reg_number", {
         p_org: organizationId,
@@ -328,11 +328,17 @@ export function useEducationDocumentsJournal({
         p_year: year,
       });
       if (error) throw error;
-      nextNumber = (data as number) || 1;
-    } catch (err) {
-      console.warn("next_reg_number RPC failed, falling back to client count:", err);
-      nextNumber = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length + 1;
+      nextNumber = Number(data) || 0;
+      if (nextNumber <= 0) throw new Error("Сервер вернул некорректный номер");
+    } catch (err: any) {
+      // Никакого fallback на клиентский подсчёт: дубликаты номеров недопустимы.
+      console.error("next_reg_number RPC failed:", err);
+      toast.error("Не удалось получить регистрационный номер", {
+        description: err?.message || "Автонумерация недоступна, повторите позже",
+      });
+      return;
     }
+
 
     // Try to use settings from branding
     const settings = formData.document_type === "diploma" ? docSettings.diplomaSettings : docSettings.certificateSettings;
