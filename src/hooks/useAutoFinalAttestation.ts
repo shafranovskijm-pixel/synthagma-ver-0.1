@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { filterByGroupContext, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface AttemptQuestion {
   id: string; question: string; options: (string | { text: string })[]; correct_answer: number | null; explanation?: string | null;
@@ -25,7 +26,7 @@ export interface FinalAttestationRecord {
 
 interface Course { id: string; title: string; }
 
-export function useAutoFinalAttestation(organizationId: string) {
+export function useAutoFinalAttestation(organizationId: string, groupContext?: GroupJournalContext | null) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<FinalAttestationRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -105,7 +106,13 @@ export function useAutoFinalAttestation(organizationId: string) {
     })();
   }, [organizationId]);
 
-  const filteredRecords = useMemo(() => records.filter(r => {
+  // Приватность: в контексте группы — только участники группы и её курс.
+  const scopedRecords = useMemo(
+    () => filterByGroupContext(records, groupContext, { userId: (r) => r.user_id, courseId: (r) => r.course_id }),
+    [records, groupContext]
+  );
+
+  const filteredRecords = useMemo(() => scopedRecords.filter(r => {
     const sl = searchQuery.toLowerCase();
     const matchSearch = !searchQuery || r.student_name.toLowerCase().includes(sl) || r.student_email.toLowerCase().includes(sl) || r.course_title.toLowerCase().includes(sl);
     const matchCourse = selectedCourse === "all" || r.course_id === selectedCourse;
@@ -117,7 +124,7 @@ export function useAutoFinalAttestation(organizationId: string) {
     const rd = r.completed_at ? parseISO(r.completed_at) : parseISO(r.started_at);
     const matchDate = isWithinInterval(rd, { start: dateRange.from, end: dateRange.to });
     return matchSearch && matchCourse && matchStatus && matchDate;
-  }), [records, searchQuery, selectedCourse, selectedStatus, dateRange]);
+  }), [scopedRecords, searchQuery, selectedCourse, selectedStatus, dateRange]);
 
   const stats = useMemo(() => {
     const unique = new Set(filteredRecords.map(r => r.user_id)).size;
@@ -162,7 +169,7 @@ export function useAutoFinalAttestation(organizationId: string) {
   };
 
   return {
-    loading, records, courses, filteredRecords, stats,
+    loading, records: scopedRecords, courses, filteredRecords, stats,
     searchQuery, setSearchQuery, selectedCourse, setSelectedCourse,
     selectedStatus, setSelectedStatus, dateRange, setDateRange,
     attemptDetails, detailsLoading, detailsOpen, setDetailsOpen,

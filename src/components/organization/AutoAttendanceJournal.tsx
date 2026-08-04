@@ -37,6 +37,7 @@ import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { filterByGroupContext, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface AttendanceRecord {
   id: string;
@@ -60,18 +61,15 @@ interface AutoAttendanceJournalProps {
   organizationId: string;
   /** Курс группы: выбран по умолчанию при открытии из контекста группы. */
   initialCourseId?: string;
-  /**
-   * Фактические участники группы. Обязательно при открытии из папки группы:
-   * без этого две группы на одном курсе смешивают строки журнала.
-   */
-  groupMemberUserIds?: string[] | null;
+  /** Контекст группы: строгая фильтрация по участникам и курсу группы. */
+  groupContext?: GroupJournalContext | null;
   onClose: () => void;
 }
 
 export function AutoAttendanceJournal({
   organizationId,
   initialCourseId,
-  groupMemberUserIds = null,
+  groupContext = null,
   onClose }: AutoAttendanceJournalProps) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -194,8 +192,14 @@ export function AutoAttendanceJournal({
   }, [organizationId]);
 
   // Filter records
+  // Приватность: строго ограничиваем строки участниками группы и её курсом.
+  const scopedRecords = useMemo(
+    () => filterByGroupContext(records, groupContext, { userId: (r) => r.user_id, courseId: (r) => r.course_id }),
+    [records, groupContext]
+  );
+
   const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
+    return scopedRecords.filter((record) => {
       // Search filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
@@ -209,19 +213,15 @@ export function AutoAttendanceJournal({
       const matchesCourse =
         selectedCourse === "all" || record.course_id === selectedCourse;
 
-      // Контекст группы: только фактические участники этой группы
-      const matchesGroup =
-        !groupMemberUserIds || groupMemberUserIds.includes(record.user_id);
-
       // Date filter
       const recordDate = parseISO(record.completed_at);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
         end: dateRange.to });
 
-      return matchesSearch && matchesCourse && matchesDate && matchesGroup;
+      return matchesSearch && matchesCourse && matchesDate;
     });
-  }, [records, searchQuery, selectedCourse, dateRange, groupMemberUserIds]);
+  }, [scopedRecords, searchQuery, selectedCourse, dateRange]);
 
   // Statistics
   const stats = useMemo(() => {

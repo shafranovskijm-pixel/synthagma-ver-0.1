@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { filterByGroupContext, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 export interface GradeRecord {
   id: string;
@@ -27,7 +28,7 @@ interface Course {
   title: string;
 }
 
-export function useAutoGradesJournal(organizationId: string) {
+export function useAutoGradesJournal(organizationId: string, groupContext?: GroupJournalContext | null) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<GradeRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -112,8 +113,14 @@ export function useAutoGradesJournal(organizationId: string) {
     fetchData();
   }, [organizationId]);
 
+  // Приватность: в контексте группы показываем только участников группы и (если есть) её курс.
+  const scopedRecords = useMemo(
+    () => filterByGroupContext(records, groupContext, { userId: (r) => r.user_id, courseId: (r) => r.course_id }),
+    [records, groupContext]
+  );
+
   const filteredRecords = useMemo(() => {
-    return records.filter(record => {
+    return scopedRecords.filter(record => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || record.student_name.toLowerCase().includes(searchLower) || record.student_email.toLowerCase().includes(searchLower) || record.course_title.toLowerCase().includes(searchLower) || record.lesson_title.toLowerCase().includes(searchLower);
       const matchesCourse = selectedCourse === "all" || record.course_id === selectedCourse;
@@ -122,7 +129,7 @@ export function useAutoGradesJournal(organizationId: string) {
       const matchesDate = isWithinInterval(recordDate, { start: dateRange.from, end: dateRange.to });
       return matchesSearch && matchesCourse && matchesType && matchesDate;
     });
-  }, [records, searchQuery, selectedCourse, selectedType, dateRange]);
+  }, [scopedRecords, searchQuery, selectedCourse, selectedType, dateRange]);
 
   const stats = useMemo(() => {
     const uniqueStudents = new Set(filteredRecords.map(r => r.user_id)).size;
@@ -166,7 +173,7 @@ export function useAutoGradesJournal(organizationId: string) {
   };
 
   return {
-    loading, records, courses, filteredRecords, stats,
+    loading, records: scopedRecords, courses, filteredRecords, stats,
     searchQuery, setSearchQuery, selectedCourse, setSelectedCourse,
     selectedType, setSelectedType, dateRange, setDateRange,
     exportToExcel, getScoreColor,

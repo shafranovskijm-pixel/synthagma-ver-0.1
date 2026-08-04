@@ -15,14 +15,17 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useAutoGradesJournal } from "@/hooks/useAutoGradesJournal";
+import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface AutoGradesJournalProps {
   organizationId: string;
   onClose: () => void;
+  initialCourseId?: string;
+  groupContext?: GroupJournalContext | null;
 }
 
-export function AutoGradesJournal({ organizationId, onClose }: AutoGradesJournalProps) {
-  const h = useAutoGradesJournal(organizationId);
+export function AutoGradesJournal({ organizationId, onClose, initialCourseId, groupContext }: AutoGradesJournalProps) {
+  const h = useAutoGradesJournal(organizationId, groupContext);
 
   if (h.loading) {
     return <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div>;

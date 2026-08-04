@@ -25,19 +25,22 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { DocumentFormDialog } from "./education-documents/DocumentFormDialog";
 import { SelectStudentsDialog } from "./education-documents/SelectStudentsDialog";
 import { FrdoReadinessBanner } from "./FrdoReadinessBanner";
+import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
   onClose: () => void;
   documentTypeFilter?: "certificate" | "diploma" | "qualification";
   onOpenFrdoTab?: () => void;
+  groupContext?: GroupJournalContext | null;
 }
 
 export function EducationDocumentsJournal({
   organizationId,
   onClose,
   documentTypeFilter,
-  onOpenFrdoTab }: EducationDocumentsJournalProps) {
+  onOpenFrdoTab,
+  groupContext }: EducationDocumentsJournalProps) {
   const {
     loading, saving, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
@@ -52,7 +55,7 @@ export function EducationDocumentsJournal({
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
     toggleStudentSelection, selectAllStudents,
-    handleSave, handleDelete, exportToExcel } = useEducationDocumentsJournal({ organizationId, documentTypeFilter });
+    handleSave, handleDelete, exportToExcel } = useEducationDocumentsJournal({ organizationId, documentTypeFilter, groupContext });
 
   if (loading) {
     return (

@@ -15,14 +15,16 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useDocumentRegistrationJournal, DOCUMENT_TYPE_LABELS } from "@/hooks/useDocumentRegistrationJournal";
+import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface AutoDocumentRegistrationJournalProps {
   organizationId: string;
   onClose: () => void;
+  groupContext?: GroupJournalContext | null;
 }
 
-export function AutoDocumentRegistrationJournal({ organizationId, onClose }: AutoDocumentRegistrationJournalProps) {
-  const h = useDocumentRegistrationJournal(organizationId);
+export function AutoDocumentRegistrationJournal({ organizationId, onClose, groupContext }: AutoDocumentRegistrationJournalProps) {
+  const h = useDocumentRegistrationJournal(organizationId, groupContext);
 
   if (h.loading) return <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div>;
 
@@ -39,6 +41,13 @@ export function AutoDocumentRegistrationJournal({ organizationId, onClose }: Aut
           <Button onClick={h.exportToExcel} className="rounded-xl"><FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в Excel</Button>
         </div>
       </div>
+
+      {groupContext?.groupId && h.unlinkedHiddenCount > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-muted-foreground">
+          В контексте группы скрыто {h.unlinkedHiddenCount} документ(ов), не связанных с участниками этой группы
+          (например, документы компаний или другие курсы). Откройте журнал без контекста группы, чтобы увидеть их.
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
