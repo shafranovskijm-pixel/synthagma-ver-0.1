@@ -18,6 +18,14 @@ export interface GroupContractRow {
   template_id: string | null;
   template_version: number | null;
   body_html: string | null;
+  /** DOCX-first договоры (шаблон клиента) */
+  template_format?: "html" | "docx_ooxml" | null;
+  template_registry_key?: string | null;
+  template_version_label?: string | null;
+  docx_path?: string | null;
+  pdf_path?: string | null;
+  pdf_status?: "unavailable" | "pending" | "ready" | null;
+  generation_status?: "draft" | "generated" | "failed" | null;
   students: Array<{ user_id: string; full_name: string; email?: string | null }>;
   variables: Record<string, any>;
   created_at: string;
