@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { generateDocument, generatePackage, downloadHtml, previewHtml } from "@/lib/group-docs/generate";
-import { reserveGroupDocumentNumbers } from "@/lib/group-docs/documentNumbers";
+import { reserveGroupDocumentNumbers, typesRequiringReservation } from "@/lib/group-docs/documentNumbers";
 import { GROUP_DOCUMENT_TYPES } from "@/lib/group-docs/groupDocuments";
 import {
   PACKAGE_DOC_TYPES,
@@ -129,11 +129,20 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
-      // Номера резервируются на сервере ДО генерации. Ошибка нумерации —
-      // ничего не сохраняем и не выдаём как final.
+      const requestedStatus = mode === "data" ? ("final" as const) : ("draft" as const);
+      const eligibility = {
+        mode,
+        requestedStatus,
+        finalBlocked: (t: DocType) =>
+          documentDataReadiness(t, mode === "data" ? factual : null, students.length)?.finalBlocked ?? false,
+      };
+      // Официальные номера резервируются ТОЛЬКО для документов, которые реально
+      // станут final. Бланки/черновики остаются без номера — последовательности
+      // не расходуются. Ошибка нумерации — ничего не сохраняем.
+      const toReserve = typesRequiringReservation(types, eligibility);
       let numbers: Record<string, string> = {};
       try {
-        numbers = await reserveGroupDocumentNumbers(types, new Date().getFullYear(), async (seqKey, year) => {
+        numbers = await reserveGroupDocumentNumbers(toReserve, new Date().getFullYear(), async (seqKey, year) => {
           const { data, error } = await (supabase as any).rpc("get_next_document_number", {
             p_org: organizationId,
             p_doc_type: seqKey,
@@ -154,8 +163,9 @@ export function GroupDocumentsFolder({
         mode,
         numbers,
         factual: mode === "data" ? factual : null,
-        requestedStatus: mode === "data" ? ("final" as const) : ("draft" as const),
+        requestedStatus,
       };
+
       const docs = types.length === 1
         ? [generateDocument(ctx, types[0], genOpts)]
         : generatePackage(ctx, types, genOpts);
