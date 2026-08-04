@@ -74,11 +74,28 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [editingCustomJournal, setEditingCustomJournal] = useState<CustomJournal | null>(null);
+  const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
+
+  // Фактические участники группы (не по совпадению курса): нужны для фильтрации авто-журналов.
+  useEffect(() => {
+    if (!groupId) { setGroupMemberUserIds(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("user_id")
+        .eq("organization_id", organizationId)
+        .eq("student_group_id", groupId);
+      if (!cancelled) setGroupMemberUserIds(((data as any[]) || []).map((r) => r.user_id));
+    })();
+    return () => { cancelled = true; };
+  }, [groupId, organizationId]);
 
   useEffect(() => {
     const saved = localStorage.getItem(`custom_journals_${organizationId}`);
     if (saved) setCustomJournals(JSON.parse(saved));
   }, [organizationId]);
+
 
   const saveCustomJournals = (journals: CustomJournal[]) => { localStorage.setItem(`custom_journals_${organizationId}`, JSON.stringify(journals)); setCustomJournals(journals); };
 
