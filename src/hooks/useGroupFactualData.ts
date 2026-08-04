@@ -45,12 +45,21 @@ export function useGroupFactualData(
     setLoading(true);
     try {
       const warnings: string[] = [];
+      /** Fail-closed: любая ошибка источника — явное предупреждение, а не тихий пропуск. */
+      const failClosed = (label: string, error: unknown) => {
+        console.error(`[factual] ${label}:`, error);
+        warnings.push(`Источник «${label}» недоступен — данные не подставляются.`);
+      };
 
       // Уроки строго этого курса
-      const { data: lessons } = await supabase
+      const { data: lessons, error: lessonsError } = await supabase
         .from("lessons")
         .select("id, course_id, title, type, order_index")
         .eq("course_id", courseId);
+      if (lessonsError) {
+        setData(emptyFactualData(["Не удалось прочитать уроки курса — данные не подставляются."]));
+        return;
+      }
       const lessonRows = (lessons || []) as any[];
       const lessonIds = lessonRows.map((l) => l.id);
       const lessonTitles = new Map<string, string>(
@@ -66,14 +75,15 @@ export function useGroupFactualData(
       }
 
       // Прохождение уроков: только уроки этого курса и только участники группы
-      const { data: progress } = await supabase
+      const { data: progress, error: progressError } = await supabase
         .from("lesson_progress")
         .select("user_id, lesson_id, completed, completed_at")
         .in("user_id", ids)
         .in("lesson_id", lessonIds)
         .eq("completed", true);
+      if (progressError) failClosed("прохождение уроков", progressError);
 
-      const lessonCompletions: LessonCompletionFact[] = (progress || [])
+      const lessonCompletions: LessonCompletionFact[] = (progressError ? [] : progress || [])
         .filter((p: any) => p.completed_at)
         .map((p: any) => ({
           user_id: p.user_id,
@@ -88,25 +98,30 @@ export function useGroupFactualData(
       }
       let attestation = [] as ReturnType<typeof resolveFinalAttestationFacts>;
       if (finalLessonId) {
-        const { data: attempts } = await supabase
+        const { data: attempts, error: attemptsError } = await supabase
           .from("test_attempts")
           .select("user_id, lesson_id, score, max_score, completed_at")
           .eq("lesson_id", finalLessonId)
           .in("user_id", ids);
-        attestation = resolveFinalAttestationFacts(
-          (attempts || []) as any[],
-          finalLessonId,
-          ids,
-        );
+        if (attemptsError) {
+          failClosed("результаты итогового теста", attemptsError);
+        } else {
+          attestation = resolveFinalAttestationFacts(
+            (attempts || []) as any[],
+            finalLessonId,
+            ids,
+          );
+        }
       }
 
       // Книга регистрации: зачисления строго этого курса и этих учеников
-      const { data: enrollments } = await supabase
+      const { data: enrollments, error: enrollmentsError } = await supabase
         .from("enrollments")
         .select("id, user_id, course_id")
         .eq("course_id", courseId)
         .in("user_id", ids);
-      const enrollmentRows = (enrollments || []) as any[];
+      if (enrollmentsError) failClosed("зачисления на курс", enrollmentsError);
+      const enrollmentRows = (enrollmentsError ? [] : enrollments || []) as any[];
       const enrollmentIds = enrollmentRows.map((e) => e.id);
       const byEnrollment = new Map<string, string>(
         enrollmentRows.map((e) => [e.id, e.user_id]),
@@ -114,7 +129,7 @@ export function useGroupFactualData(
 
       let registration: RegistrationFact[] = [];
       if (enrollmentIds.length === 0) {
-        warnings.push("Ученики группы не зачислены на привязанный курс.");
+        if (!enrollmentsError) warnings.push("Ученики группы не зачислены на привязанный курс.");
       } else {
         const [recordsRes, frdoRes, identityRes] = await Promise.all([
           supabase
@@ -137,14 +152,22 @@ export function useGroupFactualData(
             .in("user_id", ids),
         ]);
 
-        const frdoByUser = new Map<string, any>(
-          ((frdoRes.data as any[]) || []).map((r) => [r.user_id, r]),
-        );
-        const identityByUser = new Map<string, any>(
-          ((identityRes.data as any[]) || []).map((r) => [r.user_id, r]),
-        );
+        if (recordsRes.error) failClosed("выданные документы об образовании", recordsRes.error);
+        if (frdoRes.error) failClosed("данные ФРДО", frdoRes.error);
+        if (identityRes.error) failClosed("документы, удостоверяющие личность", identityRes.error);
 
-        registration = ((recordsRes.data as any[]) || []).map((r) => {
+        const frdoByUser = new Map<string, any>(
+          ((frdoRes.error ? [] : (frdoRes.data as any[])) || []).map((r) => [r.user_id, r]),
+        );
+        // Детерминированно: паспорт, а не произвольная строка identity-документов.
+        const identityByUser = new Map<string, any>();
+        const identityRows = ((identityRes.error ? [] : (identityRes.data as any[])) || []);
+        for (const uid of ids) {
+          const passport = pickPassportIdentityDoc(identityRows.filter((r) => r.user_id === uid));
+          if (passport) identityByUser.set(uid, passport);
+        }
+
+        registration = ((recordsRes.error ? [] : (recordsRes.data as any[])) || []).map((r) => {
           const userId = r.enrollment_id ? byEnrollment.get(r.enrollment_id) || null : null;
           return normalizeRegistrationFact(
             { ...r, user_id: userId },
@@ -168,6 +191,7 @@ export function useGroupFactualData(
     } finally {
       setLoading(false);
     }
+
   }, [organizationId, courseId, key]);
 
   useEffect(() => {
