@@ -304,7 +304,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
   }, [filteredRecords]);
 
   return {
-    loading, saving, records: scopedRecords, filteredRecords, stats, unlinkedHiddenCount,
+    loading, saving, records: scopedRecords, filteredRecords, stats, unlinkedHiddenCount, manualAddGuard,
     searchQuery, setSearchQuery, selectedType, setSelectedType,
     selectedDirection, setSelectedDirection, dateRange, setDateRange,
     editingRecord, setEditingRecord, editRegNumber, setEditRegNumber,
