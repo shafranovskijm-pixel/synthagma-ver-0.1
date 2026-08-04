@@ -37,17 +37,31 @@ export function generateDocument(
   const tpl = getTemplate(docType);
   if (!tpl) throw new Error(`Нет шаблона для типа: ${docType}`);
 
+  const mode: DocumentFillMode = opts.mode ?? "blank";
+  const readiness = documentDataReadiness(docType, opts.factual ?? null, ctx.students.length);
+
+  // Статус определяется ДО номера: черновик/бланк не расходует юридическую
+  // последовательность и остаётся явно без номера («Черновик»).
+  const docStatus: "draft" | "final" = willBeFinalDocument(docType, {
+    mode,
+    requestedStatus: opts.requestedStatus === "final" ? "final" : "draft",
+    finalBlocked: () => readiness?.finalBlocked ?? false,
+  })
+    ? "final"
+    : "draft";
+
   // Номера выдаёт только сервер (get_next_document_number). Клиентских счётчиков нет.
-  const documentNumber = String(opts.documentNumber || opts.numbers?.[docType] || "").trim();
-  if (requiresDocumentNumber(docType) && !documentNumber) {
+  const reservedNumber = String(opts.documentNumber || opts.numbers?.[docType] || "").trim();
+  if (requiresDocumentNumber(docType) && docStatus === "final" && !reservedNumber) {
     throw new Error(
       `Номер документа не зарезервирован на сервере (${docType}) — генерация отменена`,
     );
   }
+  // Черновик номерного документа не носит официальный номер, даже если он передан.
+  const documentNumber =
+    docStatus === "draft" && requiresDocumentNumber(docType) ? "" : reservedNumber;
   const documentDate = opts.documentDate || localDateIso();
 
-
-  const mode: DocumentFillMode = opts.mode ?? "blank";
   const variables = buildVariables(ctx, {
     documentNumber,
     documentDate,
@@ -56,6 +70,7 @@ export function generateDocument(
     mode,
     factual: opts.factual ?? null,
   });
+
 
   const rendered = renderTemplate(tpl.body_html, variables);
   // Все девять документов группы — HTML-приближение макета клиента (legacy_html).
