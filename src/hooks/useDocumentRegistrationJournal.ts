@@ -77,6 +77,14 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
       try {
         const documentRecords: DocumentRecord[] = [];
         const { data: issuanceLog } = await supabase.from("document_issuance_log").select("*").eq("organization_id", organizationId).order("issued_at", { ascending: false });
+        // Привязка документа к ученику/курсу возможна только через enrollment_id
+        // (user_id в журнале выдачи — это тот, КТО выдал документ, а не ученик).
+        const issuanceEnrollmentIds = [...new Set((issuanceLog || []).map((d: any) => d.enrollment_id).filter(Boolean))] as string[];
+        const issuanceEnrollmentMap = new Map<string, { user_id: string; course_id: string }>();
+        if (issuanceEnrollmentIds.length > 0) {
+          const { data: issuanceEnrollments } = await supabase.from("enrollments").select("id, user_id, course_id").in("id", issuanceEnrollmentIds);
+          for (const e of issuanceEnrollments || []) issuanceEnrollmentMap.set(e.id, { user_id: e.user_id, course_id: e.course_id });
+        }
         for (const doc of issuanceLog || []) {
           let docType = "other";
           const nameLower = doc.document_name.toLowerCase();
@@ -88,7 +96,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
           else if (nameLower.includes("протокол")) docType = "protocol";
           else if (nameLower.includes("счёт") || nameLower.includes("счет")) docType = "invoice";
           else if (nameLower.includes("акт")) docType = "act";
-          documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.reg_number, document_type: docType, document_name: doc.document_name, direction: "outgoing", date: doc.issued_at, related_entity: doc.user_name, related_entity_type: "student", notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null, source: "issuance_log", is_editable: true, file_url: doc.file_url || null, user_id: (doc as any).user_id ?? null, course_id: (doc as any).course_id ?? null });
+          documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.reg_number, document_type: docType, document_name: doc.document_name, direction: "outgoing", date: doc.issued_at, related_entity: doc.user_name, related_entity_type: "student", notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null, source: "issuance_log", is_editable: true, file_url: doc.file_url || null, user_id: issuanceEnrollmentMap.get((doc as any).enrollment_id)?.user_id ?? null, course_id: issuanceEnrollmentMap.get((doc as any).enrollment_id)?.course_id ?? null });
         }
 
         const { data: companyDocs } = await supabase.from("company_documents").select(`*, companies:company_id (name)`).order("uploaded_at", { ascending: false });
