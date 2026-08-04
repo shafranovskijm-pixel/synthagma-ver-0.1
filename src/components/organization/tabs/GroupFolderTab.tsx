@@ -137,7 +137,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       try {
         const { data: groupData } = await supabase
           .from("student_groups")
-          .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, default_price, course_id")
+          .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, schedule_text, default_price, course_id")
           .eq("id", groupId)
           .maybeSingle();
         if (cancelled) return;
