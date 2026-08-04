@@ -241,13 +241,23 @@ export function useEducationDocumentsJournal({
     },
   });
 
+  // Выпускники: в контексте группы — только участники группы (и её курс).
+  const scopedCompletedStudents = useMemo(() => {
+    if (groupGate === "none") return completedStudents;
+    if (groupGate !== "ready") return [];
+    const members = new Set(groupContext?.memberUserIds ?? []);
+    const allowed = allowedEnrollmentIds ? new Set(allowedEnrollmentIds) : null;
+    if (!allowed) return [];
+    return completedStudents.filter((s) => members.has(s.user_id) && allowed.has(s.enrollment_id));
+  }, [completedStudents, groupGate, groupContext?.memberUserIds, allowedEnrollmentIds]);
+
   const loadCompletedStudents = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["education-documents-completed-students", organizationId] });
   }, [qc, organizationId]);
 
 
   const newGraduatesCount = useMemo(() => {
-    let students = completedStudents;
+    let students = scopedCompletedStudents;
     if (documentTypeFilter) {
       students = students.filter((s) => {
         if (!s.frdo_program_type) return true;
@@ -255,7 +265,7 @@ export function useEducationDocumentsJournal({
       });
     }
     return students.filter((s) => !s.already_added).length;
-  }, [completedStudents, documentTypeFilter]);
+  }, [scopedCompletedStudents, documentTypeFilter]);
 
   const filteredRecords = useMemo(() => {
     return scopedRecords.filter((record) => {
@@ -283,7 +293,7 @@ export function useEducationDocumentsJournal({
   }, [filteredRecords]);
 
   const filteredStudents = useMemo(() => {
-    let filtered = completedStudents;
+    let filtered = scopedCompletedStudents;
     // Filter by document type tab: only show students whose course program type matches
     if (documentTypeFilter) {
       filtered = filtered.filter((s) => {
@@ -296,7 +306,7 @@ export function useEducationDocumentsJournal({
       filtered = filtered.filter((s) => s.full_name.toLowerCase().includes(query) || s.course_title.toLowerCase().includes(query));
     }
     return filtered;
-  }, [completedStudents, studentSearchQuery, documentTypeFilter]);
+  }, [scopedCompletedStudents, studentSearchQuery, documentTypeFilter]);
 
   const journalTitle = getJournalTitle(documentTypeFilter);
   const journalSubtitle = getJournalSubtitle(documentTypeFilter);
@@ -379,7 +389,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleAutoAddAllGraduates = async () => {
-    let newStudents = completedStudents.filter((s) => !s.already_added);
+    let newStudents = scopedCompletedStudents.filter((s) => !s.already_added);
     if (documentTypeFilter) {
       newStudents = newStudents.filter((s) => {
         if (!s.frdo_program_type) return true;
@@ -423,7 +433,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleCreateFromStudents = async () => {
-    const selectedList = completedStudents.filter((s) => selectedStudents.has(s.enrollment_id) && !s.already_added);
+    const selectedList = scopedCompletedStudents.filter((s) => selectedStudents.has(s.enrollment_id) && !s.already_added);
     if (selectedList.length === 0) { toast.error("Выберите хотя бы одного выпускника"); return; }
     setSaving(true);
     try {
@@ -558,7 +568,7 @@ export function useEducationDocumentsJournal({
     dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
     editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
-    completedStudents, loadingStudents, selectedStudents,
+    scopedCompletedStudents, loadingStudents, selectedStudents,
     studentSearchQuery, setStudentSearchQuery,
     formData, setFormData,
     // Computed
