@@ -6,6 +6,8 @@ import { ru } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { localDateIso } from "@/lib/date/localDate";
 import {
   type EducationDocumentRecord,
   type CompletedStudent,
