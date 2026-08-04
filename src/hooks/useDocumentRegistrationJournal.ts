@@ -165,7 +165,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
       const matchesDate = isWithinInterval(recordDate, { start: dateRange.from, end: dateRange.to });
       return matchesSearch && matchesType && matchesDirection && matchesDate;
     });
-  }, [records, searchQuery, selectedType, selectedDirection, dateRange]);
+  }, [scopedRecords, searchQuery, selectedType, selectedDirection, dateRange]);
 
   const stats = useMemo(() => {
     const incoming = filteredRecords.filter(r => r.direction === "incoming").length;
