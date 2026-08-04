@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { groupFolderPath } from "@/lib/groups/groupContext";
+import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck } from "lucide-react";
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +68,9 @@ function formatTimeAgo(date: Date): string {
 
 export function StudentDetailsTab() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Обратный путь появляется только у карточек, открытых из папки группы.
+  const returnToGroupId = searchParams.get("returnToGroupId");
   const d = useOrgDashboard();
   const { user } = useAuth();
   const organizationId = d.organizationId;
@@ -188,6 +192,17 @@ export function StudentDetailsTab() {
         <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
           <ArrowLeft className="w-4 h-4" /> Назад к ученикам
         </Button>
+      {returnToGroupId && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 rounded-xl h-8 text-xs"
+          data-testid="return-to-group"
+          onClick={() => navigate(groupFolderPath(returnToGroupId))}
+        >
+          <FolderOpen className="w-3.5 h-3.5" /> Вернуться в группу
+        </Button>
+      )}
         <div className="text-center py-12 text-muted-foreground">Ученик не найден</div>
       </div>
     );
@@ -197,9 +212,22 @@ export function StudentDetailsTab() {
     <div className="space-y-4">
       {/* Header with back button and login-as */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
-          <ArrowLeft className="w-4 h-4" /> Назад к ученикам
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
+            <ArrowLeft className="w-4 h-4" /> Назад к ученикам
+          </Button>
+      {returnToGroupId && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 rounded-xl h-8 text-xs"
+          data-testid="return-to-group"
+          onClick={() => navigate(groupFolderPath(returnToGroupId))}
+        >
+          <FolderOpen className="w-3.5 h-3.5" /> Вернуться в группу
         </Button>
+      )}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

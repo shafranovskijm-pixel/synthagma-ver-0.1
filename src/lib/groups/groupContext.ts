@@ -21,8 +21,9 @@ export function studentDetailsPath(userId: string, ctx?: GroupContextParams): st
   params.set("tab", "student-details");
   params.set("studentId", userId);
   const back = ctx?.returnToGroupId ?? ctx?.groupId;
+  // courseId сюда не прокидывается: карточка ученика показывает все его курсы,
+  // а групповой фильтр не должен ограничивать/подменять её данные.
   if (back) params.set("returnToGroupId", back);
-  if (ctx?.courseId) params.set("courseId", ctx.courseId);
   return `/organization?${params.toString()}`;
 }
 
