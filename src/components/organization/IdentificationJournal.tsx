@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 interface IdentificationRecord {
   id: string;
@@ -27,26 +28,38 @@ interface IdentificationRecord {
 interface IdentificationJournalProps {
   organizationId: string;
   onClose: () => void;
+  groupContext?: GroupJournalContext | null;
 }
 
-export function IdentificationJournal({ organizationId, onClose }: IdentificationJournalProps) {
+export function IdentificationJournal({ organizationId, onClose, groupContext }: IdentificationJournalProps) {
   const [records, setRecords] = useState<IdentificationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const groupGate = resolveGroupGateState("identification", groupContext);
+  const groupMemberKey = (groupContext?.memberUserIds ?? []).join(",");
+
   useEffect(() => {
+    // Приватность: в контексте группы не загружаем данные всей организации.
+    if (groupGate === "loading" || groupGate === "error") { setRecords([]); setIsLoading(groupGate === "loading"); return; }
     loadRecords();
-  }, [organizationId]);
+  }, [organizationId, groupGate, groupMemberKey]);
 
   const loadRecords = async () => {
     setIsLoading(true);
     try {
       // Get org students
-      const { data: profiles } = await supabase
+      let profilesQuery = supabase
         .from("profiles")
         .select("user_id, full_name, email")
         .eq("organization_id", organizationId);
+      if (groupGate === "ready") {
+        const memberIds = groupContext?.memberUserIds ?? [];
+        if (memberIds.length === 0) { setRecords([]); setIsLoading(false); return; }
+        profilesQuery = profilesQuery.in("user_id", memberIds);
+      }
+      const { data: profiles } = await profilesQuery;
 
       if (!profiles || profiles.length === 0) {
         setRecords([]);
