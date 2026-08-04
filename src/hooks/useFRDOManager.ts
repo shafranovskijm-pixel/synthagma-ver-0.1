@@ -7,6 +7,8 @@ import { buildDPORow, buildPORow, exportFRDOExcel, formatDateForFRDO } from "@/u
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { filterByGroupMembers } from "@/lib/groups/groupContext";
 import { FRDO_REQUIRED_FIELDS, resolveFrdoReadiness } from "@/lib/frdo/readiness";
+import { issueEducationDocumentsByCourse, issuedRowKey, type CourseScopedItem } from "@/lib/education-docs/issueBatch";
+import { localDateIso } from "@/lib/date/localDate";
 
 interface Student { user_id: string; name: string; email: string; course?: string | null; course_id?: string | null; }
 interface FRDOData {
