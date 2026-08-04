@@ -113,15 +113,28 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     ...cat, journals: cat.journals.filter((j) => j.title.toLowerCase().includes(searchQuery.toLowerCase()) || j.description.toLowerCase().includes(searchQuery.toLowerCase())),
   })).filter((cat) => cat.journals.length > 0);
 
-  // Render active auto journal
-  if (activeAutoJournal === "attendance") return <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeAutoJournal === "current_control") return <AutoGradesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeAutoJournal === "final_attestation") return <AutoFinalAttestationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeAutoJournal === "document_registration") return <AutoDocumentRegistrationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeAutoJournal === "copies_duplicates") return <CopiesDuplicatesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeAutoJournal === "education_documents") return <EducationDocumentsJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeAutoJournal === "identification") return <IdentificationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
-  if (activeJournal) return <JournalEditor organizationId={organizationId} journalType={activeJournal.type} journalTitle={activeJournal.title} onClose={() => setActiveJournal(null)} />;
+  // Render active auto journal — контекст группы должен быть виден на каждом экране
+  const activeView = (() => {
+    if (activeAutoJournal === "attendance") return <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupMemberUserIds={groupId ? groupMemberUserIds : null} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeAutoJournal === "current_control") return <AutoGradesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeAutoJournal === "final_attestation") return <AutoFinalAttestationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeAutoJournal === "document_registration") return <AutoDocumentRegistrationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeAutoJournal === "copies_duplicates") return <CopiesDuplicatesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeAutoJournal === "education_documents") return <EducationDocumentsJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeAutoJournal === "identification") return <IdentificationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+    if (activeJournal) return <JournalEditor organizationId={organizationId} journalType={activeJournal.type} journalTitle={activeJournal.title} onClose={() => setActiveJournal(null)} />;
+    return null;
+  })();
+
+  if (activeView) {
+    return (
+      <div className="space-y-6">
+        {groupId && <GroupContextBanner groupId={groupId} returnToGroupId={returnToGroupId} />}
+        {activeView}
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-6">
