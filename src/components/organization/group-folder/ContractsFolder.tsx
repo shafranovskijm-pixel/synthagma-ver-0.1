@@ -170,7 +170,18 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1"
+                        aria-label={`Просмотр договора ${c.name}`}
+                        title="Просмотр"
+                        onClick={() => setPreview(c)}
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Просмотр
+                      </Button>
                       <Button size="sm" variant="ghost" className="gap-1" disabled={!c.file_path} onClick={() => openFile(c.file_path)}>
+
                         <Download className="w-3.5 h-3.5" /> PDF
                       </Button>
                       <Button size="sm" variant="ghost" className="gap-1" disabled={!c.body_html || docxBusy} onClick={() => downloadDocx(c)}>
