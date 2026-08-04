@@ -26,10 +26,14 @@ export function studentDetailsPath(userId: string, ctx?: GroupContextParams): st
   return `/organization?${params.toString()}`;
 }
 
-/** Ссылка на раздел «Компании»; при companyId сразу открывается карточка этой компании. */
+/**
+ * Ссылка на раздел «Компании»; при companyId сразу открывается карточка этой компании.
+ * Внутренний ключ вкладки — "organizations" (именно его монтирует TabContentRenderer),
+ * поэтому tab=companies давал бы пустую страницу.
+ */
 export function companiesPath(companyId?: string | null): string {
   const params = new URLSearchParams();
-  params.set("tab", "companies");
+  params.set("tab", "organizations");
   if (companyId) params.set("companyId", companyId);
   return `/organization?${params.toString()}`;
 }
@@ -96,13 +100,18 @@ export function resolveTabParams(
   // поэтому groupId/folder сохраняются и для неё.
   const keepsGroupFolder = tab === "group-folder" || tab === "students";
 
+  // Карточка ученика, открытая из папки группы, сохраняет ТОЛЬКО обратный путь.
+  // Фильтры groupId/courseId/folder при этом снимаются, чтобы контекст группы
+  // не подмешивался в данные карточки.
+  const keepsReturnOnly = tab === "student-details" && !!next.get("returnToGroupId");
+
   if (tab !== "course-details") next.delete("courseId");
   if (tab !== "student-details") next.delete("studentId");
   if (!keepsGroupFolder) {
     next.delete("groupId");
     next.delete("folder");
   }
-  if (!keepsGroupFolder) next.delete("returnToGroupId");
+  if (!keepsGroupFolder && !keepsReturnOnly) next.delete("returnToGroupId");
   return next;
 }
 
