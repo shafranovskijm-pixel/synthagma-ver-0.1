@@ -223,7 +223,7 @@ export function GroupDocumentsFolder({
             <div className="font-medium text-foreground">Данных недостаточно — документы останутся черновиками:</div>
             {readiness.map(r => (
               <div key={r.type}>
-                · {typeTitle.get(r.type) || r.type}: {r.info?.reason}
+                · {typeTitle.get(r.type) || r.type}: {r.info?.warning || r.info?.source}
               </div>
             ))}
           </div>
