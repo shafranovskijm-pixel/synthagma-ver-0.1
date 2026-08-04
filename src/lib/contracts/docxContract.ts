@@ -206,6 +206,15 @@ export interface CompanyLike {
   address?: string | null;
   email?: string | null;
   director?: string | null;
+  postal_address?: string | null;
+  phone?: string | null;
+  bank_name?: string | null;
+  bank_account?: string | null;
+  bank_bik?: string | null;
+  bank_corr_account?: string | null;
+  signatory_position?: string | null;
+  signatory_name_genitive?: string | null;
+  signatory_authority_clause?: string | null;
 }
 
 const shortName = (fullName: string): string => {
@@ -229,13 +238,65 @@ export function companyScalars(company: CompanyLike | null | undefined): Record<
   out.CUST_KPP = company.kpp || "";
   out.CUST_OGRN = company.ogrn || "";
   out.CUST_LEGAL_ADDR = company.address || "";
-  out.CUST_POST_ADDR = company.address || "";
+  out.CUST_POST_ADDR = company.postal_address || company.address || "";
   out.CUST_EMAIL = company.email || "";
+  out.CUST_PHONE = company.phone || "";
+  out.CUST_BANK = company.bank_name || "";
+  out.CUST_ACCOUNT = company.bank_account || "";
+  out.CUST_BIK = company.bank_bik || "";
+  out.CUST_CORR = company.bank_corr_account || "";
   out.CUST_REP_SHORT = company.director ? shortName(company.director) : "";
-  out.CUST_REP_POS = company.director ? "Генеральный директор" : "";
-  out.CUST_AUTH = company.director ? "Уставе" : "";
+  out.CUST_REP_POS = company.signatory_position || (company.director ? "Генеральный директор" : "");
+  out.CUST_REP_GEN = company.signatory_name_genitive || "";
+  out.CUST_AUTH = company.signatory_authority_clause || (company.director ? "Уставе" : "");
   return out;
 }
+
+/** Источник значения поля — показывается в мастере, чтобы данные не «придумывались». */
+export type FieldSource = "company" | "group" | "profile" | "frdo" | "manual" | "numbering";
+
+export const FIELD_SOURCE_LABELS: Record<FieldSource, string> = {
+  company: "Карточка компании",
+  group: "Настройки группы",
+  profile: "Профиль ученика",
+  frdo: "Данные ФИС ФРДО",
+  manual: "Заполняется вручную",
+  numbering: "Автонумерация Синтагмы",
+};
+
+/** Карта «поле договора → источник истины в Синтагме». */
+export const DOCX_FIELD_SOURCES: Record<string, FieldSource> = {
+  CUST_NAME: "company",
+  CUST_INN: "company",
+  CUST_KPP: "company",
+  CUST_OGRN: "company",
+  CUST_LEGAL_ADDR: "company",
+  CUST_POST_ADDR: "company",
+  CUST_ACCOUNT: "company",
+  CUST_BANK: "company",
+  CUST_BIK: "company",
+  CUST_CORR: "company",
+  CUST_EMAIL: "company",
+  CUST_PHONE: "company",
+  CUST_REP_POS: "company",
+  CUST_REP_GEN: "company",
+  CUST_REP_SHORT: "company",
+  CUST_AUTH: "company",
+  DOC_NO: "numbering",
+  DOC_DATE: "manual",
+  TRAINING_ADDR: "group",
+  SCHEDULE: "group",
+  STUDENT_DATES: "group",
+  PROG_FORM: "group",
+  TAX_CLAUSE: "manual",
+  PAYMENT_CLAUSE: "manual",
+};
+
+export function fieldSourceLabel(key: string): string {
+  const src = DOCX_FIELD_SOURCES[key] || "manual";
+  return FIELD_SOURCE_LABELS[src];
+}
+
 
 /** Атомарная замена всех company-scoped значений при смене компании. */
 export function applyCompanySelection(
