@@ -22,18 +22,22 @@ import {
   applyCompanySelection,
   evaluateDocxReadiness,
   fetchDocxTemplates,
+  acquireContractNumber,
   fieldSourceLabel,
   formatContractDateRu,
+  groupScheduleHint,
   generateDocxContract,
   groupDatesText,
   initialDocxScalars,
   isDocxDraftReady,
   matchGroupCurriculum,
   studentRowFromSources,
+  DOCX_FIELD_SOURCES,
   type DocxContractDraft,
   type RegistryTemplate,
 } from "@/lib/contracts/docxContract";
 import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
+import { groupFolderPath, studentDetailsPath } from "@/lib/groups/groupContext";
 
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
@@ -81,28 +85,17 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [numberBusy, setNumberBusy] = useState(false);
+  /** Номер договора, полученный автонумерацией. Хранится, чтобы retry не брал новый номер. */
+  const [assignedNumber, setAssignedNumber] = useState<string>("");
+  const [scheduleHint, setScheduleHint] = useState<string>("");
+  const [curriculumMatched, setCurriculumMatched] = useState<boolean>(false);
+  const [manualKeys, setManualKeys] = useState<Set<string>>(new Set());
 
-  const setField = (key: string, value: string) => setScalars((prev) => ({ ...prev, [key]: value }));
-
-  /** Номер договора — только через серверную автонумерацию Синтагмы. */
-  const reserveNumber = async () => {
-    setNumberBusy(true);
-    try {
-      const { data, error } = await supabase.rpc("get_next_document_number", {
-        p_org: organizationId,
-        p_doc_type: "contract",
-        p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
-      });
-      if (error) throw error;
-      setField("DOC_NO", String(data || ""));
-      toast.success("Номер договора зарезервирован");
-    } catch (e: any) {
-      toast.error("Не удалось получить номер", { description: e?.message });
-    } finally {
-      setNumberBusy(false);
-    }
-  };
+  const setField = (key: string, value: string) =>
+    setScalars((prev) => {
+      setManualKeys((m) => (m.has(key) ? m : new Set(m).add(key)));
+      return { ...prev, [key]: value };
+    });
 
   // Каждое открытие диалога начинается с чистого состояния: данные предыдущего
   // договора (компания, реквизиты, приложения, слушатели) не переносятся.
@@ -114,6 +107,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     setTaxChosen(false);
     setAmount(0);
     setRows([]);
+    setAssignedNumber("");
+    setManualKeys(new Set());
+    setCurriculumMatched(false);
+    setScheduleHint("");
     const iso = todayIso();
     setDocDateIso(iso);
     setScalars(initialDocxScalars(null, iso));
@@ -131,7 +128,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
             .eq("student_group_id", groupId),
           supabase
             .from("student_frdo_data")
-            .select("user_id, education_level")
+            .select("user_id, education_level, last_name, first_name, middle_name")
             .eq("organization_id", organizationId),
         ]);
         setTemplates(tpls);
@@ -141,9 +138,22 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         setAmount(Number(g?.default_price) || 0);
         setScalars(initialDocxScalars(g, iso));
         setCompanies((companiesRes.data as any[]) || []);
+        setScheduleHint(groupScheduleHint(g));
 
-        // Учебный план подставляется автоматически, если программа группы совпала с шаблоном.
-        const matched = matchGroupCurriculum(g?.program_title);
+        // Название курса группы — второй допустимый источник точного совпадения.
+        let courseTitle: string | null = null;
+        if (g?.course_id) {
+          const { data: courseRow } = await supabase
+            .from("courses")
+            .select("title")
+            .eq("id", g.course_id)
+            .maybeSingle();
+          courseTitle = (courseRow as any)?.title || null;
+        }
+
+        // Учебный план подставляется только при точном совпадении названия.
+        const matched = matchGroupCurriculum(g?.program_title, courseTitle);
+        setCurriculumMatched(!!matched);
         if (matched) setCurricula([matched]);
 
         const byUser = new Map<string, any>(((profilesRes.data as any[]) || []).map((p) => [p.user_id, p]));
@@ -216,9 +226,27 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const ready = isDocxDraftReady(readiness) && !!companyId && !!templateKey && !!docDateIso;
 
   const submit = async () => {
-    if (!ready) return;
+    if (!ready || busy) return;
     setBusy(true);
     try {
+      // Один номер на весь submit: RPC вызывается максимум один раз,
+      // повторная попытка после ошибки компиляции переиспользует его.
+      const docNo = await acquireContractNumber(assignedNumber, async () => {
+        const { data, error } = await supabase.rpc("get_next_document_number", {
+          p_org: organizationId,
+          p_doc_type: "contract",
+          p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
+        });
+        if (error) throw error;
+        return String(data || "");
+      });
+      if (docNo !== assignedNumber) setAssignedNumber(docNo);
+
+      const finalDraft: DocxContractDraft = {
+        ...draft,
+        scalars: { ...draft.scalars, DOC_NO: docNo },
+      };
+
       const res = await generateDocxContract({
         templateKey,
         organizationId,
@@ -226,10 +254,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         companyId,
         studentUserIds: rows.map((r) => r.user_id),
         studentsMeta: rows.map((r) => ({ user_id: r.user_id, full_name: r.fio })),
-        contractName: `Договор ${scalars.DOC_NO} — ${scalars.CUST_NAME}`,
-        contractNumber: scalars.DOC_NO,
+        contractName: `Договор ${docNo} — ${scalars.CUST_NAME}`,
+        contractNumber: docNo,
         contractDate: docDateIso,
-        draft,
+        draft: finalDraft,
       });
       toast.success("Договор сформирован (Word)", {
         description: `Приложения: ${res.keptCurricula.length}. PDF пока недоступен — доступен DOCX.`,
