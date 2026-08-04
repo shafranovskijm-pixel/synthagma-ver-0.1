@@ -360,7 +360,9 @@ export function useStudentDetailCardLogic({
     if (!student) return;
     setSavingJobPosition(true);
     try {
-      const { error } = await supabase.from("profiles").update({ job_position: value || null } as any).eq("user_id", student.user_id);
+      // Ограничение по организации обязательно: правка профиля только внутри своей организации.
+      const query = supabase.from("profiles").update({ job_position: value || null } as any).eq("user_id", student.user_id);
+      const { error } = organizationId ? await query.eq("organization_id", organizationId) : await query;
       if (error) throw error;
       setJobPosition(value);
       toast.success("Должность сохранена");

@@ -32,6 +32,10 @@ interface Company {
 
 /** Реквизиты, которые подставляются в договоры и счёта. */
 export const COMPANY_DOC_FIELDS: Array<[string, string, string]> = [
+  ["kpp", "КПП", "770101001"],
+  ["ogrn", "ОГРН", "1027700000000"],
+  ["address", "Юридический адрес", "125000, г. Москва, ул. Примерная, д. 1"],
+  ["director", "Руководитель (ФИО полностью)", "Иванов Иван Иванович"],
   ["postal_address", "Почтовый адрес", "125000, г. Москва, ул. Примерная, д. 1"],
   ["phone", "Телефон", "+7 495 000-00-00"],
   ["bank_name", "Банк", "ПАО Сбербанк, г. Москва"],
@@ -337,11 +341,15 @@ export function useCompaniesManager(organizationId: string) {
         updateData[key] = editDocFields[key]?.trim() || null;
       }
 
+      // DaData только дозаполняет пустые поля: ручная правка оператора приоритетнее.
       if (dadataEditCompanyInfo) {
-        updateData.kpp = dadataEditCompanyInfo.kpp;
-        updateData.ogrn = dadataEditCompanyInfo.ogrn;
-        updateData.address = dadataEditCompanyInfo.address;
-        updateData.director = dadataEditCompanyInfo.management;
+        const fill = (key: string, value: string | null) => {
+          if (!updateData[key] && value) updateData[key] = value;
+        };
+        fill("kpp", dadataEditCompanyInfo.kpp);
+        fill("ogrn", dadataEditCompanyInfo.ogrn);
+        fill("address", dadataEditCompanyInfo.address);
+        fill("director", dadataEditCompanyInfo.management);
       }
 
       const { error } = await supabase
