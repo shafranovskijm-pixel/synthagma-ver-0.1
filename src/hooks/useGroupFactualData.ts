@@ -2,15 +2,24 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   emptyFactualData,
-  type AttestationFact,
+  NO_COURSE_WARNING,
   type GroupFactualData,
   type LessonCompletionFact,
   type RegistrationFact,
 } from "@/lib/group-docs/factualData";
+import {
+  normalizeRegistrationFact,
+  resolveFinalAttestationFacts,
+  resolveFinalTestLessonId,
+} from "@/lib/group-docs/factualResolvers";
 
 /**
  * Снимок ФАКТИЧЕСКИХ данных Синтагмы для документов группы.
- * Ничего не домысливает: нет строки в БД — нет значения в документе.
+ *
+ * Ничего не домысливает и никогда не расширяет выборку:
+ * без courseId запросы не выполняются вообще (иначе смешались бы данные
+ * других курсов того же ученика). При наличии courseId все источники
+ * ограничены этим course_id и точным списком user_id группы.
  */
 export function useGroupFactualData(
   organizationId: string | null,
@@ -28,30 +37,41 @@ export function useGroupFactualData(
       setData(emptyFactualData());
       return;
     }
+    // Курс не привязан — честно пустой snapshot с предупреждением.
+    if (!courseId) {
+      setData(emptyFactualData([NO_COURSE_WARNING]));
+      return;
+    }
     setLoading(true);
     try {
-      // Уроки курса — чтобы ограничить прогресс рамками программы группы
-      let lessonIds: string[] = [];
-      const lessonTitles = new Map<string, string>();
-      if (courseId) {
-        const { data: lessons } = await supabase
-          .from("lessons")
-          .select("id, title")
-          .eq("course_id", courseId);
-        (lessons || []).forEach((l: any) => {
-          lessonIds.push(l.id);
-          lessonTitles.set(l.id, l.title || "");
+      const warnings: string[] = [];
+
+      // Уроки строго этого курса
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("id, course_id, title, type, order_index")
+        .eq("course_id", courseId);
+      const lessonRows = (lessons || []) as any[];
+      const lessonIds = lessonRows.map((l) => l.id);
+      const lessonTitles = new Map<string, string>(
+        lessonRows.map((l) => [l.id, l.title || ""]),
+      );
+
+      if (lessonIds.length === 0) {
+        setData({
+          ...emptyFactualData(["В курсе группы нет уроков — собирать нечего."]),
+          courseLinked: true,
         });
+        return;
       }
 
-      const progressQuery = supabase
+      // Прохождение уроков: только уроки этого курса и только участники группы
+      const { data: progress } = await supabase
         .from("lesson_progress")
         .select("user_id, lesson_id, completed, completed_at")
         .in("user_id", ids)
+        .in("lesson_id", lessonIds)
         .eq("completed", true);
-      const { data: progress } = lessonIds.length
-        ? await progressQuery.in("lesson_id", lessonIds)
-        : await progressQuery;
 
       const lessonCompletions: LessonCompletionFact[] = (progress || [])
         .filter((p: any) => p.completed_at)
@@ -61,72 +81,90 @@ export function useGroupFactualData(
           lesson_title: lessonTitles.get(p.lesson_id) || undefined,
         }));
 
-      // Итоговая аттестация: лучшая попытка по каждому ученику
-      const attemptsQuery = supabase
-        .from("test_attempts")
-        .select("user_id, lesson_id, score, max_score, completed_at")
-        .in("user_id", ids);
-      const { data: attempts } = lessonIds.length
-        ? await attemptsQuery.in("lesson_id", lessonIds)
-        : await attemptsQuery;
+      // Итоговая аттестация: только финальный тест курса (как в журнале аттестации)
+      const finalLessonId = resolveFinalTestLessonId(lessonRows, courseId);
+      if (!finalLessonId) {
+        warnings.push("В курсе нет урока с итоговым тестом — оценки не подставляются.");
+      }
+      let attestation = [] as ReturnType<typeof resolveFinalAttestationFacts>;
+      if (finalLessonId) {
+        const { data: attempts } = await supabase
+          .from("test_attempts")
+          .select("user_id, lesson_id, score, max_score, completed_at")
+          .eq("lesson_id", finalLessonId)
+          .in("user_id", ids);
+        attestation = resolveFinalAttestationFacts(
+          (attempts || []) as any[],
+          finalLessonId,
+          ids,
+        );
+      }
 
-      const best = new Map<string, AttestationFact>();
-      (attempts || []).forEach((a: any) => {
-        if (!a.max_score) return;
-        const ratio = Number(a.score) / Number(a.max_score);
-        const prev = best.get(a.user_id);
-        const prevRatio = prev && prev.max_score ? prev.score / prev.max_score : -1;
-        if (ratio > prevRatio) {
-          best.set(a.user_id, {
-            user_id: a.user_id,
-            score: Number(a.score),
-            max_score: Number(a.max_score),
-            date: a.completed_at ? String(a.completed_at).slice(0, 10) : null,
-          });
-        }
-      });
-
-      // Книга регистрации: только реально выданные документы
+      // Книга регистрации: зачисления строго этого курса и этих учеников
       const { data: enrollments } = await supabase
         .from("enrollments")
-        .select("id, user_id")
+        .select("id, user_id, course_id")
+        .eq("course_id", courseId)
         .in("user_id", ids);
-      const enrollmentIds = (enrollments || []).map((e: any) => e.id);
-      const byEnrollment = new Map<string, string>();
-      (enrollments || []).forEach((e: any) => byEnrollment.set(e.id, e.user_id));
+      const enrollmentRows = (enrollments || []) as any[];
+      const enrollmentIds = enrollmentRows.map((e) => e.id);
+      const byEnrollment = new Map<string, string>(
+        enrollmentRows.map((e) => [e.id, e.user_id]),
+      );
 
       let registration: RegistrationFact[] = [];
-      if (enrollmentIds.length) {
-        const { data: records } = await supabase
-          .from("education_document_records")
-          .select(
-            "enrollment_id, full_name, birth_date, document_type, document_series, document_number, issue_date, order_number, specialty_name",
-          )
-          .eq("organization_id", organizationId)
-          .in("enrollment_id", enrollmentIds)
-          .is("deleted_at", null);
-        registration = (records || []).map((r: any) => ({
-          user_id: r.enrollment_id ? byEnrollment.get(r.enrollment_id) || null : null,
-          full_name: r.full_name || "",
-          document_type: r.document_type || "",
-          document_series: r.document_series || "",
-          document_number: r.document_number || "",
-          issue_date: r.issue_date || "",
-          order_number: r.order_number || "",
-          birth_date: r.birth_date || undefined,
-          program: r.specialty_name || undefined,
-        }));
+      if (enrollmentIds.length === 0) {
+        warnings.push("Ученики группы не зачислены на привязанный курс.");
+      } else {
+        const [recordsRes, frdoRes, identityRes] = await Promise.all([
+          supabase
+            .from("education_document_records")
+            .select(
+              "enrollment_id, full_name, birth_date, document_type, document_series, document_number, issue_date, order_number, specialty_name",
+            )
+            .eq("organization_id", organizationId)
+            .in("enrollment_id", enrollmentIds)
+            .is("deleted_at", null),
+          supabase
+            .from("student_frdo_data")
+            .select(
+              "user_id, last_name, first_name, middle_name, birth_date, gender, citizenship, passport_series, passport_number",
+            )
+            .in("user_id", ids),
+          supabase
+            .from("student_identity_documents")
+            .select("user_id, document_type, series, number")
+            .in("user_id", ids),
+        ]);
+
+        const frdoByUser = new Map<string, any>(
+          ((frdoRes.data as any[]) || []).map((r) => [r.user_id, r]),
+        );
+        const identityByUser = new Map<string, any>(
+          ((identityRes.data as any[]) || []).map((r) => [r.user_id, r]),
+        );
+
+        registration = ((recordsRes.data as any[]) || []).map((r) => {
+          const userId = r.enrollment_id ? byEnrollment.get(r.enrollment_id) || null : null;
+          return normalizeRegistrationFact(
+            { ...r, user_id: userId },
+            userId ? frdoByUser.get(userId) : null,
+            userId ? identityByUser.get(userId) : null,
+          );
+        });
       }
 
       setData({
         lessonCompletions,
-        attestation: Array.from(best.values()),
+        attestation,
         registration,
         // Структурированного расписания в Синтагме пока нет — ячейки остаются пустыми.
         schedule: [],
+        courseLinked: true,
+        warnings,
       });
     } catch {
-      setData(emptyFactualData());
+      setData(emptyFactualData(["Не удалось загрузить фактические данные."]));
     } finally {
       setLoading(false);
     }
