@@ -20,6 +20,14 @@ import {
 } from "@/lib/group-docs/packageTypes";
 import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
 import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
+import { useGroupFactualData } from "@/hooks/useGroupFactualData";
+import {
+  LEGACY_LAYOUT_FORMAT,
+  LEGACY_LAYOUT_NOTICE,
+  documentDataReadiness,
+  type DocumentFillMode,
+} from "@/lib/group-docs/factualData";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
@@ -62,6 +70,12 @@ export function GroupDocumentsFolder({
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
   const [busy, setBusy] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
+  const [mode, setMode] = useState<DocumentFillMode>("blank");
+  const { factual } = useGroupFactualData(
+    organizationId,
+    courseId,
+    useMemo(() => students.map(s => s.user_id), [students]),
+  );
 
   const typeTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -99,10 +113,19 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
+      const batchId = crypto.randomUUID();
+      const genOpts = {
+        totalPrice: price,
+        mode,
+        factual: mode === "data" ? factual : null,
+        requestedStatus: mode === "data" ? ("final" as const) : ("draft" as const),
+        packageBatchId: batchId,
+        packageVersion: 1,
+      };
       const docs = types.length === 1
-        ? [generateDocument(ctx, types[0], { totalPrice: price })]
-        : generatePackage(ctx, types, { totalPrice: price });
-      const ok = await saveGenerated(docs);
+        ? [generateDocument(ctx, types[0], genOpts)]
+        : generatePackage(ctx, types, genOpts);
+      const ok = await saveGenerated(docs, { batchId, version: 1 });
       if (ok) onDataChanged?.();
       if (ok && types.length === 1) toast.success("Документ сформирован");
       return ok;
@@ -142,6 +165,10 @@ export function GroupDocumentsFolder({
       html: row.html,
       status: "active" as const,
       created_at: row.created_at,
+      doc_status: (row.doc_status === "final" ? "final" : "draft") as "draft" | "final",
+      fill_mode: (row.fill_mode === "data" ? "data" : "blank") as "blank" | "data",
+      layout_format: row.layout_format || LEGACY_LAYOUT_FORMAT,
+      source_note: row.source_note ?? null,
     };
     if (download) downloadHtml(doc); else previewHtml(doc);
   };
