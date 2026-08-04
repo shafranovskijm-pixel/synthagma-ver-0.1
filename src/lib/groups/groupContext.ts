@@ -38,6 +38,49 @@ export function groupContextPath(tab: "journals" | "frdo", ctx: GroupContextPara
   return `/organization?${params.toString()}`;
 }
 
+/** Вкладки организации, которые умеют работать в контексте группы. */
+export const GROUP_CONTEXT_TABS = ["journals", "frdo"] as const;
+export type GroupContextTab = (typeof GROUP_CONTEXT_TABS)[number];
+
+export function isGroupContextTab(tab: string | null | undefined): tab is GroupContextTab {
+  return !!tab && (GROUP_CONTEXT_TABS as readonly string[]).includes(tab);
+}
+
+/**
+ * Чистый резолвер query-параметров при смене вкладки организации.
+ *
+ * Ключевое правило: вкладки `journals`/`frdo`, открытые из папки группы
+ * (признак — присутствие `returnToGroupId`), СОХРАНЯЮТ groupId + courseId +
+ * returnToGroupId. Любой уход на обычную вкладку полностью очищает контекст
+ * группы, чтобы он не протекал в данные всей организации.
+ */
+export function resolveTabParams(
+  prev: URLSearchParams | string,
+  tab: string | null | undefined,
+): URLSearchParams {
+  const next = new URLSearchParams(typeof prev === "string" ? prev : prev.toString());
+  if (!tab || tab === "courses") next.delete("tab");
+  else next.set("tab", tab);
+
+  const keepGroupContext = isGroupContextTab(tab) && !!next.get("returnToGroupId") && !!next.get("groupId");
+
+  if (keepGroupContext) {
+    // groupId / courseId / returnToGroupId остаются как есть
+    next.delete("studentId");
+    next.delete("folder");
+    return next;
+  }
+
+  if (tab !== "course-details") next.delete("courseId");
+  if (tab !== "student-details") next.delete("studentId");
+  if (tab !== "group-folder") {
+    next.delete("groupId");
+    next.delete("folder");
+  }
+  if (tab !== "group-folder") next.delete("returnToGroupId");
+  return next;
+}
+
 /** Фильтрация уже загруженных записей по участникам группы. */
 export function filterByGroupMembers<T extends { user_id: string }>(
   rows: T[],
