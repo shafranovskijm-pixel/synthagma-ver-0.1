@@ -69,9 +69,15 @@ export function scopedVariables(manifest: TemplateManifest, scope: string): Mani
 
 const isEmpty = (v: unknown) => v === null || v === undefined || String(v).trim() === "";
 
+/** [[N]] — вычисляемый номер строки слушателя. */
+export function numberStudents(students: Array<Record<string, string>>): Array<Record<string, string>> {
+  return students.map((s, i) => ({ N: String(i + 1), ...s }));
+}
+
 /** Блокирующая валидация снимка данных по правилам манифеста. */
 export function validateSnapshot(manifest: TemplateManifest, snapshot: ContractSnapshot): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  const students = numberStudents(snapshot.students || []);
 
   for (const v of scalarVariables(manifest)) {
     const key = v.token.slice(2, -2);
@@ -83,7 +89,7 @@ export function validateSnapshot(manifest: TemplateManifest, snapshot: ContractS
   if (!snapshot.programs?.length) issues.push({ code: "no_programs", message: "Не выбрана ни одна программа обучения" });
   if (!snapshot.students?.length) issues.push({ code: "no_students", message: "Не выбран ни один слушатель" });
 
-  for (const [scope, list] of [["programs[]", snapshot.programs || []], ["students[]", snapshot.students || []]] as const) {
+  for (const [scope, list] of [["programs[]", snapshot.programs || []], ["students[]", students]] as const) {
     const vars = scopedVariables(manifest, scope);
     list.forEach((item, index) => {
       for (const v of vars) {
@@ -199,7 +205,7 @@ export function compileDocumentXml(params: {
   // 1. Повторители — индексы таблиц берутся из исходного документа.
   const repeaters: Array<[string, Array<Record<string, string>>]> = [
     ["programs", snapshot.programs],
-    ["students", snapshot.students.map((s, i) => ({ N: String(i + 1), ...s }))],
+    ["students", numberStudents(snapshot.students)],
   ];
   for (const [name, items] of repeaters) {
     const cfg = manifest.repeaters?.[name];
