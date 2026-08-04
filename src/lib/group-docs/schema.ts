@@ -77,6 +77,17 @@ export interface GeneratedDocument {
   html: string;
   status: "active" | "draft";
   created_at: string;
+  /** Черновик или финальный документ. Final запрещён при неполных данных. */
+  doc_status: "draft" | "final";
+  /** Рабочий бланк или заполнение по данным Синтагмы. */
+  fill_mode: "blank" | "data";
+  /** Формат макета: legacy_html — приближение, не оригинальный DOCX клиента. */
+  layout_format: string;
+  /** Партия пакетной генерации. */
+  package_batch_id?: string | null;
+  package_version?: number | null;
+  /** Человеческое описание источника данных документа. */
+  source_note?: string | null;
 }
 
 /**

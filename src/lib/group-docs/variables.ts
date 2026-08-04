@@ -1,5 +1,26 @@
 import type { GenerationContext } from "./schema";
 import { VARIABLE_CATALOG } from "./variableCatalog";
+import {
+  ATTESTATION_SOURCE_LABEL,
+  JOURNAL_SOURCE_LABEL,
+  LEGACY_LAYOUT_NOTICE,
+  REGISTRATION_SOURCE_LABEL,
+  SCHEDULE_EMPTY_NOTICE,
+  SCHEDULE_SOURCE_LABEL,
+  buildAttestationBlankRows,
+  buildAttestationRowsFromFacts,
+  buildJournalBlankRows,
+  buildJournalHead,
+  buildJournalRowsFromFacts,
+  buildRegistrationBlankRows,
+  buildRegistrationRowsFromFacts,
+  buildScheduleBlankRows,
+  buildScheduleRowsFromFacts,
+  emptyFactualData,
+  journalDateColumns,
+  type DocumentFillMode,
+  type GroupFactualData,
+} from "./factualData";
 export { VARIABLE_CATALOG } from "./variableCatalog";
 
 const MONTHS_RU = [
@@ -193,65 +214,12 @@ function buildStudentListDetailRows(
     .join("");
 }
 
-function buildJournalRows(students: GenerationContext["students"]): string {
-  return students
-    .map(
-      (s, i) =>
-        `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>${esc(s.full_name)}</td>` +
-        `<td style="text-align:center">V</td>` +
-        `<td style="text-align:center">V</td>` +
-        `<td style="text-align:center">V</td>` +
-        `<td style="text-align:center">V</td></tr>`
-    )
-    .join("");
-}
+/**
+ * Журнал / ведомость / книга регистрации собираются в factualData.ts
+ * строго из snapshot Supabase. Здесь запрещено любое подставление
+ * отметок, баллов, оценок и номеров документов.
+ */
 
-function buildAttestationRows(students: GenerationContext["students"]): string {
-  // scores can later come from real exam results; demo values for prototype
-  const demo = [96, 88, 92, 85, 90, 78];
-  return students
-    .map((s, i) => {
-      const score = demo[i % demo.length];
-      const grade = score >= 90 ? "5" : score >= 75 ? "4" : score >= 60 ? "3" : "2";
-      return (
-        `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>${esc(s.full_name)}</td>` +
-        `<td style="text-align:center">${score}</td>` +
-        `<td style="text-align:center">${grade}</td></tr>`
-      );
-    })
-    .join("");
-}
-
-function buildRegistrationRows(
-  students: GenerationContext["students"],
-  ctx: GenerationContext,
-  orderNum: string
-): string {
-  return students
-    .map((s, i) => {
-      const pp = resolvePassport(s);
-      const passportStr = pp.series
-        ? `серия ${pp.series} № ${pp.number}`
-        : s.passport || "";
-      return (
-        `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>Удостоверение о повышении квалификации</td>` +
-        `<td>${esc(ctx.group.program_title)}. Группа ${esc(ctx.group.number)}</td>` +
-        `<td></td><td></td>` +
-        `<td>${esc(s.full_name)}</td>` +
-        `<td>${esc(s.birth_date || "")}</td>` +
-        `<td style="text-align:center">${esc(s.gender || "")}</td>` +
-        `<td>${esc(passportStr)}</td>` +
-        `<td>${esc(s.citizenship || "Российская Федерация")}</td>` +
-        `<td>${esc(orderNum)}</td>` +
-        `<td>${formatDateShort(ctx.group.end_date)}</td>` +
-        `<td></td><td></td></tr>`
-      );
-    })
-    .join("");
-}
 
 function buildPassRows(
   students: GenerationContext["students"],
@@ -285,6 +253,10 @@ export interface BuildVariablesOptions {
   primaryStudentIndex?: number;
   totalPrice?: number;
   paymentDeadline?: string;
+  /** "blank" — рабочий бланк, "data" — заполнение по данным Синтагмы. */
+  mode?: DocumentFillMode;
+  /** Snapshot фактических данных Supabase (обязателен для mode="data"). */
+  factual?: GroupFactualData | null;
 }
 
 export function buildVariables(
@@ -296,6 +268,9 @@ export function buildVariables(
   const orderNum = opts.documentNumber || "";
   const price = opts.totalPrice ?? Number(ctx.extras?.total_price || 0);
   const days = trainingDays(ctx.group.start_date, ctx.group.end_date);
+  const dataMode = opts.mode === "data";
+  const factual = opts.factual || emptyFactualData();
+  const journalDates = journalDateColumns(factual.lessonCompletions);
 
   const hasCompany = !!(ctx.company && ctx.company.name);
   const customerName = hasCompany
@@ -415,10 +390,40 @@ export function buildVariables(
     students_table: buildStudentsTable(ctx.students),
     students_list_rows: buildStudentListRows(ctx.students, ctx, basisForOrders),
     student_list_detail_rows: buildStudentListDetailRows(ctx.students),
-    journal_rows: buildJournalRows(ctx.students),
-    attestation_rows: buildAttestationRows(ctx.students),
-    registration_rows: buildRegistrationRows(ctx.students, ctx, orderNum),
+    journal_head: dataMode
+      ? buildJournalHead(journalDates)
+      : buildJournalHead([]),
+    journal_rows: dataMode
+      ? buildJournalRowsFromFacts(ctx.students, factual.lessonCompletions, journalDates)
+      : buildJournalBlankRows(ctx.students),
+    journal_source_note: dataMode
+      ? JOURNAL_SOURCE_LABEL
+      : "Рабочий бланк: отметки заполняются вручную.",
+    attestation_rows: dataMode
+      ? buildAttestationRowsFromFacts(ctx.students, factual.attestation)
+      : buildAttestationBlankRows(ctx.students),
+    attestation_source_note: dataMode
+      ? ATTESTATION_SOURCE_LABEL
+      : "Рабочий бланк: результаты заполняются вручную.",
+    registration_rows: dataMode
+      ? buildRegistrationRowsFromFacts(factual.registration)
+      : buildRegistrationBlankRows(ctx.students),
+    registration_source_note: dataMode
+      ? REGISTRATION_SOURCE_LABEL
+      : "Рабочий бланк: номера документов заполняются вручную.",
+    schedule_rows: dataMode
+      ? buildScheduleRowsFromFacts(factual.schedule)
+      : buildScheduleBlankRows(),
+    schedule_notice:
+      dataMode && factual.schedule.length === 0
+        ? SCHEDULE_EMPTY_NOTICE
+        : dataMode
+          ? SCHEDULE_SOURCE_LABEL
+          : "Рабочий бланк: занятия заполняются вручную.",
+    layout_notice: LEGACY_LAYOUT_NOTICE,
+    fill_mode: dataMode ? "Заполнено по данным Синтагмы" : "Рабочий бланк",
     pass_rows: buildPassRows(ctx.students, ctx),
+
   };
 
   if (ctx.extras) {
@@ -436,7 +441,9 @@ export function renderTemplate(
     "students_table",
     "students_list_rows",
     "student_list_detail_rows",
+    "journal_head",
     "journal_rows",
+    "schedule_rows",
     "attestation_rows",
     "registration_rows",
     "pass_rows",

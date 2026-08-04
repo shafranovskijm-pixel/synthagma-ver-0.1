@@ -16,6 +16,12 @@ export interface GroupDocumentRow {
   file_path: string | null;
   status: string;
   created_at: string;
+  doc_status?: string | null;
+  fill_mode?: string | null;
+  layout_format?: string | null;
+  source_note?: string | null;
+  package_batch_id?: string | null;
+  package_version?: number | null;
 }
 
 export function useGroupDocuments(organizationId: string | null, groupId: string | null) {
@@ -44,7 +50,7 @@ export function useGroupDocuments(organizationId: string | null, groupId: string
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const saveGenerated = useCallback(async (docs: GeneratedDocument[]) => {
+  const saveGenerated = useCallback(async (docs: GeneratedDocument[], batch?: { batchId?: string | null; version?: number | null }) => {
     if (!organizationId || !groupId || docs.length === 0) return false;
     const { data: userRes } = await supabase.auth.getUser();
     const rows = docs.map(d => ({
@@ -57,6 +63,12 @@ export function useGroupDocuments(organizationId: string | null, groupId: string
       variables: d.variables,
       html: d.html,
       status: "active",
+      doc_status: d.doc_status,
+      fill_mode: d.fill_mode,
+      layout_format: d.layout_format,
+      source_note: d.source_note ?? null,
+      package_batch_id: batch?.batchId ?? d.package_batch_id ?? null,
+      package_version: batch?.version ?? d.package_version ?? null,
       created_by: userRes?.user?.id || null,
     }));
     const { error } = await (supabase as any).from("group_documents").insert(rows);

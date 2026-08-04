@@ -20,6 +20,14 @@ import {
 } from "@/lib/group-docs/packageTypes";
 import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
 import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
+import { useGroupFactualData } from "@/hooks/useGroupFactualData";
+import {
+  LEGACY_LAYOUT_FORMAT,
+  LEGACY_LAYOUT_NOTICE,
+  documentDataReadiness,
+  type DocumentFillMode,
+} from "@/lib/group-docs/factualData";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
@@ -62,6 +70,12 @@ export function GroupDocumentsFolder({
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
   const [busy, setBusy] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
+  const [mode, setMode] = useState<DocumentFillMode>("blank");
+  const { factual } = useGroupFactualData(
+    organizationId,
+    courseId,
+    useMemo(() => students.map(s => s.user_id), [students]),
+  );
 
   const typeTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -88,6 +102,16 @@ export function GroupDocumentsFolder({
     students_count: ctx?.students.length || 0,
   }), [ctx]);
 
+  /** Готовность данных по документам пакета — чтобы честно предупредить менеджера. */
+  const readiness = useMemo(
+    () =>
+      PACKAGE_DOC_TYPES.map(t => ({
+        type: t,
+        info: documentDataReadiness(t, factual, students.length),
+      })).filter(r => r.info && r.info.finalBlocked),
+    [factual, students.length],
+  );
+
   const run = async (types: DocType[], docBlockers?: string[]) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
     const gate = docBlockers ?? packageBlockers;
@@ -99,10 +123,19 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
+      const batchId = crypto.randomUUID();
+      const genOpts = {
+        totalPrice: price,
+        mode,
+        factual: mode === "data" ? factual : null,
+        requestedStatus: mode === "data" ? ("final" as const) : ("draft" as const),
+        packageBatchId: batchId,
+        packageVersion: 1,
+      };
       const docs = types.length === 1
-        ? [generateDocument(ctx, types[0], { totalPrice: price })]
-        : generatePackage(ctx, types, { totalPrice: price });
-      const ok = await saveGenerated(docs);
+        ? [generateDocument(ctx, types[0], genOpts)]
+        : generatePackage(ctx, types, genOpts);
+      const ok = await saveGenerated(docs, { batchId, version: 1 });
       if (ok) onDataChanged?.();
       if (ok && types.length === 1) toast.success("Документ сформирован");
       return ok;
@@ -142,6 +175,10 @@ export function GroupDocumentsFolder({
       html: row.html,
       status: "active" as const,
       created_at: row.created_at,
+      doc_status: (row.doc_status === "final" ? "final" : "draft") as "draft" | "final",
+      fill_mode: (row.fill_mode === "data" ? "data" : "blank") as "blank" | "data",
+      layout_format: row.layout_format || LEGACY_LAYOUT_FORMAT,
+      source_note: row.source_note ?? null,
     };
     if (download) downloadHtml(doc); else previewHtml(doc);
   };
@@ -166,6 +203,32 @@ export function GroupDocumentsFolder({
           </div>
         </Card>
       )}
+
+      {/* Режим документа */}
+      <Card className="p-4 rounded-2xl border-border">
+        <Tabs value={mode} onValueChange={v => setMode(v as DocumentFillMode)}>
+          <TabsList className="rounded-xl">
+            <TabsTrigger value="blank" className="rounded-lg">Рабочий бланк</TabsTrigger>
+            <TabsTrigger value="data" className="rounded-lg">Заполнить по данным Синтагмы</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="text-xs text-muted-foreground mt-2">
+          {mode === "blank"
+            ? "Ячейки остаются честно пустыми — документ печатается как бланк и сохраняется со статусом «черновик»."
+            : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">{LEGACY_LAYOUT_NOTICE}</div>
+        {mode === "data" && readiness.length > 0 && (
+          <div className="mt-3 text-xs text-muted-foreground space-y-1">
+            <div className="font-medium text-foreground">Данных недостаточно — документы останутся черновиками:</div>
+            {readiness.map(r => (
+              <div key={r.type}>
+                · {typeTitle.get(r.type) || r.type}: {r.info?.warning || r.info?.source}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
@@ -240,6 +303,19 @@ export function GroupDocumentsFolder({
                   <div className="text-xs text-muted-foreground truncate">
                     {typeTitle.get(row.doc_type) || row.doc_type}
                     {row.document_date ? ` · ${format(new Date(row.document_date), "d MMM yyyy", { locale: ru })}` : ""}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <Badge variant={row.doc_status === "final" ? "default" : "secondary"} className="rounded-full text-[10px]">
+                      {row.doc_status === "final" ? "Итоговый" : "Черновик"}
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full text-[10px]">
+                      {row.fill_mode === "data" ? "По данным Синтагмы" : "Рабочий бланк"}
+                    </Badge>
+                    {(row.layout_format || LEGACY_LAYOUT_FORMAT) === LEGACY_LAYOUT_FORMAT && (
+                      <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
+                        макет legacy_html
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

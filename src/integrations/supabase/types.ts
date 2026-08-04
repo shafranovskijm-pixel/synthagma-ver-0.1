@@ -4098,15 +4098,22 @@ export type Database = {
           company_id: string | null
           created_at: string
           created_by: string | null
+          doc_status: string
           doc_type: string
           document_date: string | null
           document_number: string | null
           file_path: string | null
+          fill_mode: string
           group_id: string
           html: string | null
           id: string
+          is_current: boolean
+          layout_format: string
           name: string
           organization_id: string
+          package_batch_id: string | null
+          package_version: number | null
+          source_note: string | null
           status: string
           student_user_id: string | null
           updated_at: string
@@ -4116,15 +4123,22 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          doc_status?: string
           doc_type: string
           document_date?: string | null
           document_number?: string | null
           file_path?: string | null
+          fill_mode?: string
           group_id: string
           html?: string | null
           id?: string
+          is_current?: boolean
+          layout_format?: string
           name: string
           organization_id: string
+          package_batch_id?: string | null
+          package_version?: number | null
+          source_note?: string | null
           status?: string
           student_user_id?: string | null
           updated_at?: string
@@ -4134,15 +4148,22 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          doc_status?: string
           doc_type?: string
           document_date?: string | null
           document_number?: string | null
           file_path?: string | null
+          fill_mode?: string
           group_id?: string
           html?: string | null
           id?: string
+          is_current?: boolean
+          layout_format?: string
           name?: string
           organization_id?: string
+          package_batch_id?: string | null
+          package_version?: number | null
+          source_note?: string | null
           status?: string
           student_user_id?: string | null
           updated_at?: string
