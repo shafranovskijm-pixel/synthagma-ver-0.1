@@ -44,8 +44,17 @@ describe("registration fact normalization", () => {
   it("подтягивает ФИО/рождение/пол/паспорт из ФРДО и удостоверения", () => {
     const fact = normalizeRegistrationFact(
       { id: "r1", user_id: "u1", document_number: "77", issue_date: "2026-01-01" } as never,
-      { last_name: "Иванов", first_name: "Иван", middle_name: "Ильич", birth_date: "1990-02-03", gender: "male" } as never,
-      { passport_series: "1234", passport_number: "567890", citizenship: "РФ" } as never,
+      {
+        last_name: "Иванов",
+        first_name: "Иван",
+        middle_name: "Ильич",
+        birth_date: "1990-02-03",
+        gender: "male",
+        passport_series: "1234",
+        passport_number: "567890",
+        citizenship: "РФ",
+      } as never,
+      null,
     );
     expect(fact.full_name).toBe("Иванов Иван Ильич");
     expect(fact.gender).toBe("М");
