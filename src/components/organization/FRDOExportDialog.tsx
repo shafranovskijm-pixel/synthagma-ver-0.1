@@ -37,6 +37,8 @@ import {
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { CitizenshipCombobox } from "./CitizenshipCombobox";
 import { normalizeRuPhone } from "@/utils/phoneParser";
+import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { localDateIso } from "@/lib/date/localDate";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
