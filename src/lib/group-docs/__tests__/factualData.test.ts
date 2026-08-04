@@ -73,13 +73,19 @@ describe("factualData: никаких выдуманных значений", ()
 });
 
 describe("generateDocument: статусы и формат макета", () => {
+  // Номера всегда приходят с сервера — в тестах передаём зарезервированные.
+  const NUMS: Record<string, string> = {
+    contract: "2026-001",
+    enrollment_order: "УЦ-1/2026",
+    expulsion_order: "УЦ-2/2026",
+  };
   const legacyTypes = GROUP_DOCUMENT_TYPES.filter(
     t => t.folder === "docs" && t.key !== "contract",
   ).map(t => t.key as DocType);
 
   it("рабочий бланк всегда draft", () => {
     for (const type of legacyTypes) {
-      const doc = generateDocument(ctx, type, { mode: "blank", requestedStatus: "final" });
+      const doc = generateDocument(ctx, type, { mode: "blank", requestedStatus: "final", numbers: NUMS });
       expect(doc.doc_status).toBe("draft");
       expect(doc.fill_mode).toBe("blank");
       expect(doc.layout_format).toBe(LEGACY_LAYOUT_FORMAT);
@@ -92,6 +98,7 @@ describe("generateDocument: статусы и формат макета", () => 
         mode: "data",
         factual: emptyFactualData(),
         requestedStatus: "final",
+        numbers: NUMS,
       });
       expect(doc.fill_mode).toBe("data");
       if (documentDataReadiness(type, emptyFactualData(), ctx.students.length)?.finalBlocked) {
@@ -102,7 +109,7 @@ describe("generateDocument: статусы и формат макета", () => 
 
   it("девять legacy-документов помечены legacy_html и предупреждением", () => {
     for (const type of legacyTypes) {
-      const doc = generateDocument(ctx, type, { mode: "blank" });
+      const doc = generateDocument(ctx, type, { mode: "blank", numbers: NUMS });
       expect(doc.layout_format).toBe(LEGACY_LAYOUT_FORMAT);
       expect(doc.html).toContain("legacy_html");
     }
@@ -110,7 +117,7 @@ describe("generateDocument: статусы и формат макета", () => 
 
   it("в сгенерированном HTML нет hardcoded отметок и демо-баллов", () => {
     for (const type of legacyTypes) {
-      const doc = generateDocument(ctx, type, { mode: "blank" });
+      const doc = generateDocument(ctx, type, { mode: "blank", numbers: NUMS });
       expect(doc.html).not.toMatch(/<td[^>]*>\s*V\s*<\/td>/);
       expect(doc.html).not.toMatch(/<td[^>]*>\s*(9[0-9]|8[0-9])\s*<\/td>/);
     }
