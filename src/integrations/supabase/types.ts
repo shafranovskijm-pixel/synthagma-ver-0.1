@@ -11129,6 +11129,14 @@ export type Database = {
             }
             Returns: string
           }
+      create_group_document_batch: {
+        Args: { p_docs: Json; p_group_id: string; p_organization_id: string }
+        Returns: {
+          batch_id: string
+          batch_version: number
+          inserted_count: number
+        }[]
+      }
       create_organization: {
         Args: {
           p_contact_name?: string
