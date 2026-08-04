@@ -5,13 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package } from "lucide-react";
+import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 import { useGroupContracts, type GroupContractRow } from "@/hooks/useGroupContracts";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 import { toast } from "sonner";
 import { GenerateContractDialog } from "./GenerateContractDialog";
+import { ContractPreviewDialog } from "./ContractPreviewDialog";
 import { UploadContractDialog } from "./UploadContractDialog";
 import { UploadTemplateDialog } from "./UploadTemplateDialog";
 import {
@@ -39,6 +40,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
   const [tplOpen, setTplOpen] = useState(false);
   const [toDelete, setToDelete] = useState<string | null>(null);
   const [docxBusy, setDocxBusy] = useState(false);
+  const [preview, setPreview] = useState<GroupContractRow | null>(null);
 
 
   const stats = useMemo(() => ({
@@ -198,6 +200,14 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
           </Table>
         )}
       </div>
+
+      <ContractPreviewDialog
+        open={!!preview}
+        onOpenChange={(o) => { if (!o) setPreview(null); }}
+        contract={preview}
+        onDownloadPdf={(c) => openFile(c.file_path)}
+        onDownloadDocx={(c) => downloadDocx(c)}
+      />
 
       <GenerateContractDialog
         organizationId={organizationId}
