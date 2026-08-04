@@ -84,7 +84,6 @@ const COMPANY_FIELDS: Array<[string, string]> = [
 ];
 
 const GROUP_FIELDS: Array<[string, string]> = [
-  ["DOC_NO", "Номер договора"],
   ["DOC_DATE", "Дата договора"],
   ["TRAINING_ADDR", "Место обучения"],
   ["SCHEDULE", "Режим занятий"],
@@ -123,11 +122,35 @@ function group(
   return { id, title, fields, missing, ready: missing.length === 0 };
 }
 
+export interface ReadinessOptions {
+  /**
+   * true — номер договора назначается автонумерацией при отправке формы,
+   * поэтому пустой DOC_NO до submit не считается незаполненным полем.
+   */
+  autoAssignNumber?: boolean;
+}
+
 /** Проверка готовности данных — зеркало серверных blocking_rules манифеста. */
-export function evaluateDocxReadiness(draft: DocxContractDraft): ReadinessGroup[] {
+export function evaluateDocxReadiness(
+  draft: DocxContractDraft,
+  opts: ReadinessOptions = { autoAssignNumber: true },
+): ReadinessGroup[] {
+  const groupInfo = group("group", "Договор, группа и место обучения", GROUP_FIELDS, draft.scalars);
+  const docNo = (draft.scalars.DOC_NO || "").trim();
+  groupInfo.fields.unshift({
+    key: "DOC_NO",
+    label: "Номер договора",
+    value: docNo || (opts.autoAssignNumber ? "будет назначен автоматически" : ""),
+    required: true,
+  });
+  if (!docNo && !opts.autoAssignNumber) {
+    groupInfo.missing.unshift("Номер договора");
+    groupInfo.ready = false;
+  }
+
   const groups: ReadinessGroup[] = [
     group("company", "Заказчик и подписант", COMPANY_FIELDS, draft.scalars),
-    group("group", "Договор, группа и место обучения", GROUP_FIELDS, draft.scalars),
+    groupInfo,
   ];
 
   const payment = group("payment", "Стоимость, НДС и оплата", PAYMENT_FIELDS, draft.scalars);
@@ -245,10 +268,13 @@ export function companyScalars(company: CompanyLike | null | undefined): Record<
   out.CUST_ACCOUNT = company.bank_account || "";
   out.CUST_BIK = company.bank_bik || "";
   out.CUST_CORR = company.bank_corr_account || "";
+  // Никаких «типовых» значений: должность и основание полномочий берутся ТОЛЬКО
+  // из сохранённых реквизитов компании (signatory_*). Пустое обязательное поле
+  // блокирует финальный договор — это осознанно.
   out.CUST_REP_SHORT = company.director ? shortName(company.director) : "";
-  out.CUST_REP_POS = company.signatory_position || (company.director ? "Генеральный директор" : "");
+  out.CUST_REP_POS = company.signatory_position || "";
   out.CUST_REP_GEN = company.signatory_name_genitive || "";
-  out.CUST_AUTH = company.signatory_authority_clause || (company.director ? "Уставе" : "");
+  out.CUST_AUTH = company.signatory_authority_clause || "";
   return out;
 }
 
@@ -346,29 +372,39 @@ export function groupDatesText(start?: string | null, end?: string | null): stri
 }
 
 /**
- * Режим занятий: приоритет — поле группы «Режим занятий», затем вывод
- * из формы обучения и объёма часов.
+ * Режим занятий договора: ТОЛЬКО student_groups.schedule_text.
+ * Форма обучения и объём часов не являются режимом занятий и не подставляются.
  */
 export function groupScheduleText(group: GroupLike | null | undefined): string {
+  const v = group?.schedule_text;
+  return v && v.trim() ? v.trim() : "";
+}
+
+/**
+ * Подсказка для UI (не значение договора): что известно о форме и объёме,
+ * чтобы оператор сам сформулировал режим занятий в настройках группы.
+ */
+export function groupScheduleHint(group: GroupLike | null | undefined): string {
   if (!group) return "";
-  if (group.schedule_text && group.schedule_text.trim()) return group.schedule_text.trim();
   const parts: string[] = [];
-  if (group.program_form) parts.push(`Форма обучения: ${group.program_form}`);
+  if (group.program_form) parts.push(`форма обучения: ${group.program_form}`);
   if (group.program_hours) parts.push(`объём ${group.program_hours} ч.`);
   return parts.join(", ");
 }
 
 /**
- * Учебный план шаблона, соответствующий названию программы группы.
- * Возвращает null, если однозначного совпадения нет — тогда выбор делает пользователь.
+ * Учебный план шаблона по названию программы группы или курса.
+ * Только точное совпадение без учёта регистра — никаких частичных совпадений:
+ * если названия не совпали, выбор приложения делает пользователь явно.
  */
-export function matchGroupCurriculum(programTitle?: string | null): string | null {
-  const t = String(programTitle || "").trim().toLowerCase();
-  if (!t) return null;
-  const exact = GORELTECH_CURRICULA.find((c) => c.toLowerCase() === t);
-  if (exact) return exact;
-  const partial = GORELTECH_CURRICULA.filter((c) => c.toLowerCase().includes(t) || t.includes(c.toLowerCase()));
-  return partial.length === 1 ? partial[0] : null;
+export function matchGroupCurriculum(programTitle?: string | null, courseTitle?: string | null): string | null {
+  for (const candidate of [programTitle, courseTitle]) {
+    const t = String(candidate || "").trim().toLowerCase();
+    if (!t) continue;
+    const exact = GORELTECH_CURRICULA.find((c) => c.toLowerCase() === t);
+    if (exact) return exact;
+  }
+  return null;
 }
 
 export interface ProfileLike {
@@ -383,6 +419,9 @@ export interface ProfileLike {
 
 export interface FrdoLike {
   education_level?: string | null;
+  last_name?: string | null;
+  first_name?: string | null;
+  middle_name?: string | null;
 }
 
 export interface StudentSources {
@@ -409,9 +448,14 @@ export function studentRowFromSources(src: StudentSources): StudentDraftRow {
   const p = src.profile || {};
   const contacts = [src.email || p.contact_email || p.email || "", p.phone || ""].filter(Boolean).join(", ");
   const address = [p.region || "", p.city || ""].filter(Boolean).join(", ");
+  const frdoFio = [src.frdo?.last_name, src.frdo?.first_name, src.frdo?.middle_name]
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .join(" ");
   return {
     user_id: src.user_id,
-    fio: src.full_name || p.full_name || "",
+    // ФИО договора: сначала официальные поля ФИС ФРДО, затем ФИО профиля.
+    fio: frdoFio || src.full_name || p.full_name || "",
     edu: (src.frdo?.education_level || "").trim(),
     contacts,
     position: (p.job_position || "").trim(),
@@ -442,6 +486,22 @@ export function initialDocxScalars(group: GroupLike | null | undefined, dateIso:
   };
 }
 
+
+/**
+ * Однократное получение номера договора.
+ * Если номер уже получен (в т.ч. после неудачной компиляции) — RPC не вызывается снова,
+ * поэтому повторная попытка использует тот же номер и не «съедает» последовательность.
+ */
+export async function acquireContractNumber(
+  current: string | null | undefined,
+  reserve: () => Promise<string>,
+): Promise<string> {
+  const existing = String(current || "").trim();
+  if (existing) return existing;
+  const next = String((await reserve()) || "").trim();
+  if (!next) throw new Error("Автонумерация не вернула номер договора");
+  return next;
+}
 
 export interface GenerateDocxParams {
   templateKey: string;

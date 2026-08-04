@@ -22,18 +22,22 @@ import {
   applyCompanySelection,
   evaluateDocxReadiness,
   fetchDocxTemplates,
+  acquireContractNumber,
   fieldSourceLabel,
   formatContractDateRu,
+  groupScheduleHint,
   generateDocxContract,
   groupDatesText,
   initialDocxScalars,
   isDocxDraftReady,
   matchGroupCurriculum,
   studentRowFromSources,
+  DOCX_FIELD_SOURCES,
   type DocxContractDraft,
   type RegistryTemplate,
 } from "@/lib/contracts/docxContract";
 import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
+import { groupFolderPath, studentDetailsPath } from "@/lib/groups/groupContext";
 
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
@@ -68,6 +72,29 @@ interface StudentRow {
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Подпись источника значения + реальное действие «где это исправить».
+ * Ручная правка честно называется снимком (snapshot) этого договора.
+ */
+function SourceHint({ fieldKey, groupId, edited }: { fieldKey: string; groupId?: string; edited?: boolean }) {
+  const source = DOCX_FIELD_SOURCES[fieldKey] || "manual";
+  const action =
+    source === "company"
+      ? { text: "Изменить в карточке компании", href: "/organization?tab=companies" }
+      : source === "group"
+        ? { text: "Изменить в настройках группы", href: groupId ? groupFolderPath(groupId) : null }
+        : null;
+  return (
+    <p className="text-[11px] text-muted-foreground">
+      Источник: {fieldSourceLabel(fieldKey)}
+      {action && action.href && (
+        <> · <a className="underline hover:text-foreground" href={action.href}>{action.text}</a></>
+      )}
+      {edited && <> · правка сохранится только как снимок (snapshot) этого договора</>}
+    </p>
+  );
+}
+
 export function GenerateDocxContractDialog({ open, onClose, organizationId, groupId, groupName, students, onGenerated }: Props) {
   const [templates, setTemplates] = useState<RegistryTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState<string>("");
@@ -81,28 +108,17 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [numberBusy, setNumberBusy] = useState(false);
+  /** Номер договора, полученный автонумерацией. Хранится, чтобы retry не брал новый номер. */
+  const [assignedNumber, setAssignedNumber] = useState<string>("");
+  const [scheduleHint, setScheduleHint] = useState<string>("");
+  const [curriculumMatched, setCurriculumMatched] = useState<boolean>(false);
+  const [manualKeys, setManualKeys] = useState<Set<string>>(new Set());
 
-  const setField = (key: string, value: string) => setScalars((prev) => ({ ...prev, [key]: value }));
-
-  /** Номер договора — только через серверную автонумерацию Синтагмы. */
-  const reserveNumber = async () => {
-    setNumberBusy(true);
-    try {
-      const { data, error } = await supabase.rpc("get_next_document_number", {
-        p_org: organizationId,
-        p_doc_type: "contract",
-        p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
-      });
-      if (error) throw error;
-      setField("DOC_NO", String(data || ""));
-      toast.success("Номер договора зарезервирован");
-    } catch (e: any) {
-      toast.error("Не удалось получить номер", { description: e?.message });
-    } finally {
-      setNumberBusy(false);
-    }
-  };
+  const setField = (key: string, value: string) =>
+    setScalars((prev) => {
+      setManualKeys((m) => (m.has(key) ? m : new Set(m).add(key)));
+      return { ...prev, [key]: value };
+    });
 
   // Каждое открытие диалога начинается с чистого состояния: данные предыдущего
   // договора (компания, реквизиты, приложения, слушатели) не переносятся.
@@ -114,6 +130,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     setTaxChosen(false);
     setAmount(0);
     setRows([]);
+    setAssignedNumber("");
+    setManualKeys(new Set());
+    setCurriculumMatched(false);
+    setScheduleHint("");
     const iso = todayIso();
     setDocDateIso(iso);
     setScalars(initialDocxScalars(null, iso));
@@ -131,7 +151,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
             .eq("student_group_id", groupId),
           supabase
             .from("student_frdo_data")
-            .select("user_id, education_level")
+            .select("user_id, education_level, last_name, first_name, middle_name")
             .eq("organization_id", organizationId),
         ]);
         setTemplates(tpls);
@@ -141,9 +161,22 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         setAmount(Number(g?.default_price) || 0);
         setScalars(initialDocxScalars(g, iso));
         setCompanies((companiesRes.data as any[]) || []);
+        setScheduleHint(groupScheduleHint(g));
 
-        // Учебный план подставляется автоматически, если программа группы совпала с шаблоном.
-        const matched = matchGroupCurriculum(g?.program_title);
+        // Название курса группы — второй допустимый источник точного совпадения.
+        let courseTitle: string | null = null;
+        if (g?.course_id) {
+          const { data: courseRow } = await supabase
+            .from("courses")
+            .select("title")
+            .eq("id", g.course_id)
+            .maybeSingle();
+          courseTitle = (courseRow as any)?.title || null;
+        }
+
+        // Учебный план подставляется только при точном совпадении названия.
+        const matched = matchGroupCurriculum(g?.program_title, courseTitle);
+        setCurriculumMatched(!!matched);
         if (matched) setCurricula([matched]);
 
         const byUser = new Map<string, any>(((profilesRes.data as any[]) || []).map((p) => [p.user_id, p]));
@@ -216,9 +249,27 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const ready = isDocxDraftReady(readiness) && !!companyId && !!templateKey && !!docDateIso;
 
   const submit = async () => {
-    if (!ready) return;
+    if (!ready || busy) return;
     setBusy(true);
     try {
+      // Один номер на весь submit: RPC вызывается максимум один раз,
+      // повторная попытка после ошибки компиляции переиспользует его.
+      const docNo = await acquireContractNumber(assignedNumber, async () => {
+        const { data, error } = await supabase.rpc("get_next_document_number", {
+          p_org: organizationId,
+          p_doc_type: "contract",
+          p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
+        });
+        if (error) throw error;
+        return String(data || "");
+      });
+      if (docNo !== assignedNumber) setAssignedNumber(docNo);
+
+      const finalDraft: DocxContractDraft = {
+        ...draft,
+        scalars: { ...draft.scalars, DOC_NO: docNo },
+      };
+
       const res = await generateDocxContract({
         templateKey,
         organizationId,
@@ -226,10 +277,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         companyId,
         studentUserIds: rows.map((r) => r.user_id),
         studentsMeta: rows.map((r) => ({ user_id: r.user_id, full_name: r.fio })),
-        contractName: `Договор ${scalars.DOC_NO} — ${scalars.CUST_NAME}`,
-        contractNumber: scalars.DOC_NO,
+        contractName: `Договор ${docNo} — ${scalars.CUST_NAME}`,
+        contractNumber: docNo,
         contractDate: docDateIso,
-        draft,
+        draft: finalDraft,
       });
       toast.success("Договор сформирован (Word)", {
         description: `Приложения: ${res.keptCurricula.length}. PDF пока недоступен — доступен DOCX.`,
@@ -335,13 +386,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <div key={key} className="space-y-1.5">
                       <Label htmlFor={key}>{label}</Label>
                       <Input id={key} value={scalars[key] || ""} onChange={(e) => setField(key, e.target.value)} />
-                      <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel(key)}</p>
+                      <SourceHint fieldKey={key} groupId={groupId} edited={manualKeys.has(key)} />
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Данные подставляются из карточки компании. Чтобы они заполнялись автоматически, заполните раздел
-                  «Реквизиты для документов» в карточке компании.
+                  Значения берутся только из карточки компании: должность подписанта и основание полномочий
+                  не подставляются «по умолчанию». Заполните раздел «Реквизиты для документов» в карточке компании,
+                  иначе договор нельзя сформировать.
                 </p>
               </div>
 
@@ -351,13 +403,13 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_NO">Номер договора</Label>
-                    <div className="flex gap-2">
-                      <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} placeholder="Зарезервируйте номер" />
-                      <Button type="button" variant="outline" onClick={reserveNumber} disabled={numberBusy}>
-                        {numberBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Номер"}
-                      </Button>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("DOC_NO")}</p>
+                    <Input
+                      id="DOC_NO"
+                      value={assignedNumber || "будет назначен автоматически"}
+                      readOnly
+                      disabled
+                    />
+                    <SourceHint fieldKey="DOC_NO" groupId={groupId} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_DATE_ISO">Дата договора</Label>
@@ -372,12 +424,17 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   <div className="space-y-1.5">
                     <Label htmlFor="TRAINING_ADDR">Место обучения</Label>
                     <Input id="TRAINING_ADDR" value={scalars.TRAINING_ADDR || ""} onChange={(e) => setField("TRAINING_ADDR", e.target.value)} />
-                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("TRAINING_ADDR")}</p>
+                    <SourceHint fieldKey="TRAINING_ADDR" groupId={groupId} edited={manualKeys.has("TRAINING_ADDR")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="SCHEDULE">Режим занятий</Label>
                     <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} />
-                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("SCHEDULE")}</p>
+                    <SourceHint fieldKey="SCHEDULE" groupId={groupId} edited={manualKeys.has("SCHEDULE")} />
+                    {scheduleHint && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Справочно из группы: {scheduleHint}. Это не режим занятий — сформулируйте его в настройках группы.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -422,6 +479,16 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
               {/* Приложения */}
               <div className="space-y-2">
                 <div className="text-sm font-semibold">Приложения (учебные планы)</div>
+                {!curriculumMatched && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    <AlertTitle>Учебный план не определён автоматически</AlertTitle>
+                    <AlertDescription>
+                      Название программы группы (или курса) не совпадает точно ни с одним планом шаблона.
+                      Выберите план вручную — договор не будет сформирован без выбранного приложения.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="space-y-2">
                   {GORELTECH_CURRICULA.map((title) => (
                     <label key={title} className="flex items-start gap-2 text-sm">
@@ -461,17 +528,23 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-[11px] text-muted-foreground">Источник: Данные ФИС ФРДО</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Источник: Данные ФИС ФРДО · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a>
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`contacts-${i}`}>Контакты</Label>
                         <Input id={`contacts-${i}`} value={r.contacts} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, contacts: e.target.value } : x))} />
-                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Источник: Профиль ученика · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a>
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pos-${i}`}>Должность</Label>
                         <Input id={`pos-${i}`} value={r.position} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, position: e.target.value } : x))} />
-                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Источник: Профиль ученика · <a className="underline hover:text-foreground" href={studentDetailsPath(r.user_id)}>Изменить в карточке ученика</a> · правка здесь — снимок (snapshot) этого договора
+                        </p>
                       </div>
 
                       <div className="space-y-1.5">
