@@ -6,6 +6,7 @@ import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
+import { filterByGroupContext, resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
 export interface DocumentRecord {
   id: string;
@@ -21,6 +22,10 @@ export interface DocumentRecord {
   source: "issuance_log" | "company_document" | "enrollment";
   is_editable: boolean;
   file_url: string | null;
+  /** Учётная запись ученика, если документ относится к ученику. */
+  user_id: string | null;
+  /** Курс, если документ относится к обучению. */
+  course_id: string | null;
 }
 
 export const DOCUMENT_TYPE_LABELS: Record<string, { label: string; prefix: string }> = {
@@ -50,7 +55,7 @@ const generateRegNumber = (
   return `${prefix}-${year}/${currentCount.toString().padStart(3, "0")}`;
 };
 
-export function useDocumentRegistrationJournal(organizationId: string) {
+export function useDocumentRegistrationJournal(organizationId: string, groupContext?: GroupJournalContext | null) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [records, setRecords] = useState<DocumentRecord[]>([]);
@@ -83,7 +88,7 @@ export function useDocumentRegistrationJournal(organizationId: string) {
           else if (nameLower.includes("протокол")) docType = "protocol";
           else if (nameLower.includes("счёт") || nameLower.includes("счет")) docType = "invoice";
           else if (nameLower.includes("акт")) docType = "act";
-          documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.reg_number, document_type: docType, document_name: doc.document_name, direction: "outgoing", date: doc.issued_at, related_entity: doc.user_name, related_entity_type: "student", notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null, source: "issuance_log", is_editable: true, file_url: doc.file_url || null });
+          documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.reg_number, document_type: docType, document_name: doc.document_name, direction: "outgoing", date: doc.issued_at, related_entity: doc.user_name, related_entity_type: "student", notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null, source: "issuance_log", is_editable: true, file_url: doc.file_url || null, user_id: (doc as any).user_id ?? null, course_id: (doc as any).course_id ?? null });
         }
 
         const { data: companyDocs } = await supabase.from("company_documents").select(`*, companies:company_id (name)`).order("uploaded_at", { ascending: false });
@@ -95,7 +100,7 @@ export function useDocumentRegistrationJournal(organizationId: string) {
           if (doc.type === "contract" || doc.name.toLowerCase().includes("договор")) docType = "contract";
           else if (doc.type === "invoice" || doc.name.toLowerCase().includes("счёт")) docType = "invoice";
           else if (doc.type === "act" || doc.name.toLowerCase().includes("акт")) docType = "act";
-          documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.contract_number, document_type: docType, document_name: doc.name, direction: doc.type === "contract" ? "incoming" : "outgoing", date: doc.contract_date || doc.uploaded_at, related_entity: (doc.companies as any)?.name || null, related_entity_type: "company", notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null, source: "company_document", is_editable: true, file_url: doc.file_url || null });
+          documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.contract_number, document_type: docType, document_name: doc.name, direction: doc.type === "contract" ? "incoming" : "outgoing", date: doc.contract_date || doc.uploaded_at, related_entity: (doc.companies as any)?.name || null, related_entity_type: "company", notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null, source: "company_document", is_editable: true, file_url: doc.file_url || null, user_id: null, course_id: null });
         }
 
         const { data: orgDocs } = await supabase.from("org_documents").select("id, name, file_url, type").eq("organization_id", organizationId);
@@ -113,10 +118,10 @@ export function useDocumentRegistrationJournal(organizationId: string) {
           const studentName = profile?.full_name || profile?.email || "Неизвестный";
           if (entry.action === "enrolled") {
             const docName = `Приказ о зачислении на курс "${course.title}"`;
-            documentRecords.push({ id: `enrollment_${entry.id}`, original_id: entry.id, reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null, document_type: "enrollment_order", document_name: docName, direction: "outgoing", date: entry.created_at, related_entity: studentName, related_entity_type: "student", notes: null, source: "enrollment", is_editable: false, file_url: orgDocFileMap.get(docName.toLowerCase()) || null });
+            documentRecords.push({ id: `enrollment_${entry.id}`, original_id: entry.id, reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null, document_type: "enrollment_order", document_name: docName, direction: "outgoing", date: entry.created_at, related_entity: studentName, related_entity_type: "student", notes: null, source: "enrollment", is_editable: false, file_url: orgDocFileMap.get(docName.toLowerCase()) || null, user_id: entry.user_id, course_id: entry.course_id ?? null });
           } else if (entry.action === "completed" || entry.action === "expelled") {
             const docName = entry.action === "completed" ? `Завершение обучения на курсе "${course.title}"` : `Приказ об отчислении с курса "${course.title}"`;
-            documentRecords.push({ id: `expulsion_${entry.id}`, original_id: entry.id, reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null, document_type: entry.action === "completed" ? "certificate" : "expulsion_order", document_name: docName, direction: "outgoing", date: entry.created_at, related_entity: studentName, related_entity_type: "student", notes: null, source: "enrollment", is_editable: false, file_url: orgDocFileMap.get(docName.toLowerCase()) || null });
+            documentRecords.push({ id: `expulsion_${entry.id}`, original_id: entry.id, reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null, document_type: entry.action === "completed" ? "certificate" : "expulsion_order", document_name: docName, direction: "outgoing", date: entry.created_at, related_entity: studentName, related_entity_type: "student", notes: null, source: "enrollment", is_editable: false, file_url: orgDocFileMap.get(docName.toLowerCase()) || null, user_id: entry.user_id, course_id: entry.course_id ?? null });
           }
         }
 
@@ -138,8 +143,20 @@ export function useDocumentRegistrationJournal(organizationId: string) {
     fetchData();
   }, [organizationId]);
 
+  // Приватность: в контексте группы оставляем только документы участников группы
+  // (документы без привязки к ученику скрываются — см. unlinkedHiddenCount).
+  const scopedRecords = useMemo(
+    () => filterByGroupContext(records, groupContext, { userId: (r) => r.user_id, courseId: (r) => r.course_id }),
+    [records, groupContext]
+  );
+
+  const unlinkedHiddenCount = useMemo(() => {
+    if (resolveGroupGateState("document_registration", groupContext) !== "ready") return 0;
+    return records.length - scopedRecords.length;
+  }, [records, scopedRecords, groupContext]);
+
   const filteredRecords = useMemo(() => {
-    return records.filter(record => {
+    return scopedRecords.filter(record => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || record.document_name.toLowerCase().includes(searchLower) || (record.reg_number?.toLowerCase().includes(searchLower)) || (record.related_entity?.toLowerCase().includes(searchLower));
       const matchesType = selectedType === "all" || record.document_type === selectedType;

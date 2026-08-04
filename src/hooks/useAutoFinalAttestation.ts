@@ -169,7 +169,7 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
   };
 
   return {
-    loading, records, courses, filteredRecords, stats,
+    loading, records: scopedRecords, courses, filteredRecords, stats,
     searchQuery, setSearchQuery, selectedCourse, setSelectedCourse,
     selectedStatus, setSelectedStatus, dateRange, setDateRange,
     attemptDetails, detailsLoading, detailsOpen, setDetailsOpen,
