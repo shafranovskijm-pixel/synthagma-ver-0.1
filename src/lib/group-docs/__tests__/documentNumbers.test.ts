@@ -10,7 +10,7 @@ import {
 import { generateDocument } from "../generate";
 import { pickPassportIdentityDoc } from "../factualResolvers";
 import { buildVariables } from "../variables";
-import { sampleContext } from "../sampleContext";
+import { SAMPLE_CONTEXT } from "../sampleContext";
 
 /** Серверная последовательность: состояние живёт в БД, а не в модуле. */
 function fakeServer() {
@@ -57,7 +57,7 @@ describe("нумерация документов группы", () => {
   });
 
   it("generateDocument без серверного номера бросает для приказа, но не для журнала", () => {
-    const ctx = sampleContext();
+    const ctx = structuredClone(SAMPLE_CONTEXT);
     expect(() => generateDocument(ctx, "enrollment_order", {})).toThrow(/не зарезервирован/);
     const journal = generateDocument(ctx, "class_journal", {});
     expect(journal.document_number).toBe("");
@@ -86,14 +86,14 @@ describe("create_group_document_batch сериализует параллель�
 
 describe("нет выдуманных production-defaults", () => {
   it("гражданство пустое, если его нет в данных ученика", () => {
-    const ctx = sampleContext();
+    const ctx = structuredClone(SAMPLE_CONTEXT);
     ctx.students = ctx.students.map((s) => ({ ...s, citizenship: undefined }));
     const vars = buildVariables(ctx, { documentNumber: "", documentDate: "2026-08-05" });
     expect(vars.individual_citizenship).toBe("");
   });
 
   it("должность руководителя и форма обучения не подставляются", () => {
-    const ctx = sampleContext();
+    const ctx = structuredClone(SAMPLE_CONTEXT);
     ctx.organization.director_position = "";
     ctx.group.program_form = "";
     const vars = buildVariables(ctx, { documentNumber: "", documentDate: "2026-08-05" });
