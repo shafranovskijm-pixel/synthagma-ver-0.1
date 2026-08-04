@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { getCourseDetailsPath } from "@/lib/utils";
-import { courseCompletedNotificationPath } from "@/lib/groups/groupContext";
+
 import { handleNotificationClick } from "@/lib/notifications/orgNotificationClick";
 import {
   Bell,
