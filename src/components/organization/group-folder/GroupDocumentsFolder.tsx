@@ -78,6 +78,9 @@ export function GroupDocumentsFolder({
     useMemo(() => students.map(s => s.user_id), [students]),
   );
 
+  /** Документы группируются по партии: версия, дата, автор, Текущая/Предыдущая. */
+  const batches = useMemo(() => groupDocumentBatches(documents), [documents]);
+
   const typeTitle = useMemo(() => {
     const map = new Map<string, string>();
     GROUP_DOCUMENT_TYPES.forEach(t => map.set(t.key, t.title));
@@ -309,7 +312,26 @@ export function GroupDocumentsFolder({
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {documents.map(row => (
+            {batches.map(batch => (
+              <div key={batch.batchId ?? "legacy"}>
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-muted/40 text-xs">
+                  <span className="font-medium">{batch.label}</span>
+                  <Badge
+                    variant={batch.isCurrent ? "default" : "secondary"}
+                    className="rounded-full text-[10px]"
+                  >
+                    {batchStatusLabel(batch)}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    {format(new Date(batch.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
+                  </span>
+                  {batch.createdBy && (
+                    <span className="text-muted-foreground">автор: {batch.createdBy.slice(0, 8)}…</span>
+                  )}
+                  <span className="text-muted-foreground ml-auto">файлов: {batch.rows.length}</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {batch.rows.map(row => (
               <div key={row.id} className="flex items-center gap-3 p-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4" />
@@ -344,6 +366,9 @@ export function GroupDocumentsFolder({
                   <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => { await remove(row.id); onDataChanged?.(); }}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
+                </div>
+              </div>
+                  ))}
                 </div>
               </div>
             ))}
