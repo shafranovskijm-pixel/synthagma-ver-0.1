@@ -12,6 +12,7 @@ import { z } from "npm:zod@3.23.8";
 import JSZip from "npm:jszip@3.10.1";
 import { compileDocumentXml, numberStudents, validateSnapshot, type TemplateManifest } from "../_shared/docx-ooxml/compile.ts";
 import { formatMoneyRu, moneyToWordsRu } from "../_shared/docx-ooxml/money.ts";
+import { validateRelations, validateTemplateConsistency } from "../_shared/docx-ooxml/relational.ts";
 
 const BUCKET = "billing-documents";
 
@@ -101,8 +102,49 @@ Deno.serve(async (req) => {
     }
 
     const sourceHash = await sha256Hex(docxBytes);
-    if (registry.template_sha256 && sourceHash.toLowerCase() !== String(registry.template_sha256).toLowerCase()) {
-      return json({ error: "Контрольная сумма шаблона не совпадает с зарегистрированной", expected: registry.template_sha256, actual: sourceHash }, 409);
+
+    // Манифест, файл шаблона и метаданные реестра должны описывать один и тот же шаблон.
+    const consistency = validateTemplateConsistency({
+      manifest: manifest as unknown as Record<string, unknown>,
+      registry: {
+        template_key: registry.template_key,
+        version_label: registry.version_label,
+        template_sha256: registry.template_sha256,
+        manifest: (registry.manifest || null) as Record<string, unknown> | null,
+      },
+      computedSourceSha256: sourceHash,
+    });
+    if (consistency.length) {
+      return json({ error: "Манифест шаблона не согласован с реестром", issues: consistency }, 409);
+    }
+
+    // Реляционная проверка: связи создаём только по данным БД, а не по UUID от клиента.
+    const uniqueStudentIds = Array.from(new Set(body.studentUserIds));
+    const [companyRes, groupRes, profilesRes] = await Promise.all([
+      admin.from("companies").select("id, organization_id").eq("id", body.companyId).maybeSingle(),
+      body.groupId
+        ? admin.from("student_groups").select("id, organization_id").eq("id", body.groupId).maybeSingle()
+        : Promise.resolve({ data: null, error: null } as any),
+      uniqueStudentIds.length
+        ? admin.from("profiles").select("user_id, organization_id, student_group_id").in("user_id", uniqueStudentIds)
+        : Promise.resolve({ data: [], error: null } as any),
+    ]);
+    if (companyRes.error) throw companyRes.error;
+    if (groupRes.error) throw groupRes.error;
+    if (profilesRes.error) throw profilesRes.error;
+
+    const relational = validateRelations({
+      organizationId: body.organizationId,
+      companyId: body.companyId,
+      groupId: body.groupId ?? null,
+      studentUserIds: body.studentUserIds,
+      studentsMetaIds: body.studentsMeta.map((s) => s.user_id),
+      company: (companyRes.data as any) ?? null,
+      group: (groupRes.data as any) ?? null,
+      profiles: ((profilesRes.data as any[]) || []) as any,
+    });
+    if (!relational.ok) {
+      return json({ error: relational.error, issues: relational.issues }, relational.status);
     }
 
     // Снимок данных: суммы считает сервер, чтобы цифры и прописью не расходились.

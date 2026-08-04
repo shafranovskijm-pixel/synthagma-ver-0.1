@@ -155,6 +155,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <Button size="sm" onClick={() => setQuickOpen(true)} disabled={students.length === 0} className="gap-1.5"><Zap className="w-4 h-4" />Быстрая генерация</Button>
               <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />Расширенный режим</Button>
+              <Button size="sm" variant="outline" onClick={() => setDocxOpen(true)} className="gap-1.5"><FileType2 className="w-4 h-4" />Шаблон клиента (Word)</Button>
               <Button size="sm" variant="outline" onClick={() => setUpOpen(true)} className="gap-1.5"><Upload className="w-4 h-4" />Загрузить</Button>
             </div>
 

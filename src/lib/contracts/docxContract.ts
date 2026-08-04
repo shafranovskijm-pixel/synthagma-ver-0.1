@@ -184,6 +184,134 @@ export function isDocxDraftReady(groups: ReadinessGroup[]): boolean {
   return groups.every((g) => g.ready);
 }
 
+/* ------------------------------------------------------------------ *
+ * Инициализация и переключение заказчика (чистые функции для тестов) *
+ * ------------------------------------------------------------------ */
+
+/** Скаляры, полностью принадлежащие выбранной компании: при смене компании сбрасываются целиком. */
+export const COMPANY_SCOPED_KEYS = COMPANY_FIELDS.map(([k]) => k);
+
+/** Скаляры договора/группы — они НЕ привязаны к компании и при её смене сохраняются. */
+export const GROUP_SCOPED_KEYS = [
+  "DOC_NO", "DOC_DATE", "TRAINING_ADDR", "SCHEDULE", "PROG_FORM",
+  "STUDENT_DATES", "TAX_CLAUSE", "PAYMENT_CLAUSE",
+];
+
+export interface CompanyLike {
+  id?: string;
+  name?: string | null;
+  inn?: string | null;
+  kpp?: string | null;
+  ogrn?: string | null;
+  address?: string | null;
+  email?: string | null;
+  director?: string | null;
+}
+
+const shortName = (fullName: string): string => {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  const [last, ...rest] = parts;
+  return [last, ...rest.map((p) => `${p[0].toUpperCase()}.`)].join(" ");
+};
+
+/**
+ * Полный набор company-scoped значений выбранной компании.
+ * Все 16 ключей присутствуют всегда: отсутствующие данные = пустая строка,
+ * чтобы реквизиты предыдущего заказчика физически не могли остаться в договоре.
+ */
+export function companyScalars(company: CompanyLike | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of COMPANY_SCOPED_KEYS) out[key] = "";
+  if (!company) return out;
+  out.CUST_NAME = company.name || "";
+  out.CUST_INN = company.inn || "";
+  out.CUST_KPP = company.kpp || "";
+  out.CUST_OGRN = company.ogrn || "";
+  out.CUST_LEGAL_ADDR = company.address || "";
+  out.CUST_POST_ADDR = company.address || "";
+  out.CUST_EMAIL = company.email || "";
+  out.CUST_REP_SHORT = company.director ? shortName(company.director) : "";
+  out.CUST_REP_POS = company.director ? "Генеральный директор" : "";
+  out.CUST_AUTH = company.director ? "Уставе" : "";
+  return out;
+}
+
+/** Атомарная замена всех company-scoped значений при смене компании. */
+export function applyCompanySelection(
+  prev: Record<string, string>,
+  company: CompanyLike | null | undefined,
+): Record<string, string> {
+  const next: Record<string, string> = { ...prev };
+  for (const [key, value] of Object.entries(companyScalars(company))) next[key] = value;
+  return next;
+}
+
+export interface GroupLike {
+  group_number?: string | null;
+  program_form?: string | null;
+  program_hours?: number | null;
+  program_title?: string | null;
+  default_price?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+const MONTHS_RU = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+];
+
+/** «03» августа 2026 г. — формат даты договора из исходного Word-файла. */
+export function formatContractDateRu(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+  if (!m) return "";
+  return `«${m[3]}» ${MONTHS_RU[Number(m[2]) - 1]} ${m[1]} г.`;
+}
+
+const ddmmyyyy = (iso: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : "";
+};
+
+/** Даты обучения слушателей из дат группы. */
+export function groupDatesText(start?: string | null, end?: string | null): string {
+  const a = ddmmyyyy(start || "");
+  const b = ddmmyyyy(end || "");
+  if (a && b) return `${a} — ${b}`;
+  return a || b || "";
+}
+
+/** Режим занятий из данных группы (форма обучения + объём часов). */
+export function groupScheduleText(group: GroupLike | null | undefined): string {
+  if (!group) return "";
+  const parts: string[] = [];
+  if (group.program_form) parts.push(`Форма обучения: ${group.program_form}`);
+  if (group.program_hours) parts.push(`объём ${group.program_hours} ч.`);
+  return parts.join(", ");
+}
+
+export const DEFAULT_PAYMENT_CLAUSE =
+  "Оплата производится в течение 5 (пяти) банковских дней с даты выставления счёта.";
+
+/**
+ * Начальное состояние диалога. Вызывается при каждом открытии, поэтому
+ * повторная генерация всегда начинается с чистых данных группы и компании.
+ */
+export function initialDocxScalars(group: GroupLike | null | undefined, dateIso: string): Record<string, string> {
+  return {
+    ...companyScalars(null),
+    DOC_NO: group?.group_number || "",
+    DOC_DATE: formatContractDateRu(dateIso),
+    TRAINING_ADDR: "",
+    SCHEDULE: groupScheduleText(group),
+    PROG_FORM: group?.program_form || "Очная",
+    STUDENT_DATES: groupDatesText(group?.start_date, group?.end_date),
+    TAX_CLAUSE: "",
+    PAYMENT_CLAUSE: DEFAULT_PAYMENT_CLAUSE,
+  };
+}
+
 export interface GenerateDocxParams {
   templateKey: string;
   organizationId: string;
