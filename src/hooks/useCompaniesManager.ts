@@ -19,7 +19,34 @@ interface Company {
   studentsCount?: number;
   stamp_url?: string | null;
   signature_url?: string | null;
+  postal_address?: string | null;
+  phone?: string | null;
+  bank_name?: string | null;
+  bank_account?: string | null;
+  bank_bik?: string | null;
+  bank_corr_account?: string | null;
+  signatory_position?: string | null;
+  signatory_name_genitive?: string | null;
+  signatory_authority_clause?: string | null;
 }
+
+/** Реквизиты, которые подставляются в договоры и счёта. */
+export const COMPANY_DOC_FIELDS: Array<[string, string, string]> = [
+  ["postal_address", "Почтовый адрес", "125000, г. Москва, ул. Примерная, д. 1"],
+  ["phone", "Телефон", "+7 495 000-00-00"],
+  ["bank_name", "Банк", "ПАО Сбербанк, г. Москва"],
+  ["bank_account", "Расчётный счёт", "40702810000000000000"],
+  ["bank_bik", "БИК", "044525225"],
+  ["bank_corr_account", "Корреспондентский счёт", "30101810400000000225"],
+  ["signatory_position", "Должность подписанта", "Генеральный директор"],
+  ["signatory_name_genitive", "Подписант (родительный падеж)", "Иванова Ивана Ивановича"],
+  ["signatory_authority_clause", "Действует на основании", "Уставе"],
+];
+
+export type CompanyDocFields = Record<string, string>;
+
+const emptyDocFields = (): CompanyDocFields =>
+  Object.fromEntries(COMPANY_DOC_FIELDS.map(([k]) => [k, ""]));
 
 interface CompanyDocument {
   id: string;
@@ -164,6 +191,9 @@ export function useCompaniesManager(organizationId: string) {
   const [editCompanyName, setEditCompanyName] = useState("");
   const [editCompanyInn, setEditCompanyInn] = useState("");
   const [editCompanyEmail, setEditCompanyEmail] = useState("");
+  const [editDocFields, setEditDocFields] = useState<CompanyDocFields>(emptyDocFields);
+  const setEditDocField = (key: string, value: string) =>
+    setEditDocFields((prev) => ({ ...prev, [key]: value }));
   const [isSaving, setIsSaving] = useState(false);
   const [isSearchingDadataEdit, setIsSearchingDadataEdit] = useState(false);
   const [dadataEditCompanyInfo, setDadataEditCompanyInfo] = useState<DadataCompanyInfo | null>(null);
@@ -280,6 +310,11 @@ export function useCompaniesManager(organizationId: string) {
     setEditCompanyName(company.name);
     setEditCompanyInn(company.inn || "");
     setEditCompanyEmail(company.email || "");
+    setEditDocFields(
+      Object.fromEntries(
+        COMPANY_DOC_FIELDS.map(([k]) => [k, ((company as unknown as Record<string, string | null>)[k] || "")]),
+      ),
+    );
     setDadataEditCompanyInfo(null);
     setShowEditDialog(true);
   };
@@ -297,6 +332,10 @@ export function useCompaniesManager(organizationId: string) {
         inn: dadataEditCompanyInfo?.inn || editCompanyInn.trim() || editingCompany.inn,
         email: editCompanyEmail.trim() || null,
       };
+
+      for (const [key] of COMPANY_DOC_FIELDS) {
+        updateData[key] = editDocFields[key]?.trim() || null;
+      }
 
       if (dadataEditCompanyInfo) {
         updateData.kpp = dadataEditCompanyInfo.kpp;
@@ -387,6 +426,8 @@ export function useCompaniesManager(organizationId: string) {
     setEditCompanyInn,
     editCompanyEmail,
     setEditCompanyEmail,
+    editDocFields,
+    setEditDocField,
     isSaving,
     isSearchingDadataEdit,
     setIsSearchingDadataEdit,
