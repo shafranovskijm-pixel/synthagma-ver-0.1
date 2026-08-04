@@ -279,7 +279,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         ogrn: orgInfo?.ogrn || "",
         address: orgInfo?.legal_address || orgInfo?.actual_address || "",
         director_name: orgInfo?.director_name || "",
-        director_position: orgInfo?.director_position || "Директор",
+        // Fail-closed: должность руководителя только из реквизитов организации.
+        director_position: orgInfo?.director_position || "",
         bank_name: orgInfo?.bank_name || "",
         bank_bik: orgInfo?.bank_bik || "",
         bank_account: orgInfo?.bank_account || "",
