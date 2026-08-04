@@ -93,6 +93,27 @@ export function normalizeGender(value?: string | null): string {
   return "";
 }
 
+/**
+ * Детерминированный выбор удостоверения личности: строго документ типа
+ * passport/паспорт (без учёта регистра и языка). Если таких несколько —
+ * берётся первый по стабильной сортировке (series, number), а не произвольная
+ * строка из ответа БД. Иные типы документов (СНИЛС, ВУ и т.п.) не подходят.
+ */
+export function pickPassportIdentityDoc<T extends IdentityDocLikeRow>(
+  rows: T[] | null | undefined,
+): T | null {
+  const passports = (rows || []).filter((r) => {
+    const t = String(r.document_type || "").trim().toLowerCase();
+    return t === "passport" || t.startsWith("паспорт") || t.includes("passport");
+  });
+  if (passports.length === 0) return null;
+  return passports
+    .slice()
+    .sort((a, b) =>
+      `${a.series || ""}|${a.number || ""}`.localeCompare(`${b.series || ""}|${b.number || ""}`),
+    )[0];
+}
+
 export function normalizePassport(
   frdo?: FrdoLikeRow | null,
   identity?: IdentityDocLikeRow | null,
@@ -102,6 +123,7 @@ export function normalizePassport(
   const fromIdentity = [identity?.series, identity?.number].filter(Boolean).join(" ").trim();
   return fromIdentity;
 }
+
 
 export function frdoFullName(frdo?: FrdoLikeRow | null): string {
   return [frdo?.last_name, frdo?.first_name, frdo?.middle_name]
