@@ -227,7 +227,12 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
 
   const handleSaveRegNumber = useCallback(async () => {
     if (!editingRecord) return;
+    if (!isRowWriteAllowed(editingRecord.id, scopedRecords, groupContext)) {
+      toast.error("Документ не относится к этой группе — сохранение отменено");
+      return;
+    }
     setSaving(true);
+
     try {
       const newRegNumber = editRegNumber.trim() || null;
       if (editingRecord.source === "issuance_log") {
