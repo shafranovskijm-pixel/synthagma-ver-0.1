@@ -2892,6 +2892,7 @@ export type Database = {
       education_document_records: {
         Row: {
           birth_date: string | null
+          course_id: string | null
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
@@ -2901,8 +2902,10 @@ export type Database = {
           document_series: string | null
           document_status: string
           document_type: string
+          education_result: string | null
           enrollment_id: string | null
           full_name: string
+          group_id: string | null
           id: string
           issue_date: string
           notes: string | null
@@ -2916,9 +2919,11 @@ export type Database = {
           reg_number: string
           specialty_name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           birth_date?: string | null
+          course_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
@@ -2928,8 +2933,10 @@ export type Database = {
           document_series?: string | null
           document_status?: string
           document_type: string
+          education_result?: string | null
           enrollment_id?: string | null
           full_name: string
+          group_id?: string | null
           id?: string
           issue_date: string
           notes?: string | null
@@ -2943,9 +2950,11 @@ export type Database = {
           reg_number: string
           specialty_name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           birth_date?: string | null
+          course_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
@@ -2955,8 +2964,10 @@ export type Database = {
           document_series?: string | null
           document_status?: string
           document_type?: string
+          education_result?: string | null
           enrollment_id?: string | null
           full_name?: string
+          group_id?: string | null
           id?: string
           issue_date?: string
           notes?: string | null
@@ -2970,6 +2981,7 @@ export type Database = {
           reg_number?: string
           specialty_name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -11671,6 +11683,51 @@ export type Database = {
       is_webinar_participant: {
         Args: { _user_id: string; _webinar_id: string }
         Returns: boolean
+      }
+      issue_education_document_batch: {
+        Args: {
+          p_course_id: string
+          p_group_id: string
+          p_items: Json
+          p_organization_id: string
+        }
+        Returns: {
+          birth_date: string | null
+          course_id: string | null
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          delivery_details: string | null
+          delivery_method: string
+          document_number: string
+          document_series: string | null
+          document_status: string
+          document_type: string
+          education_result: string | null
+          enrollment_id: string | null
+          full_name: string
+          group_id: string | null
+          id: string
+          issue_date: string
+          notes: string | null
+          order_date: string | null
+          order_number: string | null
+          organization_id: string
+          original_document_data: string | null
+          protocol_date: string | null
+          protocol_number: string | null
+          qualification_name: string | null
+          reg_number: string
+          specialty_name: string
+          updated_at: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "education_document_records"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       list_org_task_assignees: {
         Args: { _org_id: string }

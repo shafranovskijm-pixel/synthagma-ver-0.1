@@ -37,6 +37,8 @@ import {
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { CitizenshipCombobox } from "./CitizenshipCombobox";
 import { normalizeRuPhone } from "@/utils/phoneParser";
+import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { localDateIso } from "@/lib/date/localDate";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
@@ -260,20 +262,33 @@ export function FRDOExportDialog({
     const documentType = courseData?.frdo_document_type || "Удостоверение о повышении квалификации";
     const programType = courseData?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации";
 
-    const year = new Date().getFullYear();
-    const { count } = await supabase.from("education_document_records")
-      .select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
-    const existingCount = count || 0;
-    const docNumber = generateDocumentNumber(existingCount);
-    const regNumber = generateRegNumber(existingCount);
+    // Номера и запись журнала — только транзакционный серверный RPC.
+    let docNumber = "";
+    let regNumber = "";
+    try {
+      const issued = await issueEducationDocumentBatch({
+        organizationId,
+        courseId: enrollment.course_id || null,
+        items: [{
+          user_id: student.user_id,
+          enrollment_id: enrollment.id,
+          document_type: documentType,
+          full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
+          birth_date: frдоData.birth_date || null,
+          specialty_name: courseData?.title || enrollment.course_title,
+          qualification_name: qualificationName,
+          issue_date: (enrollment.completed_at || localDateIso()).slice(0, 10),
+          document_status: "original",
+        }],
+      });
+      docNumber = issued[0]?.document_number || "";
+      regNumber = issued[0]?.reg_number || "";
+      if (!docNumber || !regNumber) throw new Error("Сервер не вернул номера документа");
+    } catch (e: any) {
+      toast.error("Документ не выдан", { description: e?.message || "Не удалось получить номера" });
+      return;
+    }
 
-    await supabase.from("education_document_records").insert({
-      organization_id: organizationId, enrollment_id: enrollment.id,
-      full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
-      document_type: documentType, document_number: docNumber, reg_number: regNumber,
-      issue_date: enrollment.completed_at || new Date().toISOString(),
-      specialty_name: courseData?.title || enrollment.course_title,
-      qualification_name: qualificationName, document_status: "Оригинал" });
 
     const row = buildDPORow({
       documentType, docNumber, regNumber,

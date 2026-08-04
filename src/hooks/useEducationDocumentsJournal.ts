@@ -6,6 +6,8 @@ import { ru } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { localDateIso } from "@/lib/date/localDate";
 import {
   type EducationDocumentRecord,
   type CompletedStudent,
@@ -318,7 +320,7 @@ export function useEducationDocumentsJournal({
   const generateRegNumber = async () => {
     const year = formData.issue_date.getFullYear();
     const docType = formData.document_type || "doc";
-    let nextNumber = 1;
+    let nextNumber = 0;
     try {
       const { data, error } = await supabase.rpc("next_reg_number", {
         p_org: organizationId,
@@ -326,11 +328,17 @@ export function useEducationDocumentsJournal({
         p_year: year,
       });
       if (error) throw error;
-      nextNumber = (data as number) || 1;
-    } catch (err) {
-      console.warn("next_reg_number RPC failed, falling back to client count:", err);
-      nextNumber = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length + 1;
+      nextNumber = Number(data) || 0;
+      if (nextNumber <= 0) throw new Error("Сервер вернул некорректный номер");
+    } catch (err: any) {
+      // Никакого fallback на клиентский подсчёт: дубликаты номеров недопустимы.
+      console.error("next_reg_number RPC failed:", err);
+      toast.error("Не удалось получить регистрационный номер", {
+        description: err?.message || "Автонумерация недоступна, повторите позже",
+      });
+      return;
     }
+
 
     // Try to use settings from branding
     const settings = formData.document_type === "diploma" ? docSettings.diplomaSettings : docSettings.certificateSettings;
@@ -382,10 +390,40 @@ export function useEducationDocumentsJournal({
     await loadCompletedStudents();
   };
 
-  const generateDocumentNumber = (index: number) => {
-    const year = new Date().getFullYear();
-    const existingCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
-    return `${year}/${(existingCount + index + 1).toString().padStart(6, "0")}`;
+  /** Общая транзакционная выдача: номера только с сервера, всё или ничего. */
+  const issueForStudents = async (list: CompletedStudent[], successLabel: string) => {
+    setSaving(true);
+    try {
+      const inserted = await issueEducationDocumentBatch({
+        organizationId,
+        groupId: groupContext?.groupId || null,
+        courseId: groupContext?.courseId || null,
+        items: list.map((student) => ({
+          user_id: student.user_id,
+          enrollment_id: student.enrollment_id,
+          document_type: student.frdo_program_type
+            ? PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate"
+            : documentTypeFilter || "certificate",
+          full_name: student.full_name,
+          birth_date: student.birth_date || null,
+          specialty_name: student.course_title,
+          issue_date: localDateIso(),
+        })),
+      });
+      const mapped = inserted.map(mapDbRecord);
+      setRecords([...mapped, ...records]);
+      loadCompletedStudents();
+      toast.success(`${successLabel}: ${mapped.length}`);
+      return true;
+    } catch (error: any) {
+      console.error("Error issuing education documents:", error);
+      toast.error("Документы не выданы", {
+        description: error?.message || "Не удалось получить номера — записи не созданы",
+      });
+      return false;
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAutoAddAllGraduates = async () => {
@@ -397,78 +435,16 @@ export function useEducationDocumentsJournal({
       });
     }
     if (newStudents.length === 0) { toast.info("Все выпускники уже добавлены в журнал"); return; }
-    setSaving(true);
-    try {
-      const year = new Date().getFullYear();
-      let existingCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
-      const recordsToInsert = newStudents.map((student, index) => {
-        existingCount += 1;
-        const docType = student.frdo_program_type
-          ? (PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate")
-          : (documentTypeFilter || "certificate");
-        const docNumber = `${year}/${(existingCount + index).toString().padStart(6, "0")}`;
-        return {
-          organization_id: organizationId, reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
-          full_name: student.full_name, birth_date: student.birth_date || null,
-          document_type: docType, document_series: "",
-          document_number: docNumber, issue_date: new Date().toISOString().split("T")[0],
-          specialty_name: student.course_title, qualification_name: "", protocol_number: "",
-          protocol_date: null, order_number: "", order_date: null, document_status: "original",
-          original_document_data: null, delivery_method: "personal", delivery_details: null,
-          notes: null, enrollment_id: student.enrollment_id,
-        };
-      });
-      const { data, error } = await supabase.from("education_document_records").insert(recordsToInsert).select();
-      if (error) throw error;
-      const mapped = (data || []).map(mapDbRecord);
-      setRecords([...mapped, ...records]);
-      loadCompletedStudents();
-      toast.success(`Автоматически добавлено ${mapped.length} записей`);
-    } catch (error) {
-      console.error("Error auto-adding graduates:", error);
-      toast.error("Ошибка при добавлении записей");
-    } finally {
-      setSaving(false);
-    }
+    await issueForStudents(newStudents, "Автоматически добавлено записей");
   };
 
   const handleCreateFromStudents = async () => {
     const selectedList = scopedCompletedStudents.filter((s) => selectedStudents.has(s.enrollment_id) && !s.already_added);
     if (selectedList.length === 0) { toast.error("Выберите хотя бы одного выпускника"); return; }
-    setSaving(true);
-    try {
-      const year = new Date().getFullYear();
-      let existingCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
-      const recordsToInsert = selectedList.map((student, index) => {
-        existingCount += 1;
-        const docType = student.frdo_program_type
-          ? (PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate")
-          : (documentTypeFilter || "certificate");
-        return {
-          organization_id: organizationId, reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
-          full_name: student.full_name, birth_date: student.birth_date || null,
-          document_type: docType, document_series: "",
-          document_number: generateDocumentNumber(index), issue_date: new Date().toISOString().split("T")[0],
-          specialty_name: student.course_title, qualification_name: "", protocol_number: "",
-          protocol_date: null, order_number: "", order_date: null, document_status: "original",
-          original_document_data: null, delivery_method: "personal", delivery_details: null,
-          notes: null, enrollment_id: student.enrollment_id,
-        };
-      });
-      const { data, error } = await supabase.from("education_document_records").insert(recordsToInsert).select();
-      if (error) throw error;
-      const mapped = (data || []).map(mapDbRecord);
-      setRecords([...mapped, ...records]);
-      setShowSelectStudentsDialog(false);
-      loadCompletedStudents();
-      toast.success(`Создано ${mapped.length} записей`);
-    } catch (error) {
-      console.error("Error creating records from students:", error);
-      toast.error("Ошибка при создании записей");
-    } finally {
-      setSaving(false);
-    }
+    const ok = await issueForStudents(selectedList, "Создано записей");
+    if (ok) setShowSelectStudentsDialog(false);
   };
+
 
   const toggleStudentSelection = (enrollmentId: string) => {
     const newSet = new Set(selectedStudents);
