@@ -279,28 +279,16 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                 <div
                   key={n.id}
                   className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
-                  onClick={async () => {
-                    try {
-                      await markAsRead(n.id);
-                    } catch (err) {
-                      console.error("markAsRead failed, aborting navigation", err);
-                      return;
-                    }
-                    if (n.type === "subscription_expiry" && n.related_id) {
-                      setIsOpen(false);
-                      navigate(`/invoice/${n.related_id}`);
-                    } else if (n.type === "signature" && n.related_id) {
-                      setIsOpen(false);
-                      // CounterpartiesSection reads this on mount to expand the right contract
-                      sessionStorage.setItem("openSignatureId", n.related_id);
-                      navigate(`/organization?tab=org-documents`);
-                    } else if (n.type === "course_completed") {
-                      const target = courseCompletedNotificationPath(n, getCourseDetailsPath);
-                      if (target) {
-                        setIsOpen(false);
-                        navigate(target);
-                      }
-                    }
+                  onClick={() => {
+                    // Навигация выполняется сразу; markAsRead — best-effort и не блокирует переход.
+                    handleNotificationClick(n, {
+                      navigate,
+                      markAsRead,
+                      close: () => setIsOpen(false),
+                      courseFallbackPath: getCourseDetailsPath,
+                      setSessionItem: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } },
+                      onMarkError: () => { /* уже показан toast в markAsRead */ },
+                    });
                   }}
                 >
 
