@@ -71,13 +71,17 @@ export function resolveTabParams(
     return next;
   }
 
+  // Папка группы живёт внутри вкладки «Ученики» (tab=students&studentsView=groups),
+  // поэтому groupId/folder сохраняются и для неё.
+  const keepsGroupFolder = tab === "group-folder" || tab === "students";
+
   if (tab !== "course-details") next.delete("courseId");
   if (tab !== "student-details") next.delete("studentId");
-  if (tab !== "group-folder") {
+  if (!keepsGroupFolder) {
     next.delete("groupId");
     next.delete("folder");
   }
-  if (tab !== "group-folder") next.delete("returnToGroupId");
+  if (!keepsGroupFolder) next.delete("returnToGroupId");
   return next;
 }
 
