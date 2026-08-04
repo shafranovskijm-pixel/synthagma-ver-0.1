@@ -1,12 +1,27 @@
 import type { DocType, GeneratedDocument, GenerationContext } from "./schema";
 import { buildVariables, findMissing, renderTemplate } from "./variables";
 import { getTemplate } from "./templates";
+import {
+  LEGACY_LAYOUT_FORMAT,
+  LEGACY_LAYOUT_NOTICE,
+  documentDataReadiness,
+  type DocumentFillMode,
+  type GroupFactualData,
+} from "./factualData";
 
 export interface GenerateOptions {
   documentNumber?: string;
   documentDate?: string;
   primaryStudentIndex?: number;
   totalPrice?: number;
+  /** Режим заполнения: рабочий бланк или данные Синтагмы. */
+  mode?: DocumentFillMode;
+  /** Snapshot фактических данных (только источник значений таблиц). */
+  factual?: GroupFactualData | null;
+  /** Запрошенный статус. Final понижается до draft при неполных данных. */
+  requestedStatus?: "draft" | "final";
+  packageBatchId?: string | null;
+  packageVersion?: number | null;
 }
 
 let seq = 100;
@@ -35,11 +50,14 @@ export function generateDocument(
   const documentNumber = opts.documentNumber || nextNumber(defaultPrefix, year);
   const documentDate = opts.documentDate || new Date().toISOString().slice(0, 10);
 
+  const mode: DocumentFillMode = opts.mode ?? "blank";
   const variables = buildVariables(ctx, {
     documentNumber,
     documentDate,
     primaryStudentIndex: opts.primaryStudentIndex,
     totalPrice: opts.totalPrice,
+    mode,
+    factual: opts.factual ?? null,
   });
 
   const html = renderTemplate(tpl.body_html, variables);
@@ -47,6 +65,13 @@ export function generateDocument(
   if (missing.length > 0) {
     console.warn(`[generate] ${docType}: пустые переменные:`, missing);
   }
+
+  const readiness = documentDataReadiness(docType, opts.factual ?? null, ctx.students.length);
+  // Финальный статус недоступен при неполных данных — документ остаётся черновиком.
+  const docStatus: "draft" | "final" =
+    opts.requestedStatus === "final" && mode === "data" && !(readiness?.finalBlocked ?? false)
+      ? "final"
+      : "draft";
 
   return {
     id: `doc-${docType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -58,6 +83,12 @@ export function generateDocument(
     html,
     status: "active",
     created_at: new Date().toISOString(),
+    doc_status: docStatus,
+    fill_mode: mode,
+    layout_format: docType === "contract" ? "docx_first" : LEGACY_LAYOUT_FORMAT,
+    package_batch_id: opts.packageBatchId ?? null,
+    package_version: opts.packageVersion ?? null,
+    source_note: readiness ? readiness.source : LEGACY_LAYOUT_NOTICE,
   };
 }
 
