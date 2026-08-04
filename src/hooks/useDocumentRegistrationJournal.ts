@@ -164,6 +164,13 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
     return records.length - scopedRecords.length;
   }, [records, scopedRecords, groupContext]);
 
+  /** Ручное «Добавить» в контексте группы запрещено (fail-closed). */
+  const manualAddGuard = useMemo(
+    () => resolveManualWriteGuard("document_registration", groupContext),
+    [groupContext]
+  );
+
+
   const filteredRecords = useMemo(() => {
     return scopedRecords.filter(record => {
       const searchLower = searchQuery.toLowerCase();
