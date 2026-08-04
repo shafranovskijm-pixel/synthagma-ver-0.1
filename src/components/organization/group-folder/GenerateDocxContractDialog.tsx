@@ -81,8 +81,28 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [numberBusy, setNumberBusy] = useState(false);
 
   const setField = (key: string, value: string) => setScalars((prev) => ({ ...prev, [key]: value }));
+
+  /** Номер договора — только через серверную автонумерацию Синтагмы. */
+  const reserveNumber = async () => {
+    setNumberBusy(true);
+    try {
+      const { data, error } = await supabase.rpc("get_next_document_number", {
+        p_org: organizationId,
+        p_doc_type: "contract",
+        p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
+      });
+      if (error) throw error;
+      setField("DOC_NO", String(data || ""));
+      toast.success("Номер договора зарезервирован");
+    } catch (e: any) {
+      toast.error("Не удалось получить номер", { description: e?.message });
+    } finally {
+      setNumberBusy(false);
+    }
+  };
 
   // Каждое открытие диалога начинается с чистого состояния: данные предыдущего
   // договора (компания, реквизиты, приложения, слушатели) не переносятся.
@@ -100,15 +120,19 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
 
     (async () => {
       try {
-        const [tpls, companiesRes, groupRes, profilesRes] = await Promise.all([
+        const [tpls, companiesRes, groupRes, profilesRes, frdoRes] = await Promise.all([
           fetchDocxTemplates("legal"),
           supabase.from("companies").select("*").eq("organization_id", organizationId).order("name"),
           supabase.from("student_groups").select("*").eq("id", groupId).maybeSingle(),
           supabase
             .from("profiles")
-            .select("user_id, full_name, email, contact_email, phone, city, region")
+            .select("user_id, full_name, email, contact_email, phone, city, region, job_position")
             .eq("organization_id", organizationId)
             .eq("student_group_id", groupId),
+          supabase
+            .from("student_frdo_data")
+            .select("user_id, education_level")
+            .eq("organization_id", organizationId),
         ]);
         setTemplates(tpls);
         setTemplateKey(tpls[0]?.template_key || "");
@@ -118,22 +142,23 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         setScalars(initialDocxScalars(g, iso));
         setCompanies((companiesRes.data as any[]) || []);
 
+        // Учебный план подставляется автоматически, если программа группы совпала с шаблоном.
+        const matched = matchGroupCurriculum(g?.program_title);
+        if (matched) setCurricula([matched]);
+
         const byUser = new Map<string, any>(((profilesRes.data as any[]) || []).map((p) => [p.user_id, p]));
+        const frdoByUser = new Map<string, any>(((frdoRes.data as any[]) || []).map((f) => [f.user_id, f]));
         setRows(
-          students.map((s) => {
-            const p = byUser.get(s.user_id) || {};
-            const contacts = [s.email || p.contact_email || p.email || "", p.phone || ""].filter(Boolean).join(", ");
-            const address = [p.region || "", p.city || ""].filter(Boolean).join(", ");
-            return {
+          students.map((s) =>
+            studentRowFromSources({
               user_id: s.user_id,
-              fio: s.full_name || p.full_name || "",
-              edu: "высшее",
-              contacts,
-              position: "",
-              address,
-              program: "",
-            } satisfies StudentRow;
-          }),
+              full_name: s.full_name,
+              email: s.email,
+              profile: byUser.get(s.user_id) || null,
+              frdo: frdoByUser.get(s.user_id) || null,
+              program: matched || "",
+            }),
+          ),
         );
       } catch (e: any) {
         toast.error("Не удалось загрузить данные", { description: e?.message });
@@ -143,6 +168,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId, groupId]);
+
 
   // Смена компании атомарно заменяет ВСЕ реквизиты заказчика (без «||»),
   // поля договора/группы при этом сохраняются.
