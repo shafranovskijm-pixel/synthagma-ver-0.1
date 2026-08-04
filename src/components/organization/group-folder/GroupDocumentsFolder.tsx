@@ -27,6 +27,7 @@ import {
   documentDataReadiness,
   type DocumentFillMode,
 } from "@/lib/group-docs/factualData";
+import { batchStatusLabel, groupDocumentBatches } from "@/lib/group-docs/factualResolvers";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 
@@ -108,7 +109,7 @@ export function GroupDocumentsFolder({
       PACKAGE_DOC_TYPES.map(t => ({
         type: t,
         info: documentDataReadiness(t, factual, students.length),
-      })).filter(r => r.info && r.info.finalBlocked),
+      })).filter((r): r is { type: DocType; info: NonNullable<typeof r.info> } => !!r.info),
     [factual, students.length],
   );
 
@@ -123,21 +124,23 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
-      const batchId = crypto.randomUUID();
       const genOpts = {
         totalPrice: price,
         mode,
         factual: mode === "data" ? factual : null,
         requestedStatus: mode === "data" ? ("final" as const) : ("draft" as const),
-        packageBatchId: batchId,
-        packageVersion: 1,
       };
       const docs = types.length === 1
         ? [generateDocument(ctx, types[0], genOpts)]
         : generatePackage(ctx, types, genOpts);
-      const ok = await saveGenerated(docs, { batchId, version: 1 });
+      const res = await saveGenerated(docs);
+      const ok = !!res;
       if (ok) onDataChanged?.();
-      if (ok && types.length === 1) toast.success("Документ сформирован");
+      if (ok && types.length === 1) {
+        toast.success(`Документ сформирован (версия ${res!.version ?? "—"})`);
+      } else if (ok) {
+        toast.success(`Пакет сохранён как версия ${res!.version ?? "—"} (текущая)`);
+      }
       return ok;
     } catch (e: any) {
       toast.error("Ошибка генерации: " + (e?.message || ""));
@@ -218,12 +221,25 @@ export function GroupDocumentsFolder({
             : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
         </div>
         <div className="text-xs text-muted-foreground mt-1">{LEGACY_LAYOUT_NOTICE}</div>
-        {mode === "data" && readiness.length > 0 && (
-          <div className="mt-3 text-xs text-muted-foreground space-y-1">
-            <div className="font-medium text-foreground">Данных недостаточно — документы останутся черновиками:</div>
+        {mode === "data" && (
+          <div className="mt-3 text-xs space-y-2">
+            <div className="font-medium text-foreground">Источники и готовность данных перед генерацией:</div>
+            {factual.warnings.map(w => (
+              <div key={w} className="text-destructive">· {w}</div>
+            ))}
             {readiness.map(r => (
-              <div key={r.type}>
-                · {typeTitle.get(r.type) || r.type}: {r.info?.warning || r.info?.source}
+              <div key={r.type} className="rounded-xl border border-border p-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{typeTitle.get(r.type) || r.type}</span>
+                  <Badge variant={r.info.finalBlocked ? "secondary" : "default"} className="rounded-full text-[10px]">
+                    {r.info.finalBlocked ? "Черновик" : "Готово к итоговому"}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    записей: {r.info.recordCount} · охват: {r.info.coverage}
+                  </span>
+                </div>
+                <div className="text-muted-foreground mt-0.5">Источник: {r.info.source}</div>
+                {r.info.warning && <div className="text-muted-foreground mt-0.5">{r.info.warning}</div>}
               </div>
             ))}
           </div>
