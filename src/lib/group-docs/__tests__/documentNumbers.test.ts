@@ -56,16 +56,87 @@ describe("нумерация документов группы", () => {
     ).rejects.toThrow("rpc down");
   });
 
-  it("generateDocument без серверного номера бросает для приказа, но не для журнала", () => {
+  it("черновик номерного документа остаётся без номера, final требует серверный номер", () => {
     const ctx = structuredClone(SAMPLE_CONTEXT);
-    expect(() => generateDocument(ctx, "enrollment_order", {})).toThrow(/не зарезервирован/);
-    const journal = generateDocument(ctx, "class_journal", {});
-    expect(journal.document_number).toBe("");
-    const order = generateDocument(ctx, "enrollment_order", {
+
+    // Бланк/черновик: номер не нужен и не подставляется, даже если передан.
+    const draft = generateDocument(ctx, "enrollment_order", {});
+    expect(draft.doc_status).toBe("draft");
+    expect(draft.document_number).toBe("");
+    const draftWithNumber = generateDocument(ctx, "enrollment_order", {
       numbers: { enrollment_order: "УЦ-5/2026" },
     });
-    expect(order.document_number).toBe("УЦ-5/2026");
+    expect(draftWithNumber.document_number).toBe("");
+    expect(draftWithNumber.name).not.toContain("УЦ-5/2026");
+
+    const journal = generateDocument(ctx, "class_journal", {});
+    expect(journal.document_number).toBe("");
+
+    // Final без зарезервированного номера — fail-closed.
+    expect(() =>
+      generateDocument(ctx, "enrollment_order", { mode: "data", requestedStatus: "final" }),
+    ).toThrow(/не зарезервирован/);
+
+    const final = generateDocument(ctx, "enrollment_order", {
+      mode: "data",
+      requestedStatus: "final",
+      numbers: { enrollment_order: "УЦ-5/2026" },
+    });
+    expect(final.doc_status).toBe("final");
+    expect(final.document_number).toBe("УЦ-5/2026");
   });
+
+  it("резервирование только для документов, которые действительно станут final", async () => {
+    const reserve = vi.fn(fakeServer());
+
+    // Бланк-пакет: ни одного вызова серверной нумерации.
+    const blank = typesRequiringReservation(["contract", "enrollment_order", "class_journal"], {
+      mode: "blank",
+      requestedStatus: "draft",
+      finalBlocked: () => false,
+    });
+    expect(blank).toEqual([]);
+    await reserveGroupDocumentNumbers(blank, 2026, reserve);
+    expect(reserve).toHaveBeenCalledTimes(0);
+
+    // Документ, который readiness понизит до черновика, номер не тратит.
+    const blocked = typesRequiringReservation(["contract", "enrollment_order"], {
+      mode: "data",
+      requestedStatus: "final",
+      finalBlocked: t => t === "contract",
+    });
+    expect(blocked).toEqual(["enrollment_order"]);
+
+    // Готовые final-приказы получают ровно по одному номеру.
+    const ready = typesRequiringReservation(["contract", "enrollment_order", "class_journal"], {
+      mode: "data",
+      requestedStatus: "final",
+      finalBlocked: () => false,
+    });
+    expect(ready).toEqual(["contract", "enrollment_order"]);
+    const nums = await reserveGroupDocumentNumbers(ready, 2026, reserve);
+    expect(reserve).toHaveBeenCalledTimes(2);
+    expect(nums.contract).toBe("2026-001");
+    expect(nums.enrollment_order).toBe("УЦ-1/2026");
+  });
+
+  it("сбой RPC нумерации: ничего не генерируется и не сохраняется", async () => {
+    const reserve = vi.fn().mockRejectedValue(new Error("rpc down"));
+    const types = typesRequiringReservation(["enrollment_order"], {
+      mode: "data",
+      requestedStatus: "final",
+      finalBlocked: () => false,
+    });
+    await expect(reserveGroupDocumentNumbers(types, 2026, reserve)).rejects.toThrow("rpc down");
+    // Без номеров final сгенерировать нельзя — вставка невозможна.
+    expect(() =>
+      generateDocument(structuredClone(SAMPLE_CONTEXT), "enrollment_order", {
+        mode: "data",
+        requestedStatus: "final",
+      }),
+    ).toThrow(/не зарезервирован/);
+  });
+
 });
 
 describe("create_group_document_batch сериализует параллельные пакеты", () => {
