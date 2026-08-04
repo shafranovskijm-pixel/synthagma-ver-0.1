@@ -335,9 +335,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <div key={key} className="space-y-1.5">
                       <Label htmlFor={key}>{label}</Label>
                       <Input id={key} value={scalars[key] || ""} onChange={(e) => setField(key, e.target.value)} />
+                      <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel(key)}</p>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Данные подставляются из карточки компании. Чтобы они заполнялись автоматически, заполните раздел
+                  «Реквизиты для документов» в карточке компании.
+                </p>
               </div>
 
               {/* Договор и обучение */}
@@ -346,7 +351,13 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_NO">Номер договора</Label>
-                    <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} />
+                    <div className="flex gap-2">
+                      <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} placeholder="Зарезервируйте номер" />
+                      <Button type="button" variant="outline" onClick={reserveNumber} disabled={numberBusy}>
+                        {numberBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Номер"}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("DOC_NO")}</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_DATE_ISO">Дата договора</Label>
@@ -361,11 +372,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   <div className="space-y-1.5">
                     <Label htmlFor="TRAINING_ADDR">Место обучения</Label>
                     <Input id="TRAINING_ADDR" value={scalars.TRAINING_ADDR || ""} onChange={(e) => setField("TRAINING_ADDR", e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("TRAINING_ADDR")}</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="SCHEDULE">Режим занятий</Label>
                     <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("SCHEDULE")}</p>
                   </div>
+
                   <div className="space-y-1.5">
                     <Label htmlFor="STUDENT_DATES">Даты обучения (для всех слушателей)</Label>
                     <Input id="STUDENT_DATES" value={scalars.STUDENT_DATES || ""} onChange={(e) => setField("STUDENT_DATES", e.target.value)} placeholder="03.08.2026 — 07.08.2026" />
