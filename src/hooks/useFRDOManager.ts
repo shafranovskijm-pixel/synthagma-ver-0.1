@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { detectGenderFromMiddleName, generateDocumentNumber, generateRegNumber } from "@/constants/frdo";
 import { buildDPORow, buildPORow, exportFRDOExcel, formatDateForFRDO } from "@/utils/frdoExcelExport";
 import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
+import { filterByGroupMembers } from "@/lib/groups/groupContext";
 
 interface Student { user_id: string; name: string; email: string; course?: string | null; course_id?: string | null; }
 interface FRDOData {
@@ -44,7 +45,16 @@ function withExportTimeout<T>(promise: Promise<T>): Promise<T> {
   ]);
 }
 
-export function useFRDOManager(organizationId: string) {
+export interface FRDOGroupContext {
+  /** Ограничить список фактическими участниками группы (по profiles.student_group_id). */
+  groupId?: string | null;
+  /** Курс группы: сразу выставляется в фильтр курса. */
+  courseId?: string | null;
+}
+
+export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {}) {
+  const groupId = ctx.groupId || null;
+  const contextCourseId = ctx.courseId || null;
   const [isLoading, setIsLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
@@ -52,7 +62,7 @@ export function useFRDOManager(organizationId: string) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FRDOStatus>("all");
-  const [courseFilter, setCourseFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState(contextCourseId || "all");
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -60,15 +70,20 @@ export function useFRDOManager(organizationId: string) {
   const [selectedEnrollmentForExport, setSelectedEnrollmentForExport] = useState<EnrollmentData | null>(null);
   const [visibleCount, setVisibleCount] = useState(5);
   const [isUploading, setIsUploading] = useState(false);
+  const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
 
-  useEffect(() => { loadData(); }, [organizationId]);
+  useEffect(() => { loadData(); }, [organizationId, groupId]);
+  useEffect(() => { setCourseFilter(contextCourseId || "all"); }, [contextCourseId]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const { data: profilesData, error: profilesError } = await supabase.from("profiles").select("user_id, full_name, email").eq("organization_id", organizationId);
+      let profilesQuery = supabase.from("profiles").select("user_id, full_name, email, student_group_id").eq("organization_id", organizationId);
+      if (groupId) profilesQuery = profilesQuery.eq("student_group_id", groupId);
+      const { data: profilesData, error: profilesError } = await profilesQuery;
       if (profilesError) throw profilesError;
       const userIds = profilesData?.map(p => p.user_id) || [];
+      setGroupMemberIds(userIds);
       if (userIds.length === 0) { setStudents([]); setIsLoading(false); return; }
 
       const rolesData = await fetchUserRolesBatched(userIds, ["organization", "admin"]);
@@ -122,7 +137,10 @@ export function useFRDOManager(organizationId: string) {
     return { status: "incomplete", missingFields: missing };
   };
 
-  const filteredStudents = students.filter(student => {
+  // Фильтрация по фактическим участникам группы (не по совпадению курса).
+  const scopedStudents = filterByGroupMembers(students, groupId ? groupMemberIds : null);
+
+  const filteredStudents = scopedStudents.filter(student => {
     if (searchQuery) { const q = searchQuery.toLowerCase(); if (!student.name.toLowerCase().includes(q) && !student.email.toLowerCase().includes(q)) return false; }
     if (statusFilter !== "all") { const { status } = getFrdoStatus(student.user_id); if (status !== statusFilter) return false; }
     if (courseFilter !== "all") { const enrollments = enrollmentsMap.get(student.user_id) || []; if (!enrollments.some(e => e.course_id === courseFilter)) return false; }
@@ -240,16 +258,16 @@ export function useFRDOManager(organizationId: string) {
 
   const hasPOCourses = courses.some(c => c.frdo_program_type === "professional_training");
   const stats = {
-    total: students.length,
-    complete: students.filter(s => getFrdoStatus(s.user_id).status === "complete").length,
-    incomplete: students.filter(s => getFrdoStatus(s.user_id).status === "incomplete").length,
-    empty: students.filter(s => getFrdoStatus(s.user_id).status === "empty").length,
+    total: scopedStudents.length,
+    complete: scopedStudents.filter(s => getFrdoStatus(s.user_id).status === "complete").length,
+    incomplete: scopedStudents.filter(s => getFrdoStatus(s.user_id).status === "incomplete").length,
+    empty: scopedStudents.filter(s => getFrdoStatus(s.user_id).status === "empty").length,
   };
 
   const missingFieldsStats = (() => {
     const fieldCounts: Record<string, number> = {};
     for (const field of REQUIRED_FIELDS) fieldCounts[field.label] = 0;
-    for (const student of students) { const { missingFields } = getFrdoStatus(student.user_id); for (const f of missingFields) { if (fieldCounts[f] !== undefined) fieldCounts[f]++; } }
+    for (const student of scopedStudents) { const { missingFields } = getFrdoStatus(student.user_id); for (const f of missingFields) { if (fieldCounts[f] !== undefined) fieldCounts[f]++; } }
     return Object.entries(fieldCounts).filter(([_, c]) => c > 0).sort((a, b) => b[1] - a[1]);
   })();
 
@@ -302,6 +320,7 @@ export function useFRDOManager(organizationId: string) {
   };
 
   return {
+    groupId,
     isLoading, students, courses, searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
 import { CourseDetailsTab } from "./CourseDetailsTab";
 import { StudentDetailsTab } from "./StudentDetailsTab";
@@ -38,6 +38,11 @@ export function TabContentRenderer() {
   const d = useOrgDashboard();
   const activeTab = d.tabNavigation.activeTab;
   const organizationId = d.organizationId;
+  const [searchParams] = useSearchParams();
+  // Контекст группы для Журналов и ФИС ФРДО (передаётся из папки группы)
+  const ctxGroupId = searchParams.get("groupId");
+  const ctxCourseId = searchParams.get("courseId");
+  const ctxReturnToGroupId = searchParams.get("returnToGroupId");
 
   useEffect(() => {
     if (activeTab === "ai-tutors" || activeTab === "webinars") {
@@ -199,7 +204,12 @@ export function TabContentRenderer() {
 
       {/* Journals Tab */}
       {activeTab === "journals" && organizationId && (
-        <JournalsManager organizationId={organizationId} />
+        <JournalsManager
+          organizationId={organizationId}
+          groupId={ctxGroupId}
+          courseId={ctxCourseId}
+          returnToGroupId={ctxReturnToGroupId}
+        />
       )}
 
       {/* Labor Safety Tab */}
@@ -209,7 +219,12 @@ export function TabContentRenderer() {
 
       {/* FRDO Tab */}
       {activeTab === "frdo" && organizationId && (
-        <FRDOManager organizationId={organizationId} />
+        <FRDOManager
+          organizationId={organizationId}
+          groupId={ctxGroupId}
+          courseId={ctxCourseId}
+          returnToGroupId={ctxReturnToGroupId}
+        />
       )}
 
       {/* Homework Review Tab */}

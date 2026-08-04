@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocum
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
+import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
+
 
 
 
@@ -86,8 +88,11 @@ const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }>
 
 export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps) {
   const d = useOrgDashboard();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showMembers, setShowMembers] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
@@ -294,6 +299,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   }, [group, orgInfo, students, courseInfo]);
 
   const resolvedProgramTitle = group?.program_title || courseInfo?.title || "";
+  const resolvedCourseId = group?.course_id || courseInfo?.id || null;
+
   const resolvedProgramHours = group?.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0;
 
   /** Критичные поля: без них документы бессмысленны — генерация блокируется. */
@@ -419,6 +426,110 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </div>
         </div>
       </Card>
+
+      {/* Работа с группой */}
+      <Card className="p-4 rounded-2xl border-border">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <BookOpen className="w-4 h-4 text-primary shrink-0" />
+            {resolvedCourseId ? (
+              <button
+                className="font-medium text-primary hover:underline inline-flex items-center gap-1 truncate"
+                onClick={() => navigate(courseDetailsPathForGroup(resolvedCourseId))}
+              >
+                <span className="truncate">{resolvedProgramTitle || courseInfo?.title || "Курс группы"}</span>
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              </button>
+            ) : (
+              <span className="text-muted-foreground">Курс не привязан к группе</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant={showMembers ? "default" : "outline"} size="sm" className="rounded-xl gap-1.5" onClick={() => setShowMembers(v => !v)}>
+              <Users className="w-4 h-4" /> Участники ({students.length})
+              {showMembers ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </Button>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5"
+              onClick={() => navigate(groupContextPath("journals", { groupId, courseId: resolvedCourseId }))}>
+              <ClipboardList className="w-4 h-4" /> Журналы группы
+            </Button>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5"
+              onClick={() => navigate(groupContextPath("frdo", { groupId, courseId: resolvedCourseId }))}>
+              <Shield className="w-4 h-4" /> ФИС ФРДО
+            </Button>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setOpenFolder("docs")}>
+              <FileText className="w-4 h-4" /> Документы группы
+            </Button>
+          </div>
+        </div>
+
+        {showMembers && (
+          <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+            {students.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">В группе ещё нет учеников.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">ФИО</th>
+                    <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Документы</th>
+                    <th className="text-left px-3 py-2 font-medium hidden lg:table-cell">ФРДО</th>
+                    <th className="text-right px-3 py-2 font-medium">Договоры</th>
+                    <th className="text-right px-3 py-2 font-medium">Аттестации</th>
+                    <th className="px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {students.map(s => {
+                    const frdoReady = Boolean(s.frdo?.birth_date && s.frdo?.snils && s.frdo?.gender);
+                    return (
+                      <tr
+                        key={s.user_id}
+                        className="hover:bg-muted/40 cursor-pointer"
+                        onClick={() => navigate(studentDetailsPath(s.user_id))}
+                      >
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium truncate">{s.full_name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{s.email || s.login || "—"}</div>
+                        </td>
+                        <td className="px-3 py-2.5 hidden md:table-cell">
+                          <div className="flex gap-1.5">
+                            <Badge variant={s.documents.passport > 0 ? "default" : "outline"} className="rounded-full text-[10px]">
+                              Паспорт {s.documents.passport > 0 ? "✓" : "—"}
+                            </Badge>
+                            <Badge variant={s.documents.snils > 0 ? "default" : "outline"} className="rounded-full text-[10px]">
+                              СНИЛС {s.documents.snils > 0 ? "✓" : "—"}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 hidden lg:table-cell">
+                          <Badge variant={frdoReady ? "default" : s.frdo ? "secondary" : "outline"} className="rounded-full text-[10px]">
+                            {frdoReady ? "Готово" : s.frdo ? "Не полностью" : "Нет данных"}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{s.contracts_count}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{s.test_attempts_count}</td>
+                        <td className="px-3 py-2.5 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-xl gap-1"
+                            onClick={(e) => { e.stopPropagation(); navigate(studentDetailsPath(s.user_id)); }}
+                          >
+                            Открыть карточку <ExternalLink className="w-3.5 h-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </Card>
+
+
 
       {/* Toolbar: view switcher */}
       <div className="flex items-center justify-between gap-2">
