@@ -23,7 +23,9 @@ export function courseDetailsPathForGroup(courseId: string): string {
 
 /** Ссылка на папку группы (в т.ч. на конкретную вложенную папку). */
 export function groupFolderPath(groupId: string, folder?: string | null): string {
-  const base = `/organization?tab=students&studentsView=groups&groupId=${encodeURIComponent(groupId)}`;
+  // tab=group-folder открывает саму папку группы по прямой ссылке
+  // (tab=students показал бы только список групп).
+  const base = `/organization?tab=group-folder&studentsView=groups&groupId=${encodeURIComponent(groupId)}`;
   return folder ? `${base}&folder=${encodeURIComponent(folder)}` : base;
 }
 
@@ -36,6 +38,53 @@ export function groupContextPath(tab: "journals" | "frdo", ctx: GroupContextPara
   const back = ctx.returnToGroupId ?? ctx.groupId;
   if (back) params.set("returnToGroupId", back);
   return `/organization?${params.toString()}`;
+}
+
+/** Вкладки организации, которые умеют работать в контексте группы. */
+export const GROUP_CONTEXT_TABS = ["journals", "frdo"] as const;
+export type GroupContextTab = (typeof GROUP_CONTEXT_TABS)[number];
+
+export function isGroupContextTab(tab: string | null | undefined): tab is GroupContextTab {
+  return !!tab && (GROUP_CONTEXT_TABS as readonly string[]).includes(tab);
+}
+
+/**
+ * Чистый резолвер query-параметров при смене вкладки организации.
+ *
+ * Ключевое правило: вкладки `journals`/`frdo`, открытые из папки группы
+ * (признак — присутствие `returnToGroupId`), СОХРАНЯЮТ groupId + courseId +
+ * returnToGroupId. Любой уход на обычную вкладку полностью очищает контекст
+ * группы, чтобы он не протекал в данные всей организации.
+ */
+export function resolveTabParams(
+  prev: URLSearchParams | string,
+  tab: string | null | undefined,
+): URLSearchParams {
+  const next = new URLSearchParams(typeof prev === "string" ? prev : prev.toString());
+  if (!tab || tab === "courses") next.delete("tab");
+  else next.set("tab", tab);
+
+  const keepGroupContext = isGroupContextTab(tab) && !!next.get("returnToGroupId") && !!next.get("groupId");
+
+  if (keepGroupContext) {
+    // groupId / courseId / returnToGroupId остаются как есть
+    next.delete("studentId");
+    next.delete("folder");
+    return next;
+  }
+
+  // Папка группы живёт внутри вкладки «Ученики» (tab=students&studentsView=groups),
+  // поэтому groupId/folder сохраняются и для неё.
+  const keepsGroupFolder = tab === "group-folder" || tab === "students";
+
+  if (tab !== "course-details") next.delete("courseId");
+  if (tab !== "student-details") next.delete("studentId");
+  if (!keepsGroupFolder) {
+    next.delete("groupId");
+    next.delete("folder");
+  }
+  if (!keepsGroupFolder) next.delete("returnToGroupId");
+  return next;
 }
 
 /** Фильтрация уже загруженных записей по участникам группы. */

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { TabType } from "@/components/organization/OrgSidebar";
+import { resolveTabParams } from "@/lib/groups/groupContext";
 
 interface MenuSettings {
   showLibrary: boolean;
@@ -38,15 +39,7 @@ export function useTabNavigation({
   const activeTab = (searchParams.get("tab") as TabType) || "courses";
 
   const setActiveTab = useCallback((tab: TabType) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (!tab || tab === "courses") next.delete("tab"); else next.set("tab", tab);
-      // Clear context params that no longer make sense on tab change
-      if (tab !== "course-details") next.delete("courseId");
-      if (tab !== "student-details") next.delete("studentId");
-      if (tab !== "group-folder") { next.delete("groupId"); next.delete("folder"); }
-      return next;
-    });
+    setSearchParams((prev) => resolveTabParams(prev, tab));
   }, [setSearchParams]);
 
   const [swipeDirection, setSwipeDirection] = useState(0);
