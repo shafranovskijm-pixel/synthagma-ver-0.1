@@ -32,10 +32,16 @@ describe("buildIssueBatchPayload", () => {
   });
 
   it("rejects items without user_id and empty batches", () => {
-    expect(() => buildIssueBatchPayload({ organizationId: "org1", items: [] })).toThrow();
+    expect(() => buildIssueBatchPayload({ organizationId: "org1", courseId: "c1", items: [] })).toThrow();
     expect(() =>
-      buildIssueBatchPayload({ organizationId: "org1", items: [item({ user_id: "" })] }),
+      buildIssueBatchPayload({ organizationId: "org1", courseId: "c1", items: [item({ user_id: "" })] }),
     ).toThrow(/user_id/);
+    expect(() =>
+      buildIssueBatchPayload({ organizationId: "org1", courseId: "c1", items: [item({ enrollment_id: "" })] }),
+    ).toThrow(/enrollment_id/);
+    expect(() =>
+      buildIssueBatchPayload({ organizationId: "org1", items: [item()] }),
+    ).toThrow(/courseId/);
   });
 });
 
@@ -43,7 +49,7 @@ describe("issueEducationDocumentBatch", () => {
   it("never falls back to client numbering — throws on RPC error", async () => {
     const client = { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "wrong group" } }) };
     await expect(
-      issueEducationDocumentBatch({ organizationId: "org1", groupId: "g1", items: [item()] }, client),
+      issueEducationDocumentBatch({ organizationId: "org1", groupId: "g1", courseId: "c1", items: [item()] }, client),
     ).rejects.toThrow(/wrong group/);
     expect(client.rpc).toHaveBeenCalledTimes(1);
   });
@@ -55,9 +61,12 @@ describe("issueEducationDocumentBatch", () => {
         error: null,
       }),
     };
-    const rows = await issueEducationDocumentBatch({ organizationId: "org1", items: [item()] }, client);
+    const rows = await issueEducationDocumentBatch({ organizationId: "org1", courseId: "c1", items: [item()] }, client);
     expect(rows[0].document_number).toBe("2026-001");
-    expect(issuedRowKey(rows[0])).toBe("u1|e1");
+    expect(issuedRowKey(rows[0])).toBe("enrollment:e1");
+    expect(issuedRowKey({ user_id: "u1", enrollment_id: "e1" })).toBe(
+      issuedRowKey({ user_id: null, enrollment_id: "e1" }),
+    );
   });
 
   it("serializes concurrent batches (unique numbers per call)", async () => {
@@ -69,8 +78,8 @@ describe("issueEducationDocumentBatch", () => {
       }),
     };
     const [a, b] = await Promise.all([
-      issueEducationDocumentBatch({ organizationId: "org1", items: [item()] }, client),
-      issueEducationDocumentBatch({ organizationId: "org1", items: [item({ enrollment_id: "e2" })] }, client),
+      issueEducationDocumentBatch({ organizationId: "org1", courseId: "c1", items: [item()] }, client),
+      issueEducationDocumentBatch({ organizationId: "org1", courseId: "c1", items: [item({ enrollment_id: "e2" })] }, client),
     ]);
     expect(a[0].document_number).not.toBe(b[0].document_number);
   });
@@ -112,5 +121,16 @@ describe("issueEducationDocumentsByCourse", () => {
         client,
       ),
     ).rejects.toThrow(/student not in group.*выдано партий: 1 из 2/);
+  });
+
+  it("rejects a row without exact course before any RPC call", async () => {
+    const client = { rpc: vi.fn() };
+    await expect(
+      issueEducationDocumentsByCourse(
+        { organizationId: "org1", items: [item({ course_id: null })] },
+        client as any,
+      ),
+    ).rejects.toThrow(/course_id/);
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 });

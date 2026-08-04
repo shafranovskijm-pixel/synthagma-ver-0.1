@@ -230,7 +230,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
             : localDateIso();
 
           pending.push({
-            key: `${userId}|${enrollmentId || ""}`,
+            key: issuedRowKey({ user_id: userId, enrollment_id: enrollmentId }),
             item: {
               user_id: userId,
               enrollment_id: enrollmentId,
@@ -248,8 +248,13 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
               : buildPORow({ documentType, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего", programName: enrollment?.course_title || "", professionName: resolved.professionName, qualificationRank: resolved.qualificationRank, startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: resolved.gender, snils: data.snils, citizenshipCode: data.citizenship_code, trainingForm: resolved.trainingForm, financingSource: resolved.financingSource, educationForm: resolved.educationForm }),
           });
         };
-        if (filteredEnrollments.length === 0) processEnrollment(null);
-        else filteredEnrollments.forEach(e => processEnrollment(e));
+        // Официальный документ нельзя выпускать без точного зачисления и курса.
+        // Такая строка остаётся в readiness как неполная, но в журнал не пишется.
+        if (filteredEnrollments.length === 0) {
+          skippedEmpty += 1;
+          continue;
+        }
+        filteredEnrollments.forEach(e => processEnrollment(e));
       }
 
       if (pending.length === 0) { toast.error("Нет данных для экспорта — все строки пустые"); setIsExporting(false); return; }

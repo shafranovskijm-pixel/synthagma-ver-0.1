@@ -52,6 +52,8 @@ export function buildIssueBatchPayload({
 }: IssueEducationDocumentsArgs): IssueBatchPayload {
   if (!organizationId) throw new Error("organizationId обязателен");
   if (!items.length) throw new Error("Нет выпускников для выдачи документов");
+  if (!courseId) throw new Error("Точный courseId обязателен для выдачи документа");
+  if (items.length > 500) throw new Error("За один раз можно выдать не более 500 документов");
 
   const today = localDateIso();
   return {
@@ -60,6 +62,7 @@ export function buildIssueBatchPayload({
     p_course_id: courseId || null,
     p_items: items.map((it) => {
       if (!it.user_id) throw new Error("У записи отсутствует user_id — выдача отменена");
+      if (!it.enrollment_id) throw new Error("У записи отсутствует enrollment_id — выдача отменена");
       return {
         user_id: it.user_id,
         enrollment_id: it.enrollment_id || null,
@@ -95,9 +98,14 @@ export async function issueEducationDocumentBatch(
   return (data as any[]) || [];
 }
 
-/** Ключ сопоставления выданной записи с исходным элементом. */
+/**
+ * Ключ сопоставления выданной записи с исходным элементом.
+ * enrollment_id глобально идентифицирует зачисление и работает также для
+ * legacy-строк, где новые user_id/course_id ещё не были заполнены.
+ */
 export function issuedRowKey(row: { user_id?: string | null; enrollment_id?: string | null }): string {
-  return `${row.user_id || ""}|${row.enrollment_id || ""}`;
+  if (row.enrollment_id) return `enrollment:${row.enrollment_id}`;
+  return `user:${row.user_id || ""}`;
 }
 
 export interface CourseScopedItem extends EducationDocumentItemInput {
@@ -120,7 +128,13 @@ export async function issueEducationDocumentsByCourse(
 ): Promise<any[]> {
   const byCourse = new Map<string, CourseScopedItem[]>();
   for (const item of args.items) {
-    const key = item.course_id || "";
+    const key = String(item.course_id || "").trim();
+    if (!key) {
+      throw new Error("У записи отсутствует точный course_id — выдача документов отменена");
+    }
+    if (!item.enrollment_id) {
+      throw new Error("У записи отсутствует enrollment_id — выдача документов отменена");
+    }
     const list = byCourse.get(key) || [];
     list.push(item);
     byCourse.set(key, list);
@@ -134,7 +148,7 @@ export async function issueEducationDocumentsByCourse(
         {
           organizationId: args.organizationId,
           groupId: args.groupId || null,
-          courseId: courseId || null,
+          courseId,
           items,
         },
         client as any,

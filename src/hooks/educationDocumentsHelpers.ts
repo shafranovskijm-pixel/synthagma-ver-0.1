@@ -26,6 +26,7 @@ export interface EducationDocumentRecord {
 
 export interface CompletedStudent {
   enrollment_id: string;
+  course_id: string;
   user_id: string;
   full_name: string;
   birth_date: string | null;

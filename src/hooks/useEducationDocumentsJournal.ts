@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
-import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { issueEducationDocumentsByCourse } from "@/lib/education-docs/issueBatch";
 import { localDateIso } from "@/lib/date/localDate";
 import {
   type EducationDocumentRecord,
@@ -224,6 +224,7 @@ export function useEducationDocumentsJournal({
         const birthDate = frdoMap.get(enrollment.user_id);
         return {
           enrollment_id: enrollment.id,
+          course_id: enrollment.course_id,
           user_id: enrollment.user_id,
           full_name: profile?.full_name || profile?.email || "Неизвестный студент",
           birth_date: birthDate || null,
@@ -409,13 +410,13 @@ export function useEducationDocumentsJournal({
   const issueForStudents = async (list: CompletedStudent[], successLabel: string) => {
     setSaving(true);
     try {
-      const inserted = await issueEducationDocumentBatch({
+      const inserted = await issueEducationDocumentsByCourse({
         organizationId,
         groupId: groupContext?.groupId || null,
-        courseId: groupContext?.courseId || null,
         items: list.map((student) => ({
           user_id: student.user_id,
           enrollment_id: student.enrollment_id,
+          course_id: student.course_id,
           document_type: student.frdo_program_type
             ? PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate"
             : documentTypeFilter || "certificate",
