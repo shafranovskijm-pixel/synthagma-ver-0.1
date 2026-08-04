@@ -1,5 +1,26 @@
 import type { GenerationContext } from "./schema";
 import { VARIABLE_CATALOG } from "./variableCatalog";
+import {
+  ATTESTATION_SOURCE_LABEL,
+  JOURNAL_SOURCE_LABEL,
+  LEGACY_LAYOUT_NOTICE,
+  REGISTRATION_SOURCE_LABEL,
+  SCHEDULE_EMPTY_NOTICE,
+  SCHEDULE_SOURCE_LABEL,
+  buildAttestationBlankRows,
+  buildAttestationRowsFromFacts,
+  buildJournalBlankRows,
+  buildJournalHead,
+  buildJournalRowsFromFacts,
+  buildRegistrationBlankRows,
+  buildRegistrationRowsFromFacts,
+  buildScheduleBlankRows,
+  buildScheduleRowsFromFacts,
+  emptyFactualData,
+  journalDateColumns,
+  type DocumentFillMode,
+  type GroupFactualData,
+} from "./factualData";
 export { VARIABLE_CATALOG } from "./variableCatalog";
 
 const MONTHS_RU = [
@@ -232,6 +253,10 @@ export interface BuildVariablesOptions {
   primaryStudentIndex?: number;
   totalPrice?: number;
   paymentDeadline?: string;
+  /** "blank" — рабочий бланк, "data" — заполнение по данным Синтагмы. */
+  mode?: DocumentFillMode;
+  /** Snapshot фактических данных Supabase (обязателен для mode="data"). */
+  factual?: GroupFactualData | null;
 }
 
 export function buildVariables(
@@ -243,6 +268,9 @@ export function buildVariables(
   const orderNum = opts.documentNumber || "";
   const price = opts.totalPrice ?? Number(ctx.extras?.total_price || 0);
   const days = trainingDays(ctx.group.start_date, ctx.group.end_date);
+  const dataMode = opts.mode === "data";
+  const factual = opts.factual || emptyFactualData();
+  const journalDates = journalDateColumns(factual.lessonCompletions);
 
   const hasCompany = !!(ctx.company && ctx.company.name);
   const customerName = hasCompany
