@@ -19,14 +19,18 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   GORELTECH_CURRICULA,
+  applyCompanySelection,
   evaluateDocxReadiness,
   fetchDocxTemplates,
+  formatContractDateRu,
   generateDocxContract,
+  groupDatesText,
+  initialDocxScalars,
   isDocxDraftReady,
   type DocxContractDraft,
   type RegistryTemplate,
 } from "@/lib/contracts/docxContract";
-import { formatMoneyRu, moneyToWordsRu, shortNameRu, formatRussianDateLong, formatDateRangeRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
+import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
 
@@ -58,12 +62,15 @@ interface StudentRow {
   program: string;
 }
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 export function GenerateDocxContractDialog({ open, onClose, organizationId, groupId, groupName, students, onGenerated }: Props) {
   const [templates, setTemplates] = useState<RegistryTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState<string>("");
   const [companies, setCompanies] = useState<Array<Record<string, any>>>([]);
   const [companyId, setCompanyId] = useState<string>("");
   const [scalars, setScalars] = useState<Record<string, string>>({});
+  const [docDateIso, setDocDateIso] = useState<string>(todayIso());
   const [amount, setAmount] = useState<number>(0);
   const [taxChosen, setTaxChosen] = useState(false);
   const [curricula, setCurricula] = useState<string[]>([]);
@@ -73,44 +80,57 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
 
   const setField = (key: string, value: string) => setScalars((prev) => ({ ...prev, [key]: value }));
 
+  // Каждое открытие диалога начинается с чистого состояния: данные предыдущего
+  // договора (компания, реквизиты, приложения, слушатели) не переносятся.
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    setCompanyId("");
+    setCurricula([]);
+    setTaxChosen(false);
+    setAmount(0);
+    setRows([]);
+    const iso = todayIso();
+    setDocDateIso(iso);
+    setScalars(initialDocxScalars(null, iso));
+
     (async () => {
       try {
-        const [tpls, companiesRes, groupRes] = await Promise.all([
+        const [tpls, companiesRes, groupRes, profilesRes] = await Promise.all([
           fetchDocxTemplates("legal"),
           supabase.from("companies").select("*").eq("organization_id", organizationId).order("name"),
           supabase.from("student_groups").select("*").eq("id", groupId).maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("user_id, full_name, email, contact_email, phone, city, region")
+            .eq("organization_id", organizationId)
+            .eq("student_group_id", groupId),
         ]);
         setTemplates(tpls);
-        setTemplateKey((prev) => prev || tpls[0]?.template_key || "");
-        setCompanies((companiesRes.data as any[]) || []);
-        const g = groupRes.data as any;
-        const today = new Date().toISOString().slice(0, 10);
-        const dates = formatDateRangeRu(g?.start_date || "", g?.end_date || "");
+        setTemplateKey(tpls[0]?.template_key || "");
+
+        const g = (groupRes.data as any) || null;
         setAmount(Number(g?.default_price) || 0);
-        setScalars((prev) => ({
-          DOC_NO: g?.group_number || "",
-          DOC_DATE: formatRussianDateLong(today),
-          SCHEDULE: g?.program_form ? `Форма обучения: ${g.program_form}` : "",
-          TRAINING_ADDR: "",
-          TAX_CLAUSE: "",
-          PAYMENT_CLAUSE: "Оплата производится в течение 5 (пяти) банковских дней с даты выставления счёта.",
-          ...prev,
-        }));
+        setScalars(initialDocxScalars(g, iso));
+        setCompanies((companiesRes.data as any[]) || []);
+
+        const byUser = new Map<string, any>(((profilesRes.data as any[]) || []).map((p) => [p.user_id, p]));
         setRows(
-          students.map((s) => ({
-            user_id: s.user_id,
-            fio: s.full_name || "",
-            edu: "высшее",
-            contacts: s.email || "",
-            position: "",
-            address: "",
-            program: "",
-          })),
+          students.map((s) => {
+            const p = byUser.get(s.user_id) || {};
+            const contacts = [s.email || p.contact_email || p.email || "", p.phone || ""].filter(Boolean).join(", ");
+            const address = [p.region || "", p.city || ""].filter(Boolean).join(", ");
+            return {
+              user_id: s.user_id,
+              fio: s.full_name || p.full_name || "",
+              edu: "высшее",
+              contacts,
+              position: "",
+              address,
+              program: "",
+            } satisfies StudentRow;
+          }),
         );
-        void dates;
       } catch (e: any) {
         toast.error("Не удалось загрузить данные", { description: e?.message });
       } finally {
@@ -120,27 +140,18 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId, groupId]);
 
-  // Реквизиты заказчика подставляем из карточки компании, остальное заполняет пользователь.
+  // Смена компании атомарно заменяет ВСЕ реквизиты заказчика (без «||»),
+  // поля договора/группы при этом сохраняются.
   useEffect(() => {
-    const c = companies.find((x) => x.id === companyId);
-    if (!c) return;
-    setScalars((prev) => ({
-      ...prev,
-      CUST_NAME: prev.CUST_NAME || c.name || "",
-      CUST_INN: prev.CUST_INN || c.inn || "",
-      CUST_KPP: prev.CUST_KPP || c.kpp || "",
-      CUST_OGRN: prev.CUST_OGRN || c.ogrn || "",
-      CUST_LEGAL_ADDR: prev.CUST_LEGAL_ADDR || c.address || "",
-      CUST_POST_ADDR: prev.CUST_POST_ADDR || c.address || "",
-      CUST_EMAIL: prev.CUST_EMAIL || c.email || "",
-      CUST_REP_GEN: prev.CUST_REP_GEN || "",
-      CUST_REP_SHORT: prev.CUST_REP_SHORT || (c.director ? shortNameRu(c.director) : ""),
-      CUST_AUTH: prev.CUST_AUTH || "Уставе",
-      CUST_REP_POS: prev.CUST_REP_POS || "Генеральный директор",
-    }));
+    if (!companyId) return;
+    const c = companies.find((x) => x.id === companyId) || null;
+    setScalars((prev) => applyCompanySelection(prev, c));
   }, [companyId, companies]);
 
-  const groupDatesText = useMemo(() => scalars.__DATES || "", [scalars]);
+  // Дата договора: одно ISO-состояние, текст [[DOC_DATE]] выводится из него.
+  useEffect(() => {
+    setScalars((prev) => ({ ...prev, DOC_DATE: formatContractDateRu(docDateIso) }));
+  }, [docDateIso]);
 
   const draft: DocxContractDraft = useMemo(() => {
     const programs = curricula.map((title) => ({
@@ -155,7 +166,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
       STUDENT_POSITION: r.position,
       STUDENT_ADDRESS: r.address,
       STUDENT_PROGRAM: r.program,
-      STUDENT_DATES: scalars.STUDENT_DATES || groupDatesText,
+      STUDENT_DATES: scalars.STUDENT_DATES || "",
     }));
     return {
       scalars: {
@@ -169,10 +180,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
       totalAmount: amount,
       taxClauseChosen: taxChosen && !!scalars.TAX_CLAUSE,
     };
-  }, [scalars, rows, curricula, amount, taxChosen, groupDatesText]);
+  }, [scalars, rows, curricula, amount, taxChosen]);
 
   const readiness = useMemo(() => evaluateDocxReadiness(draft), [draft]);
-  const ready = isDocxDraftReady(readiness) && !!companyId && !!templateKey;
+  const ready = isDocxDraftReady(readiness) && !!companyId && !!templateKey && !!docDateIso;
 
   const submit = async () => {
     if (!ready) return;
@@ -187,7 +198,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         studentsMeta: rows.map((r) => ({ user_id: r.user_id, full_name: r.fio })),
         contractName: `Договор ${scalars.DOC_NO} — ${scalars.CUST_NAME}`,
         contractNumber: scalars.DOC_NO,
-        contractDate: new Date().toISOString().slice(0, 10),
+        contractDate: docDateIso,
         draft,
       });
       toast.success("Договор сформирован (Word)", {
@@ -308,8 +319,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="DOC_DATE">Дата договора (текстом)</Label>
-                    <Input id="DOC_DATE" value={scalars.DOC_DATE || ""} onChange={(e) => setField("DOC_DATE", e.target.value)} />
+                    <Label htmlFor="DOC_DATE_ISO">Дата договора</Label>
+                    <Input
+                      id="DOC_DATE_ISO"
+                      type="date"
+                      value={docDateIso}
+                      onChange={(e) => setDocDateIso(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">В договоре: {scalars.DOC_DATE || "—"}</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="TRAINING_ADDR">Место обучения</Label>
@@ -325,7 +342,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="PROG_FORM">Форма обучения</Label>
-                    <Input id="PROG_FORM" value={scalars.PROG_FORM || "Очная"} onChange={(e) => setField("PROG_FORM", e.target.value)} />
+                    <Input id="PROG_FORM" value={scalars.PROG_FORM || ""} onChange={(e) => setField("PROG_FORM", e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -413,6 +430,15 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                             {curricula.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-1.5 sm:col-span-3">
+                        <Label htmlFor={`addr-${i}`}>Адрес проживания (необязательно)</Label>
+                        <Input
+                          id={`addr-${i}`}
+                          value={r.address}
+                          placeholder="Регион, город, улица, дом"
+                          onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, address: e.target.value } : x))}
+                        />
                       </div>
                     </div>
                   ))}
