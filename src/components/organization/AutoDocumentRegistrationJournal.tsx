@@ -42,6 +42,13 @@ export function AutoDocumentRegistrationJournal({ organizationId, onClose, group
         </div>
       </div>
 
+      {groupContext?.groupId && h.unlinkedHiddenCount > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-muted-foreground">
+          В контексте группы скрыто {h.unlinkedHiddenCount} документ(ов), не связанных с участниками этой группы
+          (например, документы компаний или другие курсы). Откройте журнал без контекста группы, чтобы увидеть их.
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
