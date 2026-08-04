@@ -221,8 +221,11 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button variant="outline" onClick={() => setActiveAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
-              <Button onClick={() => setShowCreateWizard(true)} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
+              {!inGroupContext && (
+                <Button onClick={openCreateWizard} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
+              )}
             </div>
+
           </div>
         </div>
         <div className="p-6 pt-4">
