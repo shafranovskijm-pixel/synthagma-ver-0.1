@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     // Авторизация: глобальный админ или сотрудник организации с правом на документы.
     const [{ data: isAdmin }, { data: hasPerm }] = await Promise.all([
       admin.rpc("has_role", { _role: "admin", _user_id: userId }),
-      admin.rpc("has_org_staff_permission", { _user_id: userId, _org_id: body.organizationId, _permission: "documents.manage" }),
+      admin.rpc("has_org_staff_permission", { _user_id: userId, _organization_id: body.organizationId, _permission: "documents.manage" }),
     ]);
     if (!isAdmin && !hasPerm) return json({ error: "Недостаточно прав для генерации договора" }, 403);
 
