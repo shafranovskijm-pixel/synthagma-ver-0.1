@@ -41,6 +41,7 @@ interface GroupData {
   program_title: string | null;
   program_hours: number | null;
   program_form: string | null;
+  schedule_text?: string | null;
   default_price: number | null;
   course_id: string | null;
 }
@@ -283,6 +284,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         program_title: group.program_title || courseInfo?.title || "",
         program_hours: group.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0,
         program_form: group.program_form || courseInfo?.training_form || "Очно-заочная с применением ДОТ",
+        schedule_text: group.schedule_text || null,
         color: group.color || undefined,
       },
       students: students.map(s => ({
