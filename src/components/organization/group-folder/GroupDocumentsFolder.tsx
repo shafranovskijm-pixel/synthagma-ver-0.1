@@ -9,7 +9,9 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 
+import { supabase } from "@/integrations/supabase/client";
 import { generateDocument, generatePackage, downloadHtml, previewHtml } from "@/lib/group-docs/generate";
+import { reserveGroupDocumentNumbers } from "@/lib/group-docs/documentNumbers";
 import { GROUP_DOCUMENT_TYPES } from "@/lib/group-docs/groupDocuments";
 import {
   PACKAGE_DOC_TYPES,
