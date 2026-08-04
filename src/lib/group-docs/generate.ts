@@ -8,6 +8,8 @@ import {
   type DocumentFillMode,
   type GroupFactualData,
 } from "./factualData";
+import { requiresDocumentNumber } from "./documentNumbers";
+import { localDateIso } from "@/lib/date/localDate";
 
 export interface GenerateOptions {
   /** Явный номер (уже зарезервированный сервером). */
