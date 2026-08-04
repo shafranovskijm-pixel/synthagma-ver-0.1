@@ -102,6 +102,16 @@ export function GroupDocumentsFolder({
     students_count: ctx?.students.length || 0,
   }), [ctx]);
 
+  /** Готовность данных по документам пакета — чтобы честно предупредить менеджера. */
+  const readiness = useMemo(
+    () =>
+      PACKAGE_DOC_TYPES.map(t => ({
+        type: t,
+        info: documentDataReadiness(t, factual, students.length),
+      })).filter(r => r.info && r.info.finalBlocked),
+    [factual, students.length],
+  );
+
   const run = async (types: DocType[], docBlockers?: string[]) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
     const gate = docBlockers ?? packageBlockers;
@@ -194,6 +204,32 @@ export function GroupDocumentsFolder({
         </Card>
       )}
 
+      {/* Режим документа */}
+      <Card className="p-4 rounded-2xl border-border">
+        <Tabs value={mode} onValueChange={v => setMode(v as DocumentFillMode)}>
+          <TabsList className="rounded-xl">
+            <TabsTrigger value="blank" className="rounded-lg">Рабочий бланк</TabsTrigger>
+            <TabsTrigger value="data" className="rounded-lg">Заполнить по данным Синтагмы</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="text-xs text-muted-foreground mt-2">
+          {mode === "blank"
+            ? "Ячейки остаются честно пустыми — документ печатается как бланк и сохраняется со статусом «черновик»."
+            : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">{LEGACY_LAYOUT_NOTICE}</div>
+        {mode === "data" && readiness.length > 0 && (
+          <div className="mt-3 text-xs text-muted-foreground space-y-1">
+            <div className="font-medium text-foreground">Данных недостаточно — документы останутся черновиками:</div>
+            {readiness.map(r => (
+              <div key={r.type}>
+                · {typeTitle.get(r.type) || r.type}: {r.info?.reason}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setPackageOpen(true); }}>
@@ -267,6 +303,19 @@ export function GroupDocumentsFolder({
                   <div className="text-xs text-muted-foreground truncate">
                     {typeTitle.get(row.doc_type) || row.doc_type}
                     {row.document_date ? ` · ${format(new Date(row.document_date), "d MMM yyyy", { locale: ru })}` : ""}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <Badge variant={row.doc_status === "final" ? "default" : "secondary"} className="rounded-full text-[10px]">
+                      {row.doc_status === "final" ? "Итоговый" : "Черновик"}
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full text-[10px]">
+                      {row.fill_mode === "data" ? "По данным Синтагмы" : "Рабочий бланк"}
+                    </Badge>
+                    {(row.layout_format || LEGACY_LAYOUT_FORMAT) === LEGACY_LAYOUT_FORMAT && (
+                      <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
+                        макет legacy_html
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
