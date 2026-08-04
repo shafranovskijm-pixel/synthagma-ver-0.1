@@ -248,7 +248,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
       setEditRegNumber("");
     } catch { toast.error("Ошибка при сохранении"); }
     finally { setSaving(false); }
-  }, [editingRecord, editRegNumber]);
+  }, [editingRecord, editRegNumber, scopedRecords, groupContext]);
 
   const generateSuggestedNumber = useCallback(() => {
     if (!editingRecord) return;
