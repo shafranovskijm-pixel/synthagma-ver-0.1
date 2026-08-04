@@ -87,12 +87,7 @@ export function generateDocument(
     console.warn(`[generate] ${docType}: пустые переменные:`, missing);
   }
 
-  const readiness = documentDataReadiness(docType, opts.factual ?? null, ctx.students.length);
-  // Финальный статус недоступен при неполных данных — документ остаётся черновиком.
-  const docStatus: "draft" | "final" =
-    opts.requestedStatus === "final" && mode === "data" && !(readiness?.finalBlocked ?? false)
-      ? "final"
-      : "draft";
+
 
   return {
     id: `doc-${docType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
