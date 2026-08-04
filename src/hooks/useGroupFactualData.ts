@@ -9,6 +9,7 @@ import {
 } from "@/lib/group-docs/factualData";
 import {
   normalizeRegistrationFact,
+  pickPassportIdentityDoc,
   resolveFinalAttestationFacts,
   resolveFinalTestLessonId,
 } from "@/lib/group-docs/factualResolvers";
