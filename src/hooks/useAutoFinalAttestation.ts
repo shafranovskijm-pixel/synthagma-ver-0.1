@@ -106,7 +106,13 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
     })();
   }, [organizationId]);
 
-  const filteredRecords = useMemo(() => records.filter(r => {
+  // Приватность: в контексте группы — только участники группы и её курс.
+  const scopedRecords = useMemo(
+    () => filterByGroupContext(records, groupContext, { userId: (r) => r.user_id, courseId: (r) => r.course_id }),
+    [records, groupContext]
+  );
+
+  const filteredRecords = useMemo(() => scopedRecords.filter(r => {
     const sl = searchQuery.toLowerCase();
     const matchSearch = !searchQuery || r.student_name.toLowerCase().includes(sl) || r.student_email.toLowerCase().includes(sl) || r.course_title.toLowerCase().includes(sl);
     const matchCourse = selectedCourse === "all" || r.course_id === selectedCourse;
@@ -118,7 +124,7 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
     const rd = r.completed_at ? parseISO(r.completed_at) : parseISO(r.started_at);
     const matchDate = isWithinInterval(rd, { start: dateRange.from, end: dateRange.to });
     return matchSearch && matchCourse && matchStatus && matchDate;
-  }), [records, searchQuery, selectedCourse, selectedStatus, dateRange]);
+  }), [scopedRecords, searchQuery, selectedCourse, selectedStatus, dateRange]);
 
   const stats = useMemo(() => {
     const unique = new Set(filteredRecords.map(r => r.user_id)).size;
