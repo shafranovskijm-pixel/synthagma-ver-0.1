@@ -26,10 +26,13 @@ interface Props {
   groupId: string;
   groupName: string;
   students: Student[];
+  /** Вызывается после любого изменения списка договоров — чтобы обновить счётчики папок. */
+  onDataChanged?: () => void;
 }
 
-export function ContractsFolder({ organizationId, groupId, groupName, students }: Props) {
+export function ContractsFolder({ organizationId, groupId, groupName, students, onDataChanged }: Props) {
   const { contracts, loading, refresh, remove } = useGroupContracts(organizationId, groupId);
+  const refreshAll = async () => { await refresh(); onDataChanged?.(); };
   const [genOpen, setGenOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
@@ -192,7 +195,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
         students={students}
         open={genOpen}
         onClose={() => setGenOpen(false)}
-        onGenerated={refresh}
+        onGenerated={refreshAll}
       />
       {quickOpen && (
         <GenerateContractDialog
@@ -203,7 +206,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
           open={quickOpen}
           quick
           onClose={() => setQuickOpen(false)}
-          onGenerated={refresh}
+          onGenerated={refreshAll}
         />
       )}
 
@@ -231,7 +234,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students }
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => { if (toDelete) { await remove(toDelete); setToDelete(null); } }}
+              onClick={async () => { if (toDelete) { await remove(toDelete); setToDelete(null); onDataChanged?.(); } }}
             >Удалить</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -17,6 +17,8 @@ import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
+import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
+
 
 
 type ViewMode = "grid" | "list" | "table";
@@ -233,16 +235,16 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     return () => { cancelled = true; };
   }, [organizationId, groupId, reloadKey]);
 
-  const counts = useMemo(() => {
-    let passports = 0, snils = 0, contracts = 0, exams = 0;
-    for (const s of students) {
-      passports += s.documents.passport;
-      snils += s.documents.snils;
-      contracts += s.contracts_count;
-      exams += s.test_attempts_count;
-    }
-    return { passports, snils, contracts, exams };
-  }, [students]);
+  // Счётчики папок читаются из тех же таблиц, что и содержимое папок.
+  const { counts, refresh: refreshCounts } = useGroupFolderCounts(organizationId, groupId);
+
+  // Возврат «К папкам» → пересчитать счётчики (после генерации/удаления внутри папки).
+  useEffect(() => {
+    if (!openFolder) refreshCounts();
+  }, [openFolder, refreshCounts]);
+
+
+
 
   /** Контекст генерации документов группы: организация + группа + ученики. */
   const generationContext = useMemo<GenerationContext | null>(() => {
@@ -363,7 +365,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     { key: "passports", count: counts.passports },
     { key: "snils", count: counts.snils },
     { key: "exams", count: counts.exams },
-    { key: "docs", count: 0 },
+    { key: "docs", count: counts.docs },
   ];
 
   return (
@@ -439,6 +441,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           groupId={groupId}
           groupName={group?.name || ""}
           students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+          onDataChanged={refreshCounts}
         />
       ) : openFolder === "docs" ? (
         <div className="space-y-4">
@@ -456,6 +459,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             blockingFields={blockingDocFields}
             courseId={group?.course_id || courseInfo?.id || null}
             onOpenGroupSettings={() => setSettingsOpen(true)}
+            onDataChanged={refreshCounts}
           />
 
         </div>
