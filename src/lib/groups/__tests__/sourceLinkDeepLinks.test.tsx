@@ -109,6 +109,6 @@ describe("CompaniesManager deep link mount", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(document.body.textContent?.length ?? 0).toBeGreaterThan(0));
-    expect(screen.getByText(/Компании/i)).toBeTruthy();
+    expect(screen.getAllByText(/Компании/i).length).toBeGreaterThan(0);
   });
 });
