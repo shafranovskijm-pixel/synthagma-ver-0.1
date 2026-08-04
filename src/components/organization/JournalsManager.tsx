@@ -15,6 +15,7 @@ import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
 import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { JournalCreationWizard } from "./JournalCreationWizard";
 import { IdentificationJournal } from "./IdentificationJournal";
+import { GroupContextBanner } from "./GroupContextBanner";
 
 // ── Types & Constants ──
 
@@ -55,9 +56,15 @@ const SPECIAL_JOURNALS = new Set(["copies_duplicates", "education_documents"]);
 
 // ── Component ──
 
-interface JournalsManagerProps { organizationId: string; }
+interface JournalsManagerProps {
+  organizationId: string;
+  /** Контекст группы (из папки группы): фильтрация/предзаполнение и возврат. */
+  groupId?: string | null;
+  courseId?: string | null;
+  returnToGroupId?: string | null;
+}
 
-export function JournalsManager({ organizationId }: JournalsManagerProps) {
+export function JournalsManager({ organizationId, groupId, courseId, returnToGroupId }: JournalsManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [activeJournal, setActiveJournal] = useState<{ type: string; title: string } | null>(null);
@@ -107,7 +114,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   })).filter((cat) => cat.journals.length > 0);
 
   // Render active auto journal
-  if (activeAutoJournal === "attendance") return <AutoAttendanceJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
+  if (activeAutoJournal === "attendance") return <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} onClose={() => setActiveAutoJournal(null)} />;
   if (activeAutoJournal === "current_control") return <AutoGradesJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
   if (activeAutoJournal === "final_attestation") return <AutoFinalAttestationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
   if (activeAutoJournal === "document_registration") return <AutoDocumentRegistrationJournal organizationId={organizationId} onClose={() => setActiveAutoJournal(null)} />;
@@ -118,6 +125,9 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
 
   return (
     <div className="space-y-6">
+      {groupId && (
+        <GroupContextBanner groupId={groupId} returnToGroupId={returnToGroupId} />
+      )}
       {/* Header */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">

@@ -8,8 +8,19 @@ import { useFRDOManager } from "@/hooks/useFRDOManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { useRef, useState } from "react";
+import { GroupContextBanner } from "./GroupContextBanner";
 
-export function FRDOManager({ organizationId }: { organizationId: string }) {
+export function FRDOManager({
+  organizationId,
+  groupId,
+  courseId,
+  returnToGroupId,
+}: {
+  organizationId: string;
+  groupId?: string | null;
+  courseId?: string | null;
+  returnToGroupId?: string | null;
+}) {
   const {
     isLoading, students, courses, searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
@@ -18,7 +29,7 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
     visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
-  } = useFRDOManager(organizationId);
+  } = useFRDOManager(organizationId, { groupId, courseId });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showSanitizer, setShowSanitizer] = useState(false);
@@ -35,6 +46,9 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
 
   return (
     <div className="space-y-6">
+      {groupId && (
+        <GroupContextBanner groupId={groupId} returnToGroupId={returnToGroupId} />
+      )}
       <div className="flex items-center justify-between">
         <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Управление данными</p></div>
         <div className="flex items-center gap-2 flex-wrap">

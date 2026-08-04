@@ -58,17 +58,20 @@ interface Course {
 
 interface AutoAttendanceJournalProps {
   organizationId: string;
+  /** Курс группы: выбран по умолчанию при открытии из контекста группы. */
+  initialCourseId?: string;
   onClose: () => void;
 }
 
 export function AutoAttendanceJournal({
   organizationId,
+  initialCourseId,
   onClose }: AutoAttendanceJournalProps) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState<string>("all");
+  const [selectedCourse, setSelectedCourse] = useState<string>(initialCourseId || "all");
   const [dateRange, setDateRange] = useState<{
     from: Date;
     to: Date;

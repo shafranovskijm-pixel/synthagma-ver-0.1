@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { getCourseDetailsPath } from "@/lib/utils";
+import { courseCompletedNotificationPath } from "@/lib/groups/groupContext";
 import {
   Bell,
   Video,
@@ -30,6 +31,8 @@ interface Notification {
   is_read: boolean;
   created_at: string;
   related_id: string | null;
+  /** Ученик, к которому относится уведомление (для course_completed — завершивший курс). */
+  user_id?: string | null;
 }
 
 interface OrgNotificationsProps {
@@ -291,9 +294,12 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                       // CounterpartiesSection reads this on mount to expand the right contract
                       sessionStorage.setItem("openSignatureId", n.related_id);
                       navigate(`/organization?tab=org-documents`);
-                    } else if (n.type === "course_completed" && n.related_id) {
-                      setIsOpen(false);
-                      navigate(getCourseDetailsPath(n.related_id));
+                    } else if (n.type === "course_completed") {
+                      const target = courseCompletedNotificationPath(n, getCourseDetailsPath);
+                      if (target) {
+                        setIsOpen(false);
+                        navigate(target);
+                      }
                     }
                   }}
                 >
@@ -308,6 +314,9 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                         {!n.is_read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                      {n.type === "course_completed" && (
+                        <p className="text-xs text-primary font-medium mt-1">Открыть карточку ученика</p>
+                      )}
                       <p className="text-xs text-muted-foreground/70 mt-1">
                         {format(new Date(n.created_at), "d MMM, HH:mm", { locale: ru })}
                       </p>
