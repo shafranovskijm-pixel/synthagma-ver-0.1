@@ -17,7 +17,14 @@ import { JournalCreationWizard } from "./JournalCreationWizard";
 import { IdentificationJournal } from "./IdentificationJournal";
 import { GroupContextBanner } from "./GroupContextBanner";
 import { GroupJournalGate } from "./GroupJournalGate";
-import { type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import {
+  type GroupJournalContext,
+  isGroupJournalContextActive,
+  isGroupSupportedJournal,
+  resolveCustomJournalGuard,
+  resolveManualJournalEditorGuard,
+} from "@/lib/journals/groupJournalContext";
+
 
 // ── Types & Constants ──
 
