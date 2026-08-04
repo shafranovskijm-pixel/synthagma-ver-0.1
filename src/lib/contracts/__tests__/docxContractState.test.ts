@@ -104,7 +104,7 @@ describe("автозаполнение из группы", () => {
   });
 
   it("форма и часы остаются только UI-подсказкой", () => {
-    expect(groupScheduleHint({ program_form: "Очная", program_hours: 32 })).toBe("Форма обучения: Очная, объём 32 ч.");
+    expect(groupScheduleHint({ program_form: "Очная", program_hours: 32 })).toBe("форма обучения: Очная, объём 32 ч.");
   });
 
   it("initialDocxScalars подставляет форму и даты группы", () => {
