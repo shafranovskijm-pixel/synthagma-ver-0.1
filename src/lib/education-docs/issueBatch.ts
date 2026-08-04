@@ -94,3 +94,58 @@ export async function issueEducationDocumentBatch(
   }
   return (data as any[]) || [];
 }
+
+/** Ключ сопоставления выданной записи с исходным элементом. */
+export function issuedRowKey(row: { user_id?: string | null; enrollment_id?: string | null }): string {
+  return `${row.user_id || ""}|${row.enrollment_id || ""}`;
+}
+
+export interface CourseScopedItem extends EducationDocumentItemInput {
+  /** Точный курс записи (course_id зачисления). */
+  course_id?: string | null;
+}
+
+/**
+ * Выдаёт документы, группируя по точному course_id: каждая партия — отдельная
+ * атомарная транзакция с правильным course_id/group_id. При ошибке любой партии
+ * бросает, сообщая, сколько партий уже выдано (partial-состояние прозрачно).
+ */
+export async function issueEducationDocumentsByCourse(
+  args: {
+    organizationId: string;
+    groupId?: string | null;
+    items: CourseScopedItem[];
+  },
+  client?: { rpc: (fn: string, params: unknown) => Promise<{ data: unknown; error: unknown }> },
+): Promise<any[]> {
+  const byCourse = new Map<string, CourseScopedItem[]>();
+  for (const item of args.items) {
+    const key = item.course_id || "";
+    const list = byCourse.get(key) || [];
+    list.push(item);
+    byCourse.set(key, list);
+  }
+
+  const issued: any[] = [];
+  let done = 0;
+  for (const [courseId, items] of byCourse) {
+    try {
+      const rows = await issueEducationDocumentBatch(
+        {
+          organizationId: args.organizationId,
+          groupId: args.groupId || null,
+          courseId: courseId || null,
+          items,
+        },
+        client as any,
+      );
+      issued.push(...rows);
+      done += 1;
+    } catch (e: any) {
+      throw new Error(
+        `${e?.message || "Ошибка выдачи документов"} (выдано партий: ${done} из ${byCourse.size})`,
+      );
+    }
+  }
+  return issued;
+}
