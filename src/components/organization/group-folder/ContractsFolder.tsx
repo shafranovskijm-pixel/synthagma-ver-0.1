@@ -5,13 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package, Eye } from "lucide-react";
+import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package, Eye, FileType2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 import { useGroupContracts, type GroupContractRow } from "@/hooks/useGroupContracts";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 import { toast } from "sonner";
 import { GenerateContractDialog } from "./GenerateContractDialog";
+import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
 import { ContractPreviewDialog } from "./ContractPreviewDialog";
 import { UploadContractDialog } from "./UploadContractDialog";
 import { UploadTemplateDialog } from "./UploadTemplateDialog";
@@ -37,6 +38,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
   const [genOpen, setGenOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
+  const [docxOpen, setDocxOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [toDelete, setToDelete] = useState<string | null>(null);
   const [docxBusy, setDocxBusy] = useState(false);
@@ -54,9 +56,20 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
     await openPrivateFile("billing-documents", path);
   };
 
-  const withHtml = useMemo(() => contracts.filter(c => !!c.body_html), [contracts]);
+  const withHtml = useMemo(() => contracts.filter(c => !!c.body_html && c.template_format !== "docx_ooxml"), [contracts]);
+
+  const isDocxTemplate = (row: GroupContractRow) => row.template_format === "docx_ooxml";
 
   const downloadDocx = async (row: GroupContractRow) => {
+    // Договор из клиентского Word-шаблона уже лежит в приватном bucket'е как DOCX.
+    if (isDocxTemplate(row)) {
+      if (!row.docx_path) {
+        toast.error("Файл договора недоступен");
+        return;
+      }
+      await openPrivateFile("billing-documents", row.docx_path);
+      return;
+    }
     if (!row.body_html) {
       toast.error("Для этого договора нет исходной вёрстки", { description: "DOCX доступен для договоров, сгенерированных из шаблона" });
       return;
@@ -104,6 +117,9 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setGenOpen(true)} className="gap-2">
               <FileSignature className="w-4 h-4" /> Расширенный режим (мастер)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2">
+              <FileType2 className="w-4 h-4" /> Договор по шаблону клиента (Word)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUpOpen(true)} className="gap-2">
               <Upload className="w-4 h-4" /> Загрузить готовый договор
@@ -158,7 +174,16 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
               {contracts.map(c => (
                 <TableRow key={c.id}>
                   <TableCell className="font-mono text-xs">{c.contract_number || "—"}</TableCell>
-                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{c.name}</span>
+                      {isDocxTemplate(c) && (
+                        <Badge variant="outline" className="rounded-full text-[10px]">
+                          Word · {c.template_version_label || "—"}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5 text-sm">
                       {c.counterparty_type === "legal"
@@ -177,16 +202,23 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                         variant="ghost"
                         className="gap-1"
                         aria-label={`Просмотр договора ${c.name}`}
-                        title="Просмотр"
+                        title={isDocxTemplate(c) ? "Предпросмотр доступен только для HTML-шаблонов" : "Просмотр"}
+                        disabled={isDocxTemplate(c)}
                         onClick={() => setPreview(c)}
                       >
                         <Eye className="w-3.5 h-3.5" /> Просмотр
                       </Button>
-                      <Button size="sm" variant="ghost" className="gap-1" disabled={!c.file_path} onClick={() => openFile(c.file_path)}>
-
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1"
+                        disabled={isDocxTemplate(c) ? c.pdf_status !== "ready" || !c.pdf_path : !c.file_path}
+                        title={isDocxTemplate(c) && c.pdf_status !== "ready" ? "PDF пока недоступен — скачайте DOCX" : "PDF"}
+                        onClick={() => openFile(isDocxTemplate(c) ? c.pdf_path ?? null : c.file_path)}
+                      >
                         <Download className="w-3.5 h-3.5" /> PDF
                       </Button>
-                      <Button size="sm" variant="ghost" className="gap-1" disabled={!c.body_html || docxBusy} onClick={() => downloadDocx(c)}>
+                      <Button size="sm" variant="ghost" className="gap-1" disabled={(isDocxTemplate(c) ? !c.docx_path : !c.body_html) || docxBusy} onClick={() => downloadDocx(c)}>
                         <FileDown className="w-3.5 h-3.5" /> DOCX
                       </Button>
                       <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setToDelete(c.id)}>
@@ -227,6 +259,18 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
           open={quickOpen}
           quick
           onClose={() => setQuickOpen(false)}
+          onGenerated={refreshAll}
+        />
+      )}
+
+      {docxOpen && (
+        <GenerateDocxContractDialog
+          open={docxOpen}
+          onClose={() => setDocxOpen(false)}
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
           onGenerated={refreshAll}
         />
       )}

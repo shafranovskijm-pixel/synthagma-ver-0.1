@@ -1802,6 +1802,54 @@ export type Database = {
           },
         ]
       }
+      contract_template_registry: {
+        Row: {
+          counterparty_type: string
+          created_at: string
+          id: string
+          manifest: Json
+          name: string
+          source_path: string
+          source_sha256: string
+          status: string
+          template_format: string
+          template_key: string
+          template_sha256: string
+          updated_at: string
+          version_label: string
+        }
+        Insert: {
+          counterparty_type: string
+          created_at?: string
+          id?: string
+          manifest: Json
+          name: string
+          source_path: string
+          source_sha256: string
+          status?: string
+          template_format?: string
+          template_key: string
+          template_sha256: string
+          updated_at?: string
+          version_label: string
+        }
+        Update: {
+          counterparty_type?: string
+          created_at?: string
+          id?: string
+          manifest?: Json
+          name?: string
+          source_path?: string
+          source_sha256?: string
+          status?: string
+          template_format?: string
+          template_key?: string
+          template_sha256?: string
+          updated_at?: string
+          version_label?: string
+        }
+        Relationships: []
+      }
       course_access_log: {
         Row: {
           accessed_at: string | null
@@ -5434,6 +5482,9 @@ export type Database = {
           is_default: boolean
           name: string
           organization_id: string
+          registry_template_key: string | null
+          status: string
+          template_format: string
           updated_at: string
           variables: Json
           version: number
@@ -5448,6 +5499,9 @@ export type Database = {
           is_default?: boolean
           name: string
           organization_id: string
+          registry_template_key?: string | null
+          status?: string
+          template_format?: string
           updated_at?: string
           variables?: Json
           version?: number
@@ -5462,6 +5516,9 @@ export type Database = {
           is_default?: boolean
           name?: string
           organization_id?: string
+          registry_template_key?: string | null
+          status?: string
+          template_format?: string
           updated_at?: string
           variables?: Json
           version?: number
@@ -5478,67 +5535,109 @@ export type Database = {
       }
       org_contracts: {
         Row: {
+          approved_at: string | null
           body_html: string | null
           company_id: string | null
           contract_date: string | null
           contract_number: string | null
           counterparty_type: string | null
           created_at: string
+          docx_path: string | null
+          docx_sha256: string | null
           file_path: string | null
           file_url: string | null
+          generation_error: string | null
+          generation_status: string
           id: string
           name: string
           organization_id: string
+          pdf_path: string | null
+          pdf_status: string
+          signed_at: string | null
           status: string
           student_group_id: string | null
           student_user_id: string | null
           students: Json
+          template_format: string
           template_id: string | null
+          template_manifest: Json | null
+          template_registry_key: string | null
+          template_sha256: string | null
           template_version: number | null
+          template_version_label: string | null
           updated_at: string
           variables: Json
+          variables_snapshot: Json | null
         }
         Insert: {
+          approved_at?: string | null
           body_html?: string | null
           company_id?: string | null
           contract_date?: string | null
           contract_number?: string | null
           counterparty_type?: string | null
           created_at?: string
+          docx_path?: string | null
+          docx_sha256?: string | null
           file_path?: string | null
           file_url?: string | null
+          generation_error?: string | null
+          generation_status?: string
           id?: string
           name?: string
           organization_id: string
+          pdf_path?: string | null
+          pdf_status?: string
+          signed_at?: string | null
           status?: string
           student_group_id?: string | null
           student_user_id?: string | null
           students?: Json
+          template_format?: string
           template_id?: string | null
+          template_manifest?: Json | null
+          template_registry_key?: string | null
+          template_sha256?: string | null
           template_version?: number | null
+          template_version_label?: string | null
           updated_at?: string
           variables?: Json
+          variables_snapshot?: Json | null
         }
         Update: {
+          approved_at?: string | null
           body_html?: string | null
           company_id?: string | null
           contract_date?: string | null
           contract_number?: string | null
           counterparty_type?: string | null
           created_at?: string
+          docx_path?: string | null
+          docx_sha256?: string | null
           file_path?: string | null
           file_url?: string | null
+          generation_error?: string | null
+          generation_status?: string
           id?: string
           name?: string
           organization_id?: string
+          pdf_path?: string | null
+          pdf_status?: string
+          signed_at?: string | null
           status?: string
           student_group_id?: string | null
           student_user_id?: string | null
           students?: Json
+          template_format?: string
           template_id?: string | null
+          template_manifest?: Json | null
+          template_registry_key?: string | null
+          template_sha256?: string | null
           template_version?: number | null
+          template_version_label?: string | null
           updated_at?: string
           variables?: Json
+          variables_snapshot?: Json | null
         }
         Relationships: [
           {
