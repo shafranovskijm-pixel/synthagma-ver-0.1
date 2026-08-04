@@ -316,6 +316,8 @@ export interface GroupLike {
   default_price?: number | null;
   start_date?: string | null;
   end_date?: string | null;
+  training_address?: string | null;
+  schedule_text?: string | null;
 }
 
 const MONTHS_RU = [
@@ -343,13 +345,79 @@ export function groupDatesText(start?: string | null, end?: string | null): stri
   return a || b || "";
 }
 
-/** Режим занятий из данных группы (форма обучения + объём часов). */
+/**
+ * Режим занятий: приоритет — поле группы «Режим занятий», затем вывод
+ * из формы обучения и объёма часов.
+ */
 export function groupScheduleText(group: GroupLike | null | undefined): string {
   if (!group) return "";
+  if (group.schedule_text && group.schedule_text.trim()) return group.schedule_text.trim();
   const parts: string[] = [];
   if (group.program_form) parts.push(`Форма обучения: ${group.program_form}`);
   if (group.program_hours) parts.push(`объём ${group.program_hours} ч.`);
   return parts.join(", ");
+}
+
+/**
+ * Учебный план шаблона, соответствующий названию программы группы.
+ * Возвращает null, если однозначного совпадения нет — тогда выбор делает пользователь.
+ */
+export function matchGroupCurriculum(programTitle?: string | null): string | null {
+  const t = String(programTitle || "").trim().toLowerCase();
+  if (!t) return null;
+  const exact = GORELTECH_CURRICULA.find((c) => c.toLowerCase() === t);
+  if (exact) return exact;
+  const partial = GORELTECH_CURRICULA.filter((c) => c.toLowerCase().includes(t) || t.includes(c.toLowerCase()));
+  return partial.length === 1 ? partial[0] : null;
+}
+
+export interface ProfileLike {
+  full_name?: string | null;
+  email?: string | null;
+  contact_email?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  region?: string | null;
+  job_position?: string | null;
+}
+
+export interface FrdoLike {
+  education_level?: string | null;
+}
+
+export interface StudentSources {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  profile?: ProfileLike | null;
+  frdo?: FrdoLike | null;
+  program?: string | null;
+}
+
+export interface StudentDraftRow {
+  user_id: string;
+  fio: string;
+  edu: string;
+  contacts: string;
+  position: string;
+  address: string;
+  program: string;
+}
+
+/** Строка слушателя, собранная только из данных Синтагмы (без выдуманных значений). */
+export function studentRowFromSources(src: StudentSources): StudentDraftRow {
+  const p = src.profile || {};
+  const contacts = [src.email || p.contact_email || p.email || "", p.phone || ""].filter(Boolean).join(", ");
+  const address = [p.region || "", p.city || ""].filter(Boolean).join(", ");
+  return {
+    user_id: src.user_id,
+    fio: src.full_name || p.full_name || "",
+    edu: (src.frdo?.education_level || "").trim(),
+    contacts,
+    position: (p.job_position || "").trim(),
+    address,
+    program: src.program || "",
+  };
 }
 
 export const DEFAULT_PAYMENT_CLAUSE =
@@ -358,13 +426,14 @@ export const DEFAULT_PAYMENT_CLAUSE =
 /**
  * Начальное состояние диалога. Вызывается при каждом открытии, поэтому
  * повторная генерация всегда начинается с чистых данных группы и компании.
+ * DOC_NO не берётся из номера группы: он резервируется автонумерацией.
  */
 export function initialDocxScalars(group: GroupLike | null | undefined, dateIso: string): Record<string, string> {
   return {
     ...companyScalars(null),
-    DOC_NO: group?.group_number || "",
+    DOC_NO: "",
     DOC_DATE: formatContractDateRu(dateIso),
-    TRAINING_ADDR: "",
+    TRAINING_ADDR: group?.training_address || "",
     SCHEDULE: groupScheduleText(group),
     PROG_FORM: group?.program_form || "Очная",
     STUDENT_DATES: groupDatesText(group?.start_date, group?.end_date),
@@ -372,6 +441,7 @@ export function initialDocxScalars(group: GroupLike | null | undefined, dateIso:
     PAYMENT_CLAUSE: DEFAULT_PAYMENT_CLAUSE,
   };
 }
+
 
 export interface GenerateDocxParams {
   templateKey: string;
