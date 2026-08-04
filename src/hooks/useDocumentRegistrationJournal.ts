@@ -215,9 +215,15 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
 
   const handleEditClick = useCallback((record: DocumentRecord) => {
     if (!record.is_editable) { toast.info("Этот документ нельзя редактировать"); return; }
+    // Редактировать можно только строки, попавшие в групповой scope.
+    if (!isRowWriteAllowed(record.id, scopedRecords, groupContext)) {
+      toast.error("Документ не относится к этой группе — редактирование недоступно");
+      return;
+    }
     setEditingRecord(record);
     setEditRegNumber(record.reg_number || "");
-  }, []);
+  }, [scopedRecords, groupContext]);
+
 
   const handleSaveRegNumber = useCallback(async () => {
     if (!editingRecord) return;
