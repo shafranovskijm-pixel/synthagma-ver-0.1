@@ -49,3 +49,32 @@ export async function reserveGroupDocumentNumbers(
   }
   return out;
 }
+
+/* ───────────── Резервирование только для реально финальных документов ───────────── */
+
+export interface FinalEligibilityInput {
+  /** Режим заполнения пакета. */
+  mode: "blank" | "data";
+  /** Запрошенный статус (blank всегда draft). */
+  requestedStatus: "draft" | "final";
+  /** true, если readiness понизит документ до черновика. */
+  finalBlocked: (docType: DocType) => boolean;
+}
+
+/**
+ * Документ станет финальным, только если это режим данных, запрошен final и
+ * readiness не блокирует. Черновики номеров НЕ получают — юридические
+ * последовательности не расходуются на бланки.
+ */
+export function willBeFinalDocument(docType: DocType, input: FinalEligibilityInput): boolean {
+  if (input.mode !== "data" || input.requestedStatus !== "final") return false;
+  return !input.finalBlocked(docType);
+}
+
+/**
+ * Типы, для которых нужно зарезервировать официальный номер: пересечение
+ * «номер обязателен» и «документ действительно будет финальным».
+ */
+export function typesRequiringReservation(types: DocType[], input: FinalEligibilityInput): DocType[] {
+  return types.filter(t => requiresDocumentNumber(t) && willBeFinalDocument(t, input));
+}
