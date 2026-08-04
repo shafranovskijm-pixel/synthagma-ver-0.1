@@ -331,8 +331,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!resolvedProgramHours) missing.push("объём часов");
     if (!orgInfo?.inn) missing.push("ИНН учебного центра");
     if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
+    // Юридически обязательные поля без «типовых» подстановок.
+    if (!orgInfo?.director_position) missing.push("должность руководителя учебного центра");
+    if (!group?.program_form) missing.push("форма обучения группы");
     return missing;
-  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo]);
+  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form]);
 
   const missingDocFields = useMemo(() => {
     const missing = [...blockingDocFields];
@@ -340,6 +343,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
     return missing;
   }, [blockingDocFields, group]);
+
 
 
 
