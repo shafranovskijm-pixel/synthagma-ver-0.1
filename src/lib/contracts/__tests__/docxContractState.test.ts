@@ -175,7 +175,7 @@ describe("источники истины Синтагмы", () => {
     expect(s.CUST_AUTH).toBe("");
     // и это блокирует финальный договор
     const groups = evaluateDocxReadiness(
-      { scalars: { ...s, DOC_DATE: "01.01.2026" }, students: [], programs: [], totalAmount: 0 } as any,
+      { scalars: { ...s, DOC_DATE: "01.01.2026" }, students: [], programs: [], curricula: [], totalAmount: 0 } as any,
       { autoAssignNumber: true },
     );
     const company = groups.find((g) => g.id === "company")!;
@@ -225,6 +225,7 @@ describe("автонумерация договора", () => {
       },
       students: [],
       programs: [],
+      curricula: [GORELTECH_CURRICULA[0]],
       totalAmount: 100,
       taxClauseChosen: true,
     } as any;
