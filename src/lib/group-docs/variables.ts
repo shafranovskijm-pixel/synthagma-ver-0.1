@@ -193,65 +193,12 @@ function buildStudentListDetailRows(
     .join("");
 }
 
-function buildJournalRows(students: GenerationContext["students"]): string {
-  return students
-    .map(
-      (s, i) =>
-        `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>${esc(s.full_name)}</td>` +
-        `<td style="text-align:center">V</td>` +
-        `<td style="text-align:center">V</td>` +
-        `<td style="text-align:center">V</td>` +
-        `<td style="text-align:center">V</td></tr>`
-    )
-    .join("");
-}
+/**
+ * Журнал / ведомость / книга регистрации собираются в factualData.ts
+ * строго из snapshot Supabase. Здесь запрещено любое подставление
+ * отметок, баллов, оценок и номеров документов.
+ */
 
-function buildAttestationRows(students: GenerationContext["students"]): string {
-  // scores can later come from real exam results; demo values for prototype
-  const demo = [96, 88, 92, 85, 90, 78];
-  return students
-    .map((s, i) => {
-      const score = demo[i % demo.length];
-      const grade = score >= 90 ? "5" : score >= 75 ? "4" : score >= 60 ? "3" : "2";
-      return (
-        `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>${esc(s.full_name)}</td>` +
-        `<td style="text-align:center">${score}</td>` +
-        `<td style="text-align:center">${grade}</td></tr>`
-      );
-    })
-    .join("");
-}
-
-function buildRegistrationRows(
-  students: GenerationContext["students"],
-  ctx: GenerationContext,
-  orderNum: string
-): string {
-  return students
-    .map((s, i) => {
-      const pp = resolvePassport(s);
-      const passportStr = pp.series
-        ? `серия ${pp.series} № ${pp.number}`
-        : s.passport || "";
-      return (
-        `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>Удостоверение о повышении квалификации</td>` +
-        `<td>${esc(ctx.group.program_title)}. Группа ${esc(ctx.group.number)}</td>` +
-        `<td></td><td></td>` +
-        `<td>${esc(s.full_name)}</td>` +
-        `<td>${esc(s.birth_date || "")}</td>` +
-        `<td style="text-align:center">${esc(s.gender || "")}</td>` +
-        `<td>${esc(passportStr)}</td>` +
-        `<td>${esc(s.citizenship || "Российская Федерация")}</td>` +
-        `<td>${esc(orderNum)}</td>` +
-        `<td>${formatDateShort(ctx.group.end_date)}</td>` +
-        `<td></td><td></td></tr>`
-      );
-    })
-    .join("");
-}
 
 function buildPassRows(
   students: GenerationContext["students"],
