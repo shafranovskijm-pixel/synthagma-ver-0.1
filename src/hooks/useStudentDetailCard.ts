@@ -163,6 +163,8 @@ export function useStudentDetailCardLogic({
   const [savingPhone, setSavingPhone] = useState(false);
   const [region, setRegion] = useState<string>("");
   const [savingRegion, setSavingRegion] = useState(false);
+  const [jobPosition, setJobPosition] = useState<string>("");
+  const [savingJobPosition, setSavingJobPosition] = useState(false);
 
   // Block/unblock state
   const [blockedAt, setBlockedAt] = useState<string | null>(null);
@@ -186,7 +188,7 @@ export function useStudentDetailCardLogic({
         supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
         supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", student.user_id).eq("organization_id", organizationId).order("accepted_at", { ascending: false }),
-        supabase.from("profiles").select("phone, region, blocked_at, blocked_reason").eq("user_id", student.user_id).maybeSingle(),
+        supabase.from("profiles").select("phone, region, job_position, blocked_at, blocked_reason").eq("user_id", student.user_id).maybeSingle(),
       ]);
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
@@ -198,6 +200,7 @@ export function useStudentDetailCardLogic({
       if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
       setPhone((profileRes.data as any)?.phone || "");
       setRegion((profileRes.data as any)?.region || "");
+      setJobPosition((profileRes.data as any)?.job_position || "");
       setBlockedAt((profileRes.data as any)?.blocked_at || null);
       setBlockedReason((profileRes.data as any)?.blocked_reason || null);
     } catch (error) { console.error("Error loading student data:", error); }
@@ -352,6 +355,18 @@ export function useStudentDetailCardLogic({
     finally { setSavingRegion(false); }
   };
 
+
+  const saveJobPosition = async (value: string) => {
+    if (!student) return;
+    setSavingJobPosition(true);
+    try {
+      const { error } = await supabase.from("profiles").update({ job_position: value || null } as any).eq("user_id", student.user_id);
+      if (error) throw error;
+      setJobPosition(value);
+      toast.success("Должность сохранена");
+    } catch (error) { console.error("Save job position error:", error); toast.error("Ошибка сохранения должности"); }
+    finally { setSavingJobPosition(false); }
+  };
 
   const copyToClipboard = async (text: string, field: string) => {
     try { await navigator.clipboard.writeText(text); setCopiedField(field); setTimeout(() => setCopiedField(null), 2000); toast.success("Скопировано"); } catch { toast.error("Не удалось скопировать"); }
@@ -542,6 +557,7 @@ export function useStudentDetailCardLogic({
     frdoData, saveFrdoField, savingFrdoField,
     phone, savePhone, savingPhone,
     region, saveRegion, savingRegion,
+    jobPosition, saveJobPosition, savingJobPosition,
     autoLoginToken, isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
     blockedAt, blockedReason, isTogglingBlock, handleToggleBlock,
