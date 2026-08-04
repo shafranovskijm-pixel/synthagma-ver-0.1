@@ -6,6 +6,7 @@ import { ru } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
 import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
 import { localDateIso } from "@/lib/date/localDate";
 import {
@@ -356,9 +357,23 @@ export function useEducationDocumentsJournal({
     }
   };
 
-  const handleOpenAdd = () => { resetForm(); setShowAddDialog(true); };
+  /** Ручное «Добавить» в контексте группы создало бы произвольного человека — запрещаем. */
+  const manualAddGuard = resolveManualWriteGuard("education_documents", groupContext);
+
+  const handleOpenAdd = () => {
+    if (manualAddGuard.blocked) {
+      toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
+      return;
+    }
+    resetForm();
+    setShowAddDialog(true);
+  };
 
   const handleOpenEdit = (record: EducationDocumentRecord) => {
+    if (!isRowWriteAllowed(record.id, scopedRecords, groupContext)) {
+      toast.error("Запись не относится к этой группе — редактирование недоступно");
+      return;
+    }
     setFormData({
       reg_number: record.reg_number,
       full_name: record.full_name,
@@ -459,6 +474,16 @@ export function useEducationDocumentsJournal({
   };
 
   const handleSave = async () => {
+    // Создание новой записи разрешено только через scoped-сценарий «по выпускникам группы».
+    if (!editingRecord && manualAddGuard.blocked) {
+      toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
+      setShowAddDialog(false);
+      return;
+    }
+    if (editingRecord && !isRowWriteAllowed(editingRecord.id, scopedRecords, groupContext)) {
+      toast.error("Запись не относится к этой группе — сохранение отменено");
+      return;
+    }
     if (!formData.full_name.trim()) { toast.error("Введите ФИО выпускника"); return; }
     if (!formData.reg_number.trim()) { toast.error("Введите регистрационный номер"); return; }
     if (!formData.document_number.trim()) { toast.error("Введите номер документа"); return; }
@@ -513,6 +538,11 @@ export function useEducationDocumentsJournal({
 
   const handleDelete = async () => {
     if (!deletingRecord) return;
+    if (!isRowWriteAllowed(deletingRecord.id, scopedRecords, groupContext)) {
+      toast.error("Запись не относится к этой группе — удаление отменено");
+      setDeletingRecord(null);
+      return;
+    }
     try {
       const { error } = await supabase.from("education_document_records").delete().eq("id", deletingRecord.id);
       if (error) throw error;
@@ -550,7 +580,7 @@ export function useEducationDocumentsJournal({
     // Computed
     filteredRecords, stats, filteredStudents, newGraduatesCount,
     // Helpers
-    journalTitle, journalSubtitle,
+    journalTitle, journalSubtitle, manualAddGuard,
     // Actions
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,

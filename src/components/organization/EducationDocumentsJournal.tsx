@@ -51,7 +51,7 @@ export function EducationDocumentsJournal({
     studentSearchQuery, setStudentSearchQuery,
     formData, setFormData,
     filteredRecords, stats, filteredStudents, newGraduatesCount,
-    journalTitle, journalSubtitle,
+    journalTitle, journalSubtitle, manualAddGuard,
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
     toggleStudentSelection, selectAllStudents,
@@ -84,14 +84,26 @@ export function EducationDocumentsJournal({
           <Button variant="default" onClick={handleOpenSelectStudents} className="rounded-xl bg-gradient-to-r from-primary to-primary/80">
             <Sparkles className="w-4 h-4 mr-2" />Из выпускников
           </Button>
-          <Button variant="outline" onClick={handleOpenAdd} className="rounded-xl">
-            <Plus className="w-4 h-4 mr-2" />Добавить вручную
-          </Button>
+          {!manualAddGuard.blocked && (
+            <Button variant="outline" onClick={handleOpenAdd} className="rounded-xl" data-testid="add-manual-button">
+              <Plus className="w-4 h-4 mr-2" />Добавить вручную
+            </Button>
+          )}
           <Button variant="outline" onClick={exportToExcel} className="rounded-xl">
             <FileSpreadsheet className="w-4 h-4 mr-2" />Excel
           </Button>
         </div>
       </div>
+
+      {manualAddGuard.blocked && (
+        <div
+          className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground"
+          data-testid="manual-add-blocked-notice"
+        >
+          Журнал открыт в контексте группы: создавать записи можно только кнопкой «Из выпускников» —
+          она берёт участников этой группы и её курс. {manualAddGuard.reason}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -37,10 +37,21 @@ export function AutoDocumentRegistrationJournal({ organizationId, onClose, group
           <div><h2 className="text-xl font-semibold">Журнал регистрации документов</h2><p className="text-sm text-muted-foreground">Входящие и исходящие документы: договоры, приказы, счета</p></div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => h.setShowAddDialog(true)} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Добавить</Button>
+          {!h.manualAddGuard.blocked && (
+            <Button variant="outline" onClick={() => h.setShowAddDialog(true)} className="rounded-xl" data-testid="add-document-button"><Plus className="w-4 h-4 mr-2" />Добавить</Button>
+          )}
           <Button onClick={h.exportToExcel} className="rounded-xl"><FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в Excel</Button>
         </div>
       </div>
+
+      {h.manualAddGuard.blocked && (
+        <div
+          className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground"
+          data-testid="manual-add-blocked-notice"
+        >
+          Журнал открыт в контексте группы: только просмотр и выгрузка. {h.manualAddGuard.reason}
+        </div>
+      )}
 
       {groupContext?.groupId && h.unlinkedHiddenCount > 0 && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-muted-foreground">
@@ -48,6 +59,7 @@ export function AutoDocumentRegistrationJournal({ organizationId, onClose, group
           (например, документы компаний или другие курсы). Откройте журнал без контекста группы, чтобы увидеть их.
         </div>
       )}
+
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

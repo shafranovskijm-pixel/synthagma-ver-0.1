@@ -7,6 +7,7 @@ import { getXLSX } from "@/utils/xlsxHelper";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
 import { filterByGroupContext, resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
 
 export interface DocumentRecord {
   id: string;
@@ -163,6 +164,13 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
     return records.length - scopedRecords.length;
   }, [records, scopedRecords, groupContext]);
 
+  /** Ручное «Добавить» в контексте группы запрещено (fail-closed). */
+  const manualAddGuard = useMemo(
+    () => resolveManualWriteGuard("document_registration", groupContext),
+    [groupContext]
+  );
+
+
   const filteredRecords = useMemo(() => {
     return scopedRecords.filter(record => {
       const searchLower = searchQuery.toLowerCase();
@@ -207,13 +215,24 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
 
   const handleEditClick = useCallback((record: DocumentRecord) => {
     if (!record.is_editable) { toast.info("Этот документ нельзя редактировать"); return; }
+    // Редактировать можно только строки, попавшие в групповой scope.
+    if (!isRowWriteAllowed(record.id, scopedRecords, groupContext)) {
+      toast.error("Документ не относится к этой группе — редактирование недоступно");
+      return;
+    }
     setEditingRecord(record);
     setEditRegNumber(record.reg_number || "");
-  }, []);
+  }, [scopedRecords, groupContext]);
+
 
   const handleSaveRegNumber = useCallback(async () => {
     if (!editingRecord) return;
+    if (!isRowWriteAllowed(editingRecord.id, scopedRecords, groupContext)) {
+      toast.error("Документ не относится к этой группе — сохранение отменено");
+      return;
+    }
     setSaving(true);
+
     try {
       const newRegNumber = editRegNumber.trim() || null;
       if (editingRecord.source === "issuance_log") {
@@ -229,7 +248,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
       setEditRegNumber("");
     } catch { toast.error("Ошибка при сохранении"); }
     finally { setSaving(false); }
-  }, [editingRecord, editRegNumber]);
+  }, [editingRecord, editRegNumber, scopedRecords, groupContext]);
 
   const generateSuggestedNumber = useCallback(() => {
     if (!editingRecord) return;
@@ -240,8 +259,15 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
   }, [editingRecord, records]);
 
   const handleAddDocument = useCallback(async () => {
+    // Fail-closed: в контексте группы несвязанная запись не создаётся вовсе.
+    if (manualAddGuard.blocked) {
+      toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
+      setShowAddDialog(false);
+      return;
+    }
     if (!newDocument.document_name.trim()) { toast.error("Введите наименование документа"); return; }
     setSaving(true);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Пользователь не авторизован"); return; }
@@ -256,7 +282,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
       toast.success("Документ добавлен в журнал");
     } catch { toast.error("Ошибка при добавлении документа"); }
     finally { setSaving(false); }
-  }, [newDocument, organizationId]);
+  }, [newDocument, organizationId, manualAddGuard]);
 
   const generateNewDocNumber = useCallback(() => {
     const year = newDocument.date.getFullYear();
@@ -278,7 +304,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
   }, [filteredRecords]);
 
   return {
-    loading, saving, records: scopedRecords, filteredRecords, stats, unlinkedHiddenCount,
+    loading, saving, records: scopedRecords, filteredRecords, stats, unlinkedHiddenCount, manualAddGuard,
     searchQuery, setSearchQuery, selectedType, setSelectedType,
     selectedDirection, setSelectedDirection, dateRange, setDateRange,
     editingRecord, setEditingRecord, editRegNumber, setEditRegNumber,
