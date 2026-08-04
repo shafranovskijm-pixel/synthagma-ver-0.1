@@ -180,16 +180,14 @@ export const TEMPLATES: DocTemplate[] = [
     <tr>
       <th style="width:36px">пп</th>
       <th>Фамилия Имя Отчество</th>
-      <th>{{day1_date}}</th>
-      <th>{{day2_date}}</th>
-      <th>{{day3_date}}</th>
-      <th>{{day4_date}}</th>
+      {{journal_head}}
     </tr>
   </thead>
   <tbody>{{journal_rows}}</tbody>
 </table>
 
-<p class="small">Отметка «V» — присутствие на занятии.</p>
+<p class="small">Режим документа: {{fill_mode}}. Источник: {{journal_source_note}}</p>
+<p class="small">{{layout_notice}}</p>
 
 <div class="sig">
   <p>Преподаватель {{org_director_short}} &nbsp;&nbsp; Подпись ______________________________</p>
@@ -221,37 +219,11 @@ export const TEMPLATES: DocTemplate[] = [
       <th>Преподаватель</th>
     </tr>
   </thead>
-  <tbody>
-    <tr>
-      <td class="center">{{day1_date}}</td>
-      <td class="center">09:00–16:00</td>
-      <td>Вводный модуль. Нормативная база в области ВЗ электрооборудования</td>
-      <td class="center">8</td>
-      <td>{{org_director_short}}</td>
-    </tr>
-    <tr>
-      <td class="center">{{day2_date}}</td>
-      <td class="center">09:00–16:00</td>
-      <td>Классификация ВО зон. Маркировка. Принципы взрывозащиты</td>
-      <td class="center">8</td>
-      <td>{{org_director_short}}</td>
-    </tr>
-    <tr>
-      <td class="center">{{day3_date}}</td>
-      <td class="center">09:00–16:00</td>
-      <td>Проектирование электроустановок во взрывоопасных зонах</td>
-      <td class="center">8</td>
-      <td>{{org_director_short}}</td>
-    </tr>
-    <tr>
-      <td class="center">{{day4_date}}</td>
-      <td class="center">09:00–16:00</td>
-      <td>Практика. Документация. Итоговая аттестация</td>
-      <td class="center">8</td>
-      <td>{{org_director_short}}</td>
-    </tr>
-  </tbody>
+  <tbody>{{schedule_rows}}</tbody>
 </table>
+
+<p class="small">Режим документа: {{fill_mode}}. {{schedule_notice}}</p>
+<p class="small">{{layout_notice}}</p>
 
 <div class="sig">
   <p>Преподаватель: _________________ / {{org_director_short}} /</p>
@@ -285,6 +257,9 @@ export const TEMPLATES: DocTemplate[] = [
   </thead>
   <tbody>{{attestation_rows}}</tbody>
 </table>
+
+<p class="small">Режим документа: {{fill_mode}}. Источник: {{attestation_source_note}}</p>
+<p class="small">{{layout_notice}}</p>
 
 <div class="sig">
   <p>Подпись преподавателя _____________ / {{org_director_short}} /</p>
@@ -325,6 +300,9 @@ export const TEMPLATES: DocTemplate[] = [
   </thead>
   <tbody>{{registration_rows}}</tbody>
 </table>
+
+<p class="small">Режим документа: {{fill_mode}}. Источник: {{registration_source_note}}</p>
+<p class="small">{{layout_notice}}</p>
 
 <div class="sig">
   <p>Ответственный: _________________ / {{org_director_name}} /</p>
