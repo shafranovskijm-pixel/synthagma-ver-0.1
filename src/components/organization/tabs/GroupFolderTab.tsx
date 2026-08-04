@@ -441,6 +441,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           groupId={groupId}
           groupName={group?.name || ""}
           students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+          onDataChanged={refreshCounts}
         />
       ) : openFolder === "docs" ? (
         <div className="space-y-4">
@@ -458,6 +459,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             blockingFields={blockingDocFields}
             courseId={group?.course_id || courseInfo?.id || null}
             onOpenGroupSettings={() => setSettingsOpen(true)}
+            onDataChanged={refreshCounts}
           />
 
         </div>
