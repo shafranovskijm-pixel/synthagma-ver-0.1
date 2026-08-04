@@ -66,7 +66,7 @@ describe("повторное открытие диалога", () => {
     expect(fresh.CUST_NAME).toBe("");
     expect(fresh.TAX_CLAUSE).toBe("");
     expect(fresh.TRAINING_ADDR).toBe("");
-    expect(fresh.DOC_NO).toBe("Д-2");
+    expect(fresh.DOC_NO).toBe("");
   });
 });
 
@@ -98,16 +98,16 @@ describe("автозаполнение из группы", () => {
     expect(groupScheduleText({})).toBe("");
   });
 
-  it("initialDocxScalars подставляет номер, форму и даты группы", () => {
+  it("initialDocxScalars подставляет форму и даты группы", () => {
     const s = initialDocxScalars(
       { group_number: "ДЕМО-02/2026", program_form: "Очная", program_hours: 32, start_date: "2026-08-03", end_date: "2026-08-07" },
       "2026-08-03",
     );
-    expect(s.DOC_NO).toBe("ДЕМО-02/2026");
+    expect(s.DOC_NO).toBe("");
     expect(s.PROG_FORM).toBe("Очная");
     expect(s.STUDENT_DATES).toBe("03.08.2026 — 07.08.2026");
     expect(s.SCHEDULE).toBe("Форма обучения: Очная, объём 32 ч.");
-    // место обучения в группе не хранится — остаётся явной ошибкой готовности
+    // адрес обучения не задан в группе — остаётся явной ошибкой готовности
     expect(s.TRAINING_ADDR).toBe("");
   });
 });
