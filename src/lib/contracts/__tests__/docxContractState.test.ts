@@ -9,6 +9,9 @@ import {
   groupScheduleText,
   initialDocxScalars,
   matchGroupCurriculum,
+  groupScheduleHint,
+  acquireContractNumber,
+  evaluateDocxReadiness,
   studentRowFromSources,
   GORELTECH_CURRICULA,
   DEFAULT_PAYMENT_CLAUSE,
@@ -93,9 +96,15 @@ describe("автозаполнение из группы", () => {
     expect(groupDatesText(null, null)).toBe("");
   });
 
-  it("режим занятий собирается из формы и объёма часов", () => {
-    expect(groupScheduleText({ program_form: "Очная", program_hours: 32 })).toBe("Форма обучения: Очная, объём 32 ч.");
+  it("режим занятий берётся ТОЛЬКО из schedule_text группы", () => {
+    expect(groupScheduleText({ schedule_text: "Пн–Пт 10:00–17:00" })).toBe("Пн–Пт 10:00–17:00");
+    // форма и часы больше не превращаются в режим занятий
+    expect(groupScheduleText({ program_form: "Очная", program_hours: 32 })).toBe("");
     expect(groupScheduleText({})).toBe("");
+  });
+
+  it("форма и часы остаются только UI-подсказкой", () => {
+    expect(groupScheduleHint({ program_form: "Очная", program_hours: 32 })).toBe("Форма обучения: Очная, объём 32 ч.");
   });
 
   it("initialDocxScalars подставляет форму и даты группы", () => {
@@ -106,7 +115,7 @@ describe("автозаполнение из группы", () => {
     expect(s.DOC_NO).toBe("");
     expect(s.PROG_FORM).toBe("Очная");
     expect(s.STUDENT_DATES).toBe("03.08.2026 — 07.08.2026");
-    expect(s.SCHEDULE).toBe("Форма обучения: Очная, объём 32 ч.");
+    expect(s.SCHEDULE).toBe("");
     // адрес обучения не задан в группе — остаётся явной ошибкой готовности
     expect(s.TRAINING_ADDR).toBe("");
   });
@@ -150,10 +159,72 @@ describe("источники истины Синтагмы", () => {
     expect(initialDocxScalars({ group_number: "УЦ-4/2026" }, "2026-08-03").DOC_NO).toBe("");
   });
 
-  it("учебный план сопоставляется с программой группы", () => {
+  it("учебный план сопоставляется только точным совпадением", () => {
     expect(matchGroupCurriculum(GORELTECH_CURRICULA[0])).toBe(GORELTECH_CURRICULA[0]);
+    expect(matchGroupCurriculum(GORELTECH_CURRICULA[0].toUpperCase())).toBe(GORELTECH_CURRICULA[0]);
+    // частичное совпадение больше не принимается
+    expect(matchGroupCurriculum(GORELTECH_CURRICULA[0].slice(0, 12))).toBeNull();
+    expect(matchGroupCurriculum(null, GORELTECH_CURRICULA[1])).toBe(GORELTECH_CURRICULA[1]);
     expect(matchGroupCurriculum("Неизвестная программа")).toBeNull();
     expect(matchGroupCurriculum("")).toBeNull();
+  });
+
+  it("должность подписанта и основание полномочий не придумываются", () => {
+    const s = companyScalars({ name: "ООО Тест", inn: "1", director: "Иванов Иван Иванович" });
+    expect(s.CUST_REP_POS).toBe("");
+    expect(s.CUST_AUTH).toBe("");
+    // и это блокирует финальный договор
+    const problems = evaluateDocxReadiness(
+      { scalars: { ...s, DOC_DATE: "01.01.2026", TRAINING_ADDR: "адрес", SCHEDULE: "режим" }, rows: [], curricula: [GORELTECH_CURRICULA[0]] } as any,
+      { autoAssignNumber: true },
+    );
+    expect(problems.join(" ")).toMatch(/CUST_REP_POS|должность/i);
+  });
+
+  it("ФИО слушателя собирается из полей ФРДО с fallback на профиль", () => {
+    const row = studentRowFromSources({
+      user_id: "u3",
+      full_name: "Профиль Фallback",
+      frdo: { last_name: "Сидоров", first_name: "Сидор", middle_name: "Сидорович" },
+    });
+    expect(row.fio).toBe("Сидоров Сидор Сидорович");
+    expect(studentRowFromSources({ user_id: "u4", full_name: "Профиль Ф." }).fio).toBe("Профиль Ф.");
+  });
+});
+
+describe("автонумерация договора", () => {
+  it("номер запрашивается один раз и переиспользуется при retry", async () => {
+    let calls = 0;
+    const rpc = async () => { calls += 1; return `УЦ-${calls}/2026`; };
+    const first = await acquireContractNumber("", rpc);
+    const retry = await acquireContractNumber(first, rpc);
+    const doubleClick = await acquireContractNumber(first, rpc);
+    expect(first).toBe("УЦ-1/2026");
+    expect(retry).toBe(first);
+    expect(doubleClick).toBe(first);
+    expect(calls).toBe(1);
+  });
+
+  it("готовность до submit не требует номера заранее", () => {
+    const draft = {
+      scalars: {
+        ...companyScalars({
+          name: "ООО", inn: "1", kpp: "2", ogrn: "3", address: "юр", postal_address: "почт",
+          phone: "+7", bank_name: "Б", bank_account: "4", bank_bik: "5", bank_corr_account: "6",
+          signatory_position: "Директор", signatory_name_genitive: "Иванова И.И.",
+          signatory_authority_clause: "Уставе", director: "Иванов Иван Иванович",
+        }),
+        DOC_NO: "",
+        DOC_DATE: "01.01.2026",
+        TRAINING_ADDR: "адрес",
+        SCHEDULE: "Пн–Пт",
+        STUDENT_DATES: "01.01.2026 — 05.01.2026",
+        PROG_FORM: "Очная",
+      },
+      rows: [{ n: 1, fio: "А", position: "И", edu: "среднее", program: GORELTECH_CURRICULA[0], contacts: "a@b.ru", addr: "адрес" }],
+      curricula: [GORELTECH_CURRICULA[0]],
+    } as any;
+    expect(evaluateDocxReadiness(draft, { autoAssignNumber: true })).not.toContain("DOC_NO");
   });
 
   it("строка слушателя собирается только из данных Синтагмы", () => {
