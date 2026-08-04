@@ -60,7 +60,16 @@ export function generateDocument(
     factual: opts.factual ?? null,
   });
 
-  const html = renderTemplate(tpl.body_html, variables);
+  const rendered = renderTemplate(tpl.body_html, variables);
+  // Все девять документов группы — HTML-приближение макета клиента (legacy_html).
+  const html =
+    docType === "contract"
+      ? rendered
+      : rendered.replace(
+          /<body[^>]*>/i,
+          (m) =>
+            `${m}\n<div style="border:1px solid #999;padding:8px;margin-bottom:12px;font-size:11px">${LEGACY_LAYOUT_NOTICE}</div>`,
+        );
   const missing = findMissing(tpl.body_html, variables);
   if (missing.length > 0) {
     console.warn(`[generate] ${docType}: пустые переменные:`, missing);
