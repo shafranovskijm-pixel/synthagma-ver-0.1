@@ -7,6 +7,7 @@ import { getXLSX } from "@/utils/xlsxHelper";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
 import { filterByGroupContext, resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
+import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
 
 export interface DocumentRecord {
   id: string;
