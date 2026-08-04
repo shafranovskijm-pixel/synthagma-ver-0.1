@@ -163,13 +163,24 @@ export function parseBodyElements(documentXml: string): { prefix: string; suffix
   return { prefix, suffix, elements };
 }
 
-/** Клонирует строку-прототип таблицы под каждый элемент списка и удаляет прототип. */
-export function expandRepeaterTable(tableXml: string, prototypeRow: number, items: Array<Record<string, string>>): string {
+/**
+ * Клонирует строку-прототип под каждый элемент списка и удаляет неиспользованные
+ * строки (стратегия clone_prototype_remove_unused из манифеста).
+ */
+export function expandRepeaterTable(
+  tableXml: string,
+  prototypeRow: number,
+  items: Array<Record<string, string>>,
+  headerRows = 1,
+): string {
   const rows = splitTopLevel(tableXml, ["w:tr"]);
   const proto = rows[prototypeRow];
   if (!proto) throw new Error(`Повторитель: строка-прототип №${prototypeRow} не найдена`);
+  const head = rows.slice(0, headerRows).map((r) => r.xml).join("");
   const cloned = items.map((item) => replaceTokens(proto.xml, item)).join("");
-  return tableXml.slice(0, proto.start) + cloned + tableXml.slice(proto.end);
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  return tableXml.slice(0, first.start) + head + cloned + tableXml.slice(last.end);
 }
 
 export interface CompileResult {
