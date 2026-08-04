@@ -19,6 +19,7 @@ import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDial
 import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 
 
 
@@ -63,6 +64,9 @@ interface StudentRow {
     snils: number;
   };
   frdo?: {
+    last_name?: string | null;
+    first_name?: string | null;
+    middle_name?: string | null;
     birth_date: string | null;
     gender: string | null;
     snils: string | null;
