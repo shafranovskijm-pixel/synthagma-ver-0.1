@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.company.paid_education",
+  "template_version": "1.0.0-draft",
+  "scenario": "legal_entity_customer",
+  "source_sha256": "72149D57D254CCDAF5A636ACCE7F45763D8194BBEA022E1C2287A0F1629F1A99",
+  "template_sha256": "919475270A42A7CE7BCDDEB73A1D58E865EF62FE7939FFB48692100275BEAF2D",
+  "render_policy": "filled_docx_is_the_single_source_for_preview_pdf_and_download",
+  "variables": [
+    {"token":"[[DOC_NO]]","key":"document.number","type":"string","source":"sequence","required":true},
+    {"token":"[[DOC_DATE]]","key":"document.date.formatted","type":"date_text","source":"computed","required":true},
+    {"token":"[[CUST_NAME]]","key":"customer.company.full_name","type":"string","source":"company","required":true},
+    {"token":"[[CUST_REP_GEN]]","key":"customer.signatory.name_genitive","type":"person_name","source":"company","required":true},
+    {"token":"[[CUST_AUTH]]","key":"customer.signatory.authority_clause","type":"string","source":"company","required":true},
+    {"token":"[[TRAINING_ADDR]]","key":"group.training_address","type":"address","source":"group","required":true},
+    {"token":"[[SCHEDULE]]","key":"group.schedule_text","type":"string","source":"group","required":true},
+    {"token":"[[PRICE_NUM]]","key":"payment.total.formatted","type":"money","source":"contract","required":true},
+    {"token":"[[PRICE_WORDS]]","key":"payment.total.words","type":"money_words","source":"computed","required":true},
+    {"token":"[[TAX_CLAUSE]]","key":"payment.tax_clause","type":"conditional_text","source":"contract","required":true},
+    {"token":"[[PAYMENT_CLAUSE]]","key":"payment.schedule_clause","type":"string","source":"contract","required":true},
+    {"token":"[[PROG_TITLE]]","key":"program.title","type":"string","source":"course","required":true,"scope":"programs[]"},
+    {"token":"[[PROG_FORM]]","key":"program.form","type":"enum","source":"group","required":true,"scope":"programs[]"},
+    {"token":"[[PROG_COUNT]]","key":"program.student_count","type":"integer","source":"computed","required":true,"scope":"programs[]"},
+    {"token":"[[CUST_INN]]","key":"customer.company.inn","type":"inn","source":"company","required":true},
+    {"token":"[[CUST_KPP]]","key":"customer.company.kpp","type":"kpp","source":"company","required":true},
+    {"token":"[[CUST_OGRN]]","key":"customer.company.ogrn","type":"ogrn","source":"company","required":true},
+    {"token":"[[CUST_LEGAL_ADDR]]","key":"customer.company.legal_address","type":"address","source":"company","required":true},
+    {"token":"[[CUST_POST_ADDR]]","key":"customer.company.postal_address","type":"address","source":"company","required":true},
+    {"token":"[[CUST_ACCOUNT]]","key":"customer.bank.account","type":"bank_account","source":"company","required":true},
+    {"token":"[[CUST_BANK]]","key":"customer.bank.name","type":"string","source":"company","required":true},
+    {"token":"[[CUST_BIK]]","key":"customer.bank.bik","type":"bik","source":"company","required":true},
+    {"token":"[[CUST_CORR]]","key":"customer.bank.correspondent_account","type":"bank_account","source":"company","required":true},
+    {"token":"[[CUST_EMAIL]]","key":"customer.contact.email","type":"email","source":"company","required":true},
+    {"token":"[[CUST_PHONE]]","key":"customer.contact.phone","type":"phone","source":"company","required":true},
+    {"token":"[[CUST_REP_POS]]","key":"customer.signatory.position","type":"string","source":"company","required":true},
+    {"token":"[[CUST_REP_SHORT]]","key":"customer.signatory.name_short","type":"person_name","source":"computed","required":true},
+    {"token":"[[N]]","key":"student.row_number","type":"integer","source":"computed","required":true,"scope":"students[]"},
+    {"token":"[[STUDENT_FIO]]","key":"student.full_name","type":"person_name","source":"student","required":true,"scope":"students[]"},
+    {"token":"[[STUDENT_EDU]]","key":"student.education_level","type":"enum","source":"student","required":true,"scope":"students[]"},
+    {"token":"[[STUDENT_CONTACTS]]","key":"student.contacts","type":"multiline","source":"computed","required":true,"scope":"students[]"},
+    {"token":"[[STUDENT_POSITION]]","key":"student.position","type":"string","source":"student","required":true,"scope":"students[]"},
+    {"token":"[[STUDENT_ADDRESS]]","key":"student.residence","type":"address","source":"student","required":false,"scope":"students[]"},
+    {"token":"[[STUDENT_PROGRAM]]","key":"student.program_title","type":"string","source":"course","required":true,"scope":"students[]"},
+    {"token":"[[STUDENT_DATES]]","key":"student.training_dates","type":"date_range","source":"group","required":true,"scope":"students[]"}
+  ],
+  "repeaters": {
+    "programs": {"table_index":1,"header_rows":1,"prototype_row":1,"strategy":"clone_prototype_remove_unused"},
+    "students": {"table_index":3,"header_rows":1,"prototype_row":1,"strategy":"clone_prototype_remove_unused"}
+  },
+  "conditional_sections": {
+    "curricula": {
+      "strategy": "include_only_programs_present_in_contract",
+      "catalog": {
+        "maintenance_ex_equipment_32": {"section_index":2,"table_index":5,"signature_table_index":6},
+        "development_certification_ex_equipment_32": {"section_index":3,"table_index":7,"signature_table_index":8},
+        "design_ex_installations_40": {"section_index":4,"table_index":9,"signature_table_index":10}
+      }
+    }
+  },
+  "blocking_rules": [
+    "all required scalar variables are non-empty and pass type validation",
+    "programs contains at least one item",
+    "students contains at least one item",
+    "every student references a program included in programs",
+    "payment total in digits equals the amount in words",
+    "tax clause is selected explicitly and is not inferred from the old template",
+    "contract number and date are identical in the agreement and appendices",
+    "selected curricula match the linked courses",
+    "no unresolved token remains after compilation"
+  ],
+  "lifecycle": ["draft","validated","approved","signed","cancelled"],
+  "qa": {
+    "expected_sections": 5,
+    "baseline_pages": 12,
+    "inspect_all_pages": true,
+    "compare_preview_pdf_docx": true,
+    "preserve_package_parts_except": [
+      "word/document.xml",
+      "word/_rels/document.xml.rels",
+      "[Content_Types].xml",
+      "word/embeddings/oleObject1.bin (removed orphaned source artifact)",
+      "word/media/image1.emf (removed orphaned source icon)"
+    ]
+  }
+}
