@@ -362,10 +362,40 @@ export function buildVariables(
     students_table: buildStudentsTable(ctx.students),
     students_list_rows: buildStudentListRows(ctx.students, ctx, basisForOrders),
     student_list_detail_rows: buildStudentListDetailRows(ctx.students),
-    journal_rows: buildJournalRows(ctx.students),
-    attestation_rows: buildAttestationRows(ctx.students),
-    registration_rows: buildRegistrationRows(ctx.students, ctx, orderNum),
+    journal_head: dataMode
+      ? buildJournalHead(journalDates)
+      : buildJournalHead([]),
+    journal_rows: dataMode
+      ? buildJournalRowsFromFacts(ctx.students, factual.lessonCompletions, journalDates)
+      : buildJournalBlankRows(ctx.students),
+    journal_source_note: dataMode
+      ? JOURNAL_SOURCE_LABEL
+      : "Рабочий бланк: отметки заполняются вручную.",
+    attestation_rows: dataMode
+      ? buildAttestationRowsFromFacts(ctx.students, factual.attestation)
+      : buildAttestationBlankRows(ctx.students),
+    attestation_source_note: dataMode
+      ? ATTESTATION_SOURCE_LABEL
+      : "Рабочий бланк: результаты заполняются вручную.",
+    registration_rows: dataMode
+      ? buildRegistrationRowsFromFacts(factual.registration)
+      : buildRegistrationBlankRows(ctx.students),
+    registration_source_note: dataMode
+      ? REGISTRATION_SOURCE_LABEL
+      : "Рабочий бланк: номера документов заполняются вручную.",
+    schedule_rows: dataMode
+      ? buildScheduleRowsFromFacts(factual.schedule)
+      : buildScheduleBlankRows(),
+    schedule_notice:
+      dataMode && factual.schedule.length === 0
+        ? SCHEDULE_EMPTY_NOTICE
+        : dataMode
+          ? SCHEDULE_SOURCE_LABEL
+          : "Рабочий бланк: занятия заполняются вручную.",
+    layout_notice: LEGACY_LAYOUT_NOTICE,
+    fill_mode: dataMode ? "Заполнено по данным Синтагмы" : "Рабочий бланк",
     pass_rows: buildPassRows(ctx.students, ctx),
+
   };
 
   if (ctx.extras) {
