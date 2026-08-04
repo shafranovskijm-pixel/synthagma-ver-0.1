@@ -568,7 +568,7 @@ export function useEducationDocumentsJournal({
     dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
     editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
-    scopedCompletedStudents, loadingStudents, selectedStudents,
+    completedStudents: scopedCompletedStudents, loadingStudents, selectedStudents,
     studentSearchQuery, setStudentSearchQuery,
     formData, setFormData,
     // Computed
