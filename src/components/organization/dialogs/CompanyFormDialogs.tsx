@@ -9,6 +9,7 @@ import {
   DialogTitle } from "@/components/ui/dialog";
 import { Search, Check } from "lucide-react";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { COMPANY_DOC_FIELDS, type CompanyDocFields } from "@/hooks/useCompaniesManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DadataCompanyInfo {
@@ -156,6 +157,8 @@ interface EditCompanyDialogProps {
   companyEmail: string;
   setCompanyEmail: (email: string) => void;
   isSaving: boolean;
+  docFields: CompanyDocFields;
+  setDocField: (key: string, value: string) => void;
   isSearchingDadata: boolean;
   dadataCompanyInfo: DadataCompanyInfo | null;
   onSearchByInn: (inn: string) => void;
@@ -174,6 +177,8 @@ export function EditCompanyDialog({
   companyEmail,
   setCompanyEmail,
   isSaving,
+  docFields,
+  setDocField,
   isSearchingDadata,
   dadataCompanyInfo,
   onSearchByInn,
@@ -184,7 +189,7 @@ export function EditCompanyDialog({
       onOpenChange(o);
       if (!o) onClose();
     }}>
-      <DialogContent className="rounded-2xl max-w-lg">
+      <DialogContent className="rounded-2xl max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display">
             Редактировать компанию
@@ -246,6 +251,28 @@ export function EditCompanyDialog({
               onChange={(e) => setCompanyEmail(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">Для отправки напоминаний о переобучении</p>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-border p-3">
+            <div>
+              <p className="text-sm font-semibold">Реквизиты для документов</p>
+              <p className="text-xs text-muted-foreground">
+                Подставляются в договоры и счёта автоматически — заполните один раз.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {COMPANY_DOC_FIELDS.map(([key, label, placeholder]) => (
+                <div className="space-y-1.5" key={key}>
+                  <Label>{label}</Label>
+                  <Input
+                    className="rounded-xl"
+                    value={docFields[key] || ""}
+                    placeholder={placeholder}
+                    onChange={(e) => setDocField(key, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           <Button
