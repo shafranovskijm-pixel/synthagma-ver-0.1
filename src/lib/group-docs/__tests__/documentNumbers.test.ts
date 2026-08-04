@@ -6,6 +6,8 @@ import {
   formatGroupDocumentNumber,
   requiresDocumentNumber,
   reserveGroupDocumentNumbers,
+  typesRequiringReservation,
+
 } from "../documentNumbers";
 import { generateDocument } from "../generate";
 import { pickPassportIdentityDoc } from "../factualResolvers";
