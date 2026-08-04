@@ -238,6 +238,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   // Счётчики папок читаются из тех же таблиц, что и содержимое папок.
   const { counts, refresh: refreshCounts } = useGroupFolderCounts(organizationId, groupId);
 
+  // Возврат «К папкам» → пересчитать счётчики (после генерации/удаления внутри папки).
+  useEffect(() => {
+    if (!openFolder) refreshCounts();
+  }, [openFolder, refreshCounts]);
+
+
+
 
   /** Контекст генерации документов группы: организация + группа + ученики. */
   const generationContext = useMemo<GenerationContext | null>(() => {
