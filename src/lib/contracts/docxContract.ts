@@ -261,7 +261,10 @@ export function companyScalars(company: CompanyLike | null | undefined): Record<
   out.CUST_KPP = company.kpp || "";
   out.CUST_OGRN = company.ogrn || "";
   out.CUST_LEGAL_ADDR = company.address || "";
-  out.CUST_POST_ADDR = company.postal_address || company.address || "";
+  // Fail-closed: почтовый адрес берётся ТОЛЬКО из сохранённого postal_address.
+  // Молчаливый fallback на юридический адрес запрещён: если адреса совпадают,
+  // оператор сохраняет это явно в карточке компании. Пустое поле блокирует readiness.
+  out.CUST_POST_ADDR = company.postal_address || "";
   out.CUST_EMAIL = company.email || "";
   out.CUST_PHONE = company.phone || "";
   out.CUST_BANK = company.bank_name || "";
@@ -479,7 +482,8 @@ export function initialDocxScalars(group: GroupLike | null | undefined, dateIso:
     DOC_DATE: formatContractDateRu(dateIso),
     TRAINING_ADDR: group?.training_address || "",
     SCHEDULE: groupScheduleText(group),
-    PROG_FORM: group?.program_form || "Очная",
+    // Fail-closed: форма обучения только из настроек группы, без default «Очная».
+    PROG_FORM: group?.program_form || "",
     STUDENT_DATES: groupDatesText(group?.start_date, group?.end_date),
     TAX_CLAUSE: "",
     PAYMENT_CLAUSE: DEFAULT_PAYMENT_CLAUSE,

@@ -115,6 +115,18 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   }, [setSearchParams]);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
 
+  // Deep-link «Изменить в настройках группы»: ?groupSettings=1 открывает диалог
+  // настроек текущей группы и сразу убирает параметр из URL.
+  useEffect(() => {
+    if (searchParams.get("groupSettings") !== "1") return;
+    setSettingsOpen(true);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("groupSettings");
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => { localStorage.setItem("groupFolderView", viewMode); }, [viewMode]);
 
   const backToStudentsGroups = useCallback(() => {
@@ -283,7 +295,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         end_date: group.end_date || "",
         program_title: group.program_title || courseInfo?.title || "",
         program_hours: group.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0,
-        program_form: group.program_form || courseInfo?.training_form || "Очно-заочная с применением ДОТ",
+        // Fail-closed: форма обучения только из настроек группы. Пустое значение
+        // честно блокирует договор, вместо подстановки «типовой» формы.
+        program_form: group.program_form || "",
         schedule_text: group.schedule_text || null,
         color: group.color || undefined,
       },

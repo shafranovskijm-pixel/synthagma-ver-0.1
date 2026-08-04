@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +54,7 @@ const StatsGrid = ({ cm }: { cm: any }) => (
 
 export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const cm = useCompaniesManager(organizationId);
   const dm = useCompanyDetailManager(organizationId);
   const sm = useCompanyStudentsManager(organizationId);
@@ -69,6 +70,21 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     return () => window.removeEventListener("org-add-company", handler);
   }, [cm.setShowCreateDialog]);
 
+
+  // Deep-link ?companyId=... открывает карточку именно этой компании
+  // (ссылки «Изменить в карточке компании» из мастера договоров).
+  useEffect(() => {
+    const wanted = searchParams.get("companyId");
+    if (!wanted || dm.showCompanyDetail) return;
+    const company = cm.companies.find((c: any) => c.id === wanted);
+    if (!company) return;
+    dm.openCompanyDetail(company);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("companyId");
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams, cm.companies, dm.showCompanyDetail]);
 
   const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
