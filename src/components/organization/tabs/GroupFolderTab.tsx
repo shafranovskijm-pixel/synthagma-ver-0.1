@@ -19,6 +19,7 @@ import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDial
 import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 
 
 
@@ -63,6 +64,9 @@ interface StudentRow {
     snils: number;
   };
   frdo?: {
+    last_name?: string | null;
+    first_name?: string | null;
+    middle_name?: string | null;
     birth_date: string | null;
     gender: string | null;
     snils: string | null;
@@ -196,7 +200,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             .in("user_id", userIds),
           (supabase as any)
             .from("student_frdo_data")
-            .select("user_id, birth_date, gender, snils, citizenship_code, education_level, passport_series, passport_number")
+            .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, citizenship_code, education_level, passport_series, passport_number")
             .in("user_id", userIds),
         ]);
 
@@ -481,7 +485,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                 </thead>
                 <tbody className="divide-y divide-border">
                   {students.map(s => {
-                    const frdoReady = Boolean(s.frdo?.birth_date && s.frdo?.snils && s.frdo?.gender);
+                    const frdo = resolveFrdoReadiness(s.frdo, s.full_name);
                     return (
                       <tr
                         key={s.user_id}
@@ -503,8 +507,12 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                           </div>
                         </td>
                         <td className="px-3 py-2.5 hidden lg:table-cell">
-                          <Badge variant={frdoReady ? "default" : s.frdo ? "secondary" : "outline"} className="rounded-full text-[10px]">
-                            {frdoReady ? "Готово" : s.frdo ? "Не полностью" : "Нет данных"}
+                          <Badge
+                            variant={frdo.status === "complete" ? "default" : frdo.status === "incomplete" ? "secondary" : "outline"}
+                            className="rounded-full text-[10px]"
+                            title={frdo.missingFields.length ? `Не хватает: ${frdo.missingFields.join(", ")}` : undefined}
+                          >
+                            {frdoReadinessLabel(frdo.status)}
                           </Badge>
                         </td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{s.contracts_count}</td>

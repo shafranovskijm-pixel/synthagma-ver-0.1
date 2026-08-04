@@ -60,18 +60,29 @@ interface AutoAttendanceJournalProps {
   organizationId: string;
   /** Курс группы: выбран по умолчанию при открытии из контекста группы. */
   initialCourseId?: string;
+  /**
+   * Фактические участники группы. Обязательно при открытии из папки группы:
+   * без этого две группы на одном курсе смешивают строки журнала.
+   */
+  groupMemberUserIds?: string[] | null;
   onClose: () => void;
 }
 
 export function AutoAttendanceJournal({
   organizationId,
   initialCourseId,
+  groupMemberUserIds = null,
   onClose }: AutoAttendanceJournalProps) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<string>(initialCourseId || "all");
+
+  // Курс контекста может измениться после смены URL — синхронизируем фильтр.
+  useEffect(() => {
+    setSelectedCourse(initialCourseId || "all");
+  }, [initialCourseId]);
   const [dateRange, setDateRange] = useState<{
     from: Date;
     to: Date;
@@ -198,15 +209,19 @@ export function AutoAttendanceJournal({
       const matchesCourse =
         selectedCourse === "all" || record.course_id === selectedCourse;
 
+      // Контекст группы: только фактические участники этой группы
+      const matchesGroup =
+        !groupMemberUserIds || groupMemberUserIds.includes(record.user_id);
+
       // Date filter
       const recordDate = parseISO(record.completed_at);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
         end: dateRange.to });
 
-      return matchesSearch && matchesCourse && matchesDate;
+      return matchesSearch && matchesCourse && matchesDate && matchesGroup;
     });
-  }, [records, searchQuery, selectedCourse, dateRange]);
+  }, [records, searchQuery, selectedCourse, dateRange, groupMemberUserIds]);
 
   // Statistics
   const stats = useMemo(() => {
