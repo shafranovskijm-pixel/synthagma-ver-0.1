@@ -14,6 +14,8 @@ export interface GroupSettingsFormValues {
   program_hours: number | null;
   program_form: string | null;
   default_price: number | null;
+  training_address: string | null;
+  schedule_text: string | null;
   course_id: string | null;
   max_seats: number | null;
   strict_order: boolean | null;
@@ -38,6 +40,8 @@ export function groupSettingsDefaults(row: Partial<GroupSettingsFormValues> | nu
     program_hours: row?.program_hours ?? null,
     program_form: row?.program_form ?? null,
     default_price: row?.default_price ?? null,
+    training_address: row?.training_address ?? null,
+    schedule_text: row?.schedule_text ?? null,
     course_id: row?.course_id ?? null,
     max_seats: row?.max_seats ?? null,
     strict_order: row?.strict_order ?? false,
@@ -70,6 +74,8 @@ export function buildGroupSettingsPatch(
     program_hours: str(s.program_hours),
     program_form: str(s.program_form),
     default_price: str(s.default_price),
+    training_address: str(s.training_address),
+    schedule_text: str(s.schedule_text),
     course_id: str(s.course_id),
     max_seats: seatLimitEnabled ? String(s.max_seats || 30) : "",
     strict_order: !!s.strict_order,
@@ -98,6 +104,8 @@ export function verifySavedSettings(
     ["program_hours", saved.program_hours],
     ["program_form", saved.program_form],
     ["default_price", saved.default_price],
+    ["training_address", saved.training_address],
+    ["schedule_text", saved.schedule_text],
   ];
   const bad: string[] = [];
   for (const [key, value] of checks) {

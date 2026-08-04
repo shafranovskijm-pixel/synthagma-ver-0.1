@@ -23,6 +23,8 @@ interface GroupSettings {
   program_hours: number | null;
   program_form: string | null;
   default_price: number | null;
+  training_address: string | null;
+  schedule_text: string | null;
   course_id: string | null;
   max_seats: number | null;
   curator_id: string | null;
@@ -386,6 +388,25 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                               value={settings.program_form || ""}
                               onChange={e => update({ program_form: e.target.value || null })}
                               placeholder="Очно-заочная с применением ДОТ"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-medium mb-1.5 block">Место обучения (адрес)</label>
+                            <Input
+                              value={settings.training_address || ""}
+                              onChange={e => update({ training_address: e.target.value || null })}
+                              placeholder="г. Москва, ул. Примерная, д. 1"
+                              className="rounded-lg"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Подставляется в договоры как место оказания услуг.</p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-medium mb-1.5 block">Режим занятий</label>
+                            <Input
+                              value={settings.schedule_text || ""}
+                              onChange={e => update({ schedule_text: e.target.value || null })}
+                              placeholder="Пн–Пт, 10:00–17:00, 8 часов в день"
                               className="rounded-lg"
                             />
                           </div>
