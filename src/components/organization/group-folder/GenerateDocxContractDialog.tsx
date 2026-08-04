@@ -454,18 +454,26 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                       <div className="space-y-1.5">
                         <Label>Образование</Label>
                         <Select value={r.edu} onValueChange={(v) => setRows((p) => p.map((x, j) => j === i ? { ...x, edu: v } : x))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>{EDU_LEVELS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+                          <SelectTrigger><SelectValue placeholder="Не указано" /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from(new Set([...EDU_LEVELS, ...(r.edu ? [r.edu] : [])])).map((e) => (
+                              <SelectItem key={e} value={e}>{e}</SelectItem>
+                            ))}
+                          </SelectContent>
                         </Select>
+                        <p className="text-[11px] text-muted-foreground">Источник: Данные ФИС ФРДО</p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`contacts-${i}`}>Контакты</Label>
                         <Input id={`contacts-${i}`} value={r.contacts} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, contacts: e.target.value } : x))} />
+                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pos-${i}`}>Должность</Label>
                         <Input id={`pos-${i}`} value={r.position} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, position: e.target.value } : x))} />
+                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
                       </div>
+
                       <div className="space-y-1.5">
                         <Label>Программа</Label>
                         <Select value={r.program} onValueChange={(v) => setRows((p) => p.map((x, j) => j === i ? { ...x, program: v } : x))}>
