@@ -174,11 +174,13 @@ describe("источники истины Синтагмы", () => {
     expect(s.CUST_REP_POS).toBe("");
     expect(s.CUST_AUTH).toBe("");
     // и это блокирует финальный договор
-    const problems = evaluateDocxReadiness(
-      { scalars: { ...s, DOC_DATE: "01.01.2026", TRAINING_ADDR: "адрес", SCHEDULE: "режим" }, rows: [], curricula: [GORELTECH_CURRICULA[0]] } as any,
+    const groups = evaluateDocxReadiness(
+      { scalars: { ...s, DOC_DATE: "01.01.2026" }, students: [], programs: [], totalAmount: 0 } as any,
       { autoAssignNumber: true },
     );
-    expect(problems.join(" ")).toMatch(/CUST_REP_POS|должность/i);
+    const company = groups.find((g) => g.id === "company")!;
+    expect(company.ready).toBe(false);
+    expect(company.missing.join(" | ")).toMatch(/должност|полномоч/i);
   });
 
   it("ФИО слушателя собирается из полей ФРДО с fallback на профиль", () => {
@@ -221,10 +223,17 @@ describe("автонумерация договора", () => {
         STUDENT_DATES: "01.01.2026 — 05.01.2026",
         PROG_FORM: "Очная",
       },
-      rows: [{ n: 1, fio: "А", position: "И", edu: "среднее", program: GORELTECH_CURRICULA[0], contacts: "a@b.ru", addr: "адрес" }],
-      curricula: [GORELTECH_CURRICULA[0]],
+      students: [],
+      programs: [],
+      totalAmount: 100,
+      taxClauseChosen: true,
     } as any;
-    expect(evaluateDocxReadiness(draft, { autoAssignNumber: true })).not.toContain("DOC_NO");
+    const groupInfo = evaluateDocxReadiness(draft, { autoAssignNumber: true }).find((g) => g.id === "group")!;
+    expect(groupInfo.missing).not.toContain("Номер договора");
+    expect(groupInfo.ready).toBe(true);
+    // без автонумерации номер обязателен
+    const strict = evaluateDocxReadiness(draft, { autoAssignNumber: false }).find((g) => g.id === "group")!;
+    expect(strict.missing).toContain("Номер договора");
   });
 
   it("строка слушателя собирается только из данных Синтагмы", () => {
