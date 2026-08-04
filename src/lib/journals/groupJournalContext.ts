@@ -116,3 +116,41 @@ export function countUnlinkedRows<T>(
   if (!ctx || !ctx.groupId || ctx.status !== "ready") return 0;
   return rows.filter((r) => !userId(r)).length;
 }
+
+// ── Write-safety списка журналов в контексте группы ──
+
+export const CUSTOM_JOURNAL_BLOCKED_REASON =
+  "В контексте группы нельзя создавать пользовательские журналы: такой журнал ведётся по всей организации " +
+  "и не может хранить привязку к группе, курсу и участникам. Откройте раздел «Журналы» без контекста группы.";
+
+export const MANUAL_JOURNAL_EDITOR_BLOCKED_REASON =
+  "Ручной журнал ведётся по организации и не ограничен составом группы. В контексте группы доступен только " +
+  "автоматический режим по участникам этой группы.";
+
+/** Активен ли контекст группы (папка группы или возврат в группу). */
+export function isGroupJournalContextActive(params: {
+  groupId?: string | null;
+  returnToGroupId?: string | null;
+}): boolean {
+  return Boolean(params.groupId || params.returnToGroupId);
+}
+
+/** Разрешено ли создание/редактирование пользовательского журнала. */
+export function resolveCustomJournalGuard(params: {
+  groupId?: string | null;
+  returnToGroupId?: string | null;
+}): { blocked: boolean; reason: string | null } {
+  return isGroupJournalContextActive(params)
+    ? { blocked: true, reason: CUSTOM_JOURNAL_BLOCKED_REASON }
+    : { blocked: false, reason: null };
+}
+
+/** Разрешено ли открытие ручного (неограниченного) редактора журнала. */
+export function resolveManualJournalEditorGuard(params: {
+  groupId?: string | null;
+  returnToGroupId?: string | null;
+}): { blocked: boolean; reason: string | null } {
+  return isGroupJournalContextActive(params)
+    ? { blocked: true, reason: MANUAL_JOURNAL_EDITOR_BLOCKED_REASON }
+    : { blocked: false, reason: null };
+}
