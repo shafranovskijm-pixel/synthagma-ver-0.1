@@ -1497,6 +1497,10 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          bank_account: string | null
+          bank_bik: string | null
+          bank_corr_account: string | null
+          bank_name: string | null
           created_at: string
           director: string | null
           email: string | null
@@ -1508,6 +1512,11 @@ export type Database = {
           name: string
           ogrn: string | null
           organization_id: string
+          phone: string | null
+          postal_address: string | null
+          signatory_authority_clause: string | null
+          signatory_name_genitive: string | null
+          signatory_position: string | null
           signature_url: string | null
           stamp_url: string | null
           updated_at: string
@@ -1515,6 +1524,10 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bank_account?: string | null
+          bank_bik?: string | null
+          bank_corr_account?: string | null
+          bank_name?: string | null
           created_at?: string
           director?: string | null
           email?: string | null
@@ -1526,6 +1539,11 @@ export type Database = {
           name: string
           ogrn?: string | null
           organization_id: string
+          phone?: string | null
+          postal_address?: string | null
+          signatory_authority_clause?: string | null
+          signatory_name_genitive?: string | null
+          signatory_position?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           updated_at?: string
@@ -1533,6 +1551,10 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bank_account?: string | null
+          bank_bik?: string | null
+          bank_corr_account?: string | null
+          bank_name?: string | null
           created_at?: string
           director?: string | null
           email?: string | null
@@ -1544,6 +1566,11 @@ export type Database = {
           name?: string
           ogrn?: string | null
           organization_id?: string
+          phone?: string | null
+          postal_address?: string | null
+          signatory_authority_clause?: string | null
+          signatory_name_genitive?: string | null
+          signatory_position?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           updated_at?: string
@@ -7204,6 +7231,7 @@ export type Database = {
           full_name: string | null
           generated_password: string | null
           id: string
+          job_position: string | null
           last_seen_announcement_at: string | null
           last_visit_at: string | null
           lead_source: string | null
@@ -7235,6 +7263,7 @@ export type Database = {
           full_name?: string | null
           generated_password?: string | null
           id?: string
+          job_position?: string | null
           last_seen_announcement_at?: string | null
           last_visit_at?: string | null
           lead_source?: string | null
@@ -7266,6 +7295,7 @@ export type Database = {
           full_name?: string | null
           generated_password?: string | null
           id?: string
+          job_position?: string | null
           last_seen_announcement_at?: string | null
           last_visit_at?: string | null
           lead_source?: string | null
@@ -9439,9 +9469,11 @@ export type Database = {
           program_hours: number | null
           program_title: string | null
           schedule_access: boolean
+          schedule_text: string | null
           show_locked_lessons: boolean
           start_date: string | null
           strict_order: boolean
+          training_address: string | null
           updated_at: string
         }
         Insert: {
@@ -9465,9 +9497,11 @@ export type Database = {
           program_hours?: number | null
           program_title?: string | null
           schedule_access?: boolean
+          schedule_text?: string | null
           show_locked_lessons?: boolean
           start_date?: string | null
           strict_order?: boolean
+          training_address?: string | null
           updated_at?: string
         }
         Update: {
@@ -9491,9 +9525,11 @@ export type Database = {
           program_hours?: number | null
           program_title?: string | null
           schedule_access?: boolean
+          schedule_text?: string | null
           show_locked_lessons?: boolean
           start_date?: string | null
           strict_order?: boolean
+          training_address?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -11848,9 +11884,11 @@ export type Database = {
           program_hours: number | null
           program_title: string | null
           schedule_access: boolean
+          schedule_text: string | null
           show_locked_lessons: boolean
           start_date: string | null
           strict_order: boolean
+          training_address: string | null
           updated_at: string
         }
         SetofOptions: {

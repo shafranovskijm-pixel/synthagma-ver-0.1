@@ -412,11 +412,13 @@ function PersonalFrdoSection({ h }: { h: any }) {
   const [birthDate, setBirthDate] = useState<string>(h.frdoData?.birth_date || "");
   const [snils, setSnils] = useState<string>(h.frdoData?.snils || "");
   const [region, setRegion] = useState<string>(h.region || "");
+  const [jobPosition, setJobPosition] = useState<string>(h.jobPosition || "");
 
   useEffect(() => { setPhone(h.phone || ""); }, [h.phone]);
   useEffect(() => { setBirthDate(h.frdoData?.birth_date || ""); }, [h.frdoData?.birth_date]);
   useEffect(() => { setSnils(h.frdoData?.snils || ""); }, [h.frdoData?.snils]);
   useEffect(() => { setRegion(h.region || ""); }, [h.region]);
+  useEffect(() => { setJobPosition(h.jobPosition || ""); }, [h.jobPosition]);
 
   const gender = h.frdoData?.gender || "";
   const citizenship = h.frdoData?.citizenship_code || "643";
@@ -487,6 +489,19 @@ function PersonalFrdoSection({ h }: { h: any }) {
             className="rounded-lg font-mono"
             disabled={h.savingFrdoField === "snils"}
           />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label className="flex items-center gap-2"><User className="w-4 h-4" />Должность</Label>
+          <Input
+            value={jobPosition}
+            onChange={(e) => setJobPosition(e.target.value)}
+            onBlur={() => { if (jobPosition !== (h.jobPosition || "")) h.saveJobPosition(jobPosition); }}
+            placeholder="Например: инженер по охране труда"
+            className="rounded-lg"
+            disabled={h.savingJobPosition}
+          />
+          <p className="text-xs text-muted-foreground">Подставляется в договоры с компанией-заказчиком.</p>
         </div>
 
         <div className="space-y-2 md:col-span-2">

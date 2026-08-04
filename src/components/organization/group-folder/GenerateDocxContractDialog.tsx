@@ -22,15 +22,19 @@ import {
   applyCompanySelection,
   evaluateDocxReadiness,
   fetchDocxTemplates,
+  fieldSourceLabel,
   formatContractDateRu,
   generateDocxContract,
   groupDatesText,
   initialDocxScalars,
   isDocxDraftReady,
+  matchGroupCurriculum,
+  studentRowFromSources,
   type DocxContractDraft,
   type RegistryTemplate,
 } from "@/lib/contracts/docxContract";
 import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
+
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
 
@@ -77,8 +81,28 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [numberBusy, setNumberBusy] = useState(false);
 
   const setField = (key: string, value: string) => setScalars((prev) => ({ ...prev, [key]: value }));
+
+  /** Номер договора — только через серверную автонумерацию Синтагмы. */
+  const reserveNumber = async () => {
+    setNumberBusy(true);
+    try {
+      const { data, error } = await supabase.rpc("get_next_document_number", {
+        p_org: organizationId,
+        p_doc_type: "contract",
+        p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
+      });
+      if (error) throw error;
+      setField("DOC_NO", String(data || ""));
+      toast.success("Номер договора зарезервирован");
+    } catch (e: any) {
+      toast.error("Не удалось получить номер", { description: e?.message });
+    } finally {
+      setNumberBusy(false);
+    }
+  };
 
   // Каждое открытие диалога начинается с чистого состояния: данные предыдущего
   // договора (компания, реквизиты, приложения, слушатели) не переносятся.
@@ -96,15 +120,19 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
 
     (async () => {
       try {
-        const [tpls, companiesRes, groupRes, profilesRes] = await Promise.all([
+        const [tpls, companiesRes, groupRes, profilesRes, frdoRes] = await Promise.all([
           fetchDocxTemplates("legal"),
           supabase.from("companies").select("*").eq("organization_id", organizationId).order("name"),
           supabase.from("student_groups").select("*").eq("id", groupId).maybeSingle(),
           supabase
             .from("profiles")
-            .select("user_id, full_name, email, contact_email, phone, city, region")
+            .select("user_id, full_name, email, contact_email, phone, city, region, job_position")
             .eq("organization_id", organizationId)
             .eq("student_group_id", groupId),
+          supabase
+            .from("student_frdo_data")
+            .select("user_id, education_level")
+            .eq("organization_id", organizationId),
         ]);
         setTemplates(tpls);
         setTemplateKey(tpls[0]?.template_key || "");
@@ -114,22 +142,23 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         setScalars(initialDocxScalars(g, iso));
         setCompanies((companiesRes.data as any[]) || []);
 
+        // Учебный план подставляется автоматически, если программа группы совпала с шаблоном.
+        const matched = matchGroupCurriculum(g?.program_title);
+        if (matched) setCurricula([matched]);
+
         const byUser = new Map<string, any>(((profilesRes.data as any[]) || []).map((p) => [p.user_id, p]));
+        const frdoByUser = new Map<string, any>(((frdoRes.data as any[]) || []).map((f) => [f.user_id, f]));
         setRows(
-          students.map((s) => {
-            const p = byUser.get(s.user_id) || {};
-            const contacts = [s.email || p.contact_email || p.email || "", p.phone || ""].filter(Boolean).join(", ");
-            const address = [p.region || "", p.city || ""].filter(Boolean).join(", ");
-            return {
+          students.map((s) =>
+            studentRowFromSources({
               user_id: s.user_id,
-              fio: s.full_name || p.full_name || "",
-              edu: "высшее",
-              contacts,
-              position: "",
-              address,
-              program: "",
-            } satisfies StudentRow;
-          }),
+              full_name: s.full_name,
+              email: s.email,
+              profile: byUser.get(s.user_id) || null,
+              frdo: frdoByUser.get(s.user_id) || null,
+              program: matched || "",
+            }),
+          ),
         );
       } catch (e: any) {
         toast.error("Не удалось загрузить данные", { description: e?.message });
@@ -139,6 +168,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId, groupId]);
+
 
   // Смена компании атомарно заменяет ВСЕ реквизиты заказчика (без «||»),
   // поля договора/группы при этом сохраняются.
@@ -305,9 +335,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <div key={key} className="space-y-1.5">
                       <Label htmlFor={key}>{label}</Label>
                       <Input id={key} value={scalars[key] || ""} onChange={(e) => setField(key, e.target.value)} />
+                      <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel(key)}</p>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Данные подставляются из карточки компании. Чтобы они заполнялись автоматически, заполните раздел
+                  «Реквизиты для документов» в карточке компании.
+                </p>
               </div>
 
               {/* Договор и обучение */}
@@ -316,7 +351,13 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_NO">Номер договора</Label>
-                    <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} />
+                    <div className="flex gap-2">
+                      <Input id="DOC_NO" value={scalars.DOC_NO || ""} onChange={(e) => setField("DOC_NO", e.target.value)} placeholder="Зарезервируйте номер" />
+                      <Button type="button" variant="outline" onClick={reserveNumber} disabled={numberBusy}>
+                        {numberBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Номер"}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("DOC_NO")}</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="DOC_DATE_ISO">Дата договора</Label>
@@ -331,11 +372,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   <div className="space-y-1.5">
                     <Label htmlFor="TRAINING_ADDR">Место обучения</Label>
                     <Input id="TRAINING_ADDR" value={scalars.TRAINING_ADDR || ""} onChange={(e) => setField("TRAINING_ADDR", e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("TRAINING_ADDR")}</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="SCHEDULE">Режим занятий</Label>
                     <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground">Источник: {fieldSourceLabel("SCHEDULE")}</p>
                   </div>
+
                   <div className="space-y-1.5">
                     <Label htmlFor="STUDENT_DATES">Даты обучения (для всех слушателей)</Label>
                     <Input id="STUDENT_DATES" value={scalars.STUDENT_DATES || ""} onChange={(e) => setField("STUDENT_DATES", e.target.value)} placeholder="03.08.2026 — 07.08.2026" />
@@ -410,18 +454,26 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                       <div className="space-y-1.5">
                         <Label>Образование</Label>
                         <Select value={r.edu} onValueChange={(v) => setRows((p) => p.map((x, j) => j === i ? { ...x, edu: v } : x))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>{EDU_LEVELS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+                          <SelectTrigger><SelectValue placeholder="Не указано" /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from(new Set([...EDU_LEVELS, ...(r.edu ? [r.edu] : [])])).map((e) => (
+                              <SelectItem key={e} value={e}>{e}</SelectItem>
+                            ))}
+                          </SelectContent>
                         </Select>
+                        <p className="text-[11px] text-muted-foreground">Источник: Данные ФИС ФРДО</p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`contacts-${i}`}>Контакты</Label>
                         <Input id={`contacts-${i}`} value={r.contacts} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, contacts: e.target.value } : x))} />
+                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pos-${i}`}>Должность</Label>
                         <Input id={`pos-${i}`} value={r.position} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, position: e.target.value } : x))} />
+                        <p className="text-[11px] text-muted-foreground">Источник: Профиль ученика</p>
                       </div>
+
                       <div className="space-y-1.5">
                         <Label>Программа</Label>
                         <Select value={r.program} onValueChange={(v) => setRows((p) => p.map((x, j) => j === i ? { ...x, program: v } : x))}>
