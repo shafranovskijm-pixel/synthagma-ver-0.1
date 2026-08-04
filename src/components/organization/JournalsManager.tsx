@@ -229,14 +229,24 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
           </div>
         </div>
         <div className="p-6 pt-4">
+          {inGroupContext && (
+            <div className="mb-3 flex items-start gap-3 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10" data-testid="group-journals-scope-notice">
+              <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Открыты журналы этой группы. Показаны только журналы, которые ограничиваются составом группы и её курсом.
+                Пользовательские и ручные журналы организации здесь недоступны — откройте раздел «Журналы» без контекста группы.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { icon: ClipboardCheck, title: "Обязательные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов" },
               { icon: BarChart3, title: "Автоматическое заполнение", desc: "Данные из курсов подтягиваются автоматически" },
               { icon: BookOpen, title: "Электронные журналы онлайн", desc: "Ведите учёт прямо в браузере с еженедельной сеткой" },
               { icon: Download, title: "Экспорт и шаблоны", desc: "Скачайте готовые шаблоны или выгрузите журналы в Excel" },
-              { icon: Settings, title: "Пользовательские журналы", desc: "Создавайте свои журналы с произвольными полями" },
+              ...(inGroupContext ? [] : [{ icon: Settings, title: "Пользовательские журналы", desc: "Создавайте свои журналы с произвольными полями" }]),
               { icon: Camera, title: "Видеоидентификация", desc: "Верификация личности студентов с фотографиями" },
+
             ].map((feature, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-secondary/40">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><feature.icon className="w-4 h-4 text-primary" /></div>
