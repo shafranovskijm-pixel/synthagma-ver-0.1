@@ -38,6 +38,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
   const [genOpen, setGenOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
+  const [docxOpen, setDocxOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [toDelete, setToDelete] = useState<string | null>(null);
   const [docxBusy, setDocxBusy] = useState(false);
