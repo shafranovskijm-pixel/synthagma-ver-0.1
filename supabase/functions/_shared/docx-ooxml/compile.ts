@@ -223,7 +223,7 @@ export function compileDocumentXml(params: {
     if (!cfg) continue;
     const target = elements.find((e) => e.tableIndex === cfg.table_index);
     if (!target) throw new Error(`Повторитель ${name}: таблица №${cfg.table_index} не найдена`);
-    target.xml = expandRepeaterTable(target.xml, cfg.prototype_row, items);
+    target.xml = expandRepeaterTable(target.xml, cfg.prototype_row, items, cfg.header_rows ?? 1);
   }
 
   // 2. Условные приложения: оставляем только учебные планы выбранных программ.
