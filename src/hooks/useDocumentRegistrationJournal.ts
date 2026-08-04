@@ -282,7 +282,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
       toast.success("Документ добавлен в журнал");
     } catch { toast.error("Ошибка при добавлении документа"); }
     finally { setSaving(false); }
-  }, [newDocument, organizationId]);
+  }, [newDocument, organizationId, manualAddGuard]);
 
   const generateNewDocNumber = useCallback(() => {
     const year = newDocument.date.getFullYear();
