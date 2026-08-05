@@ -3,6 +3,7 @@ import { Children, isValidElement, type ReactElement } from "react";
 import { publicRoutes } from "@/routes/publicRoutes";
 import { organizationRoutes } from "@/routes/organizationRoutes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
 
 function flatten(node: ReactElement): ReactElement[] {
   const out: ReactElement[] = [];
@@ -37,6 +38,13 @@ describe("mailing routes", () => {
     const element = (route!.props as { element?: ReactElement }).element!;
     expect(element.type).toBe(ProtectedRoute);
     expect((element.props as { requiredRole?: string }).requiredRole).toBe("organization");
+  });
+
+  it("wraps /mailing/app in OrgDashboardProvider so it reuses the /organization org context", () => {
+    const route = findRoute(orgList, "/mailing/app")!;
+    const element = (route.props as { element?: ReactElement }).element!;
+    const inner = (element.props as { children?: ReactElement }).children!;
+    expect(inner.type).toBe(OrgDashboardProvider);
   });
 
   it("does not expose /mailing/app as a public route", () => {
