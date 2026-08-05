@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, Info } from "lucide-react";
+import { Users, Info, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ImportContactsDialog } from "./ImportContactsDialog";
 
 interface Props {
   organizationId: string | null;
@@ -26,6 +28,8 @@ export function MailingContactsTab({ organizationId }: Props) {
   const [loading, setLoading] = useState(true);
   const [duplicates, setDuplicates] = useState(0);
   const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +85,7 @@ export function MailingContactsTab({ organizationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [organizationId]);
+  }, [organizationId, reloadKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -99,8 +103,8 @@ export function MailingContactsTab({ organizationId }: Props) {
       <CardContent className="space-y-3">
         <p className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          На этом этапе база собирается из истории получателей существующих кампаний и
-          дедуплицируется по email. Импорт CSV/XLSX и собственные поля появятся на следующем этапе.
+          База собирается из истории получателей кампаний и дедуплицируется по email.
+          Импорт CSV/XLSX добавляет контакты только в выбранный черновик кампании.
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -112,6 +116,16 @@ export function MailingContactsTab({ organizationId }: Props) {
           />
           <Badge variant="outline">Уникальных: {rows.length}</Badge>
           <Badge variant="outline">Дубликатов свёрнуто: {duplicates}</Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            onClick={() => setImportOpen(true)}
+            data-testid="mailing-import-button"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Импортировать CSV/XLSX
+          </Button>
         </div>
 
         {loading ? (
@@ -130,6 +144,13 @@ export function MailingContactsTab({ organizationId }: Props) {
           </div>
         )}
       </CardContent>
+
+      <ImportContactsDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        organizationId={organizationId}
+        onImported={() => setReloadKey((k) => k + 1)}
+      />
     </Card>
   );
 }
