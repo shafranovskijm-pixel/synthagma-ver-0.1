@@ -90,6 +90,36 @@ serve(async (req: Request) => {
     if (!authorized) return json({ error: "Forbidden" }, 403);
     if (!campaign) return json({ error: "Кампания не найдена" }, 404);
 
+    // ============ Sender validation (before materialize + quota) ============
+    // Для org-кампании с sender_id аккаунт обязан принадлежать той же
+    // организации, быть активным и пройти SMTP-проверку.
+    let mailingSenderId: string | null = null;
+    let requestedBy: string | null = null;
+    {
+      const { data: userData } = await createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      }).auth.getUser();
+      requestedBy = userData?.user?.id ?? null;
+    }
+    if (campaign.scope === "org" && (campaign as any).sender_id) {
+      const { data: sender, error: sndErr } = await admin
+        .from("mailing_senders")
+        .select("id, organization_id, is_active, smtp_status")
+        .eq("id", (campaign as any).sender_id)
+        .maybeSingle();
+      if (sndErr) return json({ error: "Не удалось проверить отправителя" }, 500);
+      if (!sender) return json({ error: "Отправитель не найден" }, 400);
+      if (!campaign.organization_id || sender.organization_id !== campaign.organization_id) {
+        return json({ error: "Отправитель принадлежит другой организации" }, 403);
+      }
+      if (sender.is_active !== true) return json({ error: "Отправитель отключён" }, 400);
+      if (sender.smtp_status !== "ok") {
+        return json({ error: "Отправитель не прошёл SMTP-проверку" }, 400);
+      }
+      mailingSenderId = sender.id as string;
+    }
+
+
     // Idempotency
     if (campaign.status === "sending" && campaign.started_at) {
       const startedMs = new Date(campaign.started_at).getTime();
