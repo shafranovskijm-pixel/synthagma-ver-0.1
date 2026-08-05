@@ -51,6 +51,7 @@ const AutoLogin = lazyWithRetry(() => import("@/pages/AutoLogin"));
 const DemonstrationPage = lazyWithRetry(() => import("@/pages/DemonstrationPage"));
 const OAuthConsent = lazyWithRetry(() => import("@/pages/OAuthConsent"));
 const MailingLanding = lazyWithRetry(() => import("@/pages/MailingLanding"));
+const MailingReportPublic = lazyWithRetry(() => import("@/pages/MailingReportPublic"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
