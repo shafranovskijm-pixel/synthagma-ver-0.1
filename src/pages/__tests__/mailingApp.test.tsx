@@ -4,16 +4,11 @@ import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import MailingApp from "@/pages/MailingApp";
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({ maybeSingle: async () => ({ data: { id: "org-1" }, error: null }) }),
-      }),
-    }),
-  },
+// Regression: MailingApp must read the organization from the same verified
+// OrgDashboardProvider flow used by /organization, not from its own query.
+const orgState = { organizationId: "org-1" as string | null, isLoadingCourses: false };
+vi.mock("@/contexts/OrgDashboardContext", () => ({
+  useOrgDashboard: () => orgState,
 }));
 
 vi.mock("@/components/admin/broadcast/CampaignsManager", () => ({
@@ -48,7 +43,11 @@ const renderAt = (search: string) =>
   );
 
 describe("MailingApp shell", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    orgState.organizationId = "org-1";
+    orgState.isLoadingCourses = false;
+  });
 
   it("renders the full left menu", async () => {
     renderAt("");
@@ -74,5 +73,27 @@ describe("MailingApp shell", () => {
   it("falls back to overview for an unknown tab", async () => {
     renderAt("?tab=bogus");
     expect(await screen.findByText("overview-tab")).toBeInTheDocument();
+  });
+
+  it("renders Обзор for a valid organization membership from OrgDashboardProvider", async () => {
+    orgState.organizationId = "org-1";
+    renderAt("");
+    expect(await screen.findByText("overview-tab")).toBeInTheDocument();
+    expect(screen.queryByText(/Организация не найдена/)).not.toBeInTheDocument();
+  });
+
+  it("shows a safe empty state when there is no organization membership", async () => {
+    orgState.organizationId = null;
+    renderAt("");
+    expect(await screen.findByText(/Организация не найдена/)).toBeInTheDocument();
+    expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+  });
+
+  it("shows a loading state while the organization is still resolving", () => {
+    orgState.organizationId = null;
+    orgState.isLoadingCourses = true;
+    renderAt("");
+    expect(screen.getByText(/Загрузка кабинета/)).toBeInTheDocument();
+    expect(screen.queryByText(/Организация не найдена/)).not.toBeInTheDocument();
   });
 });
