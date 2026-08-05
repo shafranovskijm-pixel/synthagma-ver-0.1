@@ -68,7 +68,9 @@ describe("P0 — отправка остаётся заблокированно�
     recipientCount: 10,
     previewReady: true,
     variablesOk: true,
+    senderAccountId: "sender-1",
   };
+
 
   it("ок при полной готовности", () => {
     expect(validateSend(base).ok).toBe(true);
