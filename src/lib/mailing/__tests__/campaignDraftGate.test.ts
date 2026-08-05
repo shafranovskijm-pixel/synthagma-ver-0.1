@@ -54,11 +54,12 @@ describe("P0 — сохранение черновика", () => {
     expect(validateDraft({ ...content, html: "" }).ok).toBe(false);
   });
 
-  it("черновик не создаёт получателей — вставка только в email_campaigns", () => {
-    const inserts = editorSrc.match(/\.from\("([a-z_]+)"\)\.insert/g) || [];
-    expect(inserts).toEqual(['.from("email_campaigns").insert']);
-    expect(editorSrc).not.toContain('from("email_campaign_recipients").insert');
+  it("черновик не создаёт получателей — запись только в email_campaigns", () => {
+    const tables = [...editorSrc.matchAll(/\.from\("([a-z_]+)"\)\s*\n?\s*\.(insert|update)/g)].map((m) => m[1]);
+    expect(new Set(tables)).toEqual(new Set(["email_campaigns"]));
+    expect(editorSrc).not.toContain('from("email_campaign_recipients")');
   });
+
 });
 
 describe("P0 — отправка остаётся заблокированной", () => {
