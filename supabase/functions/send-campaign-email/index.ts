@@ -305,6 +305,12 @@ serve(async (req: Request) => {
 
     let personalizedHtml = substitute(campaign.html_body as string);
 
+    // Тема письма — plain text, экранирование HTML не нужно.
+    const personalizedSubject = (subject as string).replace(
+      /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
+      (full, key: string) => (values[key] === undefined ? full : values[key]),
+    );
+
 
     personalizedHtml = processCampaignHtml(personalizedHtml, {
       campaignId: campaign.id,
@@ -346,7 +352,7 @@ serve(async (req: Request) => {
 
     await sendSmtpEmail(smtp, {
       to: recipient.email,
-      subject: subject,
+      subject: personalizedSubject,
       html: personalizedHtml,
       fromOverride,
       replyTo: campaign.reply_to || undefined,
