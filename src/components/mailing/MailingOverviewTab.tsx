@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarChart3, CheckCircle2, AlertTriangle, Mail, Plus } from "lucide-react";
 import { useEmailCampaigns } from "@/hooks/useEmailCampaigns";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   organizationId: string | null;
@@ -14,6 +16,30 @@ interface Props {
 export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSenders }: Props) {
   const { campaigns, loading } = useEmailCampaigns("org", organizationId);
   const { settings, loading: smtpLoading } = useOrgSmtp(organizationId);
+
+  // Подключённые отправители («Отправители») — основной путь готовности.
+  const [verifiedSender, setVerifiedSender] = useState<{ label: string; from_email: string } | null>(null);
+  const [sendersLoading, setSendersLoading] = useState(true);
+  useEffect(() => {
+    if (!organizationId) { setVerifiedSender(null); setSendersLoading(false); return; }
+    let cancelled = false;
+    setSendersLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("mailing_senders")
+        .select("label, from_email")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .eq("smtp_status", "ok")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      setVerifiedSender(((data || [])[0] as { label: string; from_email: string }) || null);
+      setSendersLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [organizationId]);
+
 
   const totals = campaigns.reduce(
     (acc, c) => ({
