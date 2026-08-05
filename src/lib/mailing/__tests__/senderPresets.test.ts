@@ -72,18 +72,18 @@ describe("seed-адреса", () => {
   });
 
   it("требует успешный SMTP-тест и выбранного отправителя", () => {
-    expect(validateSeedTest({ senderAccountId: null, smtpStatus: "ok", seedRaw: "a@b.ru" }).ok).toBe(false);
-    expect(validateSeedTest({ senderAccountId: "s1", smtpStatus: "untested", seedRaw: "a@b.ru" }).ok).toBe(false);
-    expect(validateSeedTest({ senderAccountId: "s1", smtpStatus: "error", seedRaw: "a@b.ru" }).ok).toBe(false);
-    expect(validateSeedTest({ senderAccountId: "s1", smtpStatus: "ok", seedRaw: "a@b.ru" }).ok).toBe(true);
+    expect(validateSeedTest({ campaignId: "c1", senderAccountId: null, smtpStatus: "ok", seedRaw: "a@b.ru" }).ok).toBe(false);
+    expect(validateSeedTest({ campaignId: "c1", senderAccountId: "s1", smtpStatus: "untested", seedRaw: "a@b.ru" }).ok).toBe(false);
+    expect(validateSeedTest({ campaignId: "c1", senderAccountId: "s1", smtpStatus: "error", seedRaw: "a@b.ru" }).ok).toBe(false);
+    expect(validateSeedTest({ campaignId: "c1", senderAccountId: "s1", smtpStatus: "ok", seedRaw: "a@b.ru" }).ok).toBe(true);
   });
 
   it("ограничивает 1–5 адресами и не берёт список кампании", () => {
-    expect(validateSeedTest({ senderAccountId: "s1", smtpStatus: "ok", seedRaw: "" }).ok).toBe(false);
+    expect(validateSeedTest({ campaignId: "c1", senderAccountId: "s1", smtpStatus: "ok", seedRaw: "" }).ok).toBe(false);
     const many = Array.from({ length: MAX_SEED_EMAILS + 1 }, (_, i) => `s${i}@b.ru`).join(",");
-    expect(validateSeedTest({ senderAccountId: "s1", smtpStatus: "ok", seedRaw: many }).ok).toBe(false);
+    expect(validateSeedTest({ campaignId: "c1", senderAccountId: "s1", smtpStatus: "ok", seedRaw: many }).ok).toBe(false);
     // Единственный источник адресов — введённая строка формы.
-    const res = validateSeedTest({ senderAccountId: "s1", smtpStatus: "ok", seedRaw: "seed@b.ru" });
+    const res = validateSeedTest({ campaignId: "c1", senderAccountId: "s1", smtpStatus: "ok", seedRaw: "seed@b.ru" });
     expect(res.emails).toEqual(["seed@b.ru"]);
   });
 });
