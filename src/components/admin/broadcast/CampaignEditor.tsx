@@ -698,6 +698,11 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               <Checkbox checked={consent} onCheckedChange={(v) => setConsent(!!v)} />
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
+            <p className="text-xs text-muted-foreground">
+              Согласие, SMTP, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
+              Черновик сохраняется без них.
+            </p>
+
 
             {draftRestored && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
