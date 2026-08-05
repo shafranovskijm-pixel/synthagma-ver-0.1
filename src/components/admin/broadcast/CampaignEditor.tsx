@@ -447,7 +447,6 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         manual_emails: recipients.source === "manual" ? recipients.manualEmails : null,
         recipient_filter: Object.keys(recipientFilter).length ? recipientFilter : null,
         scheduled_at: scheduledAtISO,
-        scheduled_at: scheduledAtISO,
         // Этап 3: черновик сохраняется и без отправителя (null).
         sender_id: senderAccountId || null,
         status: isScheduled ? "scheduled" : "draft",
