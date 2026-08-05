@@ -122,6 +122,60 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [subjectB, setSubjectB] = useState("");
   const [abSamplePercent, setAbSamplePercent] = useState(20);
 
+  // Этап 3: явный аккаунт отправителя + seed-адреса тестовой отправки.
+  const [senderAccounts, setSenderAccounts] = useState<SenderAccountOption[]>([]);
+  const [senderAccountId, setSenderAccountId] = useState<string>("");
+  const [seedRaw, setSeedRaw] = useState("");
+  const [seedSending, setSeedSending] = useState(false);
+  const selectedSender = senderAccounts.find((s) => s.id === senderAccountId) || null;
+
+  useEffect(() => {
+    if (!open || scope !== "org" || !organizationId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("mailing_senders")
+        .select("id,label,from_email,smtp_status")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (!cancelled) setSenderAccounts((data || []) as unknown as SenderAccountOption[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, scope, organizationId]);
+
+  const sendSeedTest = async () => {
+    const gate = validateSeedTest({
+      senderAccountId: senderAccountId || null,
+      smtpStatus: selectedSender?.smtp_status ?? null,
+      seedRaw,
+    });
+    if (!gate.ok) {
+      toast.error(gate.reason!);
+      return;
+    }
+    const content = validateDraft({ name, subject, html });
+    if (!content.ok) {
+      toast.error(content.reason!);
+      return;
+    }
+    setSeedSending(true);
+    const { data, error } = await supabase.functions.invoke("mailing-seed-send", {
+      body: { sender_id: senderAccountId, subject, html, seed_emails: gate.emails },
+    });
+    setSeedSending(false);
+    if (error) {
+      toast.error("Тестовая отправка не выполнена");
+      return;
+    }
+    const res = data as { success?: boolean; sent?: number; failed?: number; error_category?: string };
+    if (res?.success) toast.success(`Отправлено на seed-адреса: ${res.sent}`);
+    else toast.error(`Ошибка seed-отправки: ${res?.error_category || `не доставлено ${res?.failed}`}`);
+  };
+
+
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
   const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
     useEmailWarmup(scopeKey || null);
