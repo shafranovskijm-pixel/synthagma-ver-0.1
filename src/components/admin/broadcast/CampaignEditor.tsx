@@ -19,6 +19,12 @@ import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 import { computeQuotaGate } from "@/lib/emailQuotaGate";
 import { defaultRecipientValue, validateDraft, validateSend } from "@/lib/mailing/campaignDraftGate";
 import { validateSeedTest } from "@/lib/mailing/senderPresets";
+import {
+  buildDraftMutation,
+  hasUnsavedChanges as computeUnsaved,
+  initialSnapshot,
+  snapshotOf,
+} from "@/lib/mailing/campaignEditMode";
 
 interface SenderAccountOption {
   id: string;
@@ -45,6 +51,10 @@ interface InitialData {
   html?: string;
   /** Явный источник получателей существующей кампании (при редактировании). */
   recipientSource?: string;
+  senderId?: string | null;
+  fromName?: string | null;
+  replyTo?: string | null;
+  status?: string;
 }
 
 interface Props {
@@ -139,6 +149,14 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [seedSending, setSeedSending] = useState(false);
   const selectedSender = senderAccounts.find((s) => s.id === senderAccountId) || null;
 
+  // P0 edit-mode: существующая кампания обновляется, а не дублируется.
+  const isEditMode = !!initial?.id;
+  const [savedSnapshot, setSavedSnapshot] = useState<string>("");
+  const [recipientsTouched, setRecipientsTouched] = useState(false);
+  const unsavedChanges = isEditMode
+    ? computeUnsaved(savedSnapshot, { name, subject, html, fromName, replyTo, senderId: senderAccountId })
+    : false;
+
   useEffect(() => {
     if (!open || scope !== "org" || !organizationId) return;
     let cancelled = false;
@@ -162,6 +180,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       smtpStatus: selectedSender?.smtp_status ?? null,
       seedRaw,
       campaignId: initial?.id || null,
+      hasUnsavedChanges: unsavedChanges,
     });
     if (!gate.ok) {
       toast.error(gate.reason!);
@@ -200,11 +219,18 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
   // Apply initial data when dialog opens
   useEffect(() => {
-    if (open && initial) {
-      if (initial.name) setName(initial.name);
-      if (initial.subject) setSubject(initial.subject);
-      if (initial.html) setHtml(initial.html);
+    if (!open || !initial) return;
+    setName(initial.name || "");
+    setSubject(initial.subject || "");
+    if (initial.html) setHtml(initial.html);
+    setFromName(initial.fromName || "");
+    setReplyTo(initial.replyTo || "");
+    setSenderAccountId(initial.senderId || "");
+    if (initial.recipientSource) {
+      setRecipients((prev) => ({ ...prev, source: initial.recipientSource as RecipientPickerValue["source"] }));
     }
+    setRecipientsTouched(false);
+    setSavedSnapshot(initialSnapshot(initial));
   }, [open, initial]);
 
   // Restore draft from localStorage when dialog opens (only if no initial data)
@@ -453,13 +479,44 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       const { data: user } = await supabase.auth.getUser();
       if (user?.user) payload.created_by = user.user.id;
 
-      const { data, error } = await supabase.from("email_campaigns").insert(payload).select("id").single();
-      if (error) throw error;
+      const recipientFields = {
+        recipient_source: recipients.source,
+        manual_emails: recipients.source === "manual" ? recipients.manualEmails : null,
+      };
+      delete payload.recipient_source;
+      delete payload.manual_emails;
+
+      const mutation = buildDraftMutation({
+        campaignId: initial?.id || null,
+        recipientsTouched,
+        payload,
+        recipientFields,
+      });
+
+      let data: { id: string } | null = null;
+      if (mutation.op === "update") {
+        const res = await supabase
+          .from("email_campaigns")
+          .update(mutation.payload as any)
+          .eq("id", mutation.id!)
+          .select("id")
+          .single();
+        if (res.error) throw res.error;
+        data = res.data as { id: string };
+      } else {
+        const res = await supabase
+          .from("email_campaigns")
+          .insert(mutation.payload as any)
+          .select("id")
+          .single();
+        if (res.error) throw res.error;
+        data = res.data as { id: string };
+      }
 
       if (isScheduled) {
         toast.success(`Кампания запланирована на ${format(new Date(scheduledAtISO!), "d MMM, HH:mm", { locale: ru })}`);
       } else {
-        toast.success("Кампания создана");
+        toast.success(isEditMode ? "Изменения сохранены" : "Кампания создана");
       }
 
       if (launch && data) {
@@ -470,7 +527,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         if (runRes?.error) throw new Error(runRes.error);
         toast.success("Кампания запущена");
       }
-      reset();
+      if (isEditMode) {
+        setSavedSnapshot(snapshotOf({ name, subject, html, fromName, replyTo, senderId: senderAccountId }));
+        setRecipientsTouched(false);
+      } else {
+        reset();
+      }
       onCreated();
       onClose();
     } catch (e: any) {
@@ -485,7 +547,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Новая email-кампания</DialogTitle>
+            <DialogTitle>{isEditMode ? "Редактирование кампании" : "Новая email-кампания"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -724,7 +786,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               scope={scope}
               organizationId={organizationId}
               value={recipients}
-              onChange={setRecipients}
+              onChange={(v) => { setRecipientsTouched(true); setRecipients(v); }}
             />
 
             {tooMany && (
@@ -799,11 +861,16 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                   size="sm"
                   variant="outline"
                   onClick={sendSeedTest}
-                  disabled={seedSending || selectedSender?.smtp_status !== "ok" || !seedRaw.trim()}
+                  disabled={seedSending || selectedSender?.smtp_status !== "ok" || !seedRaw.trim() || unsavedChanges}
                   data-testid="campaign-seed-send-button"
                 >
                   {seedSending ? "Отправка…" : "Тестовая отправка"}
                 </Button>
+                {unsavedChanges && (
+                  <p className="text-xs text-destructive" data-testid="campaign-seed-unsaved">
+                    Сохраните изменения — тест отправляется по данным из базы.
+                  </p>
+                )}
               </div>
             )}
 
@@ -825,7 +892,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               disabled={saving}
               data-testid="campaign-save-draft-button"
             >
-              {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
+              {scheduleEnabled ? "Запланировать" : isEditMode ? "Сохранить изменения" : "Сохранить как черновик"}
             </Button>
             <Button
               onClick={() => handleSave(true)}
