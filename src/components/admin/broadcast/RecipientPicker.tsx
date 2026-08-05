@@ -129,6 +129,16 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
   // Any pending manual request is invalidated by fetchPreview's abort.
   useEffect(() => {
     if (value.source === "manual") return;
+    // "none": получатели не выбраны — никаких запросов и записей в БД.
+    if (value.source === "none") {
+      setPreview(null);
+      setError(null);
+      setLoading(false);
+      if (value.count !== 0 || value.previewReady !== false) {
+        onChange({ ...value, count: 0, previewReady: false });
+      }
+      return;
+    }
     if (scope === "org" && !organizationId) return;
     // Immediately block launch: previewReady=false until new response arrives.
     if (value.previewReady !== false) {
@@ -137,6 +147,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
     fetchPreview(value.source, []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.source, scope, organizationId]);
+
 
   // Manual: 350ms debounce for the RPC only. previewReady=false is set
   // synchronously in the Textarea onChange handler (see below).
