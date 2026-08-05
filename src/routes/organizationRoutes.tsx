@@ -17,6 +17,8 @@ const CoursePreview = lazyWithRetry(() => import("@/pages/CoursePreview"));
 const CourseLandingEditor = lazyWithRetry(() => import("@/pages/CourseLandingEditor"));
 const CourseImport = lazyWithRetry(() => import("@/pages/CourseImport"));
 const ContractEditor = lazyWithRetry(() => import("@/pages/ContractEditor"));
+import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
+
 const MailingApp = lazyWithRetry(() => import("@/pages/MailingApp"));
 
 const org = "organization";
@@ -42,9 +44,15 @@ export const organizationRoutes = (
     <Route path="/course/:courseId/landing-editor" element={protectedRoute(<CourseLandingEditor />, org)} />
     <Route path="/course-import" element={protectedRoute(<CourseImport />, org)} />
     <Route path="/contract-editor" element={protectedRoute(<ContractEditor />, org)} />
-    {/* /mailing/app shares the same verified OrgDashboardProvider flow as /organization */}
-    <Route path="/mailing" element={protectedRoute(<OrgLayout />, org)}>
-      <Route path="app" element={<MailingApp />} />
-    </Route>
+    {/* /mailing/app shares the same verified OrgDashboardProvider org-context flow as /organization */}
+    <Route
+      path="/mailing/app"
+      element={protectedRoute(
+        <OrgDashboardProvider>
+          <MailingApp />
+        </OrgDashboardProvider>,
+        org,
+      )}
+    />
   </>
 );
