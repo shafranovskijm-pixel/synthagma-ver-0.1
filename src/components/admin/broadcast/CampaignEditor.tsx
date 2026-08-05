@@ -380,6 +380,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           quotaBlocked: quotaBlocksLaunch,
           quotaReason: quotaBlockReason,
           overDailyLimit: !!tooMany,
+          senderAccountId: senderAccountId || null,
         })
       : validateDraft({ name, subject, html });
     if (!gate.ok) {
