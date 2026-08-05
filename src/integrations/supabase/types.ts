@@ -3159,12 +3159,15 @@ export type Database = {
           reply_to: string | null
           scheduled_at: string | null
           scope: string
+          seed_emails: string[] | null
+          sender_id: string | null
           sent_count: number
           started_at: string | null
           status: string
           subject: string
           subject_b: string | null
           template_id: string | null
+          test_mode: boolean
           total_recipients: number
           unsubscribe_count: number
           updated_at: string
@@ -3196,12 +3199,15 @@ export type Database = {
           reply_to?: string | null
           scheduled_at?: string | null
           scope: string
+          seed_emails?: string[] | null
+          sender_id?: string | null
           sent_count?: number
           started_at?: string | null
           status?: string
           subject: string
           subject_b?: string | null
           template_id?: string | null
+          test_mode?: boolean
           total_recipients?: number
           unsubscribe_count?: number
           updated_at?: string
@@ -3233,12 +3239,15 @@ export type Database = {
           reply_to?: string | null
           scheduled_at?: string | null
           scope?: string
+          seed_emails?: string[] | null
+          sender_id?: string | null
           sent_count?: number
           started_at?: string | null
           status?: string
           subject?: string
           subject_b?: string | null
           template_id?: string | null
+          test_mode?: boolean
           total_recipients?: number
           unsubscribe_count?: number
           updated_at?: string
@@ -3251,6 +3260,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_senders"
             referencedColumns: ["id"]
           },
           {
@@ -5042,6 +5058,202 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailing_contacts: {
+        Row: {
+          city: string | null
+          created_at: string
+          custom_fields: Json
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          organization: string | null
+          organization_id: string
+          position: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          custom_fields?: Json
+          email: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          organization?: string | null
+          organization_id: string
+          position?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          custom_fields?: Json
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          organization?: string | null
+          organization_id?: string
+          position?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailing_report_links: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          organization_id: string | null
+          token: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string | null
+          token: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_report_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_report_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailing_senders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          daily_limit: number
+          from_email: string
+          from_name: string | null
+          id: string
+          imap_host: string | null
+          imap_port: number | null
+          imap_security: string | null
+          imap_status: string
+          imap_username: string | null
+          is_active: boolean
+          label: string
+          last_error: string | null
+          last_tested_at: string | null
+          organization_id: string
+          password_encrypted: string | null
+          smtp_host: string
+          smtp_port: number
+          smtp_security: string
+          smtp_status: string
+          smtp_username: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          daily_limit?: number
+          from_email: string
+          from_name?: string | null
+          id?: string
+          imap_host?: string | null
+          imap_port?: number | null
+          imap_security?: string | null
+          imap_status?: string
+          imap_username?: string | null
+          is_active?: boolean
+          label: string
+          last_error?: string | null
+          last_tested_at?: string | null
+          organization_id: string
+          password_encrypted?: string | null
+          smtp_host: string
+          smtp_port?: number
+          smtp_security?: string
+          smtp_status?: string
+          smtp_username: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          daily_limit?: number
+          from_email?: string
+          from_name?: string | null
+          id?: string
+          imap_host?: string | null
+          imap_port?: number | null
+          imap_security?: string | null
+          imap_status?: string
+          imap_username?: string | null
+          is_active?: boolean
+          label?: string
+          last_error?: string | null
+          last_tested_at?: string | null
+          organization_id?: string
+          password_encrypted?: string | null
+          smtp_host?: string
+          smtp_port?: number
+          smtp_security?: string
+          smtp_status?: string
+          smtp_username?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_senders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -11422,6 +11634,7 @@ export type Database = {
           total_documents: number
         }[]
       }
+      get_mailing_report_by_token: { Args: { p_token: string }; Returns: Json }
       get_next_document_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number
@@ -11658,6 +11871,10 @@ export type Database = {
       hide_signature_for_viewer: {
         Args: { p_signature_id: string }
         Returns: undefined
+      }
+      import_mailing_contacts: {
+        Args: { p_organization_id: string; p_rows: Json }
+        Returns: Json
       }
       increment_lesson_time: {
         Args: { p_lesson_id: string; p_seconds: number; p_user_id: string }
