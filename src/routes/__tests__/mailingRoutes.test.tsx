@@ -32,6 +32,15 @@ describe("mailing routes", () => {
     expect((route!.props as { element?: unknown }).element).toBeTruthy();
   });
 
+  it("registers the public token-based report route /mailing/report/:token", () => {
+    const route = findRoute(publicList, "/mailing/report/:token");
+    expect(route).toBeTruthy();
+    expect((route!.props as { element?: unknown }).element).toBeTruthy();
+    // публичный отчёт не должен быть за ProtectedRoute
+    const element = (route!.props as { element?: ReactElement }).element!;
+    expect(element.type).not.toBe(ProtectedRoute);
+  });
+
   it("registers /mailing/app behind the organization guard", () => {
     const route = findRoute(orgList, "/mailing/app");
     expect(route).toBeTruthy();
