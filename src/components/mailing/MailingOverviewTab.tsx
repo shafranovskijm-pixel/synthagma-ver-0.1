@@ -82,12 +82,17 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
           </Button>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          {smtpLoading ? (
+          {sendersLoading || smtpLoading ? (
             <p className="text-muted-foreground">Проверяем…</p>
+          ) : verifiedSender ? (
+            <p className="flex items-center gap-2 text-emerald-600" data-testid="mailing-sender-ready">
+              <CheckCircle2 className="h-4 w-4" />
+              {verifiedSender.label} — {verifiedSender.from_email}: соединение проверено.
+            </p>
           ) : !settings ? (
             <p className="flex items-center gap-2 text-orange-600">
               <AlertTriangle className="h-4 w-4" />
-              SMTP не подключён — рассылку запустить нельзя.
+              Отправитель не подключён — рассылку запустить нельзя.
             </p>
           ) : settings.is_verified ? (
             <p className="flex items-center gap-2 text-emerald-600">
@@ -100,6 +105,7 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
               {settings.from_email} — тест соединения ещё не пройден.
             </p>
           )}
+
           <p className="text-xs text-muted-foreground">
             «SMTP принял» означает, что сервер принял письмо к доставке. Это не гарантия попадания
             во «Входящие».
