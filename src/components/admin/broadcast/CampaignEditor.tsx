@@ -570,7 +570,24 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           </DialogHeader>
 
           <div className="space-y-4">
-            {scopeKey && <WarmupBadge scopeKey={scopeKey} />}
+            {/* Legacy-прогрев показывается только для legacy-пути (без выбранного отправителя). */}
+            {scopeKey && !senderVerified && <WarmupBadge scopeKey={scopeKey} />}
+            {senderVerified && selectedSender && (
+              <div
+                className="rounded-lg border bg-muted/20 p-3 text-sm"
+                data-testid="campaign-sender-ready"
+              >
+                <p className="font-medium">
+                  Отправитель: {selectedSender.label} — {selectedSender.from_email} ✓
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {senderQuota
+                    ? `Суточный лимит: ${senderQuota.daily_limit}, использовано: ${senderQuota.used_today}, доступно: ${senderQuota.remaining}.`
+                    : "Загружаем серверный лимит отправителя…"}
+                </p>
+              </div>
+            )}
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
