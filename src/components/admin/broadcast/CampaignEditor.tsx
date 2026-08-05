@@ -423,7 +423,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           variablesOk: variableCheck.ok,
           quotaBlocked: quotaBlocksLaunch,
           quotaReason: quotaBlockReason,
-          overDailyLimit: !!tooMany,
+          overDailyLimit: !!tooMany || senderOverLimit,
           senderAccountId: senderAccountId || null,
         })
       : validateDraft({ name, subject, html });
