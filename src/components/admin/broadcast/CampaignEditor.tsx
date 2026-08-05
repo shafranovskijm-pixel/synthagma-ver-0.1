@@ -764,9 +764,51 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
             <p className="text-xs text-muted-foreground">
-              Согласие, SMTP, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
+              Согласие, отправитель, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
               Черновик сохраняется без них.
             </p>
+
+            {scope === "org" && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label>Отправитель (аккаунт из «Отправители»)</Label>
+                <Select value={senderAccountId} onValueChange={setSenderAccountId}>
+                  <SelectTrigger data-testid="campaign-sender-select">
+                    <SelectValue placeholder="Не выбран" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {senderAccounts.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.label} — {s.from_email}
+                        {s.smtp_status === "ok" ? " ✓" : " (SMTP не проверен)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Label className="pt-2">Seed-адреса для тестовой отправки (1–5, вручную)</Label>
+                <Input
+                  value={seedRaw}
+                  onChange={(e) => setSeedRaw(e.target.value)}
+                  placeholder="seed1@example.com, seed2@example.com"
+                  data-testid="campaign-seed-input"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Seed-адреса вводятся вручную и не берутся из базы получателей кампании.
+                  Тестовая отправка доступна только после успешного SMTP-теста отправителя.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={sendSeedTest}
+                  disabled={seedSending || selectedSender?.smtp_status !== "ok" || !seedRaw.trim()}
+                  data-testid="campaign-seed-send-button"
+                >
+                  {seedSending ? "Отправка…" : "Тестовая отправка"}
+                </Button>
+              </div>
+            )}
+
+
 
 
             {draftRestored && (
