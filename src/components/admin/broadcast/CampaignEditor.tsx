@@ -275,7 +275,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     setSelectedWebinarId(""); setNewWebinarMeta(null);
     setScheduleEnabled(false); setScheduledDate(""); setScheduledTime("");
     setAbEnabled(false); setSubjectB(""); setAbSamplePercent(20);
-    setRecipients({ source: scope === "platform" ? "organizations" : "students", manualEmails: [], count: 0 });
+    setRecipients(defaultRecipientValue() as RecipientPickerValue);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
