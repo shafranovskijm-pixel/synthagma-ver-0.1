@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Upload, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export type RecipientSource = "students" | "companies" | "organizations" | "companies_db" | "manual";
+// "none" — явный дефолт для новой кампании: получатели не выбраны.
+export type RecipientSource = "none" | "students" | "companies" | "organizations" | "companies_db" | "manual";
 
 export interface RecipientPickerValue {
   source: RecipientSource;
