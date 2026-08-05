@@ -163,10 +163,6 @@ serve(async (req: Request) => {
     ) {
       return json({ error: "Кампания не заполнена: нужны название, тема и тело письма" }, 400);
     }
-    if (campaign.scope === "org" && !mailingSenderId && !(campaign as any).sender_id) {
-      // legacy path допускается только для старых кампаний без sender_id,
-      // у которых уже есть материализованные получатели или legacy SMTP.
-    }
     if (!campaign.recipient_source || campaign.recipient_source === "none") {
       return json({ error: "Не выбраны получатели кампании" }, 400);
     }
