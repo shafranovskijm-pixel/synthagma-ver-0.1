@@ -90,6 +90,36 @@ serve(async (req: Request) => {
     if (!authorized) return json({ error: "Forbidden" }, 403);
     if (!campaign) return json({ error: "Кампания не найдена" }, 404);
 
+    // ============ Sender validation (before materialize + quota) ============
+    // Для org-кампании с sender_id аккаунт обязан принадлежать той же
+    // организации, быть активным и пройти SMTP-проверку.
+    let mailingSenderId: string | null = null;
+    let requestedBy: string | null = null;
+    {
+      const { data: userData } = await createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      }).auth.getUser();
+      requestedBy = userData?.user?.id ?? null;
+    }
+    if (campaign.scope === "org" && (campaign as any).sender_id) {
+      const { data: sender, error: sndErr } = await admin
+        .from("mailing_senders")
+        .select("id, organization_id, is_active, smtp_status")
+        .eq("id", (campaign as any).sender_id)
+        .maybeSingle();
+      if (sndErr) return json({ error: "Не удалось проверить отправителя" }, 500);
+      if (!sender) return json({ error: "Отправитель не найден" }, 400);
+      if (!campaign.organization_id || sender.organization_id !== campaign.organization_id) {
+        return json({ error: "Отправитель принадлежит другой организации" }, 403);
+      }
+      if (sender.is_active !== true) return json({ error: "Отправитель отключён" }, 400);
+      if (sender.smtp_status !== "ok") {
+        return json({ error: "Отправитель не прошёл SMTP-проверку" }, 400);
+      }
+      mailingSenderId = sender.id as string;
+    }
+
+
     // Idempotency
     if (campaign.status === "sending" && campaign.started_at) {
       const startedMs = new Date(campaign.started_at).getTime();
@@ -224,11 +254,12 @@ serve(async (req: Request) => {
       return json({ ok: true, message: "Нет получателей в очереди" }, 200);
     }
 
-    // ============ Quota (5C.1.c) ============
+    // ============ Quota ============
     // Platform: keep existing broadcast quota (consume_email_quota with 'platform').
-    // Org: server-derived atomic claim keyed by hashed sender email. Client cannot
-    // pass a scope_key or skip_warmup override.
+    // Org + sender_id: atomic reservation against the connected mailing_sender.
+    // Org legacy (sender_id = null): keep claim_org_email_quota.
     let quota: any = null;
+    let campaignLedgerId: string | null = null;
     if (campaign.scope === "platform") {
       const { data: pq, error: pqErr } = await admin.rpc("consume_email_quota", {
         p_scope_key: "platform",
@@ -236,6 +267,17 @@ serve(async (req: Request) => {
       });
       if (pqErr) return json({ error: "Ошибка квоты: " + pqErr.message }, 500);
       quota = pq;
+    } else if (mailingSenderId) {
+      const { data: rq, error: rqErr } = await admin.rpc("reserve_mailing_campaign_quota", {
+        p_sender_id: mailingSenderId,
+        p_campaign_id: campaignId,
+        p_count: pendingCount,
+        p_requested_by: requestedBy,
+      });
+      if (rqErr) return json({ error: "Ошибка квоты отправителя" }, 500);
+      const reservation = Array.isArray(rq) ? rq[0] : rq;
+      quota = reservation || { allowed: false, reason: "quota" };
+      if (quota.allowed === true) campaignLedgerId = quota.ledger_id as string;
     } else {
       if (!campaign.organization_id) {
         return json({ error: "org campaign без organization_id" }, 500);
@@ -252,9 +294,10 @@ serve(async (req: Request) => {
     if (quota && (quota as any).allowed === false) {
       return json({
         ok: false, quotaExceeded: true, ...(quota as any),
-        message: `Дневной лимит отправителя: ${(quota as any).effective_daily_limit ?? (quota as any).daily_limit}, отправлено: ${(quota as any).sent_today}, доступно: ${(quota as any).remaining}. Запрошено: ${pendingCount}.`,
+        message: `Дневной лимит отправителя: ${(quota as any).effective_daily_limit ?? (quota as any).daily_limit}, доступно: ${(quota as any).remaining ?? 0}. Запрошено: ${pendingCount}.`,
       }, 200);
     }
+
 
     await admin.from("email_campaigns").update({
       status: "sending",
@@ -272,6 +315,29 @@ serve(async (req: Request) => {
         }
         await new Promise((res) => setTimeout(res, SEND_DELAY_MS));
       }
+
+      // Агрегаты запуска пишутся отдельным service-role-only RPC
+      // (только счётчики: ни email, ни темы, ни тела письма).
+      if (campaignLedgerId) {
+        const ids = pending!.map((r) => (r as any).id as string);
+        const { count: sentCount } = await admin
+          .from("email_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .in("id", ids)
+          .eq("status", "sent");
+        const { count: failedCount } = await admin
+          .from("email_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .in("id", ids)
+          .eq("status", "failed");
+        await admin.rpc("record_mailing_campaign_result", {
+          p_ledger_id: campaignLedgerId,
+          p_sent: sentCount || 0,
+          p_failed: failedCount || 0,
+        });
+      }
+
+
 
       // After partial send: if we can't verify leftovers, DO NOT mark completed.
       // Fall back to `paused` — the scheduled resume will retry.

@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarChart3, CheckCircle2, AlertTriangle, Mail, Plus } from "lucide-react";
 import { useEmailCampaigns } from "@/hooks/useEmailCampaigns";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   organizationId: string | null;
@@ -14,6 +16,30 @@ interface Props {
 export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSenders }: Props) {
   const { campaigns, loading } = useEmailCampaigns("org", organizationId);
   const { settings, loading: smtpLoading } = useOrgSmtp(organizationId);
+
+  // Подключённые отправители («Отправители») — основной путь готовности.
+  const [verifiedSender, setVerifiedSender] = useState<{ label: string; from_email: string } | null>(null);
+  const [sendersLoading, setSendersLoading] = useState(true);
+  useEffect(() => {
+    if (!organizationId) { setVerifiedSender(null); setSendersLoading(false); return; }
+    let cancelled = false;
+    setSendersLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("mailing_senders")
+        .select("label, from_email")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .eq("smtp_status", "ok")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      setVerifiedSender(((data || [])[0] as { label: string; from_email: string }) || null);
+      setSendersLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [organizationId]);
+
 
   const totals = campaigns.reduce(
     (acc, c) => ({
@@ -56,12 +82,17 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
           </Button>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          {smtpLoading ? (
+          {sendersLoading || smtpLoading ? (
             <p className="text-muted-foreground">Проверяем…</p>
+          ) : verifiedSender ? (
+            <p className="flex items-center gap-2 text-emerald-600" data-testid="mailing-sender-ready">
+              <CheckCircle2 className="h-4 w-4" />
+              {verifiedSender.label} — {verifiedSender.from_email}: соединение проверено.
+            </p>
           ) : !settings ? (
             <p className="flex items-center gap-2 text-orange-600">
               <AlertTriangle className="h-4 w-4" />
-              SMTP не подключён — рассылку запустить нельзя.
+              Отправитель не подключён — рассылку запустить нельзя.
             </p>
           ) : settings.is_verified ? (
             <p className="flex items-center gap-2 text-emerald-600">
@@ -74,6 +105,7 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
               {settings.from_email} — тест соединения ещё не пройден.
             </p>
           )}
+
           <p className="text-xs text-muted-foreground">
             «SMTP принял» означает, что сервер принял письмо к доставке. Это не гарантия попадания
             во «Входящие».

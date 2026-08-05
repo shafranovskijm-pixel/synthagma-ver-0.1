@@ -7,6 +7,12 @@ export interface QuotaGateInput {
   status: WarmupStatus | null;
   loading: boolean;
   errorKind: UserFacingErrorKind | null;
+  /**
+   * Выбран активный отправитель из mailing_senders со smtp_status='ok'.
+   * В этом случае квоту проверяет сервер (reserve_mailing_campaign_quota),
+   * а legacy organization SMTP не требуется.
+   */
+  senderVerified?: boolean;
 }
 
 export interface QuotaGate {
@@ -21,6 +27,9 @@ export interface QuotaGate {
  * (initial load or initial error), or SMTP not configured. A background refetch
  * that failed while a status is already known does NOT block.
  * Platform scope keeps the previous behaviour.
+ *
+ * Новый путь: если выбран проверенный mailing_sender, legacy-квота не
+ * блокирует запуск — лимит атомарно резервирует сервер.
  */
 export function computeQuotaGate({
   scope,
@@ -28,8 +37,12 @@ export function computeQuotaGate({
   status,
   loading,
   errorKind,
+  senderVerified,
 }: QuotaGateInput): QuotaGate {
   const orgMissingId = scope === "org" && !organizationId;
+  if (scope === "org" && senderVerified && !orgMissingId) {
+    return { blocksLaunch: false, reason: null };
+  }
   const quotaUnknown =
     scope === "org" ? orgMissingId || !status : !status && (loading || !!errorKind);
   const quotaNotConfigured = scope === "org" && !!status && status.configured === false;
@@ -46,3 +59,4 @@ export function computeQuotaGate({
 
   return { blocksLaunch: quotaUnknown || quotaNotConfigured, reason };
 }
+

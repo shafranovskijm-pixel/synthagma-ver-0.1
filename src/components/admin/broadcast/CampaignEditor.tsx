@@ -203,9 +203,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
+  // Выбранный активный отправитель с успешным SMTP-тестом считается настроенным:
+  // квоту в этом случае атомарно резервирует сервер.
+  const senderVerified = scope === "org" && selectedSender?.smtp_status === "ok";
   const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
     useEmailWarmup(scopeKey || null);
-  const tooMany = warmup && recipients.count > warmup.remaining;
+  const tooMany = !senderVerified && warmup && recipients.count > warmup.remaining;
   // Phase 5C.1.c.2: quota gate logic lives in one testable place.
   const { blocksLaunch: quotaBlocksLaunch, reason: quotaBlockReason } = computeQuotaGate({
     scope,
@@ -213,7 +216,23 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     status: warmup,
     loading: warmupLoading,
     errorKind: warmupError,
+    senderVerified,
   });
+
+  // Серверный остаток суточной квоты выбранного отправителя (read-only, tenant-safe).
+  const [senderQuota, setSenderQuota] = useState<{ daily_limit: number; used_today: number; remaining: number } | null>(null);
+  useEffect(() => {
+    if (!open || !senderVerified || !senderAccountId) { setSenderQuota(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.rpc("get_mailing_sender_quota", { p_sender_id: senderAccountId });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!cancelled) setSenderQuota((row as typeof senderQuota) || null);
+    })();
+    return () => { cancelled = true; };
+  }, [open, senderVerified, senderAccountId]);
+  const senderOverLimit = !!senderQuota && recipients.count > senderQuota.remaining;
+
 
 
 
@@ -404,7 +423,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           variablesOk: variableCheck.ok,
           quotaBlocked: quotaBlocksLaunch,
           quotaReason: quotaBlockReason,
-          overDailyLimit: !!tooMany,
+          overDailyLimit: !!tooMany || senderOverLimit,
           senderAccountId: senderAccountId || null,
         })
       : validateDraft({ name, subject, html });
@@ -551,7 +570,24 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           </DialogHeader>
 
           <div className="space-y-4">
-            {scopeKey && <WarmupBadge scopeKey={scopeKey} />}
+            {/* Legacy-прогрев показывается только для legacy-пути (без выбранного отправителя). */}
+            {scopeKey && !senderVerified && <WarmupBadge scopeKey={scopeKey} />}
+            {senderVerified && selectedSender && (
+              <div
+                className="rounded-lg border bg-muted/20 p-3 text-sm"
+                data-testid="campaign-sender-ready"
+              >
+                <p className="font-medium">
+                  Отправитель: {selectedSender.label} — {selectedSender.from_email} ✓
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {senderQuota
+                    ? `Суточный лимит: ${senderQuota.daily_limit}, использовано: ${senderQuota.used_today}, доступно: ${senderQuota.remaining}.`
+                    : "Загружаем серверный лимит отправителя…"}
+                </p>
+              </div>
+            )}
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -796,6 +832,17 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               </div>
             )}
 
+            {senderOverLimit && senderQuota && (
+              <div
+                className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm"
+                data-testid="campaign-sender-over-limit"
+              >
+                На сегодня у отправителя доступно <b>{senderQuota.remaining}</b> писем
+                (лимит {senderQuota.daily_limit}/день). Выбрано {recipients.count}.
+              </div>
+            )}
+
+
             {/* Scheduling */}
             <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
@@ -899,6 +946,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               disabled={
                 saving ||
                 !!tooMany ||
+                senderOverLimit ||
+
                 recipients.count === 0 ||
                 !consent ||
                 scheduleEnabled ||
