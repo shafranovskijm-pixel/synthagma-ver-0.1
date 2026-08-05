@@ -32,6 +32,8 @@ interface InitialData {
   name?: string;
   subject?: string;
   html?: string;
+  /** Явный источник получателей существующей кампании (при редактировании). */
+  recipientSource?: string;
 }
 
 interface Props {
