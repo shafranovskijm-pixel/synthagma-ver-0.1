@@ -112,7 +112,7 @@ describe("P0: контракт mailing-seed-send", () => {
 
   it("резервирует квоту до отправки и пишет только счётчики", () => {
     const reservePos = seedFn.indexOf("reserve_mailing_seed_quota");
-    const sendPos = seedFn.indexOf("sendSmtpEmail");
+    const sendPos = seedFn.indexOf("await sendSmtpEmail(");
     expect(reservePos).toBeGreaterThan(0);
     expect(reservePos).toBeLessThan(sendPos);
     expect(seedFn).toContain("record_mailing_seed_result");
