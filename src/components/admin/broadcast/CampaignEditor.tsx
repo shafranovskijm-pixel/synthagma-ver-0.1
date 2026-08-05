@@ -18,6 +18,14 @@ import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 import { computeQuotaGate } from "@/lib/emailQuotaGate";
 import { defaultRecipientValue, validateDraft, validateSend } from "@/lib/mailing/campaignDraftGate";
+import { validateSeedTest } from "@/lib/mailing/senderPresets";
+
+interface SenderAccountOption {
+  id: string;
+  label: string;
+  from_email: string;
+  smtp_status: string | null;
+}
 
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
