@@ -17,6 +17,7 @@ import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
 import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 import { computeQuotaGate } from "@/lib/emailQuotaGate";
+import { defaultRecipientValue, validateDraft, validateSend } from "@/lib/mailing/campaignDraftGate";
 
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
