@@ -164,13 +164,16 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualText, value.source]);
 
+  const NONE_SOURCE = { value: "none" as RecipientSource, label: "Без получателей / добавить позже" };
   const sources: { value: RecipientSource; label: string }[] = scope === "platform"
     ? [
+        NONE_SOURCE,
         { value: "organizations", label: "Все организации" },
         { value: "companies_db", label: "База компаний (list-org)" },
         { value: "manual", label: "Ручной список email" },
       ]
     : [
+        NONE_SOURCE,
         { value: "students", label: "Мои ученики" },
         { value: "companies", label: "Мои компании-клиенты" },
         { value: "manual", label: "Ручной список email" },
