@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw, Clock } from "lucide-react";
+import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw, Clock, Pencil } from "lucide-react";
 import { useEmailCampaigns } from "@/hooks/useEmailCampaigns";
 import { CampaignEditor } from "./CampaignEditor";
+import { buildEditorInitial, isCampaignEditable } from "@/lib/mailing/campaignEditMode";
 import { CampaignReport } from "./CampaignReport";
 import { WarmupBadge } from "./WarmupBadge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ interface Props {
 export function CampaignsManager({ scope, organizationId }: Props) {
   const { campaigns, loading, refresh, remove, launch } = useEmailCampaigns(scope, organizationId);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState<ReturnType<typeof buildEditorInitial> | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
@@ -50,7 +52,7 @@ export function CampaignsManager({ scope, organizationId }: Props) {
             <Mail className="w-5 h-5" />
             Email-кампании
           </CardTitle>
-          <Button onClick={() => setEditorOpen(true)} className="gap-2">
+          <Button onClick={() => { setEditing(null); setEditorOpen(true); }} className="gap-2">
             <Plus className="w-4 h-4" />
             Новая кампания
           </Button>
@@ -115,10 +117,34 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                         {c.status === "paused" || stuck ? "Продолжить" : "Запустить"}
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => setReportFor(c.id)}>
+                    {isCampaignEditable(c.status) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1"
+                        aria-label={`Редактировать кампанию «${c.name}»`}
+                        data-testid={`campaign-edit-${c.id}`}
+                        onClick={() => { setEditing(buildEditorInitial(c as any)); setEditorOpen(true); }}
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Редактировать
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Отчёт по кампании «${c.name}»`}
+                      onClick={() => setReportFor(c.id)}
+                    >
                       <BarChart2 className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => remove(c.id)} className="text-destructive">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Удалить кампанию «${c.name}»`}
+                      onClick={() => remove(c.id)}
+                      className="text-destructive"
+                    >
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
@@ -130,8 +156,10 @@ export function CampaignsManager({ scope, organizationId }: Props) {
       </Card>
 
       <CampaignEditor
+        key={editing?.id || "new"}
         open={editorOpen}
-        onClose={() => setEditorOpen(false)}
+        onClose={() => { setEditorOpen(false); setEditing(null); }}
+        initial={editing || undefined}
         scope={scope}
         organizationId={organizationId}
         onCreated={refresh}
