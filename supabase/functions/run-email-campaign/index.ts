@@ -26,7 +26,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ReqBody { campaignId: string; }
+interface ReqBody { campaignId: string; consent_confirmed?: boolean; }
 
 const SEND_DELAY_MS = 1500;
 
