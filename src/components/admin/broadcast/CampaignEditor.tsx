@@ -84,8 +84,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [replyTo, setReplyTo] = useState("");
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
+  // P0: новая кампания НЕ выбирает получателей автоматически.
   const [recipients, setRecipients] = useState<RecipientPickerValue>({
-    source: scope === "platform" ? "organizations" : "students",
+    source: (initial?.recipientSource as RecipientPickerValue["source"]) || defaultRecipientValue().source,
     manualEmails: [],
     count: 0,
   });
