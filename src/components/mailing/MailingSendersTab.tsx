@@ -268,7 +268,7 @@ export function MailingSendersTab({ organizationId }: { organizationId: string |
             Старые настройки SMTP организации (без изменений)
           </AccordionTrigger>
           <AccordionContent>
-            <OrgSmtpSettings />
+            {organizationId && <OrgSmtpSettings organizationId={organizationId} />}
           </AccordionContent>
         </AccordionItem>
       </Accordion>
