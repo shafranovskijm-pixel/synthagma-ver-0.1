@@ -98,6 +98,8 @@ export const publicRoutes = (
     <Route path="/proposal/:id" element={<ProposalPublic />} />
     <Route path="/presentation" element={<PlatformPresentation />} />
     <Route path="/mailing" element={<MailingLanding />} />
+    <Route path="/mailing/report/:token" element={<MailingReportPublic />} />
+
     <Route path="/whats-new" element={<WhatsNew />} />
     <Route path="/help" element={<HelpCenter />} />
     <Route path="/demo/:token" element={<DemoJoin />} />
