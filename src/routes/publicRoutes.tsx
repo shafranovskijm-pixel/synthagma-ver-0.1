@@ -51,6 +51,7 @@ const AutoLogin = lazyWithRetry(() => import("@/pages/AutoLogin"));
 const DemonstrationPage = lazyWithRetry(() => import("@/pages/DemonstrationPage"));
 const OAuthConsent = lazyWithRetry(() => import("@/pages/OAuthConsent"));
 const MailingLanding = lazyWithRetry(() => import("@/pages/MailingLanding"));
+const MailingReportPublic = lazyWithRetry(() => import("@/pages/MailingReportPublic"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
@@ -97,6 +98,8 @@ export const publicRoutes = (
     <Route path="/proposal/:id" element={<ProposalPublic />} />
     <Route path="/presentation" element={<PlatformPresentation />} />
     <Route path="/mailing" element={<MailingLanding />} />
+    <Route path="/mailing/report/:token" element={<MailingReportPublic />} />
+
     <Route path="/whats-new" element={<WhatsNew />} />
     <Route path="/help" element={<HelpCenter />} />
     <Route path="/demo/:token" element={<DemoJoin />} />

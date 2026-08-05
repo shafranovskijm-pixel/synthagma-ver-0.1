@@ -3089,11 +3089,17 @@ export type Database = {
       email_campaign_recipients: {
         Row: {
           campaign_id: string
+          city: string | null
+          custom_data: Json | null
           email: string
           error: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           open_token: string
           opened_at: string | null
+          organization: string | null
+          position: string | null
           recipient_name: string | null
           sent_at: string | null
           status: string
@@ -3101,11 +3107,17 @@ export type Database = {
         }
         Insert: {
           campaign_id: string
+          city?: string | null
+          custom_data?: Json | null
           email: string
           error?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           open_token?: string
           opened_at?: string | null
+          organization?: string | null
+          position?: string | null
           recipient_name?: string | null
           sent_at?: string | null
           status?: string
@@ -3113,11 +3125,17 @@ export type Database = {
         }
         Update: {
           campaign_id?: string
+          city?: string | null
+          custom_data?: Json | null
           email?: string
           error?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           open_token?: string
           opened_at?: string | null
+          organization?: string | null
+          position?: string | null
           recipient_name?: string | null
           sent_at?: string | null
           status?: string
@@ -11361,6 +11379,10 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      create_mailing_report_link: {
+        Args: { p_campaign_id: string; p_days?: number }
+        Returns: Json
+      }
       create_organization: {
         Args: {
           p_contact_name?: string
@@ -12123,6 +12145,10 @@ export type Database = {
       restore_course_snapshot: { Args: { _snapshot_id: string }; Returns: Json }
       restore_document: {
         Args: { p_id: string; p_table: string }
+        Returns: boolean
+      }
+      revoke_mailing_report_link: {
+        Args: { p_link_id: string }
         Returns: boolean
       }
       revoke_signature: {

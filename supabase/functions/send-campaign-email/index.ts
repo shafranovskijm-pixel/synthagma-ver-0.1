@@ -247,27 +247,70 @@ serve(async (req: Request) => {
       ? campaign.subject_b
       : campaign.subject;
 
-    let personalizedHtml = (campaign.html_body as string)
-      .replace(/\{\{name\}\}/g, recipient.recipient_name || "")
-      .replace(/\{\{recipient_name\}\}/g, recipient.recipient_name || "")
-      .replace(/\{\{email\}\}/g, recipient.email)
-      .replace(/\{\{company\}\}/g, recipient.recipient_name || "")
-      .replace(/\{\{org_name\}\}/g, orgName)
-      .replace(/\{\{plan\}\}/g, plan)
-      .replace(/\{\{course_count\}\}/g, courseCount)
-      .replace(/\{\{last_login\}\}/g, lastLogin)
-      .replace(/\{\{webinar_url\}\}/g, webinarUrl || meeting?.url || "")
-      .replace(/\{\{webinar_title\}\}/g, webinarTitle)
-      .replace(/\{\{webinar_date\}\}/g, webinarDate || dateLabel)
-      .replace(/\{\{webinar_time\}\}/g, webinarTime || timeLabel)
-      .replace(/\{\{course_name\}\}/g, courseName)
-      .replace(/\{\{course_duration\}\}/g, courseDuration)
-      .replace(/\{\{course_price\}\}/g, coursePrice)
-      .replace(/\{\{course_url\}\}/g, courseUrl)
-      .replace(/\{\{date\}\}/g, dateLabel)
-      .replace(/\{\{time\}\}/g, timeLabel)
-      .replace(/\{\{host_name\}\}/g, meeting?.host_name || campaign.from_name || "")
-      .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
+    // Этап 2: значения из строки получателя и custom_data, с HTML-экранированием.
+    const esc = (v: unknown) =>
+      v === null || v === undefined
+        ? ""
+        : String(v)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
+    const firstName = (recipient as any).first_name || "";
+    const lastName = (recipient as any).last_name || "";
+    const fullName = [firstName, lastName].filter(Boolean).join(" ") || recipient.recipient_name || "";
+    const customData = ((recipient as any).custom_data || {}) as Record<string, unknown>;
+
+    const values: Record<string, string> = {
+      first_name: firstName,
+      last_name: lastName,
+      organization: (recipient as any).organization || orgName || "",
+      position: (recipient as any).position || "",
+      city: (recipient as any).city || "",
+      name: fullName,
+      recipient_name: fullName,
+      email: recipient.email,
+      company: (recipient as any).organization || recipient.recipient_name || "",
+      org_name: orgName,
+      plan,
+      course_count: courseCount,
+      last_login: lastLogin,
+      webinar_url: webinarUrl || meeting?.url || "",
+      webinar_title: webinarTitle,
+      webinar_date: webinarDate || dateLabel,
+      webinar_time: webinarTime || timeLabel,
+      course_name: courseName,
+      course_duration: courseDuration,
+      course_price: coursePrice,
+      course_url: courseUrl,
+      date: dateLabel,
+      time: timeLabel,
+      host_name: meeting?.host_name || campaign.from_name || "",
+      unsubscribe_url: unsubscribeUrl,
+    };
+    for (const [k, v] of Object.entries(customData)) {
+      if (!values[k]) values[k] = v === null || v === undefined ? "" : String(v);
+    }
+
+    const substitute = (tpl: string) =>
+      tpl.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (full, key: string) => {
+        const raw = values[key];
+        if (raw === undefined) return full;
+        // URL-переменные не экранируем — они формируются сервером.
+        if (key === "unsubscribe_url" || key === "webinar_url" || key === "course_url") return raw;
+        return esc(raw);
+      });
+
+    let personalizedHtml = substitute(campaign.html_body as string);
+
+    // Тема письма — plain text, экранирование HTML не нужно.
+    const personalizedSubject = (subject as string).replace(
+      /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
+      (full, key: string) => (values[key] === undefined ? full : values[key]),
+    );
+
 
     personalizedHtml = processCampaignHtml(personalizedHtml, {
       campaignId: campaign.id,
@@ -309,7 +352,7 @@ serve(async (req: Request) => {
 
     await sendSmtpEmail(smtp, {
       to: recipient.email,
-      subject: subject,
+      subject: personalizedSubject,
       html: personalizedHtml,
       fromOverride,
       replyTo: campaign.reply_to || undefined,

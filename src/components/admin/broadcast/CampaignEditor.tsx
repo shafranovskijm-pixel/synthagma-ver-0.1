@@ -20,6 +20,13 @@ import { computeQuotaGate } from "@/lib/emailQuotaGate";
 
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
+import {
+  MAILING_VARIABLES,
+  RecipientLike,
+  renderTemplate,
+  samplePreviewRecipient,
+  validateVariables,
+} from "@/utils/mailing/mailingVariables";
 
 interface InitialData {
   name?: string;
@@ -100,6 +107,11 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [draftRestored, setDraftRestored] = useState(false);
+
+  // Этап 2: получатели для предпросмотра переменных и их custom-поля
+  const [previewRecipients, setPreviewRecipients] = useState<RecipientLike[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [customKeys, setCustomKeys] = useState<string[]>([]);
 
   // A/B test
   const [abEnabled, setAbEnabled] = useState(false);
@@ -216,6 +228,42 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
   const meeting = computeMeeting();
 
+  // Загружаем несколько реальных получателей организации для предпросмотра переменных.
+  useEffect(() => {
+    if (!open || scope !== "org" || !organizationId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: camps } = await supabase
+        .from("email_campaigns")
+        .select("id")
+        .eq("scope", "org")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const ids = (camps || []).map((c) => c.id);
+      if (!ids.length || cancelled) return;
+      const { data } = await supabase
+        .from("email_campaign_recipients")
+        .select("email, recipient_name, first_name, last_name, organization, position, city, custom_data")
+        .in("campaign_id", ids)
+        .limit(25);
+      if (cancelled) return;
+      const rows = (data || []) as RecipientLike[];
+      setPreviewRecipients(rows);
+      setPreviewIndex(0);
+      const keys: string[] = [];
+      for (const r of rows) {
+        for (const k of Object.keys((r.custom_data as Record<string, unknown>) || {})) {
+          if (!keys.includes(k)) keys.push(k);
+        }
+      }
+      setCustomKeys(keys);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, scope, organizationId]);
+
   const reset = () => {
     setName(""); setSubject(""); setHtml(DEFAULT_HTML);
     setFromName(""); setReplyTo(""); setConsent(false);
@@ -227,19 +275,30 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
+  // Этап 2: предпросмотр рендерится на данных выбранного получателя,
+  // значения экранируются так же, как в send-функции.
+  const previewRecipient: RecipientLike =
+    previewRecipients[previewIndex] || samplePreviewRecipient();
+
   const renderPreview = () => {
-    let preview = html;
-    preview = preview.replace(/\{\{name\}\}/g, "Иван Иванов")
-      .replace(/\{\{email\}\}/g, "ivan@example.com")
-      .replace(/\{\{host_name\}\}/g, hostName || "Команда Sintagma");
+    const extra: Record<string, unknown> = {
+      host_name: hostName || "Команда Sintagma",
+      unsubscribe_url: `${window.location.origin}/unsubscribe`,
+    };
     if (meeting) {
       const d = meeting.scheduled_at ? new Date(meeting.scheduled_at) : null;
-      preview = preview
-        .replace(/\{\{webinar_url\}\}/g, meeting.url)
-        .replace(/\{\{date\}\}/g, d ? format(d, "d MMMM yyyy", { locale: ru }) : "")
-        .replace(/\{\{time\}\}/g, d ? format(d, "HH:mm") : "");
+      extra.webinar_url = meeting.url;
+      extra.webinar_title = meeting.title || "";
+      extra.date = d ? format(d, "d MMMM yyyy", { locale: ru }) : "";
+      extra.time = d ? format(d, "HH:mm") : "";
     }
-    return preview;
+    return renderTemplate(html, previewRecipient, extra);
+  };
+
+  const variableCheck = validateVariables(html, subject, customKeys);
+
+  const insertVariable = (key: string) => {
+    setHtml((prev) => `${prev}{{${key}}}`);
   };
 
   const handleSave = async (launch: boolean) => {
@@ -255,6 +314,11 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       toast.error("Подтвердите согласие получателей");
       return;
     }
+    if (!variableCheck.ok) {
+      toast.error(`Неизвестные переменные: ${variableCheck.unknown.map((k) => `{{${k}}}`).join(", ")}`);
+      return;
+    }
+
     // Базовая валидация HTML — баланс <p>/<div>/<a>
     const openTags = (html.match(/<(p|div|a|span|table|tr|td)\b/gi) || []).length;
     const closeTags = (html.match(/<\/(p|div|a|span|table|tr|td)>/gi) || []).length;
@@ -512,6 +576,46 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               )}
             </div>
 
+            <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+              <Label className="text-xs">Переменные</Label>
+              <div className="flex flex-wrap gap-1">
+                {[...MAILING_VARIABLES.map((v) => v.key), ...customKeys].map((key) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => insertVariable(key)}
+                  >
+                    {`{{${key}}}`}
+                  </Button>
+                ))}
+              </div>
+              {previewRecipients.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs">Предпросмотр по получателю</Label>
+                  <Select value={String(previewIndex)} onValueChange={(v) => setPreviewIndex(Number(v))}>
+                    <SelectTrigger className="h-8 w-64 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {previewRecipients.map((r, i) => (
+                        <SelectItem key={`${r.email}-${i}`} value={String(i)}>
+                          {r.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {!variableCheck.ok && (
+                <p className="text-xs text-destructive" data-testid="campaign-unknown-variables">
+                  Неизвестные переменные: {variableCheck.unknown.map((k) => `{{${k}}}`).join(", ")} — отправка заблокирована.
+                </p>
+              )}
+            </div>
+
             <div>
               <Label>Тело письма (HTML)</Label>
               <Tabs defaultValue="html">
@@ -609,6 +713,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                 !consent ||
                 scheduleEnabled ||
                 recipients.previewReady === false ||
+                !variableCheck.ok ||
                 quotaBlocksLaunch
               }
               data-testid="campaign-launch-button"
