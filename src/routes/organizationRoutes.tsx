@@ -17,6 +17,7 @@ const CoursePreview = lazyWithRetry(() => import("@/pages/CoursePreview"));
 const CourseLandingEditor = lazyWithRetry(() => import("@/pages/CourseLandingEditor"));
 const CourseImport = lazyWithRetry(() => import("@/pages/CourseImport"));
 const ContractEditor = lazyWithRetry(() => import("@/pages/ContractEditor"));
+const MailingApp = lazyWithRetry(() => import("@/pages/MailingApp"));
 
 const org = "organization";
 
@@ -41,5 +42,6 @@ export const organizationRoutes = (
     <Route path="/course/:courseId/landing-editor" element={protectedRoute(<CourseLandingEditor />, org)} />
     <Route path="/course-import" element={protectedRoute(<CourseImport />, org)} />
     <Route path="/contract-editor" element={protectedRoute(<ContractEditor />, org)} />
+    <Route path="/mailing/app" element={protectedRoute(<MailingApp />, org)} />
   </>
 );
