@@ -268,7 +268,21 @@ serve(async (req: Request) => {
         await admin.from("email_campaigns").update({ status: "failed" }).eq("id", campaignId);
         return json({ error: "Не удалось обновить total_recipients" }, 500);
       }
+      // P0: initial launch с нулём разрешённых получателей НЕ считается
+      // завершённой кампанией — она остаётся черновиком.
+      if ((actualCount || 0) === 0) {
+        await admin.from("email_campaigns").update({
+          status: "draft",
+          started_at: null,
+          completed_at: null,
+        }).eq("id", campaignId);
+        return json({
+          error: "После фильтрации не осталось ни одного получателя — кампания оставлена черновиком",
+          emptyAudience: true,
+        }, 400);
+      }
     }
+    const wasInitialMaterialization = (existingCount || 0) === 0;
 
     // ============ A/B: on first pass send only the sample ============
     let pendingQuery = admin
