@@ -52,7 +52,7 @@ export function MailingContactsTab({ organizationId }: Props) {
       }
       const { data } = await supabase
         .from("email_campaign_recipients")
-        .select("email, status, sent_at, created_at")
+        .select("email, status, sent_at, opened_at")
         .in("campaign_id", ids)
         .limit(5000);
       if (cancelled) return;
@@ -61,7 +61,7 @@ export function MailingContactsTab({ organizationId }: Props) {
       for (const r of data || []) {
         const key = (r.email || "").trim().toLowerCase();
         if (!key) continue;
-        const at = (r.sent_at || r.created_at) as string | null;
+        const at = (r.sent_at || r.opened_at) as string | null;
         const existing = map.get(key);
         if (existing) {
           dup++;
