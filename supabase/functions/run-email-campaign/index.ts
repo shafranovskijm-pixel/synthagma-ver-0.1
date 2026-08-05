@@ -43,7 +43,9 @@ serve(async (req: Request) => {
     const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
     const isServiceRole = bearer.length > 0 && bearer === SERVICE_KEY;
 
-    const { campaignId }: ReqBody = await req.json().catch(() => ({ campaignId: "" }));
+    const body: ReqBody = await req.json().catch(() => ({ campaignId: "" }));
+    const campaignId = body.campaignId;
+    const consentConfirmed = body.consent_confirmed === true;
     if (!campaignId) return json({ error: "campaignId required" }, 400);
 
     // ============ AUTHORIZATION GATE (5C.1.a) ============
