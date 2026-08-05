@@ -26,7 +26,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ReqBody { campaignId: string; }
+interface ReqBody { campaignId: string; consent_confirmed?: boolean; }
 
 const SEND_DELAY_MS = 1500;
 
@@ -43,7 +43,9 @@ serve(async (req: Request) => {
     const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
     const isServiceRole = bearer.length > 0 && bearer === SERVICE_KEY;
 
-    const { campaignId }: ReqBody = await req.json().catch(() => ({ campaignId: "" }));
+    const body: ReqBody = await req.json().catch(() => ({ campaignId: "" }));
+    const campaignId = body.campaignId;
+    const consentConfirmed = body.consent_confirmed === true;
     if (!campaignId) return json({ error: "campaignId required" }, 400);
 
     // ============ AUTHORIZATION GATE (5C.1.a) ============
@@ -117,6 +119,52 @@ serve(async (req: Request) => {
         return json({ error: "Отправитель не прошёл SMTP-проверку" }, 400);
       }
       mailingSenderId = sender.id as string;
+    }
+
+    // ============ Consent gate (P0 follow-up) ============
+    // Initial user launch: явное заявление авторизованного пользователя в body.
+    // Resume пользователем (paused / зависший sending) и любой service-role
+    // вызов (scheduler / автодосыл) требуют УЖЕ сохранённого подтверждения.
+    // Любое несоответствие -> 400 БЕЗ materialize / quota / status mutations.
+    const isResumeStatus = campaign.status === "paused" || campaign.status === "sending";
+    const storedConsentAt = (campaign as any).consent_confirmed_at as string | null;
+
+    if (isServiceRole || isResumeStatus) {
+      if (!storedConsentAt) {
+        return json({
+          error: "Согласие получателей не подтверждено — запуск невозможен",
+          consentRequired: true,
+        }, 400);
+      }
+    } else {
+      if (!consentConfirmed) {
+        return json({
+          error: "Требуется подтверждение согласия получателей (consent_confirmed)",
+          consentRequired: true,
+        }, 400);
+      }
+      const { error: consentErr } = await admin.rpc("confirm_campaign_send_consent_admin", {
+        p_campaign_id: campaignId,
+        p_user_id: requestedBy,
+        p_method: "launch",
+      });
+      if (consentErr) {
+        console.error("consent confirmation failed", consentErr);
+        return json({ error: "Не удалось записать подтверждение согласия" }, 500);
+      }
+    }
+
+    // ============ Pre-materialize content / target checks ============
+    // Ничего не мутируем, если кампания заведомо не готова к отправке.
+    if (
+      !String(campaign.name || "").trim() ||
+      !String(campaign.subject || "").trim() ||
+      !String(campaign.html_body || "").trim()
+    ) {
+      return json({ error: "Кампания не заполнена: нужны название, тема и тело письма" }, 400);
+    }
+    if (!campaign.recipient_source || campaign.recipient_source === "none") {
+      return json({ error: "Не выбраны получатели кампании" }, 400);
     }
 
 
@@ -220,7 +268,21 @@ serve(async (req: Request) => {
         await admin.from("email_campaigns").update({ status: "failed" }).eq("id", campaignId);
         return json({ error: "Не удалось обновить total_recipients" }, 500);
       }
+      // P0: initial launch с нулём разрешённых получателей НЕ считается
+      // завершённой кампанией — она остаётся черновиком.
+      if ((actualCount || 0) === 0) {
+        await admin.from("email_campaigns").update({
+          status: "draft",
+          started_at: null,
+          completed_at: null,
+        }).eq("id", campaignId);
+        return json({
+          error: "После фильтрации не осталось ни одного получателя — кампания оставлена черновиком",
+          emptyAudience: true,
+        }, 400);
+      }
     }
+    const wasInitialMaterialization = (existingCount || 0) === 0;
 
     // ============ A/B: on first pass send only the sample ============
     let pendingQuery = admin
@@ -247,6 +309,18 @@ serve(async (req: Request) => {
     }
     const pendingCount = pending?.length || 0;
     if (pendingCount === 0) {
+      if (wasInitialMaterialization) {
+        // Initial launch: пустая очередь -> остаётся черновиком, не completed.
+        await admin.from("email_campaigns").update({
+          status: "draft",
+          started_at: null,
+          completed_at: null,
+        }).eq("id", campaignId);
+        return json({
+          error: "Нет получателей для отправки — кампания оставлена черновиком",
+          emptyAudience: true,
+        }, 400);
+      }
       await admin.from("email_campaigns").update({
         status: "completed",
         completed_at: new Date().toISOString(),

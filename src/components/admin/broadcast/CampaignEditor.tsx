@@ -538,9 +538,20 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         toast.success(isEditMode ? "Изменения сохранены" : "Кампания создана");
       }
 
+      // Планирование: серверное подтверждение согласия сохраняется сразу,
+      // иначе scheduler (service-role) не имеет права запустить кампанию.
+      if (isScheduled && data) {
+        const { error: consentErr } = await supabase.rpc("confirm_campaign_send_consent", {
+          p_campaign_id: data.id,
+          p_method: "schedule",
+        });
+        if (consentErr) throw consentErr;
+      }
+
       if (launch && data) {
         const { data: runRes, error: runErr } = await supabase.functions.invoke("run-email-campaign", {
-          body: { campaignId: data.id },
+          // Явное заявление авторизованного пользователя о согласии получателей.
+          body: { campaignId: data.id, consent_confirmed: true },
         });
         if (runErr) throw runErr;
         if (runRes?.error) throw new Error(runRes.error);

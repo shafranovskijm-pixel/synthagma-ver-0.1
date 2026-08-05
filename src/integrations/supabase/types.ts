@@ -3086,6 +3086,44 @@ export type Database = {
           },
         ]
       }
+      email_campaign_consent_log: {
+        Row: {
+          campaign_id: string
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          method: string
+          organization_id: string | null
+          scope: string
+        }
+        Insert: {
+          campaign_id: string
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          method: string
+          organization_id?: string | null
+          scope: string
+        }
+        Update: {
+          campaign_id?: string
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          method?: string
+          organization_id?: string | null
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_consent_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_campaign_recipients: {
         Row: {
           campaign_id: string
@@ -3160,6 +3198,8 @@ export type Database = {
           ab_winner_picked_at: string | null
           click_count: number
           completed_at: string | null
+          consent_confirmed_at: string | null
+          consent_confirmed_by: string | null
           created_at: string
           created_by: string | null
           failed_count: number
@@ -3200,6 +3240,8 @@ export type Database = {
           ab_winner_picked_at?: string | null
           click_count?: number
           completed_at?: string | null
+          consent_confirmed_at?: string | null
+          consent_confirmed_by?: string | null
           created_at?: string
           created_by?: string | null
           failed_count?: number
@@ -3240,6 +3282,8 @@ export type Database = {
           ab_winner_picked_at?: string | null
           click_count?: number
           completed_at?: string | null
+          consent_confirmed_at?: string | null
+          consent_confirmed_by?: string | null
           created_at?: string
           created_by?: string | null
           failed_count?: number
@@ -11476,6 +11520,14 @@ export type Database = {
       }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      confirm_campaign_send_consent: {
+        Args: { p_campaign_id: string; p_method?: string }
+        Returns: string
+      }
+      confirm_campaign_send_consent_admin: {
+        Args: { p_campaign_id: string; p_method?: string; p_user_id: string }
+        Returns: string
+      }
       consume_email_quota: {
         Args: { p_count: number; p_scope_key: string; p_skip_warmup?: boolean }
         Returns: Json

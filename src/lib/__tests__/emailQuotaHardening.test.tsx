@@ -55,8 +55,10 @@ describe("5C.1.c.1 — run-email-campaign quota routing", () => {
   });
 
   it("client body has no scope_key or skip_warmup override", () => {
-    // The request body interface is { campaignId } — nothing else.
-    expect(RUN).toMatch(/interface ReqBody \{ campaignId: string; \}/);
+    // Body содержит только campaignId и явное consent_confirmed — ничего больше.
+    expect(RUN).toMatch(
+      /interface ReqBody \{ campaignId: string; consent_confirmed\?: boolean; \}/,
+    );
     // No occurrence of body.scope_key / body.skip_warmup anywhere.
     expect(RUN).not.toMatch(/body\.scope_key/);
     expect(RUN).not.toMatch(/body\.skip_warmup/);
