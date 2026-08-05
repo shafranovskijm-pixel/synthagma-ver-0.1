@@ -206,11 +206,14 @@ export interface SeedTestGateInput {
   seedRaw: string;
   /** P0: seed-отправка идёт только по сохранённой кампании (тема/тело берёт сервер). */
   campaignId?: string | null;
+  /** P0: тест должен соответствовать БД — несохранённые правки блокируют отправку. */
+  hasUnsavedChanges?: boolean;
 }
 
 /** Гейт «Тестовой отправки»: сохранённая кампания + отправитель + успешный SMTP-тест + 1–5 seed-адресов. */
 export function validateSeedTest(input: SeedTestGateInput): GateResult & { emails?: string[] } {
   if (!input.campaignId) return { ok: false, reason: "Сначала сохраните кампанию как черновик" };
+  if (input.hasUnsavedChanges) return { ok: false, reason: "Сохраните изменения — тест отправляется по данным из базы" };
   if (!input.senderAccountId) return { ok: false, reason: "Выберите отправителя" };
   if (input.smtpStatus !== "ok") return { ok: false, reason: "Сначала выполните успешный SMTP-тест отправителя" };
   const { emails, invalid } = parseSeedEmails(input.seedRaw);
