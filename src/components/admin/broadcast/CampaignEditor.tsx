@@ -17,6 +17,7 @@ import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
 import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 import { computeQuotaGate } from "@/lib/emailQuotaGate";
+import { defaultRecipientValue, validateDraft, validateSend } from "@/lib/mailing/campaignDraftGate";
 
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
@@ -32,6 +33,8 @@ interface InitialData {
   name?: string;
   subject?: string;
   html?: string;
+  /** Явный источник получателей существующей кампании (при редактировании). */
+  recipientSource?: string;
 }
 
 interface Props {
@@ -84,8 +87,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [replyTo, setReplyTo] = useState("");
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
+  // P0: новая кампания НЕ выбирает получателей автоматически.
   const [recipients, setRecipients] = useState<RecipientPickerValue>({
-    source: scope === "platform" ? "organizations" : "students",
+    source: (initial?.recipientSource as RecipientPickerValue["source"]) || defaultRecipientValue().source,
     manualEmails: [],
     count: 0,
   });
@@ -271,7 +275,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     setSelectedWebinarId(""); setNewWebinarMeta(null);
     setScheduleEnabled(false); setScheduledDate(""); setScheduledTime("");
     setAbEnabled(false); setSubjectB(""); setAbSamplePercent(20);
-    setRecipients({ source: scope === "platform" ? "organizations" : "students", manualEmails: [], count: 0 });
+    setRecipients(defaultRecipientValue() as RecipientPickerValue);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
@@ -302,22 +306,25 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   };
 
   const handleSave = async (launch: boolean) => {
-    if (!name.trim() || !subject.trim() || !html.trim()) {
-      toast.error("Заполните название, тему и тело письма");
+    // P0: черновик (без планирования) требует только контент письма.
+    const isSendAction = launch || scheduleEnabled;
+    const gate = isSendAction
+      ? validateSend({
+          name, subject, html,
+          consent,
+          recipientCount: recipients.count,
+          previewReady: recipients.previewReady,
+          variablesOk: variableCheck.ok,
+          quotaBlocked: quotaBlocksLaunch,
+          quotaReason: quotaBlockReason,
+          overDailyLimit: !!tooMany,
+        })
+      : validateDraft({ name, subject, html });
+    if (!gate.ok) {
+      toast.error(gate.reason || "Проверьте данные кампании");
       return;
     }
-    if (recipients.count === 0) {
-      toast.error("Получателей не найдено");
-      return;
-    }
-    if (!consent) {
-      toast.error("Подтвердите согласие получателей");
-      return;
-    }
-    if (!variableCheck.ok) {
-      toast.error(`Неизвестные переменные: ${variableCheck.unknown.map((k) => `{{${k}}}`).join(", ")}`);
-      return;
-    }
+
 
     // Базовая валидация HTML — баланс <p>/<div>/<a>
     const openTags = (html.match(/<(p|div|a|span|table|tr|td)\b/gi) || []).length;
@@ -691,6 +698,11 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               <Checkbox checked={consent} onCheckedChange={(v) => setConsent(!!v)} />
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
+            <p className="text-xs text-muted-foreground">
+              Согласие, SMTP, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
+              Черновик сохраняется без них.
+            </p>
+
 
             {draftRestored && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -701,7 +713,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose} disabled={saving}>Отмена</Button>
-            <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              data-testid="campaign-save-draft-button"
+            >
               {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
             <Button

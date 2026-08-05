@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Upload, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export type RecipientSource = "students" | "companies" | "organizations" | "companies_db" | "manual";
+// "none" — явный дефолт для новой кампании: получатели не выбраны.
+export type RecipientSource = "none" | "students" | "companies" | "organizations" | "companies_db" | "manual";
 
 export interface RecipientPickerValue {
   source: RecipientSource;
@@ -128,6 +129,16 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
   // Any pending manual request is invalidated by fetchPreview's abort.
   useEffect(() => {
     if (value.source === "manual") return;
+    // "none": получатели не выбраны — никаких запросов и записей в БД.
+    if (value.source === "none") {
+      setPreview(null);
+      setError(null);
+      setLoading(false);
+      if (value.count !== 0 || value.previewReady !== false) {
+        onChange({ ...value, count: 0, previewReady: false });
+      }
+      return;
+    }
     if (scope === "org" && !organizationId) return;
     // Immediately block launch: previewReady=false until new response arrives.
     if (value.previewReady !== false) {
@@ -136,6 +147,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
     fetchPreview(value.source, []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.source, scope, organizationId]);
+
 
   // Manual: 350ms debounce for the RPC only. previewReady=false is set
   // synchronously in the Textarea onChange handler (see below).
@@ -152,13 +164,16 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualText, value.source]);
 
+  const NONE_SOURCE = { value: "none" as RecipientSource, label: "Без получателей / добавить позже" };
   const sources: { value: RecipientSource; label: string }[] = scope === "platform"
     ? [
+        NONE_SOURCE,
         { value: "organizations", label: "Все организации" },
         { value: "companies_db", label: "База компаний (list-org)" },
         { value: "manual", label: "Ручной список email" },
       ]
     : [
+        NONE_SOURCE,
         { value: "students", label: "Мои ученики" },
         { value: "companies", label: "Мои компании-клиенты" },
         { value: "manual", label: "Ручной список email" },
@@ -270,9 +285,15 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           />
         </div>
       )}
+      {value.source === "none" && (
+        <p className="text-sm text-muted-foreground" data-testid="recipients-none-hint">
+          Получатели не выбраны (0). Черновик можно сохранить сейчас, а базу выбрать или импортировать позже.
+        </p>
+      )}
 
       {/* Preview status line — `loading` implies previewReady=false in the parent */}
       <div className="text-sm space-y-1">
+
         {loading && (
           <p className="text-muted-foreground flex items-center gap-1">
             <Loader2 className="w-3 h-3 animate-spin" /> Проверяю получателей…
