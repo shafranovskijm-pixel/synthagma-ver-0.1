@@ -285,9 +285,15 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           />
         </div>
       )}
+      {value.source === "none" && (
+        <p className="text-sm text-muted-foreground" data-testid="recipients-none-hint">
+          Получатели не выбраны (0). Черновик можно сохранить сейчас, а базу выбрать или импортировать позже.
+        </p>
+      )}
 
       {/* Preview status line — `loading` implies previewReady=false in the parent */}
       <div className="text-sm space-y-1">
+
         {loading && (
           <p className="text-muted-foreground flex items-center gap-1">
             <Loader2 className="w-3 h-3 animate-spin" /> Проверяю получателей…
