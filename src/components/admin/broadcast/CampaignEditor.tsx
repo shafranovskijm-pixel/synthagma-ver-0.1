@@ -227,19 +227,30 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
+  // Этап 2: предпросмотр рендерится на данных выбранного получателя,
+  // значения экранируются так же, как в send-функции.
+  const previewRecipient: RecipientLike =
+    previewRecipients[previewIndex] || samplePreviewRecipient();
+
   const renderPreview = () => {
-    let preview = html;
-    preview = preview.replace(/\{\{name\}\}/g, "Иван Иванов")
-      .replace(/\{\{email\}\}/g, "ivan@example.com")
-      .replace(/\{\{host_name\}\}/g, hostName || "Команда Sintagma");
+    const extra: Record<string, unknown> = {
+      host_name: hostName || "Команда Sintagma",
+      unsubscribe_url: `${window.location.origin}/unsubscribe`,
+    };
     if (meeting) {
       const d = meeting.scheduled_at ? new Date(meeting.scheduled_at) : null;
-      preview = preview
-        .replace(/\{\{webinar_url\}\}/g, meeting.url)
-        .replace(/\{\{date\}\}/g, d ? format(d, "d MMMM yyyy", { locale: ru }) : "")
-        .replace(/\{\{time\}\}/g, d ? format(d, "HH:mm") : "");
+      extra.webinar_url = meeting.url;
+      extra.webinar_title = meeting.title || "";
+      extra.date = d ? format(d, "d MMMM yyyy", { locale: ru }) : "";
+      extra.time = d ? format(d, "HH:mm") : "";
     }
-    return preview;
+    return renderTemplate(html, previewRecipient, extra);
+  };
+
+  const variableCheck = validateVariables(html, subject, customKeys);
+
+  const insertVariable = (key: string) => {
+    setHtml((prev) => `${prev}{{${key}}}`);
   };
 
   const handleSave = async (launch: boolean) => {
@@ -255,6 +266,11 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       toast.error("Подтвердите согласие получателей");
       return;
     }
+    if (!variableCheck.ok) {
+      toast.error(`Неизвестные переменные: ${variableCheck.unknown.map((k) => `{{${k}}}`).join(", ")}`);
+      return;
+    }
+
     // Базовая валидация HTML — баланс <p>/<div>/<a>
     const openTags = (html.match(/<(p|div|a|span|table|tr|td)\b/gi) || []).length;
     const closeTags = (html.match(/<\/(p|div|a|span|table|tr|td)>/gi) || []).length;
