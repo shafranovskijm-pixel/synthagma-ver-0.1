@@ -316,6 +316,29 @@ serve(async (req: Request) => {
         await new Promise((res) => setTimeout(res, SEND_DELAY_MS));
       }
 
+      // Агрегаты запуска пишутся отдельным service-role-only RPC
+      // (только счётчики: ни email, ни темы, ни тела письма).
+      if (campaignLedgerId) {
+        const ids = pending!.map((r) => (r as any).id as string);
+        const { count: sentCount } = await admin
+          .from("email_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .in("id", ids)
+          .eq("status", "sent");
+        const { count: failedCount } = await admin
+          .from("email_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .in("id", ids)
+          .eq("status", "failed");
+        await admin.rpc("record_mailing_campaign_result", {
+          p_ledger_id: campaignLedgerId,
+          p_sent: sentCount || 0,
+          p_failed: failedCount || 0,
+        });
+      }
+
+
+
       // After partial send: if we can't verify leftovers, DO NOT mark completed.
       // Fall back to `paused` — the scheduled resume will retry.
       const { data: leftovers, error: leftErr } = await admin.from("email_campaign_recipients")
