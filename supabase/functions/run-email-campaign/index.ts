@@ -224,11 +224,12 @@ serve(async (req: Request) => {
       return json({ ok: true, message: "Нет получателей в очереди" }, 200);
     }
 
-    // ============ Quota (5C.1.c) ============
+    // ============ Quota ============
     // Platform: keep existing broadcast quota (consume_email_quota with 'platform').
-    // Org: server-derived atomic claim keyed by hashed sender email. Client cannot
-    // pass a scope_key or skip_warmup override.
+    // Org + sender_id: atomic reservation against the connected mailing_sender.
+    // Org legacy (sender_id = null): keep claim_org_email_quota.
     let quota: any = null;
+    let campaignLedgerId: string | null = null;
     if (campaign.scope === "platform") {
       const { data: pq, error: pqErr } = await admin.rpc("consume_email_quota", {
         p_scope_key: "platform",
@@ -236,6 +237,17 @@ serve(async (req: Request) => {
       });
       if (pqErr) return json({ error: "Ошибка квоты: " + pqErr.message }, 500);
       quota = pq;
+    } else if (mailingSenderId) {
+      const { data: rq, error: rqErr } = await admin.rpc("reserve_mailing_campaign_quota", {
+        p_sender_id: mailingSenderId,
+        p_campaign_id: campaignId,
+        p_count: pendingCount,
+        p_requested_by: requestedBy,
+      });
+      if (rqErr) return json({ error: "Ошибка квоты отправителя" }, 500);
+      const reservation = Array.isArray(rq) ? rq[0] : rq;
+      quota = reservation || { allowed: false, reason: "quota" };
+      if (quota.allowed === true) campaignLedgerId = quota.ledger_id as string;
     } else {
       if (!campaign.organization_id) {
         return json({ error: "org campaign без organization_id" }, 500);
@@ -252,9 +264,10 @@ serve(async (req: Request) => {
     if (quota && (quota as any).allowed === false) {
       return json({
         ok: false, quotaExceeded: true, ...(quota as any),
-        message: `Дневной лимит отправителя: ${(quota as any).effective_daily_limit ?? (quota as any).daily_limit}, отправлено: ${(quota as any).sent_today}, доступно: ${(quota as any).remaining}. Запрошено: ${pendingCount}.`,
+        message: `Дневной лимит отправителя: ${(quota as any).effective_daily_limit ?? (quota as any).daily_limit}, доступно: ${(quota as any).remaining ?? 0}. Запрошено: ${pendingCount}.`,
       }, 200);
     }
+
 
     await admin.from("email_campaigns").update({
       status: "sending",
