@@ -121,6 +121,56 @@ serve(async (req: Request) => {
       mailingSenderId = sender.id as string;
     }
 
+    // ============ Consent gate (P0 follow-up) ============
+    // Initial user launch: явное заявление авторизованного пользователя в body.
+    // Resume пользователем (paused / зависший sending) и любой service-role
+    // вызов (scheduler / автодосыл) требуют УЖЕ сохранённого подтверждения.
+    // Любое несоответствие -> 400 БЕЗ materialize / quota / status mutations.
+    const isResumeStatus = campaign.status === "paused" || campaign.status === "sending";
+    const storedConsentAt = (campaign as any).consent_confirmed_at as string | null;
+
+    if (isServiceRole || isResumeStatus) {
+      if (!storedConsentAt) {
+        return json({
+          error: "Согласие получателей не подтверждено — запуск невозможен",
+          consentRequired: true,
+        }, 400);
+      }
+    } else {
+      if (!consentConfirmed) {
+        return json({
+          error: "Требуется подтверждение согласия получателей (consent_confirmed)",
+          consentRequired: true,
+        }, 400);
+      }
+      const { error: consentErr } = await admin.rpc("confirm_campaign_send_consent_admin", {
+        p_campaign_id: campaignId,
+        p_user_id: requestedBy,
+        p_method: "launch",
+      });
+      if (consentErr) {
+        console.error("consent confirmation failed", consentErr);
+        return json({ error: "Не удалось записать подтверждение согласия" }, 500);
+      }
+    }
+
+    // ============ Pre-materialize content / target checks ============
+    // Ничего не мутируем, если кампания заведомо не готова к отправке.
+    if (
+      !String(campaign.name || "").trim() ||
+      !String(campaign.subject || "").trim() ||
+      !String(campaign.html_body || "").trim()
+    ) {
+      return json({ error: "Кампания не заполнена: нужны название, тема и тело письма" }, 400);
+    }
+    if (campaign.scope === "org" && !mailingSenderId && !(campaign as any).sender_id) {
+      // legacy path допускается только для старых кампаний без sender_id,
+      // у которых уже есть материализованные получатели или legacy SMTP.
+    }
+    if (!campaign.recipient_source || campaign.recipient_source === "none") {
+      return json({ error: "Не выбраны получатели кампании" }, 400);
+    }
+
 
     // Idempotency
     if (campaign.status === "sending" && campaign.started_at) {
