@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,13 @@ import { CampaignEditor } from "./CampaignEditor";
 import { buildEditorInitial, isCampaignEditable } from "@/lib/mailing/campaignEditMode";
 import { CampaignReport } from "./CampaignReport";
 import { WarmupBadge } from "./WarmupBadge";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  campaignLaunchAction,
+  launchActionLabel,
+  pickVerifiedSender,
+  type VerifiedSenderLike,
+} from "@/lib/mailing/launchActions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -24,6 +31,29 @@ export function CampaignsManager({ scope, organizationId }: Props) {
   const [reportFor, setReportFor] = useState<string | null>(null);
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
+  const [verifiedSender, setVerifiedSender] = useState<VerifiedSenderLike | null>(null);
+
+  // Проверенный отправитель организации: активный + smtp_status='ok'.
+  // Читается tenant-scoped (RLS ограничивает строки организацией).
+  useEffect(() => {
+    let cancelled = false;
+    if (scope !== "org" || !organizationId) {
+      setVerifiedSender(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("mailing_senders")
+        .select("id, label, from_email, is_active, smtp_status")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .eq("smtp_status", "ok")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (!cancelled) setVerifiedSender(pickVerifiedSender(data as VerifiedSenderLike[] | null));
+    })();
+    return () => { cancelled = true; };
+  }, [scope, organizationId]);
 
   const statusColor = (s: string) => {
     if (s === "sending") return "bg-blue-500/10 text-blue-600";
@@ -44,7 +74,19 @@ export function CampaignsManager({ scope, organizationId }: Props) {
 
   return (
     <div className="space-y-4">
-      {scopeKey && <WarmupBadge scopeKey={scopeKey} />}
+      {verifiedSender ? (
+        <div
+          className="rounded-lg border border-border bg-muted/20 p-3 text-sm"
+          data-testid="campaigns-sender-connected"
+        >
+          Отправитель подключён:{" "}
+          <span className="font-medium">{verifiedSender.label || "без названия"}</span>
+          {" — "}
+          <span className="text-muted-foreground">{verifiedSender.from_email}</span>
+        </div>
+      ) : (
+        scopeKey && <WarmupBadge scopeKey={scopeKey} />
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -111,12 +153,34 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {(c.status === "draft" || c.status === "paused" || stuck) && (
-                      <Button size="sm" variant="ghost" onClick={() => launch(c.id)} className="gap-1">
-                        <Play className="w-3 h-3" />
-                        {c.status === "paused" || stuck ? "Продолжить" : "Запустить"}
-                      </Button>
-                    )}
+                    {(() => {
+                      const action = campaignLaunchAction(c.status, !!stuck);
+                      if (action === "none") return null;
+                      const label = launchActionLabel(action);
+                      return (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1"
+                          aria-label={`${label} — кампания «${c.name}»`}
+                          data-testid={`campaign-${action}-${c.id}`}
+                          onClick={() => {
+                            if (action === "resume") {
+                              launch(c.id);
+                              return;
+                            }
+                            // Черновик/ошибка: только через редактор, где действуют
+                            // обязательные проверки отправителя, получателей,
+                            // согласия, переменных и квоты.
+                            setEditing(buildEditorInitial(c as any));
+                            setEditorOpen(true);
+                          }}
+                        >
+                          <Play className="w-3 h-3" />
+                          {label}
+                        </Button>
+                      );
+                    })()}
                     {isCampaignEditable(c.status) && (
                       <Button
                         size="sm"
