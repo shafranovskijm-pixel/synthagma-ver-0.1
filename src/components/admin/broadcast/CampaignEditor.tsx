@@ -159,19 +159,16 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       senderAccountId: senderAccountId || null,
       smtpStatus: selectedSender?.smtp_status ?? null,
       seedRaw,
+      campaignId: initial?.id || null,
     });
     if (!gate.ok) {
       toast.error(gate.reason!);
       return;
     }
-    const content = validateDraft({ name, subject, html });
-    if (!content.ok) {
-      toast.error(content.reason!);
-      return;
-    }
     setSeedSending(true);
+    // Тему и HTML сервер читает сам из кампании — из клиента они не передаются.
     const { data, error } = await supabase.functions.invoke("mailing-seed-send", {
-      body: { sender_id: senderAccountId, subject, html, seed_emails: gate.emails },
+      body: { campaign_id: initial!.id, sender_id: senderAccountId, seed_emails: gate.emails },
     });
     setSeedSending(false);
     if (error) {
