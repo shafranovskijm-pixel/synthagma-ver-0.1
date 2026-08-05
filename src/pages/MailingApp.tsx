@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+
 import { Helmet } from "react-helmet-async";
 import { Link, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -36,10 +35,9 @@ const MENU = [
 type TabKey = (typeof MENU)[number]["key"];
 
 export default function MailingApp() {
-  const { user } = useAuth();
+  const { organizationId, isLoadingCourses } = useOrgDashboard();
   const [params, setParams] = useSearchParams();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [loadingOrg, setLoadingOrg] = useState(true);
+  const loadingOrg = !organizationId && isLoadingCourses;
 
   const rawTab = params.get("tab") as TabKey | null;
   const tab: TabKey = MENU.some((m) => m.key === rawTab) ? (rawTab as TabKey) : "overview";
@@ -49,27 +47,6 @@ export default function MailingApp() {
     next.set("tab", key);
     setParams(next, { replace: false });
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!user?.id) {
-        setLoadingOrg(false);
-        return;
-      }
-      const { data } = await (supabase as any)
-        .from("organizations")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (cancelled) return;
-      setOrganizationId(data?.id ?? null);
-      setLoadingOrg(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
 
   return (
     <div className="min-h-screen bg-background">
