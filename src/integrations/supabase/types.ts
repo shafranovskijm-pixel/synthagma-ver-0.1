@@ -5198,7 +5198,10 @@ export type Database = {
           from_email: string
           from_name: string | null
           id: string
+          imap_error_category: string | null
           imap_host: string | null
+          imap_last_tested_at: string | null
+          imap_latency_ms: number | null
           imap_port: number | null
           imap_security: string | null
           imap_status: string
@@ -5209,7 +5212,10 @@ export type Database = {
           last_tested_at: string | null
           organization_id: string
           password_encrypted: string | null
+          preset_key: string | null
+          smtp_error_category: string | null
           smtp_host: string
+          smtp_latency_ms: number | null
           smtp_port: number
           smtp_security: string
           smtp_status: string
@@ -5223,7 +5229,10 @@ export type Database = {
           from_email: string
           from_name?: string | null
           id?: string
+          imap_error_category?: string | null
           imap_host?: string | null
+          imap_last_tested_at?: string | null
+          imap_latency_ms?: number | null
           imap_port?: number | null
           imap_security?: string | null
           imap_status?: string
@@ -5234,7 +5243,10 @@ export type Database = {
           last_tested_at?: string | null
           organization_id: string
           password_encrypted?: string | null
+          preset_key?: string | null
+          smtp_error_category?: string | null
           smtp_host: string
+          smtp_latency_ms?: number | null
           smtp_port?: number
           smtp_security?: string
           smtp_status?: string
@@ -5248,7 +5260,10 @@ export type Database = {
           from_email?: string
           from_name?: string | null
           id?: string
+          imap_error_category?: string | null
           imap_host?: string | null
+          imap_last_tested_at?: string | null
+          imap_latency_ms?: number | null
           imap_port?: number | null
           imap_security?: string | null
           imap_status?: string
@@ -5259,7 +5274,10 @@ export type Database = {
           last_tested_at?: string | null
           organization_id?: string
           password_encrypted?: string | null
+          preset_key?: string | null
+          smtp_error_category?: string | null
           smtp_host?: string
+          smtp_latency_ms?: number | null
           smtp_port?: number
           smtp_security?: string
           smtp_status?: string
@@ -11657,6 +11675,23 @@ export type Database = {
         }[]
       }
       get_mailing_report_by_token: { Args: { p_token: string }; Returns: Json }
+      get_mailing_sender_secret: {
+        Args: { p_sender_id: string }
+        Returns: {
+          from_email: string
+          from_name: string
+          imap_host: string
+          imap_port: number
+          imap_security: string
+          imap_username: string
+          organization_id: string
+          secret: string
+          smtp_host: string
+          smtp_port: number
+          smtp_security: string
+          smtp_username: string
+        }[]
+      }
       get_next_document_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number
