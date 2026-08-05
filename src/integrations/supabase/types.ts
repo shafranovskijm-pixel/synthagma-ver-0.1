@@ -5190,6 +5190,67 @@ export type Database = {
           },
         ]
       }
+      mailing_seed_ledger: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          failed_count: number
+          id: string
+          organization_id: string
+          requested_by: string | null
+          seed_count: number
+          sender_id: string
+          sent_count: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          failed_count?: number
+          id?: string
+          organization_id: string
+          requested_by?: string | null
+          seed_count: number
+          sender_id: string
+          sent_count?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          failed_count?: number
+          id?: string
+          organization_id?: string
+          requested_by?: string | null
+          seed_count?: number
+          sender_id?: string
+          sent_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_seed_ledger_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_seed_ledger_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_seed_ledger_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mailing_senders: {
         Row: {
           created_at: string
@@ -12128,6 +12189,10 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
+      record_mailing_seed_result: {
+        Args: { p_failed: number; p_ledger_id: string; p_sent: number }
+        Returns: undefined
+      }
       register_referral:
         | {
             Args: { p_organization_id: string; p_ref_code: string }
@@ -12145,6 +12210,21 @@ export type Database = {
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
+      }
+      reserve_mailing_seed_quota: {
+        Args: {
+          p_campaign_id: string
+          p_cooldown_seconds?: number
+          p_count: number
+          p_requested_by?: string
+          p_sender_id: string
+        }
+        Returns: {
+          allowed: boolean
+          ledger_id: string
+          reason: string
+          remaining: number
+        }[]
       }
       resolve_campaign_recipients: {
         Args: { p_campaign_id: string }
