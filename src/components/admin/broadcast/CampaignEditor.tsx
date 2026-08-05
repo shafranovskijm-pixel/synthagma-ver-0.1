@@ -946,6 +946,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               disabled={
                 saving ||
                 !!tooMany ||
+                senderOverLimit ||
+
                 recipients.count === 0 ||
                 !consent ||
                 scheduleEnabled ||
