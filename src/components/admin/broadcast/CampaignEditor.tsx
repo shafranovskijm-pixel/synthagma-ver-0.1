@@ -18,6 +18,14 @@ import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 import { computeQuotaGate } from "@/lib/emailQuotaGate";
 import { defaultRecipientValue, validateDraft, validateSend } from "@/lib/mailing/campaignDraftGate";
+import { validateSeedTest } from "@/lib/mailing/senderPresets";
+
+interface SenderAccountOption {
+  id: string;
+  label: string;
+  from_email: string;
+  smtp_status: string | null;
+}
 
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
 import { InboxPreview } from "./InboxPreview";
@@ -121,6 +129,60 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [abEnabled, setAbEnabled] = useState(false);
   const [subjectB, setSubjectB] = useState("");
   const [abSamplePercent, setAbSamplePercent] = useState(20);
+
+  // Этап 3: явный аккаунт отправителя + seed-адреса тестовой отправки.
+  const [senderAccounts, setSenderAccounts] = useState<SenderAccountOption[]>([]);
+  const [senderAccountId, setSenderAccountId] = useState<string>("");
+  const [seedRaw, setSeedRaw] = useState("");
+  const [seedSending, setSeedSending] = useState(false);
+  const selectedSender = senderAccounts.find((s) => s.id === senderAccountId) || null;
+
+  useEffect(() => {
+    if (!open || scope !== "org" || !organizationId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("mailing_senders")
+        .select("id,label,from_email,smtp_status")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (!cancelled) setSenderAccounts((data || []) as unknown as SenderAccountOption[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, scope, organizationId]);
+
+  const sendSeedTest = async () => {
+    const gate = validateSeedTest({
+      senderAccountId: senderAccountId || null,
+      smtpStatus: selectedSender?.smtp_status ?? null,
+      seedRaw,
+    });
+    if (!gate.ok) {
+      toast.error(gate.reason!);
+      return;
+    }
+    const content = validateDraft({ name, subject, html });
+    if (!content.ok) {
+      toast.error(content.reason!);
+      return;
+    }
+    setSeedSending(true);
+    const { data, error } = await supabase.functions.invoke("mailing-seed-send", {
+      body: { sender_id: senderAccountId, subject, html, seed_emails: gate.emails },
+    });
+    setSeedSending(false);
+    if (error) {
+      toast.error("Тестовая отправка не выполнена");
+      return;
+    }
+    const res = data as { success?: boolean; sent?: number; failed?: number; error_category?: string };
+    if (res?.success) toast.success(`Отправлено на seed-адреса: ${res.sent}`);
+    else toast.error(`Ошибка seed-отправки: ${res?.error_category || `не доставлено ${res?.failed}`}`);
+  };
+
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
   const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
@@ -318,6 +380,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           quotaBlocked: quotaBlocksLaunch,
           quotaReason: quotaBlockReason,
           overDailyLimit: !!tooMany,
+          senderAccountId: senderAccountId || null,
         })
       : validateDraft({ name, subject, html });
     if (!gate.ok) {
@@ -384,6 +447,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         manual_emails: recipients.source === "manual" ? recipients.manualEmails : null,
         recipient_filter: Object.keys(recipientFilter).length ? recipientFilter : null,
         scheduled_at: scheduledAtISO,
+        // Этап 3: черновик сохраняется и без отправителя (null).
+        sender_id: senderAccountId || null,
         status: isScheduled ? "scheduled" : "draft",
       };
       const { data: user } = await supabase.auth.getUser();
@@ -699,9 +764,51 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
             <p className="text-xs text-muted-foreground">
-              Согласие, SMTP, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
+              Согласие, отправитель, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
               Черновик сохраняется без них.
             </p>
+
+            {scope === "org" && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label>Отправитель (аккаунт из «Отправители»)</Label>
+                <Select value={senderAccountId} onValueChange={setSenderAccountId}>
+                  <SelectTrigger data-testid="campaign-sender-select">
+                    <SelectValue placeholder="Не выбран" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {senderAccounts.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.label} — {s.from_email}
+                        {s.smtp_status === "ok" ? " ✓" : " (SMTP не проверен)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Label className="pt-2">Seed-адреса для тестовой отправки (1–5, вручную)</Label>
+                <Input
+                  value={seedRaw}
+                  onChange={(e) => setSeedRaw(e.target.value)}
+                  placeholder="seed1@example.com, seed2@example.com"
+                  data-testid="campaign-seed-input"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Seed-адреса вводятся вручную и не берутся из базы получателей кампании.
+                  Тестовая отправка доступна только после успешного SMTP-теста отправителя.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={sendSeedTest}
+                  disabled={seedSending || selectedSender?.smtp_status !== "ok" || !seedRaw.trim()}
+                  data-testid="campaign-seed-send-button"
+                >
+                  {seedSending ? "Отправка…" : "Тестовая отправка"}
+                </Button>
+              </div>
+            )}
+
+
 
 
             {draftRestored && (
@@ -731,7 +838,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                 scheduleEnabled ||
                 recipients.previewReady === false ||
                 !variableCheck.ok ||
-                quotaBlocksLaunch
+                quotaBlocksLaunch ||
+                (scope === "org" && !senderAccountId)
               }
               data-testid="campaign-launch-button"
             >

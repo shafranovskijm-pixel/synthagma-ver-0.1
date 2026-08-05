@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { CampaignsManager } from "@/components/admin/broadcast/CampaignsManager";
 import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
-import { OrgSmtpSettings } from "@/components/organization/sales/OrgSmtpSettings";
+import { MailingSendersTab } from "@/components/mailing/MailingSendersTab";
 import { MailingOverviewTab } from "@/components/mailing/MailingOverviewTab";
 import { MailingContactsTab } from "@/components/mailing/MailingContactsTab";
 import { MailingReportsTab } from "@/components/mailing/MailingReportsTab";
@@ -111,7 +111,7 @@ export default function MailingApp() {
               {tab === "campaigns" && <CampaignsManager scope="org" organizationId={organizationId} />}
               {tab === "contacts" && <MailingContactsTab organizationId={organizationId} />}
               {tab === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
-              {tab === "senders" && <OrgSmtpSettings organizationId={organizationId} />}
+              {tab === "senders" && <MailingSendersTab organizationId={organizationId} />}
               {tab === "reports" && <MailingReportsTab organizationId={organizationId} />}
               {tab === "deliverability" && <MailingDeliverabilityTab organizationId={organizationId} />}
             </>
