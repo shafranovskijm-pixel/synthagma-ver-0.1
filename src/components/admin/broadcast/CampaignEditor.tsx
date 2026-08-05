@@ -306,22 +306,25 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   };
 
   const handleSave = async (launch: boolean) => {
-    if (!name.trim() || !subject.trim() || !html.trim()) {
-      toast.error("Заполните название, тему и тело письма");
+    // P0: черновик (без планирования) требует только контент письма.
+    const isSendAction = launch || scheduleEnabled;
+    const gate = isSendAction
+      ? validateSend({
+          name, subject, html,
+          consent,
+          recipientCount: recipients.count,
+          previewReady: recipients.previewReady,
+          variablesOk: variableCheck.ok,
+          quotaBlocked: quotaBlocksLaunch,
+          quotaReason: quotaBlockReason,
+          overDailyLimit: !!tooMany,
+        })
+      : validateDraft({ name, subject, html });
+    if (!gate.ok) {
+      toast.error(gate.reason || "Проверьте данные кампании");
       return;
     }
-    if (recipients.count === 0) {
-      toast.error("Получателей не найдено");
-      return;
-    }
-    if (!consent) {
-      toast.error("Подтвердите согласие получателей");
-      return;
-    }
-    if (!variableCheck.ok) {
-      toast.error(`Неизвестные переменные: ${variableCheck.unknown.map((k) => `{{${k}}}`).join(", ")}`);
-      return;
-    }
+
 
     // Базовая валидация HTML — баланс <p>/<div>/<a>
     const openTags = (html.match(/<(p|div|a|span|table|tr|td)\b/gi) || []).length;
