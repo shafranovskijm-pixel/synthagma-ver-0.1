@@ -38,6 +38,8 @@ import {
 } from "@/utils/mailing/mailingVariables";
 
 interface InitialData {
+  /** ID сохранённой кампании (нужен для seed-отправки: тему/тело берёт сервер). */
+  id?: string;
   name?: string;
   subject?: string;
   html?: string;
