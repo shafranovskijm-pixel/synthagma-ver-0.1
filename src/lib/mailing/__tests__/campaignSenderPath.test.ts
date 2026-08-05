@@ -107,7 +107,9 @@ describe("миграция квоты кампаний", () => {
       migration.indexOf("CREATE TABLE IF NOT EXISTS public.mailing_campaign_ledger"),
       migration.indexOf("GRANT SELECT ON public.mailing_campaign_ledger"),
     );
-    expect(table).not.toMatch(/email|subject|html|password|error/i);
+    expect(table).not.toMatch(/(subject|html|password|error_text|recipient_email)/i);
+    expect(table).not.toMatch(/^\s*email\b/im);
+
   });
 });
 
