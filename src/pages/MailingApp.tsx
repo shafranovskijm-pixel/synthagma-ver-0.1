@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { CampaignsManager } from "@/components/admin/broadcast/CampaignsManager";
 import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
-import { OrgSmtpSettings } from "@/components/organization/sales/OrgSmtpSettings";
+import { MailingSendersTab } from "@/components/mailing/MailingSendersTab";
 import { MailingOverviewTab } from "@/components/mailing/MailingOverviewTab";
 import { MailingContactsTab } from "@/components/mailing/MailingContactsTab";
 import { MailingReportsTab } from "@/components/mailing/MailingReportsTab";
