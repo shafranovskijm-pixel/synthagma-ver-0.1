@@ -309,6 +309,18 @@ serve(async (req: Request) => {
     }
     const pendingCount = pending?.length || 0;
     if (pendingCount === 0) {
+      if (wasInitialMaterialization) {
+        // Initial launch: пустая очередь -> остаётся черновиком, не completed.
+        await admin.from("email_campaigns").update({
+          status: "draft",
+          started_at: null,
+          completed_at: null,
+        }).eq("id", campaignId);
+        return json({
+          error: "Нет получателей для отправки — кампания оставлена черновиком",
+          emptyAudience: true,
+        }, 400);
+      }
       await admin.from("email_campaigns").update({
         status: "completed",
         completed_at: new Date().toISOString(),
