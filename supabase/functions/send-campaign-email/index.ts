@@ -119,8 +119,40 @@ serve(async (req: Request) => {
         from_email: m ? m[2].trim() : fromEnv,
         from_name: m ? m[1].trim() : (campaign.from_name || "Sintagma"),
       };
+    } else if ((campaign as any).sender_id) {
+      // org-scope, новый путь: подключённый аккаунт из mailing_senders.
+      // organization_id / is_active / smtp_status проверяются на сервере,
+      // from_email берётся ТОЛЬКО из аккаунта, секрет — только через RPC.
+      const { data: sender, error: sndErr } = await admin
+        .from("mailing_senders")
+        .select("id, organization_id, is_active, smtp_status, from_name")
+        .eq("id", (campaign as any).sender_id)
+        .maybeSingle();
+      if (sndErr) throw new Error("Ошибка получения отправителя");
+      if (!sender) throw new Error("Отправитель не найден");
+      if (!campaign.organization_id || sender.organization_id !== campaign.organization_id) {
+        throw new Error("Отправитель принадлежит другой организации");
+      }
+      if (sender.is_active !== true) throw new Error("Отправитель отключён");
+      if (sender.smtp_status !== "ok") throw new Error("Отправитель не прошёл SMTP-проверку");
+
+      const { data: secretRows, error: secErr } = await admin.rpc("get_mailing_sender_secret", {
+        p_sender_id: sender.id,
+      });
+      const cfg = Array.isArray(secretRows) ? secretRows[0] : secretRows;
+      if (secErr || !cfg?.secret) throw new Error("Не удалось получить конфигурацию отправителя");
+      smtp = {
+        host: cfg.smtp_host,
+        port: cfg.smtp_port,
+        username: cfg.smtp_username,
+        password: cfg.secret,
+        encryption: (cfg.smtp_security || "ssl") === "starttls" ? "starttls" : "ssl",
+        // from_email никогда не приходит от клиента.
+        from_email: cfg.from_email,
+        from_name: campaign.from_name || cfg.from_name || sender.from_name || "СИНТАГМА",
+      };
     } else {
-      // org-scope: расшифровываем SMTP организации
+      // org-scope legacy (sender_id = null): SMTP организации.
       const { data: smtpRow, error: smErr } = await admin.rpc("get_decrypted_org_smtp", {
         p_organization_id: campaign.organization_id,
       });
@@ -133,6 +165,7 @@ serve(async (req: Request) => {
         from_email: row.from_email, from_name: row.from_name,
       };
     }
+
 
     const meeting = (campaign.recipient_filter as any)?.meeting || null;
     const dateLabel = meeting?.scheduled_at
