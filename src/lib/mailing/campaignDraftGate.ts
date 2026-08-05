@@ -52,12 +52,15 @@ export interface SendGateInput extends DraftInput {
   quotaBlocked?: boolean;
   quotaReason?: string | null;
   overDailyLimit?: boolean;
+  /** Этап 3: явный аккаунт отправителя обязателен для любой отправки. */
+  senderAccountId?: string | null;
 }
 
 /** Требования к любой реальной отправке (тест / план / запуск). */
 export function validateSend(input: SendGateInput): DraftGateResult {
   const base = validateDraft(input);
   if (!base.ok) return base;
+  if (!input.senderAccountId) return { ok: false, reason: "Выберите отправителя" };
   if (input.recipientCount <= 0) return { ok: false, reason: "Добавьте получателей" };
   if (input.previewReady === false) return { ok: false, reason: "Дождитесь проверки списка получателей" };
   if (!input.consent) return { ok: false, reason: "Подтвердите согласие получателей" };
