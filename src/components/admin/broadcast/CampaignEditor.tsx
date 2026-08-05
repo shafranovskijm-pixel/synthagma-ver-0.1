@@ -832,6 +832,17 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               </div>
             )}
 
+            {senderOverLimit && senderQuota && (
+              <div
+                className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm"
+                data-testid="campaign-sender-over-limit"
+              >
+                На сегодня у отправителя доступно <b>{senderQuota.remaining}</b> писем
+                (лимит {senderQuota.daily_limit}/день). Выбрано {recipients.count}.
+              </div>
+            )}
+
+
             {/* Scheduling */}
             <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
