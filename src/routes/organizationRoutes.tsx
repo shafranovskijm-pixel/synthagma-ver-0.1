@@ -1,6 +1,7 @@
 import { Route } from "react-router-dom";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
 import { protectedRoute } from "./helpers";
+import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
 
 const OrgLayout = lazyWithRetry(() => import("@/components/organization/OrgLayout"));
 const OrganizationDashboard = lazyWithRetry(() => import("@/pages/OrganizationDashboard"));
@@ -17,8 +18,6 @@ const CoursePreview = lazyWithRetry(() => import("@/pages/CoursePreview"));
 const CourseLandingEditor = lazyWithRetry(() => import("@/pages/CourseLandingEditor"));
 const CourseImport = lazyWithRetry(() => import("@/pages/CourseImport"));
 const ContractEditor = lazyWithRetry(() => import("@/pages/ContractEditor"));
-import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
-
 const MailingApp = lazyWithRetry(() => import("@/pages/MailingApp"));
 
 const org = "organization";
