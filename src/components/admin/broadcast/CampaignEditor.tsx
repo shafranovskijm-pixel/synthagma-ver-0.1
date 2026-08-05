@@ -708,7 +708,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose} disabled={saving}>Отмена</Button>
-            <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              data-testid="campaign-save-draft-button"
+            >
               {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
             <Button
