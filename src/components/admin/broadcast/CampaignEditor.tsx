@@ -203,9 +203,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
+  // Выбранный активный отправитель с успешным SMTP-тестом считается настроенным:
+  // квоту в этом случае атомарно резервирует сервер.
+  const senderVerified = scope === "org" && selectedSender?.smtp_status === "ok";
   const { status: warmup, loading: warmupLoading, errorKind: warmupError, retry: warmupRetry } =
     useEmailWarmup(scopeKey || null);
-  const tooMany = warmup && recipients.count > warmup.remaining;
+  const tooMany = !senderVerified && warmup && recipients.count > warmup.remaining;
   // Phase 5C.1.c.2: quota gate logic lives in one testable place.
   const { blocksLaunch: quotaBlocksLaunch, reason: quotaBlockReason } = computeQuotaGate({
     scope,
@@ -213,7 +216,23 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     status: warmup,
     loading: warmupLoading,
     errorKind: warmupError,
+    senderVerified,
   });
+
+  // Серверный остаток суточной квоты выбранного отправителя (read-only, tenant-safe).
+  const [senderQuota, setSenderQuota] = useState<{ daily_limit: number; used_today: number; remaining: number } | null>(null);
+  useEffect(() => {
+    if (!open || !senderVerified || !senderAccountId) { setSenderQuota(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.rpc("get_mailing_sender_quota", { p_sender_id: senderAccountId });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!cancelled) setSenderQuota((row as typeof senderQuota) || null);
+    })();
+    return () => { cancelled = true; };
+  }, [open, senderVerified, senderAccountId]);
+  const senderOverLimit = !!senderQuota && recipients.count > senderQuota.remaining;
+
 
 
 
