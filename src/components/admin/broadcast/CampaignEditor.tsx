@@ -838,7 +838,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                 scheduleEnabled ||
                 recipients.previewReady === false ||
                 !variableCheck.ok ||
-                quotaBlocksLaunch
+                quotaBlocksLaunch ||
+                (scope === "org" && !senderAccountId)
               }
               data-testid="campaign-launch-button"
             >
