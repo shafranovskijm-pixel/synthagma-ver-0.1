@@ -111,7 +111,7 @@ export default function MailingApp() {
               {tab === "campaigns" && <CampaignsManager scope="org" organizationId={organizationId} />}
               {tab === "contacts" && <MailingContactsTab organizationId={organizationId} />}
               {tab === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
-              {tab === "senders" && <OrgSmtpSettings organizationId={organizationId} />}
+              {tab === "senders" && <MailingSendersTab organizationId={organizationId} />}
               {tab === "reports" && <MailingReportsTab organizationId={organizationId} />}
               {tab === "deliverability" && <MailingDeliverabilityTab organizationId={organizationId} />}
             </>
