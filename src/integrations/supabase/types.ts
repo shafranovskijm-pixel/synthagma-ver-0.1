@@ -11524,6 +11524,10 @@ export type Database = {
         Args: { p_campaign_id: string; p_method?: string }
         Returns: string
       }
+      confirm_campaign_send_consent_admin: {
+        Args: { p_campaign_id: string; p_method?: string; p_user_id: string }
+        Returns: string
+      }
       consume_email_quota: {
         Args: { p_count: number; p_scope_key: string; p_skip_warmup?: boolean }
         Returns: Json
