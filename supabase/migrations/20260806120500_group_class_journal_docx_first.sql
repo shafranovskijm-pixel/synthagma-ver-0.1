@@ -155,8 +155,8 @@ BEGIN
   END IF;
   IF NOT (
     public.has_role(v_uid, 'admin'::app_role)
-    OR public.has_org_staff_permission(p_organization_id, 'documents.manage')
-    OR EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = p_organization_id AND o.user_id = v_uid)
+    OR public.has_org_staff_permission(v_uid, p_organization_id, 'documents.manage')
+    OR public.is_org_owner(v_uid, p_organization_id)
   ) THEN
     RAISE EXCEPTION 'insufficient privileges for organization %', p_organization_id;
   END IF;

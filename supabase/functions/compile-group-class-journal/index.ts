@@ -83,17 +83,16 @@ Deno.serve(async (req) => {
     const { data: userData, error: userError } = await userClient.auth.getUser();
     if (userError || !userData?.user) return json({ error: "Недействительная сессия" }, 401);
     const userId = userData.user.id;
-    const [{ data: isAdmin }, { data: hasPermission }, ownerResult] = await Promise.all([
+    const [{ data: isAdmin }, { data: hasPermission }, { data: isOwner }] = await Promise.all([
       admin.rpc("has_role", { _role: "admin", _user_id: userId }),
       admin.rpc("has_org_staff_permission", {
         _user_id: userId,
         _organization_id: body.organizationId,
         _permission: "documents.manage",
       }),
-      admin.from("organizations").select("id").eq("id", body.organizationId).eq("user_id", userId).maybeSingle(),
+      admin.rpc("is_org_owner", { _user_id: userId, _organization_id: body.organizationId }),
     ]);
-    if (ownerResult.error) throw ownerResult.error;
-    if (!isAdmin && !hasPermission && !ownerResult.data) {
+    if (!isAdmin && !hasPermission && !isOwner) {
       return json({ error: "Недостаточно прав для генерации журнала" }, 403);
     }
 
