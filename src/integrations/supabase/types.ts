@@ -4192,6 +4192,7 @@ export type Database = {
           doc_type: string
           document_date: string | null
           document_number: string | null
+          docx_sha256: string | null
           file_path: string | null
           fill_mode: string
           generation_status: string
@@ -4204,17 +4205,16 @@ export type Database = {
           organization_id: string
           package_batch_id: string | null
           package_version: number | null
+          pdf_status: string
           source_note: string | null
           status: string
           student_user_id: string | null
+          template_registry_key: string | null
+          template_sha256: string | null
+          template_version_label: string | null
           updated_at: string
           variables: Json
           variables_snapshot: Json | null
-          template_registry_key: string | null
-          template_version_label: string | null
-          template_sha256: string | null
-          docx_sha256: string | null
-          pdf_status: string
         }
         Insert: {
           company_id?: string | null
@@ -4224,6 +4224,7 @@ export type Database = {
           doc_type: string
           document_date?: string | null
           document_number?: string | null
+          docx_sha256?: string | null
           file_path?: string | null
           fill_mode?: string
           generation_status?: string
@@ -4236,17 +4237,16 @@ export type Database = {
           organization_id: string
           package_batch_id?: string | null
           package_version?: number | null
+          pdf_status?: string
           source_note?: string | null
           status?: string
           student_user_id?: string | null
+          template_registry_key?: string | null
+          template_sha256?: string | null
+          template_version_label?: string | null
           updated_at?: string
           variables?: Json
           variables_snapshot?: Json | null
-          template_registry_key?: string | null
-          template_version_label?: string | null
-          template_sha256?: string | null
-          docx_sha256?: string | null
-          pdf_status?: string
         }
         Update: {
           company_id?: string | null
@@ -4256,6 +4256,7 @@ export type Database = {
           doc_type?: string
           document_date?: string | null
           document_number?: string | null
+          docx_sha256?: string | null
           file_path?: string | null
           fill_mode?: string
           generation_status?: string
@@ -4268,17 +4269,16 @@ export type Database = {
           organization_id?: string
           package_batch_id?: string | null
           package_version?: number | null
+          pdf_status?: string
           source_note?: string | null
           status?: string
           student_user_id?: string | null
+          template_registry_key?: string | null
+          template_sha256?: string | null
+          template_version_label?: string | null
           updated_at?: string
           variables?: Json
           variables_snapshot?: Json | null
-          template_registry_key?: string | null
-          template_version_label?: string | null
-          template_sha256?: string | null
-          docx_sha256?: string | null
-          pdf_status?: string
         }
         Relationships: [
           {
