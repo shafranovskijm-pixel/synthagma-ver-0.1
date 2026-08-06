@@ -640,7 +640,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     )}>
                     <Building2 className="w-6 h-6 text-primary mb-2" />
                     <div className="text-base font-semibold">Компания</div>
-                    <div className="text-xs text-muted-foreground mt-1">Один договор с заказчиком и списком слушателей в приложении</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {quick
+                        ? "Универсальный HTML-макет. Word-договор клиента создаётся отдельной кнопкой в папке договоров"
+                        : "Один универсальный договор с заказчиком и списком слушателей в приложении"}
+                    </div>
                   </button>
                 </div>
               </div>

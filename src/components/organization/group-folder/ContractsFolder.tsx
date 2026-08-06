@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { openPrivateFile } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package, Eye, FileType2 } from "lucide-react";
+import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package, Eye, FileType2, AlertTriangle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 import { useGroupContracts, type GroupContractRow } from "@/hooks/useGroupContracts";
@@ -49,6 +49,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
     total: contracts.length,
     individual: contracts.filter(c => c.counterparty_type === "individual").length,
     legal: contracts.filter(c => c.counterparty_type === "legal").length,
+    legacyLegal: contracts.filter(c => c.counterparty_type === "legal" && c.template_format !== "docx_ooxml").length,
   }), [contracts]);
 
   const openFile = async (path: string | null) => {
@@ -102,8 +103,11 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
     <div className="space-y-4">
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" onClick={() => setQuickOpen(true)} disabled={students.length === 0}>
-          <Zap className="w-4 h-4" /> Быстрая генерация
+        <Button className="gap-1.5 rounded-xl" onClick={() => setDocxOpen(true)} disabled={students.length === 0}>
+          <FileType2 className="w-4 h-4" /> Договор компании (Word клиента)
+        </Button>
+        <Button variant="outline" className="gap-1.5 rounded-xl" onClick={() => setQuickOpen(true)} disabled={students.length === 0}>
+          <User className="w-4 h-4" /> Физлицо / универсальный
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -112,14 +116,14 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2" disabled={students.length === 0}>
+              <FileType2 className="w-4 h-4" /> Компания — Word клиента
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setQuickOpen(true)} className="gap-2" disabled={students.length === 0}>
-              <Zap className="w-4 h-4" /> Быстрая генерация
+              <Zap className="w-4 h-4" /> Физлицо / универсальный договор
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setGenOpen(true)} className="gap-2">
-              <FileSignature className="w-4 h-4" /> Расширенный режим (мастер)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2">
-              <FileType2 className="w-4 h-4" /> Договор по шаблону клиента (Word)
+              <FileSignature className="w-4 h-4" /> Универсальный HTML-мастер
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUpOpen(true)} className="gap-2">
               <Upload className="w-4 h-4" /> Загрузить готовый договор
@@ -144,6 +148,20 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
         </div>
       </div>
 
+      {stats.legacyLegal > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div>
+            <div className="font-medium text-amber-900 dark:text-amber-200">
+              {stats.legacyLegal} договор(а) компании создано в старом универсальном HTML-макете
+            </div>
+            <div className="mt-0.5 text-muted-foreground">
+              Это не Word-шаблон клиента. Для нового договора используйте «Договор компании (Word клиента)».
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* List */}
       <div className="border border-border rounded-2xl bg-card overflow-hidden">
         {loading ? (
@@ -153,9 +171,9 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
             <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
             <div className="text-sm text-muted-foreground mb-3">В папке ещё нет договоров</div>
             <div className="flex items-center justify-center gap-2 flex-wrap">
-              <Button size="sm" onClick={() => setQuickOpen(true)} disabled={students.length === 0} className="gap-1.5"><Zap className="w-4 h-4" />Быстрая генерация</Button>
-              <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />Расширенный режим</Button>
-              <Button size="sm" variant="outline" onClick={() => setDocxOpen(true)} className="gap-1.5"><FileType2 className="w-4 h-4" />Шаблон клиента (Word)</Button>
+              <Button size="sm" onClick={() => setDocxOpen(true)} disabled={students.length === 0} className="gap-1.5"><FileType2 className="w-4 h-4" />Компания — Word клиента</Button>
+              <Button size="sm" variant="outline" onClick={() => setQuickOpen(true)} disabled={students.length === 0} className="gap-1.5"><User className="w-4 h-4" />Физлицо</Button>
+              <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />HTML-мастер</Button>
               <Button size="sm" variant="outline" onClick={() => setUpOpen(true)} className="gap-1.5"><Upload className="w-4 h-4" />Загрузить</Button>
             </div>
 
@@ -181,6 +199,15 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                       {isDocxTemplate(c) && (
                         <Badge variant="outline" className="rounded-full text-[10px]">
                           Word · {c.template_version_label || "—"}
+                        </Badge>
+                      )}
+                      {!isDocxTemplate(c) && (
+                        <Badge
+                          variant="outline"
+                          className="rounded-full border-amber-500/50 text-[10px] text-amber-700 dark:text-amber-300"
+                          title={c.counterparty_type === "legal" ? "Старый универсальный макет — не Word-шаблон клиента" : "Универсальный HTML-шаблон"}
+                        >
+                          {c.counterparty_type === "legal" ? "Старый HTML · не Word клиента" : "HTML · универсальный"}
                         </Badge>
                       )}
                     </div>

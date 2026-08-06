@@ -29,6 +29,24 @@ export default function OrganizationDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const d = useOrgDashboard();
 
+  // В кабинете разделы переключаются query-параметрами без полной навигации,
+  // поэтому браузер сохраняет старую прокрутку. Сбрасываем её только при
+  // смене рабочего экрана/контекста, не реагируя на фильтры внутри вкладки.
+  const scrollResetKey = [
+    searchParams.get("tab"),
+    searchParams.get("studentsView"),
+    searchParams.get("groupId"),
+    searchParams.get("folder"),
+    searchParams.get("courseId"),
+    searchParams.get("studentId"),
+    searchParams.get("returnToGroupId"),
+    searchParams.get("groupSettings"),
+  ].join("|");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [scrollResetKey]);
+
   // Sync org-wide theme from DB (source of truth across devices/staff).
   // The hook respects `enforce` — it applies only when the organization
   // has enabled the shared interface toggle.
