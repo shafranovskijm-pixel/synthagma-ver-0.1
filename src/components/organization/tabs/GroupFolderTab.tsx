@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronDown, ChevronUp, ChevronRight, RefreshCw } from "lucide-react";
+import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronDown, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { GroupDocumentsFolder } from "@/components/organization/group-folder/Gro
 import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
-import { resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
+import { canonicalCourseHours, programHoursMismatch, resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
@@ -104,6 +104,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
+  const [courseEnrollmentCount, setCourseEnrollmentCount] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const folderParam = searchParams.get("folder");
@@ -174,6 +175,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           .eq("student_group_id", groupId);
 
         const userIds = (profiles || []).map((p: any) => p.user_id);
+        if (!cancelled) setCourseEnrollmentCount(0);
 
         let resolvedCourseId: string | null = linkedCourseId;
         if (!resolvedCourseId && userIds.length > 0) {
@@ -190,6 +192,14 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             .eq("id", resolvedCourseId)
             .maybeSingle();
           if (!cancelled) setCourseInfo((courseRow as any) || null);
+          if (userIds.length > 0) {
+            const { data: courseEnrollments } = await (supabase as any)
+              .from("enrollments")
+              .select("user_id")
+              .eq("course_id", resolvedCourseId)
+              .in("user_id", userIds);
+            if (!cancelled) setCourseEnrollmentCount(new Set((courseEnrollments || []).map((row: any) => row.user_id)).size);
+          }
         } else if (!cancelled) {
           setCourseInfo(null);
         }
@@ -327,19 +337,22 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const resolvedCourseId = group?.course_id || courseInfo?.id || null;
 
   const resolvedProgramHours = group?.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0;
+  const courseMasterHours = canonicalCourseHours(courseInfo);
+  const hasProgramHoursMismatch = programHoursMismatch(group?.program_hours, courseInfo);
 
   /** Критичные поля: без них документы бессмысленны — генерация блокируется. */
   const blockingDocFields = useMemo(() => {
     const missing: string[] = [];
     if (!resolvedProgramTitle) missing.push("название программы (или курс группы)");
     if (!resolvedProgramHours) missing.push("объём часов");
+    if (hasProgramHoursMismatch) missing.push(`часы группы (${group?.program_hours}) не совпадают с курсом (${courseMasterHours})`);
     if (!orgInfo?.inn) missing.push("ИНН учебного центра");
     if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
     // Юридически обязательные поля без «типовых» подстановок.
     if (!orgInfo?.director_position) missing.push("должность руководителя учебного центра");
     if (!group?.program_form) missing.push("форма обучения группы");
     return missing;
-  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form]);
+  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours]);
 
   const missingDocFields = useMemo(() => {
     const missing = [...blockingDocFields];
@@ -349,6 +362,16 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if ((group?.training_dates || []).length !== 4) missing.push("4 даты занятий для журнала");
     return missing;
   }, [blockingDocFields, group]);
+
+  const frdoReadyCount = useMemo(
+    () => students.filter(student => resolveFrdoReadiness(student.frdo, student.full_name).status === "complete").length,
+    [students],
+  );
+  const participantsReady = students.length > 0;
+  const learningReady = participantsReady && !!resolvedCourseId && courseEnrollmentCount === students.length;
+  const documentsReady = missingDocFields.length === 0 && counts.contracts > 0;
+  const frdoReady = participantsReady && frdoReadyCount === students.length;
+  const readyStepsCount = [participantsReady, learningReady, documentsReady, frdoReady].filter(Boolean).length;
 
 
 
@@ -409,6 +432,36 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const currentFolderCount = openFolder
     ? folderCards.find(folder => folder.key === openFolder)?.count ?? 0
     : folderCards.length;
+  const readinessSteps = [
+    {
+      title: "Участники",
+      detail: participantsReady ? `${students.length} в группе` : "Добавьте учеников",
+      ready: participantsReady,
+      icon: Users,
+      action: () => setShowMembers(true),
+    },
+    {
+      title: "Обучение",
+      detail: !resolvedCourseId ? "Курс не привязан" : `${courseEnrollmentCount} из ${students.length} зачислено`,
+      ready: learningReady,
+      icon: BookOpen,
+      action: () => resolvedCourseId ? navigate(courseDetailsPathForGroup(resolvedCourseId)) : setSettingsOpen(true),
+    },
+    {
+      title: "Документы",
+      detail: documentsReady ? "Данные готовы" : `${missingDocFields.length + (counts.contracts > 0 ? 0 : 1)} замечаний`,
+      ready: documentsReady,
+      icon: FileText,
+      action: () => setOpenFolder("docs"),
+    },
+    {
+      title: "ФИС ФРДО",
+      detail: `${frdoReadyCount} из ${students.length} готовы`,
+      ready: frdoReady,
+      icon: Shield,
+      action: () => navigate(groupContextPath("frdo", { groupId, courseId: resolvedCourseId })),
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -566,6 +619,40 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             )}
           </div>
         )}
+      </Card>
+
+      <Card className="rounded-2xl border-border p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Готовность группы к выпуску</h2>
+            <p className="text-sm text-muted-foreground">Все зависимые действия собраны в одном месте.</p>
+          </div>
+          <Badge variant={readyStepsCount === readinessSteps.length ? "default" : "secondary"} className="rounded-full">
+            {readyStepsCount} из {readinessSteps.length} этапов
+          </Badge>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {readinessSteps.map(step => (
+            <button
+              key={step.title}
+              type="button"
+              onClick={step.action}
+              className="flex items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-muted/50"
+            >
+              <div className={step.ready ? "text-emerald-600" : "text-amber-600"}>
+                {step.ready ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <step.icon className="h-4 w-4" />
+                  <span className="truncate">{step.title}</span>
+                </div>
+                <div className="mt-0.5 truncate text-xs text-muted-foreground">{step.detail}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
       </Card>
 
       {/* Windows Explorer inspired workspace */}

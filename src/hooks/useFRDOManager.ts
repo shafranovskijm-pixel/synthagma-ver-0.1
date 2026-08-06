@@ -371,5 +371,6 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
     enrollmentsMap, organizationId,
     visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
+    refresh: loadData,
   };
 }

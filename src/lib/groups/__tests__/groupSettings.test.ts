@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { groupCourseDefaults, resolveUniqueCommonCourseId, verifySavedSettings } from "../groupSettings";
+import {
+  canonicalCourseHours,
+  collectTrainingDates,
+  groupCourseDefaults,
+  normalizeIsoDate,
+  programHoursMismatch,
+  resolveUniqueCommonCourseId,
+  suggestTrainingDates,
+  verifySavedSettings,
+} from "../groupSettings";
 
 describe("group course defaults", () => {
   it("предзаполняет группу данными выбранного курса", () => {
@@ -24,6 +33,34 @@ describe("group course defaults", () => {
       program_hours: null,
       program_form: null,
     });
+  });
+});
+
+describe("group lifecycle consistency", () => {
+  const course = { id: "course-1", duration: "32 часа", frdo_duration_hours: 40 };
+
+  it("считает настройки ФРДО курса мастер-источником часов", () => {
+    expect(canonicalCourseHours(course)).toBe(40);
+    expect(programHoursMismatch(32, course)).toBe(true);
+    expect(programHoursMismatch(40, course)).toBe(false);
+  });
+
+  it("читает даты из реально видимых полей с резервом из состояния", () => {
+    expect(collectTrainingDates(
+      ["2026-08-06", "", "2026-08-10", "2026-08-12"],
+      ["", "2026-08-08", "", ""],
+    )).toEqual(["2026-08-06", "2026-08-08", "2026-08-10", "2026-08-12"]);
+  });
+
+  it("равномерно предлагает четыре даты внутри периода", () => {
+    expect(suggestTrainingDates("2026-08-06", "2026-08-12")).toEqual([
+      "2026-08-06", "2026-08-08", "2026-08-10", "2026-08-12",
+    ]);
+  });
+
+  it("отбрасывает несуществующие ISO-даты", () => {
+    expect(normalizeIsoDate("2026-02-30")).toBe("");
+    expect(normalizeIsoDate("2026-02-28")).toBe("2026-02-28");
   });
 });
 

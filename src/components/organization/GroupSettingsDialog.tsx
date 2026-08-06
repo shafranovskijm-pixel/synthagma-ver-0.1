@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +6,17 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { buildGroupSettingsPatch, verifySavedSettings } from "@/lib/groups/groupSettings";
+import {
+  buildGroupSettingsPatch,
+  canonicalCourseHours,
+  collectTrainingDates,
+  programHoursMismatch,
+  suggestTrainingDates,
+  verifySavedSettings,
+} from "@/lib/groups/groupSettings";
 
 
 interface GroupSettings {
@@ -108,6 +115,14 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   const [settings, setSettings] = useState<GroupSettings | null>(null);
   const [seatLimitEnabled, setSeatLimitEnabled] = useState(false);
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const trainingDateRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const linkedCourse = useMemo(
+    () => courses.find(course => course.id === settings?.course_id) ?? null,
+    [courses, settings?.course_id],
+  );
+  const linkedCourseHours = canonicalCourseHours(linkedCourse);
+  const hasHoursMismatch = programHoursMismatch(settings?.program_hours, linkedCourse);
 
   useEffect(() => {
     if (!open || !groupId) return;
@@ -149,7 +164,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
     setCourses((data || []) as any as CourseOption[]);
   };
 
-  /** Привязка курса подтягивает программу/часы/форму, если поля пустые */
+  /** Курс является мастер-источником программы/часов/формы при новой привязке. */
   const applyCourse = (courseId: string | null) => {
     const course = courses.find(c => c.id === courseId);
     setSettings(prev => {
@@ -158,9 +173,9 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       return {
         ...prev,
         course_id: course.id,
-        program_title: prev.program_title || course.title || null,
-        program_hours: prev.program_hours ?? (course.frdo_duration_hours ?? course.duration ?? null),
-        program_form: prev.program_form || course.training_form || null,
+        program_title: course.title || null,
+        program_hours: canonicalCourseHours(course),
+        program_form: course.training_form || null,
       };
     });
   };
@@ -172,7 +187,12 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       return;
     }
     setSaving(true);
-    const patch = buildGroupSettingsPatch(settings as any, seatLimitEnabled);
+    const visibleTrainingDates = Array.from({ length: 4 }, (_, index) => trainingDateRefs.current[index]?.value);
+    const settingsForSave = {
+      ...settings,
+      training_dates: collectTrainingDates(visibleTrainingDates, settings.training_dates),
+    };
+    const patch = buildGroupSettingsPatch(settingsForSave as any, seatLimitEnabled);
     try {
       // Сохранение через серверную функцию: она сама проверяет права и
       // возвращает обновлённую строку, поэтому «тихий» отказ RLS невозможен.
@@ -374,7 +394,29 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                               placeholder="72"
                               className="rounded-lg"
                             />
+                            {linkedCourseHours && (
+                              <p className={cn("mt-1 text-xs", hasHoursMismatch ? "text-destructive" : "text-muted-foreground")}>
+                                В курсе указано: {linkedCourseHours} ч.
+                              </p>
+                            )}
                           </div>
+                          {hasHoursMismatch && (
+                            <div className="sm:col-span-2 flex items-start justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                              <div className="flex items-start gap-2 text-sm text-destructive">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span>Часы группы не совпадают с курсом. До синхронизации выпуск документов будет заблокирован.</span>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="shrink-0 rounded-lg"
+                                onClick={() => update({ program_hours: linkedCourseHours })}
+                              >
+                                Взять {linkedCourseHours} ч.
+                              </Button>
+                            </div>
+                          )}
                           <div className="sm:col-span-2">
                             <label className="text-sm font-medium mb-1.5 block">Название программы</label>
                             <Input
@@ -425,11 +467,28 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                             </p>
                           </div>
                           <div className="sm:col-span-2">
-                            <label className="text-sm font-medium mb-1.5 block">Даты занятий для журнала</label>
+                            <div className="mb-1.5 flex items-center justify-between gap-3">
+                              <label className="text-sm font-medium">Даты занятий для журнала</label>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-lg gap-1.5"
+                                disabled={!settings.start_date || !settings.end_date}
+                                onClick={() => {
+                                  const dates = suggestTrainingDates(settings.start_date, settings.end_date);
+                                  update({ training_dates: dates });
+                                }}
+                              >
+                                <CalendarDays className="h-3.5 w-3.5" />
+                                Заполнить из периода
+                              </Button>
+                            </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               {Array.from({ length: 4 }, (_, index) => (
                                 <Input
                                   key={index}
+                                  ref={element => { trainingDateRefs.current[index] = element; }}
                                   type="date"
                                   aria-label={`Дата занятий ${index + 1}`}
                                   value={settings.training_dates?.[index] || ""}

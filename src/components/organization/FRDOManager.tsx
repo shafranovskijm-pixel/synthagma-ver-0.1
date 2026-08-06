@@ -29,6 +29,7 @@ export function FRDOManager({
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
     visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
+    refresh,
   } = useFRDOManager(organizationId, { groupId, courseId });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,7 +152,7 @@ export function FRDOManager({
         )}
       </div>
 
-      <FRDOExportDialog isOpen={showExportDialog} onOpenChange={setShowExportDialog} student={selectedStudentForExport ? { id: selectedStudentForExport.user_id, user_id: selectedStudentForExport.user_id, name: selectedStudentForExport.name, email: selectedStudentForExport.email } : null} organizationId={organizationId} enrollment={selectedEnrollmentForExport as any} />
+      <FRDOExportDialog isOpen={showExportDialog} onOpenChange={setShowExportDialog} student={selectedStudentForExport ? { id: selectedStudentForExport.user_id, user_id: selectedStudentForExport.user_id, name: selectedStudentForExport.name, email: selectedStudentForExport.email } : null} organizationId={organizationId} enrollment={selectedEnrollmentForExport as any} onSaved={refresh} />
       <FrdoFileSanitizerDialog open={showSanitizer} onOpenChange={setShowSanitizer} />
     </div>
   );

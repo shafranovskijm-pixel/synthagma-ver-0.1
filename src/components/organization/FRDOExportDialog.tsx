@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { formatSnils } from "@/utils/formatSnils";
 import {
   Dialog,
@@ -39,6 +39,7 @@ import { CitizenshipCombobox } from "./CitizenshipCombobox";
 import { normalizeRuPhone } from "@/utils/phoneParser";
 import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
 import { localDateIso } from "@/lib/date/localDate";
+import { normalizeIsoDate } from "@/lib/groups/groupSettings";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ interface FRDOExportDialogProps {
     email: string;
   } | null;
   organizationId: string;
+  onSaved?: () => void | Promise<void>;
   enrollment?: {
     id: string;
     course_title: string;
@@ -94,12 +96,13 @@ const defaultFRDOData: FRDOData = {
   qualification_name: "", profession_name: "", qualification_rank: "" };
 
 export function FRDOExportDialog({
-  isOpen, onOpenChange, student, organizationId, enrollment }: FRDOExportDialogProps) {
+  isOpen, onOpenChange, student, organizationId, enrollment, onSaved }: FRDOExportDialogProps) {
   const [activeTab, setActiveTab] = useState("personal");
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [phone, setPhone] = useState("");
+  const birthDateRef = useRef<HTMLInputElement | null>(null);
   const [courseData, setCourseData] = useState<{
     title: string; duration: string | null; training_form?: string | null;
     frdo_program_type?: string | null; frdo_document_type?: string | null;
@@ -193,10 +196,11 @@ export function FRDOExportDialog({
     if (!student) return;
     setIsSaving(true);
     try {
+      const visibleBirthDate = normalizeIsoDate(birthDateRef.current?.value);
+      const birthDate = visibleBirthDate || normalizeIsoDate(frдоData.birth_date);
       const dataToSave = {
-        user_id: student.user_id, organization_id: organizationId,
         last_name: frдоData.last_name || null, first_name: frдоData.first_name || null,
-        middle_name: frдоData.middle_name || null, birth_date: frдоData.birth_date || null,
+        middle_name: frдоData.middle_name || null, birth_date: birthDate || null,
         gender: frдоData.gender || null, snils: frдоData.snils || null,
         citizenship_code: frдоData.citizenship_code || "643",
         education_level: frдоData.education_level || null,
@@ -212,21 +216,31 @@ export function FRDOExportDialog({
         profession_name: frдоData.profession_name || null,
         qualification_rank: frдоData.qualification_rank || null };
 
-      if (frдоData.id) {
-        const { error } = await supabase.from("student_frdo_data").update(dataToSave).eq("id", frдоData.id);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from("student_frdo_data").insert(dataToSave).select().single();
-        if (error) throw error;
-        setFrdoData((prev) => ({ ...prev, id: data.id }));
+      const { data: savedResult, error: saveError } = await (supabase as any).rpc("save_student_frdo_data", {
+        p_organization_id: organizationId,
+        p_user_id: student.user_id,
+        p_data: dataToSave,
+      });
+      if (saveError) throw saveError;
+      const saved = Array.isArray(savedResult) ? savedResult[0] : savedResult;
+      if (!saved?.id) throw new Error("Сервер не подтвердил сохранение данных ФРДО");
+      const savedBirthDate = normalizeIsoDate(saved.birth_date);
+      if (birthDate && savedBirthDate !== birthDate) {
+        throw new Error("Дата рождения не сохранилась. Обновите страницу и повторите.");
       }
+      setFrdoData((prev) => ({
+        ...prev,
+        ...saved,
+        birth_date: savedBirthDate,
+      }));
 
       const normalizedPhone = phone.trim() ? (normalizeRuPhone(phone) || phone.trim()) : null;
       const { error: phoneErr } = await supabase
         .from("profiles").update({ phone: normalizedPhone }).eq("user_id", student.user_id);
       if (phoneErr) console.error("phone update error", phoneErr);
 
-      toast.success("Данные сохранены");
+      await onSaved?.();
+      toast.success("Данные сохранены и проверены");
     } catch (error) {
       console.error("Error saving FRDO data:", error);
       toast.error("Ошибка сохранения данных");
@@ -435,7 +449,12 @@ export function FRDOExportDialog({
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Дата рождения</Label>
-                      <Input type="date" value={frдоData.birth_date} onChange={(e) => updateField("birth_date", e.target.value)} />
+                      <Input
+                        ref={birthDateRef}
+                        type="date"
+                        value={frдоData.birth_date}
+                        onChange={(e) => updateField("birth_date", e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Пол</Label>

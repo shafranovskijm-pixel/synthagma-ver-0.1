@@ -141,6 +141,71 @@ export interface GroupCourseDefaultsSource {
   training_form?: string | null;
 }
 
+/** Канонический объём программы берётся из настроек ФРДО курса, затем из duration. */
+export function canonicalCourseHours(course: GroupCourseDefaultsSource | null | undefined): number | null {
+  if (!course) return null;
+  const rawHours = course.frdo_duration_hours ?? course.duration;
+  const match = rawHours == null ? null : String(rawHours).replace(",", ".").match(/\d+(?:\.\d+)?/);
+  const parsedHours = match ? Math.round(Number(match[0])) : 0;
+  return Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : null;
+}
+
+export function programHoursMismatch(
+  groupHours: string | number | null | undefined,
+  course: GroupCourseDefaultsSource | null | undefined,
+): boolean {
+  const courseHours = canonicalCourseHours(course);
+  if (courseHours === null || groupHours === null || groupHours === undefined || groupHours === "") return false;
+  return Number(groupHours) !== courseHours;
+}
+
+export function normalizeIsoDate(value: unknown): string {
+  const text = String(value ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return "";
+  const [year, month, day] = text.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    ? text
+    : "";
+}
+
+/**
+ * Берёт реальные значения из видимых date-полей, а состояние формы использует
+ * как резерв. Это защищает от браузеров, где нативный date изменился визуально,
+ * но React change-событие не было доставлено.
+ */
+export function collectTrainingDates(
+  visibleValues: Array<string | null | undefined>,
+  stateValues: Array<string | null | undefined> = [],
+): string[] {
+  return Array.from({ length: 4 }, (_, index) =>
+    normalizeIsoDate(visibleValues[index]) || normalizeIsoDate(stateValues[index]),
+  ).filter(Boolean);
+}
+
+/** Равномерно предлагает до четырёх дат внутри периода группы. */
+export function suggestTrainingDates(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  count = 4,
+): string[] {
+  const start = normalizeIsoDate(startDate);
+  const end = normalizeIsoDate(endDate);
+  if (!start || !end || count < 1) return [];
+  const startMs = Date.parse(`${start}T00:00:00Z`);
+  const endMs = Date.parse(`${end}T00:00:00Z`);
+  if (endMs < startMs) return [];
+  const dayMs = 86_400_000;
+  const daySpan = Math.round((endMs - startMs) / dayMs);
+  const resultCount = Math.min(count, daySpan + 1);
+  if (resultCount === 1) return [start];
+  const dates = Array.from({ length: resultCount }, (_, index) => {
+    const offset = Math.round((daySpan * index) / (resultCount - 1));
+    return new Date(startMs + offset * dayMs).toISOString().slice(0, 10);
+  });
+  return Array.from(new Set(dates));
+}
+
 /** Поля группы, которые безопасно предзаполнить при выборе курса в момент создания. */
 export function groupCourseDefaults(course: GroupCourseDefaultsSource | null | undefined) {
   if (!course) {
@@ -152,14 +217,10 @@ export function groupCourseDefaults(course: GroupCourseDefaultsSource | null | u
     };
   }
 
-  const rawHours = course.frdo_duration_hours ?? course.duration;
-  const match = rawHours == null ? null : String(rawHours).replace(",", ".").match(/\d+(?:\.\d+)?/);
-  const parsedHours = match ? Math.round(Number(match[0])) : 0;
-
   return {
     course_id: course.id,
     program_title: course.title?.trim() || null,
-    program_hours: Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : null,
+    program_hours: canonicalCourseHours(course),
     program_form: course.training_form?.trim() || null,
   };
 }
