@@ -40,6 +40,9 @@ $$;
 COMMENT ON FUNCTION public.storage_try_uuid(text) IS
   'Безопасный каст сегмента storage-пути в uuid; NULL если сегмент не uuid.';
 
+REVOKE ALL ON FUNCTION public.storage_try_uuid(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.storage_try_uuid(text) TO authenticated, service_role;
+
 -- Проверки предпосылок.
 DO $$
 BEGIN
@@ -78,6 +81,9 @@ $$;
 COMMENT ON FUNCTION public.can_access_signed_contract_object(text) IS
   'Права на signed/{signature_id}_{hash}.pdf: admin, отправитель, получатель или сотрудник организации подписи.';
 
+REVOKE ALL ON FUNCTION public.can_access_signed_contract_object(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.can_access_signed_contract_object(text) TO authenticated, service_role;
+
 -- ============================================================================
 -- 1. chat-attachments  →  {org_id}/{student_user_id}/...
 -- ============================================================================
@@ -93,7 +99,11 @@ FOR SELECT TO authenticated
 USING (
   bucket_id = 'chat-attachments'
   AND (
-    (storage.foldername(name))[2] = auth.uid()::text
+    (
+      (storage.foldername(name))[2] = auth.uid()::text
+      AND public.current_organization_id() IS NOT NULL
+      AND (storage.foldername(name))[1] = public.current_organization_id()::text
+    )
     OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.read')
   )
 );
@@ -103,8 +113,12 @@ FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'chat-attachments'
   AND (
-    (storage.foldername(name))[2] = auth.uid()::text
-    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.read')
+    (
+      (storage.foldername(name))[2] = auth.uid()::text
+      AND public.current_organization_id() IS NOT NULL
+      AND (storage.foldername(name))[1] = public.current_organization_id()::text
+    )
+    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.write')
   )
 );
 
@@ -113,15 +127,23 @@ FOR UPDATE TO authenticated
 USING (
   bucket_id = 'chat-attachments'
   AND (
-    (storage.foldername(name))[2] = auth.uid()::text
-    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.manage')
+    (
+      (storage.foldername(name))[2] = auth.uid()::text
+      AND public.current_organization_id() IS NOT NULL
+      AND (storage.foldername(name))[1] = public.current_organization_id()::text
+    )
+    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.write')
   )
 )
 WITH CHECK (
   bucket_id = 'chat-attachments'
   AND (
-    (storage.foldername(name))[2] = auth.uid()::text
-    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.manage')
+    (
+      (storage.foldername(name))[2] = auth.uid()::text
+      AND public.current_organization_id() IS NOT NULL
+      AND (storage.foldername(name))[1] = public.current_organization_id()::text
+    )
+    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.write')
   )
 );
 
@@ -130,8 +152,12 @@ FOR DELETE TO authenticated
 USING (
   bucket_id = 'chat-attachments'
   AND (
-    (storage.foldername(name))[2] = auth.uid()::text
-    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.manage')
+    (
+      (storage.foldername(name))[2] = auth.uid()::text
+      AND public.current_organization_id() IS NOT NULL
+      AND (storage.foldername(name))[1] = public.current_organization_id()::text
+    )
+    OR public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'students.write')
   )
 );
 
@@ -192,25 +218,25 @@ CREATE POLICY "frdo_documents_insert" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'frdo-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 );
 
 CREATE POLICY "frdo_documents_update" ON storage.objects
 FOR UPDATE TO authenticated
 USING (
   bucket_id = 'frdo-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 )
 WITH CHECK (
   bucket_id = 'frdo-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 );
 
 CREATE POLICY "frdo_documents_delete" ON storage.objects
 FOR DELETE TO authenticated
 USING (
   bucket_id = 'frdo-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 );
 
 -- ============================================================================
@@ -227,25 +253,25 @@ CREATE POLICY "library_files_insert" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'library-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 );
 
 CREATE POLICY "library_files_update" ON storage.objects
 FOR UPDATE TO authenticated
 USING (
   bucket_id = 'library-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 )
 WITH CHECK (
   bucket_id = 'library-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 );
 
 CREATE POLICY "library_files_delete" ON storage.objects
 FOR DELETE TO authenticated
 USING (
   bucket_id = 'library-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 );
 
 -- ============================================================================
@@ -262,25 +288,25 @@ CREATE POLICY "program_files_insert" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'program-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 );
 
 CREATE POLICY "program_files_update" ON storage.objects
 FOR UPDATE TO authenticated
 USING (
   bucket_id = 'program-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 )
 WITH CHECK (
   bucket_id = 'program-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 );
 
 CREATE POLICY "program_files_delete" ON storage.objects
 FOR DELETE TO authenticated
 USING (
   bucket_id = 'program-files'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[2]), 'documents.write')
 );
 
 -- ============================================================================
@@ -305,25 +331,25 @@ CREATE POLICY "org_documents_upload" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'org-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 );
 
 CREATE POLICY "org_documents_update" ON storage.objects
 FOR UPDATE TO authenticated
 USING (
   bucket_id = 'org-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 )
 WITH CHECK (
   bucket_id = 'org-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 );
 
 CREATE POLICY "org_documents_delete" ON storage.objects
 FOR DELETE TO authenticated
 USING (
   bucket_id = 'org-documents'
-  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.manage')
+  AND public.can_access_organization(public.storage_try_uuid((storage.foldername(name))[1]), 'documents.write')
 );
 
 -- ============================================================================
