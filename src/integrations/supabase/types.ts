@@ -11532,6 +11532,10 @@ export type Database = {
         Args: { _organization_id: string; _permission?: string }
         Returns: boolean
       }
+      can_access_signed_contract_object: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -12467,6 +12471,7 @@ export type Database = {
         Args: { p_id: string; p_table: string }
         Returns: boolean
       }
+      storage_try_uuid: { Args: { _value: string }; Returns: string }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       update_signature_revision_html: {
         Args: { p_html: string; p_revision_id: string }
