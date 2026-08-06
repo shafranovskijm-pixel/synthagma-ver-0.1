@@ -12441,6 +12441,46 @@ export type Database = {
         Args: { p_reason?: string; p_signature_id: string }
         Returns: Json
       }
+      save_student_frdo_data: {
+        Args: { p_data: Json; p_organization_id: string; p_user_id: string }
+        Returns: {
+          birth_date: string | null
+          citizenship_code: string | null
+          created_at: string
+          education_doc_last_name: string | null
+          education_doc_number: string | null
+          education_doc_series: string | null
+          education_form: string | null
+          education_level: string | null
+          financing_source: string | null
+          first_name: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          middle_name: string | null
+          organization_id: string
+          passport_department_code: string | null
+          passport_issue_date: string | null
+          passport_issued_by: string | null
+          passport_number: string | null
+          passport_series: string | null
+          profession_name: string | null
+          professional_area: string | null
+          qualification_name: string | null
+          qualification_rank: string | null
+          snils: string | null
+          specialty_group: string | null
+          training_form: string | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "student_frdo_data"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
         Returns: undefined
