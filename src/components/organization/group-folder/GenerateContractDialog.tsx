@@ -62,6 +62,12 @@ interface Props {
    * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
    */
   quick?: boolean;
+  /**
+   * Фиксирует мастер на одном сценарии. Используется отдельной кнопкой
+   * «Физлицо» в папке договоров, чтобы не предлагать рядом устаревший
+   * HTML-сценарий компании вместо Word-шаблона клиента.
+   */
+  fixedScenario?: ContractScenario;
   /** Предзаполнение из настроек группы: курс, программа, часы, форма, цена, даты. */
   groupDefaults?: {
     courseId?: string | null;
@@ -89,7 +95,7 @@ const STEPS = [
   { id: 5, title: "Номер и проверка", icon: Check },
 ];
 
-export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false, groupDefaults }: Props) {
+export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false, fixedScenario, groupDefaults }: Props) {
   const [step, setStep] = useState(1);
 
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -131,7 +137,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   useEffect(() => {
     if (!open) return;
     setStep(1);
-    setScenarioChosen(false);
+    setCounterparty(fixedScenario || "individual");
+    setScenarioChosen(!!fixedScenario);
     setStudentOverrides({});
     // Предзаполнение из настроек группы
     setCourseId(groupDefaults?.courseId || "");
@@ -367,9 +374,13 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     return findMissingVariables(selectedTpl.body_html, previewVariables);
   }, [selectedTpl, previewVariables]);
 
-  /** Нерешённые {{placeholder}} в готовом HTML — жёсткий стоп генерации. */
+  /**
+   * Незаполненные переменные и нерешённые {{placeholder}} — жёсткий стоп.
+   * Иначе пользователь может сохранить юридический документ с пустыми
+   * программой, ценой или реквизитами, хотя предпросмотр уже показывает разрыв.
+   */
   const leftoverPlaceholders = useMemo(() => findUnresolvedPlaceholders(previewHtml), [previewHtml]);
-  const generateDisabled = !selectedTpl || blockers.length > 0 || leftoverPlaceholders.length > 0;
+  const generateDisabled = !selectedTpl || blockers.length > 0 || missing.length > 0 || leftoverPlaceholders.length > 0;
 
   /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
   const variableGaps = useMemo(
@@ -570,7 +581,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
           <DialogHeader className="p-6 pb-3">
             <DialogTitle className="flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" />{quick ? "Быстрая генерация договора" : "Сгенерировать договор"}</DialogTitle>
             <DialogDescription>
-              {quick
+              {fixedScenario === "individual"
+                ? `Группа «${groupName}»: отдельный договор на каждого выбранного ученика. Используется универсальный шаблон организации; Word-шаблон клиента для компании доступен отдельной кнопкой.`
+                : quick
                 ? `Группа «${groupName}»: шаблон по умолчанию, все ученики (${students.length}), сегодняшняя дата, авто-номер. Проверьте и сохраните.`
                 : `Группа «${groupName}». Заполните мастер по шагам.`}
             </DialogDescription>
@@ -620,10 +633,12 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                 <Label className="text-base">Кто заказчик по договору?</Label>
                 {quick && (
                   <p className="text-xs text-muted-foreground">
-                    Быстрая генерация: выберите сценарий — остальные данные (все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию) подставятся автоматически.
+                    {fixedScenario
+                      ? "Сценарий уже выбран. Данные учеников, группы и организации подставятся автоматически; перед выпуском мастер покажет все незаполненные поля."
+                      : "Быстрая генерация: выберите сценарий — остальные данные (все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию) подставятся автоматически."}
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className={cn("grid gap-3", fixedScenario ? "grid-cols-1" : "grid-cols-2")}>
                   <button type="button" onClick={() => { setCounterparty("individual"); setScenarioChosen(true); }}
                     className={cn(
                       "p-5 rounded-2xl border-2 text-left transition-all",
@@ -633,19 +648,21 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     <div className="text-base font-semibold">Физическое лицо</div>
                     <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
                   </button>
-                  <button type="button" onClick={() => { setCounterparty("legal"); setScenarioChosen(true); }}
-                    className={cn(
-                      "p-5 rounded-2xl border-2 text-left transition-all",
-                      scenarioChosen && counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-                    )}>
-                    <Building2 className="w-6 h-6 text-primary mb-2" />
-                    <div className="text-base font-semibold">Компания</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {quick
-                        ? "Универсальный HTML-макет. Word-договор клиента создаётся отдельной кнопкой в папке договоров"
-                        : "Один универсальный договор с заказчиком и списком слушателей в приложении"}
-                    </div>
-                  </button>
+                  {!fixedScenario && (
+                    <button type="button" onClick={() => { setCounterparty("legal"); setScenarioChosen(true); }}
+                      className={cn(
+                        "p-5 rounded-2xl border-2 text-left transition-all",
+                        scenarioChosen && counterparty === "legal" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      )}>
+                      <Building2 className="w-6 h-6 text-primary mb-2" />
+                      <div className="text-base font-semibold">Компания</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {quick
+                          ? "Универсальный HTML-макет. Word-договор клиента создаётся отдельной кнопкой в папке договоров"
+                          : "Один универсальный договор с заказчиком и списком слушателей в приложении"}
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -934,7 +951,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     <Alert>
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription className="text-xs">
-                        Договор можно выпустить, но в нём будут пропуски: {warnings.map(b => b.label).join(", ")}
+                        Требуют проверки: {warnings.map(b => b.label).join(", ")}. Если эти поля используются выбранным шаблоном, выпуск будет заблокирован.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -947,10 +964,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     </Alert>
                   )}
                   {selectedTpl && missing.length > 0 && (
-                    <Alert>
+                    <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription className="text-xs">
-                        Не заполнено: {missing.slice(0, 8).join(", ")}{missing.length > 8 ? `… и ещё ${missing.length - 8}` : ""}
+                        Генерация заблокирована: заполните {missing.slice(0, 8).join(", ")}{missing.length > 8 ? `… и ещё ${missing.length - 8}` : ""}.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -985,6 +1002,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   ? `Не заполнено: ${blockers.map(b => b.label).join(", ")}`
                   : step === 5 && leftoverPlaceholders.length > 0
                     ? `Остались незаполненные переменные: ${leftoverPlaceholders.slice(0, 6).join(", ")}`
+                    : step === 5 && missing.length > 0
+                      ? `Заполните переменные: ${missing.slice(0, 6).join(", ")}`
                     : `Шаг ${step} из ${STEPS.length}`}
             </div>
             <div className="flex items-center gap-2">

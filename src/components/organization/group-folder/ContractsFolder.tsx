@@ -286,6 +286,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
           students={students}
           open={quickOpen}
           quick
+          fixedScenario="individual"
           onClose={() => setQuickOpen(false)}
           onGenerated={refreshAll}
         />
