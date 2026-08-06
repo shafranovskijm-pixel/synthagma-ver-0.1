@@ -16,6 +16,8 @@ export interface GroupSettingsFormValues {
   default_price: number | null;
   training_address: string | null;
   schedule_text: string | null;
+  instructor_name: string | null;
+  training_dates: string[];
   course_id: string | null;
   max_seats: number | null;
   strict_order: boolean | null;
@@ -42,6 +44,8 @@ export function groupSettingsDefaults(row: Partial<GroupSettingsFormValues> | nu
     default_price: row?.default_price ?? null,
     training_address: row?.training_address ?? null,
     schedule_text: row?.schedule_text ?? null,
+    instructor_name: row?.instructor_name ?? null,
+    training_dates: Array.isArray(row?.training_dates) ? row.training_dates.filter(Boolean) : [],
     course_id: row?.course_id ?? null,
     max_seats: row?.max_seats ?? null,
     strict_order: row?.strict_order ?? false,
@@ -62,7 +66,7 @@ export function groupSettingsDefaults(row: Partial<GroupSettingsFormValues> | nu
 export function buildGroupSettingsPatch(
   s: GroupSettingsFormValues,
   seatLimitEnabled: boolean,
-): Record<string, string | boolean | null> {
+): Record<string, string | boolean | null | string[]> {
   const str = (v: unknown) => (v === null || v === undefined || String(v).trim() === "" ? "" : String(v).trim());
   return {
     name: s.name.trim(),
@@ -76,6 +80,8 @@ export function buildGroupSettingsPatch(
     default_price: str(s.default_price),
     training_address: str(s.training_address),
     schedule_text: str(s.schedule_text),
+    instructor_name: str(s.instructor_name),
+    training_dates: (s.training_dates || []).map(str).filter(Boolean),
     course_id: str(s.course_id),
     max_seats: seatLimitEnabled ? String(s.max_seats || 30) : "",
     strict_order: !!s.strict_order,
@@ -91,7 +97,7 @@ export function buildGroupSettingsPatch(
 
 /** Проверка, что сервер реально сохранил ключевые поля документов. */
 export function verifySavedSettings(
-  patch: Record<string, string | boolean | null>,
+  patch: Record<string, string | boolean | null | string[]>,
   saved: Partial<GroupSettingsFormValues> | null,
 ): string[] {
   if (!saved) return ["строка группы не возвращена сервером"];
@@ -106,6 +112,8 @@ export function verifySavedSettings(
     ["default_price", saved.default_price],
     ["training_address", saved.training_address],
     ["schedule_text", saved.schedule_text],
+    ["instructor_name", saved.instructor_name],
+    ["training_dates", saved.training_dates],
   ];
   const bad: string[] = [];
   for (const [key, value] of checks) {
@@ -114,7 +122,10 @@ export function verifySavedSettings(
     const expectedValue = expected === "" ? null : expected;
     const actualValue = value === "" || value === undefined ? null : value;
     const numeric = key === "program_hours" || key === "default_price";
-    const equal = numeric && expectedValue !== null && actualValue !== null
+    const array = key === "training_dates";
+    const equal = array
+      ? JSON.stringify(expectedValue || []) === JSON.stringify(actualValue || [])
+      : numeric && expectedValue !== null && actualValue !== null
       ? Number(expectedValue) === Number(actualValue)
       : String(actualValue ?? "") === String(expectedValue ?? "");
     if (!equal) bad.push(String(key));

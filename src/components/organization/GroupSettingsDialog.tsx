@@ -25,6 +25,8 @@ interface GroupSettings {
   default_price: number | null;
   training_address: string | null;
   schedule_text: string | null;
+  instructor_name: string | null;
+  training_dates: string[];
   course_id: string | null;
   max_seats: number | null;
   curator_id: string | null;
@@ -409,6 +411,40 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                               placeholder="Пн–Пт, 10:00–17:00, 8 часов в день"
                               className="rounded-lg"
                             />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-medium mb-1.5 block">Преподаватель</label>
+                            <Input
+                              value={settings.instructor_name || ""}
+                              onChange={e => update({ instructor_name: e.target.value || null })}
+                              placeholder="Дроздов Дмитрий Викторович"
+                              className="rounded-lg"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Подставляется в журнал. Руководитель учебного центра не используется как замена.
+                            </p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-medium mb-1.5 block">Даты занятий для журнала</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {Array.from({ length: 4 }, (_, index) => (
+                                <Input
+                                  key={index}
+                                  type="date"
+                                  aria-label={`Дата занятий ${index + 1}`}
+                                  value={settings.training_dates?.[index] || ""}
+                                  onChange={e => {
+                                    const dates = Array.from({ length: 4 }, (_, i) => settings.training_dates?.[i] || "");
+                                    dates[index] = e.target.value;
+                                    update({ training_dates: dates.filter(Boolean).sort() });
+                                  }}
+                                  className="rounded-lg"
+                                />
+                              ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              В форме клиента четыре колонки: для итогового Word-журнала нужно заполнить все четыре.
+                            </p>
                           </div>
                           <div>
                             <label className="text-sm font-medium mb-1.5 block">Стоимость обучения, ₽</label>

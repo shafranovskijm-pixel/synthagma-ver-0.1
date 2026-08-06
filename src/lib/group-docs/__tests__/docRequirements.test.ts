@@ -10,6 +10,8 @@ const full = {
   start_date: "2026-01-10",
   end_date: "2026-02-10",
   students_count: 3,
+  instructor_name: "Иванов Иван Иванович",
+  training_dates_count: 4,
 };
 
 describe("missingDocRequirements", () => {
@@ -30,5 +32,11 @@ describe("missingDocRequirements", () => {
 
   it("считает нулевые часы пропуском", () => {
     expect(missingDocRequirements("class_journal", { ...full, program_hours: 0 })).toContain("объём часов");
+  });
+
+  it("журнал требует явного преподавателя и ровно 4 даты", () => {
+    expect(missingDocRequirements("class_journal", { ...full, instructor_name: "" })).toContain("преподаватель");
+    expect(missingDocRequirements("class_journal", { ...full, training_dates_count: 3 })).toContain("4 даты занятий");
+    expect(missingDocRequirements("class_journal", full)).toEqual([]);
   });
 });

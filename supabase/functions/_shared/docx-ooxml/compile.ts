@@ -177,10 +177,31 @@ export function expandRepeaterTable(
   const proto = rows[prototypeRow];
   if (!proto) throw new Error(`Повторитель: строка-прототип №${prototypeRow} не найдена`);
   const head = rows.slice(0, headerRows).map((r) => r.xml).join("");
-  const cloned = items.map((item) => replaceTokens(proto.xml, item)).join("");
+  const cloned = items
+    .map((item, index) => replaceTokens(uniqueCloneIds(proto.xml, index), item))
+    .join("");
   const first = rows[0];
   const last = rows[rows.length - 1];
   return tableXml.slice(0, first.start) + head + cloned + tableXml.slice(last.end);
+}
+
+/**
+ * Word требует уникальные w14:paraId/textId для клонированных абзацев.
+ * С дублями DOCX открывается, но может зависнуть при PDF-экспорте.
+ * Идентификаторы вычисляются детерминированно, чтобы результат был
+ * воспроизводимым и не требовал crypto/randomUUID в общем Deno/Node-модуле.
+ */
+export function uniqueCloneIds(xml: string, cloneIndex: number): string {
+  let ordinal = 0;
+  return xml.replace(/(w14:(?:paraId|textId)=")([0-9A-Fa-f]{8})(")/g, (_all, before, hex, after) => {
+    ordinal += 1;
+    const base = Number.parseInt(hex, 16) >>> 0;
+    let value = (
+      base ^ Math.imul(cloneIndex + 1, 0x9e3779b1) ^ Math.imul(ordinal, 0x85ebca77)
+    ) >>> 0;
+    if (value === 0) value = ordinal;
+    return `${before}${value.toString(16).padStart(8, "0").toUpperCase()}${after}`;
+  });
 }
 
 export interface CompileResult {

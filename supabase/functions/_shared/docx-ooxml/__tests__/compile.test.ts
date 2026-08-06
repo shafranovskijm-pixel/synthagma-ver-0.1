@@ -12,6 +12,7 @@ import {
   expandRepeaterTable,
   numberStudents,
   parseBodyElements,
+  uniqueCloneIds,
   validateSnapshot,
   type ContractSnapshot,
   type TemplateManifest,
@@ -123,6 +124,17 @@ describe("повторители", () => {
     expect(out).toContain("2 Б");
     expect(out).not.toContain("лишняя");
     expect(out).toContain("<w:tblPr/>");
+  });
+
+  it("выдаёт разные внутренние ID Word каждому клону", () => {
+    const row = '<w:p w14:paraId="5D9BAB32" w14:textId="77777777"><w:r><w:t>x</w:t></w:r></w:p>';
+    const first = uniqueCloneIds(row, 0);
+    const second = uniqueCloneIds(row, 1);
+    expect(first).not.toBe(row);
+    expect(second).not.toBe(row);
+    expect(first).not.toBe(second);
+    expect(first).toMatch(/w14:paraId="[0-9A-F]{8}"/);
+    expect(first).toMatch(/w14:textId="[0-9A-F]{8}"/);
   });
 
   it("падает без строки-прототипа", () => {

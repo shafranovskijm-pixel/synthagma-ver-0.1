@@ -25,13 +25,14 @@ import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocume
 import { useGroupFactualData } from "@/hooks/useGroupFactualData";
 import {
   LEGACY_LAYOUT_FORMAT,
-  LEGACY_LAYOUT_NOTICE,
   documentDataReadiness,
   type DocumentFillMode,
 } from "@/lib/group-docs/factualData";
 import { batchStatusLabel, groupDocumentBatches } from "@/lib/group-docs/factualResolvers";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
+import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
+import { openPrivateFile } from "@/utils/storageHelpers";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 
@@ -69,7 +70,7 @@ export function GroupDocumentsFolder({
   onOpenGroupSettings,
   onDataChanged,
 }: Props) {
-  const { documents, loading, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
+  const { documents, loading, refresh: refreshDocuments, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
   const [busy, setBusy] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
@@ -105,6 +106,8 @@ export function GroupDocumentsFolder({
     program_hours: ctx?.group.program_hours,
     start_date: ctx?.group.start_date,
     end_date: ctx?.group.end_date,
+    instructor_name: ctx?.group.instructor_name,
+    training_dates_count: ctx?.group.training_dates?.length || 0,
     students_count: ctx?.students.length || 0,
   }), [ctx]);
 
@@ -166,10 +169,24 @@ export function GroupDocumentsFolder({
         requestedStatus,
       };
 
-      const docs = types.length === 1
-        ? [generateDocument(ctx, types[0], genOpts)]
-        : generatePackage(ctx, types, genOpts);
-      const res = await saveGenerated(docs);
+      const hasDocxJournal = types.includes("class_journal");
+      const legacyTypes = types.filter(type => type !== "class_journal");
+      const docs = legacyTypes.length === 1
+        ? [generateDocument(ctx, legacyTypes[0], genOpts)]
+        : legacyTypes.length > 1
+          ? generatePackage(ctx, legacyTypes, genOpts)
+          : [];
+      const res = hasDocxJournal
+        ? await generateClassJournalDocx({
+            organizationId,
+            groupId,
+            fillMode: mode,
+            otherDocuments: docs,
+          }).then(async result => {
+            await refreshDocuments();
+            return result;
+          })
+        : await saveGenerated(docs);
       const ok = !!res;
       if (ok) onDataChanged?.();
       if (ok && types.length === 1) {
@@ -203,7 +220,20 @@ export function GroupDocumentsFolder({
     if (ok) toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
   };
 
-  const openDoc = (row: GroupDocumentRow, download = false) => {
+  const openDoc = async (row: GroupDocumentRow, download = false) => {
+    if (row.layout_format === "docx_ooxml") {
+      if (!row.file_path) {
+        toast.error("Файл Word недоступен");
+        return;
+      }
+      if (!download) {
+        toast.info("Открываем оригинал Word", {
+          description: "PDF-копия ещё не формируется, поэтому предпросмотр откроет DOCX.",
+        });
+      }
+      await openPrivateFile("billing-documents", row.file_path);
+      return;
+    }
     if (!row.html) { toast.error("HTML документа не сохранён"); return; }
     const doc = {
       id: row.id,
@@ -257,7 +287,9 @@ export function GroupDocumentsFolder({
             ? "Ячейки остаются честно пустыми — документ печатается как бланк и сохраняется со статусом «черновик»."
             : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
         </div>
-        <div className="text-xs text-muted-foreground mt-1">{LEGACY_LAYOUT_NOTICE}</div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Журнал формируется из оригинального Word-файла клиента; остальные 8 документов пока имеют пометку legacy_html.
+        </div>
         {mode === "data" && (
           <div className="mt-3 text-xs space-y-2">
             <div className="font-medium text-foreground">Источники и готовность данных перед генерацией:</div>
@@ -383,16 +415,25 @@ export function GroupDocumentsFolder({
                     <Badge variant="outline" className="rounded-full text-[10px]">
                       {row.fill_mode === "data" ? "По данным Синтагмы" : "Рабочий бланк"}
                     </Badge>
-                    {(row.layout_format || LEGACY_LAYOUT_FORMAT) === LEGACY_LAYOUT_FORMAT && (
+                    {(row.layout_format || LEGACY_LAYOUT_FORMAT) === LEGACY_LAYOUT_FORMAT ? (
                       <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
                         макет legacy_html
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" className="rounded-full text-[10px]">
+                        Word клиента · {row.template_version_label || "DOCX"}
+                      </Badge>
+                    )}
+                    {row.layout_format === "docx_ooxml" && row.pdf_status !== "ready" && (
+                      <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
+                        PDF пока недоступен
                       </Badge>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row)}>
-                    <Eye className="w-3.5 h-3.5" /> Превью
+                    <Eye className="w-3.5 h-3.5" /> {row.layout_format === "docx_ooxml" ? "Открыть" : "Превью"}
                   </Button>
                   <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row, true)}>
                     <Download className="w-3.5 h-3.5" />

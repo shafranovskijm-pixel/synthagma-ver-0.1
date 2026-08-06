@@ -80,7 +80,7 @@ describe("generateDocument: статусы и формат макета", () => 
     expulsion_order: "УЦ-2/2026",
   };
   const legacyTypes = GROUP_DOCUMENT_TYPES.filter(
-    t => t.folder === "docs" && t.key !== "contract",
+    t => t.folder === "docs" && t.key !== "contract" && t.key !== "class_journal",
   ).map(t => t.key as DocType);
 
   it("рабочий бланк всегда draft", () => {
@@ -107,7 +107,7 @@ describe("generateDocument: статусы и формат макета", () => 
     }
   });
 
-  it("девять legacy-документов помечены legacy_html и предупреждением", () => {
+  it("оставшиеся восемь legacy-документов помечены legacy_html и предупреждением", () => {
     for (const type of legacyTypes) {
       const doc = generateDocument(ctx, type, { mode: "blank", numbers: NUMS });
       expect(doc.layout_format).toBe(LEGACY_LAYOUT_FORMAT);

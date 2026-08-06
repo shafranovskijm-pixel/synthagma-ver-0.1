@@ -20,6 +20,13 @@ export interface GroupDocumentRow {
   fill_mode?: string | null;
   layout_format?: string | null;
   source_note?: string | null;
+  template_registry_key?: string | null;
+  template_version_label?: string | null;
+  template_sha256?: string | null;
+  variables_snapshot?: Record<string, any> | null;
+  docx_sha256?: string | null;
+  pdf_status?: string | null;
+  generation_status?: string | null;
   package_batch_id?: string | null;
   package_version?: number | null;
   is_current?: boolean | null;

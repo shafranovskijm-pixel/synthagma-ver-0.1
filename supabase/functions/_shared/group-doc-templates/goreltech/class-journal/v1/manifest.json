@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.group.class_journal",
+  "template_version": "1.0.0-draft",
+  "scenario": "group_class_journal",
+  "source_filename": "6. Журнал учета занятий.docx",
+  "source_sha256": "F22A2C6C5D0368C19FE744041BDAAC1702574AAE6FE69264141D5C52BF3729B1",
+  "template_sha256": "5B1F0407EE9940A965FD76FC85AECD4851F874C2EC69A1FD3A0334E443255CDE",
+  "render_policy": "filled_docx_is_the_single_source_for_preview_pdf_and_download",
+  "variables": [
+    {
+      "token": "[[GROUP_NUMBER]]",
+      "key": "group.number",
+      "type": "string",
+      "source": "student_groups.group_number",
+      "required": true
+    },
+    {
+      "token": "[[PROGRAM_TITLE]]",
+      "key": "program.title",
+      "type": "string",
+      "source": "student_groups.program_title_or_linked_course",
+      "required": true
+    },
+    {
+      "token": "[[PROGRAM_HOURS]]",
+      "key": "program.hours",
+      "type": "integer",
+      "source": "student_groups.program_hours_or_linked_course",
+      "required": true
+    },
+    {
+      "token": "[[INSTRUCTOR_SHORT]]",
+      "key": "group.instructor.short_name",
+      "type": "person_name",
+      "source": "student_groups.instructor_name",
+      "required": true
+    },
+    {
+      "token": "[[DIRECTOR_SIGNATURE]]",
+      "key": "organization.director.signature_name",
+      "type": "person_name",
+      "source": "organizations.director_name",
+      "required": true
+    },
+    {
+      "token": "[[DATE_1]]",
+      "key": "group.training_dates[0]",
+      "type": "date",
+      "source": "student_groups.training_dates",
+      "required": true
+    },
+    {
+      "token": "[[DATE_2]]",
+      "key": "group.training_dates[1]",
+      "type": "date",
+      "source": "student_groups.training_dates",
+      "required": true
+    },
+    {
+      "token": "[[DATE_3]]",
+      "key": "group.training_dates[2]",
+      "type": "date",
+      "source": "student_groups.training_dates",
+      "required": true
+    },
+    {
+      "token": "[[DATE_4]]",
+      "key": "group.training_dates[3]",
+      "type": "date",
+      "source": "student_groups.training_dates",
+      "required": true
+    },
+    {
+      "token": "[[N]]",
+      "key": "student.row_number",
+      "type": "integer",
+      "source": "computed",
+      "required": true,
+      "scope": "students[]"
+    },
+    {
+      "token": "[[STUDENT_NAME]]",
+      "key": "student.full_name",
+      "type": "person_name",
+      "source": "profiles.full_name",
+      "required": true,
+      "scope": "students[]"
+    },
+    {
+      "token": "[[MARK_1]]",
+      "key": "student.attendance[0]",
+      "type": "string",
+      "source": "attendance_or_blank",
+      "required": false,
+      "scope": "students[]"
+    },
+    {
+      "token": "[[MARK_2]]",
+      "key": "student.attendance[1]",
+      "type": "string",
+      "source": "attendance_or_blank",
+      "required": false,
+      "scope": "students[]"
+    },
+    {
+      "token": "[[MARK_3]]",
+      "key": "student.attendance[2]",
+      "type": "string",
+      "source": "attendance_or_blank",
+      "required": false,
+      "scope": "students[]"
+    },
+    {
+      "token": "[[MARK_4]]",
+      "key": "student.attendance[3]",
+      "type": "string",
+      "source": "attendance_or_blank",
+      "required": false,
+      "scope": "students[]"
+    }
+  ],
+  "repeaters": {
+    "students": {
+      "table_index": 0,
+      "header_rows": 2,
+      "prototype_row": 2,
+      "strategy": "clone_prototype_remove_unused"
+    }
+  },
+  "constraints": {
+    "training_dates_exact_count": 4,
+    "attendance_default": "blank",
+    "no_inferred_instructor": true,
+    "no_silent_date_truncation": true
+  },
+  "blocking_rules": [
+    "group number, program title, program hours, instructor and organization director are present",
+    "exactly four explicit training dates are present because the retained client form has four date columns",
+    "at least one student with a non-empty full name is present",
+    "attendance marks are never inferred from course completion",
+    "no unresolved token remains after compilation"
+  ],
+  "qa": {
+    "expected_pages": 1,
+    "orientation": "landscape",
+    "inspect_all_pages": true,
+    "preserve_package_parts_except": [
+      "word/document.xml"
+    ]
+  }
+}

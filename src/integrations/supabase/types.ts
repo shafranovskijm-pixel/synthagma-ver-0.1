@@ -4194,6 +4194,7 @@ export type Database = {
           document_number: string | null
           file_path: string | null
           fill_mode: string
+          generation_status: string
           group_id: string
           html: string | null
           id: string
@@ -4208,6 +4209,12 @@ export type Database = {
           student_user_id: string | null
           updated_at: string
           variables: Json
+          variables_snapshot: Json | null
+          template_registry_key: string | null
+          template_version_label: string | null
+          template_sha256: string | null
+          docx_sha256: string | null
+          pdf_status: string
         }
         Insert: {
           company_id?: string | null
@@ -4219,6 +4226,7 @@ export type Database = {
           document_number?: string | null
           file_path?: string | null
           fill_mode?: string
+          generation_status?: string
           group_id: string
           html?: string | null
           id?: string
@@ -4233,6 +4241,12 @@ export type Database = {
           student_user_id?: string | null
           updated_at?: string
           variables?: Json
+          variables_snapshot?: Json | null
+          template_registry_key?: string | null
+          template_version_label?: string | null
+          template_sha256?: string | null
+          docx_sha256?: string | null
+          pdf_status?: string
         }
         Update: {
           company_id?: string | null
@@ -4244,6 +4258,7 @@ export type Database = {
           document_number?: string | null
           file_path?: string | null
           fill_mode?: string
+          generation_status?: string
           group_id?: string
           html?: string | null
           id?: string
@@ -4258,6 +4273,12 @@ export type Database = {
           student_user_id?: string | null
           updated_at?: string
           variables?: Json
+          variables_snapshot?: Json | null
+          template_registry_key?: string | null
+          template_version_label?: string | null
+          template_sha256?: string | null
+          docx_sha256?: string | null
+          pdf_status?: string
         }
         Relationships: [
           {
@@ -9908,6 +9929,7 @@ export type Database = {
           end_date: string | null
           group_number: string | null
           id: string
+          instructor_name: string | null
           limit_access_time: boolean
           max_seats: number | null
           name: string
@@ -9921,6 +9943,7 @@ export type Database = {
           start_date: string | null
           strict_order: boolean
           training_address: string | null
+          training_dates: string[]
           updated_at: string
         }
         Insert: {
@@ -9936,6 +9959,7 @@ export type Database = {
           end_date?: string | null
           group_number?: string | null
           id?: string
+          instructor_name?: string | null
           limit_access_time?: boolean
           max_seats?: number | null
           name: string
@@ -9949,6 +9973,7 @@ export type Database = {
           start_date?: string | null
           strict_order?: boolean
           training_address?: string | null
+          training_dates?: string[]
           updated_at?: string
         }
         Update: {
@@ -9964,6 +9989,7 @@ export type Database = {
           end_date?: string | null
           group_number?: string | null
           id?: string
+          instructor_name?: string | null
           limit_access_time?: boolean
           max_seats?: number | null
           name?: string
@@ -9977,6 +10003,7 @@ export type Database = {
           start_date?: string | null
           strict_order?: boolean
           training_address?: string | null
+          training_dates?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -12460,6 +12487,7 @@ export type Database = {
           end_date: string | null
           group_number: string | null
           id: string
+          instructor_name: string | null
           limit_access_time: boolean
           max_seats: number | null
           name: string
@@ -12473,6 +12501,7 @@ export type Database = {
           start_date: string | null
           strict_order: boolean
           training_address: string | null
+          training_dates: string[]
           updated_at: string
         }
         SetofOptions: {

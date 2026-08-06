@@ -38,6 +38,10 @@ export interface GenerationContext {
     program_form: string;
     /** Режим занятий из настроек группы. Пусто = условие в договоре нейтральное. */
     schedule_text?: string | null;
+    /** Явно выбранный преподаватель; не подменяется директором. */
+    instructor_name?: string | null;
+    /** Фактические даты занятий для журнала/расписания. */
+    training_dates?: string[];
     color?: string;
   };
   students: Array<{

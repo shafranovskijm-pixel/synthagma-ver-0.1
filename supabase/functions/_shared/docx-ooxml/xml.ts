@@ -24,7 +24,21 @@ export function xmlTextValue(value: string): string {
 
 /** Заменяет токены [[KEY]] значениями. Отсутствующие ключи остаются нетронутыми. */
 export function replaceTokens(xml: string, values: Record<string, string | number | null | undefined>): string {
-  return xml.replace(TOKEN_RE, (token) => {
+  // Пустое значение в отдельном w:t должно стать самозакрывающимся
+  // элементом. Word открывает <w:t></w:t>, но на некоторых таблицах
+  // зависает при PDF-экспорте клонированных строк.
+  const wholeTextToken = /<w:t(?:\s[^>]*)?>(\[\[[A-Z0-9_]+\]\])<\/w:t>/g;
+  const normalized = xml.replace(wholeTextToken, (node, token) => {
+    const key = token.slice(2, -2);
+    if (!(key in values)) return node;
+    const raw = values[key];
+    if (raw === null || raw === undefined) return node;
+    if (String(raw) === "") return "<w:t/>";
+    const open = node.slice(0, node.indexOf(">") + 1);
+    return `${open}${xmlTextValue(String(raw))}</w:t>`;
+  });
+
+  return normalized.replace(TOKEN_RE, (token) => {
     const key = token.slice(2, -2);
     if (!(key in values)) return token;
     const raw = values[key];
