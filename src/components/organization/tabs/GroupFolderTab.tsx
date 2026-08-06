@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Folder, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronDown, ChevronUp, ChevronRight, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -405,6 +405,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     { key: "exams", count: counts.exams },
     { key: "docs", count: counts.docs },
   ];
+  const currentFolderTitle = openFolder ? FOLDER_META[openFolder].title : "Все папки";
+  const currentFolderCount = openFolder
+    ? folderCards.find(folder => folder.key === openFolder)?.count ?? 0
+    : folderCards.length;
 
   return (
     <div className="space-y-4">
@@ -564,59 +568,157 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         )}
       </Card>
 
-
-
-      {/* Toolbar: view switcher */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs text-muted-foreground">
-          {openFolder ? FOLDER_META[openFolder].title : "Все папки"}
-        </div>
-        <ToggleGroup type="single" value={viewMode} onValueChange={v => v && setViewMode(v as ViewMode)} className="rounded-xl border border-border p-0.5">
-          <ToggleGroupItem value="grid" size="sm" className="rounded-lg h-8 w-8 p-0" aria-label="Плитка"><LayoutGrid className="w-4 h-4" /></ToggleGroupItem>
-          <ToggleGroupItem value="list" size="sm" className="rounded-lg h-8 w-8 p-0" aria-label="Список"><List className="w-4 h-4" /></ToggleGroupItem>
-          <ToggleGroupItem value="table" size="sm" className="rounded-lg h-8 w-8 p-0" aria-label="Таблица"><TableIcon className="w-4 h-4" /></ToggleGroupItem>
-        </ToggleGroup>
-      </div>
-
-      {/* Folder grid */}
-      {!openFolder ? (
-        <FolderList folders={folderCards} viewMode={viewMode} onOpen={setOpenFolder} />
-      ) : openFolder === "contracts" ? (
-        <ContractsFolder
-          organizationId={organizationId}
-          groupId={groupId}
-          groupName={group?.name || ""}
-          students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
-          onDataChanged={refreshCounts}
-        />
-      ) : openFolder === "docs" ? (
-        <div className="space-y-4">
-          <Button variant="ghost" size="sm" onClick={() => setOpenFolder(null)} className="gap-1.5 rounded-xl">
-            <ArrowLeft className="w-4 h-4" /> К папкам
+      {/* Windows Explorer inspired workspace */}
+      <Card className="overflow-hidden rounded-xl border-border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-md"
+            aria-label="Назад к папкам"
+            title="Назад к папкам"
+            disabled={!openFolder}
+            onClick={() => setOpenFolder(null)}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <GroupDocumentsFolder
-            organizationId={organizationId}
-            groupId={groupId}
-            groupName={group?.name || ""}
-            students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
-            ctx={generationContext}
-            defaultPrice={group?.default_price ?? null}
-            missingFields={missingDocFields}
-            blockingFields={blockingDocFields}
-            courseId={group?.course_id || courseInfo?.id || null}
-            onOpenGroupSettings={() => setSettingsOpen(true)}
-            onDataChanged={refreshCounts}
-          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-md"
+            aria-label="Все папки группы"
+            title="Все папки группы"
+            onClick={() => setOpenFolder(null)}
+          >
+            <Home className="h-4 w-4" />
+          </Button>
 
+          <div className="flex min-w-[260px] flex-1 items-center gap-1 overflow-x-auto rounded-md border border-border bg-background px-3 py-1.5 text-sm shadow-inner">
+            <button className="whitespace-nowrap text-muted-foreground hover:text-foreground" onClick={() => backToStudentsGroups()}>Ученики</button>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <button className="whitespace-nowrap text-muted-foreground hover:text-foreground" onClick={() => backToStudentsGroups()}>Группы</button>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <button className="max-w-[260px] truncate whitespace-nowrap font-medium hover:text-primary" onClick={() => setOpenFolder(null)}>{group.name}</button>
+            {openFolder && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="whitespace-nowrap font-medium">{FOLDER_META[openFolder].title}</span>
+              </>
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-md"
+            aria-label="Обновить папки"
+            title="Обновить"
+            onClick={() => { refreshCounts(); setReloadKey(key => key + 1); }}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <ToggleGroup type="single" value={viewMode} onValueChange={v => v && setViewMode(v as ViewMode)} className="rounded-md border border-border bg-background p-0.5">
+            <ToggleGroupItem value="grid" size="sm" className="h-7 w-7 rounded p-0" aria-label="Крупные значки" title="Крупные значки"><LayoutGrid className="w-4 h-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="list" size="sm" className="h-7 w-7 rounded p-0" aria-label="Список" title="Список"><List className="w-4 h-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="table" size="sm" className="h-7 w-7 rounded p-0" aria-label="Таблица" title="Таблица"><TableIcon className="w-4 h-4" /></ToggleGroupItem>
+          </ToggleGroup>
         </div>
-      ) : (
-        <FolderContents
-          folder={openFolder}
-          students={students}
-          viewMode={viewMode}
-          onBack={() => setOpenFolder(null)}
-        />
-      )}
+
+        <div className="grid min-h-[520px] lg:grid-cols-[238px_minmax(0,1fr)]">
+          <aside className="hidden border-r border-border bg-muted/20 p-3 lg:block">
+            <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Быстрый доступ</div>
+            <button
+              onClick={() => setOpenFolder(null)}
+              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors ${!openFolder ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted"}`}
+            >
+              <Home className="h-4 w-4 shrink-0" />
+              <span className="truncate">Главная группы</span>
+            </button>
+
+            <div className="mt-4 px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Папки</div>
+            <div className="space-y-0.5">
+              {folderCards.map(({ key, count }) => {
+                const meta = FOLDER_META[key];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setOpenFolder(key)}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors ${openFolder === key ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted"}`}
+                  >
+                    {openFolder === key ? <FolderOpen className="h-4 w-4 shrink-0 text-amber-500" /> : <Folder className="h-4 w-4 shrink-0 text-amber-500" />}
+                    <span className="min-w-0 flex-1 truncate">{meta.title}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 rounded-lg border border-border bg-background/70 p-3 text-xs text-muted-foreground">
+              <div className="font-medium text-foreground">{group.name}</div>
+              <div className="mt-1">{students.length} учеников</div>
+              <div>{resolvedProgramHours ? `${resolvedProgramHours} часов` : "Часы не указаны"}</div>
+            </div>
+          </aside>
+
+          <section className="min-w-0 bg-background">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                {openFolder ? <FolderOpen className="h-7 w-7 shrink-0 text-amber-500" /> : <Folder className="h-7 w-7 shrink-0 text-amber-500" />}
+                <div className="min-w-0">
+                  <h2 className="truncate font-semibold">{currentFolderTitle}</h2>
+                  <p className="text-xs text-muted-foreground">{currentFolderCount} {openFolder ? "файл(ов)" : "папок"}</p>
+                </div>
+              </div>
+              {openFolder && (
+                <Button variant="outline" size="sm" className="h-8 rounded-md gap-1.5 lg:hidden" onClick={() => setOpenFolder(null)}>
+                  <ArrowLeft className="h-4 w-4" /> К папкам
+                </Button>
+              )}
+            </div>
+
+            <div className="p-4">
+              {!openFolder ? (
+                <FolderList folders={folderCards} viewMode={viewMode} onOpen={setOpenFolder} />
+              ) : openFolder === "contracts" ? (
+                <ContractsFolder
+                  organizationId={organizationId}
+                  groupId={groupId}
+                  groupName={group?.name || ""}
+                  students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+                  onDataChanged={refreshCounts}
+                />
+              ) : openFolder === "docs" ? (
+                <GroupDocumentsFolder
+                  organizationId={organizationId}
+                  groupId={groupId}
+                  groupName={group?.name || ""}
+                  students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+                  ctx={generationContext}
+                  defaultPrice={group?.default_price ?? null}
+                  missingFields={missingDocFields}
+                  blockingFields={blockingDocFields}
+                  courseId={group?.course_id || courseInfo?.id || null}
+                  onOpenGroupSettings={() => setSettingsOpen(true)}
+                  onDataChanged={refreshCounts}
+                />
+              ) : (
+                <FolderContents
+                  folder={openFolder}
+                  students={students}
+                  viewMode={viewMode}
+                  onBack={() => setOpenFolder(null)}
+                  showBackButton={false}
+                />
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border bg-muted/20 px-4 py-1.5 text-xs text-muted-foreground">
+          <span>{currentFolderCount} {openFolder ? "элемент(ов)" : "папок"}</span>
+          <span className="hidden sm:inline">Данные синхронизированы с группой</span>
+        </div>
+      </Card>
 
       <GroupSettingsDialog
         open={settingsOpen}
@@ -633,7 +735,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: FolderKey; count: number }>; viewMode: ViewMode; onOpen: (k: FolderKey) => void }) {
   if (viewMode === "grid") {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-2">
         {folders.map(({ key, count }) => {
           const meta = FOLDER_META[key];
           const Icon = meta.icon;
@@ -641,15 +743,16 @@ function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: Folde
             <button
               key={key}
               onClick={() => onOpen(key)}
-              className="group text-left p-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all"
+              className="group flex min-h-[86px] items-center gap-3 rounded-lg border border-transparent p-3 text-left transition-colors hover:border-primary/20 hover:bg-primary/5 focus-visible:border-primary/40 focus-visible:bg-primary/10 focus-visible:outline-none"
             >
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                <Icon className="w-6 h-6" />
+              <div className="relative flex h-12 w-14 shrink-0 items-center justify-center text-amber-500">
+                <Folder className="h-12 w-12 fill-amber-400/25 stroke-[1.4]" />
+                <Icon className="absolute h-4 w-4 text-amber-800" />
               </div>
-              <div className="font-semibold">{meta.title}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{meta.hint}</div>
-              <div className="mt-2">
-                <Badge variant="secondary" className="rounded-full text-xs">{count} файл(ов)</Badge>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{meta.title}</div>
+                <div className="mt-1 line-clamp-2 text-xs leading-4 text-muted-foreground">{meta.hint}</div>
+                <div className="mt-1 text-[11px] text-muted-foreground">{count} файл(ов)</div>
               </div>
             </button>
           );
@@ -660,14 +763,15 @@ function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: Folde
 
   if (viewMode === "list") {
     return (
-      <Card className="rounded-2xl border-border overflow-hidden divide-y divide-border">
+      <div className="overflow-hidden rounded-lg border border-border divide-y divide-border">
         {folders.map(({ key, count }) => {
           const meta = FOLDER_META[key];
           const Icon = meta.icon;
           return (
-            <button key={key} onClick={() => onOpen(key)} className="w-full text-left p-3 flex items-center gap-3 hover:bg-muted/50 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4" />
+            <button key={key} onClick={() => onOpen(key)} className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-primary/5 transition-colors">
+              <div className="relative flex h-9 w-10 shrink-0 items-center justify-center text-amber-500">
+                <Folder className="h-8 w-8 fill-amber-400/25" />
+                <Icon className="absolute h-3.5 w-3.5 text-amber-800" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-medium truncate">{meta.title}</div>
@@ -677,13 +781,13 @@ function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: Folde
             </button>
           );
         })}
-      </Card>
+      </div>
     );
   }
 
   // table
   return (
-    <Card className="rounded-2xl border-border overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
           <tr>
@@ -695,12 +799,11 @@ function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: Folde
         <tbody className="divide-y divide-border">
           {folders.map(({ key, count }) => {
             const meta = FOLDER_META[key];
-            const Icon = meta.icon;
             return (
               <tr key={key} onClick={() => onOpen(key)} className="cursor-pointer hover:bg-muted/40">
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-primary" />
+                    <Folder className="h-5 w-5 fill-amber-400/25 text-amber-500" />
                     <span className="font-medium">{meta.title}</span>
                   </div>
                 </td>
@@ -711,11 +814,11 @@ function FolderList({ folders, viewMode, onOpen }: { folders: Array<{ key: Folde
           })}
         </tbody>
       </table>
-    </Card>
+    </div>
   );
 }
 
-function FolderContents({ folder, students, viewMode, onBack }: { folder: FolderKey; students: StudentRow[]; viewMode: ViewMode; onBack: () => void }) {
+function FolderContents({ folder, students, viewMode, onBack, showBackButton = true }: { folder: FolderKey; students: StudentRow[]; viewMode: ViewMode; onBack: () => void; showBackButton?: boolean }) {
   const meta = FOLDER_META[folder];
   const Icon = meta.icon;
 
@@ -732,9 +835,11 @@ function FolderContents({ folder, students, viewMode, onBack }: { folder: Folder
           <Icon className="w-5 h-5 text-primary" />
           <h2 className="font-semibold">{meta.title}</h2>
         </div>
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 rounded-xl">
-          <ArrowLeft className="w-4 h-4" /> К папкам
-        </Button>
+        {showBackButton && (
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 rounded-xl">
+            <ArrowLeft className="w-4 h-4" /> К папкам
+          </Button>
+        )}
       </div>
 
       {folder === "docs" ? (
