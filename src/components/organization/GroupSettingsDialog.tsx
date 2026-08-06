@@ -436,7 +436,9 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                                   onChange={e => {
                                     const dates = Array.from({ length: 4 }, (_, i) => settings.training_dates?.[i] || "");
                                     dates[index] = e.target.value;
-                                    update({ training_dates: dates.filter(Boolean).sort() });
+                                    // Keep the four visible slots stable while the manager is editing.
+                                    // The RPC removes blanks and sorts the final date[] on save.
+                                    update({ training_dates: dates });
                                   }}
                                   className="rounded-lg"
                                 />
