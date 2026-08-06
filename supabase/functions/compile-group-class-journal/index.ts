@@ -14,6 +14,10 @@ import {
   type ClassJournalManifest,
 } from "../_shared/docx-ooxml/classJournal.ts";
 import { shortNameRu } from "../_shared/docx-ooxml/money.ts";
+import {
+  CLASS_JOURNAL_MANIFEST_JSON,
+  CLASS_JOURNAL_TEMPLATE_BASE64,
+} from "../_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts";
 
 const BUCKET = "billing-documents";
 const LEGACY_TYPES = [
@@ -53,6 +57,10 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("")
     .toUpperCase();
+}
+
+function decodeBase64Bytes(value: string): Uint8Array {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 }
 
 Deno.serve(async (req) => {
@@ -136,14 +144,11 @@ Deno.serve(async (req) => {
       course = courseResult.data;
     }
 
-    const baseUrl = new URL(
-      "../_shared/group-doc-templates/goreltech/class-journal/v1/",
-      import.meta.url,
-    );
-    const templateBytes = await Deno.readFile(new URL("template.docx", baseUrl));
-    const manifest = JSON.parse(
-      await Deno.readTextFile(new URL("manifest.json", baseUrl)),
-    ) as ClassJournalManifest;
+    // Supabase deploys imported TypeScript modules but does not copy arbitrary
+    // binary siblings. Embedding keeps the retained DOCX inseparable from the
+    // deployed compiler; the manifest hash below still detects drift.
+    const templateBytes = decodeBase64Bytes(CLASS_JOURNAL_TEMPLATE_BASE64);
+    const manifest = JSON.parse(CLASS_JOURNAL_MANIFEST_JSON) as ClassJournalManifest;
     const templateHash = await sha256Hex(templateBytes);
     if (templateHash !== String(manifest.template_sha256).toUpperCase()) {
       return json({ error: "Контрольная сумма Word-шаблона не совпала с манифестом" }, 409);
