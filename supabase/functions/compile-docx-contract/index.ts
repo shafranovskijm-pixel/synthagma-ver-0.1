@@ -13,6 +13,10 @@ import JSZip from "npm:jszip@3.10.1";
 import { compileDocumentXml, numberStudents, validateSnapshot, type TemplateManifest } from "../_shared/docx-ooxml/compile.ts";
 import { formatMoneyRu, moneyToWordsRu } from "../_shared/docx-ooxml/money.ts";
 import { validateRelations, validateTemplateConsistency } from "../_shared/docx-ooxml/relational.ts";
+import {
+  GORELTECH_COMPANY_CONTRACT_MANIFEST_JSON,
+  GORELTECH_COMPANY_CONTRACT_TEMPLATE_BASE64,
+} from "../_shared/contract-templates/goreltech/company/v1/embedded.ts";
 
 const BUCKET = "billing-documents";
 
@@ -44,6 +48,10 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function decodeBase64Bytes(value: string): Uint8Array {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (payload: unknown, status = 200) =>
@@ -71,11 +79,12 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
 
     // Авторизация: глобальный админ или сотрудник организации с правом на документы.
-    const [{ data: isAdmin }, { data: hasPerm }] = await Promise.all([
+    const [{ data: isAdmin }, { data: hasPerm }, { data: isOwner }] = await Promise.all([
       admin.rpc("has_role", { _role: "admin", _user_id: userId }),
       admin.rpc("has_org_staff_permission", { _user_id: userId, _organization_id: body.organizationId, _permission: "documents.manage" }),
+      admin.rpc("is_org_owner", { _user_id: userId, _organization_id: body.organizationId }),
     ]);
-    if (!isAdmin && !hasPerm) return json({ error: "Недостаточно прав для генерации договора" }, 403);
+    if (!isAdmin && !hasPerm && !isOwner) return json({ error: "Недостаточно прав для генерации договора" }, 403);
 
     // Шаблон из реестра встроенных шаблонов.
     const { data: registry, error: regError } = await admin
@@ -90,15 +99,15 @@ Deno.serve(async (req) => {
     }
     if (registry.status === "retired") return json({ error: "Шаблон выведен из эксплуатации" }, 409);
 
-    // Исходный DOCX и его манифест поставляются вместе с функцией.
-    const baseUrl = new URL("../_shared/contract-templates/goreltech/company/v1/", import.meta.url);
+    // Бинарный DOCX и манифест встроены в модуль: Supabase deploy не включает
+    // произвольные соседние бинарные файлы в bundle Edge-функции.
     let docxBytes: Uint8Array;
     let manifest: TemplateManifest;
     try {
-      docxBytes = await Deno.readFile(new URL("template.docx", baseUrl));
-      manifest = JSON.parse(await Deno.readTextFile(new URL("manifest.json", baseUrl))) as TemplateManifest;
+      docxBytes = decodeBase64Bytes(GORELTECH_COMPANY_CONTRACT_TEMPLATE_BASE64);
+      manifest = JSON.parse(GORELTECH_COMPANY_CONTRACT_MANIFEST_JSON) as TemplateManifest;
     } catch (e) {
-      return json({ error: "Исходный Word-шаблон недоступен в окружении функции", details: String(e) }, 500);
+      return json({ error: "Встроенный Word-шаблон договора повреждён", details: String(e) }, 500);
     }
 
     const sourceHash = await sha256Hex(docxBytes);
