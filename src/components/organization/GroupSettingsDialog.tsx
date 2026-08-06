@@ -258,8 +258,8 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   return (
     <TooltipProvider delayDuration={200}>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl p-0 gap-0">
-          <DialogHeader className="p-6 pb-0">
+        <DialogContent className="max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden p-0 gap-0">
+          <DialogHeader className="shrink-0 border-b border-border p-6 py-4">
             <DialogTitle>Настройки группы</DialogTitle>
           </DialogHeader>
 
@@ -268,15 +268,15 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
               <SigmaSpinner />
             </div>
           ) : (
-            <div className="flex min-h-[400px]">
+            <div className="flex min-h-0 max-h-[calc(100vh-6.5rem)] flex-col sm:flex-row">
               {/* Sidebar tabs */}
-              <div className="w-48 border-r border-border p-3 space-y-1 shrink-0">
+              <div className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border p-3 sm:block sm:w-48 sm:space-y-1 sm:overflow-y-auto sm:border-b-0 sm:border-r">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+                      "flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors sm:w-full",
                       activeTab === tab.id
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -289,8 +289,8 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
               </div>
 
               {/* Content */}
-              <div className="flex-1 p-6 flex flex-col">
-                <div className="flex-1 space-y-5">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex-1 space-y-5 overflow-y-auto p-6">
                   {activeTab === "general" && (
                     <>
                       <div>
@@ -561,7 +561,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                   )}
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-border flex justify-end">
+                <div className="flex shrink-0 justify-end border-t border-border bg-background p-4">
                   <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
                     {saving && <SigmaSpinner size="sm" />}
                     Сохранить
