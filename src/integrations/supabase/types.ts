@@ -11536,6 +11536,14 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_manage_webinar_recording_org: {
+        Args: { _organization_id: string; _permission: string }
+        Returns: boolean
+      }
+      can_read_webinar_recording_object: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -12327,6 +12335,16 @@ export type Database = {
           login_branding: Json
           name: string
           website_url: string
+        }[]
+      }
+      public_get_sales_demo_link: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          kinescope_live_id: string
+          label: string
+          token: string
         }[]
       }
       public_lookup_user_by_login: {

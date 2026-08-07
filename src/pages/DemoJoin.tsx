@@ -32,7 +32,8 @@ const DemoJoin = () => {
     supabase
       .rpc('public_get_sales_demo_link' as never, { p_token: token } as never)
       .then(({ data, error }) => {
-        const link = (Array.isArray(data) ? data[0] : null) as DemoLinkData | null;
+        const rows = data as unknown as DemoLinkData[] | null;
+        const link = Array.isArray(rows) ? rows[0] ?? null : null;
         if (error || !link) setInvalid(true);
         else setLinkData(link);
         setLoading(false);
