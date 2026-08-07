@@ -7,7 +7,7 @@ import { Image as ImageIcon, Upload, Sparkles, Wand2 } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+export function ImageBlock({ block, onUpdate, courseId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseId?: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const { isGenerating, run: runGenerate } = useBlockAIGenerate();
   const [isEditing, setIsEditing] = useState(false);
@@ -59,9 +59,10 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
     }
     setIsUploading(true);
     try {
+      if (!courseId) throw new Error("Сначала сохраните курс");
       const { supabase } = await import("@/integrations/supabase/client");
       const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
-      const fileName = `block-images/${block.id}-${Date.now()}.${fileExt}`;
+      const fileName = `${courseId}/block-images/${block.id}-${Date.now()}.${fileExt}`;
       let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
       try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
       const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;

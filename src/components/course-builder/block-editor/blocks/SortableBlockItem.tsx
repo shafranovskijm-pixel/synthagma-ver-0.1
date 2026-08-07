@@ -62,6 +62,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
     const { toast } = await import("sonner");
     toast.info("Генерация аудио из текста... Длинные тексты могут занять до 2 минут.");
     try {
+      if (!courseId) throw new Error("Сначала сохраните курс");
       const ttsController = new AbortController();
       const ttsTimeout = setTimeout(() => ttsController.abort(), 180000);
       const voiceName = ttsVoice.replace(/_\d+$/, '').toLowerCase();
@@ -74,7 +75,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
       if (!response.ok) { const errData = await response.json().catch(() => null); throw new Error(errData?.error || `Ошибка: ${response.status}`); }
       const audioBlob = await response.blob();
       const { supabase } = await import("@/integrations/supabase/client");
-      const fileName = `tts_${crypto.randomUUID()}.mp3`;
+      const fileName = `${courseId}/tts_${crypto.randomUUID()}.mp3`;
       const { error } = await supabase.storage.from("course-files").upload(fileName, audioBlob, { contentType: "audio/mpeg", upsert: true });
       if (error) throw error;
       const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;

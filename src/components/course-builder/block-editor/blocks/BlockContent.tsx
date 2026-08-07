@@ -75,11 +75,11 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
     case "highlight": return <HighlightBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />;
     case "accordion": return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />;
     case "quiz": return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
-    case "image": return <ImageBlock block={block} onUpdate={onUpdate} />;
+    case "image": return <ImageBlock block={block} onUpdate={onUpdate} courseId={courseId} />;
     case "video": return <VideoBlock block={block} onUpdate={onUpdate} organizationId={organizationId} courseId={courseId} lessonId={lessonId} />;
-    case "audio": return <AudioBlock block={block} onUpdate={onUpdate} />;
+    case "audio": return <AudioBlock block={block} onUpdate={onUpdate} courseId={courseId} />;
     case "slider": return <SliderBlock block={block} onUpdate={onUpdate} />;
-    case "document": return <DocumentBlock block={block} onUpdate={onUpdate} />;
+    case "document": return <DocumentBlock block={block} onUpdate={onUpdate} courseId={courseId} />;
     case "table": return <TableBlock block={block} onUpdate={onUpdate} />;
     case "button": return <ButtonBlock block={block} onUpdate={onUpdate} />;
     case "embed": return <EmbedBlock block={block} onUpdate={onUpdate} />;

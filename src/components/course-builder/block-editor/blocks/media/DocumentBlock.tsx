@@ -6,7 +6,7 @@ import { Upload, BookOpen, Trash2 } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-export function DocumentBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+export function DocumentBlock({ block, onUpdate, courseId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseId?: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const documentUrl = block.documentUrl || "";
   const documentName = block.documentName || "";
@@ -20,7 +20,8 @@ export function DocumentBlock({ block, onUpdate }: { block: ContentBlock; onUpda
     if (file.size > 50 * 1024 * 1024) { const { toast } = await import("sonner"); toast.error("Максимальный размер файла — 50 МБ"); return; }
     setIsUploading(true);
     try {
-      const fileName = `doc_${crypto.randomUUID()}.${ext || 'pdf'}`;
+      if (!courseId) throw new Error("Сначала сохраните курс");
+      const fileName = `${courseId}/documents/doc_${crypto.randomUUID()}.${ext || 'pdf'}`;
       const supabaseClient = (await import("@/integrations/supabase/client")).supabase;
       const { error } = await supabaseClient.storage.from('course-files').upload(fileName, file, { upsert: true });
       if (error) throw error;

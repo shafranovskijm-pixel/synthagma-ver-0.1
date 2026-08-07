@@ -8,7 +8,7 @@ import { Upload, Headphones, Sparkles, Wand2, Trash2 } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+export function AudioBlock({ block, onUpdate, courseId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseId?: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const { isGenerating: isGeneratingTts, run: runTts } = useBlockAIGenerate();
   const [showTts, setShowTts] = useState(false);
@@ -28,7 +28,8 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
     if (!file.type.startsWith("audio/") || file.size > 50 * 1024 * 1024) return;
     setIsUploading(true);
     try {
-      const fileName = `audio_${crypto.randomUUID()}.${file.name.split('.').pop() || 'mp3'}`;
+      if (!courseId) throw new Error("Сначала сохраните курс");
+      const fileName = `${courseId}/audio/audio_${crypto.randomUUID()}.${file.name.split('.').pop() || 'mp3'}`;
       const { data: configData } = await (await import("@/integrations/supabase/client")).supabase.functions.invoke('get-external-storage-config');
       const useExternal = configData?.configured && configData?.url && configData?.key;
       const bucket = useExternal ? 'course-videos' : 'course-files';
@@ -48,6 +49,7 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
     const text = ttsText.trim();
     if (!text) return;
     const result = await runTts(async () => {
+      if (!courseId) throw new Error("Сначала сохраните курс");
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("salutespeech-tts", {
         body: { text, voice: ttsVoice },
@@ -56,7 +58,7 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
       const audioBase64: string | undefined = data?.audio || data?.audioContent;
       if (!audioBase64) throw new Error("Озвучка не получена");
       const bin = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
-      const fileName = `ai-audio/${crypto.randomUUID()}.mp3`;
+      const fileName = `${courseId}/ai-audio/${crypto.randomUUID()}.mp3`;
       const { error: upErr } = await supabase.storage.from("course-files").upload(fileName, bin, { contentType: "audio/mpeg", upsert: true });
       if (upErr) throw upErr;
       const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;
