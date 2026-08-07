@@ -22,8 +22,6 @@ import { Download, Save, FileSpreadsheet, User, GraduationCap, Briefcase } from 
 import { format } from "date-fns";
 import {
   detectGenderFromMiddleName,
-  generateDocumentNumber,
-  generateRegNumber,
   FRDO_TRAINING_FORMS,
   FRDO_FINANCING_SOURCES,
   FRDO_EDUCATION_FORMS,
@@ -38,6 +36,7 @@ import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { CitizenshipCombobox } from "./CitizenshipCombobox";
 import { normalizeRuPhone } from "@/utils/phoneParser";
 import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { resolveEducationDocumentType } from "@/lib/education-docs/documentType";
 import { localDateIso } from "@/lib/date/localDate";
 import { normalizeIsoDate } from "@/lib/groups/groupSettings";
 
@@ -273,7 +272,11 @@ export function FRDOExportDialog({
     const professionalArea = resolved.professionalArea;
     const specialtyGroup = resolved.specialtyGroup;
     const qualificationName = resolved.qualificationName;
-    const documentType = courseData?.frdo_document_type || "Удостоверение о повышении квалификации";
+    const documentType = resolveEducationDocumentType({
+      rawType: courseData?.frdo_document_type,
+      exportType: "dpo",
+      programType: courseData?.frdo_program_type,
+    });
     const programType = courseData?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации";
 
     // Номера и запись журнала — только транзакционный серверный RPC.
@@ -286,7 +289,7 @@ export function FRDOExportDialog({
         items: [{
           user_id: student.user_id,
           enrollment_id: enrollment.id,
-          document_type: documentType,
+          document_type: documentType.recordType,
           full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
           birth_date: frдоData.birth_date || null,
           specialty_name: courseData?.title || enrollment.course_title,
@@ -305,7 +308,7 @@ export function FRDOExportDialog({
 
 
     const row = buildDPORow({
-      documentType, docNumber, regNumber,
+      documentType: documentType.frdoLabel, docNumber, regNumber,
       issueDate: formatDateForFRDO(enrollment.completed_at || ""),
       programType, programName: courseData?.title || enrollment.course_title,
       professionalArea, specialtyGroup, qualificationName,
@@ -347,30 +350,45 @@ export function FRDOExportDialog({
     );
     const professionName = resolved.professionName;
     const qualificationRank = resolved.qualificationRank;
-    const documentType = courseData?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего";
+    const documentType = resolveEducationDocumentType({
+      rawType: courseData?.frdo_document_type,
+      exportType: "po",
+      programType: courseData?.frdo_program_type,
+    });
 
     if (!professionName) {
       toast.error('Не заполнено "Наименование профессии". Укажите его в карточке курса (раздел ФРДО) или у ученика.');
       return;
     }
 
-    const year = new Date().getFullYear();
-    const { count } = await supabase.from("education_document_records")
-      .select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
-    const existingCount = count || 0;
-    const docNumber = generateDocumentNumber(existingCount);
-    const regNumber = generateRegNumber(existingCount);
-
-    await supabase.from("education_document_records").insert({
-      organization_id: organizationId, enrollment_id: enrollment.id,
-      full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
-      document_type: documentType, document_number: docNumber, reg_number: regNumber,
-      issue_date: enrollment.completed_at || new Date().toISOString(),
-      specialty_name: courseData?.title || enrollment.course_title,
-      qualification_name: professionName, document_status: "Оригинал" });
+    let docNumber = "";
+    let regNumber = "";
+    try {
+      const issued = await issueEducationDocumentBatch({
+        organizationId,
+        courseId: enrollment.course_id || null,
+        items: [{
+          user_id: student.user_id,
+          enrollment_id: enrollment.id,
+          document_type: documentType.recordType,
+          full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
+          birth_date: frдоData.birth_date || null,
+          specialty_name: courseData?.title || enrollment.course_title,
+          qualification_name: professionName,
+          issue_date: (enrollment.completed_at || localDateIso()).slice(0, 10),
+          document_status: "original",
+        }],
+      });
+      docNumber = issued[0]?.document_number || "";
+      regNumber = issued[0]?.reg_number || "";
+      if (!docNumber || !regNumber) throw new Error("Сервер не вернул номера документа");
+    } catch (e: any) {
+      toast.error("Документ не выдан", { description: e?.message || "Не удалось получить номера" });
+      return;
+    }
 
     const row = buildPORow({
-      documentType, docNumber, regNumber,
+      documentType: documentType.frdoLabel, docNumber, regNumber,
       issueDate: formatDateForFRDO(enrollment.completed_at || ""),
       programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
       programName: courseData?.title || enrollment.course_title,
