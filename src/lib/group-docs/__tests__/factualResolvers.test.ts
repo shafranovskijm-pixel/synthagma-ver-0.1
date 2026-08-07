@@ -60,6 +60,21 @@ describe("registration fact normalization", () => {
     expect(fact.gender).toBe("М");
     expect(fact.passport).toContain("1234");
   });
+
+  it("показывает понятное русское название системного типа документа", () => {
+    const fact = normalizeRegistrationFact(
+      {
+        user_id: "u1",
+        document_type: "certificate",
+        document_number: "2026/000001",
+        issue_date: "2026-08-07",
+      },
+      null,
+      null,
+    );
+
+    expect(fact.document_type).toBe("Удостоверение о повышении квалификации");
+  });
 });
 
 describe("batch versioning grouping", () => {

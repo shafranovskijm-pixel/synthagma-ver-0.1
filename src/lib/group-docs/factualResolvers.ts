@@ -152,10 +152,18 @@ export function normalizeRegistrationFact(
   frdo?: FrdoLikeRow | null,
   identity?: IdentityDocLikeRow | null,
 ): RegistrationFact {
+  const documentTypeLabels: Record<string, string> = {
+    certificate: "Удостоверение о повышении квалификации",
+    diploma: "Диплом о профессиональной переподготовке",
+    qualification: "Свидетельство о квалификации",
+  };
+  const rawDocumentType = String(record.document_type || "").trim();
+
   return {
     user_id: record.user_id ?? null,
     full_name: frdoFullName(frdo) || record.full_name || "",
-    document_type: record.document_type || "",
+    document_type:
+      documentTypeLabels[rawDocumentType.toLowerCase()] || rawDocumentType,
     document_series: record.document_series || "",
     document_number: record.document_number || "",
     issue_date: record.issue_date || "",

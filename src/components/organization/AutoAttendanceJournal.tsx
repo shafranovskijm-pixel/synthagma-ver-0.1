@@ -93,19 +93,63 @@ export function AutoAttendanceJournal({
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch courses
+        // Fetch courses that belong to the current organization first. The old
+        // implementation started with an unscoped lesson_progress query. Apart
+        // from being unnecessarily broad, PostgREST can truncate that result
+        // before the organization/profile filtering happens, which made a
+        // freshly completed group appear as "0 students / 0 lessons".
         const { data: coursesData } = await supabase
           .from("courses")
           .select("id, title")
           .eq("organization_id", organizationId)
           .order("title");
 
-        if (coursesData) {
-          setCourses(coursesData);
+        const organizationCourses = coursesData || [];
+        setCourses(organizationCourses);
+
+        const scopedCourseIds = groupContext?.courseId
+          ? [groupContext.courseId]
+          : organizationCourses.map((course) => course.id);
+
+        const scopedMemberIds = groupContext?.memberUserIds ?? null;
+        if (scopedMemberIds && scopedMemberIds.length === 0) {
+          setRecords([]);
+          return;
         }
 
-        // Fetch lesson progress with all related data
-        const { data: lessonProgress } = await supabase
+        let profilesQuery = supabase
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .eq("organization_id", organizationId);
+
+        if (scopedMemberIds) {
+          profilesQuery = profilesQuery.in("user_id", scopedMemberIds);
+        }
+
+        const { data: profiles, error: profilesError } = await profilesQuery;
+        if (profilesError) throw profilesError;
+
+        const userIds = (profiles || []).map((profile) => profile.user_id);
+        if (userIds.length === 0 || scopedCourseIds.length === 0) {
+          setRecords([]);
+          return;
+        }
+
+        const { data: lessons, error: lessonsError } = await supabase
+          .from("lessons")
+          .select("id, title, course_id")
+          .in("course_id", scopedCourseIds);
+        if (lessonsError) throw lessonsError;
+
+        const lessonIds = (lessons || []).map((lesson) => lesson.id);
+        if (lessonIds.length === 0) {
+          setRecords([]);
+          return;
+        }
+
+        // Fetch only progress that can actually belong to this organization
+        // (and, when opened from a group, to this exact group and course).
+        const { data: lessonProgress, error: progressError } = await supabase
           .from("lesson_progress")
           .select(`
             id,
@@ -115,45 +159,22 @@ export function AutoAttendanceJournal({
             completed_at,
             time_spent
           `)
+          .in("user_id", userIds)
+          .in("lesson_id", lessonIds)
           .eq("completed", true)
           .not("completed_at", "is", null)
           .order("completed_at", { ascending: false });
+        if (progressError) throw progressError;
 
         if (!lessonProgress || lessonProgress.length === 0) {
           setRecords([]);
-          setLoading(false);
           return;
         }
-
-        // Get unique user_ids and lesson_ids
-        const userIds = [...new Set(lessonProgress.map((p) => p.user_id))];
-        const lessonIds = [...new Set(lessonProgress.map((p) => p.lesson_id))];
-
-        // Fetch profiles for users in organization
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, full_name, email")
-          .eq("organization_id", organizationId)
-          .in("user_id", userIds);
-
-        // Fetch lessons with course info
-        const { data: lessons } = await supabase
-          .from("lessons")
-          .select("id, title, course_id")
-          .in("id", lessonIds);
-
-        // Fetch course titles
-        const courseIds = lessons ? [...new Set(lessons.map((l) => l.course_id))] : [];
-        const { data: courseDetails } = await supabase
-          .from("courses")
-          .select("id, title")
-          .eq("organization_id", organizationId)
-          .in("id", courseIds);
 
         // Build records
         const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
         const lessonMap = new Map(lessons?.map((l) => [l.id, l]) || []);
-        const courseMap = new Map(courseDetails?.map((c) => [c.id, c]) || []);
+        const courseMap = new Map(organizationCourses.map((c) => [c.id, c]));
 
         const attendanceRecords: AttendanceRecord[] = [];
 
@@ -189,7 +210,7 @@ export function AutoAttendanceJournal({
     };
 
     fetchData();
-  }, [organizationId]);
+  }, [organizationId, groupContext]);
 
   // Filter records
   // Приватность: строго ограничиваем строки участниками группы и её курсом.
