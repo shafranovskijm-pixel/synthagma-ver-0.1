@@ -19,7 +19,7 @@ interface FRDOData {
   professional_area: string; specialty_group: string; qualification_name: string;
   profession_name: string; qualification_rank: string;
 }
-interface EnrollmentData { user_id: string; course_id: string; course_title: string; started_at: string; completed_at: string | null; time_spent: number; duration: string | null; }
+interface EnrollmentData { id: string; user_id: string; course_id: string; course_title: string; started_at: string; completed_at: string | null; time_spent: number; duration: string | null; }
 interface Course {
   id: string; title: string; frdo_program_type?: string | null; frdo_document_type?: string | null;
   frdo_professional_area?: string | null; frdo_specialty_group?: string | null;
@@ -93,12 +93,12 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
       const studentProfiles = (profilesData || []).filter(p => !orgAdminUserIds.has(p.user_id));
       if (studentUserIds.length === 0) { setStudents([]); setIsLoading(false); return; }
 
-      const { data: enrollmentsData } = await supabase.from("enrollments").select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)").in("user_id", studentUserIds);
+      const { data: enrollmentsData } = await supabase.from("enrollments").select("id, user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)").in("user_id", studentUserIds);
       const enrollMap = new Map<string, EnrollmentData[]>();
       const courseSet = new Map<string, Course>();
       for (const e of enrollmentsData || []) {
         const cd = e.courses as any;
-        const enrollment: EnrollmentData = { user_id: e.user_id, course_id: e.course_id, course_title: cd?.title || "Неизвестный курс", started_at: e.started_at, completed_at: e.completed_at, time_spent: e.time_spent || 0, duration: cd?.duration || null };
+        const enrollment: EnrollmentData = { id: e.id, user_id: e.user_id, course_id: e.course_id, course_title: cd?.title || "Неизвестный курс", started_at: e.started_at, completed_at: e.completed_at, time_spent: e.time_spent || 0, duration: cd?.duration || null };
         if (!enrollMap.has(e.user_id)) enrollMap.set(e.user_id, []);
         enrollMap.get(e.user_id)!.push(enrollment);
         if (cd && !courseSet.has(cd.id)) courseSet.set(cd.id, cd);
@@ -224,7 +224,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
             throw new Error(`Не заполнено "Наименование профессии" для ${studentLabel} (курс «${enrollment?.course_title || "—"}»). Укажите его в карточке курса (frdo_profession_name) или у ученика (profession_name).`);
           }
 
-          const enrollmentId = (enrollment as any)?.id || null;
+          const enrollmentId = enrollment?.id || null;
           const issueDate = enrollment?.completed_at
             ? String(enrollment.completed_at).slice(0, 10)
             : localDateIso();
