@@ -24,3 +24,7 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Release verification
+
+- 2026-08-07: verified atomic completion recovery for an already-passed final course test.
