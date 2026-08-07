@@ -11536,8 +11536,20 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_manage_course_file_object: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
+      can_manage_course_files_org: {
+        Args: { _organization_id: string; _permission?: string }
+        Returns: boolean
+      }
       can_manage_webinar_recording_org: {
         Args: { _organization_id: string; _permission: string }
+        Returns: boolean
+      }
+      can_read_course_file_object: {
+        Args: { _object_name: string }
         Returns: boolean
       }
       can_read_webinar_recording_object: {
