@@ -15,32 +15,41 @@ function latestIssuanceMigration(): string {
 
 describe("issue_education_document_batch migration", () => {
   const sql = latestIssuanceMigration();
+  const batchSql = sql.slice(sql.lastIndexOf("CREATE OR REPLACE FUNCTION public.issue_education_document_batch"));
 
   it("requires exact course and enrollment before numbering", () => {
-    expect(sql).toContain("exact course_id is required");
-    expect(sql).toContain("enrollment_id is required for every item");
-    expect(sql).toContain("e.course_id = p_course_id");
-    expect(sql.indexOf("e.course_id = p_course_id")).toBeLessThan(
-      sql.indexOf("INSERT INTO public.document_number_sequences"),
+    expect(batchSql).toContain("exact course_id is required");
+    expect(batchSql).toContain("enrollment_id is required for every item");
+    expect(batchSql).toContain("e.course_id = p_course_id");
+    expect(batchSql.indexOf("e.course_id = p_course_id")).toBeLessThan(
+      batchSql.indexOf("INSERT INTO public.document_number_sequences"),
     );
   });
 
   it("requires an exact group-course link", () => {
-    expect(sql).toContain("v_group_course_id IS NULL OR v_group_course_id <> p_course_id");
+    expect(batchSql).toContain("v_group_course_id IS NULL OR v_group_course_id <> p_course_id");
   });
 
   it("reuses an existing original before allocating a new number", () => {
-    expect(sql).toContain("Идемпотентность");
-    expect(sql).toContain("r.enrollment_id = v_enrollment_id");
-    expect(sql).toContain("CONTINUE");
-    expect(sql.indexOf("v_existing_id IS NOT NULL")).toBeLessThan(
-      sql.indexOf("INSERT INTO public.document_number_sequences"),
+    expect(batchSql).toContain("One enrollment has one original education document");
+    expect(batchSql).toContain("r.enrollment_id = v_enrollment_id");
+    expect(batchSql).toContain("CONTINUE");
+    expect(batchSql.indexOf("v_existing_id IS NOT NULL")).toBeLessThan(
+      batchSql.indexOf("INSERT INTO public.document_number_sequences"),
     );
   });
 
   it("rejects empty and oversized batches", () => {
-    expect(sql).toContain("jsonb_typeof(p_items)");
-    expect(sql).toContain("v_items_count = 0");
-    expect(sql).toContain("v_items_count > 500");
+    expect(batchSql).toContain("jsonb_typeof(p_items)");
+    expect(batchSql).toContain("v_items_count = 0");
+    expect(batchSql).toContain("v_items_count > 500");
+  });
+
+  it("uses one tenant-wide sequence and seeds it above historical numbers", () => {
+    expect(batchSql).toContain("VALUES (p_organization_id, 'edu_doc', v_year, v_max_doc + 1)");
+    expect(batchSql).toContain("VALUES (p_organization_id, 'edu_reg', v_year, v_max_reg + 1)");
+    expect(batchSql).toContain("GREATEST(document_number_sequences.last_number + 1, v_max_doc + 1)");
+    expect(batchSql).not.toContain("'edu_doc:' || v_doc_type");
+    expect(batchSql).not.toContain("'edu_reg:' || v_doc_type");
   });
 });
