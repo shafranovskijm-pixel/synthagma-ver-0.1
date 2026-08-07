@@ -30,14 +30,11 @@ const DemoJoin = () => {
   useEffect(() => {
     if (!token) { setInvalid(true); setLoading(false); return; }
     supabase
-      .from('sales_demo_links')
-      .select('id, token, label, kinescope_live_id, is_active')
-      .eq('token', token)
-      .eq('is_active', true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) setInvalid(true);
-        else setLinkData(data);
+      .rpc('public_get_sales_demo_link' as never, { p_token: token } as never)
+      .then(({ data, error }) => {
+        const link = (Array.isArray(data) ? data[0] : null) as DemoLinkData | null;
+        if (error || !link) setInvalid(true);
+        else setLinkData(link);
         setLoading(false);
       });
   }, [token]);
