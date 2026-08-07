@@ -11571,6 +11571,10 @@ export type Database = {
       }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      complete_own_course_enrollment: {
+        Args: { p_enrollment_id: string }
+        Returns: Json
+      }
       confirm_campaign_send_consent: {
         Args: { p_campaign_id: string; p_method?: string }
         Returns: string
