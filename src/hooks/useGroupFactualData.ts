@@ -9,10 +9,10 @@ import {
 } from "@/lib/group-docs/factualData";
 import {
   normalizeRegistrationFact,
-  pickPassportIdentityDoc,
   resolveFinalAttestationFacts,
   resolveFinalTestLessonId,
 } from "@/lib/group-docs/factualResolvers";
+import { getOksmName } from "@/constants/oksm";
 
 /**
  * Снимок ФАКТИЧЕСКИХ данных Синтагмы для документов группы.
@@ -132,7 +132,7 @@ export function useGroupFactualData(
       if (enrollmentIds.length === 0) {
         if (!enrollmentsError) warnings.push("Ученики группы не зачислены на привязанный курс.");
       } else {
-        const [recordsRes, frdoRes, identityRes] = await Promise.all([
+        const [recordsRes, frdoRes] = await Promise.all([
           supabase
             .from("education_document_records")
             .select(
@@ -144,36 +144,28 @@ export function useGroupFactualData(
           supabase
             .from("student_frdo_data")
             .select(
-              "user_id, last_name, first_name, middle_name, birth_date, gender, citizenship, passport_series, passport_number",
+              "user_id, last_name, first_name, middle_name, birth_date, gender, citizenship_code, passport_series, passport_number",
             )
-            .in("user_id", ids),
-          supabase
-            .from("student_identity_documents")
-            .select("user_id, document_type, series, number")
+            .eq("organization_id", organizationId)
             .in("user_id", ids),
         ]);
 
         if (recordsRes.error) failClosed("выданные документы об образовании", recordsRes.error);
         if (frdoRes.error) failClosed("данные ФРДО", frdoRes.error);
-        if (identityRes.error) failClosed("документы, удостоверяющие личность", identityRes.error);
 
         const frdoByUser = new Map<string, any>(
-          ((frdoRes.error ? [] : (frdoRes.data as any[])) || []).map((r) => [r.user_id, r]),
+          ((frdoRes.error ? [] : (frdoRes.data as any[])) || []).map((r) => [
+            r.user_id,
+            { ...r, citizenship: getOksmName(r.citizenship_code) },
+          ]),
         );
-        // Детерминированно: паспорт, а не произвольная строка identity-документов.
-        const identityByUser = new Map<string, any>();
-        const identityRows = ((identityRes.error ? [] : (identityRes.data as any[])) || []);
-        for (const uid of ids) {
-          const passport = pickPassportIdentityDoc(identityRows.filter((r) => r.user_id === uid));
-          if (passport) identityByUser.set(uid, passport);
-        }
 
         registration = ((recordsRes.error ? [] : (recordsRes.data as any[])) || []).map((r) => {
           const userId = r.enrollment_id ? byEnrollment.get(r.enrollment_id) || null : null;
           return normalizeRegistrationFact(
             { ...r, user_id: userId },
             userId ? frdoByUser.get(userId) : null,
-            userId ? identityByUser.get(userId) : null,
+            null,
           );
         });
       }

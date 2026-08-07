@@ -173,6 +173,27 @@ describe("нет выдуманных production-defaults", () => {
     expect(vars.org_director_position).toBe("");
     expect(vars.program_form).toBe("");
   });
+
+  it("приказ ссылается на фактический номер договора, а не на собственный номер", () => {
+    const ctx = structuredClone(SAMPLE_CONTEXT);
+    ctx.extras = { ...(ctx.extras || {}), contract_basis: "Договор № 2026-123" };
+    const vars = buildVariables(ctx, {
+      documentNumber: "УЦ-10/2026",
+      documentDate: "2026-08-07",
+    });
+    expect(vars.students_list_rows).toContain("Договор № 2026-123");
+    expect(vars.students_list_rows).not.toContain("Договор № УЦ-10/2026");
+  });
+
+  it("дата в приказе не получает вторую точку", () => {
+    const doc = generateDocument(structuredClone(SAMPLE_CONTEXT), "enrollment_order", {
+      mode: "data",
+      requestedStatus: "final",
+      documentDate: "2026-08-07",
+      numbers: { enrollment_order: "УЦ-10/2026" },
+    });
+    expect(doc.html).not.toContain("г..</p>");
+  });
 });
 
 describe("выбор паспорта среди нескольких identity-документов", () => {

@@ -87,7 +87,7 @@ export const JOURNAL_SOURCE_LABEL =
 export const ATTESTATION_SOURCE_LABEL =
   "Лучшая попытка ФИНАЛЬНОГО теста курса (последний урок type='test' по order_index, test_attempts). Порог 70%.";
 export const REGISTRATION_SOURCE_LABEL =
-  "Выданные документы об образовании (education_document_records по зачислениям этого курса) + нормализованные данные ФИС ФРДО и документы личности.";
+  "Выданные документы об образовании (education_document_records по зачислениям этого курса) + структурированные персональные данные ФИС ФРДО.";
 export const SCHEDULE_SOURCE_LABEL =
   "Структурированные занятия группы. Без них выдаётся пустой рабочий бланк.";
 

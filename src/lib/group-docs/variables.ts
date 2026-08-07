@@ -306,11 +306,12 @@ export function buildVariables(
     ? `Договор № ${orderNum || "___"} · ${ctx.company!.name}`
     : `Договор № ${orderNum || "___"}`;
 
-  const basisForOrders = hasCompany
+  const explicitContractBasis = String(ctx.extras?.contract_basis || "").trim();
+  const basisForOrders = explicitContractBasis || (hasCompany
     ? `Договор + ${ctx.company!.name}`
     : orderNum
       ? `Договор № ${orderNum}`
-      : "Заявление";
+      : "Заявление");
 
   const vars: Record<string, string> = {
     org_name: ctx.organization.name,

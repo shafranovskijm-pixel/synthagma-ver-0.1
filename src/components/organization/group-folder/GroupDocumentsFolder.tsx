@@ -121,7 +121,7 @@ export function GroupDocumentsFolder({
     [factual, students.length],
   );
 
-  const run = async (types: DocType[], docBlockers?: string[]) => {
+  const run = async (types: DocType[], docBlockers?: string[], contractBasis?: string) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
     const gate = docBlockers ?? packageBlockers;
     if (gate.length > 0) {
@@ -161,6 +161,9 @@ export function GroupDocumentsFolder({
         return false;
       }
 
+      const generationCtx = contractBasis
+        ? { ...ctx, extras: { ...(ctx.extras || {}), contract_basis: contractBasis } }
+        : ctx;
       const genOpts = {
         totalPrice: price,
         mode,
@@ -172,9 +175,9 @@ export function GroupDocumentsFolder({
       const hasDocxJournal = types.includes("class_journal");
       const legacyTypes = types.filter(type => type !== "class_journal");
       const docs = legacyTypes.length === 1
-        ? [generateDocument(ctx, legacyTypes[0], genOpts)]
+        ? [generateDocument(generationCtx, legacyTypes[0], genOpts)]
         : legacyTypes.length > 1
-          ? generatePackage(ctx, legacyTypes, genOpts)
+          ? generatePackage(generationCtx, legacyTypes, genOpts)
           : [];
       const res = hasDocxJournal
         ? await generateClassJournalDocx({
@@ -208,7 +211,7 @@ export function GroupDocumentsFolder({
    * Пакет: договоры создаёт GenerateContractDialog (сценарии),
    * остальные 9 документов группы генерируются ровно один раз после успеха.
    */
-  const handleContractsGenerated = async (result?: { scenario: "individual" | "legal"; count: number }) => {
+  const handleContractsGenerated = async (result?: { scenario: "individual" | "legal"; count: number; contractNumbers: string[] }) => {
     const scenario = result?.scenario ?? "individual";
     const count = result?.count ?? 0;
     if (!shouldGeneratePackageDocs({ contractsDone: true, contractCount: count, docsGenerated: false })) {
@@ -216,7 +219,13 @@ export function GroupDocumentsFolder({
       return;
     }
     onDataChanged?.();
-    const ok = await run(PACKAGE_DOC_TYPES);
+    const numbers = result?.contractNumbers || [];
+    const contractBasis = numbers.length === 1
+      ? `Договор № ${numbers[0]}`
+      : numbers.length > 1
+        ? `Договоры № ${numbers.join(", ")}`
+        : undefined;
+    const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
     if (ok) toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
   };
 

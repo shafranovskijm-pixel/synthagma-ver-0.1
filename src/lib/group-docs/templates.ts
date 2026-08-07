@@ -56,7 +56,7 @@ export const TEMPLATES: DocTemplate[] = [
 положением об учебном центре, Уставом {{org_short_name}} <strong>приказываю:</strong></p>
 
 <p><strong>1.</strong> Открыть курс в объёме {{program_hours}} часов по дополнительной профессиональной
-образовательной программе повышения квалификации «{{program_title}}» с {{start_date_ru}}.</p>
+образовательной программе повышения квалификации «{{program_title}}» с {{start_date_ru}}</p>
 
 <p><strong>2.</strong> На основании заявления о зачислении зачислить в группу следующих обучающихся:</p>
 
@@ -103,7 +103,7 @@ export const TEMPLATES: DocTemplate[] = [
 <p class="justify">На основании результатов итоговой аттестации <strong>приказываю:</strong></p>
 
 <p><strong>1.</strong> Закрыть курс по программе повышения квалификации «{{program_title}}»
-(объём {{program_hours}} ак. ч.) с {{end_date_ru}}.</p>
+(объём {{program_hours}} ак. ч.) с {{end_date_ru}}</p>
 
 <p><strong>2.</strong> Отчислить с выдачей удостоверений о повышении квалификации
 обучающихся группы <strong>{{group_number}}</strong>:</p>

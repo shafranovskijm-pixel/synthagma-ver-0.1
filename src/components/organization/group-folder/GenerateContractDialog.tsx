@@ -37,6 +37,7 @@ import {
 } from "@/lib/contracts/scenarios";
 import { canProceedStep, nextStep, prevStep, type WizardState } from "@/lib/contracts/wizardFlow";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
+import { localDateIso } from "@/lib/date/localDate";
 
 interface Student { user_id: string; full_name: string; email?: string | null; passport?: string | null; address?: string | null; phone?: string | null; }
 interface Template { id: string; name: string; body_html: string; is_default?: boolean | null; updated_at?: string | null; counterparty_type?: string | null; version?: number | null; }
@@ -56,7 +57,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   /** Вызывается один раз после успешного создания всей партии договоров. */
-  onGenerated: (result?: { scenario: ContractScenario; count: number }) => void;
+  onGenerated: (result?: { scenario: ContractScenario; count: number; contractNumbers: string[] }) => void;
   /**
    * Быстрая генерация: шаблон по умолчанию, все ученики группы,
    * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
@@ -146,7 +147,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setCourseHoursOverride(groupDefaults?.programHours ? String(groupDefaults.programHours) : "");
     setCourseFormOverride(groupDefaults?.programForm || "");
     setPrice(groupDefaults?.price ? String(groupDefaults.price) : "");
-    setDate(groupDefaults?.startDate || new Date().toISOString().slice(0, 10));
+    setDate(localDateIso());
     if (quick) {
       setNumberMode("auto");
       setNumberManual("");
@@ -204,7 +205,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setMultiStudentIds(ids);
     setPrimaryStudentId(ids[0] || "");
     if (scenario === "individual") setCompanyId("");
-    setDate(groupDefaults?.startDate || new Date().toISOString().slice(0, 10));
+    setDate(localDateIso());
     setNumberMode("auto");
     const usable = templates.filter(t => templateUsableForScenario(t.counterparty_type, extractVariables(t.body_html), scenario));
     const def = pickDefaultTemplate(usable, scenario);
@@ -469,7 +470,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         templateId,
       });
 
-      const produced: Array<{ name: string; html: string }> = [];
+      const produced: Array<{ name: string; html: string; number: string }> = [];
 
       for (const [index, job] of jobs.entries()) {
         const number = await resolveNumber(index);
@@ -511,7 +512,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         });
         if (insErr) throw insErr;
 
-        produced.push({ name: counterparty === "individual" ? `${title} ${job.students[0]?.full_name || ""}`.trim() : title, html: fullDoc });
+        produced.push({
+          name: counterparty === "individual" ? `${title} ${job.students[0]?.full_name || ""}`.trim() : title,
+          html: fullDoc,
+          number,
+        });
       }
 
       // Скачиваем редактируемые DOCX: один документ — файл, несколько — ZIP.
@@ -528,7 +533,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       }
 
       toast.success(produced.length === 1 ? "Договор сгенерирован" : `Сгенерировано договоров: ${produced.length}`);
-      onGenerated({ scenario: counterparty, count: produced.length });
+      onGenerated({
+        scenario: counterparty,
+        count: produced.length,
+        contractNumbers: produced.map((doc) => doc.number).filter(Boolean),
+      });
       onClose();
     } catch (e: any) {
       toast.error("Ошибка генерации", { description: e?.message });
