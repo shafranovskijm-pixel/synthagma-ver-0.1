@@ -132,7 +132,7 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
   }
 
   if (passed) {
-    await supabaseAdmin
+    const { error: progressError } = await supabaseAdmin
       .from("lesson_progress")
       .upsert(
         {
@@ -143,6 +143,14 @@ Deno.serve(withAuth(async ({ req, body, user }) => {
         },
         { onConflict: "lesson_id,user_id" }
       );
+
+    if (progressError) {
+      console.error("Error saving passed lesson progress:", progressError);
+      return new Response(
+        JSON.stringify({ error: "Test was graded, but lesson progress was not saved" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
   }
 
   // Recount attempts after insert

@@ -50,7 +50,7 @@ const CourseLearning = () => {
     feedbackAnswer, setFeedbackAnswer, feedbackSent, feedbackSending, submitFeedback,
     isLessonAccessible, isLessonCompleted,
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
-    submitTest, retryTest,
+    submitTest, retryTest, retryCourseCompletion,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
     isOfflineMode, offlineCachedAt } = useCourseLearning();
 
@@ -443,6 +443,11 @@ const CourseLearning = () => {
               );
             })()}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && <Button onClick={goToNextLesson} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Далее" : "Следующий урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
+            {currentLesson?.type === 'test' && testPassed && !isLessonCompleted(currentLesson.id) && currentLessonIndex === lessons.length - 1 && (
+              <Button onClick={retryCourseCompletion} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
+                <Trophy className="w-4 h-4 mr-1" />{isMobile ? "Завершить" : "Завершить курс"}
+              </Button>
+            )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "Готово!" : "Курс завершён!"}</Button>}
           </div>
         </footer>

@@ -173,20 +173,25 @@ export function useCourseLearning() {
         }
       }
 
-      // Persist completion first — the DB trigger creates the organization notification
-      // regardless of what happens with the Edge Function/email path.
-      const { data: updatedEnrollment, error: enrollmentUpdateErr } = await supabase
-        .from('enrollments')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('id', enrollmentId)
-        .select('id, status')
-        .maybeSingle();
+      if (!enrollmentId) {
+        toast.error('Не удалось определить запись на курс. Обновите страницу и попробуйте ещё раз.');
+        return;
+      }
+
+      // Validate every lesson and complete the enrollment in one server-side
+      // transaction. The RPC also repairs progress for an already-passed test.
+      const { data: updatedEnrollment, error: enrollmentUpdateErr } = await supabase.rpc(
+        'complete_own_course_enrollment' as never,
+        { p_enrollment_id: enrollmentId } as never,
+      );
 
       if (enrollmentUpdateErr || !updatedEnrollment) {
         console.error('[course-completion] failed to mark enrollment completed:', enrollmentUpdateErr);
         toast.error('Не удалось завершить курс. Попробуйте ещё раз.');
         return;
       }
+
+      setLessonProgress(lessons.map(lesson => ({ lesson_id: lesson.id, completed: true })));
 
       const protocolName = await generateAttestationProtocol({
         organizationId: org.id, organizationName: org.name, directorName: org.director_name, directorPosition: org.director_position,
@@ -555,6 +560,7 @@ export function useCourseLearning() {
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
     sidebarOpen, setSidebarOpen, isLessonCompleted, isLessonAccessible,
     markLessonComplete, resetCourseProgress,
+    retryCourseCompletion: () => handleCourseCompletion(testHook.testScore ?? undefined),
     ...testHook,
     feedbackAnswer, setFeedbackAnswer, feedbackSent, feedbackSending, submitFeedback,
     ...videoHook,

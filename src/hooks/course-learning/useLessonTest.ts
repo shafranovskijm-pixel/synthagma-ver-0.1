@@ -162,7 +162,6 @@ export function useLessonTest({
       if (passed) {
         setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== currentLesson.id), { lesson_id: currentLesson.id, completed: true }]);
         const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
-        await supabase.from('enrollments').update({ progress: newProgress }).eq('id', enrollmentId);
         if (newProgress >= 100) { await handleCourseCompletion({ score, max: maxScore }); } else { toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`); }
       } else {
         toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%.`);
