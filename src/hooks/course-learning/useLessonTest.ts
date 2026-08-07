@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { enqueueTestSubmission } from "@/utils/testAnswerQueue";
@@ -35,10 +35,18 @@ export function useLessonTest({
   const [testExplanations, setTestExplanations] = useState<Record<string, string | null>>({});
   const [testMaxAttempts, setTestMaxAttempts] = useState<number | null>(null);
   const [testAttemptsUsed, setTestAttemptsUsed] = useState<number>(0);
+  const [testQuestionsLoading, setTestQuestionsLoading] = useState(false);
+  const [testQuestionsError, setTestQuestionsError] = useState<string | null>(null);
+  const testQuestionRequestRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++testQuestionRequestRef.current;
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({});
-    if (currentLesson?.type === 'test') fetchTestQuestions(currentLesson.id);
+    setAllBankQuestions([]); setUsedQuestionIds([]); setTestExplanations({});
+    setTestMaxAttempts(null); setTestAttemptsUsed(0);
+    setTestQuestionsError(null);
+    setTestQuestionsLoading(currentLesson?.type === 'test');
+    if (currentLesson?.type === 'test') void fetchTestQuestions(currentLesson.id, requestId);
   }, [currentLesson?.id]);
 
   const selectRandomQuestions = (allQuestions: TestQuestion[], count: number | null, excludeIds: string[]) => {
@@ -52,19 +60,27 @@ export function useLessonTest({
     setTestQuestions(shuffled.slice(0, Math.min(count, shuffled.length)));
   };
 
-  const fetchTestQuestions = async (lessonId: string) => {
-    const { data: lessonData } = await supabase.from('lessons').select('test_questions_to_show, test_passing_score').eq('id', lessonId).single();
-    const questionsToShow = (lessonData as Record<string, unknown>)?.test_questions_to_show as number | null ?? null;
-    const passingScore = (lessonData as Record<string, unknown>)?.test_passing_score as number ?? 60;
-    setTestQuestionsCount(questionsToShow);
-    setTestPassingScore(passingScore);
-
-    const { data, error } = await supabase.from('test_questions_for_students').select('*').eq('lesson_id', lessonId).order('order_index');
-    if (error) { console.error('Error fetching questions:', error); return; }
-    const allQuestions = (data || []) as TestQuestion[];
-    setAllBankQuestions(allQuestions);
-
+  const fetchTestQuestions = async (lessonId: string, requestId: number) => {
+    const isCurrentRequest = () => testQuestionRequestRef.current === requestId;
     try {
+      const { data: lessonData, error: lessonError } = await supabase.from('lessons').select('test_questions_to_show, test_passing_score').eq('id', lessonId).single();
+      if (!isCurrentRequest()) return;
+      if (lessonError) throw lessonError;
+      const questionsToShow = (lessonData as Record<string, unknown>)?.test_questions_to_show as number | null ?? null;
+      const passingScore = (lessonData as Record<string, unknown>)?.test_passing_score as number ?? 60;
+      setTestQuestionsCount(questionsToShow);
+      setTestPassingScore(passingScore);
+
+      const { data, error } = await supabase.from('test_questions_for_students').select('*').eq('lesson_id', lessonId).order('order_index');
+      if (!isCurrentRequest()) return;
+      if (error) throw error;
+      const allQuestions = (data || []) as TestQuestion[];
+      setAllBankQuestions(allQuestions);
+      if (allQuestions.length === 0) {
+        setTestQuestionsError('В этом тесте пока нет доступных вопросов. Обратитесь в учебную организацию.');
+        return;
+      }
+
       const { data: resultsData, error: resultsError } = await safeInvoke<{
         hasAttempt?: boolean;
         attempt?: { score: number; max_score: number; answers: Record<string, number>; shown_question_ids: string[] };
@@ -74,6 +90,7 @@ export function useLessonTest({
         maxAttempts?: number | null;
         attemptsUsed?: number;
       }>('get-test-results', { body: { lesson_id: lessonId } });
+      if (!isCurrentRequest()) return;
 
       if (resultsData) {
         setTestMaxAttempts(resultsData.maxAttempts ?? null);
@@ -99,9 +116,14 @@ export function useLessonTest({
         selectRandomQuestions(allQuestions, questionsToShow, []);
         setUsedQuestionIds([]); setAnswers({});
       }
-    } catch {
-      selectRandomQuestions(allQuestions, questionsToShow, []);
-      setUsedQuestionIds([]); setAnswers({});
+    } catch (error) {
+      if (!isCurrentRequest()) return;
+      console.error('Error fetching test questions:', error);
+      setTestQuestions([]);
+      setAllBankQuestions([]);
+      setTestQuestionsError('Не удалось загрузить вопросы. Проверьте соединение и повторите попытку.');
+    } finally {
+      if (isCurrentRequest()) setTestQuestionsLoading(false);
     }
   };
 
@@ -169,6 +191,7 @@ export function useLessonTest({
     testQuestions, allBankQuestions, answers, setAnswers,
     testSubmitted, testScore, testPassingScore, testExplanations,
     testMaxAttempts, testAttemptsUsed,
+    testQuestionsLoading, testQuestionsError,
     submitTest, retryTest,
   };
 }

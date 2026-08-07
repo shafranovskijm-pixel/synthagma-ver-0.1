@@ -41,6 +41,7 @@ const CourseLearning = () => {
     course, lessons, currentLessonIndex, lessonProgress, loading,
     sidebarOpen, setSidebarOpen, isTransitioning,
     testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions, testMaxAttempts, testAttemptsUsed,
+    testQuestionsLoading, testQuestionsError,
     answers, setAnswers,
     isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
@@ -294,8 +295,20 @@ const CourseLearning = () => {
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-sigma-purple/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><ClipboardList className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-sigma-purple")} /></div>
-                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов • Проходной балл: {testPassingScore}%</p></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestionsLoading ? 'загрузка вопросов…' : `${testQuestions.length} вопросов`} • Проходной балл: {testPassingScore}%</p></div>
                 </div>
+                {testQuestionsLoading && (
+                  <div className="flex items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-muted-foreground">
+                    <SigmaSpinner size="sm" />
+                    <span>Загружаем вопросы выбранного теста…</span>
+                  </div>
+                )}
+                {!testQuestionsLoading && testQuestionsError && (
+                  <div role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">
+                    <p className="font-semibold">Тест сейчас недоступен</p>
+                    <p className="mt-1">{testQuestionsError}</p>
+                  </div>
+                )}
                 {testScore && (
                   <div className={cn("p-6 rounded-2xl border transition-all", testPassed ? "bg-sigma-green/10 border-sigma-green/20" : "bg-destructive/10 border-destructive/20")}>
                     <div className="flex items-center gap-4">
@@ -365,7 +378,7 @@ const CourseLearning = () => {
                     </CollapsibleContent>
                   </Collapsible>
                 )}
-                {!testSubmitted && testQuestions.map((q, i) => (
+                {!testQuestionsLoading && !testSubmitted && testQuestions.map((q, i) => (
                   <div key={q.id} className="bg-card rounded-2xl p-6 border border-border shadow-sm">
                     <h3 className="font-semibold mb-4 flex items-center gap-2"><span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">{i + 1}</span>{q.question}</h3>
                     {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-64 rounded-lg border border-border object-contain mb-4" />}
@@ -406,7 +419,7 @@ const CourseLearning = () => {
         <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
-            {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Отправить" : "Отправить ответы"}</Button>}
+            {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
             {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (() => {
               const VIDEO_FINISH_THRESHOLD = 85; // допускаем 85% — на мобильных последние ~10% часто пропускаются
               const gated = currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < VIDEO_FINISH_THRESHOLD;
