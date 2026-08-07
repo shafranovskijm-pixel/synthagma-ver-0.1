@@ -71,7 +71,10 @@ export function useLessonTest({
       setTestQuestionsCount(questionsToShow);
       setTestPassingScore(passingScore);
 
-      const { data, error } = await supabase.from('test_questions_for_students').select('*').eq('lesson_id', lessonId).order('order_index');
+      const { data, error } = await supabase.rpc(
+        'get_student_test_questions' as never,
+        { p_lesson_id: lessonId } as never,
+      );
       if (!isCurrentRequest()) return;
       if (error) throw error;
       const allQuestions = (data || []) as TestQuestion[];
