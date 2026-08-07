@@ -12080,6 +12080,19 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_student_test_questions: {
+        Args: { p_lesson_id: string }
+        Returns: {
+          explanation: string
+          id: string
+          image_url: string
+          is_bank_question: boolean
+          lesson_id: string
+          options: Json
+          order_index: number
+          question: string
+        }[]
+      }
       get_user_companies: {
         Args: { _user_id: string }
         Returns: {
