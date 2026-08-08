@@ -77,45 +77,9 @@ function StatusBadge({ value }: { value: Status }) {
   return <span className="text-xs font-medium">{value}</span>;
 }
 
-/* ─── PDF Logic ─── */
-async function getCachedPdfUrl(): Promise<string | null> {
-  try {
-    const { data } = await supabase.storage.from("presentation-files").list("", { search: `${PRESENTATION_VERSION}_` });
-    if (data && data.length > 0) {
-      const { data: urlData } = supabase.storage.from("presentation-files").getPublicUrl(data[0].name);
-      return urlData?.publicUrl ?? null;
-    }
-    return null;
-  } catch { return null; }
-}
-
 /* ─── Main Component ─── */
 export default function PlatformPresentation() {
-  const navigate = useNavigate();
-  const [isExporting, setIsExporting] = React.useState(false);
   const [competitor, setCompetitor] = React.useState<Competitor>("getcourse");
-  const [linkCopied, setLinkCopied] = React.useState(false);
-
-  const handleDownloadPDF = useCallback(async () => {
-    setIsExporting(true);
-    toast.info("Проверяем кеш...");
-    const cachedUrl = await getCachedPdfUrl();
-    if (cachedUrl) {
-      toast.success("PDF готов!");
-      window.open(cachedUrl, "_blank");
-      setIsExporting(false);
-      return;
-    }
-    toast.error("PDF ещё не сгенерирован. Обратитесь к администратору.");
-    setIsExporting(false);
-  }, []);
-
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href);
-    setLinkCopied(true);
-    toast.success("Ссылка скопирована!");
-    setTimeout(() => setLinkCopied(false), 2000);
-  }, []);
 
   const categories = [...new Set(compData.map(r => r.category))];
 
@@ -124,6 +88,20 @@ export default function PlatformPresentation() {
       <LandingHeader />
 
       <PresentationHero Section={Section} heroBg={heroBg} />
+
+      {/* ═══ ЕДИНОЕ КП ═══ */}
+      <Section className="border-y border-border bg-secondary/30">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-foreground">Коммерческое предложение</h2>
+            <p className="mt-1 text-sm text-muted-foreground max-w-xl">
+              Единый документ с составом платформы, тарифами и условиями — актуален на сегодня.
+            </p>
+          </div>
+          <ProposalDownloadButton size="lg" withOnlineLink />
+        </div>
+      </Section>
+
       <PresentationProblem Section={Section} />
       <PresentationSolution Section={Section} />
       <PresentationLMS Section={Section} />
