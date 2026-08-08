@@ -23,6 +23,8 @@ export interface VariableDef {
   example: string;
 }
 
+import { LEGACY_MAILING_VARIABLE_KEYS } from "@/lib/mailing/variableRegistry";
+
 /** Переменные, доступные в кабинете рассылок (этап 2). */
 export const MAILING_VARIABLES: VariableDef[] = [
   { key: "first_name", label: "Имя", example: "Иван" },
@@ -36,29 +38,9 @@ export const MAILING_VARIABLES: VariableDef[] = [
 
 /**
  * Переменные, которые исторически поддерживает send-campaign-email
- * (вебинары, курсы, метаданные организации). Оставлены валидными, чтобы
- * не сломать существующие шаблоны.
+ * (вебинары, курсы, метаданные организации). Единый источник — реестр.
  */
-export const LEGACY_VARIABLES = [
-  "name",
-  "recipient_name",
-  "company",
-  "org_name",
-  "plan",
-  "course_count",
-  "last_login",
-  "webinar_url",
-  "webinar_title",
-  "webinar_date",
-  "webinar_time",
-  "course_name",
-  "course_duration",
-  "course_price",
-  "course_url",
-  "date",
-  "time",
-  "host_name",
-];
+export const LEGACY_VARIABLES: string[] = [...LEGACY_MAILING_VARIABLE_KEYS];
 
 const VAR_RE = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
 
