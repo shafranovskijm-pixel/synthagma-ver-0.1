@@ -194,8 +194,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 organizationId={organization.id}
                 organizationName={organization.name}
                 subscriptionPlan={(organization.subscription_plan || 'free') as any}
-                onOpenBillingDocs={() => vm.setActiveTab?.("billing" as any)}
+                onOpenBillingDocs={() => document.getElementById("org-billing-docs")?.scrollIntoView({ behavior: "smooth" })}
               />
+              <div id="org-billing-docs">
+                <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Финансовые документы (счета, акты, чеки)</h3>
+                <OrgBillingDocsTab organizationId={organization.id} />
+              </div>
               <div>
                 <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Другие документы</h3>
                 <AdminDocumentsManager
