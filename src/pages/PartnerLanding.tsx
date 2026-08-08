@@ -20,8 +20,8 @@ import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadBu
 import { getEntryPaidPlan, PROPOSAL_PDF_FILE_NAME } from "@/lib/proposal/proposalContent";
 
 import {
-  steps, benefits, networkLevels, bonuses, whyEasyToSell, caseStudies,
-  priceOptions, faqItems, platformStats, downloadMaterials, recommendTargets,
+  steps, benefits, networkLevels, bonuses,
+  priceOptions, faqItems, downloadMaterials, recommendTargets,
   formatRub, buildPromoTexts,
 } from "@/components/partner/partnerLandingData";
 
