@@ -7,7 +7,9 @@ const MIGRATIONS_DIR = path.resolve(__dirname, "../../../../supabase/migrations"
 function latestIssuanceMigration(): string {
   const files = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
   const candidates = files.filter((f) =>
-    fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8").includes("issue_education_document_batch"),
+    fs
+      .readFileSync(path.join(MIGRATIONS_DIR, f), "utf8")
+      .includes("CREATE OR REPLACE FUNCTION public.issue_education_document_batch"),
   );
   expect(candidates.length).toBeGreaterThan(0);
   return fs.readFileSync(path.join(MIGRATIONS_DIR, candidates.at(-1)!), "utf8");
@@ -51,5 +53,21 @@ describe("issue_education_document_batch migration", () => {
     expect(batchSql).toContain("GREATEST(document_number_sequences.last_number + 1, v_max_doc + 1)");
     expect(batchSql).not.toContain("'edu_doc:' || v_doc_type");
     expect(batchSql).not.toContain("'edu_reg:' || v_doc_type");
+  });
+});
+
+describe("issue_education_document_batch grants", () => {
+  const revokeSql = fs.readFileSync(
+    path.join(MIGRATIONS_DIR, "20260808101500_revoke_anon_issue_education_document_batch.sql"),
+    "utf8",
+  );
+
+  it("revokes execution from anonymous callers explicitly", () => {
+    expect(revokeSql).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.issue_education_document_batch(uuid, uuid, uuid, jsonb) FROM anon",
+    );
+    expect(revokeSql).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.issue_education_document_batch(uuid, uuid, uuid, jsonb) FROM PUBLIC",
+    );
   });
 });
