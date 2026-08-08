@@ -345,7 +345,7 @@ export function PresentationCTA({ Section, ctaBg }: { Section: SectionComponent;
         <p className="text-base md:text-xl text-white/60 mb-10 max-w-xl mx-auto">Бесплатный тариф — навсегда. Все функции доступны.</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
           <Link to="/register-organization" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl bg-[hsl(174_72%_46%)] text-base md:text-lg font-semibold hover:opacity-90 transition-opacity text-center">Начать бесплатно</Link>
-          <Link to="/register-organization" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl border border-white/30 text-base md:text-lg font-semibold hover:bg-white/10 transition-colors text-center">Запросить демо</Link>
+          <Link to="/demonstration" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl border border-white/30 text-base md:text-lg font-semibold hover:bg-white/10 transition-colors text-center">Запросить демо</Link>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 justify-center text-white/40 text-sm">
           <span>support@sintagma.com.ru</span>
