@@ -13,6 +13,9 @@ import {
 } from "@/lib/platform-commerce";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 
+const ORG_ID = "11111111-2222-4333-8444-555555555555";
+const ORG_ID_2 = "99999999-2222-4333-8444-555555555555";
+
 const ORG = {
   name: 'ООО "Тест"',
   inn: "7712345678",
@@ -85,9 +88,9 @@ describe("реквизиты", () => {
 
 describe("номер счёта", () => {
   it("детерминирован для одинакового запроса и различается между организациями", () => {
-    const a = platformInvoiceNumber({ organizationId: "org-1", plan: "standard", periodMonths: 12, date: "2026-08-08" });
-    const b = platformInvoiceNumber({ organizationId: "org-1", plan: "standard", periodMonths: 12, date: "2026-08-08" });
-    const c = platformInvoiceNumber({ organizationId: "org-2", plan: "standard", periodMonths: 12, date: "2026-08-08" });
+    const a = platformInvoiceNumber({ organizationId: ORG_ID, plan: "standard", periodMonths: 12, date: "2026-08-08" });
+    const b = platformInvoiceNumber({ organizationId: ORG_ID, plan: "standard", periodMonths: 12, date: "2026-08-08" });
+    const c = platformInvoiceNumber({ organizationId: ORG_ID_2, plan: "standard", periodMonths: 12, date: "2026-08-08" });
     expect(a).toBe(b);
     expect(a).not.toBe(c);
     expect(a).toContain("STD12");
@@ -102,7 +105,7 @@ describe("проект договора без номера", () => {
   });
 
   it("сумма проекта берётся из SUBSCRIPTION_PLANS", () => {
-    const draft = buildDraftForRequest({ organizationId: "o", plan: "standard", periodMonths: 1, customer: ORG });
+    const draft = buildDraftForRequest({ organizationId: ORG_ID, plan: "standard", periodMonths: 1, customer: ORG });
     expect(draft.monthlyPrice).toBe(SUBSCRIPTION_PLANS.standard.price);
     expect(draft.totalAmount).toBe(SUBSCRIPTION_PLANS.standard.price);
   });
@@ -111,7 +114,7 @@ describe("проект договора без номера", () => {
 describe("идемпотентность", () => {
   it("повторное формирование не создаёт дубли договора и счёта", async () => {
     const client = makeClient({ contracts: [], invoices: [] });
-    const req = { organizationId: "org-1", plan: "standard" as const, periodMonths: 12 as const, customer: ORG };
+    const req = { organizationId: ORG_ID, plan: "standard" as const, periodMonths: 12 as const, customer: ORG };
 
     const first = await createPlatformCommercialSet(client, req);
     const second = await createPlatformCommercialSet(client, req);
@@ -125,7 +128,7 @@ describe("идемпотентность", () => {
 
   it("другой тариф создаёт отдельный проект", async () => {
     const client = makeClient({ contracts: [], invoices: [] });
-    const base = { organizationId: "org-1", customer: ORG };
+    const base = { organizationId: ORG_ID, customer: ORG };
     await createPlatformCommercialSet(client, { ...base, plan: "standard", periodMonths: 12 });
     await createPlatformCommercialSet(client, { ...base, plan: "professional", periodMonths: 12 });
     expect(client.calls.contractInserts).toBe(2);
@@ -134,7 +137,7 @@ describe("идемпотентность", () => {
 
   it("счёт создаётся на выбранный тариф и срок", async () => {
     const client = makeClient({ contracts: [], invoices: [] });
-    const req = { organizationId: "org-1", plan: "professional" as const, periodMonths: 12 as const, customer: ORG };
+    const req = { organizationId: ORG_ID, plan: "professional" as const, periodMonths: 12 as const, customer: ORG };
     const draft = buildDraftForRequest(req);
     const invoice = await ensurePlatformInvoice(client, req, draft);
     expect(invoice.plan).toBe("professional");
@@ -145,7 +148,7 @@ describe("идемпотентность", () => {
 
   it("обновляет существующий черновик, а не плодит новые", async () => {
     const client = makeClient({ contracts: [], invoices: [] });
-    const req = { organizationId: "org-1", plan: "start" as const, periodMonths: 1 as const, customer: ORG };
+    const req = { organizationId: ORG_ID, plan: "start" as const, periodMonths: 1 as const, customer: ORG };
     const draft = buildDraftForRequest(req);
     await ensurePlatformContractProject(client, req, draft);
     await ensurePlatformContractProject(client, req, draft);
@@ -156,7 +159,7 @@ describe("идемпотентность", () => {
   it("бесплатный тариф не формирует комплект", async () => {
     const client = makeClient({ contracts: [], invoices: [] });
     await expect(
-      createPlatformCommercialSet(client, { organizationId: "o", plan: "free", periodMonths: 1, customer: ORG }),
+      createPlatformCommercialSet(client, { organizationId: ORG_ID, plan: "free", periodMonths: 1, customer: ORG }),
     ).rejects.toThrow();
   });
 });
@@ -168,5 +171,35 @@ describe("акт только по оплате", () => {
     expect(isInvoicePaid({ status: "paid", paid_at: "2026-08-08T00:00:00Z" } as any)).toBe(true);
     expect(canIssueAct({ paidInvoice: null })).toBe(false);
     expect(canIssueAct({ paidInvoice: { status: "paid", paid_at: "x" } as any })).toBe(true);
+  });
+});
+
+describe("scope-guard организации", () => {
+  it("не даёт создать документы без валидного organization_id", async () => {
+    const { assertOrganizationScope } = await import("../commercialSet");
+    expect(() => assertOrganizationScope("")).toThrow();
+    expect(() => assertOrganizationScope("org-1")).toThrow();
+    expect(assertOrganizationScope(ORG_ID)).toBe(ORG_ID);
+  });
+});
+
+describe("экранирование реквизитов", () => {
+  it("экранирует кавычки, амперсанд и угловые скобки", async () => {
+    const { escapeHtml } = await import("@/lib/html/escapeHtml");
+    expect(escapeHtml(`ООО "А&Б" <script>`)).toBe("ООО &quot;А&amp;Б&quot; &lt;script&gt;");
+  });
+
+  it("не пропускает сырой HTML реквизитов в проект договора", async () => {
+    const { buildPlatformContractDocumentHtml } = await import("@/lib/platform-contract");
+    const draft = buildDraftForRequest({
+      organizationId: ORG_ID,
+      plan: "standard",
+      periodMonths: 12,
+      customer: { ...ORG, name: 'ООО "Тест" <script>alert(1)</script> & Ко' },
+    });
+    const html = buildPlatformContractDocumentHtml(draft);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain("&amp; Ко");
   });
 });
