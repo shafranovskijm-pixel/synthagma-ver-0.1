@@ -109,6 +109,32 @@ export function SubscriptionTab() {
                 </CardContent>
               </Card>
 
+              {/* Оформление тарифа: проект договора → счёт → акт */}
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <FileStack className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">Оформление тарифа</p>
+                        <p className="text-xs text-muted-foreground">
+                          Проект договора (без номера) → счёт на выбранный тариф → акт после оплаты
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={() => setCheckoutOpen(true)}>
+                      Оформить тариф
+                    </Button>
+                  </div>
+                  <CommercialSetCards
+                    set={commercial.set}
+                    loading={commercial.loading}
+                    onOpenAct={openActFlow}
+                    emptyHint="Документы появятся после оформления тарифа."
+                  />
+                </CardContent>
+              </Card>
+
               {/* Generate Invoice */}
               {s.currentPlan !== 'free' && (
                 <Card className="border-primary/20 bg-primary/5">
@@ -129,11 +155,9 @@ export function SubscriptionTab() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          try { localStorage.setItem("documents.deepLink", "open-act-dialog"); } catch {}
-                          d?.tabNavigation?.setActiveTab?.("documents" as any);
-                        }}
-                        title="Сформировать акт по последнему оплаченному счёту"
+                        onClick={openActFlow}
+                        disabled={!canIssueAct(commercial.set)}
+                        title={canIssueAct(commercial.set) ? "Сформировать акт по оплаченному счёту" : ACT_LOCKED_REASON}
                       >
                         Выставить акт
                       </Button>
