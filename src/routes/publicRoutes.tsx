@@ -31,6 +31,7 @@ const DocumentPage = lazyWithRetry(() => import("@/pages/DocumentPage"));
 const EmailResponse = lazyWithRetry(() => import("@/pages/EmailResponse"));
 const ProposalPublic = lazyWithRetry(() => import("@/pages/ProposalPublic"));
 const ProposalPlatform = lazyWithRetry(() => import("@/pages/ProposalPlatform"));
+const ProposalContract = lazyWithRetry(() => import("@/pages/ProposalContract"));
 const PlatformPresentation = lazyWithRetry(() => import("@/pages/PlatformPresentation"));
 const WhatsNew = lazyWithRetry(() => import("@/pages/WhatsNew"));
 const HelpCenter = lazyWithRetry(() => import("@/pages/HelpCenter"));
@@ -95,6 +96,7 @@ export const publicRoutes = (
     <Route path="/personal-data" element={<Navigate to="/documents/personal-data-policy" replace />} />
     <Route path="/email-response" element={<EmailResponse />} />
     <Route path="/proposal/platform" element={<ProposalPlatform />} />
+    <Route path="/proposal/contract" element={<ProposalContract />} />
     <Route path="/proposal/:id" element={<ProposalPublic />} />
     <Route path="/presentation" element={<PlatformPresentation />} />
     <Route path="/mailing" element={<MailingLanding />} />
