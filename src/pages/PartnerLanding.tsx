@@ -17,6 +17,8 @@ import { usePartnerLanding } from "@/hooks/usePartnerLanding";
 import { ReferralBanner } from "@/components/partner/ReferralBanner";
 import { getPartnerRef } from "@/utils/referralCookie";
 import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
+import { getEntryPaidPlan, PROPOSAL_PDF_FILE_NAME } from "@/lib/proposal/proposalContent";
+
 import {
   steps, benefits, networkLevels, bonuses, whyEasyToSell, caseStudies,
   priceOptions, faqItems, platformStats, downloadMaterials, recommendTargets,
