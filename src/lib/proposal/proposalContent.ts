@@ -134,7 +134,11 @@ export function getPublicPlanSummaries(): PublicPlanSummary[] {
       l.salesCrmEnabled ? "CRM и продажи" : "",
       l.webinarsEnabled ? "Вебинары" : "",
       l.videoServicePlus ? "Видеосервис+" : "",
-      l.trainersEnabled ? "3D-тренажёры" : "",
+      l.trainersEnabled
+        ? id === "professional"
+          ? "3D-тренажёры — за дополнительную плату"
+          : "3D-тренажёры"
+        : "",
     ].filter(Boolean) as string[];
 
     return {

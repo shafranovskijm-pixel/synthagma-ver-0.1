@@ -177,6 +177,42 @@ export default function PlatformPresentation() {
         </div>
       </Section>
 
+      {/* ═══ EMAIL-РАССЫЛКИ ═══ */}
+      <Section className="bg-white dark:bg-[hsl(0_0%_10%)]">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">
+            <InViewTypewriterText text="Email-рассылки" speed={45} delay={200} />
+          </h2>
+          <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10 max-w-3xl">
+            Пишете клиентам и ученикам со своего почтового ящика: подключение по SMTP/IMAP, импорт контактов,
+            переменные в письме, тестовая отправка и отчёт по кампании с публичной ссылкой.
+          </p>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { title: "Свой ящик по SMTP/IMAP", desc: "Подключаете корпоративную почту, отправка идёт от вашего домена" },
+              { title: "Импорт контактов", desc: "Загрузка списка из файла, дедупликация и отписки" },
+              { title: "Переменные в письме", desc: "Имя, организация, курс и другие поля подставляются автоматически" },
+              { title: "Тестовая отправка", desc: "Проверяете письмо на себе до запуска кампании" },
+              { title: "Отчёт по кампании", desc: "Отправлено, ошибки, статусы по каждому адресу" },
+              { title: "Публичная ссылка на отчёт", desc: "Делитесь результатом с коллегами без доступа в кабинет" },
+            ].map((f) => (
+              <li key={f.title} className="rounded-2xl border border-[hsl(40_15%_90%)] dark:border-white/10 p-5 bg-[hsl(40_20%_98%)] dark:bg-white/5">
+                <div className="flex items-start gap-2">
+                  <Zap className="w-4 h-4 mt-1 flex-shrink-0 text-[hsl(174_72%_46%)]" aria-hidden="true" />
+                  <div>
+                    <h3 className="text-base font-semibold text-[hsl(0_0%_8%)] dark:text-white mb-1">{f.title}</h3>
+                    <p className="text-sm text-[hsl(0_0%_45%)] dark:text-white/60">{f.desc}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-[hsl(0_0%_55%)] dark:text-white/40 mt-6 max-w-3xl">
+            Доставка зависит от настроек вашего домена и политики принимающей почты — гарантировать доставку каждого письма невозможно.
+          </p>
+        </div>
+      </Section>
+
       {/* ═══ ТАРИФЫ ═══ */}
       <Section className="bg-[hsl(0_0%_6%)] text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
@@ -197,12 +233,15 @@ export default function PlatformPresentation() {
                   <div className="font-semibold text-white/90">👥 {p.students} Учеников</div>
                 </div>
                 <div className="space-y-1 text-[11px] text-white/60 flex-1">
-                  {p.features.map((f, j) => (
-                    <div key={j} className="flex items-center gap-1.5">
-                      <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${f.includes("ФРДО+") || f === "Видеосервис+" || f === "3D-тренажёры" ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
-                      <span className={f.includes("ФРДО+") || f === "Видеосервис+" || f === "3D-тренажёры" ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
-                    </div>
-                  ))}
+                  {p.features.map((f, j) => {
+                    const accent = f.includes("ФРДО+") || f === "Видеосервис+" || f.startsWith("3D-тренажёры");
+                    return (
+                      <div key={j} className="flex items-center gap-1.5">
+                        <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${accent ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
+                        <span className={accent ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="mt-3 pt-3 border-t border-white/10 text-center">
                   <span className="text-[10px] text-white/40">{p.price === "0" ? "Начать бесплатно" : "Подключить"}</span>
@@ -210,7 +249,7 @@ export default function PlatformPresentation() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО+ — подготовку и выгрузку сведений выполняем за вас на тарифе «Профессиональный»</p>
+          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО — проверка и подготовка данных и файла. ФИС ФРДО+ — выгружаем сведения за вас на тарифе «Профессиональный». 3D-тренажёры — за дополнительную плату.</p>
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="font-semibold">Коммерческое предложение одним файлом</div>

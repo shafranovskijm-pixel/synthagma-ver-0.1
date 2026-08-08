@@ -59,10 +59,14 @@ export function InViewTypewriterText({ text, speed = 50, delay = 300, className 
 
   return (
     <span ref={ref} className={className}>
-      {isInView ? displayed : ""}
-      {isInView && displayed.length < text.length && (
-        <span className="inline-block w-[2px] h-[0.9em] bg-current ml-0.5 animate-pulse align-baseline" />
-      )}
+      {/* Полный текст доступен скринридерам и поисковикам, даже пока анимация не началась */}
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">
+        {isInView ? displayed : ""}
+        {isInView && displayed.length < text.length && (
+          <span className="inline-block w-[2px] h-[0.9em] bg-current ml-0.5 animate-pulse align-baseline" />
+        )}
+      </span>
     </span>
   );
 }
