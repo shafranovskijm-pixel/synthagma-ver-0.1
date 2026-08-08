@@ -48,6 +48,45 @@ const FEATURES = [
   },
 ];
 
+const STEPS = [
+  {
+    title: "Подключаете ящик",
+    text: "Вводите данные SMTP и IMAP своего домена. Мастер проверяет соединение и записи SPF, DKIM, DMARC.",
+  },
+  {
+    title: "Загружаете базу",
+    text: "CSV или Excel с предпросмотром и сопоставлением столбцов. Дубликаты и отписавшиеся исключаются автоматически.",
+  },
+  {
+    title: "Собираете письмо",
+    text: "Тема, текст, ссылки и переменные. Перед запуском обязательная тестовая отправка на ваши seed-адреса.",
+  },
+  {
+    title: "Запускаете и смотрите отчёт",
+    text: "Отправка идёт с вашего адреса, статистика обновляется по ходу. Клиенту можно отдать публичную ссылку на отчёт.",
+  },
+];
+
+const FAQ = [
+  {
+    q: "Нужен ли отдельный аккаунт?",
+    a: "Нет. Рассылки работают внутри вашей организации СИНТАГМА — вход обычной учётной записью.",
+  },
+  {
+    q: "Чей адрес будет у писем?",
+    a: "Ваш собственный. Мы не подменяем отправителя и не отправляем с общего домена платформы.",
+  },
+  {
+    q: "Что с отписками?",
+    a: "В каждом письме корректные заголовки отписки и ссылка. Отписавшиеся попадают в suppression-список навсегда.",
+  },
+  {
+    q: "Гарантируете доставку в inbox?",
+    a: "Нет, и никто не может. Мы показываем реальные цифры и подсказываем, что поправить в настройке домена.",
+  },
+];
+
+
 export default function MailingLanding() {
   return (
     <div className="min-h-screen bg-background">
@@ -114,6 +153,105 @@ export default function MailingLanding() {
             ))}
           </div>
         </section>
+
+        {/* Как запустить рассылку за 4 шага */}
+        <section className="container mx-auto px-6 pb-16">
+          <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+            Как запустить рассылку за 4 шага
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Путь от подключения ящика до отчёта клиенту — без технических настроек на вашей стороне.
+          </p>
+          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="rounded-2xl border border-border/60 bg-card p-5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 font-display text-base font-semibold text-primary">
+                  {i + 1}
+                </div>
+                <h3 className="mt-4 text-base font-semibold">{s.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Как это выглядит */}
+        <section className="container mx-auto px-6 pb-16">
+          <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+            Как это выглядит в кабинете
+          </h2>
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-2xl border border-border/60 bg-card p-5">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Отправитель
+              </div>
+              <div className="mt-4 space-y-2 text-sm">
+                {[
+                  { l: "SPF", v: "пройдено" },
+                  { l: "DKIM", v: "пройдено" },
+                  { l: "DMARC", v: "пройдено" },
+                  { l: "SMTP-тест", v: "1 / 1 / 0" },
+                ].map((r) => (
+                  <div key={r.l} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                    <span className="text-muted-foreground">{r.l}</span>
+                    <span className="font-medium text-primary">{r.v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card p-5">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Письмо с переменными
+              </div>
+              <div className="mt-4 rounded-lg bg-muted/40 p-4 text-sm leading-relaxed">
+                <div className="font-medium">Здравствуйте, {"{{first_name}}"}!</div>
+                <p className="mt-2 text-muted-foreground">
+                  Приглашаем {"{{organization}}"} на обучение по программе…
+                </p>
+                <div className="mt-3 inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">
+                  Смотреть программу
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card p-5">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Отчёт кампании
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                {[
+                  { l: "SMTP принял", v: "482" },
+                  { l: "Прочитано", v: "191" },
+                  { l: "Переходы", v: "54" },
+                  { l: "Отписки", v: "3" },
+                ].map((m) => (
+                  <div key={m.l} className="rounded-lg bg-muted/40 px-3 py-2">
+                    <div className="font-display text-lg font-semibold">{m.v}</div>
+                    <div className="text-xs text-muted-foreground">{m.l}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Пример оформления отчёта. Цифры в вашем кабинете — только ваши реальные.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Частые вопросы */}
+        <section className="container mx-auto px-6 pb-16">
+          <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Частые вопросы</h2>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {FAQ.map((f) => (
+              <div key={f.q} className="rounded-2xl border border-border/60 bg-card p-5">
+                <h3 className="text-base font-semibold">{f.q}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
 
         <section className="container mx-auto px-6 pb-20">
           <div className="rounded-3xl border border-border/60 bg-muted/30 p-8 sm:p-10">

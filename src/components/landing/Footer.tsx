@@ -58,6 +58,8 @@ export function Footer() {
               {[
                 { label: "Стоимость", href: "#calculator" },
                 { label: "Презентация", to: "/presentation" },
+                { label: "Коммерческое предложение", to: "/proposal/platform" },
+                { label: "Email-рассылки", to: "/mailing" },
                 { label: "Партнёрам", to: "/partner" },
                 { label: "Блог", to: "/blog" },
                 { label: "Документы", to: "/documents" },

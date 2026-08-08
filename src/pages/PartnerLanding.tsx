@@ -16,6 +16,7 @@ import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
 import { usePartnerLanding } from "@/hooks/usePartnerLanding";
 import { ReferralBanner } from "@/components/partner/ReferralBanner";
 import { getPartnerRef } from "@/utils/referralCookie";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
 import {
   steps, benefits, networkLevels, bonuses, whyEasyToSell, caseStudies,
   priceOptions, faqItems, platformStats, downloadMaterials, recommendTargets,
@@ -49,8 +50,8 @@ const PartnerLanding = () => {
   return (
     <>
       <Helmet>
-        <title>Партнёрская программа — СИНТАГМА | До 45% комиссии</title>
-        <meta name="description" content="Многоуровневая партнёрская программа СИНТАГМА. До 45% комиссии с 3 уровней сети. Бонусы за оборот и лидерский рейтинг." />
+        <title>Партнёрская программа — СИНТАГМА | До 43% комиссии</title>
+        <meta name="description" content="Многоуровневая партнёрская программа СИНТАГМА. До 43% комиссии с 3 уровней сети. Бонусы за оборот и лидерский рейтинг." />
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
@@ -76,7 +77,7 @@ const PartnerLanding = () => {
               </motion.div>
               <motion.h1 className="font-display text-4xl lg:text-6xl font-bold mb-6 tracking-tight text-white" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.7 }}>
                 Зарабатывайте до{" "}
-                <span className="text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">45%</span>{" "}с{" "}
+                <span className="text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">43%</span>{" "}с{" "}
                 <span className="inline-flex text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">
                   {brandName.split("").map((char, i) => (
                     <motion.span key={i} custom={i} variants={charVariants} initial="hidden" animate="visible" className="inline-block">{char}</motion.span>
@@ -116,6 +117,20 @@ const PartnerLanding = () => {
             </div>
           </div>
         </section>
+
+        {/* Единое КП для отправки клиенту */}
+        <section className="border-y border-border bg-secondary/30">
+          <div className="container mx-auto px-6 py-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="font-display text-xl lg:text-2xl font-bold">Материалы для продажи</h2>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                То же коммерческое предложение, что видит клиент: состав платформы, актуальные тарифы и условия.
+              </p>
+            </div>
+            <ProposalDownloadButton size="lg" withOnlineLink />
+          </div>
+        </section>
+
 
         {/* Comic: Why easy to sell */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
@@ -432,7 +447,7 @@ const PartnerLanding = () => {
           <FloatingParticles count={8} mode="dots" />
           <div className="container mx-auto px-6 text-center relative z-10">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Начните зарабатывать до 45% уже сегодня</h2>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Начните зарабатывать до 43% уже сегодня</h2>
               <p className="text-white/50 mb-10 max-w-lg mx-auto text-lg">Регистрация занимает 1 минуту. Стройте сеть партнёров и получайте многоуровневый доход.</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {isPartner ? (
