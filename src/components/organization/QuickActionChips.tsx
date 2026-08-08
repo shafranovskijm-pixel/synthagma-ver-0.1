@@ -3,6 +3,8 @@ import { Plus, FileSpreadsheet, ShoppingBag, FileText, Send, Upload, Users } fro
 import { useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useRecentActions, type RecentAction } from "@/hooks/useOrgSidebarPinned";
+import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
+
 
 interface ActionDef {
   id: string;
