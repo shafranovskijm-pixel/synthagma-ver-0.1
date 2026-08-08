@@ -12,6 +12,7 @@ import {
 import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
+import mobileMockup from "@/assets/mobile-app-mockup.webp";
 
 
 type SectionComponent = React.ComponentType<{ children: React.ReactNode; className?: string }>;
