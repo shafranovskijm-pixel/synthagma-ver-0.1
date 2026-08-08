@@ -117,6 +117,20 @@ const PartnerLanding = () => {
           </div>
         </section>
 
+        {/* Единое КП для отправки клиенту */}
+        <section className="border-y border-border bg-secondary/30">
+          <div className="container mx-auto px-6 py-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="font-display text-xl lg:text-2xl font-bold">Материалы для продажи</h2>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                То же коммерческое предложение, что видит клиент: состав платформы, актуальные тарифы и условия.
+              </p>
+            </div>
+            <ProposalDownloadButton size="lg" withOnlineLink />
+          </div>
+        </section>
+
+
         {/* Comic: Why easy to sell */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(circle_1.5px_at_8px_8px,hsl(var(--foreground))_1px,transparent_0)] [background-size:16px_16px]" />
