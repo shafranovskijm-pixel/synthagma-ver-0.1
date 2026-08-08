@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Plus, FileSpreadsheet, ShoppingBag, FileText, Send, Upload, Users } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useRecentActions, type RecentAction } from "@/hooks/useOrgSidebarPinned";
 import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
@@ -21,7 +21,6 @@ interface ActionDef {
  * Если истории нет — показывает дефолтный набор по контексту.
  */
 export function QuickActionChips() {
-  const navigate = useNavigate();
   const d = useOrgDashboard();
   const { recent, track } = useRecentActions();
 
@@ -79,7 +78,7 @@ export function QuickActionChips() {
       icon: FileText,
       run: () => d.tabNavigation.setActiveTab("documents" as any),
     },
-  }), [navigate, d]);
+  }), [d]);
 
   // Сначала недавние, потом дополняем дефолтами до 4-х
   const chips = useMemo<ActionDef[]>(() => {
