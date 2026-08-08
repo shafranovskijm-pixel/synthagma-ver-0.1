@@ -156,6 +156,22 @@ export default function DemonstrationPage() {
         </div>
       </section>
 
+      {/* КП ДО ЗВОНКА */}
+      <section className="border-y border-border bg-secondary/30">
+        <div className="container mx-auto px-6 py-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="font-display text-xl md:text-2xl font-medium tracking-tight">
+              Хотите изучить до звонка?
+            </h2>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+              Скачайте актуальное коммерческое предложение: состав платформы, тарифы и условия запуска.
+            </p>
+          </div>
+          <ProposalDownloadButton size="lg" variant="outline" withOnlineLink />
+        </div>
+      </section>
+
+
       {/* BENEFITS */}
       <section className="py-16 md:py-20 bg-secondary/20">
         <div className="container mx-auto px-6">
