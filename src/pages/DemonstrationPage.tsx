@@ -138,6 +138,16 @@ export default function DemonstrationPage() {
                   </Button>
                 </a>
               </div>
+              <div className="mt-4">
+                <ProposalDownloadButton
+                  label="Скачать общее КП"
+                  size="lg"
+                  variant="outline"
+                  className="rounded-xl px-6 h-12 text-base gap-2"
+                  withOnlineLink
+                />
+              </div>
+
               <div className="flex items-center gap-6 mt-8 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-accent" /> 40 минут</div>
                 <div className="flex items-center gap-2"><Video className="w-4 h-4 text-accent" /> Видеосвязь</div>
