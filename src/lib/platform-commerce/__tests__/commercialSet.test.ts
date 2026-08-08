@@ -27,41 +27,61 @@ const ORG = {
 };
 
 function makeClient(state: { contracts: any[]; invoices: any[]; acts?: any[] }) {
-  const calls = { contractInserts: 0, contractUpdates: 0, invoiceInserts: 0 };
+  const calls = { contractInserts: 0, contractUpdates: 0, invoiceInserts: 0, invoiceDeletes: 0 };
   const client = {
     calls,
     from(table: string) {
       const rows = table === "org_contracts" ? state.contracts : table === "subscription_invoices" ? state.invoices : state.acts || [];
+      const filters: Record<string, any> = {};
+      const match = () => rows.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+      const resolveList = () => Promise.resolve({ data: match(), error: null });
       const q: any = {
-        _filters: {} as Record<string, any>,
         select() { return q; },
-        eq(col: string, val: any) { q._filters[col] = val; return q; },
+        eq(col: string, val: any) { filters[col] = val; return q; },
         order() { return q; },
-        limit() {
-          const data = rows.filter((r) => Object.entries(q._filters).every(([k, v]) => r[k] === v));
-          return Promise.resolve({ data, error: null });
-        },
+        limit() { return resolveList(); },
+        maybeSingle() { return Promise.resolve({ data: match()[0] || null, error: null }); },
+        single() { return Promise.resolve({ data: match()[0] || null, error: null }); },
+        then(onFulfilled: any, onRejected: any) { return resolveList().then(onFulfilled, onRejected); },
         insert(payload: any) {
-          const row = { id: `${table}-${rows.length + 1}`, created_at: new Date().toISOString(), status: table === "subscription_invoices" ? "pending" : payload.status, paid_at: null, ...payload };
+          const row = {
+            id: `${table}-${rows.length + 1}`,
+            created_at: new Date(Date.now() + rows.length).toISOString(),
+            status: table === "subscription_invoices" ? "pending" : payload.status,
+            paid_at: null,
+            ...payload,
+          };
           rows.push(row);
           if (table === "org_contracts") calls.contractInserts++; else calls.invoiceInserts++;
-          return {
-            select: () => ({ single: () => Promise.resolve({ data: row, error: null }) }),
-          };
+          return { select: () => ({ single: () => Promise.resolve({ data: row, error: null }) }) };
         },
         update(payload: any) {
-          calls.contractUpdates++;
-          return {
-            eq: (_c: string, id: string) => ({
-              select: () => ({
-                single: () => {
-                  const idx = rows.findIndex((r) => r.id === id);
-                  rows[idx] = { ...rows[idx], ...payload };
-                  return Promise.resolve({ data: rows[idx], error: null });
-                },
-              }),
-            }),
+          if (table === "org_contracts") calls.contractUpdates++;
+          const u: any = {
+            eq(col: string, val: any) { filters[col] = val; return u; },
+            select() { return u; },
+            single() {
+              const target = match()[0];
+              if (!target) return Promise.resolve({ data: null, error: { message: "not found" } });
+              const idx = rows.indexOf(target);
+              rows[idx] = { ...rows[idx], ...payload };
+              return Promise.resolve({ data: rows[idx], error: null });
+            },
           };
+          return u;
+        },
+        delete() {
+          const d: any = {
+            eq(col: string, val: any) { filters[col] = val; return d; },
+            then(onFulfilled: any, onRejected: any) {
+              for (const r of match()) {
+                rows.splice(rows.indexOf(r), 1);
+                if (table === "subscription_invoices") calls.invoiceDeletes++;
+              }
+              return Promise.resolve({ data: null, error: null }).then(onFulfilled, onRejected);
+            },
+          };
+          return d;
         },
       };
       return q;
@@ -69,6 +89,7 @@ function makeClient(state: { contracts: any[]; invoices: any[]; acts?: any[] }) 
   };
   return client as any;
 }
+
 
 describe("реквизиты", () => {
   it("не подставляет выдуманные значения и перечисляет пропуски", () => {
