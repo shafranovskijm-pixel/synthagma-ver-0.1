@@ -150,7 +150,8 @@ export function getPublicPlanSummaries(): PublicPlanSummary[] {
       courses: limitLabel(l.maxCourses),
       students: limitLabel(l.maxStudents),
       trainedPerMonth: limitLabel(l.maxTrainedPerMonth),
-      storage: formatStorageSize(l.storageBytes),
+      storage: l.storageBytes === -1 ? "Безлимит" : formatStorageSize(l.storageBytes),
+
       features,
       recommended: id === "standard",
     };
