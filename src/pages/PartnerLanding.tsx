@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
-import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
+
 import { usePartnerLanding } from "@/hooks/usePartnerLanding";
 import { ReferralBanner } from "@/components/partner/ReferralBanner";
 import { getPartnerRef } from "@/utils/referralCookie";
