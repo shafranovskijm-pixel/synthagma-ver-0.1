@@ -99,9 +99,22 @@ export function buildProposalPagesHtml(): string[] {
         и администратора, единая база учеников и готовые шаблоны документов вашей организации.
       </div>
     </div>
+    <div style="margin-top:26px;border:1px solid ${LINE};border-radius:16px;padding:20px;background:${SOFT};">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Что внутри предложения</div>
+      <div style="font-size:12.5px;line-height:1.9;color:${MUTED};">
+        Стр. 2 — сквозной сценарий работы учебного центра<br/>
+        Стр. 3 — ключевые модули платформы и их доступность по тарифам<br/>
+        Стр. 4 — тарифы, лимиты и условия оплаты<br/>
+        Стр. 5 — порядок запуска, контакты и юридические документы
+      </div>
+    </div>
+    <div style="margin-top:26px;font-size:12.5px;line-height:1.8;color:${MUTED};">
+      Сайт: ${esc(PROPOSAL_CONTACTS.site)} · Почта: ${esc(PROPOSAL_CONTACTS.email)}
+    </div>
     <div style="margin-top:auto;padding-top:36px;padding-bottom:18px;font-size:11.5px;color:${MUTED};">
       Дата формирования: ${esc(today)} · Исполнитель: ${esc(PROPOSAL_CONTACTS.executor)}, ИНН ${esc(PROPOSAL_CONTACTS.inn)}
     </div>`,
+
     "Стр. 1",
   );
 
