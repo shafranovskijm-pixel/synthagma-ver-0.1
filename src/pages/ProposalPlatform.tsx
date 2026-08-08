@@ -1,77 +1,57 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Phone, Mail, Globe, ShieldCheck, Gift, BadgeCheck, Server, Check, Zap, Smartphone } from "lucide-react";
+import { Printer, Share2, Mail, Globe, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
-import { PlatformProposalHeader } from "@/components/proposal/PlatformProposalHeader";
-import { PlatformProposalAdvantages } from "@/components/proposal/PlatformProposalAdvantages";
-import { PlatformProposalPlanCards } from "@/components/proposal/PlatformProposalPlanCards";
+import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
 import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
-import { exportPlatformProposalPdf } from "@/utils/exportPlatformProposalPdf";
 import {
-  ProposalBackdrop,
-  ProposalHeroWave,
-  CornerArcs,
-  KnowledgeGraphIllustration,
-  CertificateIllustration,
-  SectionDivider,
-} from "@/components/proposal/ProposalDecorations";
-
-const KPI = [
-  { label: "300+", caption: "готовых программ" },
-  { label: "1 мин", caption: "на подготовку файла ФРДО" },
-  { label: "4", caption: "тарифа от 0 ₽" },
-  { label: "5 мин", caption: "до запуска" },
-  { label: "24/7", caption: "доступ и поддержка" },
-];
-
-const ADDITIONAL_SERVICES = [
-  { title: "ФРДО+", desc: "Выгружаем данные в ФИС ФРДО за вас. Включено в Профессиональный тариф." },
-  { title: "Персональный менеджер", desc: "Сопровождение запуска и помощь по любым вопросам в рабочее время." },
-  { title: "Разработка курсов «под ключ»", desc: "Методисты и дизайнеры создают курс по вашей программе с нуля." },
-  { title: "Выезд для запуска", desc: "Очное обучение команды и настройка платформы под ваши процессы." },
-];
-
-const GUARANTEES = [
-  { icon: ShieldCheck, title: "Хостинг РФ", desc: "Серверы и резервные копии на территории Российской Федерации." },
-  { icon: BadgeCheck, title: "152-ФЗ, 273-ФЗ", desc: "Обработка персональных данных и образовательная деятельность." },
-  { icon: BadgeCheck, title: "63-ФЗ (ПЭП)", desc: "Простая электронная подпись для договоров и протоколов." },
-  { icon: BadgeCheck, title: "54-ФЗ", desc: "Фискализация платежей через интегрированный платёжный шлюз." },
-];
+  PROPOSAL_CONDITIONS,
+  PROPOSAL_CONTACTS,
+  PROPOSAL_LAUNCH_PROMISE,
+  PROPOSAL_LEGAL_LINKS,
+  PROPOSAL_MODULES,
+  PROPOSAL_NEXT_STEPS,
+  PROPOSAL_WORKFLOW,
+  getPublicPlanSummaries,
+} from "@/lib/proposal/proposalContent";
 
 export default function ProposalPlatform() {
-  const [exporting, setExporting] = useState(false);
+  const plans = getPublicPlanSummaries();
+  const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
 
-  const handleDownload = async () => {
-    setExporting(true);
-    try {
-      await exportPlatformProposalPdf();
-      toast.success("PDF готов");
-    } catch (e) {
-      console.error(e);
-      toast.error("Не удалось сгенерировать PDF");
-    } finally {
-      setExporting(false);
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Коммерческое предложение — СИНТАГМА", url });
+      } catch {
+        /* отменено пользователем */
+      }
+      return;
     }
+    await navigator.clipboard.writeText(url);
+    toast.success("Ссылка скопирована");
   };
 
   return (
     <>
       <Helmet>
-        <title>Коммерческое предложение — Синтагма</title>
+        <title>Коммерческое предложение СИНТАГМА для учебного центра</title>
         <meta
           name="description"
-          content="Готовое коммерческое предложение по образовательной платформе Синтагма: 300+ программ, ФИС ФРДО, ИИ-генерация курсов, CRM, вебинары. 4 тарифа от 0 ₽, коробочная версия и разработка сайтов под ключ."
+          content="Коммерческое предложение СИНТАГМА: курсы, ученики, документы и журналы, подготовка данных для ФИС ФРДО, актуальные тарифы и условия. Скачайте PDF одним кликом."
         />
         <link rel="canonical" href="https://sintagma.com.ru/proposal/platform" />
-        <meta property="og:title" content="Коммерческое предложение — Синтагма" />
+        <meta property="og:title" content="Коммерческое предложение СИНТАГМА" />
         <meta
           property="og:description"
-          content="LMS под ключ для лицензированных образовательных организаций: ИИ, ФРДО, CRM, вебинары, документы."
+          content="Учебный центр целиком в одной системе: обучение, документы, журналы и подготовка данных для ФИС ФРДО."
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://sintagma.com.ru/proposal/platform" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
       <style>{`
@@ -79,338 +59,198 @@ export default function ProposalPlatform() {
           .proposal-print-hide { display: none !important; }
           body { background: #fff !important; }
           [data-proposal-section] { break-inside: avoid; page-break-inside: avoid; }
-          [data-proposal-section] + [data-proposal-section] { page-break-before: always; }
         }
       `}</style>
 
-      <main className="relative min-h-screen bg-gradient-to-b from-background via-secondary/10 to-background py-10">
-        <div className="proposal-print-hide">
-          <ProposalBackdrop />
-        </div>
-
-        <div id="platform-proposal-root" className="container relative mx-auto max-w-5xl px-4 sm:px-6">
-          <PlatformProposalHeader onDownload={handleDownload} isExporting={exporting} />
-
-          {/* Section 1: Hero */}
-          <section
-            data-proposal-section
-            className="relative mb-10 overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-10"
-          >
-            <div className="proposal-print-hide">
-              <ProposalHeroWave />
-              <CornerArcs className="-top-10 right-0 h-56 w-56" />
+      <main className="min-h-screen bg-background py-10">
+        <div className="container mx-auto max-w-4xl px-4 sm:px-6">
+          {/* Шапка с действиями */}
+          <header className="proposal-print-hide mb-12 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <SigmaLogo size="md" />
+              <div className="mt-1 text-xs text-muted-foreground">Образовательная платформа</div>
+              <div className="mt-4 text-xs uppercase tracking-widest text-accent">Коммерческое предложение</div>
+              <div className="mt-1 text-sm text-muted-foreground">Дата формирования: {today}</div>
             </div>
-            <div className="relative">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                <Sparkles className="h-3.5 w-3.5" />
-                Полноценная LMS под ключ
-              </div>
-              <h1 className="font-display text-3xl font-medium tracking-tight sm:text-4xl">
-                Образовательная платформа Синтагма
-              </h1>
-              <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
-                От конструктора курсов до автоматической выгрузки в ФИС ФРДО — всё, что нужно лицензированной
-                образовательной организации, в одной системе. Запускайтесь за 5 минут, масштабируйтесь без
-                ограничений.
-              </p>
-              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {KPI.map((k) => (
-                  <div
-                    key={k.label}
-                    className="rounded-2xl border border-border bg-background/80 p-4 text-center backdrop-blur-sm"
-                  >
-                    <div className="font-display text-2xl font-semibold text-accent">{k.label}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{k.caption}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 rounded-2xl border border-border/60 bg-muted/30 p-4 text-xs text-muted-foreground">
-                <strong className="text-foreground">Исполнитель:</strong> ИП Шафрановский М. М. ·
-                sintagma.com.ru · Договор-оферта на платформе.
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <ProposalDownloadButton />
+              <Button variant="outline" onClick={handleShare} className="gap-2" aria-label="Поделиться ссылкой на коммерческое предложение">
+                <Share2 className="h-4 w-4" aria-hidden="true" />
+                Поделиться
+              </Button>
+              <Button variant="outline" onClick={() => window.print()} className="gap-2" aria-label="Распечатать коммерческое предложение">
+                <Printer className="h-4 w-4" aria-hidden="true" />
+                Печать
+              </Button>
             </div>
-          </section>
+          </header>
 
-          <div className="proposal-print-hide"><SectionDivider /></div>
-
-          {/* Section 2: Advantages */}
-          <section data-proposal-section className="relative mb-10 mt-6">
-            <div className="proposal-print-hide pointer-events-none absolute -top-6 right-0 hidden md:block">
-              <KnowledgeGraphIllustration className="h-32 w-52 opacity-80" />
-            </div>
-            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Ключевые преимущества</h2>
-            <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
-              10 направлений, которые делают Синтагму полноценной заменой нескольких сервисов сразу.
+          {/* 1. Обложка и обещание результата */}
+          <section data-proposal-section className="mb-14 rounded-3xl border border-border bg-card p-8 sm:p-10">
+            <h1 className="font-display text-3xl font-medium leading-tight tracking-tight sm:text-4xl">
+              Учебный центр целиком в одной системе
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              Курсы, ученики, документы, журналы и подготовка данных для ФИС ФРДО — без разрозненных
+              таблиц и отдельных сервисов. {PROPOSAL_LAUNCH_PROMISE}.
             </p>
-            <PlatformProposalAdvantages />
-          </section>
-
-          {/* Section 3: Functionality */}
-          <section data-proposal-section className="relative mb-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
-            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Функционал платформы</h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Полный набор возможностей. Различия по тарифам — в карточках ниже.
-            </p>
-            <ul className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {[
-                "Конструктор курсов с ИИ-генерацией и озвучкой",
-                "ФИС ФРДО — автоматическая выгрузка",
-                "300+ готовых программ в библиотеке",
-                "Тесты, домашние задания, журналы, протоколы",
-                "Электронные документы и ПЭП (63-ФЗ)",
-                "Видеоидентификация учеников",
-                "Email-рассылки и собственный SMTP",
-                "CRM продаж: лиды, сделки, КП, договоры, счета",
-                "Вебинары на Kinescope Live",
-                "3D-тренажёры (за дополнительную плату)",
-                "Брендирование, свой домен, мобильная адаптация",
-                "Безлимитное хранилище видео и материалов",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                  <span>{item}</span>
+                { t: "Один кабинет", d: "обучение и документооборот" },
+                { t: "7 дней", d: "до запуска первой группы" },
+                { t: "0 ₽", d: "постоянный бесплатный тариф" },
+              ].map((c) => (
+                <div key={c.t} className="rounded-2xl border border-border bg-secondary/30 p-5">
+                  <div className="font-display text-xl font-semibold text-accent">{c.t}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{c.d}</div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
+              Результат: прозрачный процесс от программы до выдачи документов, меньше ручной работы
+              методиста и администратора, единая база учеников и готовые шаблоны документов.
+            </p>
+          </section>
+
+          {/* 2. Сценарий работы */}
+          <section data-proposal-section className="mb-14">
+            <h2 className="font-display text-2xl font-medium tracking-tight">Как это работает</h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Курс → группа и ученики → обучение → документы и журналы → подготовка ФИС ФРДО.
+            </p>
+            <ol className="mt-7 space-y-4">
+              {PROPOSAL_WORKFLOW.map((s) => (
+                <li key={s.step} className="flex gap-4 rounded-2xl border border-border bg-card p-5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-display text-base font-semibold text-accent">
+                    {s.step}
+                  </span>
+                  <span>
+                    <span className="block font-semibold">{s.title}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{s.text}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-5 rounded-2xl border-l-4 border-accent bg-secondary/30 p-4 text-sm leading-relaxed text-muted-foreground">
+              ФИС ФРДО: платформа выполняет проверку и подготовку данных и файла к выгрузке.
+              На тарифе «Профессиональный» действует ФРДО+ — выгрузку выполняем за вас.
+            </p>
+          </section>
+
+          {/* 3. Ключевые модули */}
+          <section data-proposal-section className="mb-14">
+            <h2 className="font-display text-2xl font-medium tracking-tight">Ключевые модули</h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Состав функций зависит от тарифа — доступность указана в каждой карточке.
+            </p>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              {PROPOSAL_MODULES.map((m) => (
+                <div key={m.title} className="rounded-2xl border border-border bg-card p-5">
+                  <div className="font-semibold">{m.title}</div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{m.text}</p>
+                  {m.plans && <div className="mt-3 text-xs font-semibold text-accent">{m.plans}</div>}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 4. Тарифы и условия */}
+          <section data-proposal-section className="mb-14">
+            <h2 className="font-display text-2xl font-medium tracking-tight">Тарифы и условия</h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Актуальные публичные тарифы. Цены за месяц, при оплате за год — скидка 15%.
+            </p>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              {plans.map((p) => (
+                <div
+                  key={p.id}
+                  className={`rounded-2xl border p-5 ${p.recommended ? "border-accent bg-accent/5" : "border-border bg-card"}`}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div className="font-display text-lg font-semibold">{p.name}</div>
+                    <div className="text-right">
+                      <div className="font-display text-lg font-medium">{p.priceLabel}</div>
+                      {p.yearlyLabel && <div className="text-[11px] text-muted-foreground">{p.yearlyLabel}</div>}
+                    </div>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">{p.description}</div>
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <div><dt className="inline">Курсы: </dt><dd className="inline text-foreground">{p.courses}</dd></div>
+                    <div><dt className="inline">Ученики: </dt><dd className="inline text-foreground">{p.students}</dd></div>
+                    <div><dt className="inline">Обучений в месяц: </dt><dd className="inline text-foreground">{p.trainedPerMonth}</dd></div>
+                    <div><dt className="inline">Хранилище: </dt><dd className="inline text-foreground">{p.storage}</dd></div>
+                  </dl>
+                  <ul className="mt-4 space-y-1.5">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <ul className="mt-6 grid gap-2 rounded-2xl border border-border bg-card p-5 sm:grid-cols-2">
+              {PROPOSAL_CONDITIONS.map((c) => (
+                <li key={c} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+                  <span>{c}</span>
                 </li>
               ))}
             </ul>
           </section>
 
-          {/* Section 4: Plan cards */}
-          <section data-proposal-section className="mb-10">
-            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Что входит в каждый тариф</h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Краткое содержание планов. Тариф «Стандарт» рекомендуем для большинства организаций.
-            </p>
-            <PlatformProposalPlanCards />
-          </section>
-
-          {/* Section 5: Discounts & conditions */}
-          <section
-            data-proposal-section
-            className="relative mb-10 overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm"
-          >
-            <div className="proposal-print-hide">
-              <CornerArcs className="-bottom-20 -left-20 h-56 w-56 rotate-180" />
-            </div>
-            <div className="relative">
-              <div className="mb-4 inline-flex items-center gap-2 text-accent">
-                <Gift className="h-5 w-5" />
-                <h2 className="font-display text-2xl font-medium tracking-tight">Скидки и условия</h2>
-              </div>
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {[
-                  { t: "Оплата за год — −15%", d: "К любому платному тарифу. Экономия от 8 000 ₽ в год." },
-                  { t: "Безлимитное хранилище", d: "Видео, PDF, изображения — без ограничений по объёму на всех тарифах." },
-                  { t: "Бесплатная миграция курсов", d: "Перенесём ваши материалы и зарегистрируем учеников." },
-                  { t: "Помощь с брендированием", d: "Настройка логотипа, домена и цветовой схемы — включено." },
-                ].map((item) => (
-                  <li key={item.t} className="rounded-2xl border border-border bg-background p-4">
-                    <div className="font-display text-base font-semibold">{item.t}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{item.d}</div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          {/* Section 6: Additional services */}
-          <section data-proposal-section className="mb-10">
-            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Дополнительные услуги</h2>
-            <p className="mb-6 text-sm text-muted-foreground">Подключаются опционально к любому тарифу.</p>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {ADDITIONAL_SERVICES.map((s) => (
-                <div key={s.title} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-                  <div className="font-display text-base font-semibold">{s.title}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{s.desc}</div>
-                </div>
+          {/* 5. Следующий шаг и контакты */}
+          <section data-proposal-section className="mb-14 rounded-3xl border border-accent/40 bg-accent/5 p-8 sm:p-10">
+            <h2 className="font-display text-2xl font-medium tracking-tight">Следующий шаг</h2>
+            <ol className="mt-6 space-y-3">
+              {PROPOSAL_NEXT_STEPS.map((s, i) => (
+                <li key={s} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background font-semibold text-accent">
+                    {i + 1}
+                  </span>
+                  <span className="pt-1">{s}</span>
+                </li>
               ))}
+            </ol>
+            <div className="proposal-print-hide mt-8 flex flex-wrap gap-3">
+              <Button asChild size="lg" className="gap-2">
+                <Link to="/register-organization">
+                  Зарегистрироваться <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="gap-2">
+                <Link to="/demonstration">Записаться на демонстрацию</Link>
+              </Button>
             </div>
-          </section>
-
-          {/* Section 6.1: Boxed (on-premise) version */}
-          <section
-            data-proposal-section
-            className="relative mb-10 overflow-hidden rounded-3xl border border-accent/30 bg-gradient-to-br from-card via-accent/5 to-card p-8 shadow-sm sm:p-10"
-          >
-            <div className="proposal-print-hide">
-              <CornerArcs className="-top-16 -right-16 h-56 w-56" />
-            </div>
-            <div className="relative grid grid-cols-1 gap-8 md:grid-cols-[1.2fr,1fr] md:items-center">
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                  <Server className="h-3.5 w-3.5" />
-                  On-premise
-                </div>
-                <h2 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">
-                  Коробочная версия платформы
-                </h2>
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  Полный контроль над платформой и данными на вашей инфраструктуре. Подходит крупным
-                  образовательным организациям и корпорациям, которым нужна изолированная установка.
-                </p>
-                <ul className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {[
-                    "Возможность доработки под ваши требования",
-                    "Установка на ваш сервер",
-                    "Бессрочная неисключительная лицензия",
-                    "3 месяца поддержки и помощь с интеграцией документов",
-                  ].map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-foreground/90">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
+            <div className="mt-8 grid gap-3 text-sm sm:grid-cols-2">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-accent" aria-hidden="true" />
+                <span>{PROPOSAL_CONTACTS.site}</span>
               </div>
-              <div className="rounded-3xl border border-border bg-background/80 p-6 text-center">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Стоимость
-                </div>
-                <div className="mt-2 flex items-baseline justify-center gap-1">
-                  <span className="font-display text-4xl font-medium tracking-tight">540 000</span>
-                  <span className="text-base text-muted-foreground">₽</span>
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  единоразово · 1 неисключительная лицензия
-                </div>
-                <Button asChild className="proposal-print-hide mt-5 w-full gap-2">
-                  <a href="mailto:info@sintagma.com.ru?subject=Коробочная%20версия%20Синтагма">
-                    <Mail className="h-4 w-4" />
-                    Обсудить с менеджером
-                  </a>
-                </Button>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
+                <a href={`mailto:${PROPOSAL_CONTACTS.email}`} className="hover:underline">
+                  {PROPOSAL_CONTACTS.email}
+                </a>
               </div>
             </div>
-          </section>
-
-          {/* Section 6.2: Website development */}
-          <section
-            data-proposal-section
-            className="relative mb-10 overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-10"
-          >
-            <div className="proposal-print-hide pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-accent/15 blur-3xl" />
-            <div className="relative">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                <Sparkles className="h-3.5 w-3.5" />
-                Новая услуга
-              </div>
-              <h2 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">
-                Разработка сайта учебного центра под ключ
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Профессиональный сайт образовательной организации с адаптивным дизайном, формами
-                заявок, каталогом курсов и удобным управлением контентом.
-              </p>
-              <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {[
-                  { icon: Globe, label: "Соответствие требованиям Минобрнауки" },
-                  { icon: Smartphone, label: "Адаптивный дизайн под все устройства" },
-                  { icon: ShieldCheck, label: "Формы заявок и интеграции" },
-                  { icon: Zap, label: "Запуск под ключ за 1 неделю" },
-                ].map(({ icon: Icon, label }) => (
-                  <li key={label} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                    <span>{label}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-7 flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-display text-3xl font-medium tracking-tight">55 000</span>
-                    <span className="text-base text-muted-foreground">₽</span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    фиксированная стоимость · от идеи до запуска
-                  </div>
-                </div>
-                <Button asChild className="proposal-print-hide gap-2">
-                  <a href="mailto:info@sintagma.com.ru?subject=Разработка%20сайта%20—%20Синтагма">
-                    <Mail className="h-4 w-4" />
-                    Заказать сайт
-                  </a>
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 7: Guarantees */}
-          <section data-proposal-section className="relative mb-10">
-            <div className="proposal-print-hide pointer-events-none absolute -top-4 right-0 hidden md:block">
-              <CertificateIllustration className="h-36 w-36 opacity-80" />
-            </div>
-            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Гарантии и юридическая база</h2>
-            <p className="mb-6 max-w-2xl text-sm text-muted-foreground">Соответствие требованиям 152-ФЗ, 273-ФЗ, 63-ФЗ, 54-ФЗ.</p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {GUARANTEES.map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="font-display text-base font-semibold">{title}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{desc}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-xs text-muted-foreground">
-              Подробные документы:{" "}
-              <Link to="/public-offer" className="text-accent hover:underline">публичная оферта</Link>,{" "}
-              <Link to="/privacy" className="text-accent hover:underline">политика конфиденциальности</Link>,{" "}
-              <Link to="/personal-data" className="text-accent hover:underline">обработка ПД</Link>.
-            </div>
-          </section>
-
-          {/* Section 8: Contacts & CTA */}
-          <section
-            data-proposal-section
-            className="relative mb-10 overflow-hidden rounded-3xl border border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card p-8 shadow-sm sm:p-10"
-          >
-            <div className="proposal-print-hide">
-              <CornerArcs className="-right-16 -top-16 h-72 w-72" />
-              <div className="pointer-events-none absolute bottom-0 left-0 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
-            </div>
-            <div className="relative">
-              <h2 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">
-                Готовы начать?
-              </h2>
-              <p className="mt-3 max-w-2xl text-base text-muted-foreground">
-                Зарегистрируйтесь бесплатно и протестируйте платформу — без карты и без обязательств.
-                Бесплатный тариф работает навсегда.
-              </p>
-              <div className="proposal-print-hide mt-6 flex flex-wrap gap-3">
-                <Button asChild size="lg" className="gap-2">
-                  <Link to="/register-organization">
-                    Зарегистрироваться <ArrowRight className="h-4 w-4" />
+            <div className="mt-6 text-xs leading-relaxed text-muted-foreground">
+              Юридические документы:{" "}
+              {PROPOSAL_LEGAL_LINKS.map((l, i) => (
+                <span key={l.href}>
+                  {i > 0 && " · "}
+                  <Link to={l.href} className="text-accent hover:underline">
+                    {l.label}
                   </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="gap-2">
-                  <a href="mailto:info@sintagma.com.ru?subject=Обсуждение%20тарифов%20Синтагма">
-                    <Mail className="h-4 w-4" /> Обсудить с менеджером
-                  </a>
-                </Button>
-              </div>
-              <div className="mt-8 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-accent" />
-                  <span>sintagma.com.ru</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-accent" />
-                  <a href="mailto:info@sintagma.com.ru" className="hover:underline">info@sintagma.com.ru</a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-accent" />
-                  <span>По запросу через email</span>
-                </div>
-              </div>
+                </span>
+              ))}
             </div>
           </section>
 
-          {/* Section 9: Signature & stamp — обязательно для тендеров */}
-          <section
-            data-proposal-section
-            className="relative mb-10 rounded-3xl border border-border bg-card p-8 shadow-sm"
-          >
-            <h2 className="mb-4 font-display text-xl font-medium tracking-tight">Реквизиты исполнителя</h2>
+          <section data-proposal-section className="mb-10 rounded-3xl border border-border bg-card p-8">
+            <h2 className="font-display text-xl font-medium tracking-tight">Реквизиты исполнителя</h2>
             <SignatureStampBlock />
           </section>
         </div>
