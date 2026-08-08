@@ -99,7 +99,7 @@ export function buildProposalPagesHtml(): string[] {
         и администратора, единая база учеников и готовые шаблоны документов вашей организации.
       </div>
     </div>
-    <div style="margin-top:auto;padding-top:36px;font-size:11.5px;color:${MUTED};">
+    <div style="margin-top:auto;padding-top:36px;padding-bottom:18px;font-size:11.5px;color:${MUTED};">
       Дата формирования: ${esc(today)} · Исполнитель: ${esc(PROPOSAL_CONTACTS.executor)}, ИНН ${esc(PROPOSAL_CONTACTS.inn)}
     </div>`,
     "Стр. 1",
