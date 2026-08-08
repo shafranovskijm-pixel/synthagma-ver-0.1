@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
-import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
+
 import { usePartnerLanding } from "@/hooks/usePartnerLanding";
 import { ReferralBanner } from "@/components/partner/ReferralBanner";
 import { getPartnerRef } from "@/utils/referralCookie";
@@ -240,28 +240,29 @@ const PartnerLanding = () => {
         {/* Что получает партнёр */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
-          <div className="container mx-auto px-6 relative mb-10">
-            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Что получает партнёр</motion.h2>
-          </div>
-          <InfiniteMarquee direction="left" speed={45}>
-            {benefits.map((b) => (
-              <div key={b.title} className="w-80 shrink-0">
-                <Card className="h-full border border-teal-500/10 shadow-lg bg-card/80 backdrop-blur-sm group overflow-hidden">
-                  <div className="relative h-44 overflow-hidden">
-                    <img src={b.image} alt={b.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-                  <CardContent className="pt-4 pb-5">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center shrink-0"><b.icon className="w-5 h-5 text-teal-600" /></div>
-                      <h3 className="font-semibold">{b.title}</h3>
+          <div className="container mx-auto px-6 relative">
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Что получает партнёр</motion.h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+              {benefits.map((b, i) => (
+                <motion.div key={b.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                  <Card className="h-full border border-teal-500/10 shadow-lg bg-card/80 backdrop-blur-sm group overflow-hidden">
+                    <div className="relative h-44 overflow-hidden">
+                      <img src={b.image} alt={b.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
-                  </CardContent>
-                </Card>
-              </div>
-            ))}
-          </InfiniteMarquee>
+                    <CardContent className="pt-4 pb-5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center shrink-0"><b.icon className="w-5 h-5 text-teal-600" /></div>
+                        <h3 className="font-semibold">{b.title}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </section>
+
 
         {/* 3 шага */}
         <section className="py-24 relative overflow-hidden section-padding">
