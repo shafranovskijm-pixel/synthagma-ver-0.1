@@ -332,7 +332,34 @@ export default function DemonstrationPage() {
       </section>
 
       {/* FORM */}
+      {/* ИЗУЧИТЬ ДО ВСТРЕЧИ */}
+      <section aria-labelledby="study-before" className="pb-4 md:pb-8">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto rounded-3xl border border-border bg-secondary/30 p-6 md:p-8">
+            <h2 id="study-before" className="font-display text-2xl md:text-3xl font-medium tracking-tight">
+              Изучить до встречи
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+              В коммерческом предложении собрано всё, что обычно спрашивают на демо.
+            </p>
+            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+              {proposalHighlights.map((h) => (
+                <li key={h} className="flex items-start gap-2.5 text-sm text-foreground/85">
+                  <Check className="w-4 h-4 text-accent mt-0.5 shrink-0" aria-hidden="true" />
+                  <span className="leading-relaxed">{h}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6">
+              <ProposalDownloadButton label="Скачать общее КП" withOnlineLink />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FORM */}
       <section id="form" className="py-16 md:py-24">
+
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
