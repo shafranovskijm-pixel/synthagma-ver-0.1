@@ -40,6 +40,8 @@ export interface SendOptions {
   to: string;
   subject: string;
   html: string;
+  /** Готовый text/plain. Если не задан — генерируется из HTML. */
+  text?: string;
   fromOverride?: string; // "Имя <email>"
   replyTo?: string;
   attachments?: Attachment[];
