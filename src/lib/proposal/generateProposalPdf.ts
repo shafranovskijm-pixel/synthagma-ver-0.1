@@ -240,12 +240,25 @@ export function buildProposalPagesHtml(): string[] {
       </div>
     </div>
 
+    <div style="margin-top:20px;border:1px solid ${LINE};border-radius:16px;padding:18px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">Открыть КП онлайн</div>
+      <div style="font-size:12.5px;line-height:1.7;color:${MUTED};">
+        Всегда актуальная версия предложения с тарифами и лимитами:<br/>
+        ${esc(PROPOSAL_CONTACTS.siteUrl + PROPOSAL_ONLINE_PATH)}
+      </div>
+    </div>
+
     <div style="margin-top:20px;font-size:11px;line-height:1.7;color:${MUTED};">
       Юридические документы:<br/>
       ${PROPOSAL_LEGAL_LINKS.map(
         (l) => `${esc(l.label)} — ${esc(PROPOSAL_CONTACTS.siteUrl + l.href)}`,
       ).join("<br/>")}
+    </div>
+    <div style="margin-top:auto;padding-top:28px;font-size:11px;line-height:1.7;color:${MUTED};">
+      Предложение носит информационный характер и не является публичной офертой. Состав функций и лимиты
+      определяются выбранным тарифом и условиями договора-оферты на ${esc(PROPOSAL_CONTACTS.site)}.
     </div>`,
+
     "Стр. 5",
   );
 
