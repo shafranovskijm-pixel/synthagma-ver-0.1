@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, Calendar, Clock, Video, Sparkles, Phone, Mail, User, Building2, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
