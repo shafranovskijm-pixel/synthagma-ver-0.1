@@ -57,9 +57,9 @@ export function QuickActionChips() {
     },
     "send-proposal": {
       id: "send-proposal",
-      label: "Отправить КП",
+      label: "Тариф и документы",
       icon: Send,
-      run: () => d.tabNavigation.setActiveTab("sales" as any),
+      run: () => d.tabNavigation.setActiveTab("subscription" as any),
     },
     "upload-frdo": {
       id: "upload-frdo",
