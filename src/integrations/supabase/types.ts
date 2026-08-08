@@ -11552,6 +11552,10 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_read_lesson_attachment: {
+        Args: { _lesson_id: string }
+        Returns: boolean
+      }
       can_read_webinar_recording_object: {
         Args: { _object_name: string }
         Returns: boolean
