@@ -95,12 +95,12 @@ export const caseStudies = [
   },
 ];
 
-export const priceOptions = [
-  { label: "Старт (3 490 ₽)", value: 3490 },
-  { label: "Стандарт (6 990 ₽)", value: 6990 },
-  { label: "Проф. (16 990 ₽)", value: 16990 },
-  { label: "Макс. (24 990 ₽)", value: 24990 },
-];
+/** Варианты среднего тарифа берутся только из общего источника тарифов. */
+export const priceOptions = PLAN_ORDER
+  .map((id) => SUBSCRIPTION_PLANS[id])
+  .filter((plan) => plan.price > 0)
+  .map((plan) => ({ label: `${plan.name} (${plan.price.toLocaleString("ru-RU")} ₽)`, value: plan.price }));
+
 
 export const faqItems = [
   { q: "Что такое многоуровневая партнёрская программа?", a: "Вы получаете комиссию не только от организаций, которых пригласили лично (уровень 1 — 20%), но и от организаций, привлечённых вашими партнёрами (уровень 2 — 10%) и партнёрами партнёров (уровень 3 — 5%). Дополнительно действуют бонусы за оборот (+5%) и лидерский бонус (+3%)." },
