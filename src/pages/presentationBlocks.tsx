@@ -12,6 +12,7 @@ import {
 import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
+import mobileMockup from "@/assets/mobile-app-mockup.webp";
 
 
 type SectionComponent = React.ComponentType<{ children: React.ReactNode; className?: string }>;
@@ -38,7 +39,7 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
           >
             Смотреть возможности
           </a>
-          <ProposalDownloadButton size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" />
+          <ProposalDownloadButton size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" />
           <Link
             to="/proposal/contract"
             className="px-8 py-3 rounded-2xl border border-white/30 text-base font-semibold text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
@@ -323,14 +324,16 @@ export function PresentationMobile({ Section, mobileBg }: { Section: SectionComp
             </div>
           </div>
           <div className="flex justify-center">
-            <div className="w-[200px] h-[400px] md:w-[240px] md:h-[480px] rounded-[36px] bg-[hsl(0_0%_12%)] border-4 border-[hsl(0_0%_20%)] p-2.5 shadow-[0_0_60px_hsl(174_72%_46%/0.2)]">
-              <div className="w-full h-full rounded-[28px] bg-[hsl(40_20%_98%)] overflow-hidden">
-                <div className="h-6 bg-[hsl(0_0%_8%)] flex items-center justify-center"><div className="w-12 h-1 rounded-full bg-white/20" /></div>
-                <div className="p-3 space-y-2">
-                  <div className="text-[10px] font-semibold text-[hsl(0_0%_8%)]">Мои курсы</div>
-                  {[1,2,3].map(i => <div key={i} className="h-10 rounded-lg bg-[hsl(40_15%_92%)]" />)}
-                </div>
-              </div>
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-[hsl(174_72%_46%/0.2)] blur-3xl scale-75 pointer-events-none" />
+              <img
+                src={mobileMockup}
+                alt="Мобильное приложение СИНТАГМА — обучение со смартфона"
+                width={1024}
+                height={1280}
+                loading="lazy"
+                className="relative w-[240px] md:w-[320px] h-auto drop-shadow-2xl"
+              />
             </div>
           </div>
         </div>
