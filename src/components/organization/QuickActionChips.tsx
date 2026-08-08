@@ -59,8 +59,10 @@ export function QuickActionChips() {
       id: "send-proposal",
       label: "Тариф и документы",
       icon: Send,
-      run: () => d.tabNavigation.setActiveTab("subscription" as any),
+      // Тот же надёжный путь, что у рабочего верхнего бейджа тарифа.
+      run: () => navigate(subscriptionTabPath()),
     },
+
     "upload-frdo": {
       id: "upload-frdo",
       label: "Загрузить ФРДО",
