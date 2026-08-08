@@ -1,5 +1,6 @@
-import React, { useRef, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useRef } from "react";
+import { Link } from "react-router-dom";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
 import { motion, useInView } from "framer-motion";
 import {
   GraduationCap, Building2, Users, BookOpen, Brain, FileText,
