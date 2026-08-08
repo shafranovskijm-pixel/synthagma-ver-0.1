@@ -331,7 +331,6 @@ export default function DemonstrationPage() {
         </div>
       </section>
 
-      {/* FORM */}
       {/* ИЗУЧИТЬ ДО ВСТРЕЧИ */}
       <section aria-labelledby="study-before" className="pb-4 md:pb-8">
         <div className="container mx-auto px-6">
