@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Plus, FileSpreadsheet, ShoppingBag, FileText, Send, Upload, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useRecentActions, type RecentAction } from "@/hooks/useOrgSidebarPinned";
 import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
@@ -10,7 +10,9 @@ interface ActionDef {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  run: () => void;
+  /** Нативный URL-переход (React Router Link). Приоритетнее run(). */
+  href?: string;
+  run?: () => void;
 }
 
 /**
@@ -61,8 +63,8 @@ export function QuickActionChips() {
       id: "send-proposal",
       label: "Тариф и документы",
       icon: Send,
-      // Тот же надёжный путь, что у рабочего верхнего бейджа тарифа.
-      run: () => navigate(subscriptionTabPath()),
+      // Реальная ссылка: URL-переход не может быть потерян обработчиком/ре-рендером.
+      href: subscriptionTabPath(),
     },
 
     "upload-frdo": {
@@ -96,17 +98,41 @@ export function QuickActionChips() {
       </span>
       {chips.map((action) => {
         const Icon = action.icon;
+        const chipClass =
+          "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted/40 hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/30 text-xs font-medium text-muted-foreground transition-all hover:scale-105";
+        const content = (
+          <>
+            <Icon className="w-3.5 h-3.5" />
+            {action.label}
+          </>
+        );
+
+        if (action.href) {
+          return (
+            <Link
+              key={action.id}
+              to={action.href}
+              data-testid={`quick-chip-${action.id}`}
+              onClick={() => track({ id: action.id, label: action.label })}
+              className={chipClass}
+            >
+              {content}
+            </Link>
+          );
+        }
+
         return (
           <button
             key={action.id}
+            type="button"
+            data-testid={`quick-chip-${action.id}`}
             onClick={() => {
               track({ id: action.id, label: action.label });
-              action.run();
+              action.run?.();
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted/40 hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/30 text-xs font-medium text-muted-foreground transition-all hover:scale-105"
+            className={chipClass}
           >
-            <Icon className="w-3.5 h-3.5" />
-            {action.label}
+            {content}
           </button>
         );
       })}

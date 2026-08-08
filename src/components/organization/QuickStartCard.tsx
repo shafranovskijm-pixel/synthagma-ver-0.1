@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,9 @@ interface Step {
   title: string;
   description: string;
   done: boolean;
-  action: () => void;
+  /** Нативный URL-переход (React Router Link). Приоритетнее action(). */
+  href?: string;
+  action?: () => void;
   cta: string;
 }
 
@@ -27,7 +29,6 @@ interface Step {
  */
 export function QuickStartCard() {
   const d = useOrgDashboard();
-  const navigate = useNavigate();
   const orgId = d.organizationId;
   const dismissKey = orgId ? `${DISMISS_KEY_PREFIX}${orgId}` : null;
 
@@ -101,10 +102,10 @@ export function QuickStartCard() {
       description: "Бесплатный тариф ограничен. Расширьте лимиты по мере роста.",
       done: !!hasPaidPlan,
       cta: "Открыть тариф",
-      // Тот же URL-путь, что у рабочего бейджа тарифа: чужие диалоги не открываются.
-      action: () => navigate(subscriptionTabPath()),
+      // Реальная ссылка на вкладку тарифа: никаких custom event и callback.
+      href: subscriptionTabPath(),
     },
-  ], [hasCourse, hasLogo, hasLink, hasStudent, hasPaidPlan, d, navigate]);
+  ], [hasCourse, hasLogo, hasLink, hasStudent, hasPaidPlan, d]);
 
   const doneCount = steps.filter(s => s.done).length;
   const total = steps.length;
@@ -182,16 +183,31 @@ export function QuickStartCard() {
               <p className="text-xs text-muted-foreground hidden sm:block">{step.description}</p>
             </div>
             {!step.done && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="rounded-lg gap-1 shrink-0 text-xs"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); step.action(); }}
-              >
-                {step.cta}
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
+              step.href ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-lg gap-1 shrink-0 text-xs"
+                >
+                  <Link to={step.href} data-testid={`quickstart-${step.id}`}>
+                    {step.cta}
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  data-testid={`quickstart-${step.id}`}
+                  className="rounded-lg gap-1 shrink-0 text-xs"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); step.action?.(); }}
+                >
+                  {step.cta}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              )
             )}
           </li>
         ))}
