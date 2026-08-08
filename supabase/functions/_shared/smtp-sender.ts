@@ -313,6 +313,7 @@ export async function sendPlatformEmail(opts: PlatformEmailOptions): Promise<Pla
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
+      text: opts.text,
       fromOverride: opts.fromOverride,
       replyTo: opts.replyTo,
       attachments: opts.attachments,
