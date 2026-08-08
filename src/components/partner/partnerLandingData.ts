@@ -1,15 +1,11 @@
 import {
-  TrendingUp, Users, Clock, DollarSign, Gift, Crown, Award,
-  Brain, FileCheck, CreditCard, ShieldCheck, User, UserPlus, Trophy,
-  Building2, Briefcase, GraduationCap, Rocket, Network, ExternalLink,
+  TrendingUp, Users, Clock, DollarSign, Crown, Award,
+  Building2, Briefcase, GraduationCap, ExternalLink,
 } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER } from "@/lib/pricingFeatureRows";
 
 
-import caseBeginner from "@/assets/partner/case-beginner.jpg";
-import caseActive from "@/assets/partner/case-active.jpg";
-import caseLeader from "@/assets/partner/case-leader.jpg";
 
 import benefitIncome from "@/assets/partner/benefit-income.jpg";
 import benefitDuration from "@/assets/partner/benefit-duration.jpg";
@@ -18,15 +14,8 @@ import benefitTurnover from "@/assets/partner/benefit-turnover.jpg";
 
 import stepRegister from "@/assets/partner/step-register.jpg";
 import stepShare from "@/assets/partner/step-share.jpg";
-import stepNetwork from "@/assets/partner/step-network.jpg";
 import stepEarn from "@/assets/partner/step-earn.jpg";
 
-import comicFree from "@/assets/partner/comic-free.jpg";
-import comicUnlimited from "@/assets/partner/comic-unlimited.jpg";
-import comicAi from "@/assets/partner/comic-ai.jpg";
-import comicDocs from "@/assets/partner/comic-docs.jpg";
-import comicPayment from "@/assets/partner/comic-payment.jpg";
-import comicProctoring from "@/assets/partner/comic-proctoring.jpg";
 
 export const steps = [
   { icon: Users, title: "Зарегистрируйтесь", desc: "Станьте партнёром за 1 клик — нужен только аккаунт на платформе", image: stepRegister },
@@ -53,50 +42,7 @@ export const bonuses = [
   { title: "Лидерский бонус", condition: "Топ-10 партнёров месяца", bonus: "+3%", icon: Crown, color: "text-amber-500" },
 ];
 
-export const whyEasyToSell = [
-  { icon: Gift, title: "Бесплатный тариф навсегда", desc: "Клиент ничем не рискует — может попробовать все функции бесплатно", image: comicFree, rotate: "-2deg", accent: "WOW!" },
-  { icon: Users, title: "Безлимит учеников", desc: "На всех тарифах — нет скрытых платежей за количество пользователей", image: comicUnlimited, rotate: "1deg", accent: "∞" },
-  { icon: Brain, title: "ИИ-генерация курсов", desc: "Курс из 30 уроков с тестами создаётся за 5 минут", image: comicAi, rotate: "-1deg", accent: "5 мин!" },
-  { icon: FileCheck, title: "Документооборот + ФИС ФРДО", desc: "Заменяет 3-4 отдельные системы", image: comicDocs, rotate: "2deg", accent: "4 в 1" },
-  { icon: CreditCard, title: "Онлайн-касса и платежи", desc: "Клиент сразу начинает монетизировать обучение", image: comicPayment, rotate: "-1.5deg", accent: "₽₽₽" },
-  { icon: ShieldCheck, title: "Видеоидентификация", desc: "Требование закона — у нас уже встроено", image: comicProctoring, rotate: "1.5deg", accent: "ЗАКОН" },
-];
 
-export const caseStudies = [
-  {
-    icon: User, title: "Новичок", subtitle: "Достаточно 3 знакомых",
-    color: "from-teal-900/90 to-teal-950/80 border-teal-500/30",
-    iconBg: "bg-teal-500/15", iconColor: "text-teal-500", image: caseBeginner,
-    rows: [{ label: "Уровень 1: 3 организации × 3 490 ₽ × 20%", value: "2 094 ₽" }],
-    total: "2 094 ₽/мес",
-    note: "Пассивный доход — расскажите о платформе трём знакомым руководителям учебных центров",
-  },
-  {
-    icon: UserPlus, title: "Активный партнёр", subtitle: "Полноценный доход на полставки",
-    color: "from-cyan-900/90 to-cyan-950/80 border-cyan-500/30",
-    iconBg: "bg-cyan-500/15", iconColor: "text-cyan-500", image: caseActive,
-    rows: [
-      { label: "Уровень 1: 5 организаций × 6 990 ₽ × 20%", value: "6 990 ₽" },
-      { label: "Уровень 2: 10 организаций × 3 490 ₽ × 10%", value: "3 490 ₽" },
-    ],
-    total: "10 480 ₽/мес",
-    note: "Привлекайте сами и помогайте своим партнёрам находить клиентов",
-  },
-  {
-    icon: Trophy, title: "Лидер сети", subtitle: "Сопоставимо с зарплатой менеджера",
-    color: "from-amber-900/90 to-amber-950/80 border-amber-500/30",
-    iconBg: "bg-amber-500/15", iconColor: "text-amber-500", image: caseLeader,
-    rows: [
-      { label: "Уровень 1: 10 организаций × 10 000 ₽ × 20%", value: "20 000 ₽" },
-      { label: "Уровень 2: 30 организаций × 5 000 ₽ × 10%", value: "15 000 ₽" },
-      { label: "Уровень 3: 50 организаций × 4 000 ₽ × 5%", value: "10 000 ₽" },
-      { label: "Бонус за оборот (+5%)", value: "5 000 ₽" },
-      { label: "Лидерский бонус (+3%)", value: "3 000 ₽" },
-    ],
-    total: "53 000 ₽/мес",
-    note: "Стройте сеть партнёров, обучайте их привлекать клиентов и получайте комиссию с 3 уровней",
-  },
-];
 
 /** Варианты среднего тарифа берутся только из общего источника тарифов. */
 export const priceOptions = PLAN_ORDER
@@ -114,12 +60,6 @@ export const faqItems = [
   { q: "Можно ли заключить договор?", a: "Да, для юридических лиц и ИП мы заключаем партнёрский договор. Свяжитесь с нами через форму обратной связи." },
 ];
 
-export const platformStats = [
-  { value: "300+", label: "готовых программ ДПО и ПО", icon: GraduationCap, gradient: "from-teal-500/20 via-emerald-500/10 to-teal-500/5", iconColor: "text-teal-500", glow: "shadow-teal-500/20" },
-  { value: "∞", label: "учеников на всех тарифах", icon: Users, gradient: "from-cyan-500/20 via-blue-500/10 to-cyan-500/5", iconColor: "text-cyan-500", glow: "shadow-cyan-500/20" },
-  { value: "ФИС ФРДО", label: "выгрузка файла для загрузки (от Проф.)", icon: FileCheck, gradient: "from-violet-500/20 via-purple-500/10 to-violet-500/5", iconColor: "text-violet-500", glow: "shadow-violet-500/20" },
-  { value: "ИИ", label: "генерация курсов за минуты", icon: Brain, gradient: "from-amber-500/20 via-orange-500/10 to-amber-500/5", iconColor: "text-amber-500", glow: "shadow-amber-500/20" },
-];
 
 export const downloadMaterials = [
   { name: "Возможности и тарифы СИНТАГМА (для организаций).pdf", type: "PDF", color: "bg-red-500/15 text-red-400", href: "/promo/tariffs-organizations.pdf" },
