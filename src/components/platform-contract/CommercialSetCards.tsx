@@ -1,10 +1,16 @@
-import { FileText, Receipt, FileCheck, Lock, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { FileText, Receipt, FileCheck, Lock, Loader2, Download, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 import { PlatformContractDownloadButton } from "@/components/platform-contract/PlatformContractDownloadButton";
+import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
+import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import {
   ACT_LOCKED_REASON,
   canIssueAct,
@@ -24,6 +30,7 @@ interface Props {
   emptyHint?: string;
 }
 
+
 function safeDate(value?: string | null) {
   if (!value) return "—";
   try {
@@ -35,6 +42,36 @@ function safeDate(value?: string | null) {
 
 /** Единое представление комплекта: проект договора → счёт → акт. */
 export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emptyHint }: Props) {
+  const [invoicePdfBusy, setInvoicePdfBusy] = useState(false);
+  const invoice = set.invoice;
+  const contractVarsRaw = (set.contract?.variables || {}) as any;
+
+  /** Печать/скачивание PDF существующего счёта — новый счёт НЕ создаётся. */
+  const handleInvoicePdf = async () => {
+    if (!invoice || invoicePdfBusy) return;
+    setInvoicePdfBusy(true);
+    try {
+      const snapshot = (contractVarsRaw.requisites || {}) as any;
+      const planKey = (invoice.plan || contractVarsRaw.plan) as keyof typeof SUBSCRIPTION_PLANS;
+      const data: InvoiceData = {
+        invoiceNumber: invoice.invoice_number,
+        invoiceDate: safeDate(invoice.invoice_date),
+        buyerName: invoice.buyer_name || snapshot.name || "Организация",
+        buyerInn: invoice.buyer_inn || snapshot.inn,
+        buyerKpp: invoice.buyer_kpp || snapshot.kpp,
+        buyerAddress: snapshot.legal_address || snapshot.actual_address,
+        planName: SUBSCRIPTION_PLANS[planKey]?.name || String(invoice.plan),
+        periodMonths: Number(invoice.period_months) || 1,
+        amount: Number(invoice.amount),
+      };
+      printHtmlContent(await generateInvoiceHtml(data), `Счёт ${invoice.invoice_number}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось подготовить PDF счёта");
+    } finally {
+      setInvoicePdfBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
@@ -42,6 +79,7 @@ export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emp
       </div>
     );
   }
+
 
   const contractVars = (set.contract?.variables || {}) as any;
   const draft =
@@ -102,20 +140,50 @@ export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emp
               </Badge>
             )}
           </div>
-          {set.invoice ? (
+          {invoice ? (
             <>
-              <p className="text-xs text-muted-foreground break-all">№ {set.invoice.invoice_number}</p>
-              <p className="text-xs text-muted-foreground">Дата: {safeDate(set.invoice.invoice_date)}</p>
-              <p className="text-xs font-medium">{formatRub(Number(set.invoice.amount))}</p>
-              {onOpenInvoice && (
-                <Button size="sm" variant="outline" className="w-full mt-1" onClick={onOpenInvoice}>
-                  Открыть счёт
+              <p className="text-xs text-muted-foreground break-all">№ {invoice.invoice_number}</p>
+              <p className="text-xs text-muted-foreground">Дата: {safeDate(invoice.invoice_date)}</p>
+              <p className="text-xs font-medium">{formatRub(Number(invoice.amount))}</p>
+              <div className="grid grid-cols-1 gap-1.5 mt-1">
+                {invoice.id ? (
+                  <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
+                    <Link to={`/invoice/${invoice.id}`} onClick={onOpenInvoice}>
+                      <ExternalLink className="w-3.5 h-3.5" /> Открыть счёт
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" className="w-full" disabled title="Счёт ещё не загружен">
+                    Открыть счёт
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-1.5"
+                  onClick={() => void handleInvoicePdf()}
+                  disabled={invoicePdfBusy}
+                  title="Скачать PDF существующего счёта"
+                >
+                  {invoicePdfBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Скачать счёт PDF
                 </Button>
-              )}
+              </div>
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">Не сформирован</p>
+            <>
+              <p className="text-xs text-muted-foreground">Не сформирован</p>
+              <div className="grid grid-cols-1 gap-1.5 mt-1">
+                <Button size="sm" variant="outline" className="w-full" disabled title="Счёт ещё не сформирован">
+                  Открыть счёт
+                </Button>
+                <Button size="sm" variant="outline" className="w-full" disabled title="Счёт ещё не сформирован">
+                  Скачать счёт PDF
+                </Button>
+              </div>
+            </>
           )}
+
         </CardContent>
       </Card>
 

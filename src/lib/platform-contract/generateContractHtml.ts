@@ -127,7 +127,7 @@ export function buildPlatformContractPagesHtml(draft: PlatformContractDraft): st
     `
     <div style="font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:${TEAL};margin-bottom:10px;">Проект для согласования</div>
     ${h1("Договор о предоставлении доступа к образовательной платформе СИНТАГМА")}
-    <div style="font-size:12.5px;color:${MUTED};margin-bottom:26px;">Дата формирования проекта: ${escapeHtml(dateRu)}. Номер договору не присваивается до подписания сторонами.</div>
+    <div style="font-size:12.5px;color:${MUTED};margin-bottom:26px;">Дата формирования проекта: ${escapeHtml(dateRu)} Номер договора не присваивается до подписания сторонами.</div>
     <div style="height:2px;background:${TEAL};opacity:0.6;margin-bottom:22px;"></div>
     <div style="display:flex;gap:14px;">
       ${requisitesCard("Исполнитель", [
@@ -280,7 +280,7 @@ export function buildPlatformContractPagesHtml(draft: PlatformContractDraft): st
   const p6 = page(
     `
     ${h2(10, "Спецификация услуг и лимитов")}
-    <div style="font-size:11.5px;color:${MUTED};margin-bottom:10px;">Приложение к проекту договора. Лимиты приведены по тарифу «${escapeHtml(draft.planName)}» на ${escapeHtml(dateRu)}.</div>
+    <div style="font-size:11.5px;color:${MUTED};margin-bottom:10px;">Приложение к проекту договора. Лимиты приведены по тарифу «${escapeHtml(draft.planName)}» на ${escapeHtml(dateRu)}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
       <thead>
         <tr>
