@@ -1,21 +1,24 @@
 // Общий SMTP-отправитель для рассылок (UTF-8 кодировки, как в send-email)
 import { checkRateLimit } from "./rate-limiter.ts";
-
-function base64Encode(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)));
-}
+import {
+  assertEnvelopeAddress,
+  assertSmtpCode,
+  buildRawEmail,
+  encodeFromHeaderValue,
+  encodeSubjectHeader,
+  isCompleteSmtpResponse,
+  SMTP_EXPECTED,
+  SMTP_RESPONSE_MAX_BYTES,
+} from "./smtp-protocol.ts";
 
 export function encodeSubject(subject: string): string {
-  return `=?UTF-8?B?${base64Encode(subject)}?=`;
+  return encodeSubjectHeader(subject);
 }
 
 export function encodeFromHeader(from: string): string {
-  const match = from.match(/^(.+?)\s*<(.+)>$/);
-  if (match) {
-    return `=?UTF-8?B?${base64Encode(match[1].trim())}?= <${match[2].trim()}>`;
-  }
-  return from;
+  return encodeFromHeaderValue(from);
 }
+
 
 export interface SmtpConfig {
   host: string;
