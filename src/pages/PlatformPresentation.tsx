@@ -104,13 +104,14 @@ export default function PlatformPresentation() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">
           <Landmark className="w-12 h-12 text-[hsl(174_72%_46%)] mx-auto mb-6" />
           <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="ФИС ФРДО" speed={60} delay={200} /></h2>
-          <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-12 max-w-2xl mx-auto">Автоматическая выгрузка данных о выданных документах в федеральный реестр</p>
+          <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-12 max-w-2xl mx-auto">Проверка и подготовка данных и файла для передачи сведений в федеральный реестр</p>
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 justify-center max-w-4xl mx-auto">
             {[
-              { step: "1", label: "Заполнение данных", desc: "Автоматически из карточки ученика" },
-              { step: "2", label: "Формирование XML", desc: "По стандарту Рособрнадзора (ДПО/ПО)" },
-              { step: "3", label: "Выгрузка в реестр", desc: "Один клик — данные в ФИС ФРДО" },
+              { step: "1", label: "Заполнение данных", desc: "Из карточки ученика и данных группы" },
+              { step: "2", label: "Проверка и подготовка файла", desc: "Показываем ошибки и несоответствия до отправки" },
+              { step: "3", label: "Передача сведений", desc: "Вы загружаете готовый файл. На «Профессиональном» — ФРДО+: выгружаем за вас" },
             ].map((s, i) => (
+
               <div key={i} className="flex flex-col items-center flex-1">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[hsl(174_72%_46%)] text-white flex items-center justify-center text-xl md:text-2xl font-bold mb-4 shadow-[0_0_30px_hsl(174_72%_46%/0.3)]">{s.step}</div>
                 <h3 className="text-base md:text-lg font-semibold text-[hsl(0_0%_8%)] dark:text-white mb-1">{s.label}</h3>
