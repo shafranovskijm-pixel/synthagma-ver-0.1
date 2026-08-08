@@ -224,3 +224,18 @@ describe("экранирование реквизитов", () => {
     expect(html).toContain("&amp; Ко");
   });
 });
+
+describe("гонка при двойном нажатии", () => {
+  it("схлопывает второй счёт с тем же номером и не оставляет дубль", async () => {
+    const state = { contracts: [] as any[], invoices: [] as any[] };
+    const client = makeClient(state);
+    const req = { organizationId: ORG_ID, plan: "standard" as const, periodMonths: 12 as const, customer: ORG };
+    const draft = buildDraftForRequest(req);
+    const [a, b] = await Promise.all([
+      ensurePlatformInvoice(client, req, draft),
+      ensurePlatformInvoice(client, req, draft),
+    ]);
+    expect(a.invoice_number).toBe(b.invoice_number);
+    expect(state.invoices.filter((i) => i.invoice_number === a.invoice_number)).toHaveLength(1);
+  });
+});
