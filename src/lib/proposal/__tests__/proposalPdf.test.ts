@@ -55,4 +55,14 @@ describe("единое КП", () => {
     expect(all).toContain("https://sintagma.com.ru/documents/paid-plan-offer");
     expect(all).toContain("https://sintagma.com.ru/proposal/platform");
   });
+
+  it("3D-тренажёры на «Профессиональном» помечены как за доп. плату", () => {
+    const plans = getPublicPlanSummaries();
+    const pro = plans.find((p) => p.id === "professional")!;
+    expect(pro.features).toContain("3D-тренажёры — за дополнительную плату");
+    expect(pro.features).not.toContain("3D-тренажёры");
+
+    const all = buildProposalPagesHtml().join("\n");
+    expect(all).toContain("3D-тренажёры — за дополнительную плату");
+  });
 });
