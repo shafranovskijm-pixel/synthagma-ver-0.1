@@ -140,20 +140,50 @@ export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emp
               </Badge>
             )}
           </div>
-          {set.invoice ? (
+          {invoice ? (
             <>
-              <p className="text-xs text-muted-foreground break-all">№ {set.invoice.invoice_number}</p>
-              <p className="text-xs text-muted-foreground">Дата: {safeDate(set.invoice.invoice_date)}</p>
-              <p className="text-xs font-medium">{formatRub(Number(set.invoice.amount))}</p>
-              {onOpenInvoice && (
-                <Button size="sm" variant="outline" className="w-full mt-1" onClick={onOpenInvoice}>
-                  Открыть счёт
+              <p className="text-xs text-muted-foreground break-all">№ {invoice.invoice_number}</p>
+              <p className="text-xs text-muted-foreground">Дата: {safeDate(invoice.invoice_date)}</p>
+              <p className="text-xs font-medium">{formatRub(Number(invoice.amount))}</p>
+              <div className="grid grid-cols-1 gap-1.5 mt-1">
+                {invoice.id ? (
+                  <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
+                    <Link to={`/invoice/${invoice.id}`} onClick={onOpenInvoice}>
+                      <ExternalLink className="w-3.5 h-3.5" /> Открыть счёт
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" className="w-full" disabled title="Счёт ещё не загружен">
+                    Открыть счёт
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-1.5"
+                  onClick={() => void handleInvoicePdf()}
+                  disabled={invoicePdfBusy}
+                  title="Скачать PDF существующего счёта"
+                >
+                  {invoicePdfBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Скачать счёт PDF
                 </Button>
-              )}
+              </div>
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">Не сформирован</p>
+            <>
+              <p className="text-xs text-muted-foreground">Не сформирован</p>
+              <div className="grid grid-cols-1 gap-1.5 mt-1">
+                <Button size="sm" variant="outline" className="w-full" disabled title="Счёт ещё не сформирован">
+                  Открыть счёт
+                </Button>
+                <Button size="sm" variant="outline" className="w-full" disabled title="Счёт ещё не сформирован">
+                  Скачать счёт PDF
+                </Button>
+              </div>
+            </>
           )}
+
         </CardContent>
       </Card>
 
