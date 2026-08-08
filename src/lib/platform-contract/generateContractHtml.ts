@@ -1,4 +1,5 @@
 import { OPERATOR } from "@/constants/operatorDetails";
+import { clampRequisite, escapeHtml as escapeHtmlValue, HTML_WRAP_STYLE } from "@/lib/html/escapeHtml";
 import { formatRub } from "./derive";
 import type { PlatformContractDraft } from "./types";
 
@@ -26,19 +27,14 @@ const SOFT = "#f3f7f6";
 const PLACEHOLDER_CUSTOMER = "Организация-заказчик";
 
 export function escapeHtml(value: unknown): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return escapeHtmlValue(value);
 }
 
 /** Значение реквизита заказчика или подчёркнутый placeholder. */
 function field(value: string | undefined, placeholder: string): string {
-  const v = (value ?? "").trim();
-  if (v) return escapeHtml(v);
-  return `<span style="display:inline-block;min-width:120px;border-bottom:1px solid #9ca3af;color:#9ca3af;">${escapeHtml(placeholder)}</span>`;
+  const v = clampRequisite(value);
+  if (v) return `<span style="${HTML_WRAP_STYLE}">${escapeHtml(v)}</span>`;
+  return `<span style="display:inline-block;min-width:120px;border-bottom:1px solid #9ca3af;color:#9ca3af;${HTML_WRAP_STYLE}">${escapeHtml(placeholder)}</span>`;
 }
 
 export function formatContractDateRu(iso: string): string {
@@ -94,7 +90,7 @@ function requisitesCard(title: string, rows: string[]): string {
   return `
   <div style="flex:1 1 0;min-width:0;border:1px solid ${LINE};border-radius:14px;padding:14px;">
     <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:${TEAL};font-weight:700;margin-bottom:8px;">${escapeHtml(title)}</div>
-    ${rows.map((r) => `<div style="font-size:11px;line-height:1.65;color:${INK};margin-bottom:2px;">${r}</div>`).join("")}
+    ${rows.map((r) => `<div style="font-size:11px;line-height:1.65;color:${INK};margin-bottom:2px;${HTML_WRAP_STYLE}">${r}</div>`).join("")}
   </div>`;
 }
 

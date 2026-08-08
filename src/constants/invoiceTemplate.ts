@@ -1,4 +1,5 @@
 import { CONTRACT_SIGNATURE_B64, CONTRACT_STAMP_B64 } from './contractAssets';
+import { clampRequisite, escapeHtml } from '@/lib/html/escapeHtml';
 import { DEFAULT_OPERATOR_REQUISITES, type OperatorRequisites } from './operatorDetails';
 import { loadOperatorRequisites } from '@/hooks/useOperatorRequisites';
 
@@ -44,7 +45,13 @@ export function generateInvoiceHtmlSync(
 }
 
 function renderInvoiceHtml(data: InvoiceData, seller: OperatorRequisites): string {
-  const serviceName = `Предоставление доступа к платформе «Синтагма». Тариф «${data.planName}», ${pluralMonths(data.periodMonths)}`;
+  const serviceName = `Предоставление доступа к платформе «Синтагма». Тариф «${escapeHtml(clampRequisite(data.planName))}», ${pluralMonths(data.periodMonths)}`;
+  const buyerName = escapeHtml(clampRequisite(data.buyerName));
+  const buyerInn = escapeHtml(clampRequisite(data.buyerInn));
+  const buyerKpp = escapeHtml(clampRequisite(data.buyerKpp));
+  const buyerAddress = escapeHtml(clampRequisite(data.buyerAddress));
+  const invoiceNumberSafe = escapeHtml(data.invoiceNumber);
+  const invoiceDateSafe = escapeHtml(data.invoiceDate);
   const amountFormatted = data.amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const supplierLine =
     `${seller.fullName}, ИНН ${seller.inn}, ОГРНИП ${seller.ogrnip}` +
@@ -101,7 +108,7 @@ function renderInvoiceHtml(data: InvoiceData, seller: OperatorRequisites): strin
 
 <div class="header-line"></div>
 
-<h1>Счёт на оплату № ${data.invoiceNumber} от ${data.invoiceDate}</h1>
+<h1>Счёт на оплату № ${invoiceNumberSafe} от ${invoiceDateSafe}</h1>
 
 <table style="margin-bottom: 20px; font-size: 11pt;">
   <tr>
@@ -110,7 +117,7 @@ function renderInvoiceHtml(data: InvoiceData, seller: OperatorRequisites): strin
   </tr>
   <tr>
     <td style="padding: 3px 0; vertical-align: top;"><b>Покупатель:</b></td>
-    <td>${data.buyerName}${data.buyerInn ? `, ИНН ${data.buyerInn}` : ''}${data.buyerKpp ? `, КПП ${data.buyerKpp}` : ''}${data.buyerAddress ? `, ${data.buyerAddress}` : ''}</td>
+    <td style="overflow-wrap:anywhere;word-break:break-word;">${buyerName}${buyerInn ? `, ИНН ${buyerInn}` : ''}${buyerKpp ? `, КПП ${buyerKpp}` : ''}${buyerAddress ? `, ${buyerAddress}` : ''}</td>
   </tr>
 </table>
 
