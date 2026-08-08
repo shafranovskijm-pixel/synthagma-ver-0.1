@@ -63,7 +63,6 @@ export function LandingHeader({ showStars = true }: { showStars?: boolean }) {
             </Link>
           </div>
 
-          </div>
 
           <div className={`flex items-center gap-3 ${dark ? '[&_button]:text-white/80 [&_button:hover]:text-white [&_button:hover]:bg-white/10' : ''}`}>
             <TooltipProvider>
