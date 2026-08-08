@@ -22,14 +22,24 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   organizationId: string;
   currentPlan: SubscriptionPlan;
+  /** Выбранный тариф (хранится в URL, поэтому не теряется при hot reload). */
+  plan?: SubscriptionPlan;
+  onPlanChange?: (plan: SubscriptionPlan) => void;
   onOpenAct?: () => void;
 }
 
 /** Клиентский мастер «Оформление тарифа»: тариф → реквизиты → документы. */
-export function TariffCheckoutDialog({ open, onOpenChange, organizationId, currentPlan, onOpenAct }: Props) {
+export function TariffCheckoutDialog({ open, onOpenChange, organizationId, currentPlan, plan: planProp, onPlanChange, onOpenAct }: Props) {
   const { loading, set, org, missing, generating, generate, reload } = usePlatformCommercialSet(open ? organizationId : null);
   const [step, setStep] = useState(1);
-  const [plan, setPlan] = useState<SubscriptionPlan>(PAID_PLANS.includes(currentPlan) ? currentPlan : "start");
+  const [planState, setPlanState] = useState<SubscriptionPlan>(
+    PAID_PLANS.includes(planProp ?? currentPlan) ? (planProp ?? currentPlan) : "start",
+  );
+  const plan = planProp && PAID_PLANS.includes(planProp) ? planProp : planState;
+  const setPlan = (next: SubscriptionPlan) => {
+    setPlanState(next);
+    onPlanChange?.(next);
+  };
   const [period, setPeriod] = useState<PlatformContractPeriodMonths>(12);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [savingReq, setSavingReq] = useState(false);
