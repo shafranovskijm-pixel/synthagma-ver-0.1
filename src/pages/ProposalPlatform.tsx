@@ -199,7 +199,19 @@ export default function ProposalPlatform() {
                 </li>
               ))}
             </ul>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link
+                to="/proposal/contract"
+                className="inline-flex items-center gap-2 rounded-xl border border-accent/50 px-4 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/10"
+              >
+                Посмотреть проект договора
+              </Link>
+              <span className="text-xs text-muted-foreground">
+                Проект для согласования, реквизиты заполняются в кабинете
+              </span>
+            </div>
           </section>
+
 
           {/* 5. Следующий шаг и контакты */}
           <section data-proposal-section className="mb-14 rounded-3xl border border-accent/40 bg-accent/5 p-8 sm:p-10">

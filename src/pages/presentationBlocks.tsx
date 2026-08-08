@@ -39,7 +39,14 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
             Смотреть возможности
           </a>
           <ProposalDownloadButton size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" />
+          <Link
+            to="/proposal/contract"
+            className="px-8 py-3 rounded-2xl border border-white/30 text-base font-semibold text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Проект договора
+          </Link>
         </div>
+
         <div className="flex flex-wrap justify-center gap-3">
           {[
             { icon: BookOpen, label: "LMS" },

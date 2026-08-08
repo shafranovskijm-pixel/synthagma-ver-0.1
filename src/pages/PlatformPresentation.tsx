@@ -255,8 +255,17 @@ export default function PlatformPresentation() {
               <div className="font-semibold">Коммерческое предложение одним файлом</div>
               <p className="mt-1 text-sm text-white/50">Состав платформы, тарифы и условия — актуально на сегодня.</p>
             </div>
-            <ProposalDownloadButton size="lg" withOnlineLink onlineLinkClassName="inline-flex items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 hover:text-white" />
+            <div className="flex flex-wrap items-center gap-3">
+              <ProposalDownloadButton size="lg" withOnlineLink onlineLinkClassName="inline-flex items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 hover:text-white" />
+              <Link
+                to="/proposal/contract"
+                className="px-5 py-3 rounded-2xl border border-white/30 text-sm font-semibold text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                Проект договора
+              </Link>
+            </div>
           </div>
+
         </div>
       </Section>
 
