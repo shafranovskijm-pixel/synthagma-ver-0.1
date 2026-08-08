@@ -391,8 +391,11 @@ serve(async (req: Request) => {
       replyTo: campaign.reply_to || undefined,
       attachments: attachments.length ? attachments : undefined,
       extraHeaders: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${smtp.from_email}?subject=unsubscribe>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        ...buildListUnsubscribeHeaders({
+          unsubscribeUrl,
+          fromEmail: smtp.from_email,
+          oneClick: true,
+        }),
         "Precedence": "bulk",
       },
     });
