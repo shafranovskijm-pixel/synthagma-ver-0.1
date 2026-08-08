@@ -89,8 +89,8 @@ describe("платформенный проект договора: HTML", () =>
     const all = pages.join(" ");
     expect(all).not.toMatch(/SkillSpace/i);
     expect(all).not.toMatch(/99[.,]5/);
-    expect(all).not.toMatch(/автоматическ\w* (передач|выгрузк)\w* .{0,20}ФРДО/i);
-    expect(all).toMatch(/проверк\w+ и подготовк\w+ данных и файла/i);
+    expect(all).not.toMatch(/автоматическ[а-яё]* (передач|выгрузк)[а-яё]* [^.]{0,30}ФРДО/i);
+    expect(all).toMatch(/проверк[а-яё]+ и подготовк[а-яё]+ данных и файла/i);
   });
 
   it("нет неразрешённых undefined/null/NaN", () => {
