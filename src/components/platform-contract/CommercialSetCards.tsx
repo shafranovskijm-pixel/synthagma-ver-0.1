@@ -1,10 +1,16 @@
-import { FileText, Receipt, FileCheck, Lock, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { FileText, Receipt, FileCheck, Lock, Loader2, Download, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 import { PlatformContractDownloadButton } from "@/components/platform-contract/PlatformContractDownloadButton";
+import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
+import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import {
   ACT_LOCKED_REASON,
   canIssueAct,
@@ -23,6 +29,7 @@ interface Props {
   onOpenInvoice?: () => void;
   emptyHint?: string;
 }
+
 
 function safeDate(value?: string | null) {
   if (!value) return "—";
