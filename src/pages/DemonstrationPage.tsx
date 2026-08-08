@@ -159,17 +159,18 @@ export default function DemonstrationPage() {
               <div className="relative rounded-3xl overflow-hidden border border-border bg-card shadow-2xl">
                 <img src={demoHero} alt="Демонстрация СИНТАГМА" width={1280} height={1024} className="w-full h-auto" />
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-card border border-border rounded-2xl p-4 shadow-xl hidden md:block">
+              <div className="absolute -bottom-4 -left-4 max-w-[16rem] bg-card border border-border rounded-2xl p-4 shadow-xl hidden md:block">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
                     <Calendar className="w-5 h-5 text-accent" />
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">Ближайший слот</div>
-                    <div className="text-sm font-semibold">Завтра, 14:00 МСК</div>
+                    <div className="text-xs text-muted-foreground">Расписание</div>
+                    <div className="text-sm font-semibold leading-snug">Время демонстрации согласуем после заявки</div>
                   </div>
                 </div>
               </div>
+
             </motion.div>
           </div>
         </div>
