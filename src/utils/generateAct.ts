@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { clampRequisite, escapeHtml } from "@/lib/html/escapeHtml";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import stampImg from "@/assets/stamp-shafranovskiy.png";
@@ -70,10 +71,12 @@ export async function generateActHtml(params: ActParams): Promise<GeneratedAct |
       imageToBase64(signatureImg),
     ]);
 
-    const customerName = orgName || "_______________";
-    const customerInn = orgInn || "_______________";
-    const customerDirector = directorName || "_______________";
-    const customerPosition = directorPosition || "Руководитель";
+    const customerName = escapeHtml(clampRequisite(orgName) || "_______________");
+    const customerInn = escapeHtml(clampRequisite(orgInn) || "_______________");
+    const customerDirector = escapeHtml(clampRequisite(directorName) || "_______________");
+    const customerPosition = escapeHtml(clampRequisite(directorPosition) || "Руководитель");
+    const basisSafe = escapeHtml(clampRequisite(basis));
+    const actNumberSafe = escapeHtml(actNumber);
 
     const html = `
 <!DOCTYPE html>
@@ -110,12 +113,12 @@ export async function generateActHtml(params: ActParams): Promise<GeneratedAct |
 </head>
 <body>
   <div class="act-title">АКТ</div>
-  <div class="act-number">№ ${actNumber} от ${formattedDate} г.</div>
+  <div class="act-number">№ ${actNumberSafe} от ${formattedDate} г.</div>
   
   <div class="parties">
     <p><strong>Исполнитель:</strong> ИП Шафрановский Максим Михайлович, ИНН 253615392404</p>
     <p><strong>Заказчик:</strong> ${customerName}${customerInn ? `, ИНН ${customerInn}` : ""}</p>
-    <p><strong>Основание:</strong> ${basis}</p>
+    <p><strong>Основание:</strong> ${basisSafe}</p>
   </div>
 
   <p>Исполнитель оказал, а Заказчик принял следующие услуги:</p>

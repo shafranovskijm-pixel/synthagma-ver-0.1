@@ -150,6 +150,15 @@ export function buildContractVariables(draft: PlatformContractDraft) {
   };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Жёсткая проверка scope: без валидного organization_id никакой записи не создаём. */
+export function assertOrganizationScope(organizationId: string | null | undefined): string {
+  const id = (organizationId || "").trim();
+  if (!UUID_RE.test(id)) throw new Error("Не определена организация — документы не сформированы");
+  return id;
+}
+
 function isPlatformContractRow(row: any): boolean {
   const fam = row?.variables?.document_family ?? row?.variables_snapshot?.document_family;
   return fam === PLATFORM_DOCUMENT_FAMILY;
@@ -164,6 +173,7 @@ export async function ensurePlatformContractProject(
   req: PlatformSetRequest,
   draft: PlatformContractDraft,
 ): Promise<PlatformContractRow> {
+  assertOrganizationScope(req.organizationId);
   const { data: existingRows } = await client
     .from("org_contracts")
     .select("*")
@@ -195,6 +205,7 @@ export async function ensurePlatformContractProject(
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id)
+      .eq("organization_id", req.organizationId)
       .select("*")
       .single();
     if (error) throw error;
@@ -233,6 +244,7 @@ export async function ensurePlatformInvoice(
   req: PlatformSetRequest,
   draft: PlatformContractDraft,
 ): Promise<PlatformInvoiceRow> {
+  assertOrganizationScope(req.organizationId);
   const invoice_number = platformInvoiceNumber({
     organizationId: req.organizationId,
     plan: req.plan,
@@ -265,7 +277,53 @@ export async function ensurePlatformInvoice(
     .select("*")
     .single();
   if (error) throw error;
-  return data as PlatformInvoiceRow;
+
+  // Пост-проверка гонки: в БД нет UNIQUE(organization_id, invoice_number),
+  // поэтому два одновременных нажатия теоретически могут дать два счёта.
+  // Оставляем самый ранний, свой лишний неоплаченный дубль убираем.
+  return (await dedupeInvoiceByNumber(client, req.organizationId, invoice_number, data as PlatformInvoiceRow));
+}
+
+/** Схлопывает дубли счёта с одинаковым номером в рамках одной организации. */
+export async function dedupeInvoiceByNumber(
+  client: any,
+  organizationId: string,
+  invoiceNumber: string,
+  own: PlatformInvoiceRow,
+): Promise<PlatformInvoiceRow> {
+  try {
+    const { data: rows } = await client
+      .from("subscription_invoices")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("invoice_number", invoiceNumber)
+      .order("created_at", { ascending: true });
+    const all = ((rows as any[]) || []) as (PlatformInvoiceRow & { created_at?: string })[];
+    if (all.length < 2) return own;
+    const keeper = all[0];
+    if (keeper.id === own.id) {
+      for (const dup of all.slice(1)) {
+        if (!isInvoicePaid(dup)) {
+          await client
+            .from("subscription_invoices")
+            .delete()
+            .eq("id", dup.id)
+            .eq("organization_id", organizationId);
+        }
+      }
+      return keeper;
+    }
+    if (!isInvoicePaid(own)) {
+      await client
+        .from("subscription_invoices")
+        .delete()
+        .eq("id", own.id)
+        .eq("organization_id", organizationId);
+    }
+    return keeper;
+  } catch {
+    return own;
+  }
 }
 
 /* ─────────────── комплект ─────────────── */
@@ -274,6 +332,7 @@ export async function createPlatformCommercialSet(
   client: any,
   req: PlatformSetRequest,
 ): Promise<{ contract: PlatformContractRow; invoice: PlatformInvoiceRow; draft: PlatformContractDraft }> {
+  assertOrganizationScope(req.organizationId);
   if (SUBSCRIPTION_PLANS[req.plan].price <= 0) {
     throw new Error("Комплект документов формируется только для платного тарифа");
   }
@@ -288,6 +347,7 @@ export async function fetchPlatformCommercialSet(
   client: any,
   organizationId: string,
 ): Promise<PlatformCommercialSet> {
+  assertOrganizationScope(organizationId);
   const [contractsRes, invoicesRes, docsRes] = await Promise.all([
     client
       .from("org_contracts")

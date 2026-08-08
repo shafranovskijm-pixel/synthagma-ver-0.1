@@ -59,6 +59,11 @@ export function usePlatformCommercialSet(organizationId: string | null | undefin
   const generate = useCallback(
     async (plan: SubscriptionPlan, periodMonths: PlatformContractPeriodMonths) => {
       if (!organizationId || inFlight.current) return null;
+      // Scope-guard: организация должна быть реально доступна текущему пользователю (RLS).
+      if (!org) {
+        toast.error("Организация недоступна — документы не сформированы");
+        return null;
+      }
       if (missing.length > 0) {
         toast.error("Заполните реквизиты организации перед формированием документов");
         return null;
@@ -70,7 +75,7 @@ export function usePlatformCommercialSet(organizationId: string | null | undefin
           organizationId,
           plan,
           periodMonths,
-          customer: org || {},
+          customer: org,
         });
         await reload();
         return result;
