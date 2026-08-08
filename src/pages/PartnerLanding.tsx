@@ -76,7 +76,7 @@ const PartnerLanding = () => {
               </motion.div>
               <motion.h1 className="font-display text-4xl lg:text-6xl font-bold mb-6 tracking-tight text-white" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.7 }}>
                 Зарабатывайте до{" "}
-                <span className="text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">45%</span>{" "}с{" "}
+                <span className="text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">43%</span>{" "}с{" "}
                 <span className="inline-flex text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">
                   {brandName.split("").map((char, i) => (
                     <motion.span key={i} custom={i} variants={charVariants} initial="hidden" animate="visible" className="inline-block">{char}</motion.span>
