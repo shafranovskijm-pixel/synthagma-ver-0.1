@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, formatStorageSize } from "@/constants/subscriptionPlans";
@@ -26,6 +25,7 @@ import { usePlatformCommercialSet } from "@/hooks/usePlatformCommercialSet";
 import { CommercialSetCards } from "@/components/platform-contract/CommercialSetCards";
 import { TariffCheckoutDialog } from "@/components/organization/TariffCheckoutDialog";
 import { ACT_LOCKED_REASON, canIssueAct } from "@/lib/platform-commerce";
+import { isCheckoutPlan, useTariffCheckout } from "@/lib/organization/subscriptionNavigation";
 
 // Build feature highlights dynamically from the unified catalog
 const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
@@ -41,7 +41,7 @@ export function SubscriptionTab() {
   const s = useSubscriptionTab();
   const d = useOrgDashboard();
   const commercial = usePlatformCommercialSet(d.organizationId);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const checkout = useTariffCheckout(s.currentPlan);
 
   const openActFlow = () => {
     if (!canIssueAct(commercial.set)) return;
@@ -136,7 +136,11 @@ export function SubscriptionTab() {
                         </p>
                       </div>
                     </div>
-                    <Button size="sm" onClick={() => setCheckoutOpen(true)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => checkout.openCheckout(isCheckoutPlan(s.currentPlan) ? s.currentPlan : "start")}
+                    >
                       Оформить тариф
                     </Button>
                   </div>
@@ -316,9 +320,16 @@ export function SubscriptionTab() {
                                 {isCurrent ? (
                                   <span className="text-xs text-muted-foreground">Активен</span>
                                 ) : (
-                                  <Button size="sm" variant={isUpgrade ? "default" : "outline"} className="text-xs"
-                                    onClick={() => { s.setSelectedPlan(planId); s.setShowUpgradeDialog(true); }}
-                                    disabled={!!s.pendingRequest}>
+                                  <Button size="sm" type="button" variant={isUpgrade ? "default" : "outline"} className="text-xs"
+                                    onClick={() => {
+                                      if (isUpgrade && isCheckoutPlan(planId)) {
+                                        checkout.openCheckout(planId);
+                                        return;
+                                      }
+                                      s.setSelectedPlan(planId);
+                                      s.setShowUpgradeDialog(true);
+                                    }}
+                                    disabled={!isUpgrade && !!s.pendingRequest}>
                                     {isUpgrade ? <>Перейти <ArrowRight className="w-3 h-3 ml-1" /></> : "Понизить"}
                                   </Button>
                                 )}
@@ -370,10 +381,16 @@ export function SubscriptionTab() {
 
       {d.organizationId && (
         <TariffCheckoutDialog
-          open={checkoutOpen}
-          onOpenChange={(v) => { setCheckoutOpen(v); if (!v) void commercial.reload(); }}
+          open={checkout.open}
+          onOpenChange={(v) => {
+            if (v) { checkout.openCheckout(checkout.plan); return; }
+            checkout.closeCheckout();
+            void commercial.reload();
+          }}
           organizationId={d.organizationId}
           currentPlan={s.currentPlan}
+          plan={checkout.plan}
+          onPlanChange={checkout.setPlan}
           onOpenAct={openActFlow}
         />
       )}

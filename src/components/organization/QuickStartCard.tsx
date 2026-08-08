@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Circle, X, Sparkles, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ interface Step {
  */
 export function QuickStartCard() {
   const d = useOrgDashboard();
+  const navigate = useNavigate();
   const orgId = d.organizationId;
   const dismissKey = orgId ? `${DISMISS_KEY_PREFIX}${orgId}` : null;
 
@@ -98,9 +101,10 @@ export function QuickStartCard() {
       description: "Бесплатный тариф ограничен. Расширьте лимиты по мере роста.",
       done: !!hasPaidPlan,
       cta: "Открыть тариф",
-      action: () => d.tabNavigation.setActiveTab("subscription" as any),
+      // Тот же URL-путь, что у рабочего бейджа тарифа: чужие диалоги не открываются.
+      action: () => navigate(subscriptionTabPath()),
     },
-  ], [hasCourse, hasLogo, hasLink, hasStudent, hasPaidPlan, d.tabNavigation]);
+  ], [hasCourse, hasLogo, hasLink, hasStudent, hasPaidPlan, d, navigate]);
 
   const doneCount = steps.filter(s => s.done).length;
   const total = steps.length;
@@ -178,7 +182,13 @@ export function QuickStartCard() {
               <p className="text-xs text-muted-foreground hidden sm:block">{step.description}</p>
             </div>
             {!step.done && (
-              <Button size="sm" variant="ghost" className="rounded-lg gap-1 shrink-0 text-xs" onClick={step.action}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="rounded-lg gap-1 shrink-0 text-xs"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); step.action(); }}
+              >
                 {step.cta}
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>

@@ -3,6 +3,8 @@ import { Plus, FileSpreadsheet, ShoppingBag, FileText, Send, Upload, Users } fro
 import { useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useRecentActions, type RecentAction } from "@/hooks/useOrgSidebarPinned";
+import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
+
 
 interface ActionDef {
   id: string;
@@ -59,8 +61,10 @@ export function QuickActionChips() {
       id: "send-proposal",
       label: "Тариф и документы",
       icon: Send,
-      run: () => d.tabNavigation.setActiveTab("subscription" as any),
+      // Тот же надёжный путь, что у рабочего верхнего бейджа тарифа.
+      run: () => navigate(subscriptionTabPath()),
     },
+
     "upload-frdo": {
       id: "upload-frdo",
       label: "Загрузить ФРДО",
