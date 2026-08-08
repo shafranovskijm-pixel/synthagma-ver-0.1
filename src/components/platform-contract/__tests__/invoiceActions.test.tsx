@@ -2,17 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { CommercialSetCards } from "@/components/platform-contract/CommercialSetCards";
-import { generatePlatformContractHtml } from "@/lib/platform-contract";
+import { buildPlatformContractDocumentHtml, derivePlatformContractDraft } from "@/lib/platform-contract";
 import type { PlatformCommercialSet } from "@/lib/platform-commerce";
 
-const invoiceSpy = vi.fn(async () => "<html><body>счёт</body></html>");
+const invoiceSpy = vi.fn(async (_data: any) => "<html><body>счёт</body></html>");
 const printSpy = vi.fn();
 
 vi.mock("@/constants/invoiceTemplate", () => ({
-  generateInvoiceHtml: (...args: any[]) => invoiceSpy(...(args as [])),
+  generateInvoiceHtml: (data: any) => invoiceSpy(data),
 }));
 vi.mock("@/utils/printHtmlToPdf", () => ({
-  printHtmlContent: (...args: any[]) => printSpy(...(args as [])),
+  printHtmlContent: (html: string, title?: string) => printSpy(html, title),
 }));
 
 const ORG_ID = "11111111-2222-4333-8444-555555555555";
@@ -58,13 +58,15 @@ const renderSet = (set: PlatformCommercialSet) =>
 
 describe("дата проекта договора", () => {
   it("не содержит двойной точки после «г.»", () => {
-    const html = generatePlatformContractHtml({
-      plan: "standard",
-      periodMonths: 1,
-      customer: { name: "ООО Тест", inn: "7712345678" },
-      date: "2026-08-08",
-      projectId: "c1",
-    } as any);
+    const html = buildPlatformContractDocumentHtml(
+      derivePlatformContractDraft({
+        plan: "standard",
+        periodMonths: 1,
+        customer: { name: "ООО Тест", inn: "7712345678" },
+        date: "2026-08-08",
+        projectId: "c1",
+      }),
+    );
     expect(html).toContain("08 августа 2026 г.");
     expect(html).not.toContain("г..");
   });
