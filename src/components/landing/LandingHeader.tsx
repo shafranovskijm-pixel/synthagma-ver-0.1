@@ -18,17 +18,17 @@ export function LandingHeader({ showStars = true }: { showStars?: boolean }) {
     <header className={`sticky top-0 z-50 relative ${dark ? 'bg-[#0a0e1a]' : 'bg-background border-b border-border'}`}>
       {dark && <StarfieldCanvas />}
 
-      <div className="container mx-auto px-6 py-4 relative z-10">
-        <div className="flex items-center justify-between">
+      <div className="container mx-auto px-4 sm:px-6 py-4 relative z-10">
+        <div className="flex items-center justify-between min-w-0">
           <Link
             to="/"
-            className="flex items-center gap-3"
+            className="flex items-center gap-2 md:gap-3 min-w-0"
             onMouseEnter={triggerAnim}
           >
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center hover:scale-105 transition-transform duration-300 ${dark ? 'bg-white' : 'bg-foreground'}`}>
               <span className={`font-display font-bold text-xl ${dark ? 'text-[#0a0e1a]' : 'text-background'}`}>Σ</span>
             </div>
-            <span className={`font-display font-medium text-xl tracking-tight flex ${dark ? 'text-white' : 'text-foreground'}`}>
+            <span className={`font-display font-medium text-lg md:text-xl tracking-tight flex ${dark ? 'text-white' : 'text-foreground'}`}>
               {logoLetters.map((letter, i) => (
                 <span
                   key={`${i}-${animKey}`}
@@ -64,7 +64,7 @@ export function LandingHeader({ showStars = true }: { showStars?: boolean }) {
           </div>
 
 
-          <div className={`flex items-center gap-3 ${dark ? '[&_button]:text-white/80 [&_button:hover]:text-white [&_button:hover]:bg-white/10' : ''}`}>
+          <div className={`flex items-center gap-2 md:gap-3 min-w-0 max-w-full ${dark ? '[&_button]:text-white/80 [&_button:hover]:text-white [&_button:hover]:bg-white/10' : ''}`}>
             <TooltipProvider>
               <RadioPlayerButton />
             </TooltipProvider>
