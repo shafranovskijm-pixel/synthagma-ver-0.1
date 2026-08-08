@@ -71,65 +71,22 @@ async function withSmtpTimeout<T>(operation: Promise<T>, context: string, close?
 export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise<void> {
   const senderFrom = opts.fromOverride
     || (cfg.from_name ? `${cfg.from_name} <${cfg.from_email}>` : cfg.from_email);
-  const encodedSubject = encodeSubject(opts.subject);
-  const encodedFrom = encodeFromHeader(senderFrom);
-  const encodedHtml = base64Encode(opts.html);
-  const hasAttachments = !!(opts.attachments && opts.attachments.length > 0);
+  const envelopeFrom = assertEnvelopeAddress(
+    senderFrom.match(/<([^>]+)>/)?.[1] || cfg.from_email,
+    "адресе отправителя",
+  );
+  const envelopeTo = assertEnvelopeAddress(opts.to, "адресе получателя");
 
-  const baseHeaders = [
-    `From: ${encodedFrom}`,
-    `To: ${opts.to}`,
-    `Subject: ${encodedSubject}`,
-    `MIME-Version: 1.0`,
-  ];
-  if (opts.replyTo) baseHeaders.push(`Reply-To: ${opts.replyTo}`);
-  if (opts.extraHeaders) {
-    for (const [k, v] of Object.entries(opts.extraHeaders)) {
-      const safeVal = String(v).replace(/[\r\n]+/g, " ");
-      baseHeaders.push(`${k}: ${safeVal}`);
-    }
-  }
-
-  let rawEmail: string;
-  if (!hasAttachments) {
-    const headers = [
-      ...baseHeaders,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-    ];
-    rawEmail = [
-      ...headers,
-      ``,
-      encodedHtml.match(/.{1,76}/g)?.join("\r\n") || encodedHtml,
-    ].join("\r\n");
-  } else {
-    const boundary = `=_b_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
-    const parts: string[] = [];
-    parts.push(
-      `--${boundary}`,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      encodedHtml.match(/.{1,76}/g)?.join("\r\n") || encodedHtml,
-    );
-    for (const att of opts.attachments!) {
-      const encoded = base64Encode(att.content);
-      parts.push(
-        `--${boundary}`,
-        `Content-Type: ${att.contentType}; name="${att.filename}"`,
-        `Content-Transfer-Encoding: base64`,
-        `Content-Disposition: attachment; filename="${att.filename}"`,
-        ``,
-        encoded.match(/.{1,76}/g)?.join("\r\n") || encoded,
-      );
-    }
-    parts.push(`--${boundary}--`);
-    const headers = [
-      ...baseHeaders,
-      `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    ];
-    rawEmail = [...headers, ``, ...parts].join("\r\n");
-  }
+  const { raw: rawEmail } = buildRawEmail({
+    from: senderFrom,
+    fromEmail: envelopeFrom,
+    to: envelopeTo,
+    subject: opts.subject,
+    html: opts.html,
+    replyTo: opts.replyTo || null,
+    extraHeaders: opts.extraHeaders || null,
+    attachments: opts.attachments || null,
+  });
 
   // Подключение: TLS сразу для 465; для 587/2525 — STARTTLS.
   const useImplicitTls = cfg.port === 465 || cfg.encryption === "ssl";
@@ -145,86 +102,96 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
 
   let activeConn: Deno.Conn = conn;
 
-  async function readResponse(): Promise<string> {
-    const buffer = new Uint8Array(4096);
-    const n = await withSmtpTimeout(
-      activeConn.read(buffer),
-      "read SMTP response",
-      () => activeConn.close(),
-    );
-    if (n === null) return "";
-    return decoder.decode(buffer.subarray(0, n));
-  }
-
-  async function sendCommand(cmd: string): Promise<string> {
-    await withSmtpTimeout(
-      activeConn.write(encoder.encode(cmd + "\r\n")),
-      `write SMTP command ${cmd.split(" ")[0]}`,
-      () => activeConn.close(),
-    );
-    return await readResponse();
-  }
-
-  function checkOk(resp: string, ctx: string) {
-    const code = parseInt(resp.match(/^(\d+)/)?.[1] || "0", 10);
-    if (code >= 400) {
-      throw new Error(`SMTP ${ctx} failed: ${resp.trim()}`);
+  /**
+   * Читает ответ до завершающей строки `NNN<space>...`.
+   * EOF (read вернул null/0) до полного ответа — всегда Error.
+   */
+  async function readResponse(context: string): Promise<string> {
+    let acc = "";
+    while (true) {
+      const chunk = new Uint8Array(4096);
+      const n = await withSmtpTimeout(
+        activeConn.read(chunk),
+        `read SMTP response (${context})`,
+        () => activeConn.close(),
+      );
+      if (n === null || n === 0) {
+        throw new Error(`SMTP ${context}: соединение закрыто без полного ответа (EOF)`);
+      }
+      acc += decoder.decode(chunk.subarray(0, n), { stream: true });
+      if (acc.length > SMTP_RESPONSE_MAX_BYTES) {
+        throw new Error(`SMTP ${context}: ответ превышает допустимый размер`);
+      }
+      if (isCompleteSmtpResponse(acc)) return acc;
     }
   }
 
-  try {
-    let resp = await readResponse(); // greeting
-    checkOk(resp, "greeting");
+  /** Пишет команду и читает ответ. Текст команды в ошибках не раскрывается. */
+  async function sendCommand(cmd: string, context: string): Promise<string> {
+    await withSmtpTimeout(
+      activeConn.write(encoder.encode(cmd + "\r\n")),
+      `write SMTP command (${context})`,
+      () => activeConn.close(),
+    );
+    return await readResponse(context);
+  }
 
-    resp = await sendCommand("EHLO localhost");
-    checkOk(resp, "EHLO");
+  try {
+    let resp = await readResponse("greeting");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.greeting], "greeting");
+
+    resp = await sendCommand("EHLO localhost", "EHLO");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.ehlo], "EHLO");
 
     // STARTTLS upgrade for 587/2525
     if (!useImplicitTls) {
-      resp = await sendCommand("STARTTLS");
-      checkOk(resp, "STARTTLS");
+      resp = await sendCommand("STARTTLS", "STARTTLS");
+      assertSmtpCode(resp, [...SMTP_EXPECTED.starttls], "STARTTLS");
       activeConn = await withSmtpTimeout(
         Deno.startTls(activeConn as Deno.TcpConn, { hostname: cfg.host }),
         `STARTTLS ${cfg.host}`,
         () => activeConn.close(),
       );
       // повторный EHLO после TLS
-      resp = await sendCommand("EHLO localhost");
-      checkOk(resp, "EHLO after STARTTLS");
+      resp = await sendCommand("EHLO localhost", "EHLO after STARTTLS");
+      assertSmtpCode(resp, [...SMTP_EXPECTED.ehlo], "EHLO after STARTTLS");
     }
 
-    resp = await sendCommand("AUTH LOGIN");
-    checkOk(resp, "AUTH LOGIN");
-    resp = await sendCommand(btoa(cfg.username));
-    checkOk(resp, "AUTH user");
-    resp = await sendCommand(btoa(cfg.password));
-    checkOk(resp, "AUTH pass");
+    resp = await sendCommand("AUTH LOGIN", "AUTH LOGIN");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.authLogin], "AUTH LOGIN");
+    // Значения ниже — секреты, они не логируются и не попадают в тексты ошибок.
+    resp = await sendCommand(btoa(cfg.username), "AUTH user");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.authUser], "AUTH user");
+    resp = await sendCommand(btoa(cfg.password), "AUTH pass");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.authPass], "AUTH pass");
 
-    const emailMatch = senderFrom.match(/<([^>]+)>/) || [null, cfg.from_email];
-    const fromEmail = emailMatch[1] || cfg.from_email;
+    resp = await sendCommand(`MAIL FROM:<${envelopeFrom}>`, "MAIL FROM");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.mailFrom], "MAIL FROM");
 
-    resp = await sendCommand(`MAIL FROM:<${fromEmail}>`);
-    checkOk(resp, "MAIL FROM");
+    resp = await sendCommand(`RCPT TO:<${envelopeTo}>`, "RCPT TO");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.rcptTo], "RCPT TO");
 
-    resp = await sendCommand(`RCPT TO:<${opts.to}>`);
-    checkOk(resp, "RCPT TO");
-
-    resp = await sendCommand("DATA");
-    if (!resp.startsWith("354")) checkOk(resp, "DATA");
+    resp = await sendCommand("DATA", "DATA");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.data], "DATA");
 
     await withSmtpTimeout(
       activeConn.write(encoder.encode(rawEmail + "\r\n.\r\n")),
       "write SMTP DATA body",
       () => activeConn.close(),
     );
-    resp = await readResponse();
-    checkOk(resp, "DATA body");
+    // Успех фиксируется ТОЛЬКО при строгом 250 на end-of-data.
+    resp = await readResponse("DATA body");
+    assertSmtpCode(resp, [...SMTP_EXPECTED.dataBody], "DATA body");
 
-    await sendCommand("QUIT");
+    // QUIT — best effort: письмо уже принято сервером, ошибки здесь игнорируем.
+    try {
+      await sendCommand("QUIT", "QUIT");
+    } catch (_) { /* ignore */ }
   } finally {
     try { activeConn.close(); } catch (_) { /* ignore */ }
   }
 }
+
 
 /**
  * Возвращает SMTP-конфиг платформы из env (SMTP_HOST/PORT/USER/PASS/FROM).
