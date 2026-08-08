@@ -47,7 +47,11 @@ vi.mock("@/hooks/useSubscriptionTab", async () => {
   return {
     ...actual,
     useSubscriptionTab: () => ({
-      subscriptionLimits: { plan: "free", maxCourses: 1, maxStudents: 10, maxStorageMb: 100 },
+      subscriptionLimits: {
+        plan: "free",
+        limits: { maxCourses: 1, maxStudents: 10, maxStorageMb: 100, maxTrainedPerMonth: 5 },
+        usage: { coursesCount: 0, studentsCount: 0, storageUsedMb: 0, trainedThisMonth: 0 },
+      },
       currentPlan: "free",
       currentPlanInfo: SUBSCRIPTION_PLANS.free,
       currentPlanIndex: 0,
