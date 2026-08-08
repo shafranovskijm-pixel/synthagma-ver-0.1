@@ -5,7 +5,9 @@ import {
   PROPOSAL_LEGAL_LINKS,
   PROPOSAL_MODULES,
   PROPOSAL_NEXT_STEPS,
+  PROPOSAL_ONLINE_PATH,
   PROPOSAL_PDF_FILE_NAME,
+
   PROPOSAL_WORKFLOW,
   getPublicPlanSummaries,
 } from "./proposalContent";
