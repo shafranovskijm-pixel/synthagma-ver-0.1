@@ -40,6 +40,8 @@ export interface SendOptions {
   to: string;
   subject: string;
   html: string;
+  /** Готовый text/plain. Если не задан — генерируется из HTML. */
+  text?: string;
   fromOverride?: string; // "Имя <email>"
   replyTo?: string;
   attachments?: Attachment[];
@@ -83,6 +85,7 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     to: envelopeTo,
     subject: opts.subject,
     html: opts.html,
+    text: opts.text || null,
     replyTo: opts.replyTo || null,
     extraHeaders: opts.extraHeaders || null,
     attachments: opts.attachments || null,
@@ -310,6 +313,7 @@ export async function sendPlatformEmail(opts: PlatformEmailOptions): Promise<Pla
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
+      text: opts.text,
       fromOverride: opts.fromOverride,
       replyTo: opts.replyTo,
       attachments: opts.attachments,

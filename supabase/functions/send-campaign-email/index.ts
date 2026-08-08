@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail, type SmtpConfig, type Attachment } from "../_shared/smtp-sender.ts";
 import { buildIcs } from "../_shared/ics.ts";
 import { processCampaignHtml } from "../_shared/email-html-utils.ts";
+import { buildListUnsubscribeHeaders } from "../_shared/mailing-variables.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -391,8 +392,11 @@ serve(async (req: Request) => {
       replyTo: campaign.reply_to || undefined,
       attachments: attachments.length ? attachments : undefined,
       extraHeaders: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${smtp.from_email}?subject=unsubscribe>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        ...buildListUnsubscribeHeaders({
+          unsubscribeUrl,
+          fromEmail: smtp.from_email,
+          oneClick: true,
+        }),
         "Precedence": "bulk",
       },
     });

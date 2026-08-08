@@ -4,15 +4,9 @@
  * и в предпросмотре по конкретному контакту.
  */
 
-export const MAILING_VARIABLES = [
-  "first_name",
-  "last_name",
-  "organization",
-  "position",
-  "city",
-  "email",
-  "unsubscribe_url",
-] as const;
+import { CORE_MAILING_VARIABLE_KEYS } from "./variableRegistry";
+
+export const MAILING_VARIABLES = CORE_MAILING_VARIABLE_KEYS;
 
 export type MailingVariable = (typeof MAILING_VARIABLES)[number];
 

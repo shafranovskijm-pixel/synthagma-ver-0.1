@@ -158,19 +158,97 @@ export function encodeFromHeaderValue(from: string): string {
   return from;
 }
 
+/** Уже полноценный HTML-документ? (есть <html> и/или doctype) */
+export function isFullHtmlDocument(html: string): boolean {
+  const s = String(html ?? "");
+  return /<!doctype\s+html/i.test(s) || /<html[\s>]/i.test(s);
+}
+
+/**
+ * Оборачивает фрагмент в полноценный HTML-документ.
+ * Если шаблон уже full document — возвращается без изменений (без двойного wrapper).
+ * Лечит SpamAssassin HTML_MIME_NO_HTML_TAG.
+ */
+export function ensureFullHtmlDocument(html: string, title?: string): string {
+  const body = String(html ?? "");
+  if (isFullHtmlDocument(body)) return body;
+  const safeTitle = sanitizeHeaderValue(title || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return [
+    "<!doctype html>",
+    '<html lang="ru">',
+    "<head>",
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    safeTitle ? `<title>${safeTitle}</title>` : "",
+    "</head>",
+    "<body>",
+    body,
+    "</body>",
+    "</html>",
+  ]
+    .filter(Boolean)
+    .join("\r\n");
+}
+
+/**
+ * Безопасно строит text/plain из HTML: скрипты/стили удаляются,
+ * ссылки разворачиваются в «текст (url)», сущности декодируются.
+ */
+export function htmlToPlainText(html: string): string {
+  let s = String(html ?? "");
+  s = s.replace(/<!doctype[^>]*>/gi, "");
+  s = s.replace(/<(script|style|head)\b[^>]*>[\s\S]*?<\/\1>/gi, "");
+  s = s.replace(/<!--[\s\S]*?-->/g, "");
+  s = s.replace(/<br\s*\/?>/gi, "\n");
+  s = s.replace(/<\/(p|div|tr|li|h[1-6]|table|section)\s*>/gi, "\n\n");
+  s = s.replace(/<li\b[^>]*>/gi, "• ");
+  s = s.replace(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_m, href, text) => {
+    const label = String(text).replace(/<[^>]+>/g, "").trim();
+    const url = String(href).trim();
+    if (!url || url.startsWith("#") || /^cid:/i.test(url)) return label;
+    return label && label !== url ? `${label} (${url})` : url;
+  });
+  s = s.replace(/<img\b[^>]*>/gi, "");
+  s = s.replace(/<[^>]+>/g, "");
+  s = s
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&laquo;/gi, "«")
+    .replace(/&raquo;/gi, "»")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&ndash;/gi, "–");
+  s = s.replace(/[ \t]+/g, " ");
+  s = s.replace(/ *\n */g, "\n");
+  s = s.replace(/\n{3,}/g, "\n\n");
+  return s.trim();
+}
+
 export interface BuildMessageParams {
   from: string;              // "Имя <email>" либо email
   fromEmail: string;         // адрес конверта для Message-ID домена
   to: string;
   subject: string;
   html: string;
+  /** Готовый text/plain. Если не задан — генерируется из HTML. */
+  text?: string | null;
   replyTo?: string | null;
   extraHeaders?: Record<string, string> | null;
   attachments?: { filename: string; content: string; contentType: string }[] | null;
   date?: Date;
   messageId?: string;
   boundary?: string;
+  altBoundary?: string;
 }
+
+const randomBoundary = (prefix: string) =>
+  `=_${prefix}_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
 
 /** Собирает готовое к DATA сообщение (уже с dot-stuffing и CRLF). */
 export function buildRawEmail(p: BuildMessageParams): { raw: string; messageId: string } {
@@ -189,32 +267,42 @@ export function buildRawEmail(p: BuildMessageParams): { raw: string; messageId: 
   if (p.extraHeaders) {
     for (const [k, v] of Object.entries(p.extraHeaders)) {
       const key = assertNoCrlf(String(k), "имени заголовка");
-      baseHeaders.push(`${key}: ${sanitizeHeaderValue(v)}`);
+      const value = sanitizeHeaderValue(v);
+      if (!value) continue;
+      baseHeaders.push(`${key}: ${value}`);
     }
   }
 
-  const encodedHtml = base64(String(p.html ?? ""));
+  const htmlDoc = ensureFullHtmlDocument(String(p.html ?? ""), p.subject);
+  const plain = (p.text && String(p.text).trim()) || htmlToPlainText(htmlDoc);
+
   const wrap = (s: string) => s.match(/.{1,76}/g)?.join("\r\n") || s;
   const attachments = p.attachments || [];
+  const altBoundary = p.altBoundary || randomBoundary("alt");
+
+  // multipart/alternative: text/plain + text/html (лечит MIME_HTML_ONLY)
+  const altBlock = [
+    `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+    ``,
+    `--${altBoundary}`,
+    `Content-Type: text/plain; charset=UTF-8`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    wrap(base64(plain)),
+    `--${altBoundary}`,
+    `Content-Type: text/html; charset=UTF-8`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    wrap(base64(htmlDoc)),
+    `--${altBoundary}--`,
+  ];
 
   let raw: string;
   if (attachments.length === 0) {
-    raw = [
-      ...baseHeaders,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      wrap(encodedHtml),
-    ].join("\r\n");
+    raw = [...baseHeaders, ...altBlock].join("\r\n");
   } else {
-    const boundary = p.boundary || `=_b_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
-    const parts: string[] = [
-      `--${boundary}`,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      wrap(encodedHtml),
-    ];
+    const boundary = p.boundary || randomBoundary("mix");
+    const parts: string[] = [`--${boundary}`, ...altBlock];
     for (const att of attachments) {
       const filename = sanitizeHeaderValue(att.filename).replace(/"/g, "");
       const contentType = sanitizeHeaderValue(att.contentType);
@@ -233,3 +321,4 @@ export function buildRawEmail(p: BuildMessageParams): { raw: string; messageId: 
 
   return { raw: dotStuff(raw), messageId };
 }
+

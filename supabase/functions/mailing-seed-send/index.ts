@@ -9,6 +9,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail } from "../_shared/smtp-sender.ts";
+import {
+  buildListUnsubscribeHeaders,
+  buildSeedUnsubscribeMailto,
+  buildSeedVariableValues,
+  renderMailingTemplate,
+} from "../_shared/mailing-variables.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,10 +143,39 @@ serve(async (req: Request) => {
       return json({ success: false, error_category: "config" }, 200);
     }
 
+    // Имя организации для переменных organization/org_name (best effort).
+    let orgName = "";
+    try {
+      const { data: org } = await admin
+        .from("organizations")
+        .select("name")
+        .eq("id", sender.organization_id)
+        .maybeSingle();
+      orgName = (org?.name as string) || "";
+    } catch { /* не критично */ }
+
+    const fromName = campaign.from_name || cfg.from_name || "СИНТАГМА";
+    const seedUnsubscribe = buildSeedUnsubscribeMailto(cfg.from_email);
+
     let sent = 0;
     let failed = 0;
     for (const to of seeds) {
       try {
+        // Все поддерживаемые переменные подставляются детерминированно:
+        // ни один {{token}} не должен уйти в письмо (unresolved → "").
+        const values = buildSeedVariableValues({
+          seedEmail: to,
+          organizationName: orgName,
+          fromName,
+          fromEmail: cfg.from_email,
+          unsubscribeUrl: seedUnsubscribe,
+        });
+        const seedSubject = renderMailingTemplate(subject, values, {
+          escapeHtml: false,
+          unresolved: "strip",
+        });
+        const seedHtml = renderMailingTemplate(html, values, { unresolved: "strip" });
+
         await sendSmtpEmail(
           {
             host: cfg.smtp_host,
@@ -149,15 +184,24 @@ serve(async (req: Request) => {
             password: cfg.secret,
             encryption: (cfg.smtp_security || "ssl") === "starttls" ? "starttls" : "ssl",
             from_email: cfg.from_email,
-            from_name: campaign.from_name || cfg.from_name || "СИНТАГМА",
+            from_name: fromName,
           } as never,
-          { to, subject: `[SEED] ${subject}`, html },
+          {
+            to,
+            subject: `[SEED] ${seedSubject}`,
+            html: seedHtml,
+            extraHeaders: buildListUnsubscribeHeaders({
+              unsubscribeUrl: seedUnsubscribe,
+              fromEmail: cfg.from_email,
+            }),
+          },
         );
         sent += 1;
       } catch {
         failed += 1;
       }
     }
+
 
     // В журнал пишутся только счётчики: ни тела письма, ни пароля.
     await admin.rpc("record_mailing_seed_result", {
