@@ -49,8 +49,8 @@ const PartnerLanding = () => {
   return (
     <>
       <Helmet>
-        <title>Партнёрская программа — СИНТАГМА | До 45% комиссии</title>
-        <meta name="description" content="Многоуровневая партнёрская программа СИНТАГМА. До 45% комиссии с 3 уровней сети. Бонусы за оборот и лидерский рейтинг." />
+        <title>Партнёрская программа — СИНТАГМА | До 43% комиссии</title>
+        <meta name="description" content="Многоуровневая партнёрская программа СИНТАГМА. До 43% комиссии с 3 уровней сети. Бонусы за оборот и лидерский рейтинг." />
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
@@ -432,7 +432,7 @@ const PartnerLanding = () => {
           <FloatingParticles count={8} mode="dots" />
           <div className="container mx-auto px-6 text-center relative z-10">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Начните зарабатывать до 45% уже сегодня</h2>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Начните зарабатывать до 43% уже сегодня</h2>
               <p className="text-white/50 mb-10 max-w-lg mx-auto text-lg">Регистрация занимает 1 минуту. Стройте сеть партнёров и получайте многоуровневый доход.</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {isPartner ? (
