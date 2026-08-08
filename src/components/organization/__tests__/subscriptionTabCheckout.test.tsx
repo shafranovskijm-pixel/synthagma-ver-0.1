@@ -99,8 +99,9 @@ function renderTab() {
 }
 
 async function expectSingleWizard() {
-  await waitFor(() => expect(screen.getAllByText("Оформление тарифа")).toHaveLength(1));
+  await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(1));
   const dialog = screen.getByRole("dialog");
+  expect(within(dialog).getAllByText("Оформление тарифа").length).toBeGreaterThan(0);
   expect(within(dialog).getByText(/Шаг 1 из 3/)).toBeTruthy();
   return dialog;
 }
