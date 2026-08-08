@@ -16,6 +16,7 @@ import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
 import { usePartnerLanding } from "@/hooks/usePartnerLanding";
 import { ReferralBanner } from "@/components/partner/ReferralBanner";
 import { getPartnerRef } from "@/utils/referralCookie";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
 import {
   steps, benefits, networkLevels, bonuses, whyEasyToSell, caseStudies,
   priceOptions, faqItems, platformStats, downloadMaterials, recommendTargets,
