@@ -90,18 +90,8 @@ export default function PlatformPresentation() {
 
       <PresentationHero Section={Section} heroBg={heroBg} />
 
-      {/* ═══ ЕДИНОЕ КП ═══ */}
-      <Section className="border-y border-border bg-secondary/30">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground">Коммерческое предложение</h2>
-            <p className="mt-1 text-sm text-muted-foreground max-w-xl">
-              Единый документ с составом платформы, тарифами и условиями — актуален на сегодня.
-            </p>
-          </div>
-          <ProposalDownloadButton size="lg" withOnlineLink />
-        </div>
-      </Section>
+
+
 
       <PresentationProblem Section={Section} />
       <PresentationSolution Section={Section} />
@@ -114,13 +104,14 @@ export default function PlatformPresentation() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">
           <Landmark className="w-12 h-12 text-[hsl(174_72%_46%)] mx-auto mb-6" />
           <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="ФИС ФРДО" speed={60} delay={200} /></h2>
-          <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-12 max-w-2xl mx-auto">Автоматическая выгрузка данных о выданных документах в федеральный реестр</p>
+          <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-12 max-w-2xl mx-auto">Проверка и подготовка данных и файла для передачи сведений в федеральный реестр</p>
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 justify-center max-w-4xl mx-auto">
             {[
-              { step: "1", label: "Заполнение данных", desc: "Автоматически из карточки ученика" },
-              { step: "2", label: "Формирование XML", desc: "По стандарту Рособрнадзора (ДПО/ПО)" },
-              { step: "3", label: "Выгрузка в реестр", desc: "Один клик — данные в ФИС ФРДО" },
+              { step: "1", label: "Заполнение данных", desc: "Из карточки ученика и данных группы" },
+              { step: "2", label: "Проверка и подготовка файла", desc: "Показываем ошибки и несоответствия до отправки" },
+              { step: "3", label: "Передача сведений", desc: "Вы загружаете готовый файл. На «Профессиональном» — ФРДО+: выгружаем за вас" },
             ].map((s, i) => (
+
               <div key={i} className="flex flex-col items-center flex-1">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[hsl(174_72%_46%)] text-white flex items-center justify-center text-xl md:text-2xl font-bold mb-4 shadow-[0_0_30px_hsl(174_72%_46%/0.3)]">{s.step}</div>
                 <h3 className="text-base md:text-lg font-semibold text-[hsl(0_0%_8%)] dark:text-white mb-1">{s.label}</h3>
@@ -219,9 +210,18 @@ export default function PlatformPresentation() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО+ — выгрузка данных в реестр выполняется нами за вас</p>
+          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО+ — подготовку и выгрузку сведений выполняем за вас на тарифе «Профессиональный»</p>
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="font-semibold">Коммерческое предложение одним файлом</div>
+              <p className="mt-1 text-sm text-white/50">Состав платформы, тарифы и условия — актуально на сегодня.</p>
+            </div>
+            <ProposalDownloadButton size="lg" withOnlineLink onlineLinkClassName="inline-flex items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 hover:text-white" />
+          </div>
         </div>
       </Section>
+
+
 
       <PresentationMobile Section={Section} mobileBg={mobileBg} />
       <PresentationCTA Section={Section} ctaBg={ctaBg} />

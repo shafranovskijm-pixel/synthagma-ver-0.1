@@ -17,6 +17,8 @@ import { usePartnerLanding } from "@/hooks/usePartnerLanding";
 import { ReferralBanner } from "@/components/partner/ReferralBanner";
 import { getPartnerRef } from "@/utils/referralCookie";
 import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
+import { getEntryPaidPlan, PROPOSAL_PDF_FILE_NAME } from "@/lib/proposal/proposalContent";
+
 import {
   steps, benefits, networkLevels, bonuses, whyEasyToSell, caseStudies,
   priceOptions, faqItems, platformStats, downloadMaterials, recommendTargets,
@@ -40,7 +42,9 @@ const PartnerLanding = () => {
     calcTurnoverBonus, calcGrandTotal, handleBecomePartner, refLink, copyText,
   } = usePartnerLanding();
 
+  const entryPaidPlan = getEntryPaidPlan();
   const promoTexts = buildPromoTexts(refLink);
+
   const promoMaterials = [
     { icon: MessageCircle, title: "Для мессенджеров", sub: "WhatsApp, Telegram, VK", text: promoTexts.messenger },
     { icon: FileText, title: "Для соцсетей", sub: "Пост, статья, блог", text: promoTexts.social },
@@ -118,125 +122,22 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* Единое КП для отправки клиенту */}
-        <section className="border-y border-border bg-secondary/30">
-          <div className="container mx-auto px-6 py-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="font-display text-xl lg:text-2xl font-bold">Материалы для продажи</h2>
-              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                То же коммерческое предложение, что видит клиент: состав платформы, актуальные тарифы и условия.
-              </p>
-            </div>
-            <ProposalDownloadButton size="lg" withOnlineLink />
-          </div>
-        </section>
-
-
-        {/* Comic: Why easy to sell */}
-        <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
-          <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(circle_1.5px_at_8px_8px,hsl(var(--foreground))_1px,transparent_0)] [background-size:16px_16px]" />
+        {/* Кому подходит */}
+        <section className="py-20 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="container mx-auto px-6 relative">
-            <motion.div className="text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-              <Badge className="mb-4 px-3 py-1 bg-teal-500/10 text-teal-600 border-teal-500/20"><Zap className="w-3.5 h-3.5 mr-1" /> Ваше преимущество</Badge>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold">Почему легко привлекать клиентов</h2>
+            <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <Badge className="mb-4 px-3 py-1 bg-teal-500/10 text-teal-600 border-teal-500/20"><Zap className="w-3.5 h-3.5 mr-1" /> Кому подходит</Badge>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold">Кому рекомендовать платформу</h2>
+              <p className="mt-3 text-muted-foreground max-w-xl mx-auto">Если вы уже общаетесь с учебными центрами или обучаете персонал — вам будет что предложить</p>
             </motion.div>
-            <motion.p className="text-muted-foreground text-center mb-14 max-w-2xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>Платформа продаёт себя сама — вам достаточно показать возможности</motion.p>
-            <div className="max-w-5xl mx-auto grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
-              {whyEasyToSell.map((item, i) => (
-                <motion.div key={item.title} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} whileHover={{ scale: 1.03, rotate: 0 }} style={{ rotate: item.rotate }} className="relative">
-                  <div className="border-[3px] border-foreground/80 rounded-lg overflow-hidden bg-card shadow-[4px_4px_0px_0px_hsl(var(--foreground)/0.15)] hover:shadow-[6px_6px_0px_0px_hsl(var(--foreground)/0.2)] transition-shadow">
-                    <div className="relative h-36 lg:h-44 overflow-hidden">
-                      <img src={item.image} alt={item.title} loading="lazy" className="w-full h-full object-cover" />
-                      <div className="absolute top-2 right-2 bg-amber-400 text-foreground font-extrabold text-xs px-2 py-1 rounded-full border-2 border-foreground/60 shadow-lg" style={{ transform: "rotate(8deg)" }}>{item.accent}</div>
-                    </div>
-                    <div className="p-3 lg:p-4 relative">
-                      <div className="absolute -top-3 left-4 w-4 h-4 bg-card border-t-[3px] border-l-[3px] border-foreground/80" style={{ transform: "rotate(45deg)" }} />
-                      <h3 className="font-bold text-sm lg:text-base mb-1">{item.title}</h3>
-                      <p className="text-xs lg:text-sm text-muted-foreground leading-snug">{item.desc}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="py-24 relative overflow-hidden section-padding">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
-          <div className="container mx-auto px-6 relative mb-10">
-            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Как это работает</motion.h2>
-            <motion.p className="text-muted-foreground text-center max-w-lg mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>Четыре шага до многоуровневого пассивного дохода</motion.p>
-          </div>
-          <InfiniteMarquee direction="right" speed={50}>
-            {steps.map((step, i) => (
-              <div key={step.title} className="w-72 shrink-0">
-                <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/5 transition-all bg-card/80 backdrop-blur-sm group overflow-hidden">
-                  <div className="relative h-40 overflow-hidden">
-                    <img src={step.image} alt={step.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-teal-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-teal-500/30">{i + 1}</div>
-                  </div>
-                  <CardContent className="pt-4 pb-5">
-                    <h3 className="font-display text-lg font-semibold mb-2">{step.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-                  </CardContent>
-                </Card>
-              </div>
-            ))}
-          </InfiniteMarquee>
-        </section>
-
-        {/* Benefits */}
-        <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
-          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
-          <FloatingParticles count={10} mode="dots" />
-          <div className="container mx-auto px-6 relative mb-10">
-            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Преимущества программы</motion.h2>
-          </div>
-          <InfiniteMarquee direction="left" speed={45}>
-            {benefits.map((b) => (
-              <div key={b.title} className="w-80 shrink-0">
-                <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/10 transition-all bg-card/80 backdrop-blur-sm group overflow-hidden">
-                  <div className="relative h-44 overflow-hidden">
-                    <img src={b.image} alt={b.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-                  <CardContent className="pt-4 pb-5">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow shrink-0"><b.icon className="w-5 h-5 text-teal-600" /></div>
-                      <h3 className="font-semibold">{b.title}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
-                  </CardContent>
-                </Card>
-              </div>
-            ))}
-          </InfiniteMarquee>
-        </section>
-
-        {/* Network Levels */}
-        <section className="py-24 relative overflow-hidden section-padding">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
-          <div className="container mx-auto px-6 relative">
-            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>Многоуровневая комиссия</motion.h2>
-            <motion.p className="text-muted-foreground text-center mb-14 max-w-lg mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>Зарабатывайте не только с прямых приглашений, но и со всей вашей сети</motion.p>
-            <div className="max-w-3xl mx-auto space-y-4 mb-12">
-              {networkLevels.map((row, i) => (
-                <motion.div key={row.level} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
-                  <div className={`flex items-center justify-between px-6 py-6 rounded-xl bg-gradient-to-r ${row.color} border backdrop-blur-sm hover:scale-[1.02] transition-all duration-300`}>
-                    <div><div className="font-semibold text-lg">{row.level}</div><div className="text-sm text-muted-foreground">{row.desc}</div></div>
-                    <div className="text-4xl font-bold text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]">{row.percent}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-4">
-              {bonuses.map((b, i) => (
-                <motion.div key={b.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.5 + i * 0.1 }}>
-                  <Card className="border-dashed border-2 border-teal-500/15 bg-teal-500/[0.02]">
-                    <CardContent className="pt-5 pb-4 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0"><b.icon className={`w-6 h-6 ${b.color}`} /></div>
-                      <div className="flex-1"><div className="font-semibold">{b.title}</div><div className="text-xs text-muted-foreground">{b.condition}</div></div>
-                      <div className="text-2xl font-bold text-teal-500">{b.bonus}</div>
+            <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              {recommendTargets.map((item, i) => (
+                <motion.div key={item.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                  <Card className="h-full border border-teal-500/15 bg-card/80 backdrop-blur-sm text-center transition-all hover:border-teal-500/25">
+                    <CardContent className="pt-6 pb-5">
+                      <div className="w-14 h-14 rounded-2xl bg-teal-500/10 flex items-center justify-center mx-auto mb-4"><item.icon className="w-7 h-7 text-teal-600" /></div>
+                      <h3 className="font-semibold mb-1.5">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground">{item.desc}</p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -245,46 +146,40 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* Case Studies + Calculator */}
+        {/* Расчёт: уровни, бонусы и калькулятор */}
         <section className="py-24 relative overflow-hidden bg-foreground section-padding">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_30%,rgba(20,184,166,0.12),transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_70%,rgba(6,182,212,0.08),transparent_60%)]" />
           <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
           <FloatingParticles count={10} mode="dots" />
           <div className="container mx-auto px-6 relative z-10">
-            <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-              <Badge className="mb-4 px-3 py-1 bg-teal-500/15 text-teal-300 border-teal-500/30"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Реальные цифры</Badge>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold text-white mb-4">Образец расчёта дохода</h2>
-              <p className="text-white/50 max-w-2xl mx-auto">На основе реальных тарифов платформы — от 3 490 до 24 990 ₽/мес</p>
+            <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <Badge className="mb-4 px-3 py-1 bg-teal-500/15 text-teal-300 border-teal-500/30"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Расчёт комиссии</Badge>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold text-white mb-4">Как считается комиссия</h2>
+              <p className="text-white/50 max-w-2xl mx-auto">
+                Расчёт по актуальным тарифам платформы — от {formatRub(entryPaidPlan.price)}/мес. Это калькулятор, а не обещание дохода:
+                комиссия начисляется по условиям оферты и только после подтверждённой оплаты клиента.
+              </p>
             </motion.div>
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-              {caseStudies.map((cs, i) => (
-                <motion.div key={cs.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
-                  <Card className={`h-full border bg-gradient-to-b ${cs.color} backdrop-blur-sm hover:scale-[1.02] transition-all duration-300 overflow-hidden`}>
-                    <div className="relative h-40 overflow-hidden">
-                      <img src={cs.image} alt={cs.title} loading="lazy" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-3 left-4 flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl ${cs.iconBg} flex items-center justify-center backdrop-blur-sm`}><cs.icon className={`w-5 h-5 ${cs.iconColor}`} /></div>
-                        <div><h3 className="font-semibold text-white text-lg leading-tight">{cs.title}</h3><p className="text-xs text-white/50">{cs.subtitle}</p></div>
-                      </div>
-                    </div>
-                    <CardContent className="pt-5 pb-5">
-                      <div className="space-y-2 mb-5">
-                        {cs.rows.map((row, ri) => (
-                          <div key={ri} className="flex justify-between items-start gap-2 text-sm">
-                            <span className="text-white/50 leading-tight">{row.label}</span>
-                            <span className="text-teal-400 font-semibold whitespace-nowrap">{row.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="border-t border-white/10 pt-4 mb-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-white/70 font-medium">Итого в месяц:</span>
-                          <span className="text-2xl font-bold text-teal-400">{cs.total}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-white/35 leading-relaxed">{cs.note}</p>
+
+            <div className="max-w-3xl mx-auto space-y-4 mb-8">
+              {networkLevels.map((row, i) => (
+                <motion.div key={row.level} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12 }}>
+                  <div className="flex items-center justify-between px-6 py-5 rounded-xl bg-white/[0.04] border border-teal-500/20 backdrop-blur-sm">
+                    <div><div className="font-semibold text-lg text-white">{row.level}</div><div className="text-sm text-white/50">{row.desc}</div></div>
+                    <div className="text-3xl font-bold text-teal-400">{row.percent}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-4 mb-12">
+              {bonuses.map((b, i) => (
+                <motion.div key={b.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 + i * 0.1 }}>
+                  <Card className="border-dashed border-2 border-teal-500/20 bg-white/[0.03]">
+                    <CardContent className="pt-5 pb-4 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0"><b.icon className="w-6 h-6 text-teal-400" /></div>
+                      <div className="flex-1"><div className="font-semibold text-white">{b.title}</div><div className="text-xs text-white/50">{b.condition}</div></div>
+                      <div className="text-2xl font-bold text-teal-400">{b.bonus}</div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -295,7 +190,7 @@ const PartnerLanding = () => {
             <motion.div className="max-w-3xl mx-auto" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
               <Card className="bg-white/[0.04] border border-teal-500/20 backdrop-blur-sm">
                 <CardContent className="pt-6 pb-6">
-                  <h3 className="font-display text-xl font-bold text-white mb-6 flex items-center gap-2"><Sparkles className="w-5 h-5 text-teal-400" /> Рассчитайте свой доход</h3>
+                  <h3 className="font-display text-xl font-bold text-white mb-6 flex items-center gap-2"><Sparkles className="w-5 h-5 text-teal-400" /> Рассчитайте свою комиссию</h3>
                   <div className="space-y-6 mb-8">
                     <div>
                       <label className="text-sm text-white/60 mb-3 block">Средний тариф клиентов</label>
@@ -307,15 +202,15 @@ const PartnerLanding = () => {
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2"><span className="text-white/60">Уровень 1 — ваши прямые клиенты</span><span className="text-teal-400 font-semibold">{calcLevel1}</span></div>
-                      <Slider value={[calcLevel1]} onValueChange={v => setCalcLevel1(v[0])} min={1} max={30} step={1} className="[&_[role=slider]]:bg-teal-500 [&_[role=slider]]:border-teal-500 [&_.bg-primary]:bg-teal-500" />
+                      <Slider value={[calcLevel1]} onValueChange={v => setCalcLevel1(v[0])} min={1} max={30} step={1} aria-label="Клиенты уровня 1" className="[&_[role=slider]]:bg-teal-500 [&_[role=slider]]:border-teal-500 [&_.bg-primary]:bg-teal-500" />
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2"><span className="text-white/60">Уровень 2 — клиенты ваших партнёров</span><span className="text-cyan-400 font-semibold">{calcLevel2}</span></div>
-                      <Slider value={[calcLevel2]} onValueChange={v => setCalcLevel2(v[0])} min={0} max={100} step={1} className="[&_[role=slider]]:bg-cyan-500 [&_[role=slider]]:border-cyan-500 [&_.bg-primary]:bg-cyan-500" />
+                      <Slider value={[calcLevel2]} onValueChange={v => setCalcLevel2(v[0])} min={0} max={100} step={1} aria-label="Клиенты уровня 2" className="[&_[role=slider]]:bg-cyan-500 [&_[role=slider]]:border-cyan-500 [&_.bg-primary]:bg-cyan-500" />
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2"><span className="text-white/60">Уровень 3 — третье поколение сети</span><span className="text-blue-400 font-semibold">{calcLevel3}</span></div>
-                      <Slider value={[calcLevel3]} onValueChange={v => setCalcLevel3(v[0])} min={0} max={200} step={1} className="[&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-500 [&_.bg-primary]:bg-blue-500" />
+                      <Slider value={[calcLevel3]} onValueChange={v => setCalcLevel3(v[0])} min={0} max={200} step={1} aria-label="Клиенты уровня 3" className="[&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-500 [&_.bg-primary]:bg-blue-500" />
                     </div>
                   </div>
                   <div className="bg-white/[0.04] rounded-xl border border-white/[0.06] p-5 space-y-3">
@@ -324,10 +219,10 @@ const PartnerLanding = () => {
                     <div className="flex justify-between text-sm"><span className="text-white/50">Уровень 3: {calcLevel3} × {formatRub(calcAvgPrice)} × 5%</span><span className="text-blue-400 font-semibold">{formatRub(calcIncome3)}</span></div>
                     {calcTurnoverBonus > 0 && <div className="flex justify-between text-sm"><span className="text-white/50">Бонус за оборот (+5%)</span><span className="text-emerald-400 font-semibold">+{formatRub(calcTurnoverBonus)}</span></div>}
                     <div className="border-t border-white/10 pt-3 flex justify-between items-center">
-                      <span className="text-white/80 font-medium">Ваш доход в месяц:</span>
+                      <span className="text-white/80 font-medium">Расчётная комиссия в месяц:</span>
                       <span className="text-3xl font-bold text-teal-400">{formatRub(calcGrandTotal)}</span>
                     </div>
-                    <p className="text-xs text-white/30 pt-1">* Расчёт без учёта лидерского бонуса (+3% для топ-10 партнёров)</p>
+                    <p className="text-xs text-white/30 pt-1">* Оценка без учёта лидерского бонуса (+3% для топ-10 партнёров). Фактические выплаты зависят от оплат вашей сети.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -335,20 +230,49 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* Platform stats */}
-        <section className="py-20 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
+        {/* Что получает партнёр */}
+        <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
+          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
+          <div className="container mx-auto px-6 relative mb-10">
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Что получает партнёр</motion.h2>
+          </div>
+          <InfiniteMarquee direction="left" speed={45}>
+            {benefits.map((b) => (
+              <div key={b.title} className="w-80 shrink-0">
+                <Card className="h-full border border-teal-500/10 shadow-lg bg-card/80 backdrop-blur-sm group overflow-hidden">
+                  <div className="relative h-44 overflow-hidden">
+                    <img src={b.image} alt={b.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <CardContent className="pt-4 pb-5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center shrink-0"><b.icon className="w-5 h-5 text-teal-600" /></div>
+                      <h3 className="font-semibold">{b.title}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </InfiniteMarquee>
+        </section>
+
+        {/* 3 шага */}
+        <section className="py-24 relative overflow-hidden section-padding">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
           <div className="container mx-auto px-6 relative">
-            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>Платформа, которая продаёт себя сама</motion.h2>
-            <motion.p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>Ваши клиенты остаются, потому что не найдут аналогов</motion.p>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-              {platformStats.map((stat, i) => (
-                <motion.div key={stat.label} initial={{ opacity: 0, y: 40, rotateY: -15 }} whileInView={{ opacity: 1, y: 0, rotateY: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12, type: "spring", damping: 15 }} whileHover={{ y: -8, scale: 1.05 }}>
-                  <Card className={`text-center border-0 bg-gradient-to-br ${stat.gradient} backdrop-blur-sm hover:shadow-2xl ${stat.glow} transition-all duration-500 overflow-hidden relative group`}>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                    <CardContent className="pt-8 pb-7 relative">
-                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mx-auto mb-4 shadow-lg ${stat.glow} group-hover:scale-110 transition-transform duration-300`}><stat.icon className={`w-8 h-8 ${stat.iconColor}`} /></div>
-                      <div className="text-4xl font-extrabold bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">{stat.value}</div>
-                      <div className="text-sm text-muted-foreground font-medium">{stat.label}</div>
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Три шага до первой комиссии</motion.h2>
+            <motion.p className="text-muted-foreground text-center max-w-lg mx-auto mb-12" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>Без вложений и без обязательных объёмов</motion.p>
+            <div className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {steps.map((step, i) => (
+                <motion.div key={step.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                  <Card className="h-full border border-teal-500/10 shadow-lg bg-card/80 backdrop-blur-sm group overflow-hidden">
+                    <div className="relative h-40 overflow-hidden">
+                      <img src={step.image} alt={step.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-teal-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-teal-500/30">{i + 1}</div>
+                    </div>
+                    <CardContent className="pt-4 pb-5">
+                      <h3 className="font-display text-lg font-semibold mb-2">{step.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -357,25 +281,40 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* Promo materials */}
+        {/* Материалы */}
         <section className="py-24 relative overflow-hidden bg-foreground section-padding">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(20,184,166,0.1),transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(6,182,212,0.08),transparent_60%)]" />
           <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
           <FloatingParticles count={12} mode="dots" />
           <div className="container mx-auto px-6 relative z-10">
-            <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               <Badge className="mb-4 px-3 py-1 bg-teal-500/15 text-teal-300 border-teal-500/30"><Star className="w-3.5 h-3.5 mr-1" /> Готовые материалы</Badge>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Рекламные материалы</h2>
-              <p className="text-white/50 max-w-lg mx-auto">Скопируйте готовый текст и отправьте — адаптируйте под свою аудиторию</p>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Материалы для продажи</h2>
+              <p className="text-white/50 max-w-lg mx-auto">Начните с общего коммерческого предложения — это тот же документ, который видит клиент</p>
             </motion.div>
+
+            {/* КП — первым */}
+            <motion.div className="max-w-3xl mx-auto mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <Card className="border border-teal-500/25 bg-white/[0.04] backdrop-blur-sm">
+                <CardContent className="pt-6 pb-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="font-display text-lg font-semibold text-white">КП для клиента</h3>
+                    <p className="mt-1 text-sm text-white/50 max-w-md">
+                      Состав платформы, актуальные тарифы от {formatRub(entryPaidPlan.price)}/мес и условия. Файл {PROPOSAL_PDF_FILE_NAME}.
+                    </p>
+                  </div>
+                  <ProposalDownloadButton size="lg" withOnlineLink />
+                </CardContent>
+              </Card>
+            </motion.div>
+
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {promoMaterials.map((item, i) => (
                 <motion.div key={item.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                  <Card className="h-full border border-teal-500/15 bg-white/[0.03] backdrop-blur-sm shadow-xl hover:shadow-2xl hover:shadow-teal-500/5 transition-all group hover:border-teal-500/25">
+                  <Card className="h-full border border-teal-500/15 bg-white/[0.03] backdrop-blur-sm shadow-xl transition-all group hover:border-teal-500/25">
                     <CardContent className="pt-6 space-y-4">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow"><item.icon className="w-5 h-5 text-teal-400" /></div>
+                        <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center"><item.icon className="w-5 h-5 text-teal-400" /></div>
                         <div><h3 className="font-semibold text-white">{item.title}</h3><p className="text-xs text-white/40">{item.sub}</p></div>
                       </div>
                       <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 max-h-48 overflow-y-auto"><p className="text-sm leading-relaxed whitespace-pre-line text-white/60">{item.text}</p></div>
@@ -385,11 +324,12 @@ const PartnerLanding = () => {
                 </motion.div>
               ))}
             </div>
+
             <motion.div className="mt-12 max-w-5xl mx-auto" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
               <h3 className="font-display text-lg font-semibold mb-4 text-center text-white/80">Дополнительные материалы для скачивания</h3>
               <div className="grid sm:grid-cols-3 gap-4">
                 {downloadMaterials.map((file, i) => (
-                  <a key={i} href={file.href} download className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-teal-500/20 transition-all group">
+                  <a key={i} href={file.href} download className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-teal-500/20 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400">
                     <Badge className={`${file.color} border-0 text-xs font-bold px-2 py-0.5`}>{file.type}</Badge>
                     <span className="text-sm flex-1 leading-tight text-white/70 group-hover:text-white/90 transition-colors">{file.name}</span>
                     <Download className="w-4 h-4 text-white/30 group-hover:text-teal-400 transition-colors shrink-0" />
@@ -397,24 +337,9 @@ const PartnerLanding = () => {
                 ))}
               </div>
             </motion.div>
-            <motion.div className="mt-20 max-w-4xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
-              <h3 className="font-display text-2xl font-bold text-center mb-8 text-white">Кому рекомендовать</h3>
-              <div className="grid sm:grid-cols-3 gap-6">
-                {recommendTargets.map((item, i) => (
-                  <motion.div key={i} whileHover={{ y: -4 }} transition={{ type: "spring", damping: 20 }}>
-                    <Card className="border border-teal-500/15 bg-white/[0.03] backdrop-blur-sm text-center transition-all h-full hover:border-teal-500/25 hover:shadow-[0_0_25px_rgba(20,184,166,0.08)] group">
-                      <CardContent className="pt-6 pb-5">
-                        <div className="w-14 h-14 rounded-2xl bg-teal-500/15 flex items-center justify-center mx-auto mb-4 group-hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] transition-shadow"><item.icon className="w-7 h-7 text-teal-400" /></div>
-                        <h4 className="font-semibold mb-1.5 text-white">{item.title}</h4>
-                        <p className="text-sm text-white/50">{item.desc}</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
           </div>
         </section>
+
 
         {/* FAQ */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">

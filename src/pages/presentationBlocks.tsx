@@ -11,6 +11,8 @@ import {
 } from "./presentationSections";
 import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
+
 
 type SectionComponent = React.ComponentType<{ children: React.ReactNode; className?: string }>;
 
@@ -23,12 +25,21 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
         <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_hsl(174_72%_46%/0.4)]">
           <GraduationCap className="w-10 h-10 md:w-16 md:h-16 text-white" />
         </div>
-        <h1 className="text-5xl md:text-8xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-          <TypewriterText text="СИНТАГМА" speed={80} delay={500} />
+        <h1 className="text-4xl md:text-7xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+          <TypewriterText text="СИНТАГМА — платформа для учебных центров" speed={40} delay={400} />
         </h1>
         <p className="text-lg md:text-2xl text-white/60 font-light mb-10">
-          <TypewriterText text="Платформа для образовательных организаций" speed={40} delay={1200} />
+          Курсы, ученики, документы, журналы и подготовка данных для ФИС ФРДО в одном кабинете. Поможем запустить за 7 дней.
         </p>
+        <div className="flex flex-col sm:flex-row justify-center gap-3 mb-10">
+          <a
+            href="#vozmozhnosti"
+            className="px-8 py-3 rounded-2xl bg-[hsl(174_72%_46%)] text-base font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Смотреть возможности
+          </a>
+          <ProposalDownloadButton size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" />
+        </div>
         <div className="flex flex-wrap justify-center gap-3">
           {[
             { icon: BookOpen, label: "LMS" },
@@ -41,6 +52,7 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
             </span>
           ))}
         </div>
+
       </div>
     </Section>
   );
@@ -94,7 +106,8 @@ export function PresentationSolution({ Section }: { Section: SectionComponent })
 export function PresentationLMS({ Section }: { Section: SectionComponent }) {
   return (
     <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
+      <div id="vozmozhnosti" className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 scroll-mt-20">
+
         <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Управление курсами" speed={40} delay={200} /></h2>
         <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Создавайте, импортируйте или генерируйте курсы с ИИ</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -332,7 +345,7 @@ export function PresentationCTA({ Section, ctaBg }: { Section: SectionComponent;
         <p className="text-base md:text-xl text-white/60 mb-10 max-w-xl mx-auto">Бесплатный тариф — навсегда. Все функции доступны.</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
           <Link to="/register-organization" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl bg-[hsl(174_72%_46%)] text-base md:text-lg font-semibold hover:opacity-90 transition-opacity text-center">Начать бесплатно</Link>
-          <Link to="/register-organization" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl border border-white/30 text-base md:text-lg font-semibold hover:bg-white/10 transition-colors text-center">Запросить демо</Link>
+          <Link to="/demonstration" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl border border-white/30 text-base md:text-lg font-semibold hover:bg-white/10 transition-colors text-center">Запросить демо</Link>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 justify-center text-white/40 text-sm">
           <span>support@sintagma.com.ru</span>
