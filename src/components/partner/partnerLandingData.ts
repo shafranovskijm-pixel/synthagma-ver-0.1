@@ -28,16 +28,16 @@ import comicProctoring from "@/assets/partner/comic-proctoring.jpg";
 export const steps = [
   { icon: Users, title: "Зарегистрируйтесь", desc: "Станьте партнёром за 1 клик — нужен только аккаунт на платформе", image: stepRegister },
   { icon: ExternalLink, title: "Делитесь ссылкой", desc: "Отправьте персональную ссылку вашим контактам и аудитории", image: stepShare },
-  { icon: Network, title: "Стройте сеть", desc: "Привлекайте партнёров и получайте комиссию с 3 уровней", image: stepNetwork },
-  { icon: DollarSign, title: "Получайте доход", desc: "До 45% от каждого платежа по всей вашей сети", image: stepEarn },
+  { icon: DollarSign, title: "Получайте комиссию", desc: "До 43% по трём уровням сети — по условиям оферты и после подтверждённой оплаты клиента", image: stepEarn },
 ];
 
 export const benefits = [
-  { icon: TrendingUp, title: "До 45% дохода", desc: "20% прямых + 10% уровень 2 + 5% уровень 3 + бонусы", image: benefitIncome },
-  { icon: Clock, title: "2 года выплат", desc: "Получайте комиссию в течение 24 месяцев после регистрации клиента", image: benefitDuration },
+  { icon: TrendingUp, title: "До 43% комиссии", desc: "20% уровень 1 + 10% уровень 2 + 5% уровень 3 + бонусы +5% и +3%", image: benefitIncome },
+  { icon: Clock, title: "2 года выплат", desc: "Комиссия начисляется в течение 24 месяцев после регистрации клиента", image: benefitDuration },
   { icon: Crown, title: "Лидерский бонус", desc: "Топ-10 партнёров месяца получают дополнительно +3% со всей сети", image: benefitLeader },
   { icon: Award, title: "Бонус за оборот", desc: "При обороте сети > 100 000 ₽/мес — дополнительно +5%", image: benefitTurnover },
 ];
+
 
 export const networkLevels = [
   { level: "Уровень 1", desc: "Прямые приглашения", percent: "20%", color: "from-teal-500/20 to-teal-500/10 border-teal-500/30", glow: "shadow-teal-500/10" },
