@@ -80,7 +80,7 @@ describe("действия по счёту в CommercialSetCards", () => {
 
   it("нет действий, когда счёта нет (кнопки disabled)", () => {
     renderSet({ contract, invoice: null, paidInvoice: null, act: null });
-    expect(screen.getByTitle("Счёт ещё не сформирован")).toBeTruthy();
+    expect(screen.getAllByTitle("Счёт ещё не сформирован")).toHaveLength(2);
     expect(document.querySelector('a[href="/invoice/inv-1"]')).toBeNull();
   });
 
