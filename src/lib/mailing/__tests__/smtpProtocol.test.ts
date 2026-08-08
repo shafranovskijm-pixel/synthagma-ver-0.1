@@ -68,6 +68,9 @@ describe("SMTP message builder", () => {
     expect(() => buildRawEmail({ ...base, subject: "a\r\nBcc: x@y.z" })).toThrow();
     expect(() => buildRawEmail({ ...base, to: "b@example.com\r\nRCPT TO:<c@d.e>" })).toThrow();
     const { raw } = buildRawEmail({ ...base, extraHeaders: { "List-Unsubscribe": "a\r\nX-Evil: 1" } });
-    expect(raw).not.toContain("X-Evil");
+    // CRLF свёрнут в пробел: инъекция нового заголовка невозможна
+    expect(raw).toContain("List-Unsubscribe: a X-Evil: 1");
+    expect(raw.split("\r\n").some((l) => l.startsWith("X-Evil"))).toBe(false);
+
   });
 });
