@@ -19,6 +19,7 @@ const CourseLandingEditor = lazyWithRetry(() => import("@/pages/CourseLandingEdi
 const CourseImport = lazyWithRetry(() => import("@/pages/CourseImport"));
 const ContractEditor = lazyWithRetry(() => import("@/pages/ContractEditor"));
 const MailingApp = lazyWithRetry(() => import("@/pages/MailingApp"));
+const TariffNavigationHarness = lazyWithRetry(() => import("@/pages/dev/TariffNavigationHarness"));
 
 const org = "organization";
 
@@ -53,5 +54,9 @@ export const organizationRoutes = (
         org,
       )}
     />
+    {/* DEV-only regression harness (не попадает в production-сборку) */}
+    {import.meta.env.DEV && (
+      <Route path="/dev/tariff-harness" element={<TariffNavigationHarness />} />
+    )}
   </>
 );
