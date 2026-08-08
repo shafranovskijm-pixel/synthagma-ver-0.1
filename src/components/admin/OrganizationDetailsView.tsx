@@ -20,6 +20,8 @@ import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { AdminDocumentsManager } from "./AdminDocumentsManager";
+import { OrgCommercialDocumentsPanel } from "./OrgCommercialDocumentsPanel";
+import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
