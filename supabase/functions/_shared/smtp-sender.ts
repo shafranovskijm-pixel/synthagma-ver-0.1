@@ -85,6 +85,7 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     to: envelopeTo,
     subject: opts.subject,
     html: opts.html,
+    text: opts.text || null,
     replyTo: opts.replyTo || null,
     extraHeaders: opts.extraHeaders || null,
     attachments: opts.attachments || null,
