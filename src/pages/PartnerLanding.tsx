@@ -88,9 +88,16 @@ const PartnerLanding = () => {
                   ))}
                 </span>
               </motion.h1>
-              <motion.p className="text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}>
+              <motion.p className="text-xl text-white/60 mb-4 max-w-2xl mx-auto leading-relaxed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}>
                 3 уровня комиссии • Бонус за оборот +5% • Лидерский бонус +3% • Выплаты 2 года
               </motion.p>
+              <p className="text-sm text-white/40 mb-10 max-w-2xl mx-auto leading-relaxed">
+                До 43% — это максимум при сложении всех уровней и бонусов (20% + 10% + 5% + 5% + 3%). Доход не гарантирован:
+                вознаграждение начисляется по условиям{" "}
+                <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">партнёрской оферты</Link>{" "}
+                и только после подтверждённой оплаты клиента.
+              </p>
+
               <div className="max-w-xl mx-auto mb-6"><ReferralBanner code={getPartnerRef()} context="partner" /></div>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8, duration: 0.6 }}>
                 {isPartner && partnerCode ? (
