@@ -367,6 +367,16 @@ export function SubscriptionTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {d.organizationId && (
+        <TariffCheckoutDialog
+          open={checkoutOpen}
+          onOpenChange={(v) => { setCheckoutOpen(v); if (!v) void commercial.reload(); }}
+          organizationId={d.organizationId}
+          currentPlan={s.currentPlan}
+          onOpenAct={openActFlow}
+        />
+      )}
     </div>
   );
 }
