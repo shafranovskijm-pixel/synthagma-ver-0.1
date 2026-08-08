@@ -11,6 +11,8 @@ import {
 } from "./presentationSections";
 import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
+
 
 type SectionComponent = React.ComponentType<{ children: React.ReactNode; className?: string }>;
 
