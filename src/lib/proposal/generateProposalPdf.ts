@@ -37,7 +37,7 @@ function esc(s: string): string {
 function pageShell(inner: string, footer: string): string {
   return `
     <div style="width:${A4_W}px;height:${A4_H}px;box-sizing:border-box;padding:52px 56px 46px;background:#ffffff;color:${INK};font-family:'PT Sans',Inter,Arial,sans-serif;display:flex;flex-direction:column;">
-      <div style="flex:1 1 auto;min-height:0;">${inner}</div>
+      <div style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column;">${inner}</div>
       <div style="flex:0 0 auto;border-top:1px solid ${LINE};padding-top:10px;font-size:10.5px;color:${MUTED};display:flex;justify-content:space-between;">
         <span>СИНТАГМА · ${esc(PROPOSAL_CONTACTS.site)}</span>
         <span>${esc(footer)}</span>
@@ -99,7 +99,7 @@ export function buildProposalPagesHtml(): string[] {
         и администратора, единая база учеников и готовые шаблоны документов вашей организации.
       </div>
     </div>
-    <div style="margin-top:auto;padding-top:48px;font-size:11.5px;color:${MUTED};">
+    <div style="margin-top:auto;padding-top:36px;font-size:11.5px;color:${MUTED};">
       Дата формирования: ${esc(today)} · Исполнитель: ${esc(PROPOSAL_CONTACTS.executor)}, ИНН ${esc(PROPOSAL_CONTACTS.inn)}
     </div>`,
     "Стр. 1",
