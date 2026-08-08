@@ -42,6 +42,36 @@ function safeDate(value?: string | null) {
 
 /** Единое представление комплекта: проект договора → счёт → акт. */
 export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emptyHint }: Props) {
+  const [invoicePdfBusy, setInvoicePdfBusy] = useState(false);
+  const invoice = set.invoice;
+  const contractVarsRaw = (set.contract?.variables || {}) as any;
+
+  /** Печать/скачивание PDF существующего счёта — новый счёт НЕ создаётся. */
+  const handleInvoicePdf = async () => {
+    if (!invoice || invoicePdfBusy) return;
+    setInvoicePdfBusy(true);
+    try {
+      const snapshot = (contractVarsRaw.requisites || {}) as any;
+      const planKey = (invoice.plan || contractVarsRaw.plan) as keyof typeof SUBSCRIPTION_PLANS;
+      const data: InvoiceData = {
+        invoiceNumber: invoice.invoice_number,
+        invoiceDate: safeDate(invoice.invoice_date),
+        buyerName: invoice.buyer_name || snapshot.name || "Организация",
+        buyerInn: invoice.buyer_inn || snapshot.inn,
+        buyerKpp: invoice.buyer_kpp || snapshot.kpp,
+        buyerAddress: snapshot.legal_address || snapshot.actual_address,
+        planName: SUBSCRIPTION_PLANS[planKey]?.name || String(invoice.plan),
+        periodMonths: Number(invoice.period_months) || 1,
+        amount: Number(invoice.amount),
+      };
+      printHtmlContent(await generateInvoiceHtml(data), `Счёт ${invoice.invoice_number}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось подготовить PDF счёта");
+    } finally {
+      setInvoicePdfBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
@@ -49,6 +79,7 @@ export function CommercialSetCards({ set, loading, onOpenAct, onOpenInvoice, emp
       </div>
     );
   }
+
 
   const contractVars = (set.contract?.variables || {}) as any;
   const draft =
