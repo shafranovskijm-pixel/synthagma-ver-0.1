@@ -42,7 +42,9 @@ const PartnerLanding = () => {
     calcTurnoverBonus, calcGrandTotal, handleBecomePartner, refLink, copyText,
   } = usePartnerLanding();
 
+  const entryPaidPlan = getEntryPaidPlan();
   const promoTexts = buildPromoTexts(refLink);
+
   const promoMaterials = [
     { icon: MessageCircle, title: "Для мессенджеров", sub: "WhatsApp, Telegram, VK", text: promoTexts.messenger },
     { icon: FileText, title: "Для соцсетей", sub: "Пост, статья, блог", text: promoTexts.social },
