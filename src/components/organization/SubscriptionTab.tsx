@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, CreditCard, Wallet
+  ExternalLink, CreditCard, Wallet, FileStack
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -22,6 +22,10 @@ import {
   PLAN_ORDER, planGradients, planAccents, planBorders,
   featureRows,
 } from "@/hooks/useSubscriptionTab";
+import { usePlatformCommercialSet } from "@/hooks/usePlatformCommercialSet";
+import { CommercialSetCards } from "@/components/platform-contract/CommercialSetCards";
+import { TariffCheckoutDialog } from "@/components/organization/TariffCheckoutDialog";
+import { ACT_LOCKED_REASON, canIssueAct } from "@/lib/platform-commerce";
 
 // Build feature highlights dynamically from the unified catalog
 const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
@@ -36,6 +40,15 @@ const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
 export function SubscriptionTab() {
   const s = useSubscriptionTab();
   const d = useOrgDashboard();
+  const commercial = usePlatformCommercialSet(d.organizationId);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const openActFlow = () => {
+    if (!canIssueAct(commercial.set)) return;
+    try { localStorage.setItem("documents.deepLink", "open-act-dialog"); } catch {}
+    d?.tabNavigation?.setActiveTab?.("documents" as any);
+  };
+
 
   return (
     <div className="space-y-6">
