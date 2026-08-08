@@ -547,7 +547,7 @@ export function AdminDocumentsManager({ prefill, autoLookupDadata = true }: Admi
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {(["start", "basic", "professional", "maximum"] as SubscriptionPlanKey[]).map((k) => (
+                        {(["start", "standard", "professional", "maximum"] as SubscriptionPlanKey[]).map((k) => (
                           <SelectItem key={k} value={k}>{PLAN_LABELS[k]}</SelectItem>
                         ))}
                       </SelectContent>

@@ -20,6 +20,8 @@ import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { AdminDocumentsManager } from "./AdminDocumentsManager";
+import { OrgCommercialDocumentsPanel } from "./OrgCommercialDocumentsPanel";
+import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
@@ -189,16 +191,31 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           {vm.activeTab === "courses" && <OrgCoursesPanel courses={vm.courses} organizationId={organization.id} dndSensors={vm.dndSensors} handleCourseDragEnd={vm.handleCourseDragEnd} migratingCourseId={vm.migratingCourseId} setMigratingCourseId={vm.setMigratingCourseId} migrationResult={vm.migrationResult} setMigrationResult={vm.setMigrationResult} onShowSkillspaceImport={() => vm.setShowSkillspaceImport(true)} onShowSkillspaceBatchImport={() => vm.setShowSkillspaceBatchImport(true)} onSkillspaceUpdate={vm.setSkillspaceUpdateCourse} fetchCourses={vm.fetchCourses} />}
           {vm.activeTab === "tariffs" && <OrgTariffsPanel organizationId={organization.id} subscriptionPlan={organization.subscription_plan || 'free'} planInfo={vm.planInfo} tariffCustomLabel={vm.tariffCustomLabel} setTariffCustomLabel={vm.setTariffCustomLabel} tariffPaidUntil={vm.tariffPaidUntil} setTariffPaidUntil={vm.setTariffPaidUntil} isSavingTariff={vm.isSavingTariff} saveTariffSettings={vm.saveTariffSettings} customLimits={vm.customLimits} setCustomLimits={vm.setCustomLimits} customCategories={vm.customCategories} setCustomCategories={vm.setCustomCategories} customPrice={vm.customPrice} setCustomPrice={vm.setCustomPrice} customDiscount={vm.customDiscount} setCustomDiscount={vm.setCustomDiscount} />}
           {vm.activeTab === "documents" && (
-            <AdminDocumentsManager
-              prefill={{
-                counterparty_kind: "legal",
-                counterparty_name: organization.name,
-                counterparty_inn: organization.inn || undefined,
-                counterparty_email: organization.email || undefined,
-                counterparty_phone: organization.phone || undefined,
-                counterparty_signatory: organization.contact_name || undefined,
-              }}
-            />
+            <div className="space-y-6">
+              <OrgCommercialDocumentsPanel
+                organizationId={organization.id}
+                organizationName={organization.name}
+                subscriptionPlan={(organization.subscription_plan || 'free') as any}
+                onOpenBillingDocs={() => document.getElementById("org-billing-docs")?.scrollIntoView({ behavior: "smooth" })}
+              />
+              <div id="org-billing-docs">
+                <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Финансовые документы (счета, акты, чеки)</h3>
+                <OrgBillingDocsTab organizationId={organization.id} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Другие документы</h3>
+                <AdminDocumentsManager
+                  prefill={{
+                    counterparty_kind: "legal",
+                    counterparty_name: organization.name,
+                    counterparty_inn: organization.inn || undefined,
+                    counterparty_email: organization.email || undefined,
+                    counterparty_phone: organization.phone || undefined,
+                    counterparty_signatory: organization.contact_name || undefined,
+                  }}
+                />
+              </div>
+            </div>
           )}
           {vm.activeTab === "history" && <OrgAuditLogsTab organizationId={organization.id} />}
           {vm.activeTab === "comments" && <OrgCommentsTab organizationId={organization.id} />}

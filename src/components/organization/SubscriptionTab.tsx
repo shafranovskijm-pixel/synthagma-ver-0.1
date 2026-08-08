@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, formatStorageSize } from "@/constants/subscriptionPlans";
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, CreditCard, Wallet
+  ExternalLink, CreditCard, Wallet, FileStack
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -21,6 +22,10 @@ import {
   PLAN_ORDER, planGradients, planAccents, planBorders,
   featureRows,
 } from "@/hooks/useSubscriptionTab";
+import { usePlatformCommercialSet } from "@/hooks/usePlatformCommercialSet";
+import { CommercialSetCards } from "@/components/platform-contract/CommercialSetCards";
+import { TariffCheckoutDialog } from "@/components/organization/TariffCheckoutDialog";
+import { ACT_LOCKED_REASON, canIssueAct } from "@/lib/platform-commerce";
 
 // Build feature highlights dynamically from the unified catalog
 const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
@@ -35,6 +40,15 @@ const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
 export function SubscriptionTab() {
   const s = useSubscriptionTab();
   const d = useOrgDashboard();
+  const commercial = usePlatformCommercialSet(d.organizationId);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const openActFlow = () => {
+    if (!canIssueAct(commercial.set)) return;
+    try { localStorage.setItem("documents.deepLink", "open-act-dialog"); } catch {}
+    d?.tabNavigation?.setActiveTab?.("documents" as any);
+  };
+
 
   return (
     <div className="space-y-6">
@@ -109,6 +123,32 @@ export function SubscriptionTab() {
                 </CardContent>
               </Card>
 
+              {/* Оформление тарифа: проект договора → счёт → акт */}
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <FileStack className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">Оформление тарифа</p>
+                        <p className="text-xs text-muted-foreground">
+                          Проект договора (без номера) → счёт на выбранный тариф → акт после оплаты
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={() => setCheckoutOpen(true)}>
+                      Оформить тариф
+                    </Button>
+                  </div>
+                  <CommercialSetCards
+                    set={commercial.set}
+                    loading={commercial.loading}
+                    onOpenAct={openActFlow}
+                    emptyHint="Документы появятся после оформления тарифа."
+                  />
+                </CardContent>
+              </Card>
+
               {/* Generate Invoice */}
               {s.currentPlan !== 'free' && (
                 <Card className="border-primary/20 bg-primary/5">
@@ -129,11 +169,9 @@ export function SubscriptionTab() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          try { localStorage.setItem("documents.deepLink", "open-act-dialog"); } catch {}
-                          d?.tabNavigation?.setActiveTab?.("documents" as any);
-                        }}
-                        title="Сформировать акт по последнему оплаченному счёту"
+                        onClick={openActFlow}
+                        disabled={!canIssueAct(commercial.set)}
+                        title={canIssueAct(commercial.set) ? "Сформировать акт по оплаченному счёту" : ACT_LOCKED_REASON}
                       >
                         Выставить акт
                       </Button>
@@ -329,6 +367,16 @@ export function SubscriptionTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {d.organizationId && (
+        <TariffCheckoutDialog
+          open={checkoutOpen}
+          onOpenChange={(v) => { setCheckoutOpen(v); if (!v) void commercial.reload(); }}
+          organizationId={d.organizationId}
+          currentPlan={s.currentPlan}
+          onOpenAct={openActFlow}
+        />
+      )}
     </div>
   );
 }
