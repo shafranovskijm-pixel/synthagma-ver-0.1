@@ -249,9 +249,9 @@ export default function ProposalPlatform() {
             </div>
           </section>
 
-          <section data-proposal-section className="mb-10 rounded-3xl border border-border bg-card p-8">
+          <section data-proposal-section className="mb-10 rounded-3xl border border-border bg-card p-6 sm:p-8">
             <h2 className="font-display text-xl font-medium tracking-tight">Реквизиты исполнителя</h2>
-            <SignatureStampBlock />
+            <SignatureStampBlock className="[&>div]:gap-4 sm:[&>div]:gap-6 [&>div>div:last-child]:h-20 [&>div>div:last-child]:w-20 sm:[&>div>div:last-child]:h-28 sm:[&>div>div:last-child]:w-28" />
           </section>
         </div>
       </main>

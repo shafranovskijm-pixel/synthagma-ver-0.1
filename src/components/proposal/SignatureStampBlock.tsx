@@ -1,15 +1,20 @@
 import stampImg from "@/assets/sintagma-stamp.png";
 import signatureImg from "@/assets/sintagma-signature.png";
+import { cn } from "@/lib/utils";
+
+interface SignatureStampBlockProps {
+  className?: string;
+}
 
 /**
  * Подпись и печать ИП Шафрановский М. М. для коммерческих предложений.
  * Используется в шаблоне КП в админке, на публичной странице и в платформенном КП.
  */
-export function SignatureStampBlock() {
+export function SignatureStampBlock({ className }: SignatureStampBlockProps) {
   return (
     <div
       data-signature-block
-      className="mt-6 break-inside-avoid"
+      className={cn("mt-6 break-inside-avoid", className)}
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <div className="grid grid-cols-[1fr,auto] items-end gap-6">
