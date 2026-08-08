@@ -30,21 +30,29 @@ const benefits = [
 
 const steps = [
   { n: "01", title: "Оставляете заявку", text: "Заполните короткую форму — мы свяжемся в течение 30 минут в рабочее время." },
-  { n: "02", title: "Выбираем удобное время", text: "Согласуем день и час. Демо идёт 40 минут по видеосвязи." },
+  { n: "02", title: "Согласуем время", text: "Время демонстрации согласуем после заявки. Демо идёт 40 минут по видеосвязи." },
   { n: "03", title: "Проводим демонстрацию", text: "Показываем именно те модули, которые важны вашему учебному центру." },
-  { n: "04", title: "Даём пробный доступ", text: "После встречи открываем доступ к тестовому кабинету на 7 дней." },
+  { n: "04", title: "Открываем кабинет", text: "Бесплатный кабинет для знакомства + помощь с настройкой под ваши программы." },
 ];
 
 const features = [
   { img: featConstructor, title: "Конструктор курсов", text: "Собирайте курсы из блоков: видео, лонгриды, тесты, файлы. ИИ поможет сгенерировать материал за минуты." },
   { img: featCatalog, title: "300+ готовых курсов", text: "Охрана труда, пожарная безопасность, Ростехнадзор, электробезопасность — уже внутри системы." },
-  { img: featFrdo, title: "ФИС ФРДО", text: "Автоматическая выгрузка данных в реестр, проверка ошибок и подсказки перед отправкой." },
+  { img: featFrdo, title: "ФИС ФРДО", text: "Проверка и подготовка данных и файла к выгрузке, подсказки по ошибкам. На тарифе ФРДО+ выгружаем за вас." },
   { img: featStudents, title: "Ученики и группы", text: "Приглашения, автозачисление, контроль прогресса, отчёты и напоминания в один клик." },
   { img: featDocuments, title: "Документы под ключ", text: "Договоры, приказы, ведомости, удостоверения — генерация из шаблонов и электронная подпись." },
   { img: featCrm, title: "CRM и продажи", text: "Лиды, задачи, звонки через IP-телефонию, коммерческие предложения и статистика по менеджерам." },
 ];
 
+const proposalHighlights = [
+  "Состав платформы и модули по разделам",
+  "Тарифы и лимиты с актуальными ценами",
+  "ФИС ФРДО: проверка и подготовка файла, ФРДО+ — выгружаем за вас",
+  "Условия запуска и порядок работы",
+];
+
 const slots = ["Вт 10:00", "Вт 14:00", "Ср 11:00", "Ср 16:00", "Чт 12:00", "Чт 17:00"];
+
 
 // Kinescope video ID = часть URL после https://kinescope.io/
 const demoVideos: { title: string; text: string; kinescopeId: string }[] = [
@@ -130,6 +138,16 @@ export default function DemonstrationPage() {
                   </Button>
                 </a>
               </div>
+              <div className="mt-4">
+                <ProposalDownloadButton
+                  label="Скачать общее КП"
+                  size="lg"
+                  variant="outline"
+                  className="rounded-xl px-6 h-12 text-base gap-2"
+                  withOnlineLink
+                />
+              </div>
+
               <div className="flex items-center gap-6 mt-8 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-accent" /> 40 минут</div>
                 <div className="flex items-center gap-2"><Video className="w-4 h-4 text-accent" /> Видеосвязь</div>
@@ -141,17 +159,18 @@ export default function DemonstrationPage() {
               <div className="relative rounded-3xl overflow-hidden border border-border bg-card shadow-2xl">
                 <img src={demoHero} alt="Демонстрация СИНТАГМА" width={1280} height={1024} className="w-full h-auto" />
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-card border border-border rounded-2xl p-4 shadow-xl hidden md:block">
+              <div className="absolute -bottom-4 -left-4 max-w-[16rem] bg-card border border-border rounded-2xl p-4 shadow-xl hidden md:block">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
                     <Calendar className="w-5 h-5 text-accent" />
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">Ближайший слот</div>
-                    <div className="text-sm font-semibold">Завтра, 14:00 МСК</div>
+                    <div className="text-xs text-muted-foreground">Расписание</div>
+                    <div className="text-sm font-semibold leading-snug">Время демонстрации согласуем после заявки</div>
                   </div>
                 </div>
               </div>
+
             </motion.div>
           </div>
         </div>
@@ -312,8 +331,34 @@ export default function DemonstrationPage() {
         </div>
       </section>
 
+      {/* ИЗУЧИТЬ ДО ВСТРЕЧИ */}
+      <section aria-labelledby="study-before" className="pb-4 md:pb-8">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto rounded-3xl border border-border bg-secondary/30 p-6 md:p-8">
+            <h2 id="study-before" className="font-display text-2xl md:text-3xl font-medium tracking-tight">
+              Изучить до встречи
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+              В коммерческом предложении собрано всё, что обычно спрашивают на демо.
+            </p>
+            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+              {proposalHighlights.map((h) => (
+                <li key={h} className="flex items-start gap-2.5 text-sm text-foreground/85">
+                  <Check className="w-4 h-4 text-accent mt-0.5 shrink-0" aria-hidden="true" />
+                  <span className="leading-relaxed">{h}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6">
+              <ProposalDownloadButton label="Скачать общее КП" withOnlineLink />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FORM */}
       <section id="form" className="py-16 md:py-24">
+
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
