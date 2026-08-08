@@ -90,18 +90,8 @@ export default function PlatformPresentation() {
 
       <PresentationHero Section={Section} heroBg={heroBg} />
 
-      {/* ═══ ЕДИНОЕ КП ═══ */}
-      <Section className="border-y border-border bg-secondary/30">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground">Коммерческое предложение</h2>
-            <p className="mt-1 text-sm text-muted-foreground max-w-xl">
-              Единый документ с составом платформы, тарифами и условиями — актуален на сегодня.
-            </p>
-          </div>
-          <ProposalDownloadButton size="lg" withOnlineLink />
-        </div>
-      </Section>
+
+
 
       <PresentationProblem Section={Section} />
       <PresentationSolution Section={Section} />
