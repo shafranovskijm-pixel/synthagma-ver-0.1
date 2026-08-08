@@ -3,6 +3,9 @@ import {
   Brain, FileCheck, CreditCard, ShieldCheck, User, UserPlus, Trophy,
   Building2, Briefcase, GraduationCap, Rocket, Network, ExternalLink,
 } from "lucide-react";
+import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
+import { PLAN_ORDER } from "@/lib/pricingFeatureRows";
+
 
 import caseBeginner from "@/assets/partner/case-beginner.jpg";
 import caseActive from "@/assets/partner/case-active.jpg";
