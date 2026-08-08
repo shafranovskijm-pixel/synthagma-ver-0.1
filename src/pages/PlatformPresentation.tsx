@@ -210,9 +210,18 @@ export default function PlatformPresentation() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО+ — выгрузка данных в реестр выполняется нами за вас</p>
+          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО+ — подготовку и выгрузку сведений выполняем за вас на тарифе «Профессиональный»</p>
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="font-semibold">Коммерческое предложение одним файлом</div>
+              <p className="mt-1 text-sm text-white/50">Состав платформы, тарифы и условия — актуально на сегодня.</p>
+            </div>
+            <ProposalDownloadButton size="lg" withOnlineLink onlineLinkClassName="inline-flex items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 hover:text-white" />
+          </div>
         </div>
       </Section>
+
+
 
       <PresentationMobile Section={Section} mobileBg={mobileBg} />
       <PresentationCTA Section={Section} ctaBg={ctaBg} />
