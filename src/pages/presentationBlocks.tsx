@@ -23,12 +23,21 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
         <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_hsl(174_72%_46%/0.4)]">
           <GraduationCap className="w-10 h-10 md:w-16 md:h-16 text-white" />
         </div>
-        <h1 className="text-5xl md:text-8xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-          <TypewriterText text="СИНТАГМА" speed={80} delay={500} />
+        <h1 className="text-4xl md:text-7xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+          <TypewriterText text="СИНТАГМА — платформа для учебных центров" speed={40} delay={400} />
         </h1>
         <p className="text-lg md:text-2xl text-white/60 font-light mb-10">
-          <TypewriterText text="Платформа для образовательных организаций" speed={40} delay={1200} />
+          Курсы, ученики, документы, журналы и подготовка данных для ФИС ФРДО в одном кабинете. Поможем запустить за 7 дней.
         </p>
+        <div className="flex flex-col sm:flex-row justify-center gap-3 mb-10">
+          <a
+            href="#vozmozhnosti"
+            className="px-8 py-3 rounded-2xl bg-[hsl(174_72%_46%)] text-base font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Смотреть возможности
+          </a>
+          <ProposalDownloadButton size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" />
+        </div>
         <div className="flex flex-wrap justify-center gap-3">
           {[
             { icon: BookOpen, label: "LMS" },
@@ -41,6 +50,7 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
             </span>
           ))}
         </div>
+
       </div>
     </Section>
   );
