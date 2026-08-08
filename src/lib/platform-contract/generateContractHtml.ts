@@ -127,7 +127,7 @@ export function buildPlatformContractPagesHtml(draft: PlatformContractDraft): st
     `
     <div style="font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:${TEAL};margin-bottom:10px;">Проект для согласования</div>
     ${h1("Договор о предоставлении доступа к образовательной платформе СИНТАГМА")}
-    <div style="font-size:12.5px;color:${MUTED};margin-bottom:26px;">Дата формирования проекта: ${escapeHtml(dateRu)} Номер договору не присваивается до подписания сторонами.</div>
+    <div style="font-size:12.5px;color:${MUTED};margin-bottom:26px;">Дата формирования проекта: ${escapeHtml(dateRu)} Номер договора не присваивается до подписания сторонами.</div>
     <div style="height:2px;background:${TEAL};opacity:0.6;margin-bottom:22px;"></div>
     <div style="display:flex;gap:14px;">
       ${requisitesCard("Исполнитель", [
