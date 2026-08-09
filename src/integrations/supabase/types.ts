@@ -5262,6 +5262,159 @@ export type Database = {
           },
         ]
       }
+      mailing_deliverability_checks: {
+        Row: {
+          attempts: number
+          checked_at: string | null
+          created_at: string
+          error_category: string | null
+          id: string
+          last_error: string | null
+          organization_id: string
+          placement: string | null
+          probe_id: string
+          run_date: string
+          seed_id: string
+          sender_id: string
+          sent_at: string | null
+          slot_index: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          checked_at?: string | null
+          created_at?: string
+          error_category?: string | null
+          id?: string
+          last_error?: string | null
+          organization_id: string
+          placement?: string | null
+          probe_id?: string
+          run_date: string
+          seed_id: string
+          sender_id: string
+          sent_at?: string | null
+          slot_index: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          checked_at?: string | null
+          created_at?: string
+          error_category?: string | null
+          id?: string
+          last_error?: string | null
+          organization_id?: string
+          placement?: string | null
+          probe_id?: string
+          run_date?: string
+          seed_id?: string
+          sender_id?: string
+          sent_at?: string | null
+          slot_index?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_deliverability_checks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_deliverability_checks_seed_id_fkey"
+            columns: ["seed_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_deliverability_seeds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_deliverability_checks_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailing_deliverability_seeds: {
+        Row: {
+          auth_status: string
+          created_at: string
+          created_by: string | null
+          email: string
+          error_category: string | null
+          id: string
+          imap_host: string
+          imap_port: number
+          imap_security: string
+          imap_username: string
+          is_active: boolean
+          label: string
+          last_checked_at: string | null
+          last_tested_at: string | null
+          latency_ms: number | null
+          organization_id: string
+          provider: string
+          secret_encrypted: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_status?: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          error_category?: string | null
+          id?: string
+          imap_host: string
+          imap_port?: number
+          imap_security?: string
+          imap_username: string
+          is_active?: boolean
+          label: string
+          last_checked_at?: string | null
+          last_tested_at?: string | null
+          latency_ms?: number | null
+          organization_id: string
+          provider?: string
+          secret_encrypted?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_status?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          error_category?: string | null
+          id?: string
+          imap_host?: string
+          imap_port?: number
+          imap_security?: string
+          imap_username?: string
+          is_active?: boolean
+          label?: string
+          last_checked_at?: string | null
+          last_tested_at?: string | null
+          latency_ms?: number | null
+          organization_id?: string
+          provider?: string
+          secret_encrypted?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_deliverability_seeds_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mailing_report_links: {
         Row: {
           campaign_id: string
@@ -5408,6 +5561,12 @@ export type Database = {
           smtp_status: string
           smtp_username: string
           updated_at: string
+          warmup_daily_target: number
+          warmup_enabled: boolean
+          warmup_last_run_at: string | null
+          warmup_paused_reason: string | null
+          warmup_start_count: number
+          warmup_started_at: string | null
         }
         Insert: {
           created_at?: string
@@ -5439,6 +5598,12 @@ export type Database = {
           smtp_status?: string
           smtp_username: string
           updated_at?: string
+          warmup_daily_target?: number
+          warmup_enabled?: boolean
+          warmup_last_run_at?: string | null
+          warmup_paused_reason?: string | null
+          warmup_start_count?: number
+          warmup_started_at?: string | null
         }
         Update: {
           created_at?: string
@@ -5470,6 +5635,12 @@ export type Database = {
           smtp_status?: string
           smtp_username?: string
           updated_at?: string
+          warmup_daily_target?: number
+          warmup_enabled?: boolean
+          warmup_last_run_at?: string | null
+          warmup_paused_reason?: string | null
+          warmup_start_count?: number
+          warmup_started_at?: string | null
         }
         Relationships: [
           {
@@ -11914,6 +12085,20 @@ export type Database = {
           daily_limit: number
           remaining: number
           used_today: number
+        }[]
+      }
+      get_mailing_deliverability_seed_secret: {
+        Args: { p_seed_id: string }
+        Returns: {
+          email: string
+          id: string
+          imap_host: string
+          imap_port: number
+          imap_security: string
+          imap_username: string
+          organization_id: string
+          provider: string
+          secret: string
         }[]
       }
       get_mailing_sender_secret: {
