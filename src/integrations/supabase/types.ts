@@ -12732,6 +12732,14 @@ export type Database = {
         }
         Returns: string
       }
+      set_mailing_sender_warmup: {
+        Args: {
+          p_daily_target?: number
+          p_enabled?: boolean
+          p_sender_id: string
+        }
+        Returns: undefined
+      }
       set_signature_comment_resolution: {
         Args: {
           p_comment_id: string
