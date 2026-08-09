@@ -12078,15 +12078,6 @@ export type Database = {
           total_documents: number
         }[]
       }
-      get_mailing_report_by_token: { Args: { p_token: string }; Returns: Json }
-      get_mailing_sender_quota: {
-        Args: { p_sender_id: string }
-        Returns: {
-          daily_limit: number
-          remaining: number
-          used_today: number
-        }[]
-      }
       get_mailing_deliverability_seed_secret: {
         Args: { p_seed_id: string }
         Returns: {
@@ -12099,6 +12090,15 @@ export type Database = {
           organization_id: string
           provider: string
           secret: string
+        }[]
+      }
+      get_mailing_report_by_token: { Args: { p_token: string }; Returns: Json }
+      get_mailing_sender_quota: {
+        Args: { p_sender_id: string }
+        Returns: {
+          daily_limit: number
+          remaining: number
+          used_today: number
         }[]
       }
       get_mailing_sender_secret: {
@@ -12377,6 +12377,7 @@ export type Database = {
         Returns: undefined
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
+      invoke_mailing_deliverability_worker: { Args: never; Returns: number }
       is_active_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
