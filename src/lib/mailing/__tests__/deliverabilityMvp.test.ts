@@ -12,6 +12,7 @@ import {
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const migration = read("supabase/migrations/20260809113034_f4fd9d28-221b-4594-a3b0-010b43171b1a.sql");
 const settingsMigration = read("supabase/migrations/20260809220000_mailing_deliverability_warmup_settings_rpc.sql");
+const anonRevokeMigration = read("supabase/migrations/20260809223500_revoke_anon_mailing_warmup_rpc.sql");
 const worker = read("supabase/functions/mailing-deliverability-worker/index.ts");
 const seedTest = read("supabase/functions/mailing-deliverability-seed-test/index.ts");
 const imap = read("supabase/functions/_shared/imap-mini.ts");
@@ -81,6 +82,9 @@ describe("deliverability database security", () => {
       "GRANT EXECUTE ON FUNCTION public.set_mailing_sender_warmup(uuid, boolean, integer) TO authenticated",
     );
     expect(settingsMigration).not.toContain("GRANT UPDATE");
+    expect(anonRevokeMigration).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.set_mailing_sender_warmup(uuid, boolean, integer) FROM anon",
+    );
   });
 });
 
