@@ -108,6 +108,28 @@ async function selectFolder(c: Conn, folder: string) {
   await cmd(c, `SELECT "${safe}"`);
 }
 
+async function examineFolder(c: Conn, folder: string) {
+  const safe = folder.replace(/"/g, '\\"');
+  await cmd(c, `EXAMINE "${safe}"`);
+}
+
+/**
+ * Read-only placement check used by the deliverability MVP.
+ * EXAMINE + SEARCH do not mark, move, delete, or fetch message bodies.
+ */
+export async function placementForReadOnly(
+  c: Conn,
+  warmupId: string,
+): Promise<"inbox" | "spam" | "missing"> {
+  await examineFolder(c, "INBOX");
+  if (await searchWarmup(c, warmupId)) return "inbox";
+
+  const spam = await findSpamFolder(c);
+  if (!spam) return "missing";
+  await examineFolder(c, spam);
+  return (await searchWarmup(c, warmupId)) ? "spam" : "missing";
+}
+
 /** Проверить, где лежит письмо с X-Warmup-Id: 'inbox' | 'spam' | 'missing'.
  *  Если в спаме — перемещает во «Входящие» и помечает прочитанным. */
 export async function placementFor(c: Conn, warmupId: string): Promise<"inbox" | "spam" | "missing"> {
