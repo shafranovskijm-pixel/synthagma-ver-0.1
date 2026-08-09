@@ -183,8 +183,15 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
     [checks],
   );
 
-  const updateSender = async (senderId: string, patch: Record<string, unknown>) => {
-    const { error } = await supabase.from("mailing_senders").update(patch as never).eq("id", senderId);
+  const updateSender = async (
+    senderId: string,
+    patch: { warmup_enabled?: boolean; warmup_daily_target?: number },
+  ) => {
+    const { error } = await supabase.rpc("set_mailing_sender_warmup", {
+      p_sender_id: senderId,
+      p_enabled: patch.warmup_enabled ?? null,
+      p_daily_target: patch.warmup_daily_target ?? null,
+    });
     if (error) {
       toast.error("Не удалось сохранить настройки прогрева");
       return false;
@@ -202,11 +209,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
       toast.error("Сначала подключите хотя бы один контрольный ящик");
       return;
     }
-    const ok = await updateSender(sender.id, {
-      warmup_enabled: enabled,
-      warmup_started_at: enabled ? sender.warmup_started_at || new Date().toISOString() : sender.warmup_started_at,
-      warmup_paused_reason: null,
-    });
+    const ok = await updateSender(sender.id, { warmup_enabled: enabled });
     if (ok) toast.success(enabled ? "Автопроверка включена" : "Автопроверка приостановлена");
   };
 
