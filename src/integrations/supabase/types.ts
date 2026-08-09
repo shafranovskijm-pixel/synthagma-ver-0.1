@@ -12378,14 +12378,6 @@ export type Database = {
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
       invoke_mailing_deliverability_worker: { Args: never; Returns: number }
-      set_mailing_sender_warmup: {
-        Args: {
-          p_daily_target?: number | null
-          p_enabled?: boolean | null
-          p_sender_id: string
-        }
-        Returns: undefined
-      }
       is_active_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
