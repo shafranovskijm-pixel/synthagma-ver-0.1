@@ -10,7 +10,7 @@ import {
 } from "@/lib/mailing/deliverabilityPresets";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
-const migration = read("supabase/migrations/20260809123000_mailing_deliverability_mvp.sql");
+const migration = read("supabase/migrations/20260809113034_f4fd9d28-221b-4594-a3b0-010b43171b1a.sql");
 const worker = read("supabase/functions/mailing-deliverability-worker/index.ts");
 const seedTest = read("supabase/functions/mailing-deliverability-seed-test/index.ts");
 const imap = read("supabase/functions/_shared/imap-mini.ts");
