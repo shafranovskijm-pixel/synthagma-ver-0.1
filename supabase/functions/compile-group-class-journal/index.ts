@@ -23,7 +23,7 @@ import {
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-class-journal-embedded-v2";
+export const COMPILER_REVISION = "goreltech-class-journal-authz-v3";
 
 const BUCKET = "billing-documents";
 const LEGACY_TYPES = [
@@ -112,7 +112,12 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
     stage = "authorization";
     const [adminRoleResult, permissionResult, ownerResult] = await Promise.all([
-      admin.rpc("has_role", { _role: "admin", _user_id: userId }),
+      admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle(),
       admin.rpc("has_org_staff_permission", {
         _user_id: userId,
         _organization_id: body.organizationId,
@@ -122,7 +127,7 @@ Deno.serve(async (req) => {
     ]);
     const authzError = adminRoleResult.error || permissionResult.error || ownerResult.error;
     if (authzError) throw authzError;
-    const isAdmin = adminRoleResult.data;
+    const isAdmin = Boolean(adminRoleResult.data);
     const hasPermission = permissionResult.data;
     const isOwner = ownerResult.data;
     if (!isAdmin && !hasPermission && !isOwner) {

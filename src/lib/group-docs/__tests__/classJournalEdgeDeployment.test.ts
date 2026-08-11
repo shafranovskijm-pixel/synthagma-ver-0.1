@@ -13,6 +13,10 @@ const FUNCTION_SOURCE = path.resolve(
   __dirname,
   "../../../../supabase/functions/compile-group-class-journal/index.ts",
 );
+const CONTRACT_FUNCTION_SOURCE = path.resolve(
+  __dirname,
+  "../../../../supabase/functions/compile-docx-contract/index.ts",
+);
 
 describe("compile-group-class-journal deployment contract", () => {
   it("keeps the DOCX inside the deployable TypeScript graph", () => {
@@ -27,7 +31,34 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-class-journal-embedded-v2");
+    expect(source).toContain("goreltech-class-journal-authz-v3");
+    expect(source).toContain("X-Sintagma-Compiler-Revision");
+    expect(source).toContain("compilerRevision");
+  });
+
+  it("checks the admin role without the ambiguous has_role RPC overload", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+
+    expect(source).not.toContain('.rpc("has_role"');
+    expect(source).toContain('.from("user_roles")');
+    expect(source).toContain('.eq("user_id", userId)');
+    expect(source).toContain('.eq("role", "admin")');
+    expect(source).toContain("const authzError = adminRoleResult.error ||");
+    expect(source).toContain("if (authzError) throw authzError");
+    expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
+  });
+
+  it("keeps the contract compiler off the ambiguous has_role RPC overload", () => {
+    const source = fs.readFileSync(CONTRACT_FUNCTION_SOURCE, "utf8");
+
+    expect(source).not.toContain('.rpc("has_role"');
+    expect(source).toContain('.from("user_roles")');
+    expect(source).toContain('.eq("user_id", userId)');
+    expect(source).toContain('.eq("role", "admin")');
+    expect(source).toContain("const authzError = adminRoleResult.error ||");
+    expect(source).toContain("if (authzError) throw authzError");
+    expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
+    expect(source).toContain("goreltech-company-contract-authz-v1");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
   });

@@ -18,6 +18,8 @@ import {
   GORELTECH_COMPANY_CONTRACT_TEMPLATE_BASE64,
 } from "../_shared/contract-templates/goreltech/company/v1/embedded.ts";
 
+export const COMPILER_REVISION = "goreltech-company-contract-authz-v1";
+
 const BUCKET = "billing-documents";
 
 const RowSchema = z.record(z.string(), z.union([z.string(), z.number(), z.null()]));
@@ -53,9 +55,20 @@ function decodeBase64Bytes(value: string): Uint8Array {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const requestId = crypto.randomUUID();
+  const responseHeaders = {
+    ...corsHeaders,
+    "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
+    "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
+    "X-Sintagma-Request-Id": requestId,
+  };
+  if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
   const json = (payload: unknown, status = 200) =>
-    new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    new Response(JSON.stringify(
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? { ...(payload as Record<string, unknown>), compilerRevision: COMPILER_REVISION, requestId }
+        : payload,
+    ), { status, headers: { ...responseHeaders, "Content-Type": "application/json" } });
 
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -79,11 +92,21 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
 
     // Авторизация: глобальный админ или сотрудник организации с правом на документы.
-    const [{ data: isAdmin }, { data: hasPerm }, { data: isOwner }] = await Promise.all([
-      admin.rpc("has_role", { _role: "admin", _user_id: userId }),
+    const [adminRoleResult, permissionResult, ownerResult] = await Promise.all([
+      admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle(),
       admin.rpc("has_org_staff_permission", { _user_id: userId, _organization_id: body.organizationId, _permission: "documents.manage" }),
       admin.rpc("is_org_owner", { _user_id: userId, _organization_id: body.organizationId }),
     ]);
+    const authzError = adminRoleResult.error || permissionResult.error || ownerResult.error;
+    if (authzError) throw authzError;
+    const isAdmin = Boolean(adminRoleResult.data);
+    const hasPerm = permissionResult.data;
+    const isOwner = ownerResult.data;
     if (!isAdmin && !hasPerm && !isOwner) return json({ error: "Недостаточно прав для генерации договора" }, 403);
 
     // Шаблон из реестра встроенных шаблонов.
