@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Eye, Download, Trash2, Sparkles, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
+import { FileText, Eye, Download, Trash2, FileType2, User, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -32,11 +32,17 @@ import {
 import { batchStatusLabel, groupDocumentBatches } from "@/lib/group-docs/factualResolvers";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
+import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
 import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
 import { openPrivateFile } from "@/utils/storageHelpers";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
-interface GeneratedContractBatch { scenario: "individual" | "legal"; count: number; contractNumbers: string[] }
+interface GeneratedContractBatch {
+  scenario: "individual" | "legal";
+  count: number;
+  contractNumbers: string[];
+  contractId?: string;
+}
 
 interface Props {
   organizationId: string;
@@ -75,7 +81,8 @@ export function GroupDocumentsFolder({
   const { documents, loading, refresh: refreshDocuments, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
   const [busy, setBusy] = useState(false);
-  const [packageOpen, setPackageOpen] = useState(false);
+  const [companyPackageOpen, setCompanyPackageOpen] = useState(false);
+  const [individualPackageOpen, setIndividualPackageOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<GroupDocumentRow | null>(null);
   const [retryPackage, setRetryPackage] = useState<GeneratedContractBatch | null>(null);
   const [mode, setMode] = useState<DocumentFillMode>("blank");
@@ -212,17 +219,25 @@ export function GroupDocumentsFolder({
   };
 
   /**
-   * Пакет: договоры создаёт GenerateContractDialog (сценарии),
-   * остальные 9 документов группы генерируются ровно один раз после успеха.
+   * Пакет: договор компании создаётся только из клиентского Word-шаблона;
+   * универсальный HTML-мастер остаётся только для физлица. Остальные 9 документов
+   * группы генерируются только после подтверждённого сохранения договора.
    */
   const handleContractsGenerated = async (result?: GeneratedContractBatch) => {
     const scenario = result?.scenario ?? "individual";
     const count = result?.count ?? 0;
-    if (!shouldGeneratePackageDocs({ contractsDone: true, contractCount: count, docsGenerated: false })) {
+    const validContractBatch = scenario === "legal" ? count === 1 : count > 0;
+    if (!validContractBatch || !shouldGeneratePackageDocs({ contractsDone: true, contractCount: count, docsGenerated: false })) {
       toast.error("Договоры не созданы — остальные документы пакета не сформированы");
       return false;
     }
-    onDataChanged?.();
+    try {
+      onDataChanged?.();
+    } catch (refreshError) {
+      // A counter refresh is secondary: the persisted contract must still move
+      // into package generation so a retry token can be created if that fails.
+      console.error("[GroupDocumentsFolder] counter refresh failed after contract save", refreshError);
+    }
     const numbers = result?.contractNumbers || [];
     const contractBasis = numbers.length === 1
       ? `Договор № ${numbers[0]}`
@@ -351,8 +366,11 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setPackageOpen(true); }}>
-          <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setCompanyPackageOpen(true); }}>
+          <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : "Пакет компании (Word клиента)"}
+        </Button>
+        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setIndividualPackageOpen(true); }}>
+          <User className="w-4 h-4" /> Пакет физлица
         </Button>
         <Badge variant="outline" className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
           Beta
@@ -398,8 +416,8 @@ export function GroupDocumentsFolder({
       </div>
 
       <div className="text-xs text-muted-foreground">
-        Пакет: сначала выберите сценарий договора — физлицо даёт {describePackagePlan("individual", students.length)},
-        компания — {describePackagePlan("legal", students.length)}. Пакетная сборка помечена Beta до повторной проверки серверного Word-компилятора.
+        Компания: {describePackagePlan("legal", students.length)} из оригинального Word-шаблона клиента. Физлицо: {describePackagePlan("individual", students.length)}
+        через универсальный мастер. Пакетная сборка помечена Beta до повторной проверки серверного Word-компилятора.
       </div>
 
       {retryPackage && (
@@ -424,7 +442,7 @@ export function GroupDocumentsFolder({
           <div className="p-10 text-center">
             <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
             <div className="text-sm text-muted-foreground">
-              Документов пока нет. Нажмите «Сгенерировать пакет» — реквизиты подставятся из профиля учебного центра, настроек группы и карточек учеников.
+              Документов пока нет. Выберите пакет компании из Word-шаблона клиента или пакет физлица — реквизиты подставятся из данных Синтагмы.
             </div>
           </div>
         ) : (
@@ -502,7 +520,19 @@ export function GroupDocumentsFolder({
         )}
       </div>
 
-      {packageOpen && (
+      {companyPackageOpen && (
+        <GenerateDocxContractDialog
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
+          open={companyPackageOpen}
+          onClose={() => setCompanyPackageOpen(false)}
+          onGenerated={handleContractsGenerated}
+        />
+      )}
+
+      {individualPackageOpen && (
         <GenerateContractDialog
           organizationId={organizationId}
           groupId={groupId}
@@ -517,9 +547,10 @@ export function GroupDocumentsFolder({
             startDate: ctx?.group.start_date ?? null,
             endDate: ctx?.group.end_date ?? null,
           }}
-          open={packageOpen}
+          open={individualPackageOpen}
           quick
-          onClose={() => setPackageOpen(false)}
+          fixedScenario="individual"
+          onClose={() => setIndividualPackageOpen(false)}
           onGenerated={handleContractsGenerated}
         />
       )}

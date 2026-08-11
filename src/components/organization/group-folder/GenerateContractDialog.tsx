@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,11 @@ import {
   planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
 } from "@/lib/contracts/scenarios";
 import { canProceedStep, nextStep, prevStep, type WizardState } from "@/lib/contracts/wizardFlow";
+import {
+  acquireContractSubmission,
+  releaseContractSubmission,
+  shouldDismissContractDialog,
+} from "@/lib/contracts/dialogLifecycle";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 import { localDateIso } from "@/lib/date/localDate";
 
@@ -97,7 +102,17 @@ const STEPS = [
   { id: 5, title: "Номер и проверка", icon: Check },
 ];
 
+interface PreparedContractBatch {
+  scenario: CounterpartyType;
+  produced: Array<{ name: string; html: string; number: string }>;
+  contractRows: Array<Record<string, unknown>>;
+}
+
 export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false, fixedScenario, groupDefaults }: Props) {
+  const submitLock = useRef(false);
+  const assignedNumbers = useRef<Map<string, string>>(new Map());
+  const generationId = useRef(crypto.randomUUID());
+  const preparedBatch = useRef<PreparedContractBatch | null>(null);
   const [step, setStep] = useState(1);
 
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -134,6 +149,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [studentOverrides, setStudentOverrides] = useState<Record<string, { passport?: string; address?: string; phone?: string }>>({});
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [persistenceUncertain, setPersistenceUncertain] = useState(false);
 
   // Reset when dialog opens
   useEffect(() => {
@@ -142,6 +158,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setCounterparty(fixedScenario || "individual");
     setScenarioChosen(!!fixedScenario);
     setStudentOverrides({});
+    assignedNumbers.current.clear();
+    generationId.current = crypto.randomUUID();
+    preparedBatch.current = null;
+    setPersistenceUncertain(false);
     // Предзаполнение из настроек группы
     setCourseId(groupDefaults?.courseId || "");
     setProgramTitleOverride(groupDefaults?.programTitle || "");
@@ -383,6 +403,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
    */
   const leftoverPlaceholders = useMemo(() => findUnresolvedPlaceholders(previewHtml), [previewHtml]);
   const generateDisabled = !selectedTpl || blockers.length > 0 || missing.length > 0 || leftoverPlaceholders.length > 0;
+  const uncertainRetrySafe = assignedNumbers.current.size > 0
+    && Array.from(assignedNumbers.current.values()).every(Boolean);
 
   /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
   const variableGaps = useMemo(
@@ -459,66 +481,132 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       toast.error("Заполните обязательные данные", { description: blockers.map(b => b.label).join(", ") });
       return;
     }
+    if (busy || !acquireContractSubmission(submitLock)) return;
     setBusy(true);
     try {
-      const jobs = planContractJobs(counterparty, {
-        org: orgReq,
-        students: scenarioStudents,
-        company: selectedCompany || null,
-        programTitle,
-        price,
-        date,
-        templateId,
-      });
+      let batchScenario = counterparty;
+      let produced: Array<{ name: string; html: string; number: string }>;
+      let contractRows: Array<Record<string, unknown>>;
+      const immutableRetry = persistenceUncertain ? preparedBatch.current : null;
 
-      const produced: Array<{ name: string; html: string; number: string }> = [];
+      if (immutableRetry) {
+        batchScenario = immutableRetry.scenario;
+        produced = immutableRetry.produced;
+        contractRows = immutableRetry.contractRows;
+      } else {
+        const jobs = planContractJobs(counterparty, {
+          org: orgReq,
+          students: scenarioStudents,
+          company: selectedCompany || null,
+          programTitle,
+          price,
+          date,
+          templateId,
+        });
 
-      for (const [index, job] of jobs.entries()) {
-        const number = await resolveNumber(index);
-        const vars = buildVariables(number, job.students);
-        const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
-        const leftover = findUnresolvedPlaceholders(bodyHtml);
-        if (leftover.length > 0) {
-          throw new Error(`Не заполнены переменные шаблона: ${leftover.join(", ")}`);
+        produced = [];
+        contractRows = [];
+
+        for (const [index, job] of jobs.entries()) {
+          const hasAssignedNumber = assignedNumbers.current.has(job.key);
+          const number = hasAssignedNumber
+            ? assignedNumbers.current.get(job.key)!
+            : await resolveNumber(index);
+          if (!hasAssignedNumber) assignedNumbers.current.set(job.key, number);
+          const vars = buildVariables(number, job.students);
+          const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
+          const leftover = findUnresolvedPlaceholders(bodyHtml);
+          if (leftover.length > 0) {
+            throw new Error(`Не заполнены переменные шаблона: ${leftover.join(", ")}`);
+          }
+          const title = number ? `Договор № ${number}` : job.label;
+          const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
+
+          const safe = `${title} ${counterparty === "individual" ? job.students[0]?.full_name || "" : ""}`.trim();
+          const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.\-]+/g, "_");
+          const storagePath = `${organizationId}/contracts/${groupId}/${job.key}/${Date.now()}_${fileName}`;
+
+          const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
+            body: { html: fullDoc, fileName, storagePath },
+          });
+          if (pdfErr) throw pdfErr;
+          if (!pdfRes?.path) throw new Error("PDF не был сохранён");
+
+          contractRows.push({
+            organization_id: organizationId,
+            student_user_id: job.studentUserId,
+            student_group_id: groupId,
+            company_id: job.companyId,
+            counterparty_type: counterparty,
+            template_id: isBuiltinTemplateId(templateId) ? null : templateId,
+            template_version: selectedTpl.version ?? null,
+            variables: {
+              ...vars,
+              _sintagma_generation_id: generationId.current,
+              _sintagma_job_key: job.key,
+            },
+            students: job.students.map(st => ({ user_id: st.user_id, full_name: st.full_name, email: st.email || null })),
+            body_html: fullDoc,
+            name: counterparty === "individual" ? `${title} — ${job.students[0]?.full_name || ""}`.trim() : title,
+            contract_number: number || null,
+            contract_date: date || null,
+            file_path: pdfRes.path,
+            status: "active",
+          });
+
+          produced.push({
+            name: counterparty === "individual" ? `${title} ${job.students[0]?.full_name || ""}`.trim() : title,
+            html: fullDoc,
+            number,
+          });
         }
-        const title = number ? `Договор № ${number}` : job.label;
-        const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
 
-        const safe = `${title} ${counterparty === "individual" ? job.students[0]?.full_name || "" : ""}`.trim();
-        const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.\-]+/g, "_");
-        const storagePath = `${organizationId}/contracts/${groupId}/${job.key}/${Date.now()}_${fileName}`;
-
-        const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
-          body: { html: fullDoc, fileName, storagePath },
-        });
-        if (pdfErr) throw pdfErr;
-        if (!pdfRes?.path) throw new Error("PDF не был сохранён");
-
-        const { error: insErr } = await (supabase as any).from("org_contracts").insert({
-          organization_id: organizationId,
-          student_user_id: job.studentUserId,
-          student_group_id: groupId,
-          company_id: job.companyId,
-          counterparty_type: counterparty,
-          template_id: isBuiltinTemplateId(templateId) ? null : templateId,
-          template_version: selectedTpl.version ?? null,
-          variables: vars,
-          students: job.students.map(st => ({ user_id: st.user_id, full_name: st.full_name, email: st.email || null })),
-          body_html: fullDoc,
-          name: counterparty === "individual" ? `${title} — ${job.students[0]?.full_name || ""}`.trim() : title,
-          contract_number: number || null,
-          contract_date: date || null,
-          file_path: pdfRes.path,
-          status: "active",
-        });
-        if (insErr) throw insErr;
-
-        produced.push({
-          name: counterparty === "individual" ? `${title} ${job.students[0]?.full_name || ""}`.trim() : title,
-          html: fullDoc,
-          number,
-        });
+        preparedBatch.current = { scenario: batchScenario, produced, contractRows };
       }
+
+      // Persist every contract in one PostgREST request. PostgreSQL executes a
+      // bulk insert atomically, so a failure cannot leave only the first few
+      // students saved and make a retry duplicate them.
+      const { error: insErr } = await (supabase as any).from("org_contracts").insert(contractRows);
+      if (insErr) {
+        // The request may have committed even when its HTTP response was lost.
+        // Reconcile the exact numbered batch before allowing a retry. The DB
+        // has a unique index on (organization_id, contract_number), and the
+        // same numbers are retained in assignedNumbers for every retry.
+        const expected = contractRows.map((row) => ({
+          contract_number: String(row.contract_number || ""),
+          student_user_id: row.student_user_id ? String(row.student_user_id) : null,
+          company_id: row.company_id ? String(row.company_id) : null,
+          generation_id: String((row.variables as Record<string, unknown>)?._sintagma_generation_id || ""),
+          job_key: String((row.variables as Record<string, unknown>)?._sintagma_job_key || ""),
+        }));
+        const numbers = expected.map((row) => row.contract_number).filter(Boolean);
+        let reconciled = false;
+        if (numbers.length === expected.length) {
+          const { data: existingRows, error: verifyErr } = await (supabase as any)
+            .from("org_contracts")
+            .select("contract_number, student_user_id, company_id, variables")
+            .eq("organization_id", organizationId)
+            .eq("student_group_id", groupId)
+            .in("contract_number", numbers);
+          if (!verifyErr) {
+            reconciled = expected.every((row) => (existingRows || []).some((existing: any) =>
+              existing.contract_number === row.contract_number
+              && (existing.student_user_id || null) === row.student_user_id
+              && (existing.company_id || null) === row.company_id
+              && existing.variables?._sintagma_generation_id === row.generation_id
+              && existing.variables?._sintagma_job_key === row.job_key));
+          }
+        }
+        if (!reconciled) {
+          // A structured PostgREST error means PostgreSQL definitely rejected
+          // the transaction. A transport error without a code is ambiguous:
+          // keep the wizard open and reuse the exact same numbered batch.
+          setPersistenceUncertain(!String(insErr?.code || "").trim());
+          throw insErr;
+        }
+      }
+      setPersistenceUncertain(false);
 
       // Скачиваем редактируемые DOCX: один документ — файл, несколько — ZIP.
       try {
@@ -533,11 +621,20 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         toast.error("DOCX не сформирован, но договоры сохранены", { description: e?.message });
       }
 
-      const packageCompleted = await onGenerated({
-        scenario: counterparty,
-        count: produced.length,
-        contractNumbers: produced.map((doc) => doc.number).filter(Boolean),
-      });
+      let packageCompleted: void | boolean;
+      try {
+        packageCompleted = await onGenerated({
+          scenario: batchScenario,
+          count: produced.length,
+          contractNumbers: produced.map((doc) => doc.number).filter(Boolean),
+        });
+      } catch (packageError) {
+        // The contracts above are already persisted. Treat a downstream
+        // package failure as retryable group-document work, not as permission
+        // to submit the contract wizard again.
+        console.error("[GenerateContractDialog] group package failed after contract save", packageError);
+        packageCompleted = false;
+      }
       if (packageCompleted === false) {
         toast.warning("Договор сохранён, пакет документов не завершён", {
           description: "Повторите создание 9 документов группы из карточки — новый договор не потребуется.",
@@ -549,6 +646,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     } catch (e: any) {
       toast.error("Ошибка генерации", { description: e?.message });
     } finally {
+      releaseContractSubmission(submitLock);
       setBusy(false);
     }
   };
@@ -592,7 +690,12 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
   return (
     <>
-      <Dialog open={open} onOpenChange={o => !o && onClose()}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (shouldDismissContractDialog(nextOpen, busy || submitLock.current || persistenceUncertain)) onClose();
+        }}
+      >
         <DialogContent className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-6 pb-3">
             <DialogTitle className="flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" />{quick ? "Быстрая генерация договора" : "Сгенерировать договор"}</DialogTitle>
@@ -606,6 +709,16 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
           </DialogHeader>
 
+          {persistenceUncertain && (
+            <Alert variant="destructive" className="mx-6 mb-3 w-auto">
+              <AlertDescription>
+                {uncertainRetrySafe
+                  ? "Ответ сервера потерян, поэтому статус сохранения пока не подтверждён. Не закрывайте мастер: повтор использует неизменный снимок пакета с теми же номерами и сначала сверит уже созданные договоры."
+                  : "Ответ сервера потерян у договора без номера. Безопасный автоматический повтор невозможен: обновите страницу и сначала проверьте папку договоров."}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Stepper */}
           <div className="px-6 pb-4">
             <div className="flex items-center gap-1.5">
@@ -618,7 +731,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   <div key={s.id} className="flex items-center flex-1">
                     <button
                       type="button"
-                      disabled={!clickable || isSkipped}
+                      disabled={!clickable || isSkipped || persistenceUncertain}
                       onClick={() => clickable && !isSkipped && setStep(s.id)}
                       className={cn(
                         "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap",
@@ -643,6 +756,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             </div>
           </div>
 
+          <fieldset disabled={busy || persistenceUncertain} className="contents">
           <div className="overflow-y-auto px-6 flex-1 pb-4">
             {step === 1 && (
               <div className="max-w-xl mx-auto space-y-4 pt-6">
@@ -1009,6 +1123,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
               </div>
             )}
           </div>
+          </fieldset>
 
           <DialogFooter className="p-4 border-t border-border flex-row items-center gap-2 sm:justify-between">
             <div className="text-xs text-muted-foreground">
@@ -1023,18 +1138,18 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                     : `Шаг ${step} из ${STEPS.length}`}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={onClose} disabled={busy}>Отмена</Button>
+              <Button variant="ghost" onClick={onClose} disabled={busy || persistenceUncertain}>Отмена</Button>
               {step > 1 && (
-                <Button variant="outline" onClick={goBack} disabled={busy} className="gap-1">
+                <Button variant="outline" onClick={goBack} disabled={busy || persistenceUncertain} className="gap-1">
                   <ChevronLeft className="w-4 h-4" />Назад
                 </Button>
               )}
               {step < 5 ? (
-                <Button onClick={goNext} disabled={!proceed.ok} className="gap-1">
+                <Button onClick={goNext} disabled={!proceed.ok || persistenceUncertain} className="gap-1">
                   Далее<ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={generate} disabled={busy || generateDisabled} className="gap-1.5">
+                <Button onClick={generate} disabled={busy || generateDisabled || (persistenceUncertain && !uncertainRetrySafe)} className="gap-1.5">
                   <FileSignature className="w-4 h-4" />
                   {busy
                     ? "Генерация…"

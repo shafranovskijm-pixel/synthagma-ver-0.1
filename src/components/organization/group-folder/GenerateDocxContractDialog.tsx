@@ -3,7 +3,7 @@
  * Шаг «Готовность данных» блокирует генерацию до заполнения обязательных полей.
  * PDF здесь не создаётся: сервер возвращает честный статус «PDF недоступен».
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { localDateIso } from "@/lib/date/localDate";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,11 @@ import {
 } from "@/lib/contracts/docxContract";
 import { formatMoneyRu, moneyToWordsRu } from "../../../../supabase/functions/_shared/docx-ooxml/money";
 import { companiesPath, groupFolderPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import {
+  acquireContractSubmission,
+  releaseContractSubmission,
+  shouldDismissContractDialog,
+} from "@/lib/contracts/dialogLifecycle";
 import { useNavigate } from "react-router-dom";
 
 
@@ -51,7 +56,20 @@ interface Props {
   groupId: string;
   groupName: string;
   students: Student[];
-  onGenerated?: () => void;
+  /**
+   * Called only after the server has saved the single company contract.
+   * Returning false means the caller could not finish the accompanying
+   * group-document package; the saved contract must then be reused on retry.
+   */
+  onGenerated?: (result: GeneratedDocxContractBatch) =>
+    void | boolean | Promise<void | boolean>;
+}
+
+export interface GeneratedDocxContractBatch {
+  scenario: "legal";
+  count: 1;
+  contractNumbers: [string];
+  contractId: string;
 }
 
 const TAX_CLAUSES = [
@@ -110,6 +128,7 @@ function SourceHint({ fieldKey, groupId, companyId, edited, onLeave }: { fieldKe
 }
 
 export function GenerateDocxContractDialog({ open, onClose, organizationId, groupId, groupName, students, onGenerated }: Props) {
+  const submitLock = useRef(false);
   const [templates, setTemplates] = useState<RegistryTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState<string>("");
   const [companies, setCompanies] = useState<Array<Record<string, any>>>([]);
@@ -132,7 +151,11 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
    * SPA-переход к источнику истины: диалог закрывается, полный reload страницы
    * не выполняется (черновик мастера не теряется из-за перезагрузки приложения).
    */
-  const goToSource = useCallback((to: string) => { onClose(); navigate(to); }, [navigate, onClose]);
+  const goToSource = useCallback((to: string) => {
+    if (busy || submitLock.current) return;
+    onClose();
+    navigate(to);
+  }, [busy, navigate, onClose]);
 
   const setField = (key: string, value: string) =>
     setScalars((prev) => {
@@ -269,7 +292,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const ready = isDocxDraftReady(readiness) && !!companyId && !!templateKey && !!docDateIso;
 
   const submit = async () => {
-    if (!ready || busy) return;
+    if (!ready || busy || !acquireContractSubmission(submitLock)) return;
     setBusy(true);
     try {
       // Один номер на весь submit: RPC вызывается максимум один раз,
@@ -302,14 +325,34 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         contractDate: docDateIso,
         draft: finalDraft,
       });
-      toast.success("Договор сформирован (Word)", {
-        description: `Приложения: ${res.keptCurricula.length}. PDF пока недоступен — доступен DOCX.`,
-      });
-      onGenerated?.();
+      let packageCompleted: void | boolean;
+      try {
+        packageCompleted = await onGenerated?.({
+          scenario: "legal",
+          count: 1,
+          contractNumbers: [docNo],
+          contractId: res.contractId,
+        });
+      } catch (packageError) {
+        // The compiler has already persisted the contract. A downstream package
+        // error must never make the dialog look safe to submit again.
+        console.error("[GenerateDocxContractDialog] group package failed after contract save", packageError);
+        packageCompleted = false;
+      }
+      if (packageCompleted === false) {
+        toast.warning("Договор Word сохранён, пакет группы не завершён", {
+          description: "Повторите только 9 документов группы — новый договор не нужен.",
+        });
+      } else {
+        toast.success("Договор сформирован (Word)", {
+          description: `Приложения: ${res.keptCurricula.length}. PDF пока недоступен — доступен DOCX.`,
+        });
+      }
       onClose();
     } catch (e: any) {
       toast.error("Договор не сформирован", { description: e?.message });
     } finally {
+      releaseContractSubmission(submitLock);
       setBusy(false);
     }
   };
@@ -317,7 +360,12 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const template = templates.find((t) => t.template_key === templateKey);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (shouldDismissContractDialog(nextOpen, busy || submitLock.current)) onClose();
+      }}
+    >
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
