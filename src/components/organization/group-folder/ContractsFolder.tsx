@@ -13,7 +13,12 @@ import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } fro
 import { toast } from "sonner";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
-import { ContractPreviewDialog } from "./ContractPreviewDialog";
+import {
+  ContractPreviewDialog,
+  canDownloadContractDocx,
+  getContractPdfPath,
+  isDocxFirstContract,
+} from "./ContractPreviewDialog";
 import { UploadContractDialog } from "./UploadContractDialog";
 import { UploadTemplateDialog } from "./UploadTemplateDialog";
 import {
@@ -59,7 +64,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
 
   const withHtml = useMemo(() => contracts.filter(c => !!c.body_html && c.template_format !== "docx_ooxml"), [contracts]);
 
-  const isDocxTemplate = (row: GroupContractRow) => row.template_format === "docx_ooxml";
+  const isDocxTemplate = isDocxFirstContract;
 
   const downloadDocx = async (row: GroupContractRow) => {
     // Договор из клиентского Word-шаблона уже лежит в приватном bucket'е как DOCX.
@@ -230,8 +235,8 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                         variant="ghost"
                         className="gap-1"
                         aria-label={`Просмотр договора ${c.name}`}
-                        title={isDocxTemplate(c) ? "Предпросмотр доступен только для HTML-шаблонов" : "Просмотр"}
-                        disabled={isDocxTemplate(c)}
+                        title={getContractPdfPath(c) ? "Просмотр PDF" : "PDF пока недоступен — скачайте DOCX"}
+                        disabled={!getContractPdfPath(c)}
                         onClick={() => setPreview(c)}
                       >
                         <Eye className="w-3.5 h-3.5" /> Просмотр
@@ -240,13 +245,13 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                         size="sm"
                         variant="ghost"
                         className="gap-1"
-                        disabled={isDocxTemplate(c) ? c.pdf_status !== "ready" || !c.pdf_path : !c.file_path}
+                        disabled={!getContractPdfPath(c)}
                         title={isDocxTemplate(c) && c.pdf_status !== "ready" ? "PDF пока недоступен — скачайте DOCX" : "PDF"}
-                        onClick={() => openFile(isDocxTemplate(c) ? c.pdf_path ?? null : c.file_path)}
+                        onClick={() => openFile(getContractPdfPath(c))}
                       >
                         <Download className="w-3.5 h-3.5" /> PDF
                       </Button>
-                      <Button size="sm" variant="ghost" className="gap-1" disabled={(isDocxTemplate(c) ? !c.docx_path : !c.body_html) || docxBusy} onClick={() => downloadDocx(c)}>
+                      <Button size="sm" variant="ghost" className="gap-1" disabled={!canDownloadContractDocx(c) || docxBusy} onClick={() => downloadDocx(c)}>
                         <FileDown className="w-3.5 h-3.5" /> DOCX
                       </Button>
                       <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setToDelete(c.id)}>
@@ -265,7 +270,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
         open={!!preview}
         onOpenChange={(o) => { if (!o) setPreview(null); }}
         contract={preview}
-        onDownloadPdf={(c) => openFile(c.file_path)}
+        onDownloadPdf={(c) => openFile(getContractPdfPath(c))}
         onDownloadDocx={(c) => downloadDocx(c)}
       />
 

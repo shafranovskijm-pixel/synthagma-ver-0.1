@@ -16,10 +16,36 @@ interface Props {
   contract: GroupContractRow | null;
   /** Скачать сохранённый PDF (тот же путь/авторизация, что и в таблице). */
   onDownloadPdf: (contract: GroupContractRow) => void;
-  /** Собрать и скачать DOCX из body_html. */
+  /** Скачать сохранённый docx_path либо собрать legacy DOCX из body_html. */
   onDownloadDocx: (contract: GroupContractRow) => void;
   /** Инъекция клиента для тестов. */
   client?: any;
+}
+
+export function isDocxFirstContract(contract: GroupContractRow | null | undefined): boolean {
+  return contract?.template_format === "docx_ooxml";
+}
+
+/**
+ * DOCX-first rows keep the Word file in both docx_path and legacy file_path.
+ * Only an explicitly ready pdf_path is therefore safe to render as PDF.
+ * Legacy HTML/uploaded contracts continue to use their historical file_path/file_url.
+ */
+export function getContractPdfPath(contract: GroupContractRow | null | undefined): string | null {
+  if (!contract) return null;
+  if (isDocxFirstContract(contract)) {
+    return contract.pdf_status === "ready" ? contract.pdf_path || null : null;
+  }
+  return contract.file_path || contract.file_url || null;
+}
+
+export function getContractDocxPath(contract: GroupContractRow | null | undefined): string | null {
+  if (!isDocxFirstContract(contract)) return null;
+  return contract?.docx_path || null;
+}
+
+export function canDownloadContractDocx(contract: GroupContractRow | null | undefined): boolean {
+  return isDocxFirstContract(contract) ? !!getContractDocxPath(contract) : !!contract?.body_html;
 }
 
 /**
@@ -39,7 +65,7 @@ export function ContractPreviewDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const filePath = contract?.file_path || contract?.file_url || null;
+  const filePath = getContractPdfPath(contract);
   const hasPdf = !!filePath;
   const counterparty = contract?.company_name || contract?.student_name || "—";
   const isLegal = contract?.counterparty_type === "legal";
@@ -108,7 +134,7 @@ export function ContractPreviewDialog({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              disabled={!contract?.body_html}
+              disabled={!canDownloadContractDocx(contract)}
               aria-label="Скачать DOCX"
               onClick={() => contract && onDownloadDocx(contract)}
             >

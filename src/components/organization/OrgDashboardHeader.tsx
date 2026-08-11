@@ -304,7 +304,7 @@ export function OrgDashboardHeader() {
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
+                onClick={() => navigate("/help")}
                 className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
               >
                 <HelpCircle className="w-4 h-4" />

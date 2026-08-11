@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { GeneratedDocument } from "./schema";
+import { safeInvoke } from "@/utils/safeInvoke";
 
 export interface GenerateClassJournalParams {
   organizationId: string;
@@ -32,7 +32,7 @@ const legacyPayload = (document: GeneratedDocument) => ({
 export async function generateClassJournalDocx(
   params: GenerateClassJournalParams,
 ): Promise<GenerateClassJournalResult> {
-  const { data, error } = await supabase.functions.invoke("compile-group-class-journal", {
+  const { data, error } = await safeInvoke<any>("compile-group-class-journal", {
     body: {
       organizationId: params.organizationId,
       groupId: params.groupId,
@@ -41,7 +41,7 @@ export async function generateClassJournalDocx(
     },
   });
   if (error) throw new Error(error.message || "Не удалось сформировать журнал Word");
-  const payload = data as any;
+  const payload = data;
   if (payload?.error) throw new Error(payload.error);
   const batch = payload?.batch || {};
   return {

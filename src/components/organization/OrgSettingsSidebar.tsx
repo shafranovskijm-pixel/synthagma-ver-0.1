@@ -53,7 +53,7 @@ export function OrgSettingsSidebar({ embedded }: OrgSettingsSidebarProps) {
 
   const handleItemClick = (item: typeof settingsNavItems[0]) => {
     if (item.path === "__help_dialog__") {
-      window.dispatchEvent(new CustomEvent('open-support-chat'));
+      setHelpOpen(true);
     } else if (embedded) {
       d.tabNavigation.setActiveTab(item.tab);
     } else {

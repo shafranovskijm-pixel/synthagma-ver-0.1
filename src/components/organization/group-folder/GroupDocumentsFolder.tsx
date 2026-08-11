@@ -3,14 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Eye, Download, Trash2, Sparkles, ChevronDown, AlertTriangle } from "lucide-react";
+import { FileText, Eye, Download, Trash2, Sparkles, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { generateDocument, generatePackage, downloadHtml, previewHtml } from "@/lib/group-docs/generate";
+import { generateDocument, generatePackage, downloadHtml } from "@/lib/group-docs/generate";
 import { reserveGroupDocumentNumbers, typesRequiringReservation } from "@/lib/group-docs/documentNumbers";
 import { GROUP_DOCUMENT_TYPES } from "@/lib/group-docs/groupDocuments";
 import {
@@ -35,6 +36,7 @@ import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
 import { openPrivateFile } from "@/utils/storageHelpers";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
+interface GeneratedContractBatch { scenario: "individual" | "legal"; count: number; contractNumbers: string[] }
 
 interface Props {
   organizationId: string;
@@ -74,6 +76,8 @@ export function GroupDocumentsFolder({
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
   const [busy, setBusy] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
+  const [previewRow, setPreviewRow] = useState<GroupDocumentRow | null>(null);
+  const [retryPackage, setRetryPackage] = useState<GeneratedContractBatch | null>(null);
   const [mode, setMode] = useState<DocumentFillMode>("blank");
   const { factual } = useGroupFactualData(
     organizationId,
@@ -211,12 +215,12 @@ export function GroupDocumentsFolder({
    * Пакет: договоры создаёт GenerateContractDialog (сценарии),
    * остальные 9 документов группы генерируются ровно один раз после успеха.
    */
-  const handleContractsGenerated = async (result?: { scenario: "individual" | "legal"; count: number; contractNumbers: string[] }) => {
+  const handleContractsGenerated = async (result?: GeneratedContractBatch) => {
     const scenario = result?.scenario ?? "individual";
     const count = result?.count ?? 0;
     if (!shouldGeneratePackageDocs({ contractsDone: true, contractCount: count, docsGenerated: false })) {
       toast.error("Договоры не созданы — остальные документы пакета не сформированы");
-      return;
+      return false;
     }
     onDataChanged?.();
     const numbers = result?.contractNumbers || [];
@@ -226,7 +230,28 @@ export function GroupDocumentsFolder({
         ? `Договоры № ${numbers.join(", ")}`
         : undefined;
     const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
-    if (ok) toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
+    if (ok) {
+      setRetryPackage(null);
+      toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
+    } else if (result) {
+      setRetryPackage(result);
+    }
+    return ok;
+  };
+
+  const retryPackageDocuments = async () => {
+    if (!retryPackage) return;
+    const numbers = retryPackage.contractNumbers;
+    const contractBasis = numbers.length === 1
+      ? `Договор № ${numbers[0]}`
+      : numbers.length > 1
+        ? `Договоры № ${numbers.join(", ")}`
+        : undefined;
+    const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
+    if (ok) {
+      toast.success(packageResultMessage(retryPackage.scenario, retryPackage.count, PACKAGE_DOC_TYPES.length));
+      setRetryPackage(null);
+    }
   };
 
   const openDoc = async (row: GroupDocumentRow, download = false) => {
@@ -259,7 +284,7 @@ export function GroupDocumentsFolder({
       layout_format: row.layout_format || LEGACY_LAYOUT_FORMAT,
       source_note: row.source_note ?? null,
     };
-    if (download) downloadHtml(doc); else previewHtml(doc);
+    if (download) downloadHtml(doc); else setPreviewRow(row);
   };
 
   return (
@@ -329,6 +354,9 @@ export function GroupDocumentsFolder({
         <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setPackageOpen(true); }}>
           <Sparkles className="w-4 h-4" /> {busy ? "Генерация…" : "Сгенерировать пакет"}
         </Button>
+        <Badge variant="outline" className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+          Beta
+        </Badge>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx}>
@@ -371,8 +399,22 @@ export function GroupDocumentsFolder({
 
       <div className="text-xs text-muted-foreground">
         Пакет: сначала выберите сценарий договора — физлицо даёт {describePackagePlan("individual", students.length)},
-        компания — {describePackagePlan("legal", students.length)}.
+        компания — {describePackagePlan("legal", students.length)}. Пакетная сборка помечена Beta до повторной проверки серверного Word-компилятора.
       </div>
+
+      {retryPackage && (
+        <Card className="p-4 rounded-2xl border-amber-500/40 bg-amber-500/10">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm">
+              <div className="font-medium">Договор сохранён, 9 документов группы не обновлены</div>
+              <div className="text-muted-foreground mt-0.5">Повтор безопасен: новый договор создаваться не будет.</div>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" disabled={busy} onClick={retryPackageDocuments}>
+              <RotateCcw className="w-3.5 h-3.5" /> Повторить 9 документов
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* List */}
       <div className="border border-border rounded-2xl bg-card overflow-hidden">
@@ -426,7 +468,7 @@ export function GroupDocumentsFolder({
                     </Badge>
                     {(row.layout_format || LEGACY_LAYOUT_FORMAT) === LEGACY_LAYOUT_FORMAT ? (
                       <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
-                        макет legacy_html
+                        Beta · HTML-макет
                       </Badge>
                     ) : (
                       <Badge variant="default" className="rounded-full text-[10px]">
@@ -441,13 +483,13 @@ export function GroupDocumentsFolder({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row)}>
+                  <Button size="sm" variant="ghost" className="gap-1" aria-label={`Открыть ${row.name}`} title={`Открыть ${row.name}`} onClick={() => openDoc(row)}>
                     <Eye className="w-3.5 h-3.5" /> {row.layout_format === "docx_ooxml" ? "Открыть" : "Превью"}
                   </Button>
-                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => openDoc(row, true)}>
+                  <Button size="sm" variant="ghost" className="gap-1" aria-label={`Скачать ${row.name}`} title={`Скачать ${row.name}`} onClick={() => openDoc(row, true)}>
                     <Download className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => { await remove(row.id); onDataChanged?.(); }}>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Удалить ${row.name}`} title={`Удалить ${row.name}`} onClick={async () => { await remove(row.id); onDataChanged?.(); }}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -481,6 +523,21 @@ export function GroupDocumentsFolder({
           onGenerated={handleContractsGenerated}
         />
       )}
+
+      <Dialog open={!!previewRow} onOpenChange={open => { if (!open) setPreviewRow(null); }}>
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{previewRow?.name || "Предпросмотр документа"}</DialogTitle>
+            <DialogDescription>Безопасный предпросмотр HTML-макета внутри Синтагмы.</DialogDescription>
+          </DialogHeader>
+          <iframe
+            title={previewRow?.name || "Предпросмотр документа"}
+            srcDoc={previewRow?.html || ""}
+            sandbox=""
+            className="w-full flex-1 rounded-xl border border-border bg-white"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

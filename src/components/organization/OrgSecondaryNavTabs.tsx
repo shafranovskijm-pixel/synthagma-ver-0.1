@@ -45,7 +45,7 @@ export function OrgSecondaryNavTabs({ embedded }: OrgSecondaryNavTabsProps) {
 
   const handleClick = (item: NavItem) => {
     if (item.path === "__help_dialog__") {
-      window.dispatchEvent(new CustomEvent('open-support-chat'));
+      setHelpOpen(true);
       return;
     }
     if (embedded) {

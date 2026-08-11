@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
-import { ContractPreviewDialog } from "../ContractPreviewDialog";
+import {
+  ContractPreviewDialog,
+  canDownloadContractDocx,
+  getContractDocxPath,
+  getContractPdfPath,
+} from "../ContractPreviewDialog";
 import { resolveContractStoragePath, loadContractPdfObjectUrl } from "@/lib/contracts/contractPreview";
 
 const createSpy = vi.fn(() => "blob:mock-url");
@@ -32,6 +37,24 @@ const legal: any = {
   student_name: null,
   company_name: 'ООО "Ромашка"',
   file_path: "org/contract-2.pdf",
+};
+
+const docxReady: any = {
+  ...legal,
+  id: "c3",
+  template_format: "docx_ooxml",
+  file_path: "org/contract-3.docx",
+  file_url: null,
+  docx_path: "org/contract-3.docx",
+  pdf_path: "org/contract-3.pdf",
+  pdf_status: "ready",
+  body_html: null,
+};
+
+const docxPending: any = {
+  ...docxReady,
+  id: "c4",
+  pdf_status: "pending",
 };
 
 function clientWith(result: any) {
@@ -67,7 +90,66 @@ describe("loadContractPdfObjectUrl", () => {
   });
 });
 
+describe("contract format paths", () => {
+  it("использует pdf_path DOCX-first договора только при готовом PDF", () => {
+    expect(getContractPdfPath(docxReady)).toBe("org/contract-3.pdf");
+    expect(getContractPdfPath(docxPending)).toBeNull();
+    expect(getContractPdfPath({ ...docxReady, pdf_path: null })).toBeNull();
+  });
+
+  it("не принимает legacy file_path DOCX-first договора за PDF", () => {
+    expect(getContractPdfPath({ ...docxReady, pdf_status: "unavailable" })).toBeNull();
+  });
+
+  it("сохраняет legacy PDF и выбирает docx_path для Word-договора", () => {
+    expect(getContractPdfPath(individual)).toBe("org/contract-1.pdf");
+    expect(getContractDocxPath(docxReady)).toBe("org/contract-3.docx");
+    expect(canDownloadContractDocx(docxReady)).toBe(true);
+    expect(canDownloadContractDocx(individual)).toBe(true);
+  });
+});
+
 describe("ContractPreviewDialog", () => {
+  it("для DOCX-first загружает готовый pdf_path, а не file_path с Word-файлом", async () => {
+    const download = vi.fn().mockResolvedValue({ data: new Blob(["x"]), error: null });
+    render(
+      <ContractPreviewDialog
+        open
+        onOpenChange={() => {}}
+        contract={docxReady}
+        onDownloadPdf={() => {}}
+        onDownloadDocx={() => {}}
+        client={{ storage: { from: () => ({ download }) } }}
+      />,
+    );
+
+    await waitFor(() => expect(document.querySelector("iframe")).toBeTruthy());
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(download).toHaveBeenCalledWith("org/contract-3.pdf");
+    expect(screen.getByLabelText("Скачать PDF")).not.toBeDisabled();
+    expect(screen.getByLabelText("Скачать DOCX")).not.toBeDisabled();
+  });
+
+  it("не загружает DOCX как PDF, пока pdf_status не ready", () => {
+    const download = vi.fn();
+    render(
+      <ContractPreviewDialog
+        open
+        onOpenChange={() => {}}
+        contract={docxPending}
+        onDownloadPdf={() => {}}
+        onDownloadDocx={() => {}}
+        client={{ storage: { from: () => ({ download }) } }}
+      />,
+    );
+
+    expect(download).not.toHaveBeenCalled();
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(screen.getByText("Предпросмотр недоступен")).toBeInTheDocument();
+    expect(screen.getByLabelText("Скачать PDF")).toBeDisabled();
+    expect(screen.getByLabelText("Скачать DOCX")).not.toBeDisabled();
+  });
+
   it("показывает физлицо и рендерит iframe", async () => {
     render(
       <ContractPreviewDialog
@@ -96,6 +178,7 @@ describe("ContractPreviewDialog", () => {
       />,
     );
     expect(screen.getByText('ООО "Ромашка"')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector("iframe")).toBeTruthy());
   });
 
   it("показывает загрузку", () => {

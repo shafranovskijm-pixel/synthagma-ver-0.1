@@ -8,6 +8,7 @@ export interface StudentGroup {
   name: string;
   color: string | null;
   organization_id: string;
+  course_id: string | null;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
@@ -94,15 +95,53 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
     try {
       const startDate = newGroupStartDate ? format(newGroupStartDate, "yyyy-MM-dd") : null;
       const endDate = newGroupEndDate ? format(newGroupEndDate, "yyyy-MM-dd") : null;
-      const { data: groupData, error } = await supabase.from("student_groups").insert({ name: newGroupName.trim(), color: newGroupColor, organization_id: organizationId, start_date: startDate, end_date: endDate } as any).select("id").single();
+      const { data: groupData, error } = await supabase.from("student_groups").insert({ name: newGroupName.trim(), color: newGroupColor, organization_id: organizationId, course_id: courseId, start_date: startDate, end_date: endDate } as any).select("id").single();
       if (error) throw error;
       const groupId = (groupData as any).id;
       const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      await supabase.from("registration_links").insert({ organization_id: organizationId, course_id: courseId, token, name: `Группа: ${newGroupName.trim()}`, student_group_id: groupId, expires_at: endDate ? new Date(endDate + "T23:59:59").toISOString() : null } as any);
-      await navigator.clipboard.writeText(`${window.location.origin}/join/${token}`);
-      toast.success("Группа создана, ссылка скопирована");
+      const { error: linkError } = await supabase.from("registration_links").insert({ organization_id: organizationId, course_id: courseId, token, name: `Группа: ${newGroupName.trim()}`, student_group_id: groupId, expires_at: endDate ? new Date(endDate + "T23:59:59").toISOString() : null } as any);
+      if (linkError) {
+        let rollbackError: unknown = null;
+        try {
+          const { data: deletedGroups, error } = await supabase
+            .from("student_groups")
+            .delete()
+            .eq("id", groupId)
+            .eq("organization_id", organizationId)
+            .select("id");
+          const deletedRows = (deletedGroups as { id: string }[] | null) ?? [];
+          rollbackError = error || (deletedRows.length === 1 && deletedRows[0].id === groupId
+            ? null
+            : new Error(`Expected to roll back group ${groupId}, deleted ${deletedRows.length} rows`));
+        } catch (error) {
+          rollbackError = error;
+        }
+
+        if (rollbackError) {
+          console.error("Registration link creation and group rollback both failed", { linkError, rollbackError });
+          toast.warning("Группа создана без ссылки регистрации. Удалите её и повторите создание");
+          setShowCreateDialog(false); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); setNewGroupStartDate(undefined); setNewGroupEndDate(undefined);
+          await loadGroups();
+          onGroupDirectoryChanged?.();
+          return;
+        }
+
+        throw linkError;
+      }
+
+      let linkCopied = true;
+      try {
+        await navigator.clipboard.writeText(`${window.location.origin}/join/${token}`);
+      } catch (clipboardError) {
+        linkCopied = false;
+        console.warn("Group created, but its registration link could not be copied", clipboardError);
+      }
+
+      toast.success(linkCopied
+        ? "Группа создана, ссылка скопирована"
+        : "Группа создана. Ссылку можно скопировать в списке групп");
       setShowCreateDialog(false); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); setNewGroupStartDate(undefined); setNewGroupEndDate(undefined);
-      loadGroups();
+      await loadGroups();
       onGroupDirectoryChanged?.();
     } catch { toast.error("Ошибка создания группы"); }
     finally { setIsCreating(false); }
@@ -155,9 +194,22 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
     if (!selectedGroupForAdd || selectedStudentIds.size === 0) return;
     setAddingStudents(true);
     try {
-      for (const uid of Array.from(selectedStudentIds)) { await supabase.from("profiles").update({ student_group_id: selectedGroupForAdd.id } as any).eq("user_id", uid); }
-      toast.success(`${selectedStudentIds.size} уч. добавлено в группу`);
-      setShowAddStudentsDialog(false); loadGroups(); onGroupingChanged?.();
+      const userIds = Array.from(selectedStudentIds);
+      const { data: updatedProfiles, error: updateError } = await supabase
+        .from("profiles")
+        .update({ student_group_id: selectedGroupForAdd.id } as any)
+        .eq("organization_id", organizationId)
+        .in("user_id", userIds)
+        .select("user_id");
+      if (updateError) throw updateError;
+
+      const updatedCount = (updatedProfiles as { user_id: string }[] | null)?.length ?? 0;
+      if (updatedCount !== userIds.length) {
+        throw new Error(`Updated ${updatedCount} of ${userIds.length} student profiles`);
+      }
+
+      toast.success(`${userIds.length} уч. добавлено в группу`);
+      setShowAddStudentsDialog(false); await loadGroups(); onGroupingChanged?.();
     } catch { toast.error("Ошибка добавления учеников"); }
     finally { setAddingStudents(false); }
   };

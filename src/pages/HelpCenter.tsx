@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Search, BookOpen, GraduationCap, CreditCard, HelpCircle, Sparkles, FileText, MessageCircle, Mail, ExternalLink, ArrowLeft, Phone, Zap, Shield, Users, ChevronRight, Star, ArrowRight } from "lucide-react";
+import { Search, BookOpen, GraduationCap, CreditCard, HelpCircle, Sparkles, FileText, MessageCircle, Mail, ExternalLink, ArrowLeft, Phone, Zap, Shield, Users, ChevronRight, Star, ArrowRight, FolderKanban, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { FloatingParticles } from "@/components/landing/FloatingParticles";
 const categories = [
   { icon: BookOpen, label: "Начало работы", description: "Первые шаги на платформе", gradient: "from-teal-500 to-cyan-400", anchor: "getting-started" },
   { icon: GraduationCap, label: "Курсы и обучение", description: "Создание и управление курсами", gradient: "from-emerald-500 to-teal-400", anchor: "getting-started" },
+  { icon: FolderKanban, label: "Документы группы", description: "Цикл от курса до выпуска", gradient: "from-cyan-500 to-blue-500", anchor: "group-docs" },
   { icon: CreditCard, label: "Тарифы и оплата", description: "Подписки и платежи", gradient: "from-amber-500 to-orange-400", anchor: "faq" },
   { icon: HelpCircle, label: "Частые вопросы", description: "Ответы на популярные вопросы", gradient: "from-blue-500 to-indigo-400", anchor: "faq" },
   { icon: Sparkles, label: "Что нового", description: "Последние обновления", gradient: "from-purple-500 to-pink-400", href: "/whats-new" },
@@ -23,6 +24,7 @@ const orgArticles = [
   "Как зарегистрировать организацию",
   "Как создать курс и добавить уроки",
   "Как записать слушателя на курс",
+  "Как пройти цикл документооборота учебной группы",
   "Настройка брендирования (логотип, цвета)",
   "Как выдать документ об обучении",
   "Как работает магазин курсов",
@@ -40,6 +42,10 @@ const studentArticles = [
 ];
 
 const faqs: { q: string; a: string }[] = [
+  { q: "Как сформировать пакет документов учебной группы?", a: "Проверьте программу, часы, даты, преподавателя и слушателей. Затем откройте группу → «Документы группы», выберите режим заполнения, сценарий договора и запустите пакет. Перед сохранением Синтагма показывает источники данных и готовность каждого документа." },
+  { q: "Что делать, если договор сохранился, а 9 документов группы не обновились?", a: "Не создавайте договор повторно. Пока карточка группы открыта, используйте предупреждение и кнопку «Повторить 9 документов»: она повторно запускает только пакет группы. До сохранения этого состояния между сессиями функция помечена Beta — после перезагрузки обратитесь к администратору." },
+  { q: "Почему документ остался черновиком?", a: "Итоговый статус доступен только при достаточных исходных данных. Например, расписанию нужны структурированные занятия, а ведомостям — результаты обучения. Откройте блок «Источники и готовность данных», заполните недостающие сведения и повторите формирование." },
+  { q: "Что означает Beta в документах группы?", a: "Beta обозначает функцию, которую можно проверять, но нельзя считать промышленно подтверждённой. Сейчас пакетная сборка ожидает повторной проверки Word-компилятора, 8 макетов сохраняются как HTML, а PDF-копия классного журнала пока недоступна." },
   { q: "Как создать курс?", a: "Перейдите в раздел «Курсы» → нажмите «Создать курс». Заполните название, описание, добавьте уроки с материалами. Курс можно опубликовать сразу или сохранить как черновик." },
   { q: "Как записать слушателя на курс?", a: "Откройте нужный курс → вкладка «Слушатели» → «Записать». Можно добавить по email, из списка сотрудников компании или по пригласительной ссылке." },
   { q: "Как работает видеоидентификация?", a: "При входе на курс слушатель делает фото через камеру. Система сравнивает его с эталонным фото. Это подтверждает, что курс проходит именно тот человек, который записан." },
@@ -49,16 +55,16 @@ const faqs: { q: string; a: string }[] = [
   { q: "Как настроить брендирование?", a: "Перейдите в «Настройки» → «Брендирование». Загрузите логотип, выберите основной цвет. Ваши слушатели увидят фирменный стиль на странице входа и в кабинете." },
   { q: "Можно ли импортировать слушателей из Excel?", a: "Да, в разделе «Слушатели» есть кнопка «Импорт». Загрузите файл Excel или CSV с колонками ФИО и email — система создаст учётные записи автоматически." },
   { q: "Как слушатель получает доступ к курсу?", a: "После записи слушатель получает письмо со ссылкой для входа. Также можно отправить пригласительную ссылку напрямую или дать логин/пароль." },
-  { q: "Как связаться с поддержкой?", a: "Напишите нам в Telegram (@sintagma_support) или на email support@sintagma.ru. Мы отвечаем в течение нескольких минут в рабочее время." },
+  { q: "Как связаться с поддержкой?", a: "Напишите нам в Telegram (@sintagma_support) или на email support@sintagma.com.ru. Команда ответит в рабочее время." },
   { q: "Что такое магазин курсов?", a: "Магазин курсов — это маркетплейс, где организации могут покупать готовые курсы у других авторов и использовать их на своей платформе." },
   { q: "Как работают промокоды?", a: "В настройках курса можно создать промокод с фиксированной скидкой или процентом. Слушатель вводит код при оплате — цена пересчитывается автоматически." },
 ];
 
 const stats = [
-  { icon: Users, label: "Организаций", value: "500+" },
-  { icon: GraduationCap, label: "Курсов создано", value: "2 000+" },
-  { icon: Zap, label: "Время ответа", value: "< 5 мин" },
-  { icon: Shield, label: "Uptime", value: "99.9%" },
+  { icon: Users, label: "Шагов цикла", value: "6" },
+  { icon: GraduationCap, label: "Документов группы", value: "9" },
+  { icon: Zap, label: "Сценария договора", value: "2" },
+  { icon: Shield, label: "Блока готовности", value: "4" },
 ];
 
 const containerVariants = {
@@ -83,6 +89,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
   const navigate = useNavigate();
   const faqRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLDivElement>(null);
+  const groupDocsRef = useRef<HTMLDivElement>(null);
   const docsRef = useRef<HTMLDivElement>(null);
 
   const filteredFaqs = search.trim()
@@ -90,7 +97,13 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
     : faqs;
 
   const scrollTo = (anchor: string) => {
-    const ref = anchor === "faq" ? faqRef : anchor === "getting-started" ? startRef : docsRef;
+    const ref = anchor === "faq"
+      ? faqRef
+      : anchor === "getting-started"
+        ? startRef
+        : anchor === "group-docs"
+          ? groupDocsRef
+          : docsRef;
     ref.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -147,7 +160,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
             transition={{ delay: 0.35 }}
           >
             <Badge className="bg-teal-400/15 text-teal-200 border-teal-400/30 mb-5 px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
-              <Star className="w-3.5 h-3.5 mr-1.5" /> Поддержка 24/7
+              <Star className="w-3.5 h-3.5 mr-1.5" /> Справка по платформе
             </Badge>
           </motion.div>
 
@@ -313,6 +326,69 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
           </motion.section>
         )}
 
+        {/* ═══ GROUP DOCUMENT FLOW ═══ */}
+        {!search && (
+          <motion.section
+            ref={groupDocsRef}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ type: "spring", damping: 20 }}
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <FolderKanban className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Цикл документооборота группы</h2>
+                <p className="text-sm text-muted-foreground">Курс → слушатель → группа → договор → 9 документов → выпуск</p>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              {[
+                ["Создайте курс", "Укажите программу, часы и форму обучения. До публикации курс можно оставить черновиком."],
+                ["Зарегистрируйте слушателя", "Заполните ФИО и данные, зачислите на курс и убедитесь, что карточка сохранилась после обновления страницы."],
+                ["Создайте учебную группу", "Привяжите курс, участников, даты и преподавателя. В карточке группы проверьте четыре блока готовности."],
+                ["Выберите сценарий договора", "Для физлица создаётся договор на каждого выбранного слушателя, для компании — один договор с приложением."],
+                ["Сформируйте пакет", "Выберите рабочий бланк или данные Синтагмы. Проверьте источники, охват и предупреждения до сохранения."],
+                ["Проверьте выпуск", "Откройте версии документов, статус обучения и готовность данных для ФИС ФРДО."],
+              ].map(([title, text], index) => (
+                <Card key={title} className="rounded-2xl border-border/50 bg-card/70">
+                  <CardContent className="p-5 flex items-start gap-3">
+                    <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 text-white text-xs font-bold shrink-0">{index + 1}</span>
+                    <div>
+                      <h3 className="font-semibold text-sm">{title}</h3>
+                      <p className="text-xs leading-relaxed text-muted-foreground mt-1">{text}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 mt-4">
+              <Card className="rounded-2xl border-emerald-500/25 bg-emerald-500/5">
+                <CardContent className="p-5 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-sm">Готово к демонстрации</h3>
+                    <p className="text-xs leading-relaxed text-muted-foreground mt-1">Создание курса и слушателя, готовность группы, сценарии договора, версии документов и контроль источников данных.</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl border-amber-500/30 bg-amber-500/10">
+                <CardContent className="p-5 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-sm">Beta до повторной проверки</h3>
+                    <p className="text-xs leading-relaxed text-muted-foreground mt-1">Пакетная сборка 9 документов, HTML-макеты и PDF-копия Word-журнала имеют явные ограничения и пометки в интерфейсе.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.section>
+        )}
+
         {/* ═══ FAQ ═══ */}
         <motion.section
           ref={faqRef}
@@ -376,7 +452,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Telegram</h3>
-                  <p className="text-muted-foreground text-sm mb-4">Самый быстрый способ связи. Ответим в течение нескольких минут.</p>
+                  <p className="text-muted-foreground text-sm mb-4">Канал для вопросов по работе платформы в рабочее время.</p>
                   <Button size="sm" className="rounded-xl gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all" onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")}>
                     <ExternalLink className="w-3.5 h-3.5" /> Написать в Telegram
                   </Button>
@@ -391,8 +467,8 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Email</h3>
-                  <p className="text-muted-foreground text-sm mb-4">support@sintagma.ru — ответим в течение рабочего дня.</p>
-                  <Button size="sm" className="rounded-xl gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 transition-all" onClick={() => window.open("mailto:support@sintagma.ru")}>
+                  <p className="text-muted-foreground text-sm mb-4">support@sintagma.com.ru — ответим в течение рабочего дня.</p>
+                  <Button size="sm" className="rounded-xl gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 transition-all" onClick={() => window.open("mailto:support@sintagma.com.ru")}>
                     <ExternalLink className="w-3.5 h-3.5" /> Написать на почту
                   </Button>
                 </div>
@@ -452,7 +528,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                   <Button className="rounded-xl gap-2 bg-white text-teal-900 hover:bg-teal-50 shadow-lg" onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")}>
                     <MessageCircle className="w-4 h-4" /> Telegram
                   </Button>
-                  <Button variant="outline" className="rounded-xl gap-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-sm" onClick={() => window.open("mailto:support@sintagma.ru")}>
+                  <Button variant="outline" className="rounded-xl gap-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-sm" onClick={() => window.open("mailto:support@sintagma.com.ru")}>
                     <Mail className="w-4 h-4" /> Email
                   </Button>
                 </div>

@@ -42,14 +42,17 @@ describe("create_group_document_batch migration", () => {
   it("rejects null / non-array / empty / oversized p_docs", () => {
     expect(sql).toContain("jsonb_typeof(p_docs)");
     expect(sql).toContain("p_docs IS NULL");
-    expect(sql).toMatch(/at least one document/);
-    expect(sql).toMatch(/max batch size/);
+    expect(sql).toContain("p_docs must be a non-empty jsonb array");
+    expect(sql).toContain("v_docs_count = 0 OR v_docs_count > 500");
+    expect(sql).toContain("p_docs count must be between 1 and 500");
   });
 
   it("validates p_docs before marking previous batches non-current", () => {
-    const guard = sql.indexOf("at least one document");
+    const shapeGuard = sql.indexOf("p_docs must be a non-empty jsonb array");
+    const countGuard = sql.indexOf("p_docs count must be between 1 and 500");
     const update = sql.indexOf("SET is_current = false");
-    expect(guard).toBeGreaterThan(-1);
-    expect(update).toBeGreaterThan(guard);
+    expect(shapeGuard).toBeGreaterThan(-1);
+    expect(countGuard).toBeGreaterThan(shapeGuard);
+    expect(update).toBeGreaterThan(countGuard);
   });
 });

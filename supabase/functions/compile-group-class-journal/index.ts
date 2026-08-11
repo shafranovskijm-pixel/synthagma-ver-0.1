@@ -19,6 +19,12 @@ import {
   CLASS_JOURNAL_TEMPLATE_BASE64,
 } from "../_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts";
 
+/**
+ * Visible in every response so a live check can distinguish the deploy-safe
+ * embedded-template compiler from the older Deno.readFile implementation.
+ */
+export const COMPILER_REVISION = "goreltech-class-journal-embedded-v2";
+
 const BUCKET = "billing-documents";
 const LEGACY_TYPES = [
   "enrollment_order",
@@ -64,14 +70,26 @@ function decodeBase64Bytes(value: string): Uint8Array {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const requestId = crypto.randomUUID();
+  const responseHeaders = {
+    ...corsHeaders,
+    "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
+    "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
+    "X-Sintagma-Request-Id": requestId,
+  };
+  if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
   const json = (payload: unknown, status = 200) =>
-    new Response(JSON.stringify(payload), {
+    new Response(JSON.stringify(
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? { ...(payload as Record<string, unknown>), compilerRevision: COMPILER_REVISION, requestId }
+        : payload,
+    ), {
       status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...responseHeaders, "Content-Type": "application/json" },
     });
 
   let uploadedPath: string | null = null;
+  let stage = "request-validation";
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
     const authHeader = req.headers.get("Authorization") || "";
@@ -88,10 +106,12 @@ Deno.serve(async (req) => {
     const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
     const admin = createClient(url, service);
 
+    stage = "authentication";
     const { data: userData, error: userError } = await userClient.auth.getUser();
     if (userError || !userData?.user) return json({ error: "Недействительная сессия" }, 401);
     const userId = userData.user.id;
-    const [{ data: isAdmin }, { data: hasPermission }, { data: isOwner }] = await Promise.all([
+    stage = "authorization";
+    const [adminRoleResult, permissionResult, ownerResult] = await Promise.all([
       admin.rpc("has_role", { _role: "admin", _user_id: userId }),
       admin.rpc("has_org_staff_permission", {
         _user_id: userId,
@@ -100,10 +120,16 @@ Deno.serve(async (req) => {
       }),
       admin.rpc("is_org_owner", { _user_id: userId, _organization_id: body.organizationId }),
     ]);
+    const authzError = adminRoleResult.error || permissionResult.error || ownerResult.error;
+    if (authzError) throw authzError;
+    const isAdmin = adminRoleResult.data;
+    const hasPermission = permissionResult.data;
+    const isOwner = ownerResult.data;
     if (!isAdmin && !hasPermission && !isOwner) {
       return json({ error: "Недостаточно прав для генерации журнала" }, 403);
     }
 
+    stage = "source-data";
     const [groupResult, orgResult, profilesResult] = await Promise.all([
       admin
         .from("student_groups")
@@ -144,6 +170,7 @@ Deno.serve(async (req) => {
       course = courseResult.data;
     }
 
+    stage = "template-validation";
     // Supabase deploys imported TypeScript modules but does not copy arbitrary
     // binary siblings. Embedding keeps the retained DOCX inseparable from the
     // deployed compiler; the manifest hash below still detects drift.
@@ -151,7 +178,7 @@ Deno.serve(async (req) => {
     const manifest = JSON.parse(CLASS_JOURNAL_MANIFEST_JSON) as ClassJournalManifest;
     const templateHash = await sha256Hex(templateBytes);
     if (templateHash !== String(manifest.template_sha256).toUpperCase()) {
-      return json({ error: "Контрольная сумма Word-шаблона не совпала с манифестом" }, 409);
+      return json({ error: "Контрольная сумма Word-шаблона не совпала с манифестом", stage }, 409);
     }
 
     const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
@@ -179,6 +206,7 @@ Deno.serve(async (req) => {
       })),
     };
 
+    stage = "docx-compilation";
     const zip = await JSZip.loadAsync(templateBytes);
     const documentFile = zip.file("word/document.xml");
     if (!documentFile) return json({ error: "Повреждённый шаблон: нет word/document.xml" }, 500);
@@ -190,13 +218,14 @@ Deno.serve(async (req) => {
         snapshot,
       });
     } catch (error) {
-      return json({ error: (error as Error).message }, 422);
+      return json({ error: (error as Error).message, stage }, 422);
     }
     zip.file("word/document.xml", compiledXml);
     const outputBytes: Uint8Array = await zip.generateAsync({ type: "uint8array" });
     const outputHash = await sha256Hex(outputBytes);
     const documentId = crypto.randomUUID();
     uploadedPath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${documentId}.docx`;
+    stage = "docx-upload";
     const uploadResult = await admin.storage.from(BUCKET).upload(uploadedPath, outputBytes, {
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       upsert: false,
@@ -245,6 +274,7 @@ Deno.serve(async (req) => {
       pdf_status: "unavailable",
       generation_status: "generated",
     }));
+    stage = "batch-persistence";
     const batchResult = await userClient.rpc("create_group_document_batch", {
       p_organization_id: body.organizationId,
       p_group_id: body.groupId,
@@ -256,6 +286,7 @@ Deno.serve(async (req) => {
       throw batchResult.error;
     }
     const batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
+    stage = "complete";
     return json({
       document: {
         doc_type: journalDocument.doc_type,
@@ -268,7 +299,12 @@ Deno.serve(async (req) => {
       batch,
     });
   } catch (error) {
-    console.error("compile-group-class-journal error", error);
-    return json({ error: (error as Error).message || "Внутренняя ошибка" }, 500);
+    console.error("compile-group-class-journal error", {
+      requestId,
+      compilerRevision: COMPILER_REVISION,
+      stage,
+      error,
+    });
+    return json({ error: (error as Error).message || "Внутренняя ошибка", stage }, 500);
   }
 });

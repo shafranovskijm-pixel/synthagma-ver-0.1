@@ -245,7 +245,7 @@ export function OrgSidebar() {
 
   const handleTabClick = useCallback((tab: TabType | "__help_dialog__") => {
     if (tab === "__help_dialog__") {
-      window.dispatchEvent(new CustomEvent('open-support-chat'));
+      navigate("/help");
       return;
     }
     const category = tabCategoryMap[tab];

@@ -23,7 +23,9 @@ export function resolveEducationDocumentType({
     recordType = normalized;
   } else if (/диплом|переподготов/.test(normalized)) {
     recordType = "diploma";
-  } else if (exportType === "po" || /свидетел|квалификац|професси/.test(normalized)) {
+  } else if (/удостовер|повышени.+квалификац/.test(normalized)) {
+    recordType = "certificate";
+  } else if (exportType === "po" || programType === "professional_training" || /свидетел|квалификац|професси/.test(normalized)) {
     recordType = "qualification";
   } else if (programType === "professional_retraining") {
     recordType = "diploma";

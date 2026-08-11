@@ -56,8 +56,9 @@ interface Props {
   students: Student[];
   open: boolean;
   onClose: () => void;
-  /** Вызывается один раз после успешного создания всей партии договоров. */
-  onGenerated: (result?: { scenario: ContractScenario; count: number; contractNumbers: string[] }) => void;
+  /** Вызывается один раз после сохранения договоров; false означает частично завершённый пакет. */
+  onGenerated: (result?: { scenario: ContractScenario; count: number; contractNumbers: string[] }) =>
+    void | boolean | Promise<void | boolean>;
   /**
    * Быстрая генерация: шаблон по умолчанию, все ученики группы,
    * дата — сегодня, номер — авто. Мастер сразу открывается на шаге проверки.
@@ -532,12 +533,18 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         toast.error("DOCX не сформирован, но договоры сохранены", { description: e?.message });
       }
 
-      toast.success(produced.length === 1 ? "Договор сгенерирован" : `Сгенерировано договоров: ${produced.length}`);
-      onGenerated({
+      const packageCompleted = await onGenerated({
         scenario: counterparty,
         count: produced.length,
         contractNumbers: produced.map((doc) => doc.number).filter(Boolean),
       });
+      if (packageCompleted === false) {
+        toast.warning("Договор сохранён, пакет документов не завершён", {
+          description: "Повторите создание 9 документов группы из карточки — новый договор не потребуется.",
+        });
+      } else {
+        toast.success(produced.length === 1 ? "Договор и пакет сохранены" : `Договоры и пакет сохранены: ${produced.length}`);
+      }
       onClose();
     } catch (e: any) {
       toast.error("Ошибка генерации", { description: e?.message });
