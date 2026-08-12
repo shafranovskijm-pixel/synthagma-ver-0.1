@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { resolveFastCampaignError } from "@/lib/mailing/fastCampaignError";
 
 interface Props {
   scope: "platform" | "org";
@@ -77,14 +78,18 @@ export function CampaignsManager({ scope, organizationId }: Props) {
         body: { campaign_id: fastCampaign.id, start_date_msk: fastStartDate },
       });
       const code = data?.error as string | undefined;
-      if (error || code) throw new Error(code || error?.message || "prepare_fast_campaign_failed");
+      if (error || code) {
+        const resolved = await resolveFastCampaignError(data, error as any);
+        throw Object.assign(new Error(resolved.code), { requestId: resolved.requestId });
+      }
       toast.success(`Очередь создана: ${data.total} писем, максимум ${data.dailyMaximum} в день`);
       setFastCampaign(null);
       setFastAttested(false);
       await refresh();
     } catch (error: any) {
       const code = String(error?.message || "prepare_fast_campaign_failed");
-      toast.error(FAST_ERROR_LABELS[code] || `Не удалось создать очередь: ${code}`);
+      const requestSuffix = error?.requestId ? ` (request_id: ${error.requestId})` : "";
+      toast.error((FAST_ERROR_LABELS[code] || `Не удалось создать очередь: ${code}`) + requestSuffix);
     } finally {
       setFastPreparing(false);
     }

@@ -11,6 +11,23 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 
+type PrepareStage =
+  | "request"
+  | "campaign"
+  | "authorization"
+  | "queue_lookup"
+  | "recipients"
+  | "senders"
+  | "deliverability"
+  | "schedule"
+  | "queue_insert"
+  | "campaign_update";
+
+const jsonError = (requestId: string, stage: PrepareStage, error: string, status: number, details: Record<string, unknown> = {}) => {
+  console.error(JSON.stringify({ event: "prepare_fast_campaign_error", request_id: requestId, stage, error, ...details }));
+  return json({ error, request_id: requestId }, status);
+};
+
 const TOKEN_RE = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
 const BUILTIN_VALUES = new Set([
   "first_name", "last_name", "organization", "position", "city", "email",
@@ -39,6 +56,8 @@ function valueFor(recipient: Record<string, unknown>, key: string) {
 }
 
 serve(async (req: Request) => {
+  const requestId = crypto.randomUUID();
+  let stage: PrepareStage = "request";
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
@@ -47,23 +66,25 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization") || "";
     const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
     const { data: authData } = await userClient.auth.getUser();
-    if (!authData?.user) return json({ error: "Unauthorized" }, 401);
+    if (!authData?.user) return jsonError(requestId, stage, "Unauthorized", 401);
 
     const body = await req.json().catch(() => ({}));
     const campaignId = typeof body?.campaign_id === "string" ? body.campaign_id : "";
     const startDateMsk = typeof body?.start_date_msk === "string" ? body.start_date_msk : "";
     if (!campaignId || !/^\d{4}-\d{2}-\d{2}$/.test(startDateMsk)) {
-      return json({ error: "campaign_id and start_date_msk are required" }, 400);
+      return jsonError(requestId, stage, "campaign_id and start_date_msk are required", 400);
     }
 
+    stage = "campaign";
     const admin = createClient(url, serviceKey);
     const { data: campaign, error: campaignError } = await admin
       .from("email_campaigns")
       .select("id,organization_id,status,campaign_mode,operator_attested_at,subject,html_body")
       .eq("id", campaignId)
       .maybeSingle();
-    if (campaignError || !campaign?.organization_id) return json({ error: "campaign_not_found" }, 404);
+    if (campaignError || !campaign?.organization_id) return jsonError(requestId, stage, "campaign_not_found", 404);
 
+    stage = "authorization";
     const { data: isAdmin } = await userClient.rpc("has_role", {
       _user_id: authData.user.id,
       _role: "admin",
@@ -76,33 +97,36 @@ serve(async (req: Request) => {
       });
       allowed = canAccess === true;
     }
-    if (!allowed) return json({ error: "Forbidden" }, 403);
+    if (!allowed) return jsonError(requestId, stage, "Forbidden", 403);
     if (campaign.campaign_mode !== "cold_outreach" || !campaign.operator_attested_at) {
-      return json({ error: "cold_outreach_attestation_required" }, 400);
+      return jsonError(requestId, stage, "cold_outreach_attestation_required", 400);
     }
     if (!["draft", "paused"].includes(campaign.status)) {
-      return json({ error: "campaign_must_be_draft_or_paused" }, 409);
+      return jsonError(requestId, stage, "campaign_must_be_draft_or_paused", 409);
     }
 
+    stage = "queue_lookup";
     const { count: existingJobs, error: jobsError } = await admin
       .from("mailing_send_jobs").select("id", { count: "exact", head: true }).eq("campaign_id", campaignId);
-    if (jobsError) return json({ error: "queue_lookup_failed" }, 500);
-    if ((existingJobs || 0) > 0) return json({ error: "campaign_queue_already_exists", jobs: existingJobs }, 409);
+    if (jobsError) return jsonError(requestId, stage, "queue_lookup_failed", 500);
+    if ((existingJobs || 0) > 0) return jsonError(requestId, stage, "campaign_queue_already_exists", 409, { jobs: existingJobs });
 
+    stage = "recipients";
     const { data: recipients, error: recipientsError } = await admin
       .from("email_campaign_recipients")
       .select("id,email,recipient_name,first_name,last_name,organization,position,city,custom_data,status,created_at")
       .eq("campaign_id", campaignId)
       .eq("status", "pending")
       .order("created_at", { ascending: true });
-    if (recipientsError || !recipients?.length) return json({ error: "no_pending_recipients" }, 400);
+    if (recipientsError || !recipients?.length) return jsonError(requestId, stage, "no_pending_recipients", 400);
 
     const keys = templateKeys(campaign.subject, campaign.html_body);
     const invalidRecipients = recipients.filter((recipient) => keys.some((key) => !valueFor(recipient, key)));
     if (invalidRecipients.length) {
-      return json({ error: "unresolved_recipient_variables", count: invalidRecipients.length }, 400);
+      return jsonError(requestId, stage, "unresolved_recipient_variables", 400, { count: invalidRecipients.length });
     }
 
+    stage = "senders";
     const { data: senders, error: sendersError } = await admin
       .from("mailing_senders")
       .select("id,from_email")
@@ -111,20 +135,20 @@ serve(async (req: Request) => {
       .eq("smtp_status", "ok")
       .eq("imap_status", "ok")
       .order("from_email", { ascending: true });
-    if (sendersError) return json({ error: "sender_lookup_failed" }, 500);
+    if (sendersError) return jsonError(requestId, stage, "sender_lookup_failed", 500);
     const campaignSenders = senders || [];
     const hasForeignDomain = campaignSenders.some((sender) =>
       sender.from_email.trim().toLowerCase().split("@").pop() !== "torgi.com.ru"
     );
     if (campaignSenders.length !== 203 || hasForeignDomain) {
-      return json({ error: "exactly_203_verified_active_senders_required", ready: senders?.length || 0 }, 400);
+      return jsonError(requestId, stage, "exactly_203_verified_active_senders_required", 400, { ready: senders?.length || 0 });
     }
     if (recipients.length !== 812) {
-      return json({ error: "exactly_812_unique_recipients_required", ready: recipients.length }, 400);
+      return jsonError(requestId, stage, "exactly_812_unique_recipients_required", 400, { ready: recipients.length });
     }
     const normalizedEmails = recipients.map((recipient) => recipient.email.trim().toLowerCase());
     if (new Set(normalizedEmails).size !== 812) {
-      return json({ error: "exactly_812_unique_recipients_required", ready: new Set(normalizedEmails).size }, 400);
+      return jsonError(requestId, stage, "exactly_812_unique_recipients_required", 400, { ready: new Set(normalizedEmails).size });
     }
 
     const orderedRecipients = recipients.map((recipient) => {
@@ -138,10 +162,11 @@ serve(async (req: Request) => {
       sendOrders.some((value) => !Number.isInteger(value) || value < 1 || value > 812) ||
       new Set(sendOrders).size !== 812
     ) {
-      return json({ error: "unique_send_order_1_to_812_required" }, 400);
+      return jsonError(requestId, stage, "unique_send_order_1_to_812_required", 400);
     }
     orderedRecipients.sort((left, right) => left.sendOrder - right.sendOrder);
 
+    stage = "deliverability";
     const campaignSenderIds = campaignSenders.map((sender) => sender.id);
     const { data: cleanCheck, error: cleanCheckError } = await admin
       .from("mailing_deliverability_checks")
@@ -153,8 +178,8 @@ serve(async (req: Request) => {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (cleanCheckError) return json({ error: "deliverability_check_unavailable" }, 503);
-    if (!cleanCheck) return json({ error: "fresh_inbox_seed_required" }, 400);
+    if (cleanCheckError) return jsonError(requestId, stage, "deliverability_check_unavailable", 503);
+    if (!cleanCheck) return jsonError(requestId, stage, "fresh_inbox_seed_required", 400);
     const { count: badAfterClean, error: badAfterCleanError } = await admin
       .from("mailing_deliverability_checks")
       .select("id", { count: "exact", head: true })
@@ -162,16 +187,17 @@ serve(async (req: Request) => {
       .in("sender_id", campaignSenderIds)
       .in("status", ["spam", "missing", "failed"])
       .gt("created_at", cleanCheck.created_at);
-    if (badAfterCleanError) return json({ error: "deliverability_check_unavailable" }, 503);
-    if ((badAfterClean || 0) > 0) return json({ error: "deliverability_degraded_after_clean_seed" }, 400);
+    if (badAfterCleanError) return jsonError(requestId, stage, "deliverability_check_unavailable", 503);
+    if ((badAfterClean || 0) > 0) return jsonError(requestId, stage, "deliverability_degraded_after_clean_seed", 400);
 
+    stage = "schedule";
     const schedule = buildFastCampaignSchedule({
       emails: orderedRecipients.map(({ recipient }) => recipient.email),
       senderCount: campaignSenders.length,
       startDateMsk,
     });
     if (Date.parse(schedule[0].notBefore) < Date.now() + 5 * 60_000) {
-      return json({ error: "schedule_must_start_in_the_future" }, 400);
+      return jsonError(requestId, stage, "schedule_must_start_in_the_future", 400);
     }
     const recipientByEmail = new Map(orderedRecipients.map(({ recipient }) => [recipient.email.trim().toLowerCase(), recipient.id]));
     const jobs = schedule.map((slot) => ({
@@ -183,6 +209,7 @@ serve(async (req: Request) => {
       not_before: slot.notBefore,
       status: "pending",
     }));
+    stage = "queue_insert";
     const insertedJobIds: string[] = [];
     const cleanupInsertedJobs = async () => {
       for (let index = 0; index < insertedJobIds.length; index += 200) {
@@ -194,11 +221,12 @@ serve(async (req: Request) => {
       const { error } = await admin.from("mailing_send_jobs").insert(chunk);
       if (error) {
         await cleanupInsertedJobs();
-        return json({ error: "queue_insert_failed" }, 500);
+        return jsonError(requestId, stage, "queue_insert_failed", 500, { db_code: error.code || null });
       }
       insertedJobIds.push(...chunk.map((job) => job.id));
     }
 
+    stage = "campaign_update";
     const { error: updateError } = await admin.from("email_campaigns").update({
       status: "scheduled",
       delivery_mode: "fast_2_day",
@@ -209,11 +237,14 @@ serve(async (req: Request) => {
     }).eq("id", campaignId);
     if (updateError) {
       await cleanupInsertedJobs();
-      return json({ error: "campaign_update_failed" }, 500);
+      return jsonError(requestId, stage, "campaign_update_failed", 500, { db_code: updateError.code || null });
     }
 
-    return json({ success: true, ...summarizeFastCampaignSchedule(schedule), starts_at: schedule[0].notBefore });
-  } catch {
-    return json({ error: "prepare_fast_campaign_failed" }, 500);
+    console.log(JSON.stringify({ event: "prepare_fast_campaign_ready", request_id: requestId, jobs: jobs.length }));
+    return json({ success: true, request_id: requestId, ...summarizeFastCampaignSchedule(schedule), starts_at: schedule[0].notBefore });
+  } catch (error) {
+    return jsonError(requestId, stage, "prepare_fast_campaign_failed", 500, {
+      exception: error instanceof Error ? error.name : "unknown",
+    });
   }
 });
