@@ -103,6 +103,25 @@ async function searchWarmup(c: Conn, warmupId: string): Promise<number | null> {
   return first ? parseInt(first, 10) : null;
 }
 
+/**
+ * Some providers deliver the probe but do not expose custom X-* headers to
+ * IMAP SEARCH. The probe id prefix is also present in the subject, so use that
+ * header as a read-only fallback without fetching the message body.
+ */
+async function searchSubjectProbe(c: Conn, warmupId: string): Promise<number | null> {
+  const safe = warmupId.slice(0, 8).replace(/["\\]/g, "");
+  if (!safe) return null;
+  const resp = await cmd(c, `UID SEARCH SUBJECT "${safe}"`);
+  const m = resp.match(/\* SEARCH\s+([\d\s]+)/);
+  if (!m) return null;
+  const first = m[1].trim().split(/\s+/)[0];
+  return first ? parseInt(first, 10) : null;
+}
+
+async function searchReadOnlyProbe(c: Conn, warmupId: string): Promise<number | null> {
+  return (await searchWarmup(c, warmupId)) || searchSubjectProbe(c, warmupId);
+}
+
 async function selectFolder(c: Conn, folder: string) {
   const safe = folder.replace(/"/g, '\\"');
   await cmd(c, `SELECT "${safe}"`);
@@ -122,12 +141,12 @@ export async function placementForReadOnly(
   warmupId: string,
 ): Promise<"inbox" | "spam" | "missing"> {
   await examineFolder(c, "INBOX");
-  if (await searchWarmup(c, warmupId)) return "inbox";
+  if (await searchReadOnlyProbe(c, warmupId)) return "inbox";
 
   const spam = await findSpamFolder(c);
   if (!spam) return "missing";
   await examineFolder(c, spam);
-  return (await searchWarmup(c, warmupId)) ? "spam" : "missing";
+  return (await searchReadOnlyProbe(c, warmupId)) ? "spam" : "missing";
 }
 
 /** Проверить, где лежит письмо с X-Warmup-Id: 'inbox' | 'spam' | 'missing'.

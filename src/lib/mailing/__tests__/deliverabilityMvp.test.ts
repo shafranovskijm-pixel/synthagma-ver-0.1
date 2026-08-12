@@ -106,10 +106,12 @@ describe("deliverability worker boundaries", () => {
   it("uses read-only placement checks and never implements fake engagement", () => {
     expect(worker).toContain("placementForReadOnly");
     expect(worker).not.toMatch(/UID MOVE|UID STORE|\\Seen|EXPUNGE|reply/i);
+    expect(imap).toContain('UID SEARCH SUBJECT "${safe}"');
     const readOnlyStart = imap.indexOf("export async function placementForReadOnly");
     const destructiveStart = imap.indexOf("export async function placementFor(", readOnlyStart);
     const readOnlyBlock = imap.slice(readOnlyStart, destructiveStart);
     expect(readOnlyBlock).toContain("examineFolder");
+    expect(readOnlyBlock).toContain("searchReadOnlyProbe");
     expect(readOnlyBlock).not.toMatch(/selectFolder|UID MOVE|UID STORE|\\Seen|EXPUNGE/);
   });
 
