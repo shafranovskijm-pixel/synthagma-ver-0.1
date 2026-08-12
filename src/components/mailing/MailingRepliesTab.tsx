@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { buildProgramReplyTemplate } from "@/lib/mailing/programReplyTemplate";
+import { loadAllReportPages } from "@/lib/mailing/reportPagination";
 
 interface Props {
   organizationId: string | null;
@@ -77,12 +78,17 @@ export function MailingRepliesTab({ organizationId }: Props) {
     }
     setLoading(true);
     const [replyResult, campaignResult, senderResult] = await Promise.all([
-      supabase
-        .from("mailing_campaign_replies")
-        .select("id,campaign_id,sender_id,remote_email,remote_name,subject,body_text,received_at,classification,interest_hours,review_status")
-        .eq("organization_id", organizationId)
-        .order("received_at", { ascending: false })
-        .limit(500),
+      loadAllReportPages(async (from, to) => {
+        const { data, error } = await supabase
+          .from("mailing_campaign_replies")
+          .select("id,campaign_id,sender_id,remote_email,remote_name,subject,body_text,received_at,classification,interest_hours,review_status")
+          .eq("organization_id", organizationId)
+          .order("received_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to);
+        if (error) throw error;
+        return (data || []) as ReplyRow[];
+      }).then((data) => ({ data, error: null })).catch((error: unknown) => ({ data: [] as ReplyRow[], error })),
       supabase
         .from("email_campaigns")
         .select("id,name")
@@ -117,7 +123,7 @@ export function MailingRepliesTab({ organizationId }: Props) {
     }
 
     const states = stateResults.flatMap((result) => result.data || []);
-    setRows((replyResult.data || []) as ReplyRow[]);
+    setRows(replyResult.data);
     setCampaignNames(Object.fromEntries((campaignResult.data || []).map((campaign) => [campaign.id, campaign.name])));
     setSenderEmails(Object.fromEntries(senders.map((sender) => [sender.id, sender.from_email])));
     setBaseline({
