@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Download, Link2, Info } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { loadAllReportPages } from "@/lib/mailing/reportPagination";
 
 interface Recipient {
   id: string;
@@ -30,6 +31,37 @@ interface Stats {
 
 const rate = (part: number, total: number) => (total > 0 ? `${Math.round((part / total) * 1000) / 10}%` : "—");
 
+async function loadAllRecipients(campaignId: string): Promise<Recipient[]> {
+  return loadAllReportPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("email_campaign_recipients")
+      .select("id, email, recipient_name, status, error, sent_at, opened_at")
+      .eq("campaign_id", campaignId)
+      .order("sent_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+    return (data || []) as Recipient[];
+  });
+}
+
+async function loadAllClickedRecipientIds(campaignId: string): Promise<string[]> {
+  const pages = await loadAllReportPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("email_campaign_clicks")
+      .select("id, recipient_id")
+      .eq("campaign_id", campaignId)
+      .order("id", { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+    return data || [];
+  });
+
+  return pages.flatMap((row) => (row.recipient_id ? [row.recipient_id] : []));
+}
+
 export function CampaignReport({ campaignId, open, onClose }: { campaignId: string | null; open: boolean; onClose: () => void }) {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,21 +70,29 @@ export function CampaignReport({ campaignId, open, onClose }: { campaignId: stri
 
   useEffect(() => {
     if (!open || !campaignId) return;
+    let active = true;
     setLoading(true);
     (async () => {
-      const [{ data }, { data: clicks }] = await Promise.all([
-        supabase
-          .from("email_campaign_recipients")
-          .select("id, email, recipient_name, status, error, sent_at, opened_at")
-          .eq("campaign_id", campaignId)
-          .order("sent_at", { ascending: false, nullsFirst: false })
-          .limit(500),
-        supabase.from("email_campaign_clicks").select("recipient_id").eq("campaign_id", campaignId).limit(20000),
-      ]);
-      setRecipients((data || []) as Recipient[]);
-      setClicked(new Set((clicks || []).map((c: any) => c.recipient_id)).size);
-      setLoading(false);
+      try {
+        const [allRecipients, clickedRecipientIds] = await Promise.all([
+          loadAllRecipients(campaignId),
+          loadAllClickedRecipientIds(campaignId),
+        ]);
+        if (!active) return;
+        setRecipients(allRecipients);
+        setClicked(new Set(clickedRecipientIds).size);
+      } catch (error: any) {
+        if (!active) return;
+        setRecipients([]);
+        setClicked(0);
+        toast.error(error?.message || "Не удалось загрузить полный отчёт кампании");
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
+    return () => {
+      active = false;
+    };
   }, [campaignId, open]);
 
   const stats: Stats = useMemo(() => {
