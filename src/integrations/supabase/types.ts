@@ -5233,6 +5233,108 @@ export type Database = {
           },
         ]
       }
+      mailing_campaign_replies: {
+        Row: {
+          body_text: string | null
+          campaign_id: string
+          classification: string
+          created_at: string
+          id: string
+          imap_uid: number
+          in_reply_to: string | null
+          interest_hours: number | null
+          job_id: string
+          message_id: string | null
+          organization_id: string
+          received_at: string
+          recipient_id: string
+          remote_email: string
+          remote_name: string | null
+          review_status: string
+          sender_id: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_text?: string | null
+          campaign_id: string
+          classification?: string
+          created_at?: string
+          id?: string
+          imap_uid: number
+          in_reply_to?: string | null
+          interest_hours?: number | null
+          job_id: string
+          message_id?: string | null
+          organization_id: string
+          received_at: string
+          recipient_id: string
+          remote_email: string
+          remote_name?: string | null
+          review_status?: string
+          sender_id: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string | null
+          campaign_id?: string
+          classification?: string
+          created_at?: string
+          id?: string
+          imap_uid?: number
+          in_reply_to?: string | null
+          interest_hours?: number | null
+          job_id?: string
+          message_id?: string | null
+          organization_id?: string
+          received_at?: string
+          recipient_id?: string
+          remote_email?: string
+          remote_name?: string | null
+          review_status?: string
+          sender_id?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_campaign_replies_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_campaign_replies_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_send_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_campaign_replies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_campaign_replies_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_campaign_replies_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mailing_contacts: {
         Row: {
           city: string | null
@@ -5442,72 +5544,6 @@ export type Database = {
           },
         ]
       }
-      mailing_campaign_replies: {
-        Row: {
-          body_text: string | null
-          campaign_id: string
-          classification: string
-          created_at: string
-          id: string
-          imap_uid: number
-          in_reply_to: string | null
-          interest_hours: number | null
-          job_id: string
-          message_id: string | null
-          organization_id: string
-          received_at: string
-          recipient_id: string
-          remote_email: string
-          remote_name: string | null
-          review_status: string
-          sender_id: string
-          subject: string | null
-          updated_at: string
-        }
-        Insert: {
-          body_text?: string | null
-          campaign_id: string
-          classification?: string
-          created_at?: string
-          id?: string
-          imap_uid: number
-          in_reply_to?: string | null
-          interest_hours?: number | null
-          job_id: string
-          message_id?: string | null
-          organization_id: string
-          received_at: string
-          recipient_id: string
-          remote_email: string
-          remote_name?: string | null
-          review_status?: string
-          sender_id: string
-          subject?: string | null
-          updated_at?: string
-        }
-        Update: {
-          body_text?: string | null
-          campaign_id?: string
-          classification?: string
-          created_at?: string
-          id?: string
-          imap_uid?: number
-          in_reply_to?: string | null
-          interest_hours?: number | null
-          job_id?: string
-          message_id?: string | null
-          organization_id?: string
-          received_at?: string
-          recipient_id?: string
-          remote_email?: string
-          remote_name?: string | null
-          review_status?: string
-          sender_id?: string
-          subject?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       mailing_reply_scan_state: {
         Row: {
           baseline_completed: boolean
@@ -5545,7 +5581,15 @@ export type Database = {
           sender_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mailing_reply_scan_state_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: true
+            referencedRelation: "mailing_senders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mailing_report_links: {
         Row: {
@@ -11981,6 +12025,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_mailing_reply_scan_senders: {
+        Args: {
+          p_batch_size?: number
+          p_campaign_ids: string[]
+          p_stale_after?: string
+        }
+        Returns: {
+          baseline_completed: boolean
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          last_error: string | null
+          last_error_category: string | null
+          last_scanned_at: string | null
+          last_uid: number
+          sender_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mailing_reply_scan_state"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_notification_dedup: { Args: { _key: string }; Returns: boolean }
       claim_org_email_quota: {
         Args: {
@@ -12629,6 +12698,7 @@ export type Database = {
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
       invoke_mailing_campaign_worker: { Args: never; Returns: number }
       invoke_mailing_deliverability_worker: { Args: never; Returns: number }
+      invoke_mailing_reply_worker: { Args: never; Returns: number }
       is_active_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
@@ -12743,6 +12813,21 @@ export type Database = {
       mark_email_sender_result: {
         Args: { _error?: string; _sender_id: string }
         Returns: undefined
+      }
+      match_mailing_campaign_reply: {
+        Args: {
+          p_campaign_ids: string[]
+          p_in_reply_to: string
+          p_received_at: string
+          p_remote_email: string
+          p_sender_id: string
+        }
+        Returns: {
+          campaign_id: string
+          job_id: string
+          organization_id: string
+          recipient_id: string
+        }[]
       }
       next_reg_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
