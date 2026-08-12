@@ -44,6 +44,8 @@ export interface SendOptions {
   text?: string;
   fromOverride?: string; // "Имя <email>"
   replyTo?: string;
+  /** Заранее назначенный Message-ID для надёжной привязки входящего ответа. */
+  messageId?: string;
   attachments?: Attachment[];
   extraHeaders?: Record<string, string>; // дополнительные заголовки (List-Unsubscribe, etc.)
 }
@@ -70,7 +72,7 @@ async function withSmtpTimeout<T>(operation: Promise<T>, context: string, close?
  * Отправляет письмо через SMTP (TLS/SSL).
  * Бросает Error при неуспехе.
  */
-export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise<void> {
+export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise<{ messageId: string }> {
   const senderFrom = opts.fromOverride
     || (cfg.from_name ? `${cfg.from_name} <${cfg.from_email}>` : cfg.from_email);
   const envelopeFrom = assertEnvelopeAddress(
@@ -79,7 +81,7 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
   );
   const envelopeTo = assertEnvelopeAddress(opts.to, "адресе получателя");
 
-  const { raw: rawEmail } = buildRawEmail({
+  const { raw: rawEmail, messageId } = buildRawEmail({
     from: senderFrom,
     fromEmail: envelopeFrom,
     to: envelopeTo,
@@ -89,6 +91,7 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     replyTo: opts.replyTo || null,
     extraHeaders: opts.extraHeaders || null,
     attachments: opts.attachments || null,
+    messageId: opts.messageId,
   });
 
   // Подключение: TLS сразу для 465; для 587/2525 — STARTTLS.
@@ -193,6 +196,7 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
   } finally {
     try { activeConn.close(); } catch (_) { /* ignore */ }
   }
+  return { messageId };
 }
 
 

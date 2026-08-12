@@ -5442,6 +5442,111 @@ export type Database = {
           },
         ]
       }
+      mailing_campaign_replies: {
+        Row: {
+          body_text: string | null
+          campaign_id: string
+          classification: string
+          created_at: string
+          id: string
+          imap_uid: number
+          in_reply_to: string | null
+          interest_hours: number | null
+          job_id: string
+          message_id: string | null
+          organization_id: string
+          received_at: string
+          recipient_id: string
+          remote_email: string
+          remote_name: string | null
+          review_status: string
+          sender_id: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_text?: string | null
+          campaign_id: string
+          classification?: string
+          created_at?: string
+          id?: string
+          imap_uid: number
+          in_reply_to?: string | null
+          interest_hours?: number | null
+          job_id: string
+          message_id?: string | null
+          organization_id: string
+          received_at: string
+          recipient_id: string
+          remote_email: string
+          remote_name?: string | null
+          review_status?: string
+          sender_id: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string | null
+          campaign_id?: string
+          classification?: string
+          created_at?: string
+          id?: string
+          imap_uid?: number
+          in_reply_to?: string | null
+          interest_hours?: number | null
+          job_id?: string
+          message_id?: string | null
+          organization_id?: string
+          received_at?: string
+          recipient_id?: string
+          remote_email?: string
+          remote_name?: string | null
+          review_status?: string
+          sender_id?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mailing_reply_scan_state: {
+        Row: {
+          baseline_completed: boolean
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          last_error: string | null
+          last_error_category: string | null
+          last_scanned_at: string | null
+          last_uid: number
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          baseline_completed?: boolean
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          last_error?: string | null
+          last_error_category?: string | null
+          last_scanned_at?: string | null
+          last_uid?: number
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          baseline_completed?: boolean
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          last_error?: string | null
+          last_error_category?: string | null
+          last_scanned_at?: string | null
+          last_uid?: number
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mailing_report_links: {
         Row: {
           campaign_id: string

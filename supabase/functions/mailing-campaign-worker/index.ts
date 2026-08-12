@@ -62,6 +62,26 @@ serve(async (req: Request) => {
         }).eq("id", campaign.id);
         continue;
       }
+      // Replies are distributed across the actual From mailboxes. Require a
+      // read-only IMAP UID baseline immediately before launch, otherwise the
+      // collector could either miss a response or ingest historic mail.
+      const scheduledMs = campaign.scheduled_at ? Date.parse(campaign.scheduled_at) : Number.NaN;
+      const replyReadinessIsDue = !Number.isFinite(scheduledMs) || scheduledMs <= Date.now() + 5 * 60_000;
+      if (replyReadinessIsDue) {
+        const { data: replyStates, error: replyStatesError } = await admin
+          .from("mailing_reply_scan_state")
+          .select("sender_id,baseline_completed")
+          .in("sender_id", senderIds)
+          .eq("baseline_completed", true);
+        const readySenderIds = new Set((replyStates || []).map((state) => state.sender_id));
+        if (replyStatesError || senderIds.some((senderId) => !readySenderIds.has(senderId))) {
+          await admin.from("email_campaigns").update({
+            status: "paused",
+            paused_reason: replyStatesError ? "reply_monitor_unavailable" : "reply_monitor_not_ready",
+          }).eq("id", campaign.id);
+          continue;
+        }
+      }
       const { count: degraded, error: degradedError } = await admin.from("mailing_deliverability_checks")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", campaign.organization_id)

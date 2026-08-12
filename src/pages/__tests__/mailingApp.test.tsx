@@ -32,6 +32,9 @@ vi.mock("@/components/mailing/MailingReportsTab", () => ({
 vi.mock("@/components/mailing/MailingDeliverabilityTab", () => ({
   MailingDeliverabilityTab: () => <div>deliverability-tab</div>,
 }));
+vi.mock("@/components/mailing/MailingRepliesTab", () => ({
+  MailingRepliesTab: () => <div>replies-tab</div>,
+}));
 
 const renderAt = (search: string) =>
   render(
@@ -58,6 +61,7 @@ describe("MailingApp shell", () => {
       "Шаблоны",
       "Отправители",
       "Отчёты",
+      "Ответы",
       "Доставляемость",
     ]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
@@ -68,6 +72,11 @@ describe("MailingApp shell", () => {
   it("reuses the existing CampaignsManager for the campaigns tab", async () => {
     renderAt("?tab=campaigns");
     expect(await screen.findByText("campaigns-manager")).toBeInTheDocument();
+  });
+
+  it("opens the centralized campaign replies tab", async () => {
+    renderAt("?tab=replies");
+    expect(await screen.findByText("replies-tab")).toBeInTheDocument();
   });
 
   it("falls back to overview for an unknown tab", async () => {

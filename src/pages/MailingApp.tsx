@@ -12,6 +12,7 @@ import {
   AtSign,
   BarChart3,
   Gauge,
+  MessageCircle,
   ArrowLeft,
 } from "lucide-react";
 import { CampaignsManager } from "@/components/admin/broadcast/CampaignsManager";
@@ -21,6 +22,7 @@ import { MailingOverviewTab } from "@/components/mailing/MailingOverviewTab";
 import { MailingContactsTab } from "@/components/mailing/MailingContactsTab";
 import { MailingReportsTab } from "@/components/mailing/MailingReportsTab";
 import { MailingDeliverabilityTab } from "@/components/mailing/MailingDeliverabilityTab";
+import { MailingRepliesTab } from "@/components/mailing/MailingRepliesTab";
 
 const MENU = [
   { key: "overview", label: "Обзор", icon: LayoutDashboard },
@@ -29,6 +31,7 @@ const MENU = [
   { key: "templates", label: "Шаблоны", icon: FileText },
   { key: "senders", label: "Отправители", icon: AtSign },
   { key: "reports", label: "Отчёты", icon: BarChart3 },
+  { key: "replies", label: "Ответы", icon: MessageCircle },
   { key: "deliverability", label: "Доставляемость", icon: Gauge },
 ] as const;
 
@@ -113,6 +116,7 @@ export default function MailingApp() {
               {tab === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
               {tab === "senders" && <MailingSendersTab organizationId={organizationId} />}
               {tab === "reports" && <MailingReportsTab organizationId={organizationId} />}
+              {tab === "replies" && <MailingRepliesTab organizationId={organizationId} />}
               {tab === "deliverability" && <MailingDeliverabilityTab organizationId={organizationId} />}
             </>
           )}

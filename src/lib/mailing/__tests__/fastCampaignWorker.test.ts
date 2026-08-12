@@ -31,7 +31,7 @@ describe("fast campaign worker", () => {
     expect(sender).toContain('job.recipient_id !== recipientId');
     expect(sender).toContain('job.claim_token !== claimToken');
     expect(sender).toContain('queuedSenderId = job.sender_id');
-    expect(sender).toContain('.update({ status: "dispatching" })');
+    expect(sender).toContain('.update({ status: "dispatching", smtp_message_id: smtpMessageId })');
     expect(sender).toContain("if (!jobId) {");
   });
 

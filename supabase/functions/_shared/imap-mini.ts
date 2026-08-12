@@ -127,6 +127,14 @@ async function selectFolder(c: Conn, folder: string) {
   await cmd(c, `SELECT "${safe}"`);
 }
 
+/** Возвращает наибольший UID во Входящих, не загружая и не помечая письма. */
+export async function highestInboxUid(c: Conn): Promise<number> {
+  const resp = await cmd(c, 'STATUS "INBOX" (UIDNEXT)');
+  const m = resp.match(/UIDNEXT\s+(\d+)/i);
+  const uidNext = m ? Number.parseInt(m[1], 10) : 1;
+  return Number.isFinite(uidNext) && uidNext > 1 ? uidNext - 1 : 0;
+}
+
 async function examineFolder(c: Conn, folder: string) {
   const safe = folder.replace(/"/g, '\\"');
   await cmd(c, `EXAMINE "${safe}"`);
@@ -232,14 +240,19 @@ function nextTagExport() { return nextTag(); }
 
 /** SELECT INBOX и вернуть новые UID > sinceUid. */
 export async function scanInbox(c: Conn, sinceUid: number, limit = 30): Promise<RawImapMessage[]> {
-  await selectFolder(c, "INBOX");
+  // EXAMINE makes the read-only intent explicit; BODY.PEEK below preserves \Seen.
+  await examineFolder(c, "INBOX");
   const uids = (await searchUidsSince(c, sinceUid)).slice(0, limit);
   const out: RawImapMessage[] = [];
   for (const uid of uids) {
     try {
       const raw = await fetchRfc822(c, uid);
       if (raw) out.push({ uid, raw });
-    } catch { /* пропускаем битые */ }
+    } catch {
+      // Preserve cursor safety: the caller must retry this UID instead of
+      // advancing beyond an unreadable message and losing a possible reply.
+      break;
+    }
   }
   return out;
 }

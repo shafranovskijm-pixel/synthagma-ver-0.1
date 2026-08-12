@@ -420,9 +420,11 @@ serve(async (req: Request) => {
       : undefined;
 
     if (jobId) {
+      const messageDomain = smtp.from_email.split("@")[1] || "sintagma.com.ru";
+      const smtpMessageId = `<sintagma.${jobId}@${messageDomain}>`;
       const { data: transitioned, error: transitionError } = await admin
         .from("mailing_send_jobs")
-        .update({ status: "dispatching" })
+        .update({ status: "dispatching", smtp_message_id: smtpMessageId })
         .eq("id", jobId)
         .eq("status", "claimed")
         .eq("claim_token", claimToken)
@@ -431,12 +433,16 @@ serve(async (req: Request) => {
       if (transitionError || !transitioned) throw new Error("send job claim was lost");
     }
 
-    await sendSmtpEmail(smtp, {
+    const queuedMessageId = jobId
+      ? `<sintagma.${jobId}@${smtp.from_email.split("@")[1] || "sintagma.com.ru"}>`
+      : undefined;
+    const smtpResult = await sendSmtpEmail(smtp, {
       to: recipient.email,
       subject: personalizedSubject,
       html: personalizedHtml,
       fromOverride,
       replyTo: campaign.reply_to || undefined,
+      messageId: queuedMessageId,
       attachments: attachments.length ? attachments : undefined,
       extraHeaders: {
         ...buildListUnsubscribeHeaders({
@@ -449,14 +455,16 @@ serve(async (req: Request) => {
     });
 
     // Помечаем как отправленное
+    const sentAt = new Date().toISOString();
     await admin.from("email_campaign_recipients").update({
       status: "sent",
-      sent_at: new Date().toISOString(),
+      sent_at: sentAt,
       error: null,
     }).eq("id", recipientId);
     if (jobId) await admin.from("mailing_send_jobs").update({
       status: "sent",
-      sent_at: new Date().toISOString(),
+      sent_at: sentAt,
+      smtp_message_id: smtpResult.messageId,
       last_error_category: null,
       last_error: null,
     }).eq("id", jobId).eq("status", "dispatching");
