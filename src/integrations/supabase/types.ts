@@ -3196,12 +3196,15 @@ export type Database = {
           ab_test_enabled: boolean
           ab_winner: string | null
           ab_winner_picked_at: string | null
+          campaign_mode: string
           click_count: number
           completed_at: string | null
           consent_confirmed_at: string | null
           consent_confirmed_by: string | null
           created_at: string
           created_by: string | null
+          delivery_mode: string
+          domain_daily_limit: number | null
           failed_count: number
           from_name: string | null
           html_body: string
@@ -3211,13 +3214,19 @@ export type Database = {
           manual_emails: string[] | null
           name: string
           open_count: number
+          operator_attested_at: string | null
+          operator_attested_by: string | null
           organization_id: string | null
+          paused_reason: string | null
           recipient_filter: Json | null
           recipient_source: string
           reply_to: string | null
           scheduled_at: string | null
           scope: string
           seed_emails: string[] | null
+          send_timezone: string
+          send_window_end: string
+          send_window_start: string
           sender_id: string | null
           sent_count: number
           started_at: string | null
@@ -3238,12 +3247,15 @@ export type Database = {
           ab_test_enabled?: boolean
           ab_winner?: string | null
           ab_winner_picked_at?: string | null
+          campaign_mode?: string
           click_count?: number
           completed_at?: string | null
           consent_confirmed_at?: string | null
           consent_confirmed_by?: string | null
           created_at?: string
           created_by?: string | null
+          delivery_mode?: string
+          domain_daily_limit?: number | null
           failed_count?: number
           from_name?: string | null
           html_body: string
@@ -3253,13 +3265,19 @@ export type Database = {
           manual_emails?: string[] | null
           name: string
           open_count?: number
+          operator_attested_at?: string | null
+          operator_attested_by?: string | null
           organization_id?: string | null
+          paused_reason?: string | null
           recipient_filter?: Json | null
           recipient_source: string
           reply_to?: string | null
           scheduled_at?: string | null
           scope: string
           seed_emails?: string[] | null
+          send_timezone?: string
+          send_window_end?: string
+          send_window_start?: string
           sender_id?: string | null
           sent_count?: number
           started_at?: string | null
@@ -3280,12 +3298,15 @@ export type Database = {
           ab_test_enabled?: boolean
           ab_winner?: string | null
           ab_winner_picked_at?: string | null
+          campaign_mode?: string
           click_count?: number
           completed_at?: string | null
           consent_confirmed_at?: string | null
           consent_confirmed_by?: string | null
           created_at?: string
           created_by?: string | null
+          delivery_mode?: string
+          domain_daily_limit?: number | null
           failed_count?: number
           from_name?: string | null
           html_body?: string
@@ -3295,13 +3316,19 @@ export type Database = {
           manual_emails?: string[] | null
           name?: string
           open_count?: number
+          operator_attested_at?: string | null
+          operator_attested_by?: string | null
           organization_id?: string | null
+          paused_reason?: string | null
           recipient_filter?: Json | null
           recipient_source?: string
           reply_to?: string | null
           scheduled_at?: string | null
           scope?: string
           seed_emails?: string[] | null
+          send_timezone?: string
+          send_window_end?: string
+          send_window_start?: string
           sender_id?: string | null
           sent_count?: number
           started_at?: string | null
@@ -5523,6 +5550,85 @@ export type Database = {
           },
           {
             foreignKeyName: "mailing_seed_ledger_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailing_send_jobs: {
+        Row: {
+          attempt_count: number
+          campaign_id: string
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_error_category: string | null
+          not_before: string
+          recipient_id: string
+          sender_id: string
+          sent_at: string | null
+          smtp_message_id: string | null
+          status: string
+          step_no: number
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          campaign_id: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_error_category?: string | null
+          not_before: string
+          recipient_id: string
+          sender_id: string
+          sent_at?: string | null
+          smtp_message_id?: string | null
+          status?: string
+          step_no?: number
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          campaign_id?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_error_category?: string | null
+          not_before?: string
+          recipient_id?: string
+          sender_id?: string
+          sent_at?: string | null
+          smtp_message_id?: string | null
+          status?: string
+          step_no?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_send_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_send_jobs_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailing_send_jobs_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "mailing_senders"
@@ -11629,6 +11735,10 @@ export type Database = {
         }
         Returns: Json
       }
+      activate_verified_mailing_senders: {
+        Args: { p_organization_id: string }
+        Returns: number
+      }
       add_signature_comment_by_token: {
         Args: {
           p_author_name: string
@@ -11676,6 +11786,10 @@ export type Database = {
         Returns: undefined
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
+      attest_cold_outreach_campaign: {
+        Args: { p_campaign_id: string }
+        Returns: undefined
+      }
       award_achievement: {
         Args: { p_achievement_code: string; p_user_id: string }
         Returns: undefined
@@ -11734,6 +11848,33 @@ export type Database = {
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
+      }
+      claim_due_mailing_send_jobs: {
+        Args: { p_batch_size?: number; p_stale_after?: string }
+        Returns: {
+          attempt_count: number
+          campaign_id: string
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_error_category: string | null
+          not_before: string
+          recipient_id: string
+          sender_id: string
+          sent_at: string | null
+          smtp_message_id: string | null
+          status: string
+          step_no: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mailing_send_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       claim_notification_dedup: { Args: { _key: string }; Returns: boolean }
       claim_org_email_quota: {
@@ -12372,11 +12513,16 @@ export type Database = {
         Args: { p_organization_id: string; p_rows: Json }
         Returns: Json
       }
+      import_mailing_senders_batch: {
+        Args: { p_organization_id: string; p_rows: Json }
+        Returns: Json
+      }
       increment_lesson_time: {
         Args: { p_lesson_id: string; p_seconds: number; p_user_id: string }
         Returns: undefined
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
+      invoke_mailing_campaign_worker: { Args: never; Returns: number }
       invoke_mailing_deliverability_worker: { Args: never; Returns: number }
       is_active_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
