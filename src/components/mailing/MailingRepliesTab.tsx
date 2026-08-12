@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardCopy, Download, Inbox, Loader2, MessageSquareReply, RefreshCw, UserCheck, X } from "lucide-react";
+import { ClipboardCopy, Download, Inbox, Loader2, MessageSquareReply, RefreshCw, UserCheck, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { buildProgramReplyTemplate } from "@/lib/mailing/programReplyTemplate";
+import { buildGroupIntakeCsv } from "@/lib/mailing/groupIntakeExport";
 import { summarizeReplyContacts } from "@/lib/mailing/replyCandidates";
 import { loadAllReportPages } from "@/lib/mailing/reportPagination";
 
@@ -59,8 +60,6 @@ const statusLabel: Record<ReviewStatus, string> = {
   enrolled: "Отмечен для группы",
   closed: "Закрыт",
 };
-
-const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
 export function MailingRepliesTab({ organizationId }: Props) {
   const [rows, setRows] = useState<ReplyRow[]>([]);
@@ -186,22 +185,11 @@ export function MailingRepliesTab({ organizationId }: Props) {
   };
 
   const exportCandidates = () => {
-    const candidates = summary.candidates;
-    const csv = [
-      ["Дата", "Имя", "Email", "Программа, часов", "Кампания", "Статус"],
-      ...candidates.map((row) => [
-        new Date(row.received_at).toLocaleString("ru-RU"),
-        row.remote_name || "",
-        row.remote_email,
-        row.interest_hours || "",
-        campaignNames[row.campaign_id] || row.campaign_id,
-        statusLabel[row.review_status],
-      ]),
-    ].map((line) => line.map(csvCell).join(";")).join("\r\n");
-    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    const csv = buildGroupIntakeCsv(summary.candidates, campaignNames);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "Кандидаты_в_группу.csv";
+    anchor.download = "Реестр_группы_44-ФЗ.csv";
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -240,7 +228,14 @@ export function MailingRepliesTab({ organizationId }: Props) {
               <RefreshCw className="mr-1 h-4 w-4" /> Обновить
             </Button>
             <Button variant="outline" size="sm" onClick={exportCandidates} disabled={summary.interested === 0}>
-              <Download className="mr-1 h-4 w-4" /> Кандидаты CSV
+              <Download className="mr-1 h-4 w-4" /> Реестр группы CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.assign("/organization?tab=students&studentsView=groups")}
+            >
+              <Users className="mr-1 h-4 w-4" /> Открыть фактические группы
             </Button>
           </div>
         </CardHeader>
