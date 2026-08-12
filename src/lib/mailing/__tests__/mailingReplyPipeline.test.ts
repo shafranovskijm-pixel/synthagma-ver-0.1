@@ -16,6 +16,16 @@ const rlsMigration = read("supabase/migrations/20260812235500_mailing_reply_rls_
 const repliesUi = read("src/components/mailing/MailingRepliesTab.tsx");
 
 describe("campaign reply classifier", () => {
+  it("recognizes the campaign's exact one-word CTA as interest", () => {
+    expect(classifyMailingReply({ bodyText: "Программа" })).toMatchObject({
+      classification: "interested",
+      interestHours: null,
+      directText: "Программа",
+    });
+    expect(classifyMailingReply({ bodyText: "ПРОГРАММУ!" }).classification).toBe("interested");
+    expect(classifyMailingReply({ bodyText: "Программа не нужна." }).classification).toBe("not_interested");
+  });
+
   it("recognizes interest and the requested duration", () => {
     expect(classifyMailingReply({ bodyText: "Добрый день! Нам подходит программа 150 часов." })).toMatchObject({
       classification: "interested",

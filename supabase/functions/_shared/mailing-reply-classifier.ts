@@ -69,8 +69,11 @@ export function classifyMailingReply(input: {
     .map((match) => Number(match[1]) as 50 | 150 | 250);
   const uniqueHours = [...new Set(hours)];
   const interestHours = uniqueHours.length === 1 ? uniqueHours[0] : null;
+  // The campaign asks recipients to reply with the single word "программа".
+  // Match it only in newly written text so a subject cannot classify all replies.
+  const explicitProgramRequest = /^\s*программ(?:а|у)\s*[.!?]*\s*$/iu.test(directText);
   const interested = /(?:интерес\w*|подход\w*|пришл\w*|отправ\w*\s+(?:кп|предложение|информацию)|подробн\w*|стоимост\w*|цен\w*|готов\w*|хотим|хочу|запиш\w*|обучени\w*|(?:^|\s)да[,.!\s]|свяж\w*)/iu;
-  if (uniqueHours.length > 0 || interested.test(haystack)) {
+  if (explicitProgramRequest || uniqueHours.length > 0 || interested.test(haystack)) {
     return { classification: "interested", interestHours, directText };
   }
 
