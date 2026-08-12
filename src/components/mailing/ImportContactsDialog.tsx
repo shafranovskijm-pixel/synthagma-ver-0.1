@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Upload, FileSpreadsheet, AlertTriangle } from "lucide-react";
@@ -16,6 +17,7 @@ import {
   buildImportPlan,
   customFieldKey,
   mappingHasEmail,
+  parseCsv,
   parseContactsFile,
 } from "@/utils/mailing/contactsImport";
 
@@ -44,6 +46,7 @@ export function ImportContactsDialog({ open, onClose, organizationId, onImported
   const [campaignId, setCampaignId] = useState("");
   const [parsed, setParsed] = useState<ParsedFile | null>(null);
   const [fileName, setFileName] = useState("");
+  const [pastedText, setPastedText] = useState("");
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [existingEmails, setExistingEmails] = useState<string[]>([]);
   const [plan, setPlan] = useState<ImportPlan | null>(null);
@@ -56,6 +59,7 @@ export function ImportContactsDialog({ open, onClose, organizationId, onImported
       setPlan(null);
       setMapping({});
       setFileName("");
+      setPastedText("");
       setCampaignId("");
       return;
     }
@@ -99,6 +103,19 @@ export function ImportContactsDialog({ open, onClose, organizationId, onImported
     } catch (e) {
       toast.error("Не удалось прочитать файл");
     }
+  };
+
+  const handlePaste = () => {
+    const result = parseCsv(pastedText);
+    if (!result.headers.length || !result.rows.length) {
+      toast.error("Вставленный CSV/TSV пуст или не содержит строк данных");
+      return;
+    }
+    setParsed(result);
+    setFileName("вставленные данные");
+    setMapping(autoDetectMapping(result.headers));
+    setPastedText("");
+    setStep("mapping");
   };
 
   const emailMapped = mappingHasEmail(mapping);
@@ -190,6 +207,30 @@ export function ImportContactsDialog({ open, onClose, organizationId, onImported
                 className="mt-1 block w-full text-sm"
                 data-testid="import-file-input"
               />
+            </div>
+            <div className="space-y-2 border-t pt-4">
+              <Label htmlFor="contacts-paste">Или вставьте CSV/TSV целиком</Label>
+              <Textarea
+                id="contacts-paste"
+                value={pastedText}
+                onChange={(event) => setPastedText(event.target.value)}
+                disabled={!campaignId}
+                placeholder="email;first_name;organization;send_order…"
+                className="min-h-28 font-mono text-xs"
+                data-testid="import-contacts-paste"
+              />
+              <p className="text-xs text-muted-foreground">
+                Поддерживаются разделители: точка с запятой, запятая и табуляция. Данные очищаются из поля сразу после разбора.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!campaignId || !pastedText.trim()}
+                onClick={handlePaste}
+                data-testid="import-contacts-paste-parse"
+              >
+                Разобрать вставленные данные
+              </Button>
             </div>
           </div>
         )}

@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw, Clock, Pencil } from "lucide-react";
-import { useEmailCampaigns } from "@/hooks/useEmailCampaigns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw, Clock, Pencil, Zap } from "lucide-react";
+import { useEmailCampaigns, type EmailCampaign } from "@/hooks/useEmailCampaigns";
 import { CampaignEditor } from "./CampaignEditor";
 import { buildEditorInitial, isCampaignEditable } from "@/lib/mailing/campaignEditMode";
 import { CampaignReport } from "./CampaignReport";
@@ -18,20 +22,73 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface Props {
   scope: "platform" | "org";
   organizationId: string | null;
 }
 
+function moscowDateAfter(daysAhead: number): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(Date.now() + daysAhead * 86_400_000));
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${byType.year}-${byType.month}-${byType.day}`;
+}
+
+const FAST_ERROR_LABELS: Record<string, string> = {
+  exactly_203_verified_active_senders_required: "Нужны ровно 203 активных ящика с успешными SMTP- и IMAP-проверками.",
+  exactly_812_unique_recipients_required: "В кампании должно быть ровно 812 уникальных получателей.",
+  unique_send_order_1_to_812_required: "Импортируйте подготовленную базу: в ней должен быть уникальный send_order от 1 до 812.",
+  fresh_inbox_seed_required: "Нет свежего контрольного письма во Входящих. Сначала выполните seed-тест.",
+  deliverability_degraded_after_clean_seed: "После успешного seed-теста появился spam/missing/failed. Очередь не создана.",
+  deliverability_check_unavailable: "Мониторинг доставляемости недоступен. Очередь не создана — повторите проверку позже.",
+  unresolved_recipient_variables: "У части получателей не заполнены переменные, используемые в теме или письме.",
+  campaign_queue_already_exists: "Для кампании уже создана очередь отправки.",
+};
+
 export function CampaignsManager({ scope, organizationId }: Props) {
   const { campaigns, loading, refresh, remove, launch } = useEmailCampaigns(scope, organizationId);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<ReturnType<typeof buildEditorInitial> | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
+  const [fastCampaign, setFastCampaign] = useState<EmailCampaign | null>(null);
+  const [fastStartDate, setFastStartDate] = useState(() => moscowDateAfter(1));
+  const [fastAttested, setFastAttested] = useState(false);
+  const [fastPreparing, setFastPreparing] = useState(false);
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
   const [verifiedSender, setVerifiedSender] = useState<VerifiedSenderLike | null>(null);
+
+  const prepareFastCampaign = async () => {
+    if (!fastCampaign || !fastAttested || !fastStartDate) return;
+    setFastPreparing(true);
+    try {
+      const { error: attestError } = await (supabase as any).rpc("attest_cold_outreach_campaign", {
+        p_campaign_id: fastCampaign.id,
+      });
+      if (attestError) throw attestError;
+
+      const { data, error } = await supabase.functions.invoke("prepare-fast-campaign", {
+        body: { campaign_id: fastCampaign.id, start_date_msk: fastStartDate },
+      });
+      const code = data?.error as string | undefined;
+      if (error || code) throw new Error(code || error?.message || "prepare_fast_campaign_failed");
+      toast.success(`Очередь создана: ${data.total} писем, максимум ${data.dailyMaximum} в день`);
+      setFastCampaign(null);
+      setFastAttested(false);
+      await refresh();
+    } catch (error: any) {
+      const code = String(error?.message || "prepare_fast_campaign_failed");
+      toast.error(FAST_ERROR_LABELS[code] || `Не удалось создать очередь: ${code}`);
+    } finally {
+      setFastPreparing(false);
+    }
+  };
 
   // Проверенный отправитель организации: активный + smtp_status='ok'.
   // Читается tenant-scoped (RLS ограничивает строки организацией).
@@ -153,6 +210,22 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    {scope === "org" && c.status === "draft" && c.total_recipients === 812 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        data-testid={`campaign-prepare-fast-${c.id}`}
+                        onClick={() => {
+                          setFastCampaign(c);
+                          setFastStartDate(moscowDateAfter(1));
+                          setFastAttested(false);
+                        }}
+                      >
+                        <Zap className="w-3 h-3" />
+                        812 / 2 дня
+                      </Button>
+                    )}
                     {(() => {
                       const action = campaignLaunchAction(c.status, !!stuck);
                       if (action === "none") return null;
@@ -218,6 +291,60 @@ export function CampaignsManager({ scope, organizationId }: Props) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!fastCampaign} onOpenChange={(open) => !open && !fastPreparing && setFastCampaign(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Контролируемая отправка на 812 адресов</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
+              <p><b>203 ящика × 2 письма в день × 2 дня = 812 писем.</b></p>
+              <p>Общий лимит домена: 406 писем в день, окно 09:00–20:00 МСК.</p>
+              <p>Один отправитель пишет не чаще двух раз в день, интервал — не менее 5 часов.</p>
+              <p>При spam, missing, SMTP/IMAP-ошибке или ухудшении seed-контроля очередь ставится на паузу.</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="fast-start-date">Первый день отправки (МСК)</Label>
+              <Input
+                id="fast-start-date"
+                type="date"
+                value={fastStartDate}
+                min={moscowDateAfter(1)}
+                onChange={(event) => setFastStartDate(event.target.value)}
+                data-testid="fast-campaign-start-date"
+              />
+            </div>
+            <label className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer">
+              <Checkbox
+                checked={fastAttested}
+                onCheckedChange={(value) => setFastAttested(!!value)}
+                data-testid="fast-campaign-attestation"
+              />
+              <span>
+                Подтверждаю профильность базы и корректность отправителя; в письме есть понятный способ
+                отказаться или отметить «неактуально», а ответы и отказы будут обработаны.
+              </span>
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Создание очереди возможно только после проверки 203 ящиков, импорта ровно 812 уникальных
+              адресов и свежего попадания контрольного письма во Входящие.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={fastPreparing} onClick={() => setFastCampaign(null)}>
+              Отмена
+            </Button>
+            <Button
+              disabled={!fastAttested || !fastStartDate || fastPreparing}
+              onClick={prepareFastCampaign}
+              data-testid="fast-campaign-prepare-button"
+            >
+              {fastPreparing ? "Проверка и создание…" : "Проверить и создать очередь"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CampaignEditor
         key={editing?.id || "new"}

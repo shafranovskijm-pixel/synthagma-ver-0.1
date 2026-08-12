@@ -55,7 +55,8 @@ export interface ImportPlan {
   customKeys: string[];
 }
 
-const EMAIL_RE = /^[^\s@,;]+@[^\s@,;.]+\.[a-zA-Z]{2,}$/;
+// Allow institutional subdomains such as user@mail.region.ru.
+const EMAIL_RE = /^[^\s@,;]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
 
 export const normalizeEmail = (v: unknown) => String(v ?? "").trim().toLowerCase();
 export const isValidEmail = (v: unknown) => EMAIL_RE.test(normalizeEmail(v));

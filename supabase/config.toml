@@ -175,4 +175,7 @@ verify_jwt = false
 [functions.mailing-deliverability-worker]
 verify_jwt = false
 
+[functions.mailing-campaign-worker]
+verify_jwt = false
+
 

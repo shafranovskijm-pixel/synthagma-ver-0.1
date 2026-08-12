@@ -1,5 +1,4 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { LANDING_DEMO_KINESCOPE_ID } from "@/constants/landing";
 
 interface Props {
@@ -12,9 +11,9 @@ export function DemoVideoDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-0">
-        <VisuallyHidden>
+        <div className="sr-only">
           <DialogTitle>Демо СИНТАГМЫ</DialogTitle>
-        </VisuallyHidden>
+        </div>
         <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
           {LANDING_DEMO_KINESCOPE_ID ? (
             <iframe

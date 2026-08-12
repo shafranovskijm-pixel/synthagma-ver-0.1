@@ -38,6 +38,7 @@ describe("mailing contacts import", () => {
 
   it("валидирует email", () => {
     expect(isValidEmail("a@b.ru")).toBe(true);
+    expect(isValidEmail("person@mail.region.ru")).toBe(true);
     expect(isValidEmail("broken-email")).toBe(false);
     expect(isValidEmail("a@b")).toBe(false);
   });

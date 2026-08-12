@@ -10,7 +10,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ReqBody { campaignId: string; recipientId: string; }
+interface ReqBody {
+  campaignId: string;
+  recipientId: string;
+  jobId?: string;
+  claimToken?: string;
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -36,11 +41,16 @@ serve(async (req: Request) => {
 
   let recipientId: string | null = null;
   let campaignId: string | null = null;
+  let jobId: string | null = null;
+  let claimToken: string | null = null;
+  let queuedSenderId: string | null = null;
 
   try {
     const body: ReqBody = await req.json();
     recipientId = body.recipientId;
     campaignId = body.campaignId;
+    jobId = typeof body.jobId === "string" ? body.jobId : null;
+    claimToken = typeof body.claimToken === "string" ? body.claimToken : null;
     if (!recipientId || !campaignId) {
       return new Response(JSON.stringify({ error: "campaignId & recipientId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -59,6 +69,23 @@ serve(async (req: Request) => {
       .single();
     if (rErr || !recipient) throw new Error("Получатель не найден");
 
+    if (jobId) {
+      if (!claimToken) throw new Error("claim token required");
+      const { data: job, error: jobError } = await admin
+        .from("mailing_send_jobs")
+        .select("id,campaign_id,recipient_id,sender_id,status,claim_token")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (jobError || !job) throw new Error("send job not found");
+      if (job.campaign_id !== campaignId || job.recipient_id !== recipientId) {
+        throw new Error("send job mismatch");
+      }
+      if (job.status !== "claimed" || job.claim_token !== claimToken) {
+        throw new Error("send job claim is not active");
+      }
+      queuedSenderId = job.sender_id;
+    }
+
     // ============ Suppression check ============
     const scopeKey = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
     const { data: isSupp } = await admin.rpc("is_email_suppressed", {
@@ -75,13 +102,18 @@ serve(async (req: Request) => {
       await admin.from("email_campaigns").update({
         failed_count: (c2?.failed_count || 0) + 1,
       }).eq("id", campaignId);
+      if (jobId) await admin.from("mailing_send_jobs").update({
+        status: "suppressed", last_error_category: "suppressed", last_error: null,
+      }).eq("id", jobId).eq("status", "claimed");
       return new Response(JSON.stringify({ success: false, suppressed: true }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ============ Broadcast companies db check (не отправляем повторно) ============
-    {
+    // Global legacy history is not an organization-scoped suppression list.
+    // Fast outreach already guarantees campaign-level uniqueness and still
+    // respects the real scope-specific suppression check above.
+    if (!jobId) {
       const { data: alreadySent } = await admin
         .from("broadcast_companies_db")
         .select("email")
@@ -97,6 +129,9 @@ serve(async (req: Request) => {
         await admin.from("email_campaigns").update({
           failed_count: (c2?.failed_count || 0) + 1,
         }).eq("id", campaignId);
+        if (jobId) await admin.from("mailing_send_jobs").update({
+          status: "cancelled", last_error_category: "already_sent", last_error: null,
+        }).eq("id", jobId).eq("status", "claimed");
         return new Response(JSON.stringify({ success: false, alreadyInBroadcastDb: true }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -120,14 +155,14 @@ serve(async (req: Request) => {
         from_email: m ? m[2].trim() : fromEnv,
         from_name: m ? m[1].trim() : (campaign.from_name || "Sintagma"),
       };
-    } else if ((campaign as any).sender_id) {
+    } else if (queuedSenderId || (campaign as any).sender_id) {
       // org-scope, новый путь: подключённый аккаунт из mailing_senders.
       // organization_id / is_active / smtp_status проверяются на сервере,
       // from_email берётся ТОЛЬКО из аккаунта, секрет — только через RPC.
       const { data: sender, error: sndErr } = await admin
         .from("mailing_senders")
         .select("id, organization_id, is_active, smtp_status, from_name")
-        .eq("id", (campaign as any).sender_id)
+        .eq("id", queuedSenderId || (campaign as any).sender_id)
         .maybeSingle();
       if (sndErr) throw new Error("Ошибка получения отправителя");
       if (!sender) throw new Error("Отправитель не найден");
@@ -384,6 +419,18 @@ serve(async (req: Request) => {
       ? `${campaign.from_name} <${smtp.from_email}>`
       : undefined;
 
+    if (jobId) {
+      const { data: transitioned, error: transitionError } = await admin
+        .from("mailing_send_jobs")
+        .update({ status: "dispatching" })
+        .eq("id", jobId)
+        .eq("status", "claimed")
+        .eq("claim_token", claimToken)
+        .select("id")
+        .maybeSingle();
+      if (transitionError || !transitioned) throw new Error("send job claim was lost");
+    }
+
     await sendSmtpEmail(smtp, {
       to: recipient.email,
       subject: personalizedSubject,
@@ -407,6 +454,12 @@ serve(async (req: Request) => {
       sent_at: new Date().toISOString(),
       error: null,
     }).eq("id", recipientId);
+    if (jobId) await admin.from("mailing_send_jobs").update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      last_error_category: null,
+      last_error: null,
+    }).eq("id", jobId).eq("status", "dispatching");
 
     // Записываем в базу компаний рассылок (чтобы повторно не слать)
     try {
@@ -446,10 +499,17 @@ serve(async (req: Request) => {
             failed_count: (c2?.failed_count || 0) + 1,
           }).eq("id", campaignId);
         }
+        if (jobId) {
+          await admin.from("mailing_send_jobs").update({
+            status: "failed",
+            last_error_category: "send_failed",
+            last_error: msg.slice(0, 500),
+          }).eq("id", jobId).in("status", ["claimed", "dispatching"]);
+        }
       } catch (_) { /* ignore */ }
     }
 
-    return new Response(JSON.stringify({ success: false, error: msg }), {
+    return new Response(JSON.stringify({ success: false, error: msg, error_category: "send_failed" }), {
       status: 200, // мягкая ошибка — воркер продолжает
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

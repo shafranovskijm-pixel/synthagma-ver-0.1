@@ -24,6 +24,10 @@ export interface EmailCampaign {
   scheduled_at: string | null;
   started_at: string | null;
   completed_at: string | null;
+  campaign_mode?: "permission_marketing" | "cold_outreach";
+  delivery_mode?: "standard" | "control_20" | "fast_2_day";
+  operator_attested_at?: string | null;
+  paused_reason?: string | null;
   created_at: string;
 }
 

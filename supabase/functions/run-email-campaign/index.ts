@@ -121,6 +121,15 @@ serve(async (req: Request) => {
       mailingSenderId = sender.id as string;
     }
 
+    if ((campaign as any).delivery_mode === "fast_2_day") {
+      return json({ error: "fast_2_day campaigns must use prepare-fast-campaign" }, 409);
+    }
+    const isColdOutreach = (campaign as any).campaign_mode === "cold_outreach";
+    if (isColdOutreach && !(campaign as any).operator_attested_at) {
+      return json({ error: "cold_outreach_attestation_required" }, 400);
+    }
+
+    if (!isColdOutreach) {
     // ============ Consent gate (P0 follow-up) ============
     // Initial user launch: явное заявление авторизованного пользователя в body.
     // Resume пользователем (paused / зависший sending) и любой service-role
@@ -152,6 +161,7 @@ serve(async (req: Request) => {
         console.error("consent confirmation failed", consentErr);
         return json({ error: "Не удалось записать подтверждение согласия" }, 500);
       }
+    }
     }
 
     // ============ Pre-materialize content / target checks ============

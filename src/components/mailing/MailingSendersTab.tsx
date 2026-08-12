@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plus, AtSign, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { Plus, AtSign, ShieldCheck, ShieldAlert, Loader2, Eye, EyeOff, ListPlus } from "lucide-react";
 import { OrgSmtpSettings } from "@/components/organization/sales/OrgSmtpSettings";
 import {
   SENDER_PRESETS,
@@ -36,6 +37,7 @@ import {
   validateSenderDraft,
   validateStep,
 } from "@/lib/mailing/senderPresets";
+import { chunkSenderRows, parseSenderBatch, senderRowsForRpc } from "@/lib/mailing/senderBatch";
 
 const STEPS: { key: WizardStep; label: string }[] = [
   { key: "preset", label: "Пресет" },
@@ -102,6 +104,20 @@ export function MailingSendersTab({ organizationId }: { organizationId: string |
   const [saving, setSaving] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchRaw, setBatchRaw] = useState("");
+  const [batchVisible, setBatchVisible] = useState(false);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchTesting, setBatchTesting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
+
+  const batchPreview = useMemo(() => {
+    try {
+      return { parsed: parseSenderBatch(batchRaw, 500), error: "" };
+    } catch (error) {
+      return { parsed: null, error: (error as Error).message };
+    }
+  }, [batchRaw]);
 
   const load = async () => {
     if (!organizationId) return;
@@ -186,10 +202,116 @@ export function MailingSendersTab({ organizationId }: { organizationId: string |
     void load();
   };
 
+  const importBatch = async () => {
+    if (!organizationId || !batchPreview.parsed?.rows.length) return;
+    if (batchPreview.parsed.invalidLines.length) {
+      toast.error(`Исправьте строки: ${batchPreview.parsed.invalidLines.slice(0, 10).join(", ")}`);
+      return;
+    }
+    const rpcRows = senderRowsForRpc(batchPreview.parsed.rows);
+    // Clear visible secrets before the first network request. They are never persisted locally.
+    setBatchRaw("");
+    setBatchBusy(true);
+    let created = 0;
+    let existing = 0;
+    let invalid = 0;
+    try {
+      for (const chunk of chunkSenderRows(rpcRows, 50)) {
+        const { data, error } = await (supabase as any).rpc("import_mailing_senders_batch", {
+          p_organization_id: organizationId,
+          p_rows: chunk,
+        });
+        if (error) throw error;
+        created += Number(data?.created || 0);
+        existing += Number(data?.existing || 0);
+        invalid += Number(data?.invalid || 0);
+      }
+      toast.success(`Подключено: ${created}; уже были: ${existing}; отклонено: ${invalid}. Новые ящики выключены до тестов.`);
+      setBatchOpen(false);
+      await load();
+    } catch (error) {
+      toast.error(`Пакетное подключение не завершено: ${(error as Error).message}`);
+    } finally {
+      rpcRows.forEach((row) => { row.password = ""; });
+      setBatchBusy(false);
+    }
+  };
+
+  const testAllSenders = async () => {
+    const candidates = rows.filter((row) => row.smtp_status !== "ok" || row.imap_status !== "ok");
+    if (!candidates.length) {
+      toast.success("Все отправители уже прошли SMTP/IMAP-проверку");
+      return;
+    }
+    setBatchTesting(true);
+    setBatchProgress({ done: 0, total: candidates.length });
+    let cursor = 0;
+    let passed = 0;
+    let failed = 0;
+    const worker = async () => {
+      while (cursor < candidates.length) {
+        const sender = candidates[cursor++];
+        let ok = true;
+        for (const mode of ["smtp", "imap"] as const) {
+          const { data, error } = await supabase.functions.invoke("mailing-sender-test", {
+            body: { sender_id: sender.id, mode },
+          });
+          if (error || data?.success !== true) ok = false;
+        }
+        if (ok) passed += 1;
+        else failed += 1;
+        setBatchProgress((progress) => ({ ...progress, done: progress.done + 1 }));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(5, candidates.length) }, () => worker()));
+    setBatchTesting(false);
+    if (failed) toast.warning(`Проверено: ${candidates.length}; успешно: ${passed}; с ошибкой: ${failed}`);
+    else toast.success(`Все ${passed} ящиков прошли SMTP/IMAP-проверку`);
+    await load();
+  };
+
+  const activateVerified = async () => {
+    if (!organizationId) return;
+    const { data, error } = await (supabase as any).rpc("activate_verified_mailing_senders", {
+      p_organization_id: organizationId,
+    });
+    if (error) {
+      toast.error("Не удалось активировать проверенные ящики");
+      return;
+    }
+    toast.success(`Активировано ящиков: ${Number(data || 0)}`);
+    await load();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="flex-1 font-display text-xl font-semibold">Отправители</h2>
+        <Button
+          variant="outline"
+          onClick={() => setBatchOpen(true)}
+          className="gap-1"
+          disabled={!organizationId || batchBusy || batchTesting}
+          data-testid="sender-batch-open"
+        >
+          <ListPlus className="h-4 w-4" /> Пакетное подключение
+        </Button>
+        <Button
+          variant="outline"
+          onClick={testAllSenders}
+          disabled={!rows.length || batchTesting || batchBusy}
+          data-testid="sender-test-all"
+        >
+          {batchTesting ? `Проверка ${batchProgress.done}/${batchProgress.total}` : "Проверить все"}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={activateVerified}
+          disabled={!rows.some((row) => !row.is_active && row.smtp_status === "ok" && row.imap_status === "ok") || batchTesting}
+          data-testid="sender-activate-verified"
+        >
+          Активировать проверенные
+        </Button>
         <Button
           onClick={() => {
             reset();
@@ -489,6 +611,72 @@ export function MailingSendersTab({ organizationId }: { organizationId: string |
                 Готово
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={batchOpen}
+        onOpenChange={(value) => {
+          if (value) setBatchOpen(true);
+          else {
+            setBatchOpen(false);
+            setBatchRaw("");
+            setBatchVisible(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Пакетное подключение отправителей</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              По одному ящику на строку: <code>email пароль</code>. Данные отправляются пакетами до 50 строк,
+              пароли сразу шифруются сервером и очищаются из формы. Новые ящики остаются выключенными до SMTP/IMAP-проверки.
+            </p>
+            <div className="relative">
+              <Textarea
+                rows={12}
+                value={batchRaw}
+                onChange={(event) => setBatchRaw(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                className="pr-12 font-mono text-xs"
+                style={batchVisible ? undefined : ({ WebkitTextSecurity: "disc" } as any)}
+                placeholder="sender@torgi.com.ru пароль"
+                data-testid="sender-batch-input"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1"
+                onClick={() => setBatchVisible((value) => !value)}
+                aria-label={batchVisible ? "Скрыть данные" : "Показать данные"}
+              >
+                {batchVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            {batchPreview.error && <p className="text-sm text-destructive">{batchPreview.error}</p>}
+            {batchPreview.parsed && (
+              <p className="text-sm text-muted-foreground" data-testid="sender-batch-summary">
+                Готово к подключению: {batchPreview.parsed.rows.length}; дубликатов: {batchPreview.parsed.duplicateCount};
+                некорректных строк: {batchPreview.parsed.invalidLines.length}.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBatchOpen(false); setBatchRaw(""); }} disabled={batchBusy}>
+              Отмена
+            </Button>
+            <Button
+              onClick={importBatch}
+              disabled={batchBusy || !batchPreview.parsed?.rows.length || !!batchPreview.parsed?.invalidLines.length}
+              data-testid="sender-batch-submit"
+            >
+              {batchBusy ? "Подключение…" : `Подключить (${batchPreview.parsed?.rows.length || 0})`}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
