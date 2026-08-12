@@ -12,6 +12,7 @@ const imap = read("supabase/functions/_shared/imap-mini.ts");
 const sender = read("supabase/functions/send-campaign-email/index.ts");
 const campaignWorker = read("supabase/functions/mailing-campaign-worker/index.ts");
 const migration = read("supabase/migrations/20260812210000_mailing_campaign_reply_pipeline.sql");
+const rlsMigration = read("supabase/migrations/20260812235500_mailing_reply_rls_org_access.sql");
 const repliesUi = read("src/components/mailing/MailingRepliesTab.tsx");
 
 describe("campaign reply classifier", () => {
@@ -83,5 +84,11 @@ describe("campaign reply pipeline hardening", () => {
   it("chunks sender ids so readiness queries stay below proxy URL limits", () => {
     expect(repliesUi).toContain("Math.ceil(senderIds.length / 50)");
     expect(repliesUi).not.toContain('.in("sender_id", senderIds)');
+  });
+
+  it("lets organization users read only reply data for their current organization", () => {
+    expect(rlsMigration).toContain("s.organization_id = public.current_organization_id()");
+    expect(rlsMigration).toContain("organization_id = public.current_organization_id()");
+    expect(rlsMigration).toContain("public.can_access_organization(organization_id, 'email.manage')");
   });
 });
