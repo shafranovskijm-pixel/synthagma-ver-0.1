@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   classifyMailingReply,
   extractLatestReplyText,
 } from "../../../../supabase/functions/_shared/mailing-reply-classifier";
+import { buildProgramReplyTemplate } from "../programReplyTemplate";
 
-const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const read = (path: string) => readFileSync(resolve(repoRoot, path), "utf8");
 const worker = read("supabase/functions/mailing-reply-worker/index.ts");
 const imap = read("supabase/functions/_shared/imap-mini.ts");
 const sender = read("supabase/functions/send-campaign-email/index.ts");
 const campaignWorker = read("supabase/functions/mailing-campaign-worker/index.ts");
 const migration = read("supabase/migrations/20260812210000_mailing_campaign_reply_pipeline.sql");
 const rlsMigration = read("supabase/migrations/20260812235500_mailing_reply_rls_org_access.sql");
+const programHoursMigration = read("supabase/migrations/20260813033000_mailing_reply_all_program_hours.sql");
 const repliesUi = read("src/components/mailing/MailingRepliesTab.tsx");
 
 describe("campaign reply classifier", () => {
@@ -32,6 +36,16 @@ describe("campaign reply classifier", () => {
       interestHours: 150,
     });
   });
+
+  it.each([50, 150, 250, 500, 1000] as const)(
+    "recognizes the advertised %i-hour program",
+    (hours) => {
+      expect(classifyMailingReply({ bodyText: `${hours} часов` })).toMatchObject({
+        classification: "interested",
+        interestHours: hours,
+      });
+    },
+  );
 
   it("treats an explicit not-actual answer as an unsubscribe", () => {
     expect(classifyMailingReply({ bodyText: "Неактуально, пожалуйста, отпишите нас." }).classification)
@@ -58,6 +72,16 @@ describe("campaign reply classifier", () => {
 });
 
 describe("campaign reply pipeline hardening", () => {
+  it("requests the participant data required for a real group import", () => {
+    const draft = buildProgramReplyTemplate({ remoteName: "Иван", interestHours: 250 });
+    expect(draft).toContain("ФИО каждого участника полностью");
+    expect(draft).toContain("личный email каждого участника");
+    expect(draft).toContain("контактный адрес организации не будет автоматически использоваться");
+    expect(draft).toContain("пятидневном блоке 17–21 августа в формате ВКС");
+    expect(draft).toContain("Полный график освоения выбранной программы");
+    expect(draft).not.toContain("вся программа проходит за пять дней");
+  });
+
   it("requires the cron secret before creating a service client", () => {
     expect(worker.indexOf('supplied !== expected')).toBeGreaterThan(-1);
     expect(worker.indexOf('createClient(url, serviceKey)')).toBeGreaterThan(worker.indexOf('supplied !== expected'));
@@ -85,6 +109,10 @@ describe("campaign reply pipeline hardening", () => {
     expect(migration).toContain("TO service_role");
   });
 
+  it("allows every duration advertised by the reviewed reply template", () => {
+    expect(programHoursMigration).toContain("interest_hours IN (50, 150, 250, 500, 1000)");
+  });
+
   it("deduplicates by IMAP UID, suppresses refusals, and never logs reply bodies", () => {
     expect(migration).toContain("UNIQUE (sender_id, imap_uid)");
     expect(worker).toContain('from("email_suppressions").upsert');
@@ -101,6 +129,11 @@ describe("campaign reply pipeline hardening", () => {
     expect(repliesUi).toContain("navigator.clipboard.writeText");
     expect(repliesUi).toContain("ничего не отправляет автоматически");
     expect(repliesUi).not.toContain('functions.invoke("send-mailing-reply"');
+  });
+
+  it("routes the operator from reply candidates to actual student groups", () => {
+    expect(repliesUi).toContain("/organization?tab=students&studentsView=groups");
+    expect(repliesUi).toContain("Открыть фактические группы");
   });
 
   it("lets organization users read only reply data for their current organization", () => {

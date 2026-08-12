@@ -7,7 +7,7 @@ export type MailingReplyClassification =
 
 export interface MailingReplyClassificationResult {
   classification: MailingReplyClassification;
-  interestHours: 50 | 150 | 250 | null;
+  interestHours: 50 | 150 | 250 | 500 | 1000 | null;
   directText: string;
 }
 
@@ -65,8 +65,8 @@ export function classifyMailingReply(input: {
     return { classification: "not_interested", interestHours: null, directText };
   }
 
-  const hours = [...haystack.matchAll(/\b(50|150|250)\s*(?:ч(?:ас(?:а|ов)?)?\.?\b)?/giu)]
-    .map((match) => Number(match[1]) as 50 | 150 | 250);
+  const hours = [...haystack.matchAll(/\b(1000|500|250|150|50)\s*(?:ч(?:ас(?:а|ов)?)?\.?\b)?/giu)]
+    .map((match) => Number(match[1]) as 50 | 150 | 250 | 500 | 1000);
   const uniqueHours = [...new Set(hours)];
   const interestHours = uniqueHours.length === 1 ? uniqueHours[0] : null;
   // The campaign asks recipients to reply with the single word "программа".
