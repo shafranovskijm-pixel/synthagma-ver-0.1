@@ -114,10 +114,10 @@ serve(async (req: Request) => {
     stage = "recipients";
     const { data: recipients, error: recipientsError } = await admin
       .from("email_campaign_recipients")
-      .select("id,email,recipient_name,first_name,last_name,organization,position,city,custom_data,status,created_at")
+      .select("id,email,recipient_name,first_name,last_name,organization,position,city,custom_data,status")
       .eq("campaign_id", campaignId)
       .eq("status", "pending")
-      .order("created_at", { ascending: true });
+      .order("id", { ascending: true });
     if (recipientsError || !recipients?.length) return jsonError(requestId, stage, "no_pending_recipients", 400);
 
     const keys = templateKeys(campaign.subject, campaign.html_body);

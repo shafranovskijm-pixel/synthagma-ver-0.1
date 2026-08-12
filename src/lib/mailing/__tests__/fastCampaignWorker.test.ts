@@ -10,6 +10,11 @@ const manager = read("src/components/admin/broadcast/CampaignsManager.tsx");
 const contactsDialog = read("src/components/mailing/ImportContactsDialog.tsx");
 
 describe("fast campaign worker", () => {
+  it("orders pending recipients by an existing stable column", () => {
+    expect(prepare).toContain('.order("id", { ascending: true })');
+    expect(prepare).not.toContain("custom_data,status,created_at");
+  });
+
   it("requires a dedicated cron secret and claims only one job per minute", () => {
     expect(worker).toContain("MAILING_CAMPAIGN_CRON_SECRET");
     expect(worker).toContain("p_batch_size: 1");
