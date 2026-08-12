@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { buildProgramReplyTemplate } from "@/lib/mailing/programReplyTemplate";
+import { summarizeReplyContacts } from "@/lib/mailing/replyCandidates";
 import { loadAllReportPages } from "@/lib/mailing/reportPagination";
 
 interface Props {
@@ -37,6 +38,7 @@ interface ReplyRow {
   subject: string | null;
   body_text: string | null;
   received_at: string;
+  updated_at: string;
   classification: ReplyClassification;
   interest_hours: number | null;
   review_status: ReviewStatus;
@@ -54,7 +56,7 @@ const statusLabel: Record<ReviewStatus, string> = {
   new: "Новый",
   qualified: "Подтверждён",
   contacted: "Связались",
-  enrolled: "В группе",
+  enrolled: "Отмечен для группы",
   closed: "Закрыт",
 };
 
@@ -81,7 +83,7 @@ export function MailingRepliesTab({ organizationId }: Props) {
       loadAllReportPages(async (from, to) => {
         const { data, error } = await supabase
           .from("mailing_campaign_replies")
-          .select("id,campaign_id,sender_id,remote_email,remote_name,subject,body_text,received_at,classification,interest_hours,review_status")
+          .select("id,campaign_id,sender_id,remote_email,remote_name,subject,body_text,received_at,updated_at,classification,interest_hours,review_status")
           .eq("organization_id", organizationId)
           .order("received_at", { ascending: false })
           .order("id", { ascending: true })
@@ -138,12 +140,7 @@ export function MailingRepliesTab({ organizationId }: Props) {
     void load();
   }, [load]);
 
-  const summary = useMemo(() => ({
-    interested: rows.filter((row) => row.classification === "interested").length,
-    enrolled: rows.filter((row) => row.review_status === "enrolled").length,
-    needsReview: rows.filter((row) => row.classification === "needs_review" && row.review_status === "new").length,
-    stopped: rows.filter((row) => row.classification === "unsubscribe" || row.classification === "not_interested").length,
-  }), [rows]);
+  const summary = useMemo(() => summarizeReplyContacts(rows), [rows]);
 
   const visibleRows = useMemo(
     () => filter === "all" ? rows : rows.filter((row) => row.classification === filter),
@@ -162,8 +159,9 @@ export function MailingRepliesTab({ organizationId }: Props) {
       toast.error("Не удалось изменить статус ответа");
       return;
     }
+    const updatedAt = new Date().toISOString();
     setRows((current) => current.map((item) => item.id === row.id
-      ? { ...item, review_status: reviewStatus }
+      ? { ...item, review_status: reviewStatus, updated_at: updatedAt }
       : item));
   };
 
@@ -188,7 +186,7 @@ export function MailingRepliesTab({ organizationId }: Props) {
   };
 
   const exportCandidates = () => {
-    const candidates = rows.filter((row) => row.classification === "interested" && row.review_status !== "closed");
+    const candidates = summary.candidates;
     const csv = [
       ["Дата", "Имя", "Email", "Программа, часов", "Кампания", "Статус"],
       ...candidates.map((row) => [
@@ -213,7 +211,7 @@ export function MailingRepliesTab({ organizationId }: Props) {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Есть интерес", summary.interested],
-          ["В группе", summary.enrolled],
+          ["Отмечены для группы", summary.enrolled],
           ["Нужно проверить", summary.needsReview],
           ["Стоп-лист", summary.stopped],
         ].map(([label, value]) => (
@@ -342,7 +340,7 @@ export function MailingRepliesTab({ organizationId }: Props) {
                   )}
                   {row.review_status === "enrolled" && (
                     <p className="mt-2 flex items-center gap-1 text-xs text-primary">
-                      <UserCheck className="h-3.5 w-3.5" /> Добавлен в рабочую группу
+                      <UserCheck className="h-3.5 w-3.5" /> Отмечен кандидатом для рабочей группы
                     </p>
                   )}
                 </div>
