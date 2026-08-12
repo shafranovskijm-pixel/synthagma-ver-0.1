@@ -96,6 +96,13 @@ describe("campaign reply pipeline hardening", () => {
     expect(repliesUi).not.toContain('.in("sender_id", senderIds)');
   });
 
+  it("prepares a human-reviewed response without sending it from the browser", () => {
+    expect(repliesUi).toContain("buildProgramReplyTemplate");
+    expect(repliesUi).toContain("navigator.clipboard.writeText");
+    expect(repliesUi).toContain("ничего не отправляет автоматически");
+    expect(repliesUi).not.toContain('functions.invoke("send-mailing-reply"');
+  });
+
   it("lets organization users read only reply data for their current organization", () => {
     expect(rlsMigration).toContain("s.organization_id = public.current_organization_id()");
     expect(rlsMigration).toContain("organization_id = public.current_organization_id()");

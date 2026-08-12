@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Inbox, Loader2, RefreshCw, UserCheck } from "lucide-react";
+import { ClipboardCopy, Download, Inbox, Loader2, MessageSquareReply, RefreshCw, UserCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { buildProgramReplyTemplate } from "@/lib/mailing/programReplyTemplate";
 
 interface Props {
   organizationId: string | null;
@@ -65,6 +67,8 @@ export function MailingRepliesTab({ organizationId }: Props) {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ReplyClassification | "all">("all");
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftText, setDraftText] = useState("");
 
   const load = useCallback(async () => {
     if (!organizationId) {
@@ -155,6 +159,26 @@ export function MailingRepliesTab({ organizationId }: Props) {
     setRows((current) => current.map((item) => item.id === row.id
       ? { ...item, review_status: reviewStatus }
       : item));
+  };
+
+  const openReplyDraft = (row: ReplyRow) => {
+    setDraftId(row.id);
+    setDraftText(buildProgramReplyTemplate({
+      remoteName: row.remote_name,
+      interestHours: row.interest_hours,
+    }));
+  };
+
+  const copyReplyDraft = async () => {
+    if (!draftText.trim()) return;
+    try {
+      await navigator.clipboard.writeText(draftText);
+      toast.success("Ответ скопирован", {
+        description: "Проверьте получателя и отправьте текст из исходного почтового ящика.",
+      });
+    } catch {
+      toast.error("Не удалось скопировать ответ");
+    }
   };
 
   const exportCandidates = () => {
@@ -271,6 +295,45 @@ export function MailingRepliesTab({ organizationId }: Props) {
                     <summary className="cursor-pointer text-muted-foreground">{row.subject || "Ответ без темы"}</summary>
                     <p className="mt-2 whitespace-pre-wrap rounded-lg bg-muted/40 p-3">{row.body_text || "Текст ответа отсутствует"}</p>
                   </details>
+                  {(row.classification === "interested" || row.classification === "needs_review")
+                    && row.review_status !== "enrolled" && row.review_status !== "closed" && (
+                    <div className="mt-3">
+                      {draftId !== row.id ? (
+                        <Button variant="outline" size="sm" onClick={() => openReplyDraft(row)}>
+                          <MessageSquareReply className="mr-1 h-4 w-4" /> Подготовить ответ с программой
+                        </Button>
+                      ) : (
+                        <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-medium">Черновик ответа — перед отправкой проверьте получателя и текст</p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              aria-label="Закрыть черновик ответа"
+                              onClick={() => setDraftId(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={draftText}
+                            onChange={(event) => setDraftText(event.target.value)}
+                            className="min-h-[260px] bg-background"
+                            aria-label={`Черновик ответа для ${row.remote_email}`}
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button size="sm" onClick={() => void copyReplyDraft()} disabled={!draftText.trim()}>
+                              <ClipboardCopy className="mr-1 h-4 w-4" /> Скопировать ответ
+                            </Button>
+                            <p className="text-xs text-muted-foreground">
+                              Кнопка только копирует текст и ничего не отправляет автоматически.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {row.review_status === "enrolled" && (
                     <p className="mt-2 flex items-center gap-1 text-xs text-primary">
                       <UserCheck className="h-3.5 w-3.5" /> Добавлен в рабочую группу
