@@ -12,6 +12,7 @@ const imap = read("supabase/functions/_shared/imap-mini.ts");
 const sender = read("supabase/functions/send-campaign-email/index.ts");
 const campaignWorker = read("supabase/functions/mailing-campaign-worker/index.ts");
 const migration = read("supabase/migrations/20260812210000_mailing_campaign_reply_pipeline.sql");
+const repliesUi = read("src/components/mailing/MailingRepliesTab.tsx");
 
 describe("campaign reply classifier", () => {
   it("recognizes interest and the requested duration", () => {
@@ -77,5 +78,10 @@ describe("campaign reply pipeline hardening", () => {
     expect(migration).toContain("UNIQUE (sender_id, imap_uid)");
     expect(worker).toContain('from("email_suppressions").upsert');
     expect(worker).not.toMatch(/console\.(?:log|info|warn|error)/);
+  });
+
+  it("chunks sender ids so readiness queries stay below proxy URL limits", () => {
+    expect(repliesUi).toContain("Math.ceil(senderIds.length / 50)");
+    expect(repliesUi).not.toContain('.in("sender_id", senderIds)');
   });
 });

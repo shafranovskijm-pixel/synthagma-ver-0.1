@@ -98,15 +98,21 @@ export function MailingRepliesTab({ organizationId }: Props) {
 
     const senders = senderResult.data || [];
     const senderIds = senders.map((sender) => sender.id);
-    const stateResult = senderIds.length
-      ? await supabase
-          .from("mailing_reply_scan_state")
-          .select("sender_id,baseline_completed,last_error_category")
-          .in("sender_id", senderIds)
-      : { data: [], error: null };
-    if (stateResult.error) toast.error("Не удалось проверить готовность сбора ответов");
+    // Keep each PostgREST URL comfortably below proxy limits when an
+    // organization has hundreds of sender UUIDs.
+    const senderIdChunks = Array.from(
+      { length: Math.ceil(senderIds.length / 50) },
+      (_, index) => senderIds.slice(index * 50, (index + 1) * 50),
+    );
+    const stateResults = await Promise.all(senderIdChunks.map((ids) => supabase
+      .from("mailing_reply_scan_state")
+      .select("sender_id,baseline_completed,last_error_category")
+      .in("sender_id", ids)));
+    if (stateResults.some((result) => result.error)) {
+      toast.error("Не удалось проверить готовность сбора ответов");
+    }
 
-    const states = stateResult.data || [];
+    const states = stateResults.flatMap((result) => result.data || []);
     setRows((replyResult.data || []) as ReplyRow[]);
     setCampaignNames(Object.fromEntries((campaignResult.data || []).map((campaign) => [campaign.id, campaign.name])));
     setSenderEmails(Object.fromEntries(senders.map((sender) => [sender.id, sender.from_email])));
