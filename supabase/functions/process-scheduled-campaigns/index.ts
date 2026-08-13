@@ -33,17 +33,29 @@ serve(async (req: Request) => {
     const results: any[] = [];
     for (const c of due) {
       try {
+        // fail-safe: кампании с очередью mailing_send_jobs управляются новым воркером
+        const { count: managedCount, error: managedErr } = await admin
+          .from("mailing_send_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", c.id);
+        if (managedErr) throw managedErr;
+        if ((managedCount ?? 0) > 0) {
+          results.push({ id: c.id, skipped: true, reason: "managed_by_mailing_send_jobs" });
+          continue;
+        }
+
         // переводим в draft, чтобы run-email-campaign смог запустить
         await admin.from("email_campaigns").update({ status: "draft" }).eq("id", c.id);
         const { error: invErr } = await admin.functions.invoke("run-email-campaign", {
           body: { campaignId: c.id },
         });
         if (invErr) throw invErr;
-        results.push({ id: c.id, name: c.name, started: true });
+        results.push({ id: c.id, started: true });
       } catch (e) {
-        results.push({ id: c.id, name: c.name, started: false, error: (e as Error).message });
+        results.push({ id: c.id, started: false, error: (e as Error).message });
       }
     }
+
 
     return new Response(JSON.stringify({ ok: true, processed: results.length, results }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
