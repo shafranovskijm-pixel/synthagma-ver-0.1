@@ -123,10 +123,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Выберите файл изображения'); return; }
+    if (!courseId) { toast.error('Сначала сохраните курс'); return; }
     setIsUploadingSlideImage(true);
     try {
       const ext = file.name.split('.').pop();
-      const uploadPath = `${courseId || 'temp'}/slide_${currentIndex}_${Date.now()}.${ext}`;
+      const uploadPath = `${courseId}/slide_${currentIndex}_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('course-files').upload(uploadPath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('course-files').getPublicUrl(uploadPath);
