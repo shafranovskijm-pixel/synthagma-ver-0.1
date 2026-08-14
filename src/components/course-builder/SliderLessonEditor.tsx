@@ -9,6 +9,7 @@ import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { PptxPickerDialog } from "./PptxPickerDialog";
 import {
+  presentationObjectExists,
   presentationStorageErrorMessage,
   uploadPresentationWithRetry,
 } from "@/lib/presentations/pptxStorageUpload";
