@@ -101,9 +101,9 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       
       setCurrentIndex(0);
       toast.success(`Загружена презентация с ${slideFiles.length} слайдами`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error uploading PPTX:', err);
-      setError('Ошибка при загрузке файла');
+      setError(err?.message || 'Ошибка при загрузке файла');
     } finally {
       setIsLoading(false);
       setUploadProgress('');
