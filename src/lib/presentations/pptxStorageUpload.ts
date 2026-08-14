@@ -68,3 +68,31 @@ export async function uploadPresentationWithRetry<TError extends StorageUploadEr
 
   return lastResult;
 }
+
+interface StorageListLike {
+  list: (
+    prefix: string,
+    options?: { search?: string; limit?: number },
+  ) => Promise<{ data: { name: string }[] | null; error: unknown }>;
+}
+
+/**
+ * Проверяет, действительно ли объект появился в бакете.
+ * Нужно из-за резервного прокси: файл может дойти до хранилища,
+ * а ответ вернуться повреждённым (HTML/5xx) — тогда клиент видит ложную ошибку.
+ */
+export async function presentationObjectExists(
+  storage: StorageListLike,
+  path: string,
+): Promise<boolean> {
+  const lastSlash = path.lastIndexOf("/");
+  const prefix = lastSlash === -1 ? "" : path.slice(0, lastSlash);
+  const fileName = lastSlash === -1 ? path : path.slice(lastSlash + 1);
+  try {
+    const { data, error } = await storage.list(prefix, { search: fileName, limit: 100 });
+    if (error || !data) return false;
+    return data.some((item) => item.name === fileName);
+  } catch {
+    return false;
+  }
+}
