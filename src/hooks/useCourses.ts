@@ -250,7 +250,10 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   }, [organizationId, invalidateSummaryAndOverview]);
 
   const update = useCallback(async (courseId: string, updates: Partial<Course>): Promise<boolean> => {
-    const success = await updateCourse(courseId, updates);
+    const safeUpdates = (updates as any)?.category_id === "none"
+      ? { ...updates, category_id: null }
+      : updates;
+    const success = await updateCourse(courseId, safeUpdates);
     if (success) {
       toast.success("Курс обновлён");
       setRefreshKey(prev => prev + 1);
