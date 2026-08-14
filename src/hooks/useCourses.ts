@@ -236,7 +236,9 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   ): Promise<Course | null> => {
     if (!organizationId) return null;
 
-    const course = await createCourse(organizationId, title, description, categoryId);
+    // "none" — служебное значение селекта «Без категории», в БД должен уйти null
+    const safeCategoryId = categoryId && categoryId !== "none" ? categoryId : undefined;
+    const course = await createCourse(organizationId, title, description, safeCategoryId);
     if (course) {
       toast.success("Курс создан");
       setRefreshKey(prev => prev + 1);
