@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { getPlanInfo, formatStorageSize, getMinPlanForCategory, SUBSCRIPTION_PLANS } from "../subscriptionPlans";
+import {
+  getPlanInfo,
+  formatStorageSize,
+  getMinPlanForCategory,
+  getSubscriptionInvoiceMonthlyAmount,
+  SUBSCRIPTION_PLANS,
+} from "../subscriptionPlans";
 
 describe("getPlanInfo", () => {
   it("returns correct plan by id", () => {
@@ -54,5 +60,30 @@ describe("SUBSCRIPTION_PLANS structure", () => {
     for (let i = 1; i < prices.length; i++) {
       expect(prices[i]).toBeGreaterThan(prices[i - 1]);
     }
+  });
+});
+
+describe("getSubscriptionInvoiceMonthlyAmount", () => {
+  it("uses the canonical Start price", () => {
+    expect(getSubscriptionInvoiceMonthlyAmount({ plan: "start" })).toBe(4490);
+  });
+
+  it("applies organization-specific monthly price and fixed discount", () => {
+    expect(getSubscriptionInvoiceMonthlyAmount({
+      plan: "start",
+      customPrice: 4000,
+      customDiscount: 500,
+    })).toBe(3500);
+  });
+
+  it("does not produce a negative invoice amount", () => {
+    expect(getSubscriptionInvoiceMonthlyAmount({
+      plan: "start",
+      customDiscount: 5000,
+    })).toBe(0);
+  });
+
+  it("falls back to the canonical Start price for an unknown plan", () => {
+    expect(getSubscriptionInvoiceMonthlyAmount({ plan: "legacy" })).toBe(4490);
   });
 });

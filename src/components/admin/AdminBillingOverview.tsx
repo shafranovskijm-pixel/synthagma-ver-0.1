@@ -25,6 +25,7 @@ const ContractReviewBody = lazyWithRetry(() =>
   import("@/components/signing/ContractReviewBody").then((m) => ({ default: m.ContractReviewBody }))
 );
 import { supabase } from "@/integrations/supabase/client";
+import { getSubscriptionInvoiceMonthlyAmount } from "@/constants/subscriptionPlans";
 
 const NAV_SECTIONS = [
   { value: "all" as const, label: "Все расчёты", icon: FolderOpen, group: "overview" },
@@ -264,7 +265,7 @@ function InvoiceDialog({ h }: any) {
       <DialogContent>
         <DialogHeader><DialogTitle>Сформировать счёт</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          {h.selectedOrg && <div className="p-3 rounded-lg bg-muted/50 text-sm"><div className="font-medium">{h.selectedOrg.name}</div><div className="text-xs text-muted-foreground mt-1">Тариф: {h.selectedOrg.subscription_plan || "start"} · Сумма: {(() => { const P: Record<string, number> = { free: 0, start: 1990, standard: 4990, professional: 9990, maximum: 19990 }; return Math.max(0, (h.selectedOrg.custom_price ?? P[h.selectedOrg.subscription_plan || "start"] ?? 1990) - (h.selectedOrg.custom_discount ?? 0)).toLocaleString("ru-RU"); })()} ₽</div></div>}
+          {h.selectedOrg && <div className="p-3 rounded-lg bg-muted/50 text-sm"><div className="font-medium">{h.selectedOrg.name}</div><div className="text-xs text-muted-foreground mt-1">Тариф: {h.selectedOrg.subscription_plan || "start"} · Сумма: {getSubscriptionInvoiceMonthlyAmount({ plan: h.selectedOrg.subscription_plan, customPrice: h.selectedOrg.custom_price, customDiscount: h.selectedOrg.custom_discount }).toLocaleString("ru-RU")} ₽</div></div>}
           <div className="flex items-center gap-2"><Checkbox id="otherPayer" checked={h.invoiceOtherPayer} onCheckedChange={(v: any) => h.setInvoiceOtherPayer(!!v)} /><Label htmlFor="otherPayer" className="text-sm">Другой плательщик</Label></div>
           {h.invoiceOtherPayer && <div className="space-y-3 p-3 rounded-lg border">
             <div className="space-y-1"><Label className="text-xs">ИНН</Label><div className="flex gap-2"><Input value={h.invoiceBuyerInn} onChange={(e: any) => h.setInvoiceBuyerInn(e.target.value)} placeholder="ИНН" className="text-sm" /><Button size="sm" variant="outline" onClick={() => h.handleSearchByInn(h.invoiceBuyerInn)} disabled={h.innSearching}>{h.innSearching ? "..." : <Search className="w-3.5 h-3.5" />}</Button></div></div>

@@ -23,7 +23,11 @@ export const PLATFORM_CONTRACT_PLANS: SubscriptionPlan[] = [
 const limitLabel = (n: number) => (n === -1 ? "Без ограничений" : String(n));
 
 export function formatRub(value: number): string {
-  return `${Math.round(value).toLocaleString("ru-RU")} ₽`;
+  const hasFraction = !Number.isInteger(value);
+  return `${value.toLocaleString("ru-RU", {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 2,
+  })} ₽`;
 }
 
 function planFeatures(plan: SubscriptionPlan): string[] {
@@ -63,9 +67,12 @@ export function derivePlatformContractDraft(input: {
 
   const monthlyPrice = info.price;
   const discountRate = periodMonths === 12 && monthlyPrice > 0 ? YEARLY_DISCOUNT : 0;
-  const effectiveMonthlyPrice = Math.round(monthlyPrice * (1 - discountRate));
   const grossAmount = monthlyPrice * periodMonths;
-  const totalAmount = effectiveMonthlyPrice * periodMonths;
+  // Apply the annual discount to the full period before rounding. Rounding the
+  // discounted monthly price first makes a 12-month invoice drift by several
+  // rubles (for Start: 45,804 instead of the exact 45,798).
+  const totalAmount = Math.round(grossAmount * (1 - discountRate));
+  const effectiveMonthlyPrice = totalAmount / periodMonths;
   const discountAmount = grossAmount - totalAmount;
 
   const l = info.limits;

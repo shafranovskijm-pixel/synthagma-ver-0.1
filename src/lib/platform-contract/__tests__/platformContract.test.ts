@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PLATFORM_CONTRACT_PLANS,
   derivePlatformContractDraft,
+  formatRub,
   buildPlatformContractPagesHtml,
   platformContractFileName,
   PROJECT_WATERMARK_TEXT,
@@ -34,11 +35,20 @@ describe("платформенный проект договора: тарифы
 
   it("годовой период — скидка YEARLY_DISCOUNT из общего источника", () => {
     const d = draft("standard", 12);
-    const monthly = Math.round(SUBSCRIPTION_PLANS.standard.price * (1 - YEARLY_DISCOUNT));
+    const gross = SUBSCRIPTION_PLANS.standard.price * 12;
+    const total = Math.round(gross * (1 - YEARLY_DISCOUNT));
     expect(d.discountRate).toBe(YEARLY_DISCOUNT);
-    expect(d.effectiveMonthlyPrice).toBe(monthly);
-    expect(d.totalAmount).toBe(monthly * 12);
-    expect(d.discountAmount).toBe(SUBSCRIPTION_PLANS.standard.price * 12 - monthly * 12);
+    expect(d.effectiveMonthlyPrice).toBe(total / 12);
+    expect(d.totalAmount).toBe(total);
+    expect(d.discountAmount).toBe(gross - total);
+  });
+
+  it("годовой Start рассчитывается как 4 490 × 12 × 85% без помесячной погрешности", () => {
+    const d = draft("start", 12);
+    expect(d.effectiveMonthlyPrice).toBe(3816.5);
+    expect(d.totalAmount).toBe(45_798);
+    expect(d.discountAmount).toBe(8_082);
+    expect(formatRub(d.effectiveMonthlyPrice)).toBe("3 816,50 ₽");
   });
 
   it("бесплатный тариф — 0 ₽ и без скидки", () => {

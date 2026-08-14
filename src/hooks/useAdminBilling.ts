@@ -8,7 +8,7 @@ import { ru } from "date-fns/locale";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
-import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
+import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 
 export interface Invoice {
   id: string; invoice_number: string; amount: number; status: string;
@@ -191,11 +191,12 @@ export function useAdminBilling() {
     setGeneratingInvoice(true);
     try {
       const org = selectedOrg;
-      const PLAN_PRICES: Record<string, number> = { free: 0, start: 1990, standard: 4990, professional: 9990, maximum: 19990 };
       const plan = org?.subscription_plan || "start";
-      const basePrice = org?.custom_price ?? PLAN_PRICES[plan] ?? 1990;
-      const discount = org?.custom_discount ?? 0;
-      const amount = Math.max(0, basePrice - discount);
+      const amount = getSubscriptionInvoiceMonthlyAmount({
+        plan,
+        customPrice: org?.custom_price,
+        customDiscount: org?.custom_discount,
+      });
       const year = new Date().getFullYear();
       const { count } = await supabase.from("subscription_invoices").select("*", { count: "exact", head: true }).eq("organization_id", selectedOrgId);
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
