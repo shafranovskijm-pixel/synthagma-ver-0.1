@@ -67,12 +67,21 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       const { error: uploadError } = await uploadPresentationWithRetry(() => (
         supabase.storage
           .from('presentations')
-          .upload(uploadPath, file, { upsert: false })
+          .upload(uploadPath, file, { upsert: true })
       ));
-        
+
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw new Error(presentationStorageErrorMessage(uploadError));
+        // Файл мог дойти до хранилища, а ответ вернуться повреждённым
+        // (резервный прокси / нестабильная сеть) — проверяем факт наличия объекта.
+        const uploaded = await presentationObjectExists(
+          supabase.storage.from('presentations'),
+          uploadPath,
+        );
+        if (!uploaded) {
+          throw new Error(presentationStorageErrorMessage(uploadError));
+        }
+        console.warn('[PPTX] upload error ignored: object exists in storage', uploadPath);
       }
       
       const { data: { publicUrl } } = supabase.storage
