@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlanInfo, type SubscriptionPlan, type PlanLimits } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
+import { getOrganizationStorageUsage } from "@/lib/storage/organizationStorageUsage";
 
 interface SubscriptionLimitsState {
   plan: SubscriptionPlan;
@@ -87,37 +88,10 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       setStudentsCount(Number(capRow?.current_students) || 0);
       setTrainedThisMonth(Number(trainedResult.data) || 0);
 
-      // Calculate storage usage by scanning buckets
+      // Share this request across lesson-level hook mounts. Without the cache,
+      // the course editor multiplied 2 x courseCount Storage list requests.
       try {
-        let totalBytes = 0;
-        const scanPath = async (bucket: string, prefix: string, depth = 0) => {
-          try {
-            const { data: items } = await supabase.storage.from(bucket).list(prefix, { limit: 500 });
-            if (!items) return;
-            for (const f of items) {
-              if (f.id === null && depth < 2) {
-                await scanPath(bucket, `${prefix}/${f.name}`, depth + 1);
-              } else if (f.id !== null) {
-                totalBytes += (f.metadata as any)?.size || 0;
-              }
-            }
-          } catch { /* bucket/path doesn't exist */ }
-        };
-
-        // Re-fetch course ids since we used head:true above
-        const { data: courseRows } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
-        const ids = courseRows?.map(c => c.id) || [];
-
-        await Promise.all([
-          ...ids.flatMap(cid => [scanPath("course-files", cid), scanPath("presentations", cid)]),
-          scanPath("org-documents", organizationId),
-          scanPath("company-documents", organizationId),
-          scanPath("org-branding", organizationId),
-          scanPath("library-files", `library/${organizationId}`),
-          scanPath("billing-documents", organizationId),
-          scanPath("student-documents", organizationId),
-        ]);
-        setStorageUsedBytes(totalBytes);
+        setStorageUsedBytes(await getOrganizationStorageUsage(supabase, organizationId));
       } catch (e) {
         console.error("Error calculating storage:", e);
       }

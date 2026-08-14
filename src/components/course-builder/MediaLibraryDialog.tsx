@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
+import { runBoundedStorageScans } from "@/lib/storage/boundedStorageScans";
 
 interface MediaLibraryDialogProps {
   open: boolean;
@@ -277,21 +278,21 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       };
 
       // 1. Internal storage: only this org's courses + org-level buckets
-      const internalScans: Promise<StorageFile[]>[] = [];
+      const internalScans: Array<() => Promise<StorageFile[]>> = [];
       for (const cid of courseIds) {
-        internalScans.push(scanPrefix(supabase, "course-files", cid, baseUrl));
-        internalScans.push(scanPrefix(supabase, "presentations", cid, baseUrl));
+        internalScans.push(() => scanPrefix(supabase, "course-files", cid, baseUrl));
+        internalScans.push(() => scanPrefix(supabase, "presentations", cid, baseUrl));
       }
       // Imported files (e.g. from course migration) live at course-files/{orgId}/<uuid>.<ext>
       internalScans.push(
-        scanPrefix(supabase, "course-files", orgId, baseUrl).then(arr =>
+        () => scanPrefix(supabase, "course-files", orgId, baseUrl).then(arr =>
           arr.map(f => ({ ...f, courseName: f.courseName || "Импортированные файлы" }))
         )
       );
-      internalScans.push(scanPrefix(supabase, "org-branding", orgId, baseUrl));
-      internalScans.push(scanPrefix(supabase, "library-files", `library/${orgId}`, baseUrl));
+      internalScans.push(() => scanPrefix(supabase, "org-branding", orgId, baseUrl));
+      internalScans.push(() => scanPrefix(supabase, "library-files", `library/${orgId}`, baseUrl));
 
-      const internalResults = await Promise.all(internalScans);
+      const internalResults = await runBoundedStorageScans(internalScans, 3);
       for (const arr of internalResults) allFiles.push(...arr);
 
       // 2. External storage (course-videos): only this org's course folders
@@ -300,8 +301,8 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
           const extClient = createClient(config.url, config.key);
-          const extScans = courseIds.map(cid => scanPrefix(extClient, "course-videos", cid, config.url));
-          const extResults = await Promise.all(extScans);
+          const extScans = courseIds.map(cid => () => scanPrefix(extClient, "course-videos", cid, config.url));
+          const extResults = await runBoundedStorageScans(extScans, 3);
           for (const arr of extResults) allFiles.push(...arr);
         }
       } catch { /* external not configured */ }

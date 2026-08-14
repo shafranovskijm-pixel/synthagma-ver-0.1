@@ -8,6 +8,10 @@ import type { Lesson } from "@/components/course-builder/LessonTypeConfig";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { PptxPickerDialog } from "./PptxPickerDialog";
+import {
+  presentationStorageErrorMessage,
+  uploadPresentationWithRetry,
+} from "@/lib/presentations/pptxStorageUpload";
 
 interface SliderLessonEditorProps {
   lesson: Lesson;
@@ -29,17 +33,20 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
   const pptxFileUrl = sliderContent.pptxFileUrl;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
     const ext = file.name.toLowerCase().split('.').pop();
     if (ext !== 'pptx') {
       setError('Формат .ppt не поддерживается. Откройте файл в PowerPoint и сохраните как .pptx');
+      input.value = '';
       return;
     }
 
     if (!courseId) {
       setError('Сначала сохраните курс — только после этого можно загружать презентацию');
+      input.value = '';
       return;
     }
 
@@ -57,13 +64,15 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       
       const uploadPath = `${courseId}/${lesson.id}_${Date.now()}_${safeFileName}`;
       
-      const { error: uploadError } = await supabase.storage
-        .from('presentations')
-        .upload(uploadPath, file, { upsert: true });
+      const { error: uploadError } = await uploadPresentationWithRetry(() => (
+        supabase.storage
+          .from('presentations')
+          .upload(uploadPath, file, { upsert: false })
+      ));
         
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw new Error(`Ошибка загрузки файла: ${uploadError.message}`);
+        throw new Error(presentationStorageErrorMessage(uploadError));
       }
       
       const { data: { publicUrl } } = supabase.storage
@@ -107,6 +116,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
     } finally {
       setIsLoading(false);
       setUploadProgress('');
+      input.value = '';
     }
   };
 
