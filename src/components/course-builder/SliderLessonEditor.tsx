@@ -38,6 +38,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       return;
     }
 
+    if (!courseId) {
+      setError('Сначала сохраните курс — только после этого можно загружать презентацию');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setUploadProgress('Загрузка файла...');
@@ -46,11 +51,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       const safeFileName = file.name
         .replace(/[^\x00-\x7F]/g, '')
         .replace(/\s+/g, '_')
-        .replace(/_{2 }/g, '_')
+        .replace(/_{2,}/g, '_')
         .replace(/^_|_$/g, '')
         || 'presentation.pptx';
       
-      const uploadPath = `${courseId || 'temp'}/${lesson.id}_${Date.now()}_${safeFileName}`;
+      const uploadPath = `${courseId}/${lesson.id}_${Date.now()}_${safeFileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('presentations')
@@ -58,7 +63,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
         
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw new Error('Ошибка загрузки файла');
+        throw new Error(`Ошибка загрузки файла: ${uploadError.message}`);
       }
       
       const { data: { publicUrl } } = supabase.storage
