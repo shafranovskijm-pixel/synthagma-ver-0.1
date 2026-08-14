@@ -91,23 +91,23 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
 
       setUploadProgress('Обработка презентации...');
 
-      const JSZip = (await import('jszip')).default;
-      const arrayBuffer = await file.arrayBuffer();
-      const zip = await JSZip.loadAsync(arrayBuffer);
-      
-      const slideFiles = Object.keys(zip.files)
-        .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/));
-      
-      const slidesArray: SliderSlide[] = [];
-      
-      for (let i = 0; i < slideFiles.length; i++) {
-        slidesArray.push({
-          id: crypto.randomUUID(),
-          title: `Слайд ${i + 1}`,
-          content: ''
-        });
+      // Файл уже в хранилище — разбор слайдов не должен ломать сохранение урока.
+      let slidesCount = 0;
+      try {
+        const JSZip = (await import('jszip')).default;
+        const arrayBuffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        slidesCount = Object.keys(zip.files)
+          .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/)).length;
+      } catch (zipErr) {
+        console.error('PPTX parse error:', zipErr);
       }
-      
+
+      const slidesArray: SliderSlide[] = Array.from(
+        { length: Math.max(slidesCount, 1) },
+        (_, i) => ({ id: crypto.randomUUID(), title: `Слайд ${i + 1}`, content: '' }),
+      );
+
       const newContent: SliderContent = {
         slides: slidesArray,
         pptxFileUrl: publicUrl
@@ -119,7 +119,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       });
       
       setCurrentIndex(0);
-      toast.success(`Загружена презентация с ${slideFiles.length} слайдами`);
+      toast.success(
+        slidesCount > 0
+          ? `Загружена презентация с ${slidesCount} слайдами`
+          : 'Презентация загружена'
+      );
     } catch (err: any) {
       console.error('Error uploading PPTX:', err);
       setError(err?.message || 'Ошибка при загрузке файла');
