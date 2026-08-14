@@ -174,6 +174,38 @@ export function getPlanInfo(plan: SubscriptionPlan): PlanInfo {
   return SUBSCRIPTION_PLANS[plan] || SUBSCRIPTION_PLANS.free;
 }
 
+export interface SubscriptionInvoiceMonthlyAmountInput {
+  plan?: string | null;
+  customPrice?: number | null;
+  customDiscount?: number | null;
+}
+
+/**
+ * Monthly invoice amount for an organization.
+ *
+ * Public plan prices come from the same canonical table as the pricing pages.
+ * Organization-specific fields keep their existing semantics: `custom_price`
+ * replaces the monthly plan price and `custom_discount` is a fixed monthly
+ * discount in rubles.
+ */
+export function getSubscriptionInvoiceMonthlyAmount({
+  plan,
+  customPrice,
+  customDiscount,
+}: SubscriptionInvoiceMonthlyAmountInput): number {
+  const planInfo = SUBSCRIPTION_PLANS[plan as SubscriptionPlan] ?? SUBSCRIPTION_PLANS.start;
+  const parsedCustomPrice = customPrice == null ? null : Number(customPrice);
+  const parsedCustomDiscount = customDiscount == null ? 0 : Number(customDiscount);
+  const basePrice = parsedCustomPrice != null && Number.isFinite(parsedCustomPrice) && parsedCustomPrice >= 0
+    ? parsedCustomPrice
+    : planInfo.price;
+  const discount = Number.isFinite(parsedCustomDiscount) && parsedCustomDiscount > 0
+    ? parsedCustomDiscount
+    : 0;
+
+  return Math.max(0, basePrice - discount);
+}
+
 export function formatStorageSize(bytes: number): string {
   if (bytes === -1) return '∞';
   if (bytes >= 1073741824) return `${Math.round(bytes / 1073741824)} ГБ`;

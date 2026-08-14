@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo } from "@/constants/subscriptionPlans";
+import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo } from "@/constants/subscriptionPlans";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -186,9 +186,11 @@ export function useSubscriptionTab() {
         .eq("organization_id", organizationId);
 
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
-      const basePrice = customPrice ?? currentPlanInfo.price ?? 1990;
-      const discount = customDiscount ?? 0;
-      const amount = Math.max(0, basePrice - discount);
+      const amount = getSubscriptionInvoiceMonthlyAmount({
+        plan: currentPlan,
+        customPrice,
+        customDiscount,
+      });
 
       const { data: invoice, error: err } = await supabase
         .from("subscription_invoices")

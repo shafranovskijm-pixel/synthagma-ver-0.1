@@ -5,7 +5,7 @@ import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
-import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
+import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
@@ -395,11 +395,12 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
     if (!organizationId) return;
     setGeneratingInvoice(true);
     try {
-      const PLAN_PRICES: Record<string, number> = { free: 0, start: 1990, standard: 4990, professional: 9990, maximum: 19990 };
       const currentPlan = orgDetails.subscription_plan || "start";
-      const basePrice = orgDetails.custom_price ?? PLAN_PRICES[currentPlan] ?? 1990;
-      const discount = orgDetails.custom_discount ?? 0;
-      const amount = Math.max(0, basePrice - discount);
+      const amount = getSubscriptionInvoiceMonthlyAmount({
+        plan: currentPlan,
+        customPrice: orgDetails.custom_price,
+        customDiscount: orgDetails.custom_discount,
+      });
       const year = new Date().getFullYear();
       const { count } = await supabase.from("subscription_invoices").select("*", { count: "exact", head: true }).eq("organization_id", organizationId);
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;

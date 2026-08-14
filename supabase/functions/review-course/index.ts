@@ -1,15 +1,34 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callAIWithTools } from "../_shared/gigachat-client.ts";
+import {
+  buildCourseReviewSystemPrompt,
+  guardUnverifiedLegalFindings,
+  REVIEW_REVISION,
+} from "./review-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "X-Sintagma-Review-Revision": REVIEW_REVISION,
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({ ok: true, revision: REVIEW_REVISION }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed", revision: REVIEW_REVISION }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -123,25 +142,7 @@ ${course.description ? `Описание: ${course.description}` : ""}
 
 ${lessonSummaries.join("\n\n")}`;
 
-    const systemPrompt = `Ты — эксперт по проверке и актуализации учебных курсов в области охраны труда, промышленной безопасности и профессионального обучения в России.
-
-Твоя задача — тщательно проверить содержание курса и найти:
-
-1. **Законодательство**: Проверь все упоминания федеральных законов, постановлений правительства, приказов министерств, ГОСТов, СНиПов, СП, ТР ТС. Убедись, что указаны актуальные редакции и поправки. Если документ был изменен или заменен — укажи это.
-
-2. **Тестовые вопросы**: Проверь корректность формулировок вопросов, правильность указанных ответов, достаточность вариантов ответов. Убедись, что вопросы покрывают ключевые темы урока.
-
-3. **Фактические ошибки**: Найди устаревшую информацию, неточности, противоречия между уроками.
-
-4. **Предложения**: Предложи недостающие темы, дополнительные тестовые вопросы, улучшения формулировок.
-
-Будь конкретным и точным. Указывай номера и даты нормативных актов.
-
-ВАЖНО про автоматическое применение правок:
-- Для каждого замечания указывай target_kind ("test_question", "lesson_title" или "none") и target_id (id из квадратных скобок [question_id=...] или [lesson_id=...] в тексте курса).
-- В patch клади ТОЛЬКО изменяемые поля. Для test_question допустимы поля: question (string), explanation (string), correct_answer (number — индекс правильного варианта, 0-based), options (массив строк — полностью заменяет варианты).
-- Для lesson_title patch = { "title": "..." }.
-- Если правка не сводится к одному машинному изменению (например, нужен новый урок или большое переписывание содержимого), ставь target_kind="none", target_id="" и patch={}.`;
+    const systemPrompt = buildCourseReviewSystemPrompt();
 
     const tool = {
       type: "function",
@@ -196,7 +197,7 @@ ${lessonSummaries.join("\n\n")}`;
 
     console.log(`[review-course] Reviewing course "${course.title}" (${lessons.length} lessons)`);
 
-    const result = await callAIWithTools(
+    const aiResult = await callAIWithTools(
       [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Проверь следующий курс и найди все проблемы:\n\n${courseContent}` },
@@ -205,6 +206,7 @@ ${lessonSummaries.join("\n\n")}`;
       "GigaChat-Max",
       "google/gemini-2.5-pro",
     );
+    const result = guardUnverifiedLegalFindings(aiResult);
 
     console.log(`[review-course] Review complete: ${result.findings?.length || 0} findings`);
 
