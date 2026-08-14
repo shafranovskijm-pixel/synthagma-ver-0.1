@@ -236,7 +236,9 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   ): Promise<Course | null> => {
     if (!organizationId) return null;
 
-    const course = await createCourse(organizationId, title, description, categoryId);
+    // "none" — служебное значение селекта «Без категории», в БД должен уйти null
+    const safeCategoryId = categoryId && categoryId !== "none" ? categoryId : undefined;
+    const course = await createCourse(organizationId, title, description, safeCategoryId);
     if (course) {
       toast.success("Курс создан");
       setRefreshKey(prev => prev + 1);
@@ -248,7 +250,10 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
   }, [organizationId, invalidateSummaryAndOverview]);
 
   const update = useCallback(async (courseId: string, updates: Partial<Course>): Promise<boolean> => {
-    const success = await updateCourse(courseId, updates);
+    const safeUpdates = (updates as any)?.category_id === "none"
+      ? { ...updates, category_id: null }
+      : updates;
+    const success = await updateCourse(courseId, safeUpdates);
     if (success) {
       toast.success("Курс обновлён");
       setRefreshKey(prev => prev + 1);

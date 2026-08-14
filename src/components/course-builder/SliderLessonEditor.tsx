@@ -38,6 +38,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       return;
     }
 
+    if (!courseId) {
+      setError('Сначала сохраните курс — только после этого можно загружать презентацию');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setUploadProgress('Загрузка файла...');
@@ -46,11 +51,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       const safeFileName = file.name
         .replace(/[^\x00-\x7F]/g, '')
         .replace(/\s+/g, '_')
-        .replace(/_{2 }/g, '_')
+        .replace(/_{2,}/g, '_')
         .replace(/^_|_$/g, '')
         || 'presentation.pptx';
       
-      const uploadPath = `${courseId || 'temp'}/${lesson.id}_${Date.now()}_${safeFileName}`;
+      const uploadPath = `${courseId}/${lesson.id}_${Date.now()}_${safeFileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('presentations')
@@ -58,7 +63,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
         
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw new Error('Ошибка загрузки файла');
+        throw new Error(`Ошибка загрузки файла: ${uploadError.message}`);
       }
       
       const { data: { publicUrl } } = supabase.storage
@@ -96,9 +101,9 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       
       setCurrentIndex(0);
       toast.success(`Загружена презентация с ${slideFiles.length} слайдами`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error uploading PPTX:', err);
-      setError('Ошибка при загрузке файла');
+      setError(err?.message || 'Ошибка при загрузке файла');
     } finally {
       setIsLoading(false);
       setUploadProgress('');
@@ -118,10 +123,11 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Выберите файл изображения'); return; }
+    if (!courseId) { toast.error('Сначала сохраните курс'); return; }
     setIsUploadingSlideImage(true);
     try {
       const ext = file.name.split('.').pop();
-      const uploadPath = `${courseId || 'temp'}/slide_${currentIndex}_${Date.now()}.${ext}`;
+      const uploadPath = `${courseId}/slide_${currentIndex}_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('course-files').upload(uploadPath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('course-files').getPublicUrl(uploadPath);
