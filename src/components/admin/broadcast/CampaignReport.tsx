@@ -4,10 +4,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Download, Link2, Info } from "lucide-react";
+import { Download, Link2, Info, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { loadAllReportPages } from "@/lib/mailing/reportPagination";
+import {
+  campaignAttachmentSummary,
+  extractCampaignTemplateVariables,
+  sanitizeCampaignHtmlForReport,
+} from "@/lib/mailing/campaignContentPreview";
 
 interface Recipient {
   id: string;
@@ -27,6 +32,18 @@ interface Stats {
   opened: number;
   clicked: number;
   unsubscribed: number;
+}
+
+interface CampaignContent {
+  name: string;
+  status: string;
+  subject: string;
+  subject_b: string | null;
+  html_body: string;
+  from_name: string | null;
+  reply_to: string | null;
+  recipient_filter: unknown;
+  sent_count: number;
 }
 
 const rate = (part: number, total: number) => (total > 0 ? `${Math.round((part / total) * 1000) / 10}%` : "—");
@@ -62,11 +79,23 @@ async function loadAllClickedRecipientIds(campaignId: string): Promise<string[]>
   return pages.flatMap((row) => (row.recipient_id ? [row.recipient_id] : []));
 }
 
+async function loadCampaignContent(campaignId: string): Promise<CampaignContent> {
+  const { data, error } = await supabase
+    .from("email_campaigns")
+    .select("name, status, subject, subject_b, html_body, from_name, reply_to, recipient_filter, sent_count")
+    .eq("id", campaignId)
+    .single();
+
+  if (error) throw error;
+  return data as CampaignContent;
+}
+
 export function CampaignReport({ campaignId, open, onClose }: { campaignId: string | null; open: boolean; onClose: () => void }) {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(false);
   const [clicked, setClicked] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [campaign, setCampaign] = useState<CampaignContent | null>(null);
 
   useEffect(() => {
     if (!open || !campaignId) return;
@@ -74,17 +103,20 @@ export function CampaignReport({ campaignId, open, onClose }: { campaignId: stri
     setLoading(true);
     (async () => {
       try {
-        const [allRecipients, clickedRecipientIds] = await Promise.all([
+        const [allRecipients, clickedRecipientIds, campaignContent] = await Promise.all([
           loadAllRecipients(campaignId),
           loadAllClickedRecipientIds(campaignId),
+          loadCampaignContent(campaignId),
         ]);
         if (!active) return;
         setRecipients(allRecipients);
         setClicked(new Set(clickedRecipientIds).size);
+        setCampaign(campaignContent);
       } catch (error: any) {
         if (!active) return;
         setRecipients([]);
         setClicked(0);
+        setCampaign(null);
         toast.error(error?.message || "Не удалось загрузить полный отчёт кампании");
       } finally {
         if (active) setLoading(false);
@@ -94,6 +126,15 @@ export function CampaignReport({ campaignId, open, onClose }: { campaignId: stri
       active = false;
     };
   }, [campaignId, open]);
+
+  const campaignPreviewHtml = useMemo(
+    () => sanitizeCampaignHtmlForReport(campaign?.html_body || ""),
+    [campaign?.html_body],
+  );
+  const campaignVariables = useMemo(
+    () => extractCampaignTemplateVariables(campaign?.subject, campaign?.subject_b, campaign?.html_body),
+    [campaign?.subject, campaign?.subject_b, campaign?.html_body],
+  );
 
   const stats: Stats = useMemo(() => {
     const total = recipients.length;
@@ -190,6 +231,81 @@ export function CampaignReport({ campaignId, open, onClose }: { campaignId: stri
               отложено. Открытия считаются по пикселю (занижены при отключённых картинках), клики — по
               переходам по ссылкам.
             </p>
+
+            {campaign && (
+              <section
+                className="space-y-3 rounded-lg border border-border bg-card p-4"
+                data-testid="campaign-report-content"
+              >
+                <div className="flex items-start gap-3">
+                  <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">
+                      {campaign.sent_count > 0 ? "Что было отправлено" : "Письмо кампании"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {campaign.sent_count > 0
+                        ? "Сохранённый шаблон кампании. Персональные значения подставлялись отдельно для каждого получателя."
+                        : "Шаблон, подготовленный к отправке."}
+                    </p>
+                  </div>
+                  <Badge variant="outline">{campaign.status}</Badge>
+                </div>
+
+                <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="rounded-md bg-muted/30 p-3 sm:col-span-2">
+                    <dt className="text-xs text-muted-foreground">Тема</dt>
+                    <dd className="mt-1 font-medium break-words" data-testid="campaign-report-subject">
+                      {campaign.subject}
+                    </dd>
+                  </div>
+                  {campaign.subject_b && (
+                    <div className="rounded-md bg-muted/30 p-3 sm:col-span-2">
+                      <dt className="text-xs text-muted-foreground">Тема B</dt>
+                      <dd className="mt-1 font-medium break-words">{campaign.subject_b}</dd>
+                    </div>
+                  )}
+                  <div className="rounded-md bg-muted/30 p-3">
+                    <dt className="text-xs text-muted-foreground">Отправитель</dt>
+                    <dd className="mt-1 break-words">{campaign.from_name || "Адрес подключённого ящика"}</dd>
+                  </div>
+                  <div className="rounded-md bg-muted/30 p-3">
+                    <dt className="text-xs text-muted-foreground">Ответы</dt>
+                    <dd className="mt-1 break-words">{campaign.reply_to || "На ящик отправителя"}</dd>
+                  </div>
+                  <div className="rounded-md bg-muted/30 p-3 sm:col-span-2">
+                    <dt className="text-xs text-muted-foreground">Вложения</dt>
+                    <dd className="mt-1">{campaignAttachmentSummary(campaign.recipient_filter)}</dd>
+                  </div>
+                </dl>
+
+                <div>
+                  <p className="mb-2 text-xs text-muted-foreground">Текст письма</p>
+                  <div
+                    className="prose prose-sm max-w-none rounded-md border bg-background p-4 dark:prose-invert [&_a]:text-primary [&_a]:underline"
+                    data-testid="campaign-report-body"
+                    dangerouslySetInnerHTML={{ __html: campaignPreviewHtml }}
+                  />
+                </div>
+
+                {campaignVariables.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5" data-testid="campaign-report-variables">
+                    <span className="mr-1 text-xs text-muted-foreground">Персонализация:</span>
+                    {campaignVariables.map((variable) => (
+                      <Badge key={variable} variant="secondary" className="font-mono text-[11px]">
+                        {`{{${variable}}}`}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  В предпросмотре отключены внешние изображения, формы и переходы по ссылкам: просмотр отчёта не
+                  запускает трекинг письма.
+                </p>
+              </section>
+            )}
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={exportCsv} data-testid="campaign-report-csv">
