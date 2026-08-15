@@ -1,5 +1,6 @@
 import type { GenerationContext } from "./schema";
 import { VARIABLE_CATALOG } from "./variableCatalog";
+import { resolveGroupDocumentClientProfile } from "./clientProfile";
 import {
   ATTESTATION_SOURCE_LABEL,
   JOURNAL_SOURCE_LABEL,
@@ -117,10 +118,23 @@ function shortName(full: string): string {
   return full;
 }
 
-function orgShortName(name: string): string {
-  // "ООО «Инжиниринговый центр «ГОРЭЛТЕХ»" → "ООО «ИЦ «ГОРЭЛТЕХ»"
-  if (/ГОРЭЛТЕХ/i.test(name)) return "ООО «ИЦ «ГОРЭЛТЕХ»";
-  return name;
+function shortInstructorNames(value: string): string {
+  return value
+    .split(/[;\n]+/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map(shortName)
+    .join("; ");
+}
+
+/**
+ * Город для титульного листа берётся только из адреса организации.
+ * Если адрес не содержит явного города, оставляем поле пустым для ручного заполнения.
+ */
+function organizationCity(address: string): string {
+  const normalized = String(address || "").replace(/\s+/g, " ").trim();
+  const match = normalized.match(/(?:^|,\s*)(?:г\.?|город)\s*([^,]+)/i);
+  return match?.[1]?.trim() || "";
 }
 
 /** Generate training day dates between start and end (up to 4) */
@@ -225,16 +239,13 @@ function buildPassRows(
   students: GenerationContext["students"],
   ctx: GenerationContext
 ): string {
-  const org =
-    ctx.company?.name ||
-    students[0]?.full_name?.split(" ").slice(-1)[0] ||
-    "—";
+  const org = ctx.company?.name || "";
   return students
     .map(
       (s, i) =>
         `<tr><td style="text-align:center">${i + 1}</td>` +
         `<td>${esc(s.full_name)}</td>` +
-        `<td>${esc(ctx.company?.name || org)}</td>` +
+        `<td>${esc(org)}</td>` +
         `<td>${esc(s.email || "")}</td>` +
         `<td>${esc(s.phone || "")}</td>` +
         `<td></td><td></td><td></td><td></td></tr>`
@@ -271,6 +282,7 @@ export function buildVariables(
   const dataMode = opts.mode === "data";
   const factual = opts.factual || emptyFactualData();
   const journalDates = journalDateColumns(factual.lessonCompletions);
+  const clientProfile = resolveGroupDocumentClientProfile(ctx.organization);
 
   const hasCompany = !!(ctx.company && ctx.company.name);
   const customerName = hasCompany
@@ -307,21 +319,32 @@ export function buildVariables(
     : `Договор № ${orderNum || "___"}`;
 
   const explicitContractBasis = String(ctx.extras?.contract_basis || "").trim();
-  const basisForOrders = explicitContractBasis || (hasCompany
-    ? `Договор + ${ctx.company!.name}`
-    : orderNum
-      ? `Договор № ${orderNum}`
-      : "Заявление");
+  // В оригинале клиента графа «На основании» заполняется вручную.
+  // Автоподстановка разрешена только когда основание явно передано вызывающим кодом.
+  const basisForOrders = clientProfile.key === "goreltech" ? "" : explicitContractBasis;
+
+  const instructorName = String(ctx.group.instructor_name || "").trim();
+  const responsiblePersonName = String(ctx.extras?.responsible_person_name || "").trim()
+    || clientProfile.responsiblePersonFallback;
+  const expulsionOutcome = String(ctx.extras?.expulsion_outcome || "").trim()
+    || clientProfile.expulsionOutcomeFallback
+    || "____________________________";
+  const orgTitleHeaderHtml = clientProfile.key === "goreltech"
+    ? `<p>Учебный центр Общества с ограниченной ответственностью<br/>«Инжиниринговый центр «ГОРЭЛТЕХ»</p><p>(${esc(clientProfile.shortName)})</p>`
+    : `<p>${esc(ctx.organization.name)}</p>`;
 
   const vars: Record<string, string> = {
     org_name: ctx.organization.name,
-    org_short_name: orgShortName(ctx.organization.name),
+    org_short_name: clientProfile.shortName,
+    org_title_header_html: orgTitleHeaderHtml,
     org_inn: ctx.organization.inn,
     org_kpp: ctx.organization.kpp,
     org_ogrn: ctx.organization.ogrn,
     org_address: ctx.organization.address,
+    org_city: organizationCity(ctx.organization.address) || clientProfile.cityFallback,
     org_director_name: ctx.organization.director_name,
-    org_director_position: ctx.organization.director_position,
+    org_director_position:
+      ctx.organization.director_position || clientProfile.directorPositionFallback,
     org_director_short: shortName(ctx.organization.director_name),
     org_bank_name: ctx.organization.bank_name || "",
     org_bank_bik: ctx.organization.bank_bik || "",
@@ -341,6 +364,10 @@ export function buildVariables(
     schedule_text: ctx.group.schedule_text
       ? `Режим занятий: ${ctx.group.schedule_text}.`
       : "Режим занятий в настройках группы не задан.",
+    instructor_name: instructorName,
+    instructor_short: instructorName ? shortInstructorNames(instructorName) : "",
+    responsible_person_name: responsiblePersonName || "____________________________",
+    expulsion_outcome: expulsionOutcome,
     start_date: formatDateShort(ctx.group.start_date),
     end_date: formatDateShort(ctx.group.end_date),
     start_date_ru: formatDateRu(ctx.group.start_date),
@@ -413,8 +440,21 @@ export function buildVariables(
       ? ATTESTATION_SOURCE_LABEL
       : "Рабочий бланк: результаты заполняются вручную.",
     registration_rows: dataMode
-      ? buildRegistrationRowsFromFacts(factual.registration)
-      : buildRegistrationBlankRows(ctx.students),
+      ? buildRegistrationRowsFromFacts(
+          factual.registration,
+          ctx.group.end_date,
+          ctx.group.program_title,
+          ctx.group.number,
+          ctx.group.start_date,
+          ctx.organization.name,
+        )
+      : buildRegistrationBlankRows(
+          ctx.students,
+          ctx.group.end_date,
+          ctx.group.program_title,
+          ctx.group.number,
+          ctx.group.start_date,
+        ),
     registration_source_note: dataMode
       ? REGISTRATION_SOURCE_LABEL
       : "Рабочий бланк: номера документов заполняются вручную.",
@@ -455,6 +495,7 @@ export function renderTemplate(
     "registration_rows",
     "pass_rows",
     "customer_requisites",
+    "org_title_header_html",
   ]
 ): string {
   const raw = new Set(rawKeys);

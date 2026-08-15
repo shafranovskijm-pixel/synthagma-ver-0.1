@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { FRDO_EDUCATION_LEVELS } from "@/constants/frdo";
 
 
 interface ProfileTabProps {
@@ -422,6 +423,7 @@ function PersonalFrdoSection({ h }: { h: any }) {
 
   const gender = h.frdoData?.gender || "";
   const citizenship = h.frdoData?.citizenship_code || "643";
+  const educationLevel = h.frdoData?.education_level || "";
 
   const formatSnils = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 11);
@@ -511,6 +513,25 @@ function PersonalFrdoSection({ h }: { h: any }) {
             onChange={(code) => h.saveFrdoField("citizenship_code", code)}
           />
           <p className="text-xs text-muted-foreground">Классификатор ОКСМ. По умолчанию — Россия (643).</p>
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label className="flex items-center gap-2"><GraduationCap className="w-4 h-4" />Образование</Label>
+          <Select
+            value={educationLevel}
+            onValueChange={(value) => h.saveFrdoField("education_level", value)}
+            disabled={h.savingFrdoField === "education_level"}
+          >
+            <SelectTrigger className="rounded-lg">
+              <SelectValue placeholder="Выберите уровень образования" />
+            </SelectTrigger>
+            <SelectContent>
+              {FRDO_EDUCATION_LEVELS.map((level) => (
+                <SelectItem key={level} value={level}>{level}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Значение используется в списке обучающихся и выгрузках ФИС ФРДО.</p>
         </div>
 
         <div className="space-y-2 md:col-span-2">

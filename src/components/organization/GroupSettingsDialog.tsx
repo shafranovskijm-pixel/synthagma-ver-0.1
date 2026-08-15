@@ -513,15 +513,15 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                             />
                           </div>
                           <div className="sm:col-span-2">
-                            <label className="text-sm font-medium mb-1.5 block">Преподаватель</label>
+                            <label className="text-sm font-medium mb-1.5 block">Преподаватели</label>
                             <Input
                               value={settings.instructor_name || ""}
                               onChange={e => update({ instructor_name: e.target.value || null })}
-                              placeholder="Дроздов Дмитрий Викторович"
+                              placeholder="Дроздов Дмитрий Викторович; Иванов Иван Иванович"
                               className="rounded-lg"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                              Подставляется в журнал. Руководитель учебного центра не используется как замена.
+                              Можно указать нескольких через точку с запятой. Все имена подставляются в журнал; директор не используется как замена.
                             </p>
                           </div>
                           <div className="sm:col-span-2">

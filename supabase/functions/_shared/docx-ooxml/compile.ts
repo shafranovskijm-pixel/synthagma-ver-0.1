@@ -19,6 +19,9 @@ export interface TemplateManifest {
   template_id: string;
   template_version: string;
   scenario: string;
+  source_file?: string;
+  source_format?: string;
+  source_sha256?: string;
   template_sha256?: string;
   variables: ManifestVariable[];
   repeaters: Record<string, { table_index: number; header_rows: number; prototype_row: number; strategy: string }>;

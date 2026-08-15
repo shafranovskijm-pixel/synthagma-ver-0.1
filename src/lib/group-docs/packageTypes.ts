@@ -6,6 +6,7 @@
  */
 import { GROUP_DOCUMENT_TYPES } from "./groupDocuments";
 import type { DocType } from "./schema";
+import type { DocumentFillMode } from "./factualData";
 
 export type ContractScenarioKind = "individual" | "legal";
 
@@ -99,8 +100,14 @@ export interface DocRequirementSource {
 }
 
 /** Незаполненные обязательные поля конкретного документа (человеческие подписи). */
-export function missingDocRequirements(docType: string, src: DocRequirementSource): string[] {
-  const keys = DOC_REQUIRED_KEYS[docType] || [];
+export function missingDocRequirements(
+  docType: string,
+  src: DocRequirementSource,
+  mode: DocumentFillMode = "data",
+): string[] {
+  const keys = (DOC_REQUIRED_KEYS[docType] || []).filter(
+    (key) => !(mode === "blank" && key === "training_dates_4"),
+  );
   const out: string[] = [];
   for (const key of keys) {
     const value = key === "students"

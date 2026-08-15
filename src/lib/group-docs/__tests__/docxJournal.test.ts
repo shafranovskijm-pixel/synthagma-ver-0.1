@@ -41,4 +41,36 @@ describe("generateClassJournalDocx", () => {
       otherDocuments: [],
     })).rejects.toThrow("Шаблон журнала не найден");
   });
+
+  it("умеет собрать отдельный точный документ без лишнего журнала", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        batch: { batch_id: "batch-2", batch_version: 4, inserted_count: 1 },
+        document: null,
+      },
+      error: null,
+    });
+
+    await generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      fillMode: "blank",
+      includeJournal: false,
+      otherDocuments: [{
+        doc_type: "enrollment_order",
+        name: "Приказ",
+        document_number: null,
+        document_date: "2026-08-15",
+        variables: {},
+        html: "<html></html>",
+        doc_status: "draft",
+        fill_mode: "blank",
+        source_note: "",
+      }],
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      body: expect.objectContaining({ includeJournal: false }),
+    });
+  });
 });

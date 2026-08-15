@@ -48,10 +48,12 @@ const isEmpty = (value: unknown) =>
 export function validateClassJournalSnapshot(
   manifest: ClassJournalManifest,
   snapshot: ClassJournalSnapshot,
+  fillMode: "blank" | "data" = "data",
 ): ClassJournalIssue[] {
   const issues: ClassJournalIssue[] = [];
   for (const variable of manifest.variables.filter((item) => !item.scope)) {
     const key = variable.token.slice(2, -2);
+    if (fillMode === "blank" && /^DATE_[1-4]$/.test(key)) continue;
     if (variable.required && isEmpty(snapshot.scalars[key])) {
       issues.push({
         code: "missing_scalar",
@@ -65,7 +67,7 @@ export function validateClassJournalSnapshot(
   const presentDates = Array.from({ length: expectedDates }, (_, index) =>
     snapshot.scalars[`DATE_${index + 1}`],
   ).filter((value) => !isEmpty(value));
-  if (presentDates.length !== expectedDates) {
+  if (fillMode === "data" && presentDates.length !== expectedDates) {
     issues.push({
       code: "invalid_training_dates_count",
       message: `Для формы журнала клиента нужно указать ровно ${expectedDates} даты занятий`,
@@ -91,8 +93,13 @@ export function compileClassJournalXml(params: {
   documentXml: string;
   manifest: ClassJournalManifest;
   snapshot: ClassJournalSnapshot;
+  fillMode?: "blank" | "data";
 }): string {
-  const issues = validateClassJournalSnapshot(params.manifest, params.snapshot);
+  const issues = validateClassJournalSnapshot(
+    params.manifest,
+    params.snapshot,
+    params.fillMode ?? "data",
+  );
   if (issues.length) {
     throw new Error(`Журнал не может быть сформирован: ${issues.map((issue) => issue.message).join("; ")}`);
   }

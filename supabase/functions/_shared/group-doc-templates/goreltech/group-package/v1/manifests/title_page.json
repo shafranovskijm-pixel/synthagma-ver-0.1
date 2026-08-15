@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.group.title_page",
+  "template_version": "1.0.0-client-source",
+  "scenario": "group_title_page",
+  "source_filename": "title_page.source.docx",
+  "source_sha256": "A1048257B1233FA78D63B85172D0C9EB5CF5F247F4E52D2D2A6C104668796C16",
+  "fidelity_status": "client_source_with_telemost_corrections",
+  "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
+  "orientation": "portrait",
+  "row_source_key": null,
+  "row_tokens": [],
+  "repeater": null,
+  "changes_applied": [
+    "full GORELTECH header retained from the client source",
+    "client wording and signature corrections from Telemost applied",
+    "portrait/landscape mode follows the Telemost instruction",
+    "all runtime values use explicit tokens; no sample person remains"
+  ],
+  "qa": {
+    "inspect_all_pages": true,
+    "preserve_package_parts_except": [
+      "word/document.xml"
+    ],
+    "status": "passed_all_rendered_pages_2026-08-15"
+  },
+  "template_sha256": "D41C281952B917F7E32C90210ECFFC9C85F724589C82BB16F0EB540C6C534923"
+}

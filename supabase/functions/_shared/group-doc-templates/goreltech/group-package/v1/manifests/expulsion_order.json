@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.group.expulsion_order",
+  "template_version": "1.0.0-client-source",
+  "scenario": "group_expulsion_order",
+  "source_filename": "expulsion_order.source.docx",
+  "source_sha256": "3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99",
+  "fidelity_status": "client_source_with_telemost_corrections",
+  "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
+  "orientation": "landscape",
+  "row_source_key": "students_list_rows",
+  "row_tokens": [
+    "N",
+    "STUDENT_NAME",
+    "STUDENT_PROGRAM",
+    "STUDENT_HOURS",
+    "STUDENT_PERIOD",
+    "STUDENT_BASIS"
+  ],
+  "repeater": {
+    "table_index": 0,
+    "header_rows": 2,
+    "prototype_row": 2,
+    "continuation_row": 3,
+    "strategy": "clone_prototype_remove_unused"
+  },
+  "changes_applied": [
+    "full GORELTECH header retained from the client source",
+    "client wording and signature corrections from Telemost applied",
+    "portrait/landscape mode follows the Telemost instruction",
+    "all runtime values use explicit tokens; no sample person remains"
+  ],
+  "qa": {
+    "inspect_all_pages": true,
+    "preserve_package_parts_except": [
+      "word/document.xml"
+    ],
+    "status": "passed_all_rendered_pages_2026-08-15"
+  },
+  "template_sha256": "FD005D54008E18D8887FF8D1D6E1E70E7AD8BAE35E91D4610C4AD68A13904B1F"
+}

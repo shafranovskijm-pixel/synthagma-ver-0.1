@@ -144,8 +144,10 @@ export function normalizeRegistrationFact(
     document_type?: string | null;
     document_series?: string | null;
     document_number?: string | null;
+    reg_number?: string | null;
     issue_date?: string | null;
     order_number?: string | null;
+    order_date?: string | null;
     specialty_name?: string | null;
     birth_date?: string | null;
   },
@@ -166,8 +168,10 @@ export function normalizeRegistrationFact(
       documentTypeLabels[rawDocumentType.toLowerCase()] || rawDocumentType,
     document_series: record.document_series || "",
     document_number: record.document_number || "",
+    reg_number: record.reg_number || "",
     issue_date: record.issue_date || "",
     order_number: record.order_number || "",
+    order_date: record.order_date || "",
     birth_date: frdo?.birth_date || record.birth_date || undefined,
     gender: normalizeGender(frdo?.gender) || undefined,
     citizenship: frdo?.citizenship || undefined,

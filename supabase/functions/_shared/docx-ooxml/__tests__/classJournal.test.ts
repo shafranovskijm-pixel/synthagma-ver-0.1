@@ -111,6 +111,24 @@ describe("журнал учёта занятий DOCX-first", () => {
     );
   });
 
+  it("в рабочем бланке оставляет даты очных занятий пустыми", async () => {
+    const blank = snapshot();
+    blank.scalars.DATE_1 = "";
+    blank.scalars.DATE_2 = "";
+    blank.scalars.DATE_3 = "";
+    blank.scalars.DATE_4 = "";
+
+    expect(validateClassJournalSnapshot(manifest, blank, "blank")).toEqual([]);
+    const { documentXml } = await loadTemplate();
+    const result = compileClassJournalXml({
+      documentXml,
+      manifest,
+      snapshot: blank,
+      fillMode: "blank",
+    });
+    expect(findUnresolvedTokens(result)).toEqual([]);
+  });
+
   it("остаётся валидным DOCX, меняя только word/document.xml", async () => {
     const { zip, documentXml } = await loadTemplate();
     const before = new Map<string, string>();

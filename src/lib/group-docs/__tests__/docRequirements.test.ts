@@ -39,4 +39,10 @@ describe("missingDocRequirements", () => {
     expect(missingDocRequirements("class_journal", { ...full, training_dates_count: 3 })).toContain("4 даты занятий");
     expect(missingDocRequirements("class_journal", full)).toEqual([]);
   });
+
+  it("разрешает оставить даты очных занятий пустыми в рабочем бланке", () => {
+    const withoutDates = { ...full, training_dates_count: 0 };
+    expect(missingDocRequirements("class_journal", withoutDates, "blank")).toEqual([]);
+    expect(missingDocRequirements("class_journal", withoutDates, "data")).toContain("4 даты занятий");
+  });
 });

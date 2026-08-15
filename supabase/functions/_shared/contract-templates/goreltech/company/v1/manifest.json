@@ -3,7 +3,9 @@
   "template_id": "goreltech.company.paid_education",
   "template_version": "1.0.0-draft",
   "scenario": "legal_entity_customer",
-  "source_sha256": "72149D57D254CCDAF5A636ACCE7F45763D8194BBEA022E1C2287A0F1629F1A99",
+  "source_file": "docs/group-documents/client-templates/goreltech-group-package-v1/source/company_contract.source.doc",
+  "source_format": "legacy_doc",
+  "source_sha256": "D8B70377F773EAFF0A9C00BF018BA97CB5437E78DB9ACA9C1B91DCB1928DB965",
   "template_sha256": "919475270A42A7CE7BCDDEB73A1D58E865EF62FE7939FFB48692100275BEAF2D",
   "render_policy": "filled_docx_is_the_single_source_for_preview_pdf_and_download",
   "variables": [
@@ -72,6 +74,7 @@
   "qa": {
     "expected_sections": 5,
     "baseline_pages": 12,
+    "source_visual_comparison": "passed_all_12_pages_2026-08-15",
     "inspect_all_pages": true,
     "compare_preview_pdf_docx": true,
     "preserve_package_parts_except": [

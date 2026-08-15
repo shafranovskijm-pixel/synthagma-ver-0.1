@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.group.schedule",
+  "template_version": "1.0.0-client-source",
+  "scenario": "group_schedule",
+  "source_filename": "schedule.source.docx",
+  "source_sha256": "48F748597C138F274971386C0958C53BC015D833E7982B65680DEDE5E152DF4A",
+  "fidelity_status": "client_source_with_telemost_corrections",
+  "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
+  "orientation": "portrait",
+  "row_source_key": null,
+  "row_tokens": [],
+  "repeater": null,
+  "changes_applied": [
+    "full GORELTECH header retained from the client source",
+    "client wording and signature corrections from Telemost applied",
+    "portrait/landscape mode follows the Telemost instruction",
+    "all runtime values use explicit tokens; no sample person remains"
+  ],
+  "qa": {
+    "inspect_all_pages": true,
+    "preserve_package_parts_except": [
+      "word/document.xml"
+    ],
+    "status": "passed_all_rendered_pages_2026-08-15"
+  },
+  "template_sha256": "0CC3B21AD4F1CAD23BB56FF5AE69D67064399D24EE2F24ECE0C2330A555053E1"
+}

@@ -34,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
 import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
+import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { openPrivateFile } from "@/utils/storageHelpers";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
@@ -100,11 +101,23 @@ export function GroupDocumentsFolder({
     GROUP_DOCUMENT_TYPES.forEach(t => map.set(t.key, t.title));
     return map;
   }, []);
+  const typeStatus = useMemo(() => {
+    const map = new Map<string, string>();
+    GROUP_DOCUMENT_TYPES.forEach(t => map.set(t.key, t.status));
+    return map;
+  }, []);
 
-  /** Пакет требует ВСЕХ полей группы: любое незаполненное поле блокирует. */
+  /**
+   * В режиме рабочего бланка даты очных занятий разрешено заполнить от руки.
+   * Остальные реквизиты остаются обязательными.
+   */
   const packageBlockers = useMemo(
-    () => Array.from(new Set([...blockingFields, ...missingFields])),
-    [blockingFields, missingFields],
+    () => {
+      const blockers = new Set([...blockingFields, ...missingFields]);
+      if (mode === "blank") blockers.delete("4 даты занятий для журнала");
+      return Array.from(blockers);
+    },
+    [blockingFields, missingFields, mode],
   );
   const blocked = packageBlockers.length > 0;
 
@@ -183,18 +196,23 @@ export function GroupDocumentsFolder({
         requestedStatus,
       };
 
-      const hasDocxJournal = types.includes("class_journal");
-      const legacyTypes = types.filter(type => type !== "class_journal");
-      const docs = legacyTypes.length === 1
-        ? [generateDocument(generationCtx, legacyTypes[0], genOpts)]
-        : legacyTypes.length > 1
-          ? generatePackage(generationCtx, legacyTypes, genOpts)
+      const exactGoreltechDocuments =
+        resolveGroupDocumentClientProfile(generationCtx.organization).key === "goreltech";
+      const includeJournal = types.includes("class_journal");
+      const generatedTypes = exactGoreltechDocuments
+        ? types.filter(type => type !== "class_journal")
+        : types;
+      const docs = generatedTypes.length === 1
+        ? [generateDocument(generationCtx, generatedTypes[0], genOpts)]
+        : generatedTypes.length > 1
+          ? generatePackage(generationCtx, generatedTypes, genOpts)
           : [];
-      const res = hasDocxJournal
+      const res = exactGoreltechDocuments
         ? await generateClassJournalDocx({
             organizationId,
             groupId,
             fillMode: mode,
+            includeJournal,
             otherDocuments: docs,
           }).then(async result => {
             await refreshDocuments();
@@ -333,11 +351,11 @@ export function GroupDocumentsFolder({
         </Tabs>
         <div className="text-xs text-muted-foreground mt-2">
           {mode === "blank"
-            ? "Ячейки остаются честно пустыми — документ печатается как бланк и сохраняется со статусом «черновик»."
+            ? "Для очных занятий: ячейки остаются пустыми, чтобы отметки можно было проставить вручную. Документ сохраняется как черновик."
             : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Журнал формируется из оригинального Word-файла клиента; остальные 8 документов пока имеют пометку legacy_html.
+          Для ГОРЭЛТЕХ все 9 документов формируются из оригинальных Word-файлов клиента; для остальных организаций используется общий макет Синтагмы.
         </div>
         {mode === "data" && (
           <div className="mt-3 text-xs space-y-2">
@@ -383,7 +401,7 @@ export function GroupDocumentsFolder({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-80">
             {DOC_TYPES.map(t => {
-              const docMissing = missingDocRequirements(t.key, reqSource);
+              const docMissing = missingDocRequirements(t.key, reqSource, mode);
               return (
                 <DropdownMenuItem
                   key={t.key}
@@ -487,6 +505,10 @@ export function GroupDocumentsFolder({
                     {(row.layout_format || LEGACY_LAYOUT_FORMAT) === LEGACY_LAYOUT_FORMAT ? (
                       <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
                         Beta · HTML-макет
+                      </Badge>
+                    ) : typeStatus.get(row.doc_type) === "beta" ? (
+                      <Badge variant="outline" className="rounded-full text-[10px] border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                        Beta · Word · {row.template_version_label || "DOCX"}
                       </Badge>
                     ) : (
                       <Badge variant="default" className="rounded-full text-[10px]">

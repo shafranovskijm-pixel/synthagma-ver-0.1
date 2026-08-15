@@ -955,8 +955,8 @@ function FolderContents({ folder, students, viewMode, onBack, showBackButton = t
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm">{t.title}</span>
-                    <Badge variant={t.status === "ready" ? "default" : "outline"} className="rounded-full text-[10px]">
-                      {t.status === "ready" ? "Доступно" : "Скоро"}
+                    <Badge variant={t.status === "ready" ? "default" : t.status === "beta" ? "secondary" : "outline"} className="rounded-full text-[10px]">
+                      {t.status === "ready" ? "Доступно" : t.status === "beta" ? "Beta" : "Скоро"}
                     </Badge>
                   </div>
                   {t.hint && <div className="mt-0.5 text-xs text-muted-foreground">{t.hint}</div>}

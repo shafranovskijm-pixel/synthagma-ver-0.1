@@ -10,13 +10,10 @@ const outputDir = path.join(
   repoRoot,
   "supabase/functions/_shared/group-doc-templates/goreltech/class-journal/v1",
 );
-const sourcePath = process.argv[2];
-
-if (!sourcePath) {
-  throw new Error(
-    "Usage: node scripts/build-class-journal-template.mjs <client-source.docx>",
-  );
-}
+const sourcePath = process.argv[2] || path.join(
+  repoRoot,
+  "docs/group-documents/client-templates/goreltech-group-package-v1/source/class_journal.source.docx",
+);
 
 const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex").toUpperCase();
 
@@ -86,6 +83,38 @@ function replaceChild(parentXml, child, replacement) {
   return parentXml.slice(0, child.start) + replacement + parentXml.slice(child.end);
 }
 
+function constrainTable(tableXml, targetWidth, maxFontHalfPoints) {
+  const widths = Array.from(tableXml.matchAll(/<w:gridCol\b[^>]*\bw:w="(\d+)"/g)).map(
+    (match) => Number(match[1]),
+  );
+  const currentWidth = widths.reduce((sum, value) => sum + value, 0);
+  if (!currentWidth) throw new Error("Journal table has no grid width");
+  const factor = Math.min(1, targetWidth / currentWidth);
+  let patched = tableXml
+    .replace(/(<w:gridCol\b[^>]*\bw:w=")(-?\d+)(")/g, (_m, before, raw, after) =>
+      `${before}${Math.max(1, Math.round(Number(raw) * factor))}${after}`,
+    )
+    .replace(/(<w:tcW\b[^>]*\bw:w=")(-?\d+)(")/g, (_m, before, raw, after) =>
+      `${before}${Math.max(1, Math.round(Number(raw) * factor))}${after}`,
+    )
+    .replace(
+      /<w:tblW\b[^>]*\/>/,
+      `<w:tblW w:w="${Math.round(currentWidth * factor)}" w:type="dxa"/>`,
+    );
+  if (/<w:tblInd\b[^>]*\/>/.test(patched)) {
+    patched = patched.replace(/<w:tblInd\b[^>]*\/>/, '<w:tblInd w:w="0" w:type="dxa"/>');
+  } else {
+    patched = patched.replace(/(<w:tblPr\b[^>]*>)/, '$1<w:tblInd w:w="0" w:type="dxa"/>');
+  }
+  return patched
+    .replace(/(<w:sz\b[^>]*\bw:val=")([0-9]+)(")/g, (_m, before, raw, after) =>
+      `${before}${Math.min(Number(raw), maxFontHalfPoints)}${after}`,
+    )
+    .replace(/(<w:szCs\b[^>]*\bw:val=")([0-9]+)(")/g, (_m, before, raw, after) =>
+      `${before}${Math.min(Number(raw), maxFontHalfPoints)}${after}`,
+    );
+}
+
 function patchTable(tableXml) {
   let rows = splitTopLevel(tableXml, ["w:tr"]);
 
@@ -107,7 +136,7 @@ function patchTable(tableXml) {
     patchCell(2, i + 2, [token]);
   });
 
-  return tableXml;
+  return constrainTable(tableXml, 9300, 15);
 }
 
 function patchDocumentXml(documentXml) {
@@ -142,16 +171,16 @@ function patchDocumentXml(documentXml) {
     "[[PROGRAM_HOURS]]",
   ]);
   patchParagraph("Преподаватель", [
-    "Преподаватель",
-    " ",
-    "[[INSTRUCTOR_SHORT]]",
-    "                           ",
-    "                    ",
-    "Подпись______________________________",
+    "Преподаватели [[INSTRUCTOR_SHORT]] __________________________ Подпись __________________________",
+    "",
+    "",
+    "",
+    "",
+    "",
   ]);
   patchParagraph("Руководитель учебного центра", [
-    " ",
-    "Руководитель учебного центра   [[DIRECTOR_SIGNATURE]]    _____________________________________  ",
+    "Генеральный директор [[DIRECTOR_SIGNATURE]] __________________________________________",
+    "",
   ]);
 
   const firstTable = elements.find((el) => el.tag === "w:tbl");
@@ -159,7 +188,17 @@ function patchDocumentXml(documentXml) {
   firstTable.xml = patchTable(firstTable.xml);
 
   const patchedBody = elements.map((el) => el.xml).join("");
-  const patched = documentXml.slice(0, prefixEnd) + patchedBody + documentXml.slice(bodyEnd);
+  const patched = (
+    documentXml.slice(0, prefixEnd) + patchedBody + documentXml.slice(bodyEnd)
+  ).replace(/<w:pgSz\b[^>]*\/>/g, (node) => {
+    let next = node
+      .replace(/\s+w:orient="[^"]*"/g, "")
+      .replace(/w:w="\d+"/, 'w:w="11906"')
+      .replace(/w:h="\d+"/, 'w:h="16838"');
+    if (!/w:w="/.test(next)) next = next.replace(/\/>$/, ' w:w="11906"/>');
+    if (!/w:h="/.test(next)) next = next.replace(/\/>$/, ' w:h="16838"/>');
+    return next;
+  });
   const expected = [
     "[[GROUP_NUMBER]]",
     "[[PROGRAM_TITLE]]",
@@ -204,11 +243,14 @@ const templateHash = sha256(templateBytes);
 const manifest = {
   schema_version: 1,
   template_id: "goreltech.group.class_journal",
-  template_version: "1.0.0-draft",
+  template_version: "1.1.0-client-source",
   scenario: "group_class_journal",
-  source_filename: path.basename(sourcePath),
+  source_filename: "class_journal.source.docx",
   source_sha256: sourceHash,
   template_sha256: templateHash,
+  fidelity_status: "client_source_with_telemost_corrections",
+  source_evidence:
+    "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
   render_policy: "filled_docx_is_the_single_source_for_preview_pdf_and_download",
   variables: [
     { token: "[[GROUP_NUMBER]]", key: "group.number", type: "string", source: "student_groups.group_number", required: true },
@@ -250,9 +292,10 @@ const manifest = {
   ],
   qa: {
     expected_pages: 1,
-    orientation: "landscape",
+    orientation: "portrait",
     inspect_all_pages: true,
     preserve_package_parts_except: ["word/document.xml"],
+    status: "passed_all_rendered_pages_2026-08-15",
   },
 };
 

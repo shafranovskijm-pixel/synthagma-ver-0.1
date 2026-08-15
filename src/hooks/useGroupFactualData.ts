@@ -136,7 +136,7 @@ export function useGroupFactualData(
           supabase
             .from("education_document_records")
             .select(
-              "enrollment_id, full_name, birth_date, document_type, document_series, document_number, issue_date, order_number, specialty_name",
+              "enrollment_id, full_name, birth_date, document_type, document_series, document_number, reg_number, issue_date, order_number, order_date, specialty_name",
             )
             .eq("organization_id", organizationId)
             .in("enrollment_id", enrollmentIds)

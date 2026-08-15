@@ -15,7 +15,6 @@ export interface DocTemplate {
 }
 
 const CSS = `
-@page{size:A4;margin:15mm}
 body{font-family:'Times New Roman',Times,serif;font-size:12px;line-height:1.35;color:#000;max-width:180mm;margin:0 auto;padding:8px}
 h1{text-align:center;font-size:14px;font-weight:bold;margin:8px 0;text-transform:uppercase}
 h2{text-align:center;font-size:13px;font-weight:bold;margin:12px 0 6px}
@@ -24,13 +23,14 @@ table{border-collapse:collapse;width:100%;margin:8px 0;font-size:11px}
 th,td{border:1px solid #000;padding:3px 5px;vertical-align:top}
 th{background:#f0f0f0;font-weight:bold;text-align:center}
 .nb td,.nb th{border:none;padding:2px 4px}
-.sig{margin-top:20px}.mt{margin-top:10px}.small{font-size:10px}
+.doc-head{text-align:center;font-size:11px;line-height:1.2;margin:0 0 10px}.doc-head p{margin:1px 0}
+.sig{margin-top:20px}.sig-large{margin-top:36px;min-height:80px}.mt{margin-top:10px}.small{font-size:10px}
 p{margin:4px 0}.indent{text-indent:1.2em}
 `.replace(/\n/g, "");
 
-const PAGE = (body: string) =>
+const PAGE = (body: string, orientation: "portrait" | "landscape" = "portrait") =>
   `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"/><title>Документ</title>` +
-  `<style>${CSS}</style></head><body>${body}</body></html>`;
+  `<style>@page{size:A4 ${orientation};margin:15mm}${CSS}</style></head><body>${body}</body></html>`;
 
 export const TEMPLATES: DocTemplate[] = [
   {
@@ -46,13 +46,14 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ (УЦ-N/YYYY)",
     requiredKeys: ["org_name", "group_number", "order_number", "program_title"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <p class="right"><strong>{{org_short_name}}</strong></p>
 
 <h1>ПРИКАЗ № {{order_number}}</h1>
 <p class="center">от {{order_date}}</p>
 <p class="center"><strong>Об открытии курса и зачислении на обучение</strong></p>
 
-<p class="justify">В соответствии с ФЗ «Об образовании в Российской Федерации»,
+<p class="justify">В соответствии с Федеральным законом «Об образовании в Российской Федерации»,
 положением об учебном центре, Уставом {{org_short_name}} <strong>приказываю:</strong></p>
 
 <p><strong>1.</strong> Открыть курс в объёме {{program_hours}} часов по дополнительной профессиональной
@@ -64,8 +65,8 @@ export const TEMPLATES: DocTemplate[] = [
   <thead>
     <tr>
       <th>№</th>
-      <th>Ф.И.О.</th>
-      <th>Программа ДПО</th>
+      <th>Фамилия, имя, отчество</th>
+      <th>Программа дополнительного профессионального образования</th>
       <th>Часов</th>
       <th>Срок обучения</th>
       <th>Основание</th>
@@ -76,15 +77,15 @@ export const TEMPLATES: DocTemplate[] = [
 
 <p><strong>3.</strong> Присвоить группе номер <strong>{{group_number}}</strong>.</p>
 <p><strong>4.</strong> Ответственность за организационно-методическое сопровождение курса
-возложить на {{org_director_name}}.</p>
+возложить на {{responsible_person_name}}.</p>
 <p><strong>5.</strong> Контроль за исполнением настоящего приказа оставляю за собой.</p>
 
-<div class="sig">
-  <p>Руководитель учебного центра {{org_short_name}}</p>
+<div class="sig sig-large">
+  <p>{{org_director_position}} {{org_short_name}}</p>
   <p>_________________ / {{org_director_name}} /</p>
   <p class="small">{{order_date}}</p>
 </div>
-`),
+`, "landscape"),
   },
 
   /* ═══════════════════════ ПРИКАЗ ОБ ОТЧИСЛЕНИИ ═══════════════════════ */
@@ -94,6 +95,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ",
     requiredKeys: ["group_number", "order_number", "end_date", "program_title"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <p class="right"><strong>{{org_short_name}}</strong></p>
 
 <h1>ПРИКАЗ № {{order_number}}</h1>
@@ -102,18 +104,18 @@ export const TEMPLATES: DocTemplate[] = [
 
 <p class="justify">На основании результатов итоговой аттестации <strong>приказываю:</strong></p>
 
-<p><strong>1.</strong> Закрыть курс по программе повышения квалификации «{{program_title}}»
-(объём {{program_hours}} ак. ч.) с {{end_date_ru}}</p>
+<p><strong>1.</strong> Закрыть курс по дополнительной профессиональной программе повышения квалификации
+«{{program_title}}» объёмом {{program_hours}} академических часов с {{end_date_ru}}.</p>
 
-<p><strong>2.</strong> Отчислить с выдачей удостоверений о повышении квалификации
+<p><strong>2.</strong> Отчислить {{expulsion_outcome}}
 обучающихся группы <strong>{{group_number}}</strong>:</p>
 
 <table>
   <thead>
     <tr>
       <th>№</th>
-      <th>Ф.И.О.</th>
-      <th>Программа ДПО</th>
+      <th>Фамилия, имя, отчество</th>
+      <th>Программа дополнительного профессионального образования</th>
       <th>Часов</th>
       <th>Срок обучения</th>
       <th>Основание</th>
@@ -124,12 +126,12 @@ export const TEMPLATES: DocTemplate[] = [
 
 <p><strong>3.</strong> Контроль за исполнением настоящего приказа оставляю за собой.</p>
 
-<div class="sig">
-  <p>Руководитель учебного центра {{org_short_name}}</p>
+<div class="sig sig-large">
+  <p>{{org_director_position}} {{org_short_name}}</p>
   <p>_________________ / {{org_director_name}} /</p>
   <p class="small">{{order_date}}</p>
 </div>
-`),
+`, "landscape"),
   },
 
   /* ═══════════════════════ СПИСОК ОБУЧАЮЩИХСЯ ═══════════════════════ */
@@ -139,6 +141,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ: ФИО, e-mail, паспорт, образование",
     requiredKeys: ["group_number", "student_list_detail_rows"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <p class="center"><strong>Группа обучающихся № {{group_number}}</strong></p>
 <p class="center">курса «{{program_title}}»</p>
 
@@ -156,8 +159,8 @@ export const TEMPLATES: DocTemplate[] = [
   <tbody>{{student_list_detail_rows}}</tbody>
 </table>
 
-<div class="sig">
-  <p>Руководитель учебного центра {{org_director_short}}</p>
+<div class="sig sig-large">
+  <p>{{org_director_position}} {{org_director_short}}</p>
   <p>_____________________________________</p>
 </div>
 `),
@@ -170,6 +173,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ с датами занятий",
     requiredKeys: ["group_number", "program_title", "journal_rows"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <p class="center"><strong>Журнал учета занятий</strong></p>
 <p class="center">Группа обучающихся № <strong>{{group_number}}</strong></p>
 <p class="center">Курса повышения квалификации «{{program_title}}»</p>
@@ -189,9 +193,9 @@ export const TEMPLATES: DocTemplate[] = [
 <p class="small">Режим документа: {{fill_mode}}. Источник: {{journal_source_note}}</p>
 <p class="small">{{layout_notice}}</p>
 
-<div class="sig">
-  <p>Преподаватель {{org_director_short}} &nbsp;&nbsp; Подпись ______________________________</p>
-  <p class="mt">Руководитель учебного центра {{org_director_short}}</p>
+<div class="sig sig-large">
+  <p>Преподаватель {{instructor_short}} &nbsp;&nbsp; Подпись ______________________________</p>
+  <p class="mt">{{org_director_position}} {{org_director_short}}</p>
   <p>_____________________________________</p>
 </div>
 `),
@@ -204,6 +208,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ",
     requiredKeys: ["program_title", "group_number", "start_date", "end_date"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <h1>Расписание учебных занятий</h1>
 <p class="center"><strong>«{{program_title}}»</strong></p>
 <p class="center">{{program_hours}} ак. ч. · Группа {{group_number}}</p>
@@ -225,9 +230,9 @@ export const TEMPLATES: DocTemplate[] = [
 <p class="small">Режим документа: {{fill_mode}}. {{schedule_notice}}</p>
 <p class="small">{{layout_notice}}</p>
 
-<div class="sig">
-  <p>Преподаватель: _________________ / {{org_director_short}} /</p>
-  <p>Руководитель учебного центра: _________________ / {{org_director_short}} /</p>
+<div class="sig sig-large">
+  <p>Преподаватель: _________________ / {{instructor_short}} /</p>
+  <p>{{org_director_position}}: _________________ / {{org_director_short}} /</p>
 </div>
 `),
   },
@@ -239,6 +244,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ",
     requiredKeys: ["group_number", "program_title", "end_date", "attestation_rows"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <h1>ВЕДОМОСТЬ итоговой аттестации</h1>
 <p class="center">Дата {{end_date}} &nbsp;&nbsp; N _{{group_number}}/ИА</p>
 <p class="center">Программа повышения квалификации «{{program_title}}».</p>
@@ -261,9 +267,9 @@ export const TEMPLATES: DocTemplate[] = [
 <p class="small">Режим документа: {{fill_mode}}. Источник: {{attestation_source_note}}</p>
 <p class="small">{{layout_notice}}</p>
 
-<div class="sig">
-  <p>Подпись преподавателя _____________ / {{org_director_short}} /</p>
-  <p class="mt">Руководитель учебного центра ___________ {{org_director_short}}</p>
+<div class="sig sig-large">
+  <p>Подпись преподавателя _____________ / {{instructor_short}} /</p>
+  <p class="mt">{{org_director_position}} ___________ {{org_director_short}}</p>
 </div>
 `),
   },
@@ -275,6 +281,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "Данные для ФИС ФРДО по образцу ГОРЭЛТЕХ",
     requiredKeys: ["org_name", "registration_rows"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <h1>Книга регистрации выдачи документов о квалификации</h1>
 <p class="center">{{org_name}}</p>
 <p class="center small">Данные для передачи в ФИС ФРДО</p>
@@ -285,15 +292,15 @@ export const TEMPLATES: DocTemplate[] = [
       <th>№</th>
       <th>Вид документа</th>
       <th>Программа / группа</th>
-      <th>Серия</th>
-      <th>Номер</th>
-      <th>ФИО</th>
+      <th>Серия и номер</th>
+      <th>Фамилия, имя, отчество</th>
       <th>Дата рожд.</th>
       <th>Пол</th>
       <th>Документ, удост. личность</th>
       <th>Гражданство</th>
       <th>Приказ</th>
       <th>Дата выдачи</th>
+      <th>Дата закрытия группы</th>
       <th>Подп. рук.</th>
       <th>Получил</th>
     </tr>
@@ -304,10 +311,10 @@ export const TEMPLATES: DocTemplate[] = [
 <p class="small">Режим документа: {{fill_mode}}. Источник: {{registration_source_note}}</p>
 <p class="small">{{layout_notice}}</p>
 
-<div class="sig">
-  <p>Ответственный: _________________ / {{org_director_name}} /</p>
+<div class="sig sig-large">
+  <p>{{org_director_position}}: _________________ / {{org_director_name}} /</p>
 </div>
-`),
+`, "landscape"),
   },
 
   /* ═══════════════════════ ТИТУЛЬНЫЙ ЛИСТ ═══════════════════════ */
@@ -318,9 +325,7 @@ export const TEMPLATES: DocTemplate[] = [
     requiredKeys: ["org_name", "group_number", "program_title"],
     body_html: PAGE(`
 <div style="margin-top:40px" class="center">
-  <p>Учебный центр Общества с ограниченной ответственностью<br/>
-  «Инжиниринговый центр «ГОРЭЛТЕХ»</p>
-  <p>({{org_short_name}})</p>
+  {{& org_title_header_html}}
 
   <h1 style="margin-top:56px;font-size:20px;letter-spacing:0.08em">ДЕЛО</h1>
   <p style="margin-top:10px">группы слушателей курсов<br/>
@@ -330,9 +335,7 @@ export const TEMPLATES: DocTemplate[] = [
 
   <p style="margin-top:36px">По программе: {{program_title}}</p>
   <p>Сроки проведения с {{start_date}} по {{end_date}}</p>
-  <p class="mt">Обучающихся: {{students_count}}</p>
-
-  <p style="margin-top:72px">г. Санкт-Петербург {{year}} г.</p>
+  <p style="margin-top:72px">г. {{org_city}} {{year}} г.</p>
 </div>
 `),
   },
@@ -344,6 +347,7 @@ export const TEMPLATES: DocTemplate[] = [
     hint: "По образцу ГОРЭЛТЕХ: ФИО, организация, контакты, даты",
     requiredKeys: ["group_number", "program_title", "pass_rows"],
     body_html: PAGE(`
+<div class="doc-head">{{& org_title_header_html}}</div>
 <p class="center"><strong>Группа обучающихся № {{group_number}}</strong></p>
 <p class="center">курса «{{program_title}}»</p>
 <p class="center">{{program_hours}} часов</p>
@@ -369,6 +373,10 @@ export const TEMPLATES: DocTemplate[] = [
   </thead>
   <tbody>{{pass_rows}}</tbody>
 </table>
+
+<div class="sig sig-large">
+  <p>{{org_director_position}}: _________________ / {{org_director_name}} /</p>
+</div>
 `),
   },
 ];

@@ -1,11 +1,13 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.class_journal",
-  "template_version": "1.0.0-draft",
+  "template_version": "1.1.0-client-source",
   "scenario": "group_class_journal",
-  "source_filename": "6. Журнал учета занятий.docx",
+  "source_filename": "class_journal.source.docx",
   "source_sha256": "F22A2C6C5D0368C19FE744041BDAAC1702574AAE6FE69264141D5C52BF3729B1",
-  "template_sha256": "5B1F0407EE9940A965FD76FC85AECD4851F874C2EC69A1FD3A0334E443255CDE",
+  "template_sha256": "3F6FE93BAFD6B3357BA090BB268661378846E2C16A392DF823E03405488309D8",
+  "fidelity_status": "client_source_with_telemost_corrections",
+  "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
   "render_policy": "filled_docx_is_the_single_source_for_preview_pdf_and_download",
   "variables": [
     {
@@ -143,10 +145,11 @@
   ],
   "qa": {
     "expected_pages": 1,
-    "orientation": "landscape",
+    "orientation": "portrait",
     "inspect_all_pages": true,
     "preserve_package_parts_except": [
       "word/document.xml"
-    ]
+    ],
+    "status": "passed_all_rendered_pages_2026-08-15"
   }
 }

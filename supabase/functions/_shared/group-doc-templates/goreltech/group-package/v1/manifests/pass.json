@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.group.pass",
+  "template_version": "1.0.0-client-source",
+  "scenario": "group_pass",
+  "source_filename": "pass.source.docx",
+  "source_sha256": "4BF9F40565934CB8363DADD796ADE74B088242FFC0AA6DB9E251241A36F83DFD",
+  "fidelity_status": "client_source_with_telemost_corrections",
+  "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
+  "orientation": "portrait",
+  "row_source_key": "pass_rows",
+  "row_tokens": [
+    "N",
+    "STUDENT_NAME",
+    "COMPANY",
+    "EMAIL",
+    "PHONE",
+    "DAY_1",
+    "DAY_2",
+    "DAY_3",
+    "DAY_4"
+  ],
+  "repeater": {
+    "table_index": 0,
+    "header_rows": 2,
+    "prototype_row": 2,
+    "strategy": "clone_prototype_remove_unused"
+  },
+  "changes_applied": [
+    "full GORELTECH header retained from the client source",
+    "client wording and signature corrections from Telemost applied",
+    "portrait/landscape mode follows the Telemost instruction",
+    "all runtime values use explicit tokens; no sample person remains"
+  ],
+  "qa": {
+    "inspect_all_pages": true,
+    "preserve_package_parts_except": [
+      "word/document.xml"
+    ],
+    "status": "passed_all_rendered_pages_2026-08-15"
+  },
+  "template_sha256": "85D51A66706F4ECA83C902F9D20B4926B1300C5D6AC6A6135894B4360525E41B"
+}

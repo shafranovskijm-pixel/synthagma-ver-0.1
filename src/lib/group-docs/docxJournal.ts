@@ -5,6 +5,7 @@ export interface GenerateClassJournalParams {
   organizationId: string;
   groupId: string;
   fillMode: "blank" | "data";
+  includeJournal?: boolean;
   otherDocuments: GeneratedDocument[];
 }
 
@@ -37,6 +38,7 @@ export async function generateClassJournalDocx(
       organizationId: params.organizationId,
       groupId: params.groupId,
       fillMode: params.fillMode,
+      includeJournal: params.includeJournal ?? true,
       otherDocuments: params.otherDocuments.map(legacyPayload),
     },
   });
@@ -47,7 +49,9 @@ export async function generateClassJournalDocx(
   return {
     batchId: batch.batch_id || null,
     version: Number(batch.batch_version) || null,
-    insertedCount: Number(batch.inserted_count) || params.otherDocuments.length + 1,
+    insertedCount:
+      Number(batch.inserted_count)
+      || params.otherDocuments.length + (params.includeJournal === false ? 0 : 1),
     filePath: String(payload?.document?.file_path || ""),
   };
 }

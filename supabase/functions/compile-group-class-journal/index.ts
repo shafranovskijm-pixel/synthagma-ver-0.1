@@ -1,7 +1,8 @@
 /**
  * DOCX-first журнал группы из оригинального Word-файла клиента.
- * Все значения перечитываются на сервере из СИНТАГМЫ; клиент передаёт
- * только UUID группы, режим и остальные legacy-документы этой же партии.
+ * Сервер повторно проверяет организацию, группу, курс, участников и ключевые
+ * реквизиты. Клиент передаёт режим и фактические табличные данные остальных
+ * документов этой же атомарной партии.
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -15,15 +16,23 @@ import {
 } from "../_shared/docx-ooxml/classJournal.ts";
 import { shortNameRu } from "../_shared/docx-ooxml/money.ts";
 import {
+  buildGroupDocumentScalars,
+  compileGroupDocumentXml,
+  parseGeneratedHtmlRows,
+  type GroupDocumentManifest,
+} from "../_shared/docx-ooxml/groupDocument.ts";
+import {
   CLASS_JOURNAL_MANIFEST_JSON,
   CLASS_JOURNAL_TEMPLATE_BASE64,
 } from "../_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts";
+import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/goreltech/group-package/v1/embedded.ts";
 
 /**
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-class-journal-authz-v3";
+export const COMPILER_REVISION = "goreltech-group-package-client-source-v6";
+const GORELTECH_INN = "7806541216";
 
 const BUCKET = "billing-documents";
 const LEGACY_TYPES = [
@@ -54,8 +63,12 @@ const BodySchema = z.object({
   organizationId: z.string().uuid(),
   groupId: z.string().uuid(),
   fillMode: z.enum(["blank", "data"]).default("blank"),
+  includeJournal: z.boolean().default(true),
   otherDocuments: z.array(LegacyDocumentSchema).max(20).default([]),
-});
+}).refine(
+  (body) => body.includeJournal || body.otherDocuments.length > 0,
+  { message: "Не выбран ни один документ" },
+);
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -67,6 +80,15 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
 
 function decodeBase64Bytes(value: string): Uint8Array {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+function shortInstructorNames(value: unknown): string {
+  return String(value || "")
+    .split(/[;\n]+/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map(shortNameRu)
+    .join("; ");
 }
 
 Deno.serve(async (req) => {
@@ -88,7 +110,8 @@ Deno.serve(async (req) => {
       headers: { ...responseHeaders, "Content-Type": "application/json" },
     });
 
-  let uploadedPath: string | null = null;
+  const uploadedPaths: string[] = [];
+  let storageAdmin: any = null;
   let stage = "request-validation";
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -105,6 +128,7 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
     const admin = createClient(url, service);
+    storageAdmin = admin;
 
     stage = "authentication";
     const { data: userData, error: userError } = await userClient.auth.getUser();
@@ -143,7 +167,7 @@ Deno.serve(async (req) => {
         .maybeSingle(),
       admin
         .from("organizations")
-        .select("id, name, director_name")
+        .select("id, name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
         .eq("id", body.organizationId)
         .maybeSingle(),
       admin
@@ -162,6 +186,15 @@ Deno.serve(async (req) => {
       return json({ error: "Группа не принадлежит выбранной организации" }, 409);
     }
     if (!organization) return json({ error: "Организация не найдена" }, 404);
+    const isExactGoreltechOrganization =
+      String(organization.inn || "").replace(/\D/g, "") === GORELTECH_INN
+      && /ГОРЭЛТЕХ/i.test(String(organization.name || ""));
+    if (!isExactGoreltechOrganization) {
+      return json({
+        error:
+          "Точные клиентские Word-шаблоны доступны только организации ГОРЭЛТЕХ; для этой организации используйте общий пакет",
+      }, 409);
+    }
 
     let course: any = null;
     if (group.course_id) {
@@ -175,6 +208,8 @@ Deno.serve(async (req) => {
       course = courseResult.data;
     }
 
+    let journalDocument: Record<string, unknown> | null = null;
+    if (body.includeJournal) {
     stage = "template-validation";
     // Supabase deploys imported TypeScript modules but does not copy arbitrary
     // binary siblings. Embedding keeps the retained DOCX inseparable from the
@@ -194,7 +229,7 @@ Deno.serve(async (req) => {
         GROUP_NUMBER: String(group.group_number || "").trim(),
         PROGRAM_TITLE: programTitle,
         PROGRAM_HOURS: programHours > 0 ? String(programHours) : "",
-        INSTRUCTOR_SHORT: shortNameRu(String(group.instructor_name || "")),
+        INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
         DIRECTOR_SIGNATURE: initialsFirstNameRu(String(organization.director_name || "")),
         DATE_1: formatJournalDate(dates[0] || ""),
         DATE_2: formatJournalDate(dates[1] || ""),
@@ -221,6 +256,7 @@ Deno.serve(async (req) => {
         documentXml: await documentFile.async("string"),
         manifest,
         snapshot,
+        fillMode: body.fillMode,
       });
     } catch (error) {
       return json({ error: (error as Error).message, stage }, 422);
@@ -229,28 +265,29 @@ Deno.serve(async (req) => {
     const outputBytes: Uint8Array = await zip.generateAsync({ type: "uint8array" });
     const outputHash = await sha256Hex(outputBytes);
     const documentId = crypto.randomUUID();
-    uploadedPath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${documentId}.docx`;
+    const journalPath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${documentId}.docx`;
     stage = "docx-upload";
-    const uploadResult = await admin.storage.from(BUCKET).upload(uploadedPath, outputBytes, {
+    const uploadResult = await admin.storage.from(BUCKET).upload(journalPath, outputBytes, {
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       upsert: false,
     });
     if (uploadResult.error) throw uploadResult.error;
+    uploadedPaths.push(journalPath);
 
     const today = new Date().toISOString().slice(0, 10);
-    const journalDocument = {
+    journalDocument = {
       doc_type: "class_journal",
       name: `Журнал учета занятий — ${group.name}`,
       document_number: null,
       document_date: today,
       variables: snapshot.scalars,
       html: null,
-      file_path: uploadedPath,
+      file_path: journalPath,
       doc_status: "draft",
       fill_mode: body.fillMode,
       layout_format: "docx_ooxml",
       source_note:
-        "Макет, состав группы, программа, преподаватель и даты синхронизированы с СИНТАГМОЙ. Отметки посещаемости оставлены пустыми.",
+        "Оригинальный Word-бланк клиента с согласованными правками. Состав группы, программа, преподаватели и даты синхронизированы с СИНТАГМОЙ; отметки посещаемости оставлены пустыми для ручного внесения.",
       template_registry_key: manifest.template_id,
       template_version_label: manifest.template_version,
       template_sha256: manifest.template_sha256,
@@ -266,44 +303,147 @@ Deno.serve(async (req) => {
       pdf_status: "unavailable",
       generation_status: "generated",
     };
+    }
 
-    // Единая партия: legacy-документы и журнал DOCX сохраняются одним RPC.
-    const safeLegacy = body.otherDocuments.map((document) => ({
-      ...document,
-      file_path: null,
-      template_registry_key: null,
-      template_version_label: null,
-      template_sha256: null,
-      variables_snapshot: null,
-      docx_sha256: null,
-      pdf_status: "unavailable",
-      generation_status: "generated",
-    }));
+    // Остальные документы собираются из точных клиентских DOCX. HTML здесь
+    // используется исключительно как машинный транспорт данных строк таблиц.
+    const compiledPackageDocuments = [];
+    for (const document of body.otherDocuments) {
+      stage = `package-template-${document.doc_type}`;
+      const templateEntry = GROUP_DOCUMENT_TEMPLATE_BUNDLE[document.doc_type];
+      if (!templateEntry) {
+        throw new Error(`Нет Word-шаблона для ${document.doc_type}`);
+      }
+      const packageTemplateBytes = decodeBase64Bytes(templateEntry.templateBase64);
+      const packageManifest = JSON.parse(templateEntry.manifestJson) as GroupDocumentManifest;
+      const packageTemplateHash = await sha256Hex(packageTemplateBytes);
+      if (packageTemplateHash !== String(packageManifest.template_sha256).toUpperCase()) {
+        throw new Error(`Контрольная сумма Word-шаблона ${document.doc_type} не совпала`);
+      }
+
+      const packageZip = await JSZip.loadAsync(packageTemplateBytes);
+      const packageDocumentFile = packageZip.file("word/document.xml");
+      if (!packageDocumentFile) {
+        throw new Error(`Повреждённый Word-шаблон ${document.doc_type}`);
+      }
+      const packageScalars = buildGroupDocumentScalars(document.variables || {});
+      Object.assign(packageScalars, {
+        ORG_NAME: String(organization.name || ""),
+        ORG_SHORT_NAME: "ООО «ИЦ «ГОРЭЛТЕХ»",
+        ORG_HEADER_LINE_1:
+          "Учебный центр Общества с ограниченной ответственностью «Инжиниринговый центр «ГОРЭЛТЕХ»",
+        ORG_HEADER_LINE_2: "(ООО «ИЦ «ГОРЭЛТЕХ»)",
+        ORG_INN: String(organization.inn || ""),
+        ORG_KPP: String(organization.kpp || ""),
+        ORG_OGRN: String(organization.ogrn || ""),
+        ORG_ADDRESS: String(organization.legal_address || ""),
+        ORG_DIRECTOR_NAME: String(organization.director_name || ""),
+        ORG_DIRECTOR_POSITION:
+          String(organization.director_position || "").trim() || "Генеральный директор",
+        ORG_DIRECTOR_SHORT: shortNameRu(String(organization.director_name || "")),
+        ORG_BANK_NAME: String(organization.bank_name || ""),
+        ORG_BANK_BIK: String(organization.bank_bik || ""),
+        ORG_BANK_ACCOUNT: String(organization.bank_account || ""),
+        ORG_BANK_CORR_ACCOUNT: String(organization.bank_corr_account || ""),
+        ORG_EMAIL: String(organization.email || ""),
+        ORG_PHONE: String(organization.phone || ""),
+        GROUP_NUMBER: String(group.group_number || ""),
+        PROGRAM_TITLE: String(group.program_title || course?.title || ""),
+        PROGRAM_HOURS: String(
+          group.program_hours || course?.frdo_duration_hours || course?.duration || "",
+        ),
+        INSTRUCTOR_NAME: String(group.instructor_name || ""),
+        INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
+        RESPONSIBLE_PERSON_NAME: "Ляпко Дарья Константиновна",
+        EXPULSION_OUTCOME: "без выдачи удостоверений о повышении квалификации",
+        STUDENTS_COUNT: String(((profilesResult.data as any[]) || []).length),
+      });
+      const packageRows = packageManifest.row_source_key
+        ? parseGeneratedHtmlRows(
+            document.variables?.[packageManifest.row_source_key],
+            packageManifest.row_tokens,
+          )
+        : [];
+      const packageXml = compileGroupDocumentXml({
+        documentXml: await packageDocumentFile.async("string"),
+        manifest: packageManifest,
+        snapshot: { scalars: packageScalars, rows: packageRows },
+      });
+      packageZip.file("word/document.xml", packageXml);
+      const packageBytes: Uint8Array = await packageZip.generateAsync({ type: "uint8array" });
+      const packageHash = await sha256Hex(packageBytes);
+      const packagePath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${crypto.randomUUID()}.docx`;
+      stage = `package-upload-${document.doc_type}`;
+      const packageUpload = await admin.storage.from(BUCKET).upload(packagePath, packageBytes, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: false,
+      });
+      if (packageUpload.error) throw packageUpload.error;
+      uploadedPaths.push(packagePath);
+
+      compiledPackageDocuments.push({
+        ...document,
+        html: null,
+        file_path: packagePath,
+        layout_format: "docx_ooxml",
+        source_note:
+          "Оригинальный Word-бланк из архива клиента «для сайта (1).zip» с согласованными правками из Телемоста от 12.08.2026.",
+        template_registry_key: packageManifest.template_id,
+        template_version_label: packageManifest.template_version,
+        template_sha256: packageManifest.template_sha256,
+        variables_snapshot: {
+          scalars: packageScalars,
+          rows: packageRows,
+          fidelity_status: packageManifest.fidelity_status,
+        },
+        docx_sha256: packageHash,
+        pdf_status: "unavailable",
+        generation_status: "generated",
+      });
+    }
     stage = "batch-persistence";
     const batchResult = await userClient.rpc("create_group_document_batch", {
       p_organization_id: body.organizationId,
       p_group_id: body.groupId,
-      p_docs: [...safeLegacy, journalDocument],
+      p_docs: [
+        ...compiledPackageDocuments,
+        ...(journalDocument ? [journalDocument] : []),
+      ],
     });
     if (batchResult.error) {
-      await admin.storage.from(BUCKET).remove([uploadedPath]);
-      uploadedPath = null;
+      if (uploadedPaths.length) await admin.storage.from(BUCKET).remove(uploadedPaths);
+      uploadedPaths.length = 0;
       throw batchResult.error;
     }
     const batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
     stage = "complete";
     return json({
-      document: {
-        doc_type: journalDocument.doc_type,
-        name: journalDocument.name,
-        file_path: uploadedPath,
-        docx_sha256: outputHash,
-        pdf_status: "unavailable",
-        template_version_label: manifest.template_version,
-      },
+      document: journalDocument
+        ? {
+            doc_type: journalDocument.doc_type,
+            name: journalDocument.name,
+            file_path: journalDocument.file_path,
+            docx_sha256: journalDocument.docx_sha256,
+            pdf_status: journalDocument.pdf_status,
+            template_version_label: journalDocument.template_version_label,
+          }
+        : null,
       batch,
     });
   } catch (error) {
+    if (uploadedPaths.length && storageAdmin) {
+      const cleanupPaths = [...uploadedPaths];
+      uploadedPaths.length = 0;
+      try {
+        await storageAdmin.storage.from(BUCKET).remove(cleanupPaths);
+      } catch (cleanupError) {
+        console.error("compile-group-class-journal cleanup error", {
+          requestId,
+          cleanupPaths,
+          cleanupError,
+        });
+      }
+    }
     console.error("compile-group-class-journal error", {
       requestId,
       compilerRevision: COMPILER_REVISION,

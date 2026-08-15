@@ -31,9 +31,24 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-class-journal-authz-v3");
+    expect(source).toContain("goreltech-group-package-client-source-v6");
+    expect(source).toContain("function shortInstructorNames");
+    expect(source).toContain('split(/[;\\n]+/)');
+    expect(source).toContain("GROUP_DOCUMENT_TEMPLATE_BUNDLE");
+    expect(source).toContain("compileGroupDocumentXml");
+    expect(source).toContain("uploadedPaths");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
+  });
+
+  it("не выдаёт фирменные шаблоны организации с похожим названием или другим ИНН", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+
+    expect(source).toContain('const GORELTECH_INN = "7806541216"');
+    expect(source).toContain('String(organization.inn || "").replace(/\\D/g, "") === GORELTECH_INN');
+    expect(source).toContain('/ГОРЭЛТЕХ/i.test(String(organization.name || ""))');
+    expect(source).toContain("Точные клиентские Word-шаблоны доступны только организации ГОРЭЛТЕХ");
+    expect(source).toContain("includeJournal: z.boolean().default(true)");
   });
 
   it("checks the admin role without the ambiguous has_role RPC overload", () => {

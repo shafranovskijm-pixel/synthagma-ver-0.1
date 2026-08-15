@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "template_id": "goreltech.group.registration_book",
+  "template_version": "1.0.0-client-source",
+  "scenario": "group_registration_book",
+  "source_filename": "registration_book.source.docx",
+  "source_sha256": "DB22C542C46A355B576E874B985DAC940B2DB95E7CFB961E19EC9BB90DECE1EC",
+  "header_source_filename": "enrollment_order.source.docx",
+  "header_source_part": "word/header2.xml",
+  "header_source_rels_part": "word/_rels/header2.xml.rels",
+  "header_source_sha256": "616E9F6988569F0988B94A9D2D3D23F5268E52D18A25881778B892B7E13CC8AF",
+  "fidelity_status": "client_source_with_telemost_corrections",
+  "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
+  "orientation": "landscape",
+  "row_source_key": "registration_rows",
+  "row_tokens": [
+    "N",
+    "DOCUMENT_ISSUER",
+    "PROGRAM_GROUP",
+    "REGISTRATION_NUMBER_ISSUE_DATE",
+    "SERIES_NUMBER",
+    "STUDENT_NAME",
+    "BIRTH_DATE",
+    "GENDER",
+    "IDENTITY_DOCUMENT",
+    "CITIZENSHIP",
+    "COMPLETION_ORDER",
+    "DIRECTOR_SIGN",
+    "RECIPIENT_SIGN",
+    "TRUSTEE_SIGN",
+    "LOSS_NOTE",
+    "DUPLICATE_SIGN"
+  ],
+  "repeater": {
+    "table_index": 0,
+    "header_rows": 2,
+    "prototype_row": 2,
+    "strategy": "clone_prototype_remove_unused"
+  },
+  "changes_applied": [
+    "full GORELTECH header restored from the exact client landscape-order source",
+    "client wording and signature corrections from Telemost applied",
+    "portrait/landscape mode follows the Telemost instruction",
+    "all runtime values use explicit tokens; no sample person remains"
+  ],
+  "qa": {
+    "inspect_all_pages": true,
+    "preserve_package_parts_except": [
+      "[Content_Types].xml",
+      "word/document.xml",
+      "word/_rels/document.xml.rels",
+      "word/header1.xml",
+      "word/_rels/header1.xml.rels",
+      "word/media/image1.jpeg"
+    ],
+    "status": "passed_all_rendered_pages_2026-08-15"
+  },
+  "template_sha256": "E16714CE71D40E4BDC7991DF394ADAFC8032DB9D3ED69DCBE6CFC560923BC99D"
+}

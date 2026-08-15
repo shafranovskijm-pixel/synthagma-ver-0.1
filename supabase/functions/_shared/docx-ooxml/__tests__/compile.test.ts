@@ -21,6 +21,10 @@ import { formatMoneyRu, moneyToWordsRu, shortNameRu, numberToWordsRu, formatRuss
 import { findUnresolvedTokens } from "../xml";
 
 const TPL_DIR = path.resolve(__dirname, "../../contract-templates/goreltech/company/v1");
+const CLIENT_SOURCE_PATH = path.resolve(
+  __dirname,
+  "../../../../../docs/group-documents/client-templates/goreltech-group-package-v1/source/company_contract.source.doc",
+);
 const manifest = JSON.parse(fs.readFileSync(path.join(TPL_DIR, "manifest.json"), "utf8")) as TemplateManifest;
 
 const CURRICULUM = "Техническое обслуживание, монтаж, эксплуатация и ремонт взрывозащищенного электрооборудования";
@@ -155,6 +159,14 @@ describe("реальный шаблон ГОРЭЛТЕХ (docx_ooxml)", () => {
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
     expect(hex.toLowerCase()).toBe(String(manifest.template_sha256).toLowerCase());
+  });
+
+  it("манифест привязан к точному клиентскому DOC из архива", async () => {
+    const bytes = fs.readFileSync(CLIENT_SOURCE_PATH);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    expect(manifest.source_format).toBe("legacy_doc");
+    expect(hex.toLowerCase()).toBe(String(manifest.source_sha256).toLowerCase());
   });
 
   it("каталог приложений сопоставлен с секциями шаблона", async () => {

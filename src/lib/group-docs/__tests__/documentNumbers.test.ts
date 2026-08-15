@@ -165,8 +165,10 @@ describe("нет выдуманных production-defaults", () => {
     expect(vars.individual_citizenship).toBe("");
   });
 
-  it("должность руководителя и форма обучения не подставляются", () => {
+  it("не подставляет чужую должность руководителя обычной организации", () => {
     const ctx = structuredClone(SAMPLE_CONTEXT);
+    ctx.organization.name = 'ЧОУ ДПО «Другая организация»';
+    ctx.organization.inn = "0000000000";
     ctx.organization.director_position = "";
     ctx.group.program_form = "";
     const vars = buildVariables(ctx, { documentNumber: "", documentDate: "2026-08-05" });
@@ -174,8 +176,21 @@ describe("нет выдуманных production-defaults", () => {
     expect(vars.program_form).toBe("");
   });
 
-  it("приказ ссылается на фактический номер договора, а не на собственный номер", () => {
+  it("для ГОРЭЛТЕХ оставляет графу основания пустой для ручного заполнения", () => {
     const ctx = structuredClone(SAMPLE_CONTEXT);
+    ctx.extras = { ...(ctx.extras || {}), contract_basis: "Договор № 2026-123" };
+    const vars = buildVariables(ctx, {
+      documentNumber: "УЦ-10/2026",
+      documentDate: "2026-08-07",
+    });
+    expect(vars.students_list_rows).not.toContain("Договор № 2026-123");
+    expect(vars.students_list_rows).not.toContain("Договор № УЦ-10/2026");
+  });
+
+  it("для обычной организации сохраняет явно переданное основание", () => {
+    const ctx = structuredClone(SAMPLE_CONTEXT);
+    ctx.organization.name = 'ЧОУ ДПО «Другая организация»';
+    ctx.organization.inn = "0000000000";
     ctx.extras = { ...(ctx.extras || {}), contract_basis: "Договор № 2026-123" };
     const vars = buildVariables(ctx, {
       documentNumber: "УЦ-10/2026",

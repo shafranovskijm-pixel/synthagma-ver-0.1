@@ -38,8 +38,10 @@ export interface RegistrationFact {
   document_type: string;
   document_series: string;
   document_number: string;
+  reg_number?: string;
   issue_date: string;
   order_number: string;
+  order_date?: string;
   birth_date?: string;
   gender?: string;
   passport?: string;
@@ -245,37 +247,73 @@ export function buildAttestationBlankRows(students: StudentLike[]): string {
 }
 
 /** Книга регистрации: только фактически выданные документы. */
-export function buildRegistrationRowsFromFacts(facts: RegistrationFact[]): string {
+export function buildRegistrationRowsFromFacts(
+  facts: RegistrationFact[],
+  groupEndDate = "",
+  groupProgram = "",
+  groupNumber = "",
+  groupStartDate = "",
+  organizationName = "",
+): string {
   return facts
     .map((f, i) => {
+      const programGroup = [
+        `Программа дополнительного профессионального образования «${f.program || groupProgram}»`,
+        groupNumber ? `группа № ${groupNumber}` : "",
+        groupStartDate || groupEndDate
+          ? `срок обучения ${shortDate(groupStartDate)}–${shortDate(groupEndDate)}`
+          : "",
+      ].filter(Boolean).join("; ");
+      const registrationAndDate = [
+        f.reg_number || "",
+        f.issue_date ? shortDate(f.issue_date) : "",
+      ].filter(Boolean).join(", ");
+      const completionOrder = [
+        f.order_number || "",
+        f.order_date ? shortDate(f.order_date) : "",
+      ].filter(Boolean).join(" от ");
       return (
         `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td>${esc(f.document_type)}</td>` +
-        `<td>${esc(f.program || "")}</td>` +
-        `<td>${esc(f.document_series)}</td>` +
-        `<td>${esc(f.document_number)}</td>` +
+        `<td>${esc([f.document_type, organizationName].filter(Boolean).join(". "))}</td>` +
+        `<td>${esc(programGroup)}</td>` +
+        `<td>${esc(registrationAndDate)}</td>` +
+        `<td>${esc([f.document_series, f.document_number].filter(Boolean).join(" "))}</td>` +
         `<td>${esc(f.full_name)}</td>` +
         `<td>${esc(f.birth_date ? shortDate(f.birth_date) : "")}</td>` +
         `<td style="text-align:center">${esc(f.gender || "")}</td>` +
         `<td>${esc(f.passport || "")}</td>` +
         `<td>${esc(f.citizenship || "")}</td>` +
-        `<td>${esc(f.order_number || "")}</td>` +
-        `<td>${esc(f.issue_date ? shortDate(f.issue_date) : "")}</td>` +
-        `<td></td><td></td></tr>`
+        `<td>${esc(completionOrder)}</td>` +
+        `<td></td><td></td><td></td><td></td><td></td></tr>`
       );
     })
     .join("");
 }
 
 /** Рабочий бланк книги регистрации: ФИО из группы, номера документов пустые. */
-export function buildRegistrationBlankRows(students: StudentLike[]): string {
+export function buildRegistrationBlankRows(
+  students: StudentLike[],
+  groupEndDate = "",
+  groupProgram = "",
+  groupNumber = "",
+  groupStartDate = "",
+): string {
+  const programGroup = [
+    groupProgram
+      ? `Программа дополнительного профессионального образования «${groupProgram}»`
+      : "",
+    groupNumber ? `группа № ${groupNumber}` : "",
+    groupStartDate || groupEndDate
+      ? `срок обучения ${shortDate(groupStartDate)}–${shortDate(groupEndDate)}`
+      : "",
+  ].filter(Boolean).join("; ");
   return students
     .map(
       (s, i) =>
         `<tr><td style="text-align:center">${i + 1}</td>` +
-        `<td></td><td></td><td></td><td></td>` +
+        `<td></td><td>${esc(programGroup)}</td><td></td><td></td>` +
         `<td>${esc(s.full_name)}</td>` +
-        `<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`,
+        `<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`,
     )
     .join("");
 }
