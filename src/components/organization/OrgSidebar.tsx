@@ -4,7 +4,7 @@ import {
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  PanelLeftClose, PanelLeftOpen, Pin, PinOff
+  PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -34,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { organizationTabPath } from "@/lib/organization/workspaceNavigation";
 
 export type TabType = 
   | "courses" 
@@ -308,11 +309,22 @@ export function OrgSidebar() {
     const isActive = activeTab === item.id;
     const locked = item.category ? isLocked(item.category) : false;
     const itemPinned = isPinned(item.id);
+    const itemHref = organizationTabPath(item.id);
 
     const button = (
-      <button
+      <a
+        href={locked ? undefined : itemHref}
         data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
-        onClick={() => handleTabClick(item.id)}
+        onClick={(event) => {
+          if (locked) {
+            event.preventDefault();
+            handleTabClick(item.id);
+            return;
+          }
+          if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          handleTabClick(item.id);
+        }}
         className={cn(
           "relative rounded-lg transition-all duration-150 animate-fade-in",
           effectiveExpanded
@@ -372,7 +384,7 @@ export function OrgSidebar() {
         {effectiveExpanded && itemPinned && (
           <Pin className={cn("w-3 h-3 shrink-0", isActive ? "text-primary-foreground/90" : "text-muted-foreground/60")} />
         )}
-      </button>
+      </a>
     );
 
     return (
@@ -401,6 +413,15 @@ export function OrgSidebar() {
           </Tooltip>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-44 rounded-xl">
+          {!locked && (
+            <ContextMenuItem
+              onClick={() => window.open(itemHref, "_blank", "noopener,noreferrer")}
+              className="rounded-lg gap-2 py-2"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Открыть в новой вкладке
+            </ContextMenuItem>
+          )}
           <ContextMenuItem onClick={() => togglePin(item.id)} className="rounded-lg gap-2 py-2">
             {itemPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
             {itemPinned ? "Открепить" : "Закрепить наверху"}

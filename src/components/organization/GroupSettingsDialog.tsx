@@ -116,6 +116,14 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   const [seatLimitEnabled, setSeatLimitEnabled] = useState(false);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const trainingDateRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const loadSequenceRef = useRef(0);
+  const saveSequenceRef = useRef(0);
+  const loadedGroupIdentityRef = useRef<string | null>(null);
+  const groupIdentity = `${organizationId}:${groupId}`;
+  const activeGroupIdentityRef = useRef(groupIdentity);
+  // Update during render, before effects run. This closes the short window in
+  // which groupId=B is rendered while state loaded for A is still visible.
+  activeGroupIdentityRef.current = groupIdentity;
 
   const linkedCourse = useMemo(
     () => courses.find(course => course.id === settings?.course_id) ?? null,
@@ -125,44 +133,72 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   const hasHoursMismatch = programHoursMismatch(settings?.program_hours, linkedCourse);
 
   useEffect(() => {
-    if (!open || !groupId) return;
-    setActiveTab("general");
-    loadSettings();
-    loadCourses();
-  }, [open, groupId]);
+    const requestSequence = ++loadSequenceRef.current;
+    saveSequenceRef.current += 1;
+    loadedGroupIdentityRef.current = null;
+    setSettings(null);
+    setCourses([]);
+    setSeatLimitEnabled(false);
+    setSaving(false);
 
-  const loadSettings = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("student_groups")
-        .select("*")
-        .eq("id", groupId)
-        .single();
-      if (error) throw error;
-      const s = data as any as GroupSettings;
-      setSettings(s);
-      setSeatLimitEnabled(s.max_seats !== null && s.max_seats > 0);
-    } catch {
-      toast.error("Ошибка загрузки настроек группы");
-    } finally {
+    if (!open || !groupId || !organizationId) {
       setLoading(false);
-    }
-  };
-
-  const loadCourses = async () => {
-    if (!organizationId) return;
-    const { data, error } = await supabase
-      .from("courses")
-      .select("id, title, duration, frdo_duration_hours, training_form")
-      .eq("organization_id", organizationId)
-      .order("title");
-    if (error) {
-      console.error("[GroupSettings] courses load failed", error);
       return;
     }
-    setCourses((data || []) as any as CourseOption[]);
-  };
+
+    let cancelled = false;
+    const requestedIdentity = `${organizationId}:${groupId}`;
+    const isCurrentRequest = () => (
+      !cancelled
+      && loadSequenceRef.current === requestSequence
+      && activeGroupIdentityRef.current === requestedIdentity
+    );
+
+    setActiveTab("general");
+    setLoading(true);
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("student_groups")
+          .select("*")
+          .eq("id", groupId)
+          .eq("organization_id", organizationId)
+          .single();
+        if (!isCurrentRequest()) return;
+        if (error) throw error;
+        const nextSettings = data as any as GroupSettings;
+        loadedGroupIdentityRef.current = requestedIdentity;
+        setSettings(nextSettings);
+        setSeatLimitEnabled(nextSettings.max_seats !== null && nextSettings.max_seats > 0);
+      } catch {
+        if (isCurrentRequest()) toast.error("Ошибка загрузки настроек группы");
+      } finally {
+        if (isCurrentRequest()) setLoading(false);
+      }
+    })();
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title, duration, frdo_duration_hours, training_form")
+        .eq("organization_id", organizationId)
+        .order("title");
+      if (!isCurrentRequest()) return;
+      if (error) {
+        console.error("[GroupSettings] courses load failed", error);
+        return;
+      }
+      setCourses((data || []) as any as CourseOption[]);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (loadSequenceRef.current === requestSequence) {
+        loadSequenceRef.current += 1;
+      }
+    };
+  }, [open, groupId, organizationId]);
 
   /** Курс является мастер-источником программы/часов/формы при новой привязке. */
   const applyCourse = (courseId: string | null) => {
@@ -182,10 +218,23 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
   const handleSave = async () => {
     if (!settings) return;
+    if (loadedGroupIdentityRef.current !== groupIdentity) {
+      toast.error("Дождитесь загрузки настроек выбранной группы");
+      return;
+    }
     if (!settings.name.trim()) {
       toast.error("Укажите название группы");
       return;
     }
+    const saveSequence = ++saveSequenceRef.current;
+    const saveIdentity = groupIdentity;
+    const saveGroupId = groupId;
+    const saveOrganizationId = organizationId;
+    const isCurrentSave = () => (
+      saveSequenceRef.current === saveSequence
+      && activeGroupIdentityRef.current === saveIdentity
+      && loadedGroupIdentityRef.current === saveIdentity
+    );
     setSaving(true);
     const visibleTrainingDates = Array.from({ length: 4 }, (_, index) => trainingDateRefs.current[index]?.value);
     const settingsForSave = {
@@ -197,11 +246,12 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       // Сохранение через серверную функцию: она сама проверяет права и
       // возвращает обновлённую строку, поэтому «тихий» отказ RLS невозможен.
       const { data, error } = await (supabase as any).rpc("update_student_group_settings", {
-        p_group_id: groupId,
+        p_group_id: saveGroupId,
         p_patch: patch,
       });
+      if (!isCurrentSave()) return;
       if (error) {
-        console.error("[GroupSettings] save failed", { groupId, organizationId, patch, error });
+        console.error("[GroupSettings] save failed", { groupId: saveGroupId, organizationId: saveOrganizationId, patch, error });
         toast.error("Не удалось сохранить настройки", {
           description:
             error.message?.includes("access_denied")
@@ -212,13 +262,13 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       }
       const saved = Array.isArray(data) ? data[0] : data;
       if (!saved) {
-        console.error("[GroupSettings] save returned no row", { groupId, patch });
+        console.error("[GroupSettings] save returned no row", { groupId: saveGroupId, patch });
         toast.error("Не удалось сохранить настройки", { description: "Группа не найдена. Обновите страницу." });
         return;
       }
       const notPersisted = verifySavedSettings(patch, saved as any);
       if (notPersisted.length > 0) {
-        console.error("[GroupSettings] fields not persisted", { groupId, notPersisted, patch, saved });
+        console.error("[GroupSettings] fields not persisted", { groupId: saveGroupId, notPersisted, patch, saved });
         toast.error("Часть полей не сохранилась", { description: notPersisted.join(", ") });
         return;
       }
@@ -227,16 +277,18 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       const { data: fresh, error: refetchError } = await supabase
         .from("student_groups")
         .select("*")
-        .eq("id", groupId)
+        .eq("id", saveGroupId)
+        .eq("organization_id", saveOrganizationId)
         .maybeSingle();
+      if (!isCurrentSave()) return;
       if (refetchError || !fresh) {
-        console.error("[GroupSettings] refetch after save failed", { groupId, refetchError });
+        console.error("[GroupSettings] refetch after save failed", { groupId: saveGroupId, refetchError });
         toast.error("Не удалось перечитать настройки", { description: refetchError?.message || "Обновите страницу." });
         return;
       }
       const stillMissing = verifySavedSettings(patch, fresh as any);
       if (stillMissing.length > 0) {
-        console.error("[GroupSettings] fields missing after refetch", { groupId, stillMissing, patch, fresh });
+        console.error("[GroupSettings] fields missing after refetch", { groupId: saveGroupId, stillMissing, patch, fresh });
         toast.error("Часть полей не сохранилась", { description: stillMissing.join(", ") });
         return;
       }
@@ -247,10 +299,12 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       onOpenChange(false);
 
     } catch (e: any) {
-      console.error("[GroupSettings] save exception", { groupId, patch, e });
-      toast.error("Ошибка сохранения", { description: e?.message || undefined });
+      if (isCurrentSave()) {
+        console.error("[GroupSettings] save exception", { groupId: saveGroupId, patch, e });
+        toast.error("Ошибка сохранения", { description: e?.message || undefined });
+      }
     } finally {
-      setSaving(false);
+      if (saveSequenceRef.current === saveSequence) setSaving(false);
     }
   };
 
@@ -259,7 +313,11 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   const handleDelete = async () => {
     if (!confirm("Удалить группу? Ученики останутся без группы.")) return;
     try {
-      const { error } = await supabase.from("student_groups").delete().eq("id", groupId);
+      const { error } = await supabase
+        .from("student_groups")
+        .delete()
+        .eq("id", groupId)
+        .eq("organization_id", organizationId);
       if (error) throw error;
       toast.success("Группа удалена");
       onDeleted?.();

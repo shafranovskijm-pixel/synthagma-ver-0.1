@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -22,6 +22,7 @@ export function CourseDetailsTab() {
   >("editor");
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const loadSequenceRef = useRef(0);
 
   useEffect(() => { setActiveTab("editor"); }, [courseId]);
 
@@ -31,7 +32,15 @@ export function CourseDetailsTab() {
 
   const loadCourse = useCallback(async (withSpinner = true) => {
     if (!courseId || !organizationId) return;
-    if (withSpinner) setState("loading");
+    const requestSequence = ++loadSequenceRef.current;
+    const isCurrentRequest = () => loadSequenceRef.current === requestSequence;
+
+    if (withSpinner) {
+      // A URL change must never leave the previous course actionable while
+      // the newly selected course is still loading.
+      setCourse(null);
+      setState("loading");
+    }
     setErrorMessage("");
 
     // 1) Course itself — scoped to this organization.
@@ -41,6 +50,8 @@ export function CourseDetailsTab() {
       .eq("id", courseId)
       .eq("organization_id", organizationId)
       .maybeSingle();
+
+    if (!isCurrentRequest()) return;
 
     if (courseError) {
       console.error("[CourseDetailsTab] course fetch failed:", courseError);
@@ -67,6 +78,8 @@ export function CourseDetailsTab() {
       .select("*", { count: "exact", head: true })
       .eq("course_id", courseId);
 
+    if (!isCurrentRequest()) return;
+
     // 3) Students are loaded lazily inside useCourseDetails via the paginated
     //    RPC — CourseDetailsTab no longer prefetches the entire enrollment list.
     setCourse({
@@ -77,7 +90,13 @@ export function CourseDetailsTab() {
   }, [courseId, organizationId]);
 
   useEffect(() => {
-    loadCourse();
+    void loadCourse();
+    return () => {
+      // Invalidate an unresolved request when the URL id changes or this
+      // details view unmounts. The network request may finish, but it cannot
+      // commit stale state into the next course card.
+      loadSequenceRef.current += 1;
+    };
   }, [loadCourse]);
 
   const handleBack = () => {

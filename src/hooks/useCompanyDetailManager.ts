@@ -1,9 +1,17 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Company, CompanyDocument, LinkStudent } from "./useCompaniesManager";
 
 export function useCompanyDetailManager(organizationId: string) {
+  const detailLoadSequenceRef = useRef(0);
+  const activeCompanyIdRef = useRef<string | null>(null);
+
+  const isCurrentDetailLoad = useCallback((companyId: string, sequence: number) => (
+    activeCompanyIdRef.current === companyId
+    && detailLoadSequenceRef.current === sequence
+  ), []);
+
   // Company detail dialog state
   const [showCompanyDetail, setShowCompanyDetail] = useState(false);
   const [selectedCompanyForDetail, setSelectedCompanyForDetail] = useState<Company | null>(null);
@@ -24,7 +32,11 @@ export function useCompanyDetailManager(organizationId: string) {
   const [previewDocumentName, setPreviewDocumentName] = useState("");
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  const fetchLinkStudents = useCallback(async (companyId: string) => {
+  const fetchLinkStudents = useCallback(async (
+    companyId: string,
+    sequence = detailLoadSequenceRef.current,
+  ) => {
+    if (activeCompanyIdRef.current !== companyId) return;
     setIsLoadingLinkStudents(true);
     try {
       const { data, error } = await supabase
@@ -34,15 +46,23 @@ export function useCompanyDetailManager(organizationId: string) {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setLinkStudents((data || []) as LinkStudent[]);
+      if (isCurrentDetailLoad(companyId, sequence)) {
+        setLinkStudents((data || []) as LinkStudent[]);
+      }
     } catch (error) {
       console.error("Error fetching link students:", error);
     } finally {
-      setIsLoadingLinkStudents(false);
+      if (isCurrentDetailLoad(companyId, sequence)) {
+        setIsLoadingLinkStudents(false);
+      }
     }
-  }, []);
+  }, [isCurrentDetailLoad]);
 
-  const fetchCompanyDocuments = useCallback(async (companyId: string) => {
+  const fetchCompanyDocuments = useCallback(async (
+    companyId: string,
+    sequence = detailLoadSequenceRef.current,
+  ) => {
+    if (activeCompanyIdRef.current !== companyId) return;
     setIsLoadingDocuments(true);
     try {
       const { data, error } = await supabase
@@ -52,24 +72,33 @@ export function useCompanyDetailManager(organizationId: string) {
         .order("uploaded_at", { ascending: false });
 
       if (error) throw error;
-      setCompanyDocuments((data || []) as CompanyDocument[]);
+      if (isCurrentDetailLoad(companyId, sequence)) {
+        setCompanyDocuments((data || []) as CompanyDocument[]);
+      }
     } catch (error) {
       console.error("Error fetching company documents:", error);
     } finally {
-      setIsLoadingDocuments(false);
+      if (isCurrentDetailLoad(companyId, sequence)) {
+        setIsLoadingDocuments(false);
+      }
     }
-  }, []);
+  }, [isCurrentDetailLoad]);
 
-  const openCompanyDetail = async (company: Company) => {
+  const openCompanyDetail = useCallback(async (company: Company) => {
+    const sequence = detailLoadSequenceRef.current + 1;
+    detailLoadSequenceRef.current = sequence;
+    activeCompanyIdRef.current = company.id;
     setSelectedCompanyForDetail(company);
     setShowCompanyDetail(true);
+    setCompanyDocuments([]);
+    setLinkStudents([]);
     setDateFilter({ from: undefined, to: undefined });
     setLinkStudentSearchQuery("");
     await Promise.all([
-      fetchCompanyDocuments(company.id),
-      fetchLinkStudents(company.id)
+      fetchCompanyDocuments(company.id, sequence),
+      fetchLinkStudents(company.id, sequence)
     ]);
-  };
+  }, [fetchCompanyDocuments, fetchLinkStudents]);
 
   const uploadDocument = async (file: File, type: 'contract' | 'invoice' | 'act' | 'other', companyId: string) => {
     setIsUploadingDocument(type);

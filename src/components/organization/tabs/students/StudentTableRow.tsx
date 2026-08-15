@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Copy, Trash2, CheckCircle2, XCircle, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
 import type { Student, StudentFRDOStatus } from "@/types";
+import { studentDetailsPath } from "@/lib/groups/groupContext";
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -76,7 +77,18 @@ export const StudentTableRow = React.memo(function StudentTableRow({
       </td>
       <td className="px-6 py-4">
         <div>
-          <div className="font-medium">{student.name}</div>
+          <a
+            href={studentDetailsPath(student.user_id)}
+            className="font-medium hover:text-primary hover:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onViewStudent();
+            }}
+          >
+            {student.name}
+          </a>
           <div className="text-sm text-muted-foreground">
             {student.login ? (
               <div className="flex flex-col gap-0.5">

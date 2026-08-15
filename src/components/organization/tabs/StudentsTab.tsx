@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +24,12 @@ import { StudentMobileCard } from "./students/StudentMobileCard";
 import { StudentsEmptyState } from "./students/StudentsEmptyState";
 import { StudentConfirmDialogs } from "./students/StudentConfirmDialogs";
 import { groupCourseDefaults } from "@/lib/groups/groupSettings";
+import { groupFolderPath } from "@/lib/groups/groupContext";
+import {
+  resolveStudentsViewParams,
+  studentsViewFromParams,
+  type StudentsView,
+} from "@/lib/organization/workspaceNavigation";
 
 interface StudentsTabProps {
   organizationId: string;
@@ -45,23 +52,19 @@ interface StudentsTabProps {
   onNavigateToFRDO?: () => void;
 }
 
-type PanelMode = "active" | "archive" | "groups";
+type PanelMode = StudentsView;
 
 export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabProps) {
   const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false } = props;
   const dash = useOrgDashboard();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
 
-  const [panelMode, setPanelModeState] = useState<PanelMode>(() => {
-    if (typeof window === "undefined") return "groups";
-    const url = new URLSearchParams(window.location.search);
-    const v = url.get("studentsView");
-    if (v === "active" || v === "archive" || v === "groups") return v;
-    const stored = window.localStorage.getItem("orgStudentsPanelMode");
-    if (stored === "active" || stored === "archive" || stored === "groups") return stored;
-    return "groups";
-  });
+  // Each browser tab/window owns its own workspace state through its URL.
+  // localStorage is deliberately not used here: it is shared by every window
+  // and used to make one window overwrite the view selected in another.
+  const panelMode: PanelMode = studentsViewFromParams(searchParams);
 
   const {
     students,
@@ -73,27 +76,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     countsLoading, countsErrorKind, countsInconsistent, retryCounts,
     groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
-    removeStudent, viewMode, setViewMode, activeStudentsCount, archivedCount, archiveByMonth,
+    removeStudent, activeStudentsCount, archivedCount, archiveByMonth,
     archiveStudent, unarchiveStudent, refresh, refreshRows,
     loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
     retryNextPage,
     fetchStudentCredentialsOnDemand,
-  } = useStudents(organizationId, { enabled: panelMode !== "groups" });
+  } = useStudents(organizationId, {
+    enabled: panelMode !== "groups",
+    viewMode: panelMode === "archive" ? "archive" : "active",
+  });
 
   const setPanelMode = useCallback((mode: PanelMode) => {
-    setPanelModeState(mode);
-    if (mode === "active" || mode === "archive") setViewMode(mode);
-    try { window.localStorage.setItem("orgStudentsPanelMode", mode); } catch {}
-    try {
-      const url = new URL(window.location.href);
-      if (mode === "groups") url.searchParams.delete("studentsView");
-      else url.searchParams.set("studentsView", mode);
-      window.history.replaceState({}, "", url.toString());
-    } catch {}
-  }, [setViewMode]);
-  React.useEffect(() => {
-    if (panelMode === "active" || panelMode === "archive") setViewMode(panelMode);
-  }, [panelMode, setViewMode]);
+    setSearchParams((prev) => resolveStudentsViewParams(prev, mode));
+  }, [setSearchParams]);
 
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
@@ -302,10 +297,19 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     : String(serverCount ?? 0);
                 return (
                   <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
-                    <button onClick={() => dash.tabNavigation.openGroupFolder(group.id)} className="w-full text-left" title="Открыть папку группы">
+                    <a
+                      href={groupFolderPath(group.id)}
+                      onClick={(event) => {
+                        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                        event.preventDefault();
+                        dash.tabNavigation.openGroupFolder(group.id);
+                      }}
+                      className="block w-full text-left"
+                      title="Открыть папку группы"
+                    >
                       <div className="flex items-center gap-2 mb-1"><FolderOpen className="w-4 h-4 shrink-0" style={{ color: group.color }} /><span className="font-medium text-sm truncate">{group.name}</span></div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="w-3 h-3" />{countLabel}</span><span>{format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}</span></div>
-                    </button>
+                    </a>
                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                       <button onClick={e => { e.stopPropagation(); setPanelMode("active"); setGroupFilter(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Показать учеников группы"><Filter className="w-3.5 h-3.5 text-muted-foreground" /></button>
                       <button onClick={e => { e.stopPropagation(); setSettingsGroupId(group.id); }} className="p-1.5 rounded-lg hover:bg-muted" title="Настройки группы"><Settings className="w-3.5 h-3.5 text-muted-foreground" /></button>

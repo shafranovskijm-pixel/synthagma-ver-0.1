@@ -88,6 +88,15 @@ export function resolveTabParams(
   if (!tab || tab === "courses") next.delete("tab");
   else next.set("tab", tab);
 
+  // Entity/view parameters belong only to their own workspace. Keeping them
+  // while switching sections makes a copied or newly opened URL restore data
+  // from the previous window.
+  // A canonical Companies deep link keeps its companyId. Top-level sidebar
+  // navigation explicitly clears it in useTabNavigation.setActiveTab.
+  if (tab !== "organizations") next.delete("companyId");
+  if (tab !== "students" && tab !== "group-folder") next.delete("studentsView");
+  if (tab !== "group-folder") next.delete("groupSettings");
+
   const keepGroupContext = isGroupContextTab(tab) && !!next.get("returnToGroupId") && !!next.get("groupId");
 
   if (keepGroupContext) {
@@ -97,9 +106,9 @@ export function resolveTabParams(
     return next;
   }
 
-  // Папка группы живёт внутри вкладки «Ученики» (tab=students&studentsView=groups),
-  // поэтому groupId/folder сохраняются и для неё.
-  const keepsGroupFolder = tab === "group-folder" || tab === "students";
+  // Group folders now have their own canonical workspace tab. A clean switch
+  // to Students must not inherit the group/folder from another window.
+  const keepsGroupFolder = tab === "group-folder";
 
   // Карточка ученика, открытая из папки группы, сохраняет ТОЛЬКО обратный путь.
   // Фильтры groupId/courseId/folder при этом снимаются, чтобы контекст группы

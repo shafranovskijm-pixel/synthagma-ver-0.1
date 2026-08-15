@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { Copy, CheckCircle2, XCircle, ChevronRight, Loader2 } from "lucide-react";
 import type { Student } from "@/types";
+import { studentDetailsPath } from "@/lib/groups/groupContext";
 
 interface StudentMobileCardProps {
   student: Student;
@@ -48,7 +49,18 @@ export const StudentMobileCard = React.memo(function StudentMobileCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="font-medium truncate">{student.name}</div>
+              <a
+                href={studentDetailsPath(student.user_id)}
+                className="block font-medium truncate hover:text-primary hover:underline"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                  onViewStudent();
+                }}
+              >
+                {student.name}
+              </a>
               {student.login && (
                 <div className="flex items-center gap-1 mt-1">
                   <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>

@@ -4,6 +4,71 @@ import type { Course, CourseCategory, Enrollment } from "@/types";
 
 // ============= Courses API =============
 
+export type CourseCreationErrorCode =
+  | "invalid_input"
+  | "plan_limit"
+  | "invalid_category"
+  | "permission_denied"
+  | "network"
+  | "unknown";
+
+export class CourseCreationError extends Error {
+  readonly code: CourseCreationErrorCode;
+
+  constructor(code: CourseCreationErrorCode, message: string) {
+    super(message);
+    this.name = "CourseCreationError";
+    this.code = code;
+  }
+}
+
+export function normalizeNullableCourseId(value?: string | null): string | null {
+  const normalized = value?.trim();
+  const placeholder = normalized?.toLowerCase();
+  if (!normalized || placeholder === "none" || placeholder === "__none__") {
+    return null;
+  }
+  return normalized;
+}
+
+function courseCreationErrorCode(error: unknown): CourseCreationErrorCode {
+  const record = (error && typeof error === "object")
+    ? error as Record<string, unknown>
+    : {};
+  const code = String(record.code ?? "");
+  const hasStatus = record.status !== undefined || record.statusCode !== undefined;
+  const status = Number(record.status ?? record.statusCode ?? 0);
+  const message = `${record.message ?? ""} ${record.details ?? ""} ${record.hint ?? ""}`.toLowerCase();
+
+  if (/course.*limit|max(?:imum)?.*course|лимит.*курс/.test(message)) return "plan_limit";
+  if (code === "23503" || /category_id|course_categories/.test(message)) return "invalid_category";
+  if (code === "42501" || code === "PGRST301" || /row-level security|permission denied|not authorized/.test(message)) {
+    return "permission_denied";
+  }
+  if ((hasStatus && (status === 0 || status >= 500)) || /fetch failed|network|timeout|connection/.test(message)) {
+    return "network";
+  }
+  return "unknown";
+}
+
+export function toCourseCreationError(error: unknown): CourseCreationError {
+  if (error instanceof CourseCreationError) return error;
+  const code = courseCreationErrorCode(error);
+  const messages: Record<CourseCreationErrorCode, string> = {
+    invalid_input: "Заполните название курса и повторите попытку",
+    plan_limit: "Достигнут лимит курсов тарифа. Удалите ненужный курс или смените тариф",
+    invalid_category: "Выбранная категория недоступна. Выберите другую категорию",
+    permission_denied: "Недостаточно прав для создания курса",
+    network: "Не удалось связаться с сервером. Проверьте интернет и повторите попытку",
+    unknown: "Не удалось создать курс. Повторите попытку",
+  };
+  return new CourseCreationError(code, messages[code]);
+}
+
+export function courseCreationErrorMessage(error: unknown): string {
+  return toCourseCreationError(error).message;
+}
+
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
   const { data: coursesData, error } = await supabase
     .from("courses")
@@ -72,24 +137,32 @@ export async function createCourse(
   title: string,
   description?: string,
   categoryId?: string
-): Promise<Course | null> {
+): Promise<Course> {
+  const normalizedOrganizationId = organizationId.trim();
+  const normalizedTitle = title.trim();
+  if (!normalizedOrganizationId || !normalizedTitle) {
+    throw new CourseCreationError("invalid_input", "Заполните название курса и повторите попытку");
+  }
+
   const { data, error } = await supabase
     .from("courses")
     .insert({
-      organization_id: organizationId,
-      title,
-      description: description || null,
-      category_id: categoryId || null,
+      organization_id: normalizedOrganizationId,
+      title: normalizedTitle,
+      description: description?.trim() || null,
+      category_id: normalizeNullableCourseId(categoryId),
       is_published: false
     })
     .select()
     .single();
 
   if (error) {
-    console.error("Error creating course:", JSON.stringify(error));
-    return null;
+    const safeError = toCourseCreationError(error);
+    console.error("Error creating course:", safeError.code);
+    throw safeError;
   }
 
+  if (!data) throw toCourseCreationError(null);
   return data as Course;
 }
 

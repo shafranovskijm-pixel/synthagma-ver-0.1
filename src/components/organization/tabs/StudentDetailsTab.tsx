@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { groupFolderPath } from "@/lib/groups/groupContext";
 import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck } from "lucide-react";
@@ -80,87 +80,118 @@ export function StudentDetailsTab() {
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendDocOpen, setSendDocOpen] = useState(false);
+  const loadSequenceRef = useRef(0);
 
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
 
   const loadStudent = useCallback(async (showSpinner = true) => {
     if (!studentId || !organizationId) return;
-    if (showSpinner) setLoading(true);
+    const requestSequence = ++loadSequenceRef.current;
+    const isCurrentRequest = () => loadSequenceRef.current === requestSequence;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id, company_id, companies(name)")
-      .eq("user_id", studentId)
-      .maybeSingle();
-
-    if (!profile) {
+    if (showSpinner) {
+      // Route ids are per-window state. Clear the previous student's data
+      // before starting the next lookup so it cannot remain actionable under
+      // a different URL while the request is in flight.
       setStudent(null);
       setEnrollments([]);
-      if (showSpinner) setLoading(false);
-      return;
+      setLoading(true);
     }
 
-    let decryptedPw: string | null = null;
     try {
-      const { data: pw, error: pwErr } = await supabase.rpc("get_decrypted_student_password", {
-        p_user_id: profile.user_id,
-      });
-      if (pwErr) {
-        console.warn("[StudentDetailsTab] decrypt RPC error:", pwErr);
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id, company_id, companies(name)")
+        .eq("user_id", studentId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (!isCurrentRequest()) return;
+      if (profileError || !profile) {
+        if (profileError) console.warn("[StudentDetailsTab] profile lookup failed:", profileError);
+        setStudent(null);
+        setEnrollments([]);
+        return;
       }
-      const raw = (pw as string) || "";
-      decryptedPw = raw && !raw.startsWith("ENC:") ? raw : null;
-    } catch (e) {
-      console.warn("[StudentDetailsTab] decrypt RPC threw:", e);
-      decryptedPw = null;
-    }
 
-    setStudent({
-      id: profile.user_id,
-      user_id: profile.user_id,
-      name: profile.full_name || "Без имени",
-      email: profile.email || "",
-      login: profile.login,
-      company_name: (profile as any).companies?.name || null,
-      generated_password: decryptedPw,
-      last_visit_at: profile.last_visit_at,
-    });
+      // Only decrypt after the organization-scoped profile lookup succeeds.
+      // This is required even for platform-admin impersonation, whose broad
+      // RLS role can otherwise resolve an arbitrary cross-organization id.
+      let decryptedPw: string | null = null;
+      try {
+        const { data: pw, error: pwErr } = await supabase.rpc("get_decrypted_student_password", {
+          p_user_id: profile.user_id,
+        });
+        if (!isCurrentRequest()) return;
+        if (pwErr) {
+          console.warn("[StudentDetailsTab] decrypt RPC error:", pwErr);
+        }
+        const raw = (pw as string) || "";
+        decryptedPw = raw && !raw.startsWith("ENC:") ? raw : null;
+      } catch (e) {
+        if (!isCurrentRequest()) return;
+        console.warn("[StudentDetailsTab] decrypt RPC threw:", e);
+        decryptedPw = null;
+      }
 
-    const { data: orgCourses } = await supabase
-      .from("courses")
-      .select("id")
-      .eq("organization_id", organizationId);
+      if (!isCurrentRequest()) return;
+      setStudent({
+        id: profile.user_id,
+        user_id: profile.user_id,
+        name: profile.full_name || "Без имени",
+        email: profile.email || "",
+        login: profile.login,
+        company_name: (profile as any).companies?.name || null,
+        generated_password: decryptedPw,
+        last_visit_at: profile.last_visit_at,
+      });
 
-    const courseIds = (orgCourses || []).map(c => c.id);
+      const { data: orgCourses } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("organization_id", organizationId);
 
-    if (courseIds.length > 0) {
-      const { data: enrs } = await supabase
-        .from("enrollments")
-        .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
-        .eq("user_id", profile.user_id)
-        .in("course_id", courseIds);
+      if (!isCurrentRequest()) return;
+      const courseIds = (orgCourses || []).map(c => c.id);
 
-      setEnrollments((enrs || []).map((e: any) => ({
-        id: e.id,
-        course_id: e.course_id,
-        course_title: e.courses?.title || "Без названия",
-        progress: e.progress || 0,
-        status: e.status || "active",
-        started_at: e.started_at,
-        completed_at: e.completed_at,
-        time_spent: e.time_spent || 0,
-        access_days: e.access_days,
-        expires_at: e.expires_at,
-      })));
-    } else {
+      if (courseIds.length > 0) {
+        const { data: enrs } = await supabase
+          .from("enrollments")
+          .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
+          .eq("user_id", profile.user_id)
+          .in("course_id", courseIds);
+
+        if (!isCurrentRequest()) return;
+        setEnrollments((enrs || []).map((e: any) => ({
+          id: e.id,
+          course_id: e.course_id,
+          course_title: e.courses?.title || "Без названия",
+          progress: e.progress || 0,
+          status: e.status || "active",
+          started_at: e.started_at,
+          completed_at: e.completed_at,
+          time_spent: e.time_spent || 0,
+          access_days: e.access_days,
+          expires_at: e.expires_at,
+        })));
+      } else {
+        setEnrollments([]);
+      }
+    } catch (error) {
+      if (!isCurrentRequest()) return;
+      console.error("[StudentDetailsTab] student load failed:", error);
+      setStudent(null);
       setEnrollments([]);
+    } finally {
+      if (showSpinner && isCurrentRequest()) setLoading(false);
     }
-
-    if (showSpinner) setLoading(false);
   }, [studentId, organizationId]);
 
   useEffect(() => {
-    loadStudent(true);
+    void loadStudent(true);
+    return () => {
+      loadSequenceRef.current += 1;
+    };
   }, [loadStudent]);
 
   const qc = useQueryClient();

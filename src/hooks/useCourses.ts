@@ -6,6 +6,7 @@ import {
   fetchCourses,
   fetchCategories,
   createCourse,
+  courseCreationErrorMessage,
   updateCourse,
   deleteCourse,
   publishCourse,
@@ -238,15 +239,16 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
 
     // "none" — служебное значение селекта «Без категории», в БД должен уйти null
     const safeCategoryId = categoryId && categoryId !== "none" ? categoryId : undefined;
-    const course = await createCourse(organizationId, title, description, safeCategoryId);
-    if (course) {
+    try {
+      const course = await createCourse(organizationId, title, description, safeCategoryId);
       toast.success("Курс создан");
       setRefreshKey(prev => prev + 1);
       invalidateSummaryAndOverview();
-    } else {
-      toast.error("Ошибка создания курса");
+      return course;
+    } catch (error) {
+      toast.error(courseCreationErrorMessage(error));
+      return null;
     }
-    return course;
   }, [organizationId, invalidateSummaryAndOverview]);
 
   const update = useCallback(async (courseId: string, updates: Partial<Course>): Promise<boolean> => {

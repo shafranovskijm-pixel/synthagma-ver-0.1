@@ -124,6 +124,16 @@ interface UseStudentDetailCardLogicProps {
 export function useStudentDetailCardLogic({
   isOpen, student, organizationId, enrollments = [], onStudentUpdated, onStudentDocumentsUpdated,
 }: UseStudentDetailCardLogicProps) {
+  const identityKey = isOpen && student?.user_id && organizationId
+    ? `${organizationId}:${student.user_id}`
+    : null;
+  const activeIdentityKeyRef = useRef<string | null>(identityKey);
+  const studentDataLoadSequenceRef = useRef(0);
+  const tokenLoadSequenceRef = useRef(0);
+  // Update during render so an already-resolved A request cannot commit in the
+  // interval before the B effect cleanup runs.
+  activeIdentityKeyRef.current = identityKey;
+
   const [activeTab, setActiveTab] = useState("profile");
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
   const [pepAgreements, setPepAgreements] = useState<PepAgreementRecord[]>([]);
@@ -151,10 +161,24 @@ export function useStudentDetailCardLogic({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
-  const [decryptedPassword, setDecryptedPassword] = useState<string | null>(null);
+  const [decryptedPasswordResult, setDecryptedPasswordResult] = useState<{
+    identityKey: string;
+    value: string | null;
+  } | null>(null);
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
-  const [autoLoginToken, setAutoLoginToken] = useState<string | null>(null);
+  const [autoLoginTokenResult, setAutoLoginTokenResult] = useState<{
+    identityKey: string;
+    value: string | null;
+  } | null>(null);
   const [isLoginLinkBusy, setIsLoginLinkBusy] = useState(false);
+  const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
+
+  const decryptedPassword = decryptedPasswordResult?.identityKey === identityKey
+    ? decryptedPasswordResult.value
+    : null;
+  const autoLoginToken = autoLoginTokenResult?.identityKey === identityKey
+    ? autoLoginTokenResult.value
+    : null;
 
   // FRDO data state
   const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
@@ -172,90 +196,195 @@ export function useStudentDetailCardLogic({
   const [isTogglingBlock, setIsTogglingBlock] = useState(false);
 
 
-  useEffect(() => {
-    if (isOpen && student) loadStudentData();
-  }, [isOpen, student]);
+  const resetLoadedStudentData = useCallback(() => {
+    setLoadedIdentityKey(null);
+    setConsents([]);
+    setPepAgreements([]);
+    setGeneratedConsents([]);
+    setVerifications([]);
+    setDocuments([]);
+    setIdentityDocs([]);
+    setFrdoData({});
+    setPhone("");
+    setRegion("");
+    setJobPosition("");
+    setBlockedAt(null);
+    setBlockedReason(null);
+  }, []);
 
-  const loadStudentData = async () => {
-    if (!student) return;
+  const resetStudentIdentityState = useCallback(() => {
+    resetLoadedStudentData();
+    setActiveTab("profile");
+    setUploadingType(null);
+    setSelectedDocType(null);
+    setPreviewDoc(null);
+    setIsLoadingPreview(false);
+    setIsFRDODialogOpen(false);
+    setSelectedEnrollmentForFRDO(null);
+    setViewConsentDialog(null);
+    setIsEditingCredentials(false);
+    setNewLogin("");
+    setNewPassword("");
+    setIsUpdatingCredentials(false);
+    setIsEditingName(false);
+    setNewFullName("");
+    setIsUpdatingName(false);
+    setCopiedField(null);
+    setShowPassword(false);
+    setIsSendingReminder(false);
+    setDecryptedPasswordResult(null);
+    setIsLoadingPassword(false);
+    setAutoLoginTokenResult(null);
+    setIsLoginLinkBusy(false);
+    setSavingFrdoField(null);
+    setSavingPhone(false);
+    setSavingRegion(false);
+    setSavingJobPosition(false);
+    setIsTogglingBlock(false);
+  }, [resetLoadedStudentData]);
+
+  const loadStudentData = useCallback(async () => {
+    const requestIdentityKey = identityKey;
+    const requestUserId = student?.user_id;
+    const requestOrganizationId = organizationId;
+    if (!requestIdentityKey || !requestUserId || !requestOrganizationId) return;
+
+    const requestSequence = ++studentDataLoadSequenceRef.current;
+    const isCurrentRequest = () => (
+      studentDataLoadSequenceRef.current === requestSequence
+      && activeIdentityKeyRef.current === requestIdentityKey
+    );
+
+    resetLoadedStudentData();
+    setDecryptedPasswordResult(null);
     setIsLoading(true);
+    setIsLoadingPassword(true);
+
     try {
       const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes, pepRes, profileRes] = await Promise.all([
-        supabase.from("student_consents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
-        supabase.from("consent_documents").select("*").eq("student_user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
-        supabase.from("video_identifications").select("*").eq("user_id", student.user_id).order("created_at", { ascending: false }),
-        supabase.from("student_documents").select("*, enrollments!inner(user_id)").eq("enrollments.user_id", student.user_id).order("created_at", { ascending: false }),
-        supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
-        supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
-        supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", student.user_id).eq("organization_id", organizationId).order("accepted_at", { ascending: false }),
-        supabase.from("profiles").select("phone, region, job_position, blocked_at, blocked_reason").eq("user_id", student.user_id).maybeSingle(),
+        supabase.from("student_consents").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
+        supabase.from("consent_documents").select("*").eq("student_user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
+        supabase.from("video_identifications").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
+        supabase.from("student_documents").select("*, enrollments!inner(user_id, courses!inner(organization_id))").eq("enrollments.user_id", requestUserId).eq("enrollments.courses.organization_id", requestOrganizationId).order("created_at", { ascending: false }),
+        supabase.from("student_identity_documents").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
+        supabase.from("student_frdo_data").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).maybeSingle(),
+        supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("accepted_at", { ascending: false }),
+        supabase.from("profiles").select("phone, region, job_position, blocked_at, blocked_reason").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).maybeSingle(),
       ]);
-      if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
-      if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
-      if (verificationsRes.data) setVerifications(verificationsRes.data as VerificationRecord[]);
-      if (documentsRes.data) setDocuments(documentsRes.data as DocumentRecord[]);
-      if (identityDocsRes.data) setIdentityDocs(identityDocsRes.data as IdentityDocumentRecord[]);
-      if (frdoRes.data) setFrdoData(frdoRes.data as Record<string, string | null>);
-      else setFrdoData({});
-      if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
+
+      if (!isCurrentRequest()) return;
+      setConsents((consentsRes.data || []) as ConsentRecord[]);
+      setGeneratedConsents((generatedConsentsRes.data || []) as GeneratedConsentRecord[]);
+      setVerifications((verificationsRes.data || []) as VerificationRecord[]);
+      setDocuments((documentsRes.data || []) as unknown as DocumentRecord[]);
+      setIdentityDocs((identityDocsRes.data || []) as IdentityDocumentRecord[]);
+      setFrdoData((frdoRes.data || {}) as Record<string, string | null>);
+      setPepAgreements((pepRes.data || []) as PepAgreementRecord[]);
       setPhone((profileRes.data as any)?.phone || "");
       setRegion((profileRes.data as any)?.region || "");
       setJobPosition((profileRes.data as any)?.job_position || "");
       setBlockedAt((profileRes.data as any)?.blocked_at || null);
       setBlockedReason((profileRes.data as any)?.blocked_reason || null);
-    } catch (error) { console.error("Error loading student data:", error); }
-    finally { setIsLoading(false); }
-
-
-    // Decrypt password (admin/org with access)
-    if (student?.user_id) {
-      setIsLoadingPassword(true);
-      try {
-        const { data: pw, error: pwErr } = await supabase.rpc("get_decrypted_student_password", { p_user_id: student.user_id });
-        if (pwErr) {
-          console.warn("decrypt password error:", pwErr);
-          setDecryptedPassword(null);
-        } else {
-          setDecryptedPassword((pw as string) || null);
-        }
-      } catch (e) {
-        console.warn("decrypt password exception:", e);
-        setDecryptedPassword(null);
-      } finally {
-        setIsLoadingPassword(false);
+      setLoadedIdentityKey(requestIdentityKey);
+    } catch (error) {
+      if (isCurrentRequest()) {
+        console.error("Error loading student data:", error);
+        setLoadedIdentityKey(requestIdentityKey);
       }
+    } finally {
+      if (isCurrentRequest()) setIsLoading(false);
     }
-  };
 
-  // Load existing auto-login token for this student (if any).
+    if (!isCurrentRequest()) return;
+    try {
+      const { data: pw, error: pwErr } = await supabase.rpc("get_decrypted_student_password", {
+        p_user_id: requestUserId,
+      });
+      if (!isCurrentRequest()) return;
+      if (pwErr) console.warn("decrypt password error:", pwErr);
+      setDecryptedPasswordResult({
+        identityKey: requestIdentityKey,
+        value: pwErr ? null : (pw as string) || null,
+      });
+    } catch (error) {
+      if (!isCurrentRequest()) return;
+      console.warn("decrypt password exception:", error);
+      setDecryptedPasswordResult({ identityKey: requestIdentityKey, value: null });
+    } finally {
+      if (isCurrentRequest()) setIsLoadingPassword(false);
+    }
+  }, [identityKey, organizationId, resetLoadedStudentData, student?.user_id]);
+
   useEffect(() => {
-    if (!isOpen || !student?.user_id || !organizationId) return;
-    (async () => {
+    studentDataLoadSequenceRef.current += 1;
+    tokenLoadSequenceRef.current += 1;
+    resetStudentIdentityState();
+    if (!identityKey) {
+      setIsLoading(false);
+      return;
+    }
+    void loadStudentData();
+    return () => {
+      studentDataLoadSequenceRef.current += 1;
+      tokenLoadSequenceRef.current += 1;
+    };
+  }, [identityKey, loadStudentData, resetStudentIdentityState]);
+
+  // Load an identity-tagged token. A token from student A is never exposed in
+  // the render for student B, even before effects have reset local state.
+  useEffect(() => {
+    const requestIdentityKey = identityKey;
+    const requestUserId = student?.user_id;
+    const requestOrganizationId = organizationId;
+    const requestSequence = ++tokenLoadSequenceRef.current;
+    setAutoLoginTokenResult(null);
+    if (!requestIdentityKey || !requestUserId || !requestOrganizationId) return;
+
+    const isCurrentRequest = () => (
+      tokenLoadSequenceRef.current === requestSequence
+      && activeIdentityKeyRef.current === requestIdentityKey
+    );
+    void (async () => {
       const { data } = await supabase
         .from("student_login_tokens")
         .select("token")
-        .eq("user_id", student.user_id)
-        .eq("organization_id", organizationId)
+        .eq("user_id", requestUserId)
+        .eq("organization_id", requestOrganizationId)
         .is("revoked_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      setAutoLoginToken((data as any)?.token ?? null);
+      if (isCurrentRequest()) {
+        setAutoLoginTokenResult({
+          identityKey: requestIdentityKey,
+          value: (data as any)?.token ?? null,
+        });
+      }
     })();
-  }, [isOpen, student?.user_id, organizationId]);
+
+    return () => {
+      if (tokenLoadSequenceRef.current === requestSequence) {
+        tokenLoadSequenceRef.current += 1;
+      }
+    };
+  }, [identityKey, organizationId, student?.user_id]);
 
   const ensureAutoLoginToken = useCallback(async (): Promise<string | null> => {
-    if (!student) return null;
+    const requestIdentityKey = identityKey;
+    const requestUserId = student?.user_id;
+    if (!requestIdentityKey || !requestUserId) return null;
     if (autoLoginToken) return autoLoginToken;
     const { data, error } = await supabase
       .from("student_login_tokens")
-      .insert({ user_id: student.user_id, organization_id: organizationId })
+      .insert({ user_id: requestUserId, organization_id: organizationId })
       .select("token")
       .single();
     if (error || !data) { toast.error("Не удалось создать ссылку"); return null; }
-    setAutoLoginToken(data.token as string);
-    return data.token as string;
-  }, [student, organizationId, autoLoginToken]);
+    if (activeIdentityKeyRef.current !== requestIdentityKey) return null;
+    const token = data.token as string;
+    setAutoLoginTokenResult({ identityKey: requestIdentityKey, value: token });
+    return token;
+  }, [autoLoginToken, identityKey, organizationId, student?.user_id]);
 
   const copyAutoLoginLink = useCallback(async () => {
     setIsLoginLinkBusy(true);
@@ -278,29 +407,36 @@ export function useStudentDetailCardLogic({
   }, [student, decryptedPassword]);
 
   const sendLoginLinkEmail = useCallback(async () => {
-    if (!student) return;
-    if (!student.email) { toast.error("У ученика не указан email"); return; }
+    const requestIdentityKey = identityKey;
+    const requestStudent = student;
+    if (!requestIdentityKey || !requestStudent) return;
+    if (!requestStudent.email) { toast.error("У ученика не указан email"); return; }
     setIsLoginLinkBusy(true);
     try {
-      const { data, error } = await safeInvoke<any>("send-student-login-link", { body: { user_id: student.user_id } });
+      const { data, error } = await safeInvoke<any>("send-student-login-link", { body: { user_id: requestStudent.user_id } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(`Ссылка отправлена на ${student.email}`);
+      toast.success(`Ссылка отправлена на ${requestStudent.email}`);
       // Refresh token if newly created
       const { data: t } = await supabase
         .from("student_login_tokens")
         .select("token")
-        .eq("user_id", student.user_id)
+        .eq("user_id", requestStudent.user_id)
         .eq("organization_id", organizationId)
         .is("revoked_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      setAutoLoginToken((t as any)?.token ?? null);
+      if (activeIdentityKeyRef.current === requestIdentityKey) {
+        setAutoLoginTokenResult({
+          identityKey: requestIdentityKey,
+          value: (t as any)?.token ?? null,
+        });
+      }
     } catch (e: any) {
       toast.error(e?.message || "Ошибка отправки");
     } finally { setIsLoginLinkBusy(false); }
-  }, [student, organizationId]);
+  }, [identityKey, organizationId, student]);
 
   const revokeAutoLoginToken = useCallback(async () => {
     if (!student || !autoLoginToken) return;
@@ -308,11 +444,14 @@ export function useStudentDetailCardLogic({
     const { error } = await supabase
       .from("student_login_tokens")
       .update({ revoked_at: new Date().toISOString() })
-      .eq("token", autoLoginToken);
+      .eq("token", autoLoginToken)
+      .eq("organization_id", organizationId);
     if (error) { toast.error("Не удалось отозвать"); return; }
-    setAutoLoginToken(null);
+    if (identityKey) {
+      setAutoLoginTokenResult({ identityKey, value: null });
+    }
     toast.success("Ссылка отозвана");
-  }, [student, autoLoginToken]);
+  }, [autoLoginToken, identityKey, organizationId, student]);
 
 
   const saveFrdoField = async (field: string, value: string) => {
@@ -335,7 +474,11 @@ export function useStudentDetailCardLogic({
     if (!student) return;
     setSavingPhone(true);
     try {
-      const { error } = await supabase.from("profiles").update({ phone: value || null }).eq("user_id", student.user_id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ phone: value || null })
+        .eq("user_id", student.user_id)
+        .eq("organization_id", organizationId);
       if (error) throw error;
       setPhone(value);
       toast.success("Телефон сохранён");
@@ -347,7 +490,11 @@ export function useStudentDetailCardLogic({
     if (!student) return;
     setSavingRegion(true);
     try {
-      const { error } = await supabase.from("profiles").update({ region: value || null }).eq("user_id", student.user_id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ region: value || null })
+        .eq("user_id", student.user_id)
+        .eq("organization_id", organizationId);
       if (error) throw error;
       setRegion(value);
       toast.success("Регион сохранён");
@@ -404,7 +551,8 @@ export function useStudentDetailCardLogic({
       const { error } = await supabase
         .from("profiles")
         .update({ full_name: trimmed })
-        .eq("user_id", student.user_id);
+        .eq("user_id", student.user_id)
+        .eq("organization_id", organizationId);
       if (error) throw error;
       toast.success("ФИО обновлено");
       setIsEditingName(false);
@@ -468,17 +616,25 @@ export function useStudentDetailCardLogic({
   const formatDate = (dateStr: string) => format(new Date(dateStr), "d MMMM yyyy, HH:mm", { locale: ru });
   const formatDuration = (seconds: number) => { const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); return h > 0 ? `${h} ч ${m} мин` : `${m} мин`; };
 
-  const latestConsent = consents[0];
-  const latestPepAgreement = pepAgreements[0];
-  const latestVerification = verifications[0];
-  const getIdentityDocByType = (type: string) => identityDocs.find(d => d.type === type);
+  const hasCurrentIdentityData = !!identityKey && loadedIdentityKey === identityKey;
+  const currentConsents = hasCurrentIdentityData ? consents : [];
+  const currentPepAgreements = hasCurrentIdentityData ? pepAgreements : [];
+  const currentGeneratedConsents = hasCurrentIdentityData ? generatedConsents : [];
+  const currentVerifications = hasCurrentIdentityData ? verifications : [];
+  const currentDocuments = hasCurrentIdentityData ? documents : [];
+  const currentIdentityDocs = hasCurrentIdentityData ? identityDocs : [];
+  const currentFrdoData = hasCurrentIdentityData ? frdoData : {};
+  const latestConsent = currentConsents[0];
+  const latestPepAgreement = currentPepAgreements[0];
+  const latestVerification = currentVerifications[0];
+  const getIdentityDocByType = (type: string) => currentIdentityDocs.find(d => d.type === type);
 
   const getMissingDocuments = () => {
     const req = [{ type: "passport", label: "Паспорт или свидетельство о рождении" }, { type: "snils", label: "СНИЛС" }, { type: "education_document", label: "Документ об образовании" }];
     return req.filter(doc => {
-      if (doc.type === "passport") return !identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
-      if (doc.type === "education_document") return !identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
-      return !identityDocs.some(d => d.type === doc.type);
+      if (doc.type === "passport") return !currentIdentityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
+      if (doc.type === "education_document") return !currentIdentityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
+      return !currentIdentityDocs.some(d => d.type === doc.type);
     });
   };
 
@@ -550,27 +706,46 @@ export function useStudentDetailCardLogic({
   };
 
   return {
-    activeTab, setActiveTab, isLoading,
-    consents, pepAgreements, latestPepAgreement, generatedConsents, verifications, documents, identityDocs,
-    uploadingType, fileInputRef, previewDoc, setPreviewDoc, isLoadingPreview,
-    isFRDODialogOpen, setIsFRDODialogOpen,
-    selectedEnrollmentForFRDO, setSelectedEnrollmentForFRDO,
-    viewConsentDialog, setViewConsentDialog,
+    activeTab, setActiveTab,
+    isLoading: !!identityKey && (isLoading || !hasCurrentIdentityData),
+    consents: currentConsents,
+    pepAgreements: currentPepAgreements,
+    latestPepAgreement,
+    generatedConsents: currentGeneratedConsents,
+    verifications: currentVerifications,
+    documents: currentDocuments,
+    identityDocs: currentIdentityDocs,
+    uploadingType, fileInputRef,
+    previewDoc: hasCurrentIdentityData ? previewDoc : null,
+    setPreviewDoc,
+    isLoadingPreview: hasCurrentIdentityData && isLoadingPreview,
+    isFRDODialogOpen: hasCurrentIdentityData && isFRDODialogOpen,
+    setIsFRDODialogOpen,
+    selectedEnrollmentForFRDO: hasCurrentIdentityData ? selectedEnrollmentForFRDO : null,
+    setSelectedEnrollmentForFRDO,
+    viewConsentDialog: hasCurrentIdentityData ? viewConsentDialog : null,
+    setViewConsentDialog,
     isEditingCredentials, setIsEditingCredentials, newLogin, setNewLogin, newPassword, setNewPassword,
     isUpdatingCredentials, copiedField, showPassword, setShowPassword,
-    decryptedPassword, isLoadingPassword,
+    decryptedPassword,
+    isLoadingPassword: !!identityKey && (
+      isLoadingPassword || decryptedPasswordResult?.identityKey !== identityKey
+    ),
     isEditingName, setIsEditingName, newFullName, setNewFullName, isUpdatingName, handleUpdateFullName,
     handleUpdateCredentials, copyToClipboard,
     handleUploadClick, handleFileChange, handleDeleteIdentityDoc, handlePreviewDoc, handleDownloadDoc,
     formatDate, formatDuration, latestConsent, latestVerification, getIdentityDocByType, getMissingDocuments,
     isSendingReminder, handleSendDocumentsReminder, handleVerifyIdentification, handleManualVerification,
-    frdoData, saveFrdoField, savingFrdoField,
-    phone, savePhone, savingPhone,
-    region, saveRegion, savingRegion,
-    jobPosition, saveJobPosition, savingJobPosition,
+    frdoData: currentFrdoData, saveFrdoField, savingFrdoField,
+    phone: hasCurrentIdentityData ? phone : "", savePhone, savingPhone,
+    region: hasCurrentIdentityData ? region : "", saveRegion, savingRegion,
+    jobPosition: hasCurrentIdentityData ? jobPosition : "", saveJobPosition, savingJobPosition,
     autoLoginToken, isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
-    blockedAt, blockedReason, isTogglingBlock, handleToggleBlock,
+    blockedAt: hasCurrentIdentityData ? blockedAt : null,
+    blockedReason: hasCurrentIdentityData ? blockedReason : null,
+    isTogglingBlock,
+    handleToggleBlock,
   };
 }
 
