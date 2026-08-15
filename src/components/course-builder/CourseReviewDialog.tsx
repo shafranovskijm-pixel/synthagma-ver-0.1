@@ -2,9 +2,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, Info, AlertCircle, Scale, ClipboardCheck, Bug, Lightbulb, CheckCircle2, X, Wand2, Loader2 } from "lucide-react";
+import { AlertTriangle, Info, AlertCircle, Scale, ClipboardCheck, Bug, Lightbulb, CheckCircle2, X, Wand2, Loader2, ExternalLink } from "lucide-react";
 import type { ReviewFinding, ReviewResult } from "@/hooks/useCourseReview";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getReviewSourceLink } from "@/lib/reviewSourceUrl";
 
 const typeConfig = {
   legislation: { label: "Законодательство", icon: Scale, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30" },
@@ -29,6 +30,29 @@ interface CourseReviewDialogProps {
   onDismiss: (id: string) => void;
   onDismissAll: () => void;
   onApply?: (finding: ReviewFinding) => void;
+}
+
+export function ReviewSourceAnchor({
+  sourceUrl,
+  sourceLabel,
+}: {
+  sourceUrl?: string;
+  sourceLabel?: string;
+}) {
+  const source = getReviewSourceLink(sourceUrl, sourceLabel);
+  if (!source) return null;
+
+  return (
+    <a
+      href={source.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary underline underline-offset-2 hover:no-underline"
+    >
+      {source.label}
+      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+    </a>
+  );
 }
 
 function describePatch(finding: ReviewFinding): string | null {
@@ -81,6 +105,10 @@ function FindingCard({
       <div className="bg-background/60 rounded-lg p-3 border border-border/50">
         <p className="text-xs text-muted-foreground mb-1 font-medium">Рекомендация:</p>
         <p className="text-sm">{finding.suggestion}</p>
+        <ReviewSourceAnchor
+          sourceUrl={finding.source_url}
+          sourceLabel={finding.source_label}
+        />
         {canApply && patchDesc && (
           <p className="text-xs text-muted-foreground mt-2">
             <span className="font-medium">Будет изменено:</span> {patchDesc}

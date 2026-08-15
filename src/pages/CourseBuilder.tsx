@@ -66,7 +66,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   const {
     snapshots, isLoading: snapshotsLoading, isCreating: snapshotCreating,
     isRestoring: snapshotRestoring, createSnapshot, restoreSnapshot, deleteSnapshot,
-  } = useCourseSnapshots(resolvedCourseId ?? null, organizationId ?? null);
+  } = useCourseSnapshots(resolvedCourseId ?? null);
   
 
   // Подсветка активного урока в левом меню обновляется только по клику пользователя.
@@ -99,8 +99,9 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   const runReviewAfterConfirm = async () => {
     setShowReviewConfirm(false);
     if (!resolvedCourseId) return;
-    // Safety snapshot — AI review is read-only today, but if we add "apply patch" later it will be needed.
-    await createSnapshot("before_ai_review", "Перед AI-проверкой");
+    // Require a tenant-scoped safety snapshot before exposing any AI-generated patch.
+    const safetySnapshot = await createSnapshot("before_ai_review", "Перед AI-проверкой");
+    if (!safetySnapshot) return;
     setShowReviewDialog(true);
     await startReview(resolvedCourseId);
   };

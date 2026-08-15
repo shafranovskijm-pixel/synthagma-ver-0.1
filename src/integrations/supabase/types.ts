@@ -12116,6 +12116,10 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      create_course_snapshot: {
+        Args: { _course_id: string; _label?: string | null; _reason?: string }
+        Returns: Json
+      }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
         Returns: Json

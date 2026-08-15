@@ -12,6 +12,8 @@ export interface ReviewFinding {
   target_kind?: "test_question" | "lesson_title" | "none";
   target_id?: string;
   patch?: Record<string, unknown>;
+  source_url?: string;
+  source_label?: string;
 }
 
 export interface ReviewResult {
