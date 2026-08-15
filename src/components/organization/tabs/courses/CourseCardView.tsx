@@ -11,6 +11,7 @@ import {
 import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft, ImagePlus, Wand2, Trash2, Check, FolderOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import type { Course, CourseCategory } from "@/types";
+import { courseDetailsPathForGroup } from "@/lib/groups/groupContext";
 
 interface Props {
   course: Course;
@@ -71,7 +72,20 @@ export const CourseCard = React.memo(function CourseCard({
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'}`}>
                     {course.is_published ? 'Опубл.' : 'Черновик'}
                   </span>
-                  <h3 className="font-medium text-sm line-clamp-1 flex-1">{course.title}</h3>
+                  <h3 className="font-medium text-sm line-clamp-1 flex-1">
+                    <a
+                      href={courseDetailsPathForGroup(course.id)}
+                      className="hover:text-primary hover:underline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                        event.preventDefault();
+                        onCourseClick(course);
+                      }}
+                    >
+                      {course.title}
+                    </a>
+                  </h3>
                 </div>
               </div>
               <CourseDropdownMenu
@@ -97,7 +111,20 @@ export const CourseCard = React.memo(function CourseCard({
         ) : (
           <>
             <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="font-medium line-clamp-1 text-base">{course.title}</h3>
+              <h3 className="font-medium line-clamp-1 text-base">
+                <a
+                  href={courseDetailsPathForGroup(course.id)}
+                  className="hover:text-primary hover:underline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    event.preventDefault();
+                    onCourseClick(course);
+                  }}
+                >
+                  {course.title}
+                </a>
+              </h3>
               <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'}`}>
                 {course.is_published ? 'Опубликован' : 'Черновик'}
               </span>

@@ -99,11 +99,9 @@ export default function OrganizationDashboard() {
     };
   }, []);
 
-  // Handle ?tab= and ?courseId= query parameters
+  // Handle the one-shot sales toggle. Workspace navigation is read directly
+  // by useTabNavigation; writing it back here couples history transitions.
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    const courseId = searchParams.get('courseId');
-    const studentId = searchParams.get('studentId');
     const enableSales = searchParams.get('enableSales');
 
     // Hidden URL toggle: ?enableSales=1 enables Sales menu permanently
@@ -116,17 +114,6 @@ export default function OrganizationDashboard() {
       })();
     }
 
-    if (tab) {
-      if (tab === 'course-details' && courseId) {
-        d.tabNavigation.setSelectedCourseId(courseId);
-      }
-      if (tab === 'student-details' && studentId) {
-        d.tabNavigation.setSelectedStudentId(studentId);
-      }
-      d.tabNavigation.setActiveTab(tab as any);
-      // URL is now the source of truth — do NOT clear tab/courseId/studentId,
-      // otherwise reload and browser Back/Forward lose the current section.
-    }
     if (enableSales === '1') {
       // Strip only the one-shot toggle, keep tab context intact
       setSearchParams((prev) => {
@@ -135,7 +122,7 @@ export default function OrganizationDashboard() {
         return next;
       }, { replace: true });
     }
-  }, [searchParams, d.organizationId]);
+  }, [searchParams, d.organizationId, setSearchParams]);
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 

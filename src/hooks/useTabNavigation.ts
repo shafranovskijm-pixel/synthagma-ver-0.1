@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { TabType } from "@/components/organization/OrgSidebar";
+import type { TabType } from "@/components/organization/OrgSidebar";
 import { resolveTabParams } from "@/lib/groups/groupContext";
 
 interface MenuSettings {
@@ -39,19 +39,19 @@ export function useTabNavigation({
   const activeTab = (searchParams.get("tab") as TabType) || "courses";
 
   const setActiveTab = useCallback((tab: TabType) => {
-    setSearchParams((prev) => resolveTabParams(prev, tab));
+    setSearchParams((prev) => {
+      const next = resolveTabParams(prev, tab);
+      // Selecting the top-level Companies item means its list, while a
+      // companiesPath(companyId) deep link remains independently reloadable.
+      if (tab === "organizations") next.delete("companyId");
+      return next;
+    });
   }, [setSearchParams]);
 
   const [swipeDirection, setSwipeDirection] = useState(0);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
-    () => searchParams.get("courseId")
-  );
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
-    () => searchParams.get("studentId")
-  );
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(
-    () => searchParams.get("groupId")
-  );
+  const selectedCourseId = searchParams.get("courseId");
+  const selectedStudentId = searchParams.get("studentId");
+  const selectedGroupId = searchParams.get("groupId");
 
   // Support legacy navigation via location.state (from Profile etc.)
   useEffect(() => {
@@ -62,19 +62,9 @@ export function useTabNavigation({
     }
   }, [location.state, setActiveTab]);
 
-  // Keep local selection ids in sync with URL (browser back/forward)
-  useEffect(() => {
-    const c = searchParams.get("courseId");
-    const s = searchParams.get("studentId");
-    const g = searchParams.get("groupId");
-    setSelectedCourseId((prev) => (prev === c ? prev : c));
-    setSelectedStudentId((prev) => (prev === s ? prev : s));
-    setSelectedGroupId((prev) => (prev === g ? prev : g));
-  }, [searchParams]);
-
-  // Wrap selection setters so they also update the URL
+  // Entity selection is derived from this window's URL. Setters update only
+  // the URL, avoiding a one-render stale A value while Back/Forward selects B.
   const setSelectedCourseIdWithUrl = useCallback((id: string | null) => {
-    setSelectedCourseId(id);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (id) next.set("courseId", id); else next.delete("courseId");
@@ -83,7 +73,6 @@ export function useTabNavigation({
   }, [setSearchParams]);
 
   const setSelectedStudentIdWithUrl = useCallback((id: string | null) => {
-    setSelectedStudentId(id);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (id) next.set("studentId", id); else next.delete("studentId");
@@ -92,7 +81,6 @@ export function useTabNavigation({
   }, [setSearchParams]);
 
   const setSelectedGroupIdWithUrl = useCallback((id: string | null) => {
-    setSelectedGroupId(id);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (id) next.set("groupId", id); else { next.delete("groupId"); next.delete("folder"); }
@@ -101,36 +89,29 @@ export function useTabNavigation({
   }, [setSearchParams]);
 
   const openCourseDetails = useCallback((courseId: string) => {
-    setSelectedCourseId(courseId);
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("tab", "course-details");
+      const next = resolveTabParams(prev, "course-details");
       next.set("courseId", courseId);
-      next.delete("studentId");
       return next;
     });
   }, [setSearchParams]);
 
   const openStudentDetails = useCallback((studentId: string) => {
-    setSelectedStudentId(studentId);
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("tab", "student-details");
+      const next = resolveTabParams(prev, "student-details");
       next.set("studentId", studentId);
-      next.delete("courseId");
       return next;
     });
   }, [setSearchParams]);
 
   const openGroupFolder = useCallback((groupId: string) => {
-    setSelectedGroupId(groupId);
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("tab", "group-folder");
+      const next = resolveTabParams(prev, "group-folder");
+      next.set("studentsView", "groups");
       next.set("groupId", groupId);
-      next.delete("courseId");
-      next.delete("studentId");
       next.delete("folder");
+      next.delete("returnToGroupId");
+      next.delete("groupSettings");
       return next;
     });
   }, [setSearchParams]);

@@ -141,7 +141,6 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       next.delete("folder");
       return next;
     });
-    try { window.localStorage.setItem("orgStudentsPanelMode", "groups"); } catch { /* localStorage may be unavailable */ }
   }, [setSearchParams]);
 
 
@@ -149,13 +148,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setGroup(null);
+      setCourseInfo(null);
+      setCourseEnrollmentCount(0);
+      setStudents([]);
       try {
         const { data: groupData } = await supabase
           .from("student_groups")
           .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, schedule_text, instructor_name, training_dates, default_price, course_id")
           .eq("id", groupId)
+          .eq("organization_id", organizationId)
           .maybeSingle();
         if (cancelled) return;
+        if (!groupData) return;
         setGroup(groupData as any as GroupData | null);
 
         const { data: orgRow } = await supabase
@@ -190,9 +195,15 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             .from("courses")
             .select("id, title, duration, frdo_duration_hours, training_form")
             .eq("id", resolvedCourseId)
+            .eq("organization_id", organizationId)
             .maybeSingle();
-          if (!cancelled) setCourseInfo((courseRow as any) || null);
-          if (userIds.length > 0) {
+          if (!courseRow) {
+            resolvedCourseId = null;
+            if (!cancelled) setCourseInfo(null);
+          } else if (!cancelled) {
+            setCourseInfo(courseRow as any);
+          }
+          if (resolvedCourseId && userIds.length > 0) {
             const { data: courseEnrollments } = await (supabase as any)
               .from("enrollments")
               .select("user_id")

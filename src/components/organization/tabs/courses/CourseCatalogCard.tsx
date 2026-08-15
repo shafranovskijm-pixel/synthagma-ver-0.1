@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { BookOpen, Users, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle, ArrowRightLeft, MoveRight, Check, FolderOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import type { Course, CourseCategory } from "@/types";
+import { courseDetailsPathForGroup } from "@/lib/groups/groupContext";
 
 interface Props {
   course: Course;
@@ -118,7 +119,20 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
             {course.is_published ? 'Опубликован' : 'Черновик'}
           </span>
         </div>
-        <h3 className="font-semibold text-base leading-snug line-clamp-2">{course.title}</h3>
+        <h3 className="font-semibold text-base leading-snug line-clamp-2">
+          <a
+            href={courseDetailsPathForGroup(course.id)}
+            className="hover:text-primary hover:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onCourseClick(course);
+            }}
+          >
+            {course.title}
+          </a>
+        </h3>
         {course.description && <p className="text-sm text-muted-foreground line-clamp-3">{course.description}</p>}
         {category && (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: category.color }}>

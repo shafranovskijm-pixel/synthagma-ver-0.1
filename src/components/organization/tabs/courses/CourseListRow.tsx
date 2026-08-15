@@ -7,6 +7,7 @@ import { Eye, MoveRight, Users, BookOpen, GripVertical } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Course, CourseCategory } from "@/types";
+import { courseDetailsPathForGroup } from "@/lib/groups/groupContext";
 
 interface SortableCourseListRowProps {
   course: Course;
@@ -46,7 +47,18 @@ export function SortableCourseListRow({ course, isSelected, onToggleSelect, onCl
       </td>
       <td className="px-6 py-4">
         <div>
-          <div className="font-medium">{course.title}</div>
+          <a
+            href={courseDetailsPathForGroup(course.id)}
+            className="font-medium hover:text-primary hover:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onClick();
+            }}
+          >
+            {course.title}
+          </a>
           {course.description && (
             <div className="text-sm text-muted-foreground line-clamp-1">{course.description}</div>
           )}

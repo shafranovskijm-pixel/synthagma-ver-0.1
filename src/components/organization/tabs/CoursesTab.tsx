@@ -247,23 +247,27 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); setShowCreateCourseDialog(false); return; }
+    if (!result.allowed) { showLimitToast(result.message); return; }
     setIsCreatingCourse(true);
-    let categoryId = newCourseCategoryId;
-    if (showInlineNewCategory && inlineNewCategoryName.trim()) {
-      const newCategory = await createCat(inlineNewCategoryName.trim(), inlineNewCategoryColor);
-      if (newCategory) categoryId = newCategory.id;
+    try {
+      let categoryId = newCourseCategoryId;
+      if (showInlineNewCategory && inlineNewCategoryName.trim()) {
+        const newCategory = await createCat(inlineNewCategoryName.trim(), inlineNewCategoryColor);
+        if (!newCategory) return;
+        categoryId = newCategory.id;
+      }
+      const course = await create(newCourseTitle.trim(), newCourseDescription.trim() || undefined, categoryId || undefined);
+      if (course) {
+        setNewCourseTitle(""); setNewCourseDescription(""); setNewCourseCategoryId(""); setShowInlineNewCategory(false);
+        setInlineNewCategoryName(""); setInlineNewCategoryColor("#6366f1"); setShowCreateCourseDialog(false);
+        refetchLimits();
+        // Open inside the dashboard (same as clicking an existing course),
+        // not on the standalone /course-builder page.
+        handleCourseClick(course);
+      }
+    } finally {
+      setIsCreatingCourse(false);
     }
-    const course = await create(newCourseTitle.trim(), newCourseDescription.trim() || undefined, categoryId || undefined);
-    if (course) {
-      setNewCourseTitle(""); setNewCourseDescription(""); setNewCourseCategoryId(""); setShowInlineNewCategory(false);
-      setInlineNewCategoryName(""); setInlineNewCategoryColor("#6366f1"); setShowCreateCourseDialog(false);
-      refetchLimits();
-      // Open inside the dashboard (same as clicking an existing course),
-      // not on the standalone /course-builder page.
-      handleCourseClick(course);
-    }
-    setIsCreatingCourse(false);
   };
 
   const handleMoveCourse = async () => {

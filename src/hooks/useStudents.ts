@@ -54,6 +54,8 @@ const paginationRetry = (failureCount: number, error: unknown) =>
 
 interface UseStudentsOptions {
   enabled?: boolean;
+  /** Controlled per-window view; callers should derive it from the URL. */
+  viewMode?: "active" | "archive";
 }
 
 export interface UseStudentsReturn {
@@ -136,7 +138,7 @@ export function useStudents(
   organizationId: string | null,
   options: UseStudentsOptions = {},
 ): UseStudentsReturn {
-  const { enabled = true } = options;
+  const { enabled = true, viewMode: controlledViewMode } = options;
   const qc = useQueryClient();
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
@@ -146,13 +148,10 @@ export function useStudents(
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewModeState] = useState<"active" | "archive">(() => {
-    if (typeof window === "undefined") return "active";
-    return (localStorage.getItem("org.students.viewMode") as "active" | "archive") || "active";
-  });
+  const [internalViewMode, setViewModeState] = useState<"active" | "archive">("active");
+  const viewMode = controlledViewMode ?? internalViewMode;
   const setViewMode = useCallback((mode: "active" | "archive") => {
     setViewModeState(mode);
-    if (typeof window !== "undefined") localStorage.setItem("org.students.viewMode", mode);
   }, []);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 350);

@@ -10,7 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-import { useCompaniesManager } from "@/hooks/useCompaniesManager";
+import { useCompaniesManager, type Company } from "@/hooks/useCompaniesManager";
 import { useCompanyDetailManager } from "@/hooks/useCompanyDetailManager";
 import { useCompanyStudentsManager } from "@/hooks/useCompanyStudentsManager";
 import { useCompanyLinksAndGenerators } from "@/hooks/useCompanyLinksAndGenerators";
@@ -26,6 +26,7 @@ import { ActGenerator } from "./ActGenerator";
 import { ReconciliationActDialog } from "./ReconciliationActDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
+import { companiesPath } from "@/lib/groups/groupContext";
 
 interface CompaniesManagerProps {
   organizationId: string;
@@ -57,11 +58,35 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const cm = useCompaniesManager(organizationId);
   const dm = useCompanyDetailManager(organizationId);
+  const detailOpen = dm.showCompanyDetail;
+  const selectedDetailId = dm.selectedCompanyForDetail?.id;
+  const openCompanyDetail = dm.openCompanyDetail;
+  const setCompanyDetailOpen = dm.setShowCompanyDetail;
   const sm = useCompanyStudentsManager(organizationId);
   const lg = useCompanyLinksAndGenerators(organizationId);
   const [visibleCount, setVisibleCount] = useState(10);
   const paginatedCompanies = cm.filteredCompanies.slice(0, visibleCount);
   const [reconciliationCompany, setReconciliationCompany] = useState<any>(null);
+
+  const openCompanyInWorkspace = (company: Company) => {
+    setSearchParams(() => {
+      const next = new URLSearchParams();
+      next.set("tab", "organizations");
+      next.set("companyId", company.id);
+      return next;
+    });
+  };
+
+  const handleCompanyDetailOpenChange = (open: boolean) => {
+    setCompanyDetailOpen(open);
+    if (!open) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("companyId");
+        return next;
+      });
+    }
+  };
 
   // Кнопка «Добавить компанию» в шапке дашборда шлёт глобальное событие
   useEffect(() => {
@@ -71,20 +96,30 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   }, [cm.setShowCreateDialog]);
 
 
-  // Deep-link ?companyId=... открывает карточку именно этой компании
-  // (ссылки «Изменить в карточке компании» из мастера договоров).
+  // Deep-link ?companyId=... remains in the URL for the whole time the
+  // dialog is open. This makes the company card reloadable and independent
+  // in every browser tab/window.
   useEffect(() => {
     const wanted = searchParams.get("companyId");
-    if (!wanted || dm.showCompanyDetail) return;
-    const company = cm.companies.find((c: any) => c.id === wanted);
-    if (!company) return;
-    dm.openCompanyDetail(company);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete("companyId");
-      return next;
-    }, { replace: true });
-  }, [searchParams, setSearchParams, cm.companies, dm.showCompanyDetail]);
+    if (!wanted) {
+      if (detailOpen) setCompanyDetailOpen(false);
+      return;
+    }
+    const company = cm.companies.find((c) => c.id === wanted);
+    if (!company) {
+      if (detailOpen) setCompanyDetailOpen(false);
+      return;
+    }
+    if (detailOpen && selectedDetailId === wanted) return;
+    void openCompanyDetail(company);
+  }, [
+    searchParams,
+    cm.companies,
+    detailOpen,
+    selectedDetailId,
+    openCompanyDetail,
+    setCompanyDetailOpen,
+  ]);
 
   const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
@@ -241,11 +276,11 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                   tabIndex={0}
                   data-testid={`company-card-${company.id}`}
                   className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  onClick={() => dm.openCompanyDetail(company)}
+                  onClick={() => openCompanyInWorkspace(company)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      dm.openCompanyDetail(company);
+                      openCompanyInWorkspace(company);
                     }
                   }}
                 >
@@ -259,7 +294,20 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                       <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
                   </div>
-                  <h3 className="font-semibold text-lg line-clamp-1">{company.name}</h3>
+                  <h3 className="font-semibold text-lg line-clamp-1">
+                    <a
+                      href={companiesPath(company.id)}
+                      className="hover:text-primary hover:underline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                        event.preventDefault();
+                        openCompanyInWorkspace(company);
+                      }}
+                    >
+                      {company.name}
+                    </a>
+                  </h3>
                   <div className="text-sm text-muted-foreground mt-1 space-y-1">
                     {company.inn && <div>ИНН: {company.inn}</div>}
                     <div className="flex items-center gap-1"><Users className="w-3 h-3" />{company.studentsCount} учеников</div>
@@ -282,11 +330,22 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 </thead>
                 <tbody>
                   {paginatedCompanies.map((company) => (
-                    <tr key={company.id} className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => dm.openCompanyDetail(company)}>
+                    <tr key={company.id} className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => openCompanyInWorkspace(company)}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><Building2 className="w-4 h-4 text-primary" /></div>
-                          <span className="font-medium line-clamp-1">{company.name}</span>
+                          <a
+                            href={companiesPath(company.id)}
+                            className="font-medium line-clamp-1 hover:text-primary hover:underline"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                              event.preventDefault();
+                              openCompanyInWorkspace(company);
+                            }}
+                          >
+                            {company.name}
+                          </a>
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground hidden md:table-cell">{company.inn || '—'}</td>
@@ -317,7 +376,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
       {/* Dialogs */}
       <CompanyDetailDialog
-        open={dm.showCompanyDetail} onOpenChange={dm.setShowCompanyDetail}
+        open={dm.showCompanyDetail} onOpenChange={handleCompanyDetailOpenChange}
         company={dm.selectedCompanyForDetail} documents={dm.companyDocuments}
         isLoadingDocuments={dm.isLoadingDocuments} isUploadingDocument={dm.isUploadingDocument}
         isDeletingDocument={dm.isDeletingDocument}
