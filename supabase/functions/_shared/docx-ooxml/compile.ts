@@ -271,9 +271,33 @@ export function compileDocumentXml(params: {
   const kept = elements.filter((e) => !dropSections.has(e.sectionIndex));
   // Последняя секция документа держит финальный <w:sectPr>; его нельзя терять.
   const lastSection = Math.max(...elements.map((e) => e.sectionIndex));
-  const bodyXml = dropSections.has(lastSection)
-    ? kept.map((e) => e.xml).join("") + elements.filter((e) => e.sectionIndex === lastSection && e.tag === "w:sectPr").map((e) => e.xml).join("")
-    : kept.map((e) => e.xml).join("");
+  let bodyXml: string;
+  if (dropSections.has(lastSection)) {
+    // Если последнее приложение удалено, нельзя просто дописать исходный body-level
+    // sectPr после section-break последнего оставленного приложения: Word создаёт
+    // из него отдельный пустой лист. Продвигаем свойства последней оставленной
+    // секции из абзаца-разрыва в обязательный финальный body-level sectPr.
+    let lastKeptBreakIndex = -1;
+    for (let index = kept.length - 1; index >= 0; index -= 1) {
+      if (kept[index].isSectionBreak) {
+        lastKeptBreakIndex = index;
+        break;
+      }
+    }
+    if (lastKeptBreakIndex < 0) {
+      throw new Error("Не удалось определить свойства последней оставленной секции договора");
+    }
+    const lastKeptBreak = kept[lastKeptBreakIndex];
+    const sectionProperties = /<w:sectPr\b[\s\S]*?<\/w:sectPr>/.exec(lastKeptBreak.xml)?.[0];
+    if (!sectionProperties) {
+      throw new Error("В последней оставленной секции договора отсутствует w:sectPr");
+    }
+    bodyXml = kept
+      .map((e, index) => index === lastKeptBreakIndex ? e.xml.replace(sectionProperties, "") : e.xml)
+      .join("") + sectionProperties;
+  } else {
+    bodyXml = kept.map((e) => e.xml).join("");
+  }
 
   // 3. Скалярные токены.
   const filled = replaceTokens(prefix + bodyXml + suffix, snapshot.scalars);

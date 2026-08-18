@@ -18,9 +18,11 @@ import {
   GORELTECH_COMPANY_CONTRACT_TEMPLATE_BASE64,
 } from "../_shared/contract-templates/goreltech/company/v1/embedded.ts";
 
-export const COMPILER_REVISION = "goreltech-company-contract-authz-v1";
+export const COMPILER_REVISION = "goreltech-company-contract-tenant-uuid-v3";
 
 const BUCKET = "billing-documents";
+const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
+const GORELTECH_INN = "7806541216";
 
 const RowSchema = z.record(z.string(), z.union([z.string(), z.number(), z.null()]));
 
@@ -108,6 +110,27 @@ Deno.serve(async (req) => {
     const hasPerm = permissionResult.data;
     const isOwner = ownerResult.data;
     if (!isAdmin && !hasPerm && !isOwner) return json({ error: "Недостаточно прав для генерации договора" }, 403);
+
+    // Фирменный договор является клиентским активом ГОРЭЛТЕХ. Организацию
+    // определяет только сервер по organizationId из авторизованного запроса:
+    // ни название, ни ИНН из browser payload для допуска не используются.
+    const { data: organization, error: organizationError } = await admin
+      .from("organizations")
+      .select("id, name, inn")
+      .eq("id", body.organizationId)
+      .maybeSingle();
+    if (organizationError) throw organizationError;
+    if (!organization) return json({ error: "Организация не найдена" }, 404);
+
+    const isExactGoreltechOrganization =
+      String(organization.id || "").toLowerCase() === GORELTECH_ORGANIZATION_ID
+      && String(organization.inn || "").replace(/\D/g, "") === GORELTECH_INN
+      && /ГОРЭЛТЕХ/i.test(String(organization.name || ""));
+    if (!isExactGoreltechOrganization) {
+      return json({
+        error: "Точный Word-шаблон договора доступен только организации ГОРЭЛТЕХ; используйте универсальный договор организации",
+      }, 409);
+    }
 
     // Шаблон из реестра встроенных шаблонов.
     const { data: registry, error: regError } = await admin

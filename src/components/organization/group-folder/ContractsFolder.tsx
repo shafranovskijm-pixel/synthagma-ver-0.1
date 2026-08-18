@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { openPrivateFile } from "@/utils/storageHelpers";
+import { downloadPrivateFile } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { FileSignature, Upload, Wand2, Download, Trash2, Building2, User, FileText, ChevronDown, Zap, FileDown, Package, Eye, FileType2, AlertTriangle } from "lucide-react";
@@ -22,6 +22,10 @@ import {
 import { UploadContractDialog } from "./UploadContractDialog";
 import { UploadTemplateDialog } from "./UploadTemplateDialog";
 import {
+  isGoreltechExactTemplateOrganization,
+  type GroupDocumentOrganizationIdentity,
+} from "@/lib/group-docs/clientProfile";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -33,15 +37,19 @@ interface Props {
   groupId: string;
   groupName: string;
   students: Student[];
+  /** Сервер остаётся источником допуска; это значение управляет только безопасным UI-маршрутом. */
+  organization?: GroupDocumentOrganizationIdentity | null;
   /** Вызывается после любого изменения списка договоров — чтобы обновить счётчики папок. */
   onDataChanged?: () => void;
 }
 
-export function ContractsFolder({ organizationId, groupId, groupName, students, onDataChanged }: Props) {
+export function ContractsFolder({ organizationId, groupId, groupName, students, organization, onDataChanged }: Props) {
   const { contracts, loading, refresh, remove } = useGroupContracts(organizationId, groupId);
+  const exactGoreltechDocuments = !!organization && isGoreltechExactTemplateOrganization(organization);
   const refreshAll = async () => { await refresh(); onDataChanged?.(); };
   const [genOpen, setGenOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
   const [docxOpen, setDocxOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
@@ -57,14 +65,30 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
     legacyLegal: contracts.filter(c => c.counterparty_type === "legal" && c.template_format !== "docx_ooxml").length,
   }), [contracts]);
 
-  const openFile = async (path: string | null) => {
-    if (!path) return;
-    await openPrivateFile("billing-documents", path);
+  const downloadStoredFile = async (
+    path: string | null,
+    fileName: string,
+    unavailableMessage: string,
+  ) => {
+    if (!path) {
+      toast.error(unavailableMessage);
+      return;
+    }
+    const downloaded = await downloadPrivateFile("billing-documents", path, fileName);
+    if (!downloaded) {
+      toast.error("Не удалось скачать файл", {
+        description: "Проверьте разрешение браузера на скачивание и повторите попытку",
+      });
+    }
   };
 
   const withHtml = useMemo(() => contracts.filter(c => !!c.body_html && c.template_format !== "docx_ooxml"), [contracts]);
 
   const isDocxTemplate = isDocxFirstContract;
+  const openCompanyContract = () => {
+    if (exactGoreltechDocuments) setDocxOpen(true);
+    else setLegalOpen(true);
+  };
 
   const downloadDocx = async (row: GroupContractRow) => {
     // Договор из клиентского Word-шаблона уже лежит в приватном bucket'е как DOCX.
@@ -73,7 +97,11 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
         toast.error("Файл договора недоступен");
         return;
       }
-      await openPrivateFile("billing-documents", row.docx_path);
+      await downloadStoredFile(
+        row.docx_path,
+        sanitizeFileName(row.name || "Договор", "docx"),
+        "Файл договора недоступен",
+      );
       return;
     }
     if (!row.body_html) {
@@ -108,8 +136,9 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
     <div className="space-y-4">
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" onClick={() => setDocxOpen(true)} disabled={students.length === 0}>
-          <FileType2 className="w-4 h-4" /> Договор компании (Word клиента)
+        <Button className="gap-1.5 rounded-xl" onClick={openCompanyContract} disabled={students.length === 0}>
+          {exactGoreltechDocuments ? <FileType2 className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+          {exactGoreltechDocuments ? "Договор компании (Word клиента)" : "Договор компании (универсальный)"}
         </Button>
         <Button variant="outline" className="gap-1.5 rounded-xl" onClick={() => setQuickOpen(true)} disabled={students.length === 0}>
           <User className="w-4 h-4" /> Физлицо / универсальный
@@ -121,8 +150,9 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
-            <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2" disabled={students.length === 0}>
-              <FileType2 className="w-4 h-4" /> Компания — Word клиента
+            <DropdownMenuItem onClick={openCompanyContract} className="gap-2" disabled={students.length === 0}>
+              {exactGoreltechDocuments ? <FileType2 className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+              {exactGoreltechDocuments ? "Компания — Word клиента" : "Компания — универсальный договор"}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setQuickOpen(true)} className="gap-2" disabled={students.length === 0}>
               <Zap className="w-4 h-4" /> Физлицо / универсальный договор
@@ -153,7 +183,7 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
         </div>
       </div>
 
-      {stats.legacyLegal > 0 && (
+      {exactGoreltechDocuments && stats.legacyLegal > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <div>
@@ -176,7 +206,10 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
             <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
             <div className="text-sm text-muted-foreground mb-3">В папке ещё нет договоров</div>
             <div className="flex items-center justify-center gap-2 flex-wrap">
-              <Button size="sm" onClick={() => setDocxOpen(true)} disabled={students.length === 0} className="gap-1.5"><FileType2 className="w-4 h-4" />Компания — Word клиента</Button>
+              <Button size="sm" onClick={openCompanyContract} disabled={students.length === 0} className="gap-1.5">
+                {exactGoreltechDocuments ? <FileType2 className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+                {exactGoreltechDocuments ? "Компания — Word клиента" : "Компания — универсальный договор"}
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setQuickOpen(true)} disabled={students.length === 0} className="gap-1.5"><User className="w-4 h-4" />Физлицо</Button>
               <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} className="gap-1.5"><FileSignature className="w-4 h-4" />HTML-мастер</Button>
               <Button size="sm" variant="outline" onClick={() => setUpOpen(true)} className="gap-1.5"><Upload className="w-4 h-4" />Загрузить</Button>
@@ -247,7 +280,11 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                         className="gap-1"
                         disabled={!getContractPdfPath(c)}
                         title={isDocxTemplate(c) && c.pdf_status !== "ready" ? "PDF пока недоступен — скачайте DOCX" : "PDF"}
-                        onClick={() => openFile(getContractPdfPath(c))}
+                        onClick={() => downloadStoredFile(
+                          getContractPdfPath(c),
+                          sanitizeFileName(c.name || "Договор", "pdf"),
+                          "PDF пока недоступен",
+                        )}
                       >
                         <Download className="w-3.5 h-3.5" /> PDF
                       </Button>
@@ -270,7 +307,11 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
         open={!!preview}
         onOpenChange={(o) => { if (!o) setPreview(null); }}
         contract={preview}
-        onDownloadPdf={(c) => openFile(getContractPdfPath(c))}
+        onDownloadPdf={(c) => downloadStoredFile(
+          getContractPdfPath(c),
+          sanitizeFileName(c.name || "Договор", "pdf"),
+          "PDF пока недоступен",
+        )}
         onDownloadDocx={(c) => downloadDocx(c)}
       />
 
@@ -297,7 +338,21 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
         />
       )}
 
-      {docxOpen && (
+      {legalOpen && (
+        <GenerateContractDialog
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
+          open={legalOpen}
+          quick
+          fixedScenario="legal"
+          onClose={() => setLegalOpen(false)}
+          onGenerated={refreshAll}
+        />
+      )}
+
+      {docxOpen && exactGoreltechDocuments && (
         <GenerateDocxContractDialog
           open={docxOpen}
           onClose={() => setDocxOpen(false)}

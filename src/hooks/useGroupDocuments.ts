@@ -98,12 +98,37 @@ export function useGroupDocuments(organizationId: string | null, groupId: string
   }, [organizationId, groupId, refresh]);
 
   const remove = useCallback(async (id: string) => {
-    const { error } = await (supabase as any).from("group_documents").delete().eq("id", id);
+    const row = documents.find(document => document.id === id);
+    const { error } = await (supabase as any)
+      .from("group_documents")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("group_id", groupId)
+      .eq("id", id);
     if (error) { toast.error("Не удалось удалить документ"); return false; }
     setDocuments(prev => prev.filter(d => d.id !== id));
-    toast.success("Документ удалён");
+
+    let cleanupFailed = false;
+    if (row?.file_path) {
+      try {
+        const { error: cleanupError } = await supabase.storage
+          .from("billing-documents")
+          .remove([row.file_path]);
+        cleanupFailed = !!cleanupError;
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+
+    if (cleanupFailed) {
+      toast.warning("Документ удалён, но файл не удалось очистить", {
+        description: "Запись уже удалена. Повторная очистка файла будет выполнена администратором.",
+      });
+    } else {
+      toast.success("Документ удалён");
+    }
     return true;
-  }, []);
+  }, [documents, groupId, organizationId]);
 
   return { documents, loading, refresh, saveGenerated, remove };
 }

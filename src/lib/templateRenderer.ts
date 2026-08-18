@@ -135,6 +135,14 @@ export interface OrgRequisitesInput {
   legal_address?: string | null;
   director_name?: string | null;
   director_position?: string | null;
+  /**
+   * Полная согласованная формулировка полномочий представителя, например
+   * «действующей на основании доверенности № 1 от 01.01.2026».
+   * Юридически значимый текст нельзя выводить из ФИО или пола автоматически.
+   */
+  director_authority?: string | null;
+  /** Устаревшая раздельная форма для пользовательских шаблонов; только явное значение. */
+  director_acting?: string | null;
   bank_name?: string | null;
   bank_bik?: string | null;
   bank_account?: string | null;
@@ -151,8 +159,13 @@ export function buildOrgVariables(org: OrgRequisitesInput): TemplateVariables {
     org_ogrn: org.ogrn || "",
     org_address: org.legal_address || "",
     org_director_name: org.director_name || "",
-    org_director_position: org.director_position || "Генерального директора",
-    org_director_acting: "действующего",
+    // Юридически значимую должность нельзя угадывать: организация заполняет её
+    // в собственных реквизитах, а мастер блокирует пустой плейсхолдер.
+    org_director_position: org.director_position || "",
+    // Ни род, ни основание полномочий не выводим автоматически. Встроенные
+    // договоры требуют ручную полную формулировку и блокируют пустое значение.
+    org_director_authority: org.director_authority || "",
+    org_director_acting: org.director_acting || "",
     org_bank_name: org.bank_name || "",
     org_bank_bik: org.bank_bik || "",
     org_bank_account: org.bank_account || "",

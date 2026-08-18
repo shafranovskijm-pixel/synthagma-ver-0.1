@@ -12,6 +12,7 @@ export type DocType =
 
 export interface GenerationContext {
   organization: {
+    id?: string | null;
     name: string;
     inn: string;
     kpp: string;

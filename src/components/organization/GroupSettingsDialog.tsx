@@ -111,6 +111,8 @@ function SettingRow({ label, help, checked, onCheckedChange, children }: {
 export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationId, onDeleted, onUpdated }: GroupSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<GroupSettings | null>(null);
   const [seatLimitEnabled, setSeatLimitEnabled] = useState(false);
@@ -140,8 +142,14 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
     setCourses([]);
     setSeatLimitEnabled(false);
     setSaving(false);
+    setLoadError(null);
 
-    if (!open || !groupId || !organizationId) {
+    if (!open) {
+      setLoading(false);
+      return;
+    }
+    if (!groupId || !organizationId) {
+      setLoadError("Не указана группа или организация.");
       setLoading(false);
       return;
     }
@@ -167,12 +175,17 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           .single();
         if (!isCurrentRequest()) return;
         if (error) throw error;
+        if (!data) throw new Error("group_not_found");
         const nextSettings = data as any as GroupSettings;
         loadedGroupIdentityRef.current = requestedIdentity;
         setSettings(nextSettings);
         setSeatLimitEnabled(nextSettings.max_seats !== null && nextSettings.max_seats > 0);
-      } catch {
-        if (isCurrentRequest()) toast.error("Ошибка загрузки настроек группы");
+      } catch (error) {
+        if (isCurrentRequest()) {
+          console.error("[GroupSettings] group load failed", { groupId, organizationId, error });
+          setLoadError("Не удалось загрузить настройки группы. Проверьте доступ и попробуйте снова.");
+          toast.error("Ошибка загрузки настроек группы");
+        }
       } finally {
         if (isCurrentRequest()) setLoading(false);
       }
@@ -198,7 +211,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
         loadSequenceRef.current += 1;
       }
     };
-  }, [open, groupId, organizationId]);
+  }, [open, groupId, organizationId, loadAttempt]);
 
   /** Курс является мастер-источником программы/часов/формы при новой привязке. */
   const applyCourse = (courseId: string | null) => {
@@ -341,9 +354,29 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
             <DialogTitle>Настройки группы</DialogTitle>
           </DialogHeader>
 
-          {loading || !settings ? (
+          {loading || (!settings && !loadError) ? (
             <div className="flex items-center justify-center py-16">
               <SigmaSpinner />
+            </div>
+          ) : loadError || !settings ? (
+            <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">Не удалось загрузить настройки группы</p>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  {loadError || "Группа не найдена или недоступна."}
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Закрыть
+                </Button>
+                <Button type="button" onClick={() => setLoadAttempt(attempt => attempt + 1)}>
+                  Повторить
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex min-h-0 max-h-[calc(100vh-6.5rem)] flex-col sm:flex-row">

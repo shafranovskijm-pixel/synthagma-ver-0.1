@@ -35,6 +35,7 @@ export interface ScenarioOrg {
   inn?: string | null;
   legal_address?: string | null;
   director_name?: string | null;
+  director_position?: string | null;
 }
 
 export interface ScenarioInput {
@@ -84,6 +85,7 @@ const ORG_REQUIRED: Array<{ key: keyof ScenarioOrg; label: string }> = [
   { key: "inn", label: "ИНН учебного центра" },
   { key: "legal_address", label: "адрес учебного центра" },
   { key: "director_name", label: "руководитель учебного центра" },
+  { key: "director_position", label: "должность руководителя учебного центра" },
 ];
 
 function isBlank(v: unknown): boolean {
@@ -203,6 +205,8 @@ export const VARIABLE_LABELS: Record<string, string> = {
   org_address: "адрес учебного центра",
   org_director_name: "руководитель учебного центра",
   org_director_position: "должность руководителя",
+  org_director_authority: "формулировка полномочий руководителя",
+  org_director_acting: "согласованная форма «действующего/действующей»",
   org_bank_name: "банк учебного центра",
   org_bank_bik: "БИК банка",
   org_bank_account: "расчётный счёт",

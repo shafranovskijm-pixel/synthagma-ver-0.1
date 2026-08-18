@@ -188,6 +188,10 @@ describe("реальный шаблон ГОРЭЛТЕХ (docx_ooxml)", () => {
     expect(res.documentXml).toContain("пятнадцать тысяч рублей");
     // финальный <w:sectPr> документа не потерян
     expect(res.documentXml).toContain("<w:sectPr");
+    // После удаления двух лишних учебных планов не остаётся пустой финальный раздел.
+    const compiledSections = parseBodyElements(res.documentXml).elements;
+    expect(Math.max(...compiledSections.map((element) => element.sectionIndex))).toBe(2);
+    expect(compiledSections[compiledSections.length - 1]?.tag).toBe("w:sectPr");
   });
 
   it("клонирует строки слушателей в таблице слушателей", async () => {

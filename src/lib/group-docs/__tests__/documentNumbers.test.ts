@@ -13,6 +13,7 @@ import { generateDocument } from "../generate";
 import { pickPassportIdentityDoc } from "../factualResolvers";
 import { buildVariables } from "../variables";
 import { SAMPLE_CONTEXT } from "../sampleContext";
+import { GORELTECH_ORGANIZATION_ID } from "../clientProfile";
 
 /** Серверная последовательность: состояние живёт в БД, а не в модуле. */
 function fakeServer() {
@@ -178,6 +179,7 @@ describe("нет выдуманных production-defaults", () => {
 
   it("для ГОРЭЛТЕХ оставляет графу основания пустой для ручного заполнения", () => {
     const ctx = structuredClone(SAMPLE_CONTEXT);
+    ctx.organization.id = GORELTECH_ORGANIZATION_ID;
     ctx.extras = { ...(ctx.extras || {}), contract_basis: "Договор № 2026-123" };
     const vars = buildVariables(ctx, {
       documentNumber: "УЦ-10/2026",

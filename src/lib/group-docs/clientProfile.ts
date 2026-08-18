@@ -8,8 +8,10 @@ export interface GroupDocumentClientProfile {
 }
 
 export const GORELTECH_INN = "7806541216";
+export const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 
 export interface GroupDocumentOrganizationIdentity {
+  id?: string | null;
   name: string;
   inn?: string | null;
 }
@@ -17,7 +19,8 @@ export interface GroupDocumentOrganizationIdentity {
 export function isGoreltechExactTemplateOrganization(
   organization: GroupDocumentOrganizationIdentity,
 ): boolean {
-  return organization.inn?.replace(/\D/g, "") === GORELTECH_INN
+  return organization.id?.toLowerCase() === GORELTECH_ORGANIZATION_ID
+    && organization.inn?.replace(/\D/g, "") === GORELTECH_INN
     && /ГОРЭЛТЕХ/i.test(organization.name);
 }
 

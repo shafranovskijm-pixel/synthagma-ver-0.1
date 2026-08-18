@@ -4,6 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FileText, Eye, Download, Trash2, FileType2, User, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
@@ -35,7 +45,7 @@ import { GenerateContractDialog } from "./GenerateContractDialog";
 import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
 import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
-import { openPrivateFile } from "@/utils/storageHelpers";
+import { downloadPrivateFile, openPrivateFile } from "@/utils/storageHelpers";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
@@ -85,8 +95,13 @@ export function GroupDocumentsFolder({
   const [companyPackageOpen, setCompanyPackageOpen] = useState(false);
   const [individualPackageOpen, setIndividualPackageOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<GroupDocumentRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<GroupDocumentRow | null>(null);
   const [retryPackage, setRetryPackage] = useState<GeneratedContractBatch | null>(null);
   const [mode, setMode] = useState<DocumentFillMode>("blank");
+  const exactGoreltechDocuments = useMemo(
+    () => !!ctx && resolveGroupDocumentClientProfile(ctx.organization).key === "goreltech",
+    [ctx],
+  );
   const { factual } = useGroupFactualData(
     organizationId,
     courseId,
@@ -196,8 +211,6 @@ export function GroupDocumentsFolder({
         requestedStatus,
       };
 
-      const exactGoreltechDocuments =
-        resolveGroupDocumentClientProfile(generationCtx.organization).key === "goreltech";
       const includeJournal = types.includes("class_journal");
       const generatedTypes = exactGoreltechDocuments
         ? types.filter(type => type !== "class_journal")
@@ -237,9 +250,9 @@ export function GroupDocumentsFolder({
   };
 
   /**
-   * Пакет: договор компании создаётся только из клиентского Word-шаблона;
-   * универсальный HTML-мастер остаётся только для физлица. Остальные 9 документов
-   * группы генерируются только после подтверждённого сохранения договора.
+   * Пакет: ГОРЭЛТЕХ получает свой клиентский Word-договор, остальные организации —
+   * нейтральный договор из собственного/встроенного универсального шаблона.
+   * Остальные 9 документов создаются только после подтверждённого сохранения договора.
    */
   const handleContractsGenerated = async (result?: GeneratedContractBatch) => {
     const scenario = result?.scenario ?? "individual";
@@ -293,12 +306,24 @@ export function GroupDocumentsFolder({
         toast.error("Файл Word недоступен");
         return;
       }
+      const actionLabel = download ? "скачать" : "открыть";
+      const downloadName = row.name.toLowerCase().endsWith(".docx") ? row.name : `${row.name}.docx`;
+      const ok = download
+        ? await downloadPrivateFile("billing-documents", row.file_path, downloadName)
+        : await openPrivateFile("billing-documents", row.file_path);
+      if (!ok) {
+        toast.error(`Не удалось ${actionLabel} файл Word`, {
+          description: download
+            ? "Не удалось получить временную ссылку на скачивание. Попробуйте ещё раз."
+            : "Не удалось получить временную ссылку или браузер заблокировал новую вкладку.",
+        });
+        return;
+      }
       if (!download) {
         toast.info("Открываем оригинал Word", {
           description: "PDF-копия ещё не формируется, поэтому предпросмотр откроет DOCX.",
         });
       }
-      await openPrivateFile("billing-documents", row.file_path);
       return;
     }
     if (!row.html) { toast.error("HTML документа не сохранён"); return; }
@@ -355,7 +380,9 @@ export function GroupDocumentsFolder({
             : "Значения берутся только из данных Синтагмы: прохождение уроков, результаты тестов, выданные документы. Нет источника — ячейка пустая."}
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Для ГОРЭЛТЕХ все 9 документов формируются из оригинальных Word-файлов клиента; для остальных организаций используется общий макет Синтагмы.
+          {exactGoreltechDocuments
+            ? "Все 9 документов формируются из оригинальных Word-файлов ГОРЭЛТЕХ."
+            : "Используется нейтральный общий макет Синтагмы с реквизитами вашей организации."}
         </div>
         {mode === "data" && (
           <div className="mt-3 text-xs space-y-2">
@@ -384,10 +411,10 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setCompanyPackageOpen(true); }}>
-          <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : "Пакет компании (Word клиента)"}
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setCompanyPackageOpen(true); }}>
+          <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}
         </Button>
-        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || blocked || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setIndividualPackageOpen(true); }}>
+        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setIndividualPackageOpen(true); }}>
           <User className="w-4 h-4" /> Пакет физлица
         </Button>
         <Badge variant="outline" className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
@@ -434,8 +461,10 @@ export function GroupDocumentsFolder({
       </div>
 
       <div className="text-xs text-muted-foreground">
-        Компания: {describePackagePlan("legal", students.length)} из оригинального Word-шаблона клиента. Физлицо: {describePackagePlan("individual", students.length)}
-        через универсальный мастер. Пакетная сборка помечена Beta до повторной проверки серверного Word-компилятора.
+        Компания: {describePackagePlan("legal", students.length)} {exactGoreltechDocuments
+          ? "из оригинального Word-шаблона ГОРЭЛТЕХ"
+          : "из универсального шаблона организации"}. Физлицо: {describePackagePlan("individual", students.length)}
+        через универсальный мастер. Пакетная сборка помечена Beta до повторной проверки полного цикла.
       </div>
 
       {retryPackage && (
@@ -460,7 +489,9 @@ export function GroupDocumentsFolder({
           <div className="p-10 text-center">
             <FileText className="w-10 h-10 mx-auto text-muted-foreground/60 mb-2" />
             <div className="text-sm text-muted-foreground">
-              Документов пока нет. Выберите пакет компании из Word-шаблона клиента или пакет физлица — реквизиты подставятся из данных Синтагмы.
+              Документов пока нет. Выберите {exactGoreltechDocuments
+                ? "пакет компании из Word-шаблона ГОРЭЛТЕХ"
+                : "универсальный пакет компании"} или пакет физлица — реквизиты подставятся из данных Синтагмы.
             </div>
           </div>
         ) : (
@@ -529,7 +560,7 @@ export function GroupDocumentsFolder({
                   <Button size="sm" variant="ghost" className="gap-1" aria-label={`Скачать ${row.name}`} title={`Скачать ${row.name}`} onClick={() => openDoc(row, true)}>
                     <Download className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Удалить ${row.name}`} title={`Удалить ${row.name}`} onClick={async () => { await remove(row.id); onDataChanged?.(); }}>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Удалить ${row.name}`} title={`Удалить ${row.name}`} onClick={() => setDeleteRow(row)}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -542,13 +573,36 @@ export function GroupDocumentsFolder({
         )}
       </div>
 
-      {companyPackageOpen && (
+      {companyPackageOpen && exactGoreltechDocuments && (
         <GenerateDocxContractDialog
           organizationId={organizationId}
           groupId={groupId}
           groupName={groupName}
           students={students}
           open={companyPackageOpen}
+          onClose={() => setCompanyPackageOpen(false)}
+          onGenerated={handleContractsGenerated}
+        />
+      )}
+
+      {companyPackageOpen && !exactGoreltechDocuments && (
+        <GenerateContractDialog
+          organizationId={organizationId}
+          groupId={groupId}
+          groupName={groupName}
+          students={students}
+          open={companyPackageOpen}
+          quick
+          fixedScenario="legal"
+          groupDefaults={{
+            courseId: courseId,
+            programTitle: ctx?.group.program_title ?? null,
+            programHours: ctx?.group.program_hours ?? null,
+            programForm: ctx?.group.program_form ?? null,
+            price: defaultPrice ?? null,
+            startDate: ctx?.group.start_date ?? null,
+            endDate: ctx?.group.end_date ?? null,
+          }}
           onClose={() => setCompanyPackageOpen(false)}
           onGenerated={handleContractsGenerated}
         />
@@ -591,6 +645,31 @@ export function GroupDocumentsFolder({
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteRow} onOpenChange={open => { if (!open) setDeleteRow(null); }}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить документ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Документ «{deleteRow?.name}» будет удалён безвозвратно.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                const row = deleteRow;
+                if (!row) return;
+                const deleted = await remove(row.id);
+                if (deleted) onDataChanged?.();
+              }}
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

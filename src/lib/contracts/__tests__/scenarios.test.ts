@@ -7,8 +7,15 @@ import {
   planContractJobs,
   type ScenarioInput,
 } from "@/lib/contracts/scenarios";
+import { buildOrgVariables } from "@/lib/templateRenderer";
 
-const org = { name: "УЦ", inn: "123", legal_address: "Москва", director_name: "Иванов И.И." };
+const org = {
+  name: "УЦ",
+  inn: "123",
+  legal_address: "Москва",
+  director_name: "Иванов И.И.",
+  director_position: "Директор",
+};
 const students = [
   { user_id: "u1", full_name: "Петров Пётр", passport: "4010 123456" },
   { user_id: "u2", full_name: "Сидоров Сидор", passport: null },
@@ -85,7 +92,25 @@ describe("contract scenarios", () => {
 
   it("реквизиты учебного центра обязательны", () => {
     const keys = blockingMissing(validateScenario("individual", { ...base, org: { name: "УЦ" } })).map(m => m.key);
-    expect(keys).toEqual(expect.arrayContaining(["org_inn", "org_legal_address", "org_director_name"]));
+    expect(keys).toEqual(expect.arrayContaining([
+      "org_inn",
+      "org_legal_address",
+      "org_director_name",
+      "org_director_position",
+    ]));
+  });
+
+  it("не подставляет должность руководителя другой организации по умолчанию", () => {
+    const vars = buildOrgVariables({
+      name: "Другой учебный центр",
+      inn: "2536000000",
+      legal_address: "Владивосток",
+      director_name: "Иванов Иван Иванович",
+      director_position: "",
+    });
+
+    expect(vars.org_director_position).toBe("");
+    expect(String(vars.org_director_position)).not.toMatch(/генеральн/i);
   });
 
   it("физлица: один договор на каждого ученика", () => {

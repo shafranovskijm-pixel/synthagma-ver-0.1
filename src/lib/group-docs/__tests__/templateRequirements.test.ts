@@ -56,10 +56,13 @@ describe("требования ГОРЭЛТЕХ к групповым докум
     expect(expulsion).toContain("{{program_hours}} академических часов");
   });
 
-  it("объединяет серию и номер и добавляет дату закрытия группы", () => {
+  it("сохраняет согласованные 16 граф книги регистрации", () => {
     const registration = byType("registration_book");
     expect(registration).toContain("Серия и номер");
-    expect(registration).toContain("Дата закрытия группы");
+    expect(registration).toContain("Регистрационный номер, дата выдачи");
+    expect(registration).toContain("№ и дата приказа о завершении обучения");
+    expect(registration.match(/<th\b/g)).toHaveLength(16);
+    expect(registration).not.toContain("Дата закрытия группы");
     expect(registration).not.toContain("<th>Серия</th>");
     expect(registration).not.toContain("<th>Номер</th>");
   });

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveGroupDocumentClientProfile } from "../clientProfile";
+import {
+  GORELTECH_ORGANIZATION_ID,
+  resolveGroupDocumentClientProfile,
+} from "../clientProfile";
 import { buildRegistrationRowsFromFacts } from "../factualData";
 import { GROUP_DOCUMENT_TYPE_MAP } from "../groupDocuments";
 import { GROUP_DOCUMENT_TYPE_MAP as WORKSPACE_DOCUMENT_TYPE_MAP } from "../../groupDocuments";
@@ -9,6 +12,7 @@ import type { GenerationContext } from "../schema";
 function context(organizationName: string): GenerationContext {
   return {
     organization: {
+      id: /ГОРЭЛТЕХ/i.test(organizationName) ? GORELTECH_ORGANIZATION_ID : "00000000-0000-4000-8000-000000000001",
       name: organizationName,
       inn: /ГОРЭЛТЕХ/i.test(organizationName) ? "7806541216" : "1234567890",
       kpp: "",
@@ -35,6 +39,7 @@ function context(organizationName: string): GenerationContext {
 describe("профиль документов клиента", () => {
   it("изолирует формулировки ГОРЭЛТЕХ", () => {
     const goreltech = resolveGroupDocumentClientProfile({
+      id: GORELTECH_ORGANIZATION_ID,
       name: 'ООО «Инжиниринговый центр «ГОРЭЛТЕХ»',
       inn: "7806541216",
     });
@@ -50,10 +55,17 @@ describe("профиль документов клиента", () => {
     expect(generic.shortName).not.toContain("ГОРЭЛТЕХ");
 
     const spoofed = resolveGroupDocumentClientProfile({
+      id: "00000000-0000-4000-8000-000000000002",
       name: 'ООО «Похожее название ГОРЭЛТЕХ»',
-      inn: "0000000000",
+      inn: "7806541216",
     });
     expect(spoofed.key).toBe("generic");
+
+    const missingImmutableId = resolveGroupDocumentClientProfile({
+      name: 'ООО «Инжиниринговый центр «ГОРЭЛТЕХ»',
+      inn: "7806541216",
+    });
+    expect(missingImmutableId.key).toBe("generic");
   });
 
   it("не переносит ГОРЭЛТЕХ в титульный лист другой организации", () => {

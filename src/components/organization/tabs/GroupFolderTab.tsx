@@ -296,6 +296,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!group) return null;
     return {
       organization: {
+        id: orgInfo?.id || organizationId,
         name: orgInfo?.name || "",
         inn: orgInfo?.inn || "",
         kpp: orgInfo?.kpp || "",
@@ -342,7 +343,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         education: s.frdo?.education_level || undefined,
       })),
     };
-  }, [group, orgInfo, students, courseInfo]);
+  }, [group, orgInfo, students, courseInfo, organizationId]);
 
   const resolvedProgramTitle = group?.program_title || courseInfo?.title || "";
   const resolvedCourseId = group?.course_id || courseInfo?.id || null;
@@ -783,6 +784,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   groupId={groupId}
                   groupName={group?.name || ""}
                   students={students.map(s => ({ user_id: s.user_id, full_name: s.full_name, email: s.email }))}
+                  organization={generationContext?.organization ?? null}
                   onDataChanged={refreshCounts}
                 />
               ) : openFolder === "docs" ? (

@@ -120,7 +120,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [orgReq, setOrgReq] = useState<any>(null);
   const [courses, setCourses] = useState<Course[]>([]);
 
-  const [counterparty, setCounterparty] = useState<CounterpartyType>("individual");
+  const [counterparty, setCounterparty] = useState<CounterpartyType>(fixedScenario || "individual");
   /** Сценарий выбран пользователем явно — без этого дальше не пускаем (в т.ч. в quick-режиме). */
   const [scenarioChosen, setScenarioChosen] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
@@ -158,6 +158,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     setCounterparty(fixedScenario || "individual");
     setScenarioChosen(!!fixedScenario);
     setStudentOverrides({});
+    // Ручные юридически значимые формулировки не должны переходить между
+    // повторными открытиями мастера или между организациями.
+    setExtra({});
     assignedNumbers.current.clear();
     generationId.current = crypto.randomUUID();
     preparedBatch.current = null;
@@ -215,7 +218,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, organizationId, quick]);
+  }, [open, organizationId, quick, fixedScenario]);
 
   /**
    * Быстрая генерация: автозаполнение применяется ТОЛЬКО после явного выбора сценария —
@@ -415,7 +418,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
 
 
   const knownKeys = new Set([
-    "org_name","org_inn","org_kpp","org_ogrn","org_address","org_director_name","org_director_position","org_director_acting",
+    "org_name","org_inn","org_kpp","org_ogrn","org_address","org_director_name","org_director_position",
     "org_bank_name","org_bank_bik","org_bank_account","org_bank_corr_account","org_email","org_phone",
     "company_name","company_inn","company_kpp","company_ogrn","company_address","company_director",
     "individual_name","individual_email","individual_passport","individual_address","individual_phone",
@@ -768,17 +771,39 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                       : "Быстрая генерация: выберите сценарий — остальные данные (все ученики группы, сегодняшняя дата, авто-номер, шаблон по умолчанию) подставятся автоматически."}
                   </p>
                 )}
-                <div className={cn("grid gap-3", fixedScenario ? "grid-cols-1" : "grid-cols-2")}>
-                  <button type="button" onClick={() => { setCounterparty("individual"); setScenarioChosen(true); }}
-                    className={cn(
-                      "p-5 rounded-2xl border-2 text-left transition-all",
-                      scenarioChosen && counterparty === "individual" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-                    )}>
-                    <User className="w-6 h-6 text-primary mb-2" />
-                    <div className="text-base font-semibold">Физическое лицо</div>
-                    <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
-                  </button>
-                  {!fixedScenario && (
+                {fixedScenario ? (
+                  <div
+                    role="group"
+                    aria-label={`Зафиксированный сценарий: ${fixedScenario === "legal" ? "Компания" : "Физическое лицо"}`}
+                    className="p-5 rounded-2xl border-2 border-primary bg-primary/5 text-left"
+                  >
+                    {fixedScenario === "legal" ? (
+                      <>
+                        <Building2 className="w-6 h-6 text-primary mb-2" />
+                        <div className="text-base font-semibold">Компания</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Универсальный HTML-макет для организации-заказчика и списка слушателей
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <User className="w-6 h-6 text-primary mb-2" />
+                        <div className="text-base font-semibold">Физическое лицо</div>
+                        <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => { setCounterparty("individual"); setScenarioChosen(true); }}
+                      className={cn(
+                        "p-5 rounded-2xl border-2 text-left transition-all",
+                        scenarioChosen && counterparty === "individual" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      )}>
+                      <User className="w-6 h-6 text-primary mb-2" />
+                      <div className="text-base font-semibold">Физическое лицо</div>
+                      <div className="text-xs text-muted-foreground mt-1">Отдельный договор на каждого выбранного ученика</div>
+                    </button>
                     <button type="button" onClick={() => { setCounterparty("legal"); setScenarioChosen(true); }}
                       className={cn(
                         "p-5 rounded-2xl border-2 text-left transition-all",
@@ -792,8 +817,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                           : "Один универсальный договор с заказчиком и списком слушателей в приложении"}
                       </div>
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1046,7 +1071,21 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                       {customVars.map(k => (
                         <div key={k} className="grid grid-cols-[minmax(120px,1fr)_2fr] gap-2 items-center">
                           <code className="text-xs px-1.5 py-0.5 rounded bg-muted truncate">{`{{${k}}}`}</code>
-                          <Input value={extra[k] || ""} onChange={e => setExtra(prev => ({ ...prev, [k]: e.target.value }))} placeholder="значение" className="h-8" />
+                          <Input
+                            value={extra[k] || ""}
+                            onChange={e => setExtra(prev => ({ ...prev, [k]: e.target.value }))}
+                            placeholder={k === "org_director_authority"
+                              ? "например: действующей на основании Устава"
+                              : k === "org_director_acting"
+                                ? "действующего / действующей"
+                                : "значение"}
+                            aria-label={k === "org_director_authority"
+                              ? "Формулировка полномочий руководителя"
+                              : k === "org_director_acting"
+                                ? "Согласованная форма полномочий руководителя"
+                                : `Значение ${k}`}
+                            className="h-8"
+                          />
                         </div>
                       ))}
                     </div>

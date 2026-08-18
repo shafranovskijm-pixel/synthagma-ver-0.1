@@ -5,6 +5,8 @@ import {
   buildAttestationRowsFromFacts,
   buildJournalBlankRows,
   buildJournalRowsFromFacts,
+  buildRegistrationBlankRows,
+  buildRegistrationRowsFromFacts,
   documentDataReadiness,
   emptyFactualData,
   journalDateColumns,
@@ -13,6 +15,7 @@ import {
 import { generateDocument } from "../generate";
 import { GROUP_DOCUMENT_TYPES } from "../groupDocuments";
 import { PACKAGE_DOC_TYPES } from "../packageTypes";
+import { getTemplate } from "../templates";
 import type { DocType, GenerationContext } from "../schema";
 
 const students = [
@@ -69,6 +72,34 @@ describe("factualData: никаких выдуманных значений", ()
   it("finalBlocked при пустом snapshot", () => {
     const r = documentDataReadiness("attestation_sheet", emptyFactualData(), 2);
     expect(r?.finalBlocked).toBe(true);
+  });
+
+  it("книга регистрации generic имеет 16 согласованных колонок", () => {
+    const template = getTemplate("registration_book")!;
+    const headerCount = template.body_html.match(/<th\b/g)?.length || 0;
+    const factRow = buildRegistrationRowsFromFacts([{
+      full_name: "Иванов Иван Иванович",
+      document_type: "Удостоверение",
+      document_series: "ПК",
+      document_number: "000001",
+      reg_number: "1",
+      issue_date: "2026-01-20",
+      order_number: "1",
+      order_date: "2026-01-20",
+      birth_date: "1990-01-01",
+      gender: "М",
+      passport: "2500 000001",
+      citizenship: "РФ",
+      program: "Охрана труда",
+    }], "2026-01-20", "Охрана труда", "1", "2026-01-10", "ЧОУ ДПО Синтагма");
+    const blankRow = buildRegistrationBlankRows(students, "2026-01-20", "Охрана труда", "1", "2026-01-10")
+      .match(/<tr>.*?<\/tr>/)?.[0] || "";
+
+    expect(headerCount).toBe(16);
+    expect(factRow.match(/<td\b/g)).toHaveLength(16);
+    expect(factRow).toContain("<td>1990</td>");
+    expect(factRow).not.toContain("01.01.1990");
+    expect(blankRow.match(/<td\b/g)).toHaveLength(16);
   });
 });
 

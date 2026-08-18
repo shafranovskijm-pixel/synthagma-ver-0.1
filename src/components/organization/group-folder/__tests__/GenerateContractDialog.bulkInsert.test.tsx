@@ -16,37 +16,37 @@ const mocks = vi.hoisted(() => ({
 }));
 
 const organization = {
-  name: "УЦ Тест",
-  inn: "2536000000",
-  kpp: "253601001",
+  name: "ТЕСТОВАЯ ОРГАНИЗАЦИЯ — НЕ РЕАЛЬНАЯ",
+  inn: "0000000000",
+  kpp: "000000000",
   ogrn: "1022500000000",
-  legal_address: "г. Владивосток, ул. Тестовая, 1",
-  email: "info@example.test",
-  phone: "+7 423 200-00-00",
-  director_name: "Иванов Иван Иванович",
+  legal_address: "ТЕСТОВЫЙ АДРЕС — НЕ РЕАЛЬНЫЕ ДАННЫЕ",
+  email: "organization@example.invalid",
+  phone: "+7 000 000-00-00",
+  director_name: "ТЕСТОВЫЙ РУКОВОДИТЕЛЬ",
   director_position: "Директор",
-  bank_name: "Тест Банк",
-  bank_bik: "040000000",
-  bank_account: "40702810000000000000",
-  bank_corr_account: "30101810000000000000",
+  bank_name: "ТЕСТОВЫЙ БАНК — НЕ СУЩЕСТВУЕТ",
+  bank_bik: "000000000",
+  bank_account: "00000000000000000000",
+  bank_corr_account: "00000000000000000000",
 };
 
 const students = [
   {
     user_id: "student-1",
-    full_name: "Петров Пётр Петрович",
-    email: "petrov@example.test",
-    passport: "25 00 111111",
-    address: "г. Владивосток",
-    phone: "+7 900 111-11-11",
+    full_name: "ТЕСТОВЫЙ СЛУШАТЕЛЬ 1",
+    email: "student1@example.invalid",
+    passport: "00 00 000000",
+    address: "ТЕСТОВЫЙ АДРЕС 1",
+    phone: "+7 000 000-00-01",
   },
   {
     user_id: "student-2",
-    full_name: "Сидоров Сидор Сидорович",
-    email: "sidorov@example.test",
-    passport: "25 00 222222",
-    address: "г. Артём",
-    phone: "+7 900 222-22-22",
+    full_name: "ТЕСТОВЫЙ СЛУШАТЕЛЬ 2",
+    email: "student2@example.invalid",
+    passport: "00 00 000000",
+    address: "ТЕСТОВЫЙ АДРЕС 2",
+    phone: "+7 000 000-00-02",
   },
 ];
 
@@ -146,6 +146,13 @@ async function openReviewAndSubmit() {
   fireEvent.click(next);
 
   const submit = await screen.findByRole("button", { name: "Сгенерировать 2 договора" });
+  expect(submit).toBeDisabled();
+
+  const authority = screen.getByRole("textbox", { name: "Формулировка полномочий руководителя" });
+  expect(authority).toHaveValue("");
+  fireEvent.change(authority, {
+    target: { value: "действующего на основании решения учредителя № 1" },
+  });
   await waitFor(() => expect(submit).not.toBeDisabled());
   fireEvent.click(submit);
 }
@@ -161,6 +168,40 @@ describe("GenerateContractDialog individual bulk persistence", () => {
     mocks.existingRows = [];
     mocks.onGenerated.mockResolvedValue(true);
     mocks.htmlDocsToZipBlob.mockResolvedValue(new Blob(["zip"]));
+  });
+
+  it("фиксирует legal-сценарий и явно показывает компанию без переключателя на физлицо", async () => {
+    render(
+      <GenerateContractDialog
+        organizationId="org-1"
+        groupId="group-1"
+        groupName="Группа 1"
+        students={students}
+        open
+        quick
+        fixedScenario="legal"
+        groupDefaults={{
+          programTitle: "Повышение квалификации",
+          programHours: 40,
+          programForm: "очная",
+          price: 10_000,
+        }}
+        onClose={mocks.onClose}
+        onGenerated={mocks.onGenerated}
+      />,
+    );
+
+    const fixedCard = await screen.findByRole("group", { name: "Зафиксированный сценарий: Компания" });
+    expect(fixedCard).toHaveTextContent("Компания");
+    expect(fixedCard).not.toHaveTextContent("Физическое лицо");
+    expect(screen.queryByRole("button", { name: /Физическое лицо/ })).not.toBeInTheDocument();
+
+    const next = screen.getByRole("button", { name: "Далее" });
+    await waitFor(() => expect(next).not.toBeDisabled());
+    fireEvent.click(next);
+
+    expect(await screen.findByText("Компания-заказчик")).toBeInTheDocument();
+    expect(screen.queryByText("Выберите учеников")).not.toBeInTheDocument();
   });
 
   it("вставляет два договора одним массивом только после обоих PDF", async () => {

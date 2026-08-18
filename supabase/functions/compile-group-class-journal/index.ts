@@ -31,7 +31,8 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-client-source-v6";
+export const COMPILER_REVISION = "goreltech-group-package-tenant-uuid-v7";
+const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
 const BUCKET = "billing-documents";
@@ -187,7 +188,8 @@ Deno.serve(async (req) => {
     }
     if (!organization) return json({ error: "Организация не найдена" }, 404);
     const isExactGoreltechOrganization =
-      String(organization.inn || "").replace(/\D/g, "") === GORELTECH_INN
+      String(organization.id || "").toLowerCase() === GORELTECH_ORGANIZATION_ID
+      && String(organization.inn || "").replace(/\D/g, "") === GORELTECH_INN
       && /ГОРЭЛТЕХ/i.test(String(organization.name || ""));
     if (!isExactGoreltechOrganization) {
       return json({

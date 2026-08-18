@@ -97,7 +97,7 @@ export const BUILTIN_CONTRACT_TEMPLATES: BuiltinContractTemplate[] = [
 <h1>Договор об оказании образовательных услуг № {{contract_number}}</h1>
 <p class="row"><span>{{org_address}}</span><span>{{contract_date}}</span></p>
 <p>{{org_name}}, ИНН {{org_inn}}, в лице {{org_director_position}} {{org_director_name}},
-действующего на основании Устава, именуемое далее «Исполнитель», с одной стороны, и
+{{org_director_authority}}, именуемое далее «Исполнитель», с одной стороны, и
 {{individual_name}}, паспорт {{individual_passport}}, адрес: {{individual_address}},
 телефон {{individual_phone}}, e-mail {{individual_email}}, именуемый далее «Заказчик»
 (он же «Слушатель»), с другой стороны, заключили настоящий договор о нижеследующем.</p>
@@ -117,7 +117,7 @@ ${signBlock('{{individual_name}}<br/>Паспорт: {{individual_passport}}<br/
 <h1>Договор об оказании образовательных услуг № {{contract_number}}</h1>
 <p class="row"><span>{{org_address}}</span><span>{{contract_date}}</span></p>
 <p>{{org_name}}, ИНН {{org_inn}}, в лице {{org_director_position}} {{org_director_name}},
-действующего на основании Устава, именуемое далее «Исполнитель», с одной стороны, и
+{{org_director_authority}}, именуемое далее «Исполнитель», с одной стороны, и
 {{company_name}}, ИНН {{company_inn}}, КПП {{company_kpp}}, ОГРН {{company_ogrn}},
 адрес: {{company_address}}, в лице {{company_director}}, именуемое далее «Заказчик»,
 с другой стороны, заключили настоящий договор о нижеследующем.</p>

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
@@ -120,5 +120,65 @@ describe("GroupSettingsDialog request ordering", () => {
       expect(screen.getByDisplayValue("Группа B")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("Группа A")).not.toBeInTheDocument();
     });
+  });
+
+  it("shows persistent recovery actions when the group lookup fails", async () => {
+    const request = deferred<QueryResult>();
+    groupRequests.set("group-error", request);
+    const onOpenChange = vi.fn();
+
+    render(
+      <GroupSettingsDialog
+        open
+        groupId="group-error"
+        organizationId="org-1"
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    await act(async () => {
+      request.resolve({ data: null, error: { message: "database unavailable" } });
+      await request.promise;
+    });
+
+    expect(await screen.findByText("Не удалось загрузить настройки группы")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Повторить" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("retries an empty group lookup and renders the recovered settings", async () => {
+    const firstRequest = deferred<QueryResult>();
+    groupRequests.set("group-retry", firstRequest);
+
+    render(
+      <GroupSettingsDialog
+        open
+        groupId="group-retry"
+        organizationId="org-1"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      firstRequest.resolve({ data: null, error: null });
+      await firstRequest.promise;
+    });
+    expect(await screen.findByText("Не удалось загрузить настройки группы")).toBeInTheDocument();
+
+    const retryRequest = deferred<QueryResult>();
+    groupRequests.set("group-retry", retryRequest);
+    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+
+    await waitFor(() => {
+      expect(groupScopes.filter(scope => scope.id === "group-retry")).toHaveLength(2);
+    });
+    await act(async () => {
+      retryRequest.resolve({ data: group("group-retry", "Восстановленная группа"), error: null });
+      await retryRequest.promise;
+    });
+
+    expect(await screen.findByDisplayValue("Восстановленная группа")).toBeInTheDocument();
+    expect(screen.queryByText("Не удалось загрузить настройки группы")).not.toBeInTheDocument();
   });
 });

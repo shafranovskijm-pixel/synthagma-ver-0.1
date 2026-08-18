@@ -100,19 +100,41 @@ export function useGroupContracts(organizationId: string | null, groupId: string
 
   const remove = useCallback(async (id: string) => {
     const row = contracts.find(c => c.id === id);
-    // Пытаемся удалить файл, если он в нашем bucket'е.
-    if (row?.file_path) {
-      await supabase.storage.from("billing-documents").remove([row.file_path]).catch(() => {});
-    }
-    const { error } = await (supabase as any).from("org_contracts").delete().eq("id", id);
+    const { error } = await (supabase as any)
+      .from("org_contracts")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("id", id);
     if (error) {
       toast.error("Не удалось удалить договор", { description: error.message });
       return false;
     }
     setContracts(prev => prev.filter(c => c.id !== id));
-    toast.success("Договор удалён");
+
+    const filePaths = Array.from(new Set(
+      [row?.file_path, row?.docx_path, row?.pdf_path].filter((path): path is string => !!path),
+    ));
+    let cleanupFailed = false;
+    if (filePaths.length > 0) {
+      try {
+        const { error: cleanupError } = await supabase.storage
+          .from("billing-documents")
+          .remove(filePaths);
+        cleanupFailed = !!cleanupError;
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+
+    if (cleanupFailed) {
+      toast.warning("Договор удалён, но файл не удалось очистить", {
+        description: "Запись уже удалена. Повторная очистка файла будет выполнена администратором.",
+      });
+    } else {
+      toast.success("Договор удалён");
+    }
     return true;
-  }, [contracts]);
+  }, [contracts, organizationId]);
 
   return { contracts, loading, refresh, remove };
 }

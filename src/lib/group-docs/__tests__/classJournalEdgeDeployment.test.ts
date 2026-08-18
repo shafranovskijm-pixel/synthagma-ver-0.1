@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-client-source-v6");
+    expect(source).toContain("goreltech-group-package-tenant-uuid-v7");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain('split(/[;\\n]+/)');
     expect(source).toContain("GROUP_DOCUMENT_TEMPLATE_BUNDLE");
@@ -41,10 +41,12 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("compilerRevision");
   });
 
-  it("не выдаёт фирменные шаблоны организации с похожим названием или другим ИНН", () => {
+  it("не выдаёт фирменные шаблоны организации с теми же названием и ИНН, но другим UUID", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
+    expect(source).toContain('const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473"');
     expect(source).toContain('const GORELTECH_INN = "7806541216"');
+    expect(source).toContain('String(organization.id || "").toLowerCase() === GORELTECH_ORGANIZATION_ID');
     expect(source).toContain('String(organization.inn || "").replace(/\\D/g, "") === GORELTECH_INN');
     expect(source).toContain('/ГОРЭЛТЕХ/i.test(String(organization.name || ""))');
     expect(source).toContain("Точные клиентские Word-шаблоны доступны только организации ГОРЭЛТЕХ");
@@ -73,9 +75,27 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("const authzError = adminRoleResult.error ||");
     expect(source).toContain("if (authzError) throw authzError");
     expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
-    expect(source).toContain("goreltech-company-contract-authz-v1");
+    expect(source).toContain("goreltech-company-contract-tenant-uuid-v3");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
+  });
+
+  it("не выдаёт фирменный Word-договор при совпавших названии и ИНН, но другом UUID", () => {
+    const source = fs.readFileSync(CONTRACT_FUNCTION_SOURCE, "utf8");
+
+    expect(source).toContain('const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473"');
+    expect(source).toContain('const GORELTECH_INN = "7806541216"');
+    expect(source).toContain('.from("organizations")');
+    expect(source).toContain('.select("id, name, inn")');
+    expect(source).toContain('String(organization.id || "").toLowerCase() === GORELTECH_ORGANIZATION_ID');
+    expect(source).toContain('String(organization.inn || "").replace(/\\D/g, "") === GORELTECH_INN');
+    expect(source).toContain('/ГОРЭЛТЕХ/i.test(String(organization.name || ""))');
+    expect(source).toContain("Точный Word-шаблон договора доступен только организации ГОРЭЛТЕХ");
+
+    const tenantGate = source.indexOf("const isExactGoreltechOrganization");
+    const templateDecode = source.indexOf("decodeBase64Bytes(GORELTECH_COMPANY_CONTRACT_TEMPLATE_BASE64)");
+    expect(tenantGate).toBeGreaterThan(-1);
+    expect(templateDecode).toBeGreaterThan(tenantGate);
   });
 
   it("decodes, verifies and compiles the retained journal template", async () => {

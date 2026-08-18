@@ -108,6 +108,14 @@ function shortDate(iso: string): string {
   return d.toLocaleDateString("ru-RU");
 }
 
+function birthYear(value?: string): string {
+  if (!value) return "";
+  const isoYear = /^(\d{4})(?:-|$)/.exec(value.trim())?.[1];
+  if (isoYear) return isoYear;
+  const russianYear = /(?:^|\D)(\d{4})$/.exec(value.trim())?.[1];
+  return russianYear || "";
+}
+
 interface StudentLike {
   user_id: string;
   full_name: string;
@@ -279,7 +287,7 @@ export function buildRegistrationRowsFromFacts(
         `<td>${esc(registrationAndDate)}</td>` +
         `<td>${esc([f.document_series, f.document_number].filter(Boolean).join(" "))}</td>` +
         `<td>${esc(f.full_name)}</td>` +
-        `<td>${esc(f.birth_date ? shortDate(f.birth_date) : "")}</td>` +
+        `<td>${esc(birthYear(f.birth_date))}</td>` +
         `<td style="text-align:center">${esc(f.gender || "")}</td>` +
         `<td>${esc(f.passport || "")}</td>` +
         `<td>${esc(f.citizenship || "")}</td>` +
