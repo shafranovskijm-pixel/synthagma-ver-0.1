@@ -8,6 +8,8 @@ export interface CourseReviewFindingLike {
   target_kind?: string;
   target_id?: string;
   patch?: Record<string, unknown>;
+  source_url?: string;
+  source_label?: string;
   [key: string]: unknown;
 }
 
@@ -17,7 +19,7 @@ export interface CourseReviewResultLike {
   [key: string]: unknown;
 }
 
-export const REVIEW_REVISION = "irr-legal-official-facts-v2";
+export const REVIEW_REVISION = "irr-legal-official-source-v3";
 
 export const OFFICIAL_SOURCE_NOTICE =
   "Юридический вывод не подтверждён официальным источником в рамках этой AI-проверки.";
@@ -37,6 +39,7 @@ export const VERIFIED_LEGAL_FACTS = {
     supersedesSignedAt: "24.03.2003",
     supersedesFrom: "01.09.2025",
     officialUrl: "https://publication.pravo.gov.ru/document/0001202506020074",
+    officialSourceLabel: "Официальное опубликование: приказ Минэнерго России от 14.05.2025 № 511",
     verifiedAt: "14.08.2026",
   },
 } as const;
@@ -109,7 +112,12 @@ export function guardUnverifiedLegalFindings(
   let correctedMinenergo511FindingsCount = 0;
 
   const guardedFindings = findings.map((finding) => {
-    if (finding?.type !== "legislation") return finding;
+    // Source metadata is server-owned. Never trust a model-provided URL or label.
+    const findingWithoutSource = { ...finding };
+    delete findingWithoutSource.source_url;
+    delete findingWithoutSource.source_label;
+
+    if (finding?.type !== "legislation") return findingWithoutSource;
 
     const originalDescription = String(finding.description || "").trim();
     const originalSuggestion = String(finding.suggestion || "").trim();
@@ -128,20 +136,22 @@ export function guardUnverifiedLegalFindings(
       const fact = VERIFIED_LEGAL_FACTS.minenergo511;
 
       return {
-        ...finding,
+        ...findingWithoutSource,
         severity: "info",
         description: `Подтверждено официальным источником: приказ ${fact.authority} от ${fact.signedAt} № ${fact.number} существует, зарегистрирован ${fact.registeredAt} № ${fact.registrationNumber}, вступил в силу ${fact.effectiveFrom} и действует до ${fact.validUntil}.`,
         suggestion: `Исправление курса по этому замечанию не требуется. Приказ № ${fact.number} с ${fact.supersedesFrom} признал утратившим силу приказ Минэнерго России от ${fact.supersedesSignedAt} № ${fact.supersedesNumber}, а не наоборот. Официальный источник: ${fact.officialUrl}`,
         target_kind: "none",
         target_id: "",
         patch: {},
+        source_url: fact.officialUrl,
+        source_label: fact.officialSourceLabel,
       };
     }
 
     unverifiedLegalFindingsCount += 1;
 
     return {
-      ...finding,
+      ...findingWithoutSource,
       severity: "warning",
       description: `${OFFICIAL_SOURCE_NOTICE}${
         originalDescription

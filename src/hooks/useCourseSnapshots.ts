@@ -32,43 +32,7 @@ export function getSnapshotReasonLabel(reason: string): string {
   return REASON_LABEL[reason] ?? reason;
 }
 
-interface BuildPayloadResult {
-  payload: any;
-  lessonsCount: number;
-  questionsCount: number;
-}
-
-async function buildSnapshotPayload(courseId: string): Promise<BuildPayloadResult | null> {
-  const [{ data: course }, { data: lessons }, { data: documents }] = await Promise.all([
-    supabase.from("courses").select("*").eq("id", courseId).maybeSingle(),
-    supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index"),
-    supabase.from("course_documents").select("*").eq("course_id", courseId),
-  ]);
-
-  if (!course) return null;
-  const lessonIds = (lessons ?? []).map((l: any) => l.id);
-  let questions: any[] = [];
-  if (lessonIds.length > 0) {
-    const { data: qs } = await supabase
-      .from("test_questions")
-      .select("*")
-      .in("lesson_id", lessonIds);
-    questions = qs ?? [];
-  }
-
-  return {
-    payload: {
-      course,
-      lessons: lessons ?? [],
-      test_questions: questions,
-      course_documents: documents ?? [],
-    },
-    lessonsCount: lessons?.length ?? 0,
-    questionsCount: questions.length,
-  };
-}
-
-export function useCourseSnapshots(courseId: string | null, organizationId: string | null) {
+export function useCourseSnapshots(courseId: string | null) {
   const [snapshots, setSnapshots] = useState<CourseSnapshot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -99,28 +63,21 @@ export function useCourseSnapshots(courseId: string | null, organizationId: stri
 
   const createSnapshot = useCallback(
     async (reason: SnapshotReason, label?: string): Promise<CourseSnapshot | null> => {
-      if (!courseId || !organizationId) return null;
+      if (!courseId) return null;
       setIsCreating(true);
       try {
-        const built = await buildSnapshotPayload(courseId);
-        if (!built) {
-          toast.error("Не удалось подготовить снимок курса");
-          return null;
-        }
-        const { data, error } = await supabase
-          .from("course_snapshots")
-          .insert({
-            course_id: courseId,
-            organization_id: organizationId,
-            reason,
-            label: label ?? null,
-            payload: built.payload,
-          })
-          .select("id, course_id, organization_id, created_by, reason, label, created_at")
-          .single();
+        const { data, error } = await supabase.rpc("create_course_snapshot", {
+          _course_id: courseId,
+          _reason: reason,
+          _label: label ?? null,
+        });
         if (error) throw error;
-        setSnapshots((prev) => [data as CourseSnapshot, ...prev]);
-        return data as CourseSnapshot;
+        const snapshot = data as unknown as CourseSnapshot | null;
+        if (!snapshot?.id || snapshot.course_id !== courseId) {
+          throw new Error("Snapshot creation returned an invalid result");
+        }
+        setSnapshots((prev) => [snapshot, ...prev]);
+        return snapshot;
       } catch (err: any) {
         console.error("[useCourseSnapshots] createSnapshot error", err);
         toast.error("Не удалось сохранить версию курса", {
@@ -131,7 +88,7 @@ export function useCourseSnapshots(courseId: string | null, organizationId: stri
         setIsCreating(false);
       }
     },
-    [courseId, organizationId]
+    [courseId]
   );
 
   const restoreSnapshot = useCallback(

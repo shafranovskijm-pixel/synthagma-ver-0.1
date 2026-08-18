@@ -8,7 +8,7 @@ import {
 
 describe("course review legal safety policy", () => {
   it("exposes a deployment revision marker", () => {
-    expect(REVIEW_REVISION).toBe("irr-legal-official-facts-v2");
+    expect(REVIEW_REVISION).toBe("irr-legal-official-source-v3");
   });
 
   it("uses the current Moscow date instead of model knowledge", () => {
@@ -42,6 +42,8 @@ describe("course review legal safety policy", () => {
           severity: "critical",
           description: "Приказ Минэнерго №511 от 14.05.2025 не существует. Дата находится в будущем, приказ не издавался.",
           suggestion: "Заменить на действующий приказ Минэнерго №115 от 24.03.2003",
+          source_url: "https://evil.example/fake-source",
+          source_label: "model-owned source",
           target_kind: "lesson_title",
           target_id: "lesson-1",
           patch: { title: "Исправленный урок" },
@@ -55,6 +57,8 @@ describe("course review legal safety policy", () => {
       target_kind: "none",
       target_id: "",
       patch: {},
+      source_url: "https://publication.pravo.gov.ru/document/0001202506020074",
+      source_label: "Официальное опубликование: приказ Минэнерго России от 14.05.2025 № 511",
     });
     expect(result.findings?.[0].description).toContain("приказ Минэнерго России от 14.05.2025 № 511 существует");
     expect(result.findings?.[0].description).toContain("действует до 01.09.2030");
@@ -76,6 +80,8 @@ describe("course review legal safety policy", () => {
           severity: "critical",
           description: "Постановление №999 якобы утратило силу",
           suggestion: "Заменить документ",
+          source_url: "https://evil.example/fake-source",
+          source_label: "model-owned source",
           target_kind: "lesson_title",
           target_id: "lesson-2",
           patch: { title: "Неверная автоматическая правка" },
@@ -90,6 +96,8 @@ describe("course review legal safety policy", () => {
       patch: {},
     });
     expect(result.findings?.[0].description).toContain("не подтверждён официальным источником");
+    expect(result.findings?.[0]).not.toHaveProperty("source_url");
+    expect(result.findings?.[0]).not.toHaveProperty("source_label");
     expect(result.summary).toContain("требуют ручной сверки");
   });
 
