@@ -8,7 +8,6 @@ import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, C
 import { motion } from "framer-motion";
 import { Footer } from "@/components/landing/Footer";
 import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
-import frdoErrorsPain from "@/assets/features/frdo-errors-pain.png";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -24,15 +23,15 @@ const FeatureFRDO = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Выпуск ФРДО и реестр документов об образовании — СИНТАГМА</title>
-        <meta name="description" content="Автоматизация ФИС ФРДО: подготовка XLSX-шаблонов 35/41, реестр документов об образовании, валидация СНИЛС/дат до выгрузки. Формирование файла — на любом тарифе, выгрузка — на «Профессиональном»." />
+        <title>Подготовка данных для ФИС ФРДО — СИНТАГМА</title>
+        <meta name="description" content="Подготовка XLSX-файлов для ФИС ФРДО: реестр документов, проверка поддерживаемых полей и ручной контроль результата перед загрузкой оператором." />
         <meta name="keywords" content="выпуск ФРДО, реестр документов об образовании, ФИС ФРДО, выгрузка ФРДО, шаблон ФРДО 35 столбцов, шаблон ФРДО 41 столбец, автоматизация ФРДО, обрнадзор ФРДО, удостоверения о повышении квалификации, дипломы переподготовки" />
-        <link rel="canonical" href="https://sintagma.com.ru/feature/frdo" />
-        <meta property="og:title" content="Выпуск ФРДО и реестр документов об образовании — СИНТАГМА" />
-        <meta property="og:description" content="Готовый реестр документов об образовании и автоматическая выгрузка в ФИС ФРДО без ошибок «недопустимый символ». Формирование — бесплатно, выгрузка — на тарифе «Профессиональный»." />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/feature/frdo" />
+        <meta property="og:title" content="Подготовка данных для ФИС ФРДО — СИНТАГМА" />
+        <meta property="og:description" content="Формирование XLSX-файла, проверка поддерживаемых полей и обязательный ручной контроль перед загрузкой в официальный кабинет ФИС ФРДО." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://sintagma.com.ru/feature/frdo" />
-        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/feature/frdo" />
+        <meta property="og:image" content="https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg" />
       </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -67,7 +66,7 @@ const FeatureFRDO = () => {
               Федеральный реестр сведений о документах об образовании
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Автоматизация подготовки и выгрузки данных в ФИС ФРДО — без ошибок, штрафов и ручной работы
+              Подготовка XLSX-файла и предварительные проверки перед ручной загрузкой оператором в официальный кабинет ФИС ФРДО
             </motion.p>
           </motion.div>
         </div>
@@ -83,7 +82,7 @@ const FeatureFRDO = () => {
                 <strong className="text-foreground">ФИС ФРДО</strong> (Федеральная информационная система «Федеральный реестр сведений о документах об образовании и (или) о квалификации, документах об обучении») — единый государственный реестр, в который все образовательные организации обязаны вносить сведения о каждом выданном документе об образовании.
               </p>
               <p>
-                Обязанность по внесению данных установлена <strong className="text-foreground">Федеральным законом № 273-ФЗ «Об образовании в Российской Федерации»</strong> (статьи 98, 107) и <strong className="text-foreground">ФЗ-152 «О персональных данных»</strong> (статья 6).
+                Порядок ведения реестра установлен <strong className="text-foreground">частью 10 статьи 98 Федерального закона № 273-ФЗ</strong> и <strong className="text-foreground">постановлением Правительства РФ от 31.05.2021 № 825</strong> с последующими изменениями.
               </p>
             </motion.div>
           </motion.div>
@@ -102,7 +101,7 @@ const FeatureFRDO = () => {
                   </div>
                   <h3 className="font-display text-xl font-medium mb-3">Сроки внесения</h3>
                   <p className="text-muted-foreground">
-                    Сведения о выданных документах об образовании и (или) о квалификации необходимо внести в ФИС ФРДО <strong className="text-foreground">в течение 60 дней</strong> после выдачи документа.
+                    Для документов по дополнительным профессиональным программам срок сокращён до <strong className="text-foreground">30 календарных дней</strong> с 1 сентября 2025 года. Для других видов программ сроки могут отличаться — категорию документа проверяет ответственный сотрудник.
                   </p>
                 </CardContent>
               </Card>
@@ -115,7 +114,7 @@ const FeatureFRDO = () => {
                   </div>
                   <h3 className="font-display text-xl font-medium mb-3">Штрафы за нарушение</h3>
                   <p className="text-muted-foreground">
-                    За невнесение или несвоевременное внесение данных в ФИС ФРДО предусмотрены штрафы <strong className="text-foreground">от 10 000 до 150 000 рублей</strong> за каждый невнесённый документ.
+                    За нарушение порядка и сроков может наступать ответственность. Конкретное основание и размер определяются по обстоятельствам, поэтому на лендинге не приводится универсальная сумма штрафа.
                   </p>
                 </CardContent>
               </Card>
@@ -124,7 +123,7 @@ const FeatureFRDO = () => {
         </div>
       </section>
 
-      {/* Pain block — реальный скриншот ошибок ФИС ФРДО */}
+      {/* Типовые ошибки и безопасный контроль перед загрузкой */}
       <section className="py-20 bg-destructive/5 border-y border-destructive/10 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-destructive/[0.03] via-transparent to-accent/[0.03]" />
         <div className="container mx-auto px-6 relative z-10">
@@ -143,20 +142,20 @@ const FeatureFRDO = () => {
               </div>
 
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-5 tracking-tight leading-tight">
-                Десятки строк <span className="text-destructive">«недопустимый символ»</span> перед каждой загрузкой в ФИС ФРДО
+                Ошибки формата могут помешать загрузке файла в ФИС ФРДО
               </h2>
 
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                Невидимые пробелы в СНИЛС, неправильные форматы дат, лишние табуляции — и так каждый месяц. Часы ручной чистки Excel перед каждой выгрузкой.
+                Невидимые пробелы, неподдерживаемые форматы дат и лишние табуляции требуют проверки. СИНТАГМА помогает подготовить файл, но итог всегда проверяет ответственный сотрудник.
               </p>
 
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground mb-3">С Синтагмой — ноль ошибок:</p>
+                <p className="text-sm font-semibold text-foreground mb-3">Что платформа проверяет перед формированием:</p>
                 {[
                   { icon: Sparkles, text: "Авто-форматирование СНИЛС, дат, ФИО" },
                   { icon: ShieldCheck, text: "Очистка скрытых пробелов и табуляций" },
-                  { icon: CheckCircle2, text: "Проверка полноты данных ДО выгрузки" },
-                  { icon: FileSpreadsheet, text: "Шаблоны 35/41 столбцов под актуальные требования" },
+                  { icon: CheckCircle2, text: "Проверка заполнения поддерживаемых обязательных полей" },
+                  { icon: FileSpreadsheet, text: "Формирование XLSX 35/41 столбцов с последующим ручным контролем" },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50">
                     <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
@@ -176,32 +175,35 @@ const FeatureFRDO = () => {
               </div>
             </motion.div>
 
-            {/* Правая колонка — «скриншот» ошибок в рамке-браузере */}
+            {/* Честный контрольный лист без имитации интерфейса ФИС ФРДО */}
             <motion.div variants={fadeUp} className="relative">
-              <div
-                className="relative rounded-xl overflow-hidden shadow-2xl border border-border/50 bg-card"
-                style={{ transform: "rotate(1.5deg)" }}
-              >
-                {/* Псевдо-шапка браузера */}
-                <div className="flex items-center gap-1.5 px-4 py-3 bg-muted/60 border-b border-border/50">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-muted-foreground/40" />
-                  <div className="w-3 h-3 rounded-full bg-accent/60" />
-                  <div className="ml-3 px-3 py-1 rounded-md bg-background/80 text-xs text-muted-foreground font-mono truncate">
-                    fis-frdo.obrnadzor.gov.ru — лог ошибок
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card">
+                <div className="flex items-center gap-3 px-5 py-4 bg-muted/40 border-b border-border/50">
+                  <FileSpreadsheet className="h-5 w-5 text-accent" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Контроль перед загрузкой</p>
+                    <p className="text-xs text-muted-foreground">Ответственный сотрудник проверяет результат</p>
                   </div>
                 </div>
-                <img
-                  src={frdoErrorsPain}
-                  alt="Реальный лог ошибок валидатора ФИС ФРДО — десятки строк «недопустимый символ»"
-                  className="w-full h-auto block"
-                  loading="lazy"
-                />
+                <div className="space-y-3 p-6">
+                  {[
+                    "Сверить тип программы и актуальный шаблон кабинета",
+                    "Проверить обязательные поля, даты, СНИЛС и реквизиты документа",
+                    "Просмотреть предупреждения после автоматической обработки",
+                    "Загрузить файл вручную и проверить ответ официальной системы",
+                  ].map((item, index) => (
+                    <div key={item} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/70 p-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-xs font-semibold text-accent">
+                        {index + 1}
+                      </span>
+                      <p className="pt-1 text-sm text-foreground/85">{item}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Декоративный «штамп» сверху */}
-              <div className="absolute -top-4 -right-4 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold shadow-lg rotate-6">
-                Реальный кейс клиента
+              <div className="absolute -top-4 -right-4 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold shadow-lg rotate-3">
+                Ручная проверка обязательна
               </div>
             </motion.div>
           </motion.div>
@@ -244,11 +246,11 @@ const FeatureFRDO = () => {
             </motion.p>
             <motion.div variants={fadeUp} className="grid sm:grid-cols-2 gap-4">
               {[
-                { icon: Upload, text: "Массовый и индивидуальный экспорт данных в формате ФИС ФРДО" },
-                { icon: CheckCircle2, text: "Автоматическая проверка полноты и корректности данных" },
-                { icon: Shield, text: "Автоматическое определение пола по отчеству" },
+                { icon: Upload, text: "Массовая и индивидуальная подготовка XLSX-файлов" },
+                { icon: CheckCircle2, text: "Автоматические проверки поддерживаемых полей и форматов" },
+                { icon: Shield, text: "Подсказка по заполнению пола с обязательной проверкой оператором" },
                 { icon: Database, text: "Генерация номеров документов и регистрационных номеров" },
-                { icon: FileCheck, text: "Поддержка шаблонов для ДПО (35 столбцов) и ПО (41 столбец)" },
+                { icon: FileCheck, text: "Поддержка форматов 35/41 столбцов; актуальный шаблон сверяет оператор" },
                 { icon: Scale, text: "Учёт подтверждённых утрат, обменов и уничтожений документов" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50">
@@ -270,10 +272,10 @@ const FeatureFRDO = () => {
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-8 text-center">Юридическое обоснование</motion.h2>
             <motion.div variants={fadeUp} className="space-y-3">
               {[
-                "Федеральный закон № 273-ФЗ «Об образовании в Российской Федерации» (ст. 98, 107)",
-                "Федеральный закон № 152-ФЗ «О персональных данных» (ст. 6)",
-                "Постановление Правительства РФ № 729 от 26.08.2013",
-                "Письма и разъяснения Рособрнадзора о порядке внесения данных",
+                "Часть 10 статьи 98 Федерального закона № 273-ФЗ «Об образовании в Российской Федерации»",
+                "Постановление Правительства РФ от 31.05.2021 № 825 о ФИС ФРДО",
+                "Постановление Правительства РФ от 07.06.2025 № 850: срок для соответствующей категории документов — 30 календарных дней с 01.09.2025",
+                "Актуальные инструкции и шаблоны в официальном кабинете ФИС ФРДО",
               ].map((text, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-card/80 border border-border/50">
                   <Scale className="w-4 h-4 text-accent shrink-0 mt-1" />
@@ -301,10 +303,10 @@ const FeatureFRDO = () => {
                 <span className="text-sm font-medium text-primary">Бесплатно · без регистрации</span>
               </div>
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-                Устранение ошибок файлов ФРДО
+                Предварительная проверка и очистка XLSX
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Загрузите файл, который ФИС ФРДО отклоняет с ошибкой «недопустимый символ» — Синтагма исправит формат, нормализует СНИЛС и даты, и перенесёт данные в <strong>оригинальный шаблон Рособрнадзора</strong> с сохранением валидаций и словарей.
+                Загрузите XLSX-файл: инструмент попробует очистить скрытые символы и нормализовать поддерживаемые поля. Скачанный результат необходимо проверить перед загрузкой в официальный кабинет.
               </p>
             </motion.div>
 
@@ -313,9 +315,9 @@ const FeatureFRDO = () => {
                 <CardContent className="p-8 md:p-10">
                   <div className="grid md:grid-cols-3 gap-6 mb-8">
                     {[
-                      { n: "1", title: "Загрузите свой файл", desc: ".xlsx — любая структура, чужой шаблон" },
-                      { n: "2", title: "Авто-исправление", desc: "СНИЛС, даты, пол, скрытые символы" },
-                      { n: "3", title: "Скачайте в шаблоне ФРДО", desc: "Эталонный xlsx с валидациями" },
+                      { n: "1", title: "Загрузите XLSX", desc: "Поддерживаемый файл с табличными данными" },
+                      { n: "2", title: "Проверьте обработку", desc: "СНИЛС, даты и скрытые символы" },
+                      { n: "3", title: "Скачайте и сверьте", desc: "Результат требует ручного контроля" },
                     ].map((s) => (
                       <div key={s.n} className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-display font-medium shrink-0">
@@ -336,7 +338,7 @@ const FeatureFRDO = () => {
                       className="btn-accent px-8 gap-2 shadow-lg"
                     >
                       <Wrench className="w-5 h-5" />
-                      Устранить ошибки ФРДО
+                      Проверить XLSX-файл
                     </Button>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Lock className="w-3.5 h-3.5" />
@@ -355,18 +357,18 @@ const FeatureFRDO = () => {
         <div className="container mx-auto px-6 text-center">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4">
-              Автоматизируйте работу с ФИС ФРДО
+              Подготовьте данные для ФИС ФРДО
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-3 max-w-xl mx-auto">
-              Формирование XLSX-файла для ФРДО доступно на любом тарифе, включая <strong className="text-foreground">бесплатный</strong>. Прямая выгрузка в ФИС ФРДО — на тарифе <strong className="text-foreground">«Профессиональный»</strong>.
+              СИНТАГМА формирует XLSX-файл и показывает результаты предварительных проверок. Загрузку в официальный кабинет и контроль ответа выполняет ответственный сотрудник организации.
             </motion.p>
             <motion.p variants={fadeUp} className="text-sm text-muted-foreground mb-8 max-w-xl mx-auto">
-              Начните бесплатно — попробуйте подготовку реестра, а к выгрузке подключитесь, когда будете готовы.
+              Доступность функций и лимиты зависят от выбранного тарифа и отображаются в кабинете организации.
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/register-organization">
                 <Button size="lg" className="btn-accent px-8">
-                  Попробовать бесплатно
+                  Зарегистрировать организацию
                 </Button>
               </Link>
             </motion.div>

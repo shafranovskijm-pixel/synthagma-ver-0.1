@@ -62,8 +62,8 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             transition={{ duration: 0.7, delay: 0.1 }}
             className={`font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-[1.1] mb-6 tracking-tight ${dark ? 'text-white' : 'text-foreground'}`}
           >
-            Запустим дистанционное обучение в вашем учебном центре{" "}
-            <span className="text-accent">за 7 дней</span>
+            Дистанционное обучение и документы{" "}
+            <span className="text-accent">в одной системе</span>
           </motion.h1>
 
           {/* Subtitle */}
@@ -73,8 +73,8 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             transition={{ duration: 0.7, delay: 0.2 }}
             className={`text-base md:text-lg max-w-2xl mx-auto leading-relaxed mb-8 ${dark ? 'text-white/60' : 'text-muted-foreground'}`}
           >
-            СИНТАГМА помогает быстро подключить учеников, выдать им курсы, контролировать обучение и
-            вести документы в одной системе. Готовые курсы, ИИ-генерация и магазин курсов уже внутри.
+            Подключайте учеников, назначайте курсы, контролируйте прогресс и формируйте документы
+            из данных организации.
           </motion.p>
 
           {/* 3 advantages */}
@@ -104,7 +104,7 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-center">
               <Link to="/register-organization" className="w-full sm:w-auto">
                 <Button size="lg" className="btn-gradient rounded-xl px-8 h-14 text-base gap-2 group shadow-lg shadow-accent/20 w-full">
-                  Оставить заявку на запуск
+                  Зарегистрировать организацию
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -122,7 +122,7 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
 
             </div>
             <p className={`text-xs ${dark ? 'text-white/40' : 'text-muted-foreground'}`}>
-              Старт за 7 дней · Помощь на каждом шаге · Без отдельной платы за внедрение
+              Бесплатный тариф · Помощь при настройке · Основные процессы в одном кабинете
             </p>
           </motion.div>
         </div>

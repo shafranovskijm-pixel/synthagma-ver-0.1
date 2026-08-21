@@ -96,21 +96,21 @@ const advantages = [
   {
     icon: FileCheck,
     title: "Готовые программы",
-    description: "Курсы уже разработаны и готовы к использованию. Экономьте месяцы на разработку контента.",
+    description: "Выбирайте программы в каталоге и проверяйте состав курса перед подключением.",
   },
   {
     icon: RefreshCw,
-    title: "Актуальные на 2026 год",
-    description: "Тесты и материалы регулярно обновляются при изменении нормативной базы.",
+    title: "Проверка перед запуском",
+    description: "Перед назначением ученикам откройте карточку курса и проверьте материалы и тесты.",
   },
   {
     icon: Clock,
-    title: "Запуск за 5 минут",
-    description: "Подключите курсы к своей организации — обучение сотрудников начнётся моментально.",
+    title: "Подключение к организации",
+    description: "Выбранный курс можно подключить к кабинету организации из каталога.",
   },
   {
     icon: Shield,
-    title: "Более 10 направлений",
+    title: "Направления обучения",
     description: "Электробезопасность, энергетика, охрана труда, пожарная безопасность, медицина, промбезопасность и другие.",
   },
 ];
@@ -134,13 +134,13 @@ const RostechnadzorCoursesPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>250+ готовых курсов для обучения сотрудников | СИНТАГМА</title>
-        <meta name="description" content="Готовые курсы по электробезопасности, энергетике, охране труда, пожарной безопасности, медицине и промбезопасности. Подключите к организации за 5 минут." />
-        <meta property="og:title" content="250+ готовых курсов для обучения — СИНТАГМА" />
+        <title>Каталог готовых курсов для обучения сотрудников | СИНТАГМА</title>
+        <meta name="description" content="Готовые курсы по электробезопасности, энергетике, охране труда, пожарной безопасности, медицине и промбезопасности для подключения к организации." />
+        <meta property="og:title" content="Каталог готовых курсов для обучения — СИНТАГМА" />
         <meta property="og:description" content="Библиотека готовых курсов по ключевым направлениям обучения. Подключите к организации — не нужно разрабатывать контент с нуля." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://sintagma.com.ru/rostechnadzor-courses" />
-        <link rel="canonical" href="https://sintagma.com.ru/rostechnadzor-courses" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/rostechnadzor-courses" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/rostechnadzor-courses" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "ItemList",
@@ -164,19 +164,18 @@ const RostechnadzorCoursesPage = () => {
               <span className="text-sm font-medium text-white/80">Библиотека{totalCount ? ` · ${totalCount} курсов` : ""}{directionsCount ? ` · ${directionsCount} направлений` : ""}</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
-              {totalCount ? `${totalCount}+ готовых курсов` : "Готовые курсы"}{" "}
+              {totalCount ? `${totalCount} курсов в каталоге` : "Готовые курсы"}{" "}
               <br className="hidden sm:block" />
               <span className="text-white/50">для вашей организации</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Ваши клиенты хотят обучение, но разработка программ занимает месяцы?
-              У нас уже всё готово — подключите библиотеку курсов{directionsCount ? ` по ${directionsCount} направлениям` : ""}
-              и начните обучение прямо сейчас.
+              Выберите программу в каталоге{directionsCount ? ` по ${directionsCount} направлениям` : ""},
+              проверьте её материалы и подключите подходящий курс к кабинету организации.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
               <Link to="/register-organization">
                 <Button size="lg" className="btn-gradient rounded-xl px-8 h-12 gap-2 group">
-                  Подключить курсы бесплатно
+                  Зарегистрировать организацию
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -193,7 +192,7 @@ const RostechnadzorCoursesPage = () => {
               {[
                 { value: totalCount ? String(totalCount) : "—", label: "курсов" },
                 { value: directionsCount ? String(directionsCount) : "—", label: "направлений" },
-                { value: "5 мин", label: "на подключение" },
+                { value: "Онлайн", label: "подключение из каталога" },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="font-display text-2xl md:text-3xl font-medium text-accent">{stat.value}</div>
@@ -363,16 +362,16 @@ const RostechnadzorCoursesPage = () => {
         <div className="container mx-auto px-6 text-center relative z-10">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
             <motion.h2 variants={fadeUp} className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-              Подключите каталог курсов <span className="text-accent">бесплатно</span>
+              Посмотрите каталог курсов <span className="text-accent">после регистрации</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Зарегистрируйте организацию и получите доступ ко всей библиотеке курсов. 
-              Ваши клиенты получат обучение, которого ждут — без месяцев разработки.
+              Зарегистрируйте организацию, откройте каталог и проверьте доступные условия
+              перед подключением выбранной программы.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
               <Link to="/register-organization">
                 <Button size="lg" className="btn-gradient rounded-xl px-8 h-12 gap-2 group">
-                  Начать бесплатно
+                  Зарегистрировать организацию
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>

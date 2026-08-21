@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button";
 import { FloatingParticles } from "./FloatingParticles";
 
 const stats = [
-  { value: "300+", label: "готовых курсов" },
-  { value: "14", label: "направлений обучения" },
-  { value: "24/7", label: "доступ к обучению" },
+  { value: "Каталог", label: "готовых программ" },
+  { value: "Выбор", label: "по направлениям обучения" },
+  { value: "Онлайн", label: "подключение к организации" },
 ];
 
 const highlights = [
   "Электробезопасность, энергетика, промышленная безопасность",
   "Охрана труда, пожарная безопасность, медицина",
   "Рабочие профессии, строительные специальности, экология",
-  "Готовые курсы — подключите к организации за 5 минут",
+  "Подключение курса к организации из каталога",
 ];
 
 export function RostechnadzorCourses() {
@@ -101,11 +101,11 @@ export function RostechnadzorCourses() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent/30 bg-accent/5 mb-6">
               <Shield className="w-4 h-4 text-accent" />
-              <span className="text-sm text-foreground/80 font-medium">Готовые курсы · 14 направлений</span>
+              <span className="text-sm text-foreground/80 font-medium">Каталог готовых курсов</span>
             </div>
 
             <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight leading-tight">
-              300+ готовых курсов
+              Готовые курсы
               <br />
               <span className="text-accent">для быстрого запуска обучения</span>
             </h2>
@@ -114,8 +114,8 @@ export function RostechnadzorCourses() {
 
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
               Подключите готовые программы к своей организации и запускайте обучение без разработки
-              контента с нуля. 14 направлений: электробезопасность, охрана труда, пожарная и
-              промышленная безопасность, медицина, рабочие профессии и другие.
+              контента с нуля. В каталоге представлены электробезопасность, охрана труда, пожарная и
+              промышленная безопасность, медицина, рабочие профессии и другие направления.
             </p>
 
             <div className="space-y-3 mb-8">

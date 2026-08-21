@@ -111,11 +111,11 @@ const BlogPostPage = () => {
       <Helmet>
         <title>{`${post.title} · Синтагма`}</title>
         {post.excerpt && <meta name="description" content={post.excerpt.slice(0, 160)} />}
-        <link rel="canonical" href={`https://sintagma.com.ru/blog/${post.slug}`} />
+        <link rel="canonical" href={`https://xn--80aaiswd0ak.xn--p1ai/blog/${post.slug}`} />
         <meta property="og:type" content="article" />
         <meta property="og:title" content={post.title} />
         {post.excerpt && <meta property="og:description" content={post.excerpt.slice(0, 200)} />}
-        <meta property="og:url" content={`https://sintagma.com.ru/blog/${post.slug}`} />
+        <meta property="og:url" content={`https://xn--80aaiswd0ak.xn--p1ai/blog/${post.slug}`} />
         {post.image_url && <meta property="og:image" content={post.image_url} />}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
@@ -131,11 +131,11 @@ const BlogPostPage = () => {
             "author": { "@type": "Person", "name": post.author },
             "datePublished": post.published_at || post.created_at,
             "dateModified": post.published_at || post.created_at,
-            "mainEntityOfPage": `https://sintagma.com.ru/blog/${post.slug}`,
+            "mainEntityOfPage": `https://xn--80aaiswd0ak.xn--p1ai/blog/${post.slug}`,
             "publisher": {
               "@type": "Organization",
               "name": "СИНТАГМА",
-              "url": "https://sintagma.com.ru/"
+              "url": "https://xn--80aaiswd0ak.xn--p1ai/"
             }
           })}
         </script>

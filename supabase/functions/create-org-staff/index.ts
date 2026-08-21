@@ -60,42 +60,31 @@ serve(async (req) => {
       });
     }
 
-    // Authorization: caller must be admin OR own/manage this org
-    const { data: rolesRows } = await supabaseAuth
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id);
-    const callerRoles = (rolesRows ?? []).map((r: any) => r.role);
-    const isPlatformAdmin = callerRoles.includes("admin");
-
-    let isOrgManager = false;
-    if (!isPlatformAdmin) {
-      const { data: callerProfile } = await supabaseAuth
-        .from("profiles")
-        .select("organization_id")
-        .eq("user_id", caller.id)
-        .maybeSingle();
-
-      const isOrgOwner =
-        callerRoles.includes("organization") &&
-        callerProfile?.organization_id === organizationId;
-
-      let hasStaffPermission = false;
-      if (!isOrgOwner) {
-        const { data: orgStaff } = await supabaseAuth
-          .from("org_staff")
-          .select("role")
-          .eq("user_id", caller.id)
-          .eq("organization_id", organizationId)
-          .maybeSingle();
-        if (orgStaff && ["owner", "admin"].includes(orgStaff.role)) {
-          hasStaffPermission = true;
-        }
-      }
-      isOrgManager = isOrgOwner || hasStaffPermission;
+    const allowedStaffRoles = new Set([
+      "admin",
+      "school_editor",
+      "course_editor",
+      "teacher",
+      "sales_manager",
+    ]);
+    if (!allowedStaffRoles.has(String(role))) {
+      return new Response(JSON.stringify({ error: "Invalid staff role" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (!isPlatformAdmin && !isOrgManager) {
+    // Use the same permission helper as RLS. It checks expiry and ensures a
+    // global role cannot override the caller's org_staff permissions.
+    const { data: canManageStaff, error: permissionError } = await supabaseAuth.rpc(
+      "can_access_organization",
+      {
+        _organization_id: organizationId,
+        _permission: "staff.write",
+      },
+    );
+
+    if (permissionError || !canManageStaff) {
       return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -112,6 +101,7 @@ serve(async (req) => {
 
     // Check if user already exists by email — try to fetch from profiles first
     let userId: string | null = null;
+    let createdNewUser = false;
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("user_id, organization_id")
@@ -134,17 +124,11 @@ serve(async (req) => {
         });
       }
       userId = created.user!.id;
+      createdNewUser = true;
 
-      await supabaseAdmin.from("profiles").insert({
-        user_id: userId,
-        email: normalizedEmail,
-        full_name: fullName || displayName || normalizedEmail,
-        organization_id: organizationId,
-      });
-
-      // Give them a base role so they can authenticate; sales_manager only if applicable.
-      const baseRole = role === "sales_manager" ? "sales_manager" : "organization";
-      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: baseRole });
+      // handle_new_user has already created the base profile and student role.
+      // Organization staff are represented only by org_staff, just like the
+      // invitation flow; no implicit-owner/global staff role is assigned.
     }
 
     // Upsert org_staff record
@@ -163,6 +147,21 @@ serve(async (req) => {
       );
 
     if (staffErr) {
+      if (createdNewUser && userId) {
+        // Compensate the auth/profile/role records created by handle_new_user.
+        // Otherwise a failed staff insert leaves a live orphan account.
+        const cleanupResults = await Promise.all([
+          supabaseAdmin.from("user_roles").delete().eq("user_id", userId),
+          supabaseAdmin.from("profiles").delete().eq("user_id", userId),
+        ]);
+        cleanupResults.forEach(({ error }, index) => {
+          if (error) console.error(`create-org-staff cleanup table ${index} failed:`, error.message);
+        });
+        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (deleteAuthError) {
+          console.error("create-org-staff cleanup auth user failed:", deleteAuthError.message);
+        }
+      }
       return new Response(JSON.stringify({ error: staffErr.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

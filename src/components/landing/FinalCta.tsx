@@ -26,12 +26,12 @@ export function FinalCta() {
                 Хотите запустить дистанционное обучение без хаоса?
               </h2>
               <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-                Оставьте заявку — покажем, как СИНТАГМА может работать именно в вашем учебном центре.
+                Зарегистрируйте организацию или откройте демонстрацию основных возможностей СИНТАГМЫ.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link to="/register-organization">
                   <Button size="lg" className="btn-gradient rounded-xl px-8 h-13 gap-2 group shadow-lg shadow-accent/20 w-full sm:w-auto">
-                    Оставить заявку на запуск
+                    Зарегистрировать организацию
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>

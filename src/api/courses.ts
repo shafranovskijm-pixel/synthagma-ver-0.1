@@ -203,12 +203,18 @@ export async function deleteCourse(courseId: string): Promise<boolean> {
 }
 
 export async function publishCourse(courseId: string, isPublished: boolean): Promise<boolean> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("courses")
     .update({ is_published: isPublished })
-    .eq("id", courseId);
+    .eq("id", courseId)
+    .select("is_published")
+    .maybeSingle();
 
-  return !error;
+  // An UPDATE without a matching/RLS-visible row may complete without a
+  // PostgREST error. Treat the operation as successful only when the server
+  // returns the requested persisted value, so callers never show an
+  // optimistic publication state that was not actually saved.
+  return !error && data?.is_published === isPublished;
 }
 
 export async function duplicateCourse(

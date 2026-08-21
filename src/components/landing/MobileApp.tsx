@@ -4,17 +4,18 @@ import {
   MessageCircle,
   Volume2,
   Download,
+  MonitorSmartphone,
+  RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FloatingParticles } from "./FloatingParticles";
-import mobileMockup from "@/assets/mobile-app-mockup.webp";
 
 const mobileFeatures = [
-  { icon: BookOpen, text: "Курсы офлайн" },
-  { icon: Bell, text: "Уведомления" },
-  { icon: MessageCircle, text: "Чат с куратором" },
-  { icon: Volume2, text: "Озвучка лекций" },
+  { icon: BookOpen, text: "Быстрый доступ с главного экрана" },
+  { icon: Bell, text: "Уведомления внутри платформы" },
+  { icon: MessageCircle, text: "Чаты с учебным центром" },
+  { icon: Volume2, text: "Озвучка текстовых уроков" },
 ];
 
 export function MobileApp() {
@@ -109,15 +110,15 @@ export function MobileApp() {
             className="order-2 lg:order-1"
           >
             <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
-              Мобильное приложение
+              Веб-приложение (PWA)
             </span>
             <h3 className="font-display text-3xl md:text-4xl font-medium mb-6 tracking-tight">
-              Устанавливается прямо из браузера
+              Добавьте СИНТАГМУ на главный экран
             </h3>
             <div className="w-12 h-px bg-accent mb-6" />
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Работает на iPhone и Android — без App Store и Google Play.
-              Синхронизация с веб-версией в реальном времени.
+              Установите веб-приложение из поддерживаемого браузера на iPhone, Android или компьютер.
+              Кабинет и данные остаются теми же, что в веб-версии.
             </p>
 
             {/* Mobile features */}
@@ -140,12 +141,12 @@ export function MobileApp() {
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
               >
                 <Download className="w-5 h-5" />
-                <span className="text-sm font-medium">Установить приложение</span>
+                <span className="text-sm font-medium">Установить веб-приложение</span>
               </Link>
             </div>
           </motion.div>
 
-          {/* Phone mockup — realistic photo */}
+          {/* Honest code-native PWA explainer; not a simulated product screenshot. */}
           <motion.div
             initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -153,21 +154,40 @@ export function MobileApp() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="order-1 lg:order-2 flex justify-center"
           >
-            <div className="relative">
-              {/* Glow halo behind device */}
-              <div className="absolute inset-0 bg-accent/20 rounded-full blur-3xl scale-75 pointer-events-none" />
-              <div className="absolute -inset-8 bg-gradient-to-br from-accent/10 via-transparent to-accent/5 rounded-[3rem] blur-2xl pointer-events-none" />
+            <div className="relative w-full max-w-md">
+              <div className="absolute inset-0 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
+              <div className="relative rounded-3xl border border-border/60 bg-card/80 p-7 shadow-xl backdrop-blur-sm">
+                <div className="mb-6 flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+                    <MonitorSmartphone className="h-7 w-7 text-accent" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Формат</p>
+                    <p className="font-display text-2xl font-medium">Веб-приложение PWA</p>
+                  </div>
+                </div>
 
-              <motion.img
-                src={mobileMockup}
-                alt="Мобильное приложение СИНТАГМА — обучение в смартфоне"
-                width={1024}
-                height={1280}
-                loading="lazy"
-                className="relative w-[340px] md:w-[400px] h-auto drop-shadow-2xl"
-                animate={{ y: [0, -12, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              />
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background/60 p-4">
+                    <Download className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+                    <div>
+                      <p className="text-sm font-medium">Добавление на главный экран</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Доступно в браузерах и операционных системах, которые поддерживают установку PWA.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background/60 p-4">
+                    <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+                    <div>
+                      <p className="text-sm font-medium">Тот же кабинет</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        После входа открываются те же данные и разделы, что и в веб-версии.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>

@@ -1,5 +1,5 @@
  # СИНТАГМА - Система дистанционного обучения
- # https://synthagma-bloom.lovable.app
+ # https://синтагма.рф
  
  User-agent: *
  Allow: /
@@ -44,4 +44,4 @@
  Disallow: /course-learning
  
  # Sitemap location
- Sitemap: https://sintagma.com.ru/sitemap.xml
+ Sitemap: https://xn--80aaiswd0ak.xn--p1ai/sitemap.xml

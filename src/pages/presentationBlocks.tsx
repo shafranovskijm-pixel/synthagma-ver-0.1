@@ -12,7 +12,6 @@ import {
 import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
-import mobileMockup from "@/assets/mobile-app-mockup.webp";
 
 
 type SectionComponent = React.ComponentType<{ children: React.ReactNode; className?: string }>;
@@ -30,7 +29,7 @@ export function PresentationHero({ Section, heroBg }: { Section: SectionComponen
           <TypewriterText text="СИНТАГМА — платформа для учебных центров" speed={40} delay={400} />
         </h1>
         <p className="text-lg md:text-2xl text-white/60 font-light mb-10">
-          Курсы, ученики, документы, журналы и подготовка данных для ФИС ФРДО в одном кабинете. Поможем запустить за 7 дней.
+          Курсы, ученики, документы, журналы и подготовка данных для ФИС ФРДО в одном кабинете.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-3 mb-10">
           <a
@@ -219,7 +218,7 @@ export function PresentationSafety({ Section, safetyBg }: { Section: SectionComp
   );
 }
 
-export function PresentationCabinets({ Section, screenshots }: { Section: SectionComponent; screenshots: { org: string; student: string; company: string; teacher: string } }) {
+export function PresentationCabinets({ Section, screenshots }: { Section: SectionComponent; screenshots: { org: string; student: string } }) {
   return (
     <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
@@ -227,15 +226,24 @@ export function PresentationCabinets({ Section, screenshots }: { Section: Sectio
         <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Отдельный интерфейс для каждой роли</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {[
-            { icon: Building2, title: "Организация", color: "hsl(174 72% 46%)", screenshot: screenshots.org, items: ["Курсы и обучение", "Ученики и группы", "Документооборот", "ФИС ФРДО", "Аналитика"] },
-            { icon: GraduationCap, title: "Ученик", color: "hsl(262 80% 55%)", screenshot: screenshots.student, items: ["Мои курсы", "Тесты и задания", "Достижения", "ИИ-помощник", "Документы"] },
-            { icon: Building2, title: "Компания", color: "hsl(38 92% 50%)", screenshot: screenshots.company, items: ["Сотрудники", "Назначение курсов", "Заявки на обучение", "Документы", "Контроль прогресса"] },
-            { icon: Users, title: "Преподаватель", color: "hsl(200 80% 50%)", screenshot: screenshots.teacher, items: ["Проверка заданий", "Оценка тестов", "Ведение вебинаров", "Обратная связь", "Журнал успеваемости"] },
+            { icon: Building2, title: "Организация", color: "hsl(174 72% 46%)", screenshot: screenshots.org, items: ["Курсы и обучение", "Ученики и группы", "Документооборот", "Подготовка данных ФРДО", "Аналитика"] },
+            { icon: GraduationCap, title: "Ученик", color: "hsl(262 80% 55%)", screenshot: screenshots.student, items: ["Мои курсы", "Тесты и задания", "Прогресс", "Сообщения", "Документы"] },
+            { icon: Building2, title: "Компания", color: "hsl(38 92% 50%)", items: ["Сотрудники", "Назначение курсов", "Заявки на обучение", "Документы", "Контроль прогресса"] },
+            { icon: Users, title: "Преподаватель", color: "hsl(200 80% 50%)", items: ["Доступ по назначенным правам", "Работа с курсами", "Работа с учениками", "Обратная связь", "Учебные журналы"] },
           ].map((c, i) => (
             <div key={i} className="bg-white dark:bg-white/5 rounded-2xl border border-[hsl(40_15%_90%)] dark:border-white/10 overflow-hidden">
-              <div className="relative h-48 md:h-56 overflow-hidden">
-                <img src={c.screenshot} alt={`Кабинет ${c.title}`} loading="lazy" className="w-full h-full object-cover object-top" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+              <div className="relative h-48 md:h-56 overflow-hidden bg-gradient-to-br from-[hsl(174_72%_46%/0.12)] via-background to-muted">
+                {c.screenshot ? (
+                  <img src={c.screenshot} alt={`Кабинет ${c.title}`} loading="lazy" className="w-full h-full object-cover object-top" />
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background/80 shadow-sm">
+                      <c.icon className="h-8 w-8" style={{ color: c.color }} />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">Функции кабинета зависят от назначенной роли и прав</p>
+                  </div>
+                )}
+                {c.screenshot && <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />}
               </div>
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-3">
@@ -260,26 +268,30 @@ export function PresentationCabinets({ Section, screenshots }: { Section: Sectio
   );
 }
 
-export function PresentationMarketplace({ Section, screenshots }: { Section: SectionComponent; screenshots: { marketplace: string; catalog: string } }) {
+export function PresentationMarketplace({ Section }: { Section: SectionComponent }) {
   return (
     <Section className="bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_60%_28%)] text-white">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-        <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="300+ готовых курсов" speed={40} delay={200} /></h2>
-        <p className="text-base md:text-xl text-white/80 mb-10">Программы по Ростехнадзору с актуальными тестами 2026 года</p>
+        <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="Каталог готовых курсов" speed={40} delay={200} /></h2>
+        <p className="text-base md:text-xl text-white/80 mb-10">Фактический состав и количество программ всегда показаны в текущем каталоге платформы</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-          <div className="rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
-            <img src={screenshots.marketplace} alt="Магазин курсов Синтагма — 303 курса по 14 направлениям" loading="lazy" className="w-full h-auto" />
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-xl backdrop-blur-sm">
+            <BookOpen className="mb-4 h-9 w-9" />
+            <h3 className="mb-2 text-xl font-semibold">Выбор программы</h3>
+            <p className="text-sm text-white/75">Организация просматривает доступные направления и открывает карточку курса перед подключением.</p>
           </div>
-          <div className="rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
-            <img src={screenshots.catalog} alt="Каталог курсов — охрана труда, пожарная безопасность, строительство" loading="lazy" className="w-full h-auto" />
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-xl backdrop-blur-sm">
+            <CheckCircle2 className="mb-4 h-9 w-9" />
+            <h3 className="mb-2 text-xl font-semibold">Проверка содержания</h3>
+            <p className="text-sm text-white/75">Перед использованием ответственный сотрудник сверяет программу, тесты и нормативные ссылки.</p>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8">
           {[
-            { icon: Factory, name: "Промышленная безопасность", count: "80+" },
-            { icon: Zap, name: "Электробезопасность", count: "120+" },
-            { icon: Flame, name: "Энергетическая безопасность", count: "40+" },
-            { icon: Waves, name: "Охрана труда и другие", count: "60+" },
+            { icon: Factory, name: "Промышленная безопасность" },
+            { icon: Zap, name: "Электробезопасность" },
+            { icon: Flame, name: "Энергетическая безопасность" },
+            { icon: Waves, name: "Охрана труда и другие направления" },
           ].map((c, i) => (
             <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 md:p-6 border border-white/20 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -287,14 +299,13 @@ export function PresentationMarketplace({ Section, screenshots }: { Section: Sec
               </div>
               <div>
                 <h3 className="text-base font-semibold mb-0.5">{c.name}</h3>
-                <span className="text-2xl font-bold">{c.count}</span>
-                <span className="text-sm text-white/70 ml-1">курсов</span>
+                <span className="text-sm text-white/70">Количество смотрите в каталоге</span>
               </div>
             </div>
           ))}
         </div>
         <div className="flex flex-wrap gap-3 justify-center">
-          {["Актуальные тесты 2026", "Доступ 24/7", "Автообновление по НПА", "Брендирование"].map(t => (
+          {["Каталог готовых курсов", "Работа через браузер", "Настройка оформления", "Поддержка учебных процессов"].map(t => (
             <span key={t} className="px-4 py-2 rounded-full bg-white/20 text-sm font-medium">{t}</span>
           ))}
         </div>
@@ -303,17 +314,16 @@ export function PresentationMarketplace({ Section, screenshots }: { Section: Sec
   );
 }
 
-export function PresentationMobile({ Section, mobileBg }: { Section: SectionComponent; mobileBg: string }) {
+export function PresentationMobile({ Section }: { Section: SectionComponent; mobileBg: string }) {
   return (
-    <Section className="relative overflow-hidden">
-      <img src={mobileBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
-      <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.8)]" />
+    <Section className="relative overflow-hidden bg-[hsl(0_0%_6%)]">
+      <div className="absolute inset-0 bg-gradient-to-br from-[hsl(174_72%_46%/0.18)] via-transparent to-[hsl(210_70%_35%/0.16)]" />
       <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           <div>
             <Smartphone className="w-12 h-12 mb-6 text-[hsl(174_72%_46%)]" />
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4"><InViewTypewriterText text="Мобильное приложение" speed={40} delay={200} /></h2>
-            <p className="text-base md:text-xl text-white/60 mb-8">Учитесь где угодно — с телефона или планшета</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4"><InViewTypewriterText text="Веб-приложение (PWA)" speed={40} delay={200} /></h2>
+            <p className="text-base md:text-xl text-white/60 mb-8">Открывайте платформу с телефона или планшета и добавляйте её на главный экран</p>
             <div className="space-y-4">
               {mobileFeatures.map((t, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -324,16 +334,29 @@ export function PresentationMobile({ Section, mobileBg }: { Section: SectionComp
             </div>
           </div>
           <div className="flex justify-center">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-[hsl(174_72%_46%/0.2)] blur-3xl scale-75 pointer-events-none" />
-              <img
-                src={mobileMockup}
-                alt="Мобильное приложение СИНТАГМА — обучение со смартфона"
-                width={1024}
-                height={1280}
-                loading="lazy"
-                className="relative w-[240px] md:w-[320px] h-auto drop-shadow-2xl"
-              />
+            <div className="relative w-full max-w-sm rounded-[2rem] border border-white/15 bg-white/5 p-6 shadow-2xl backdrop-blur-sm">
+              <div className="mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[hsl(174_72%_46%/0.18)]">
+                  <Smartphone className="h-6 w-6 text-[hsl(174_72%_46%)]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-white">СИНТАГМА в браузере</p>
+                  <p className="text-xs text-white/50">Без вымышленного интерфейса</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {[
+                  "Адаптивный интерфейс",
+                  "Добавление на главный экран",
+                  "Доступ через поддерживаемый браузер",
+                  "Уведомления внутри платформы",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/80">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[hsl(174_72%_46%)]" />
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -352,7 +375,7 @@ export function PresentationCTA({ Section, ctaBg }: { Section: SectionComponent;
           <GraduationCap className="w-8 h-8 md:w-12 md:h-12 text-white" />
         </div>
         <h2 className="text-3xl md:text-6xl font-bold mb-4"><InViewTypewriterText text="Начните уже сегодня" speed={40} delay={200} /></h2>
-        <p className="text-base md:text-xl text-white/60 mb-10 max-w-xl mx-auto">Бесплатный тариф — навсегда. Все функции доступны.</p>
+        <p className="text-base md:text-xl text-white/60 mb-10 max-w-xl mx-auto">Зарегистрируйте организацию и выберите тариф по нужным лимитам и функциям.</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
           <Link to="/register-organization" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl bg-[hsl(174_72%_46%)] text-base md:text-lg font-semibold hover:opacity-90 transition-opacity text-center">Начать бесплатно</Link>
           <Link to="/demonstration" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl border border-white/30 text-base md:text-lg font-semibold hover:bg-white/10 transition-colors text-center">Запросить демо</Link>

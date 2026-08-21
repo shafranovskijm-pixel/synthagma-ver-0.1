@@ -69,11 +69,11 @@ export default function Features() {
         <title>Возможности СИНТАГМА — Полный набор инструментов для ДПО</title>
         <meta name="description" content="AI-генерация курсов, автоматический документооборот, интеграция с ФРДО, журналы и протоколы. Всё для работы образовательной организации." />
         <meta name="keywords" content="возможности СДО, AI курсы, документооборот, ФРДО интеграция, автоматизация обучения" />
-        <link rel="canonical" href="https://sintagma.com.ru/features" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/features" />
         <meta property="og:title" content="Возможности СИНТАГМА — Полный набор инструментов для ДПО" />
         <meta property="og:description" content="AI-генерация курсов, автоматический документооборот, интеграция с ФРДО, журналы и протоколы. Всё для работы образовательной организации." />
-        <meta property="og:url" content="https://sintagma.com.ru/features" />
-        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/features" />
+        <meta property="og:image" content="https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg" />
       </Helmet>
 
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">

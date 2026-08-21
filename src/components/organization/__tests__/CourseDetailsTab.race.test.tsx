@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface Deferred<T> {
@@ -16,6 +16,12 @@ const testState = vi.hoisted(() => ({
   selectedCourseId: "course-a" as string | null,
   courseResponses: new Map<string, Promise<{ data: any; error: any }>>(),
   courseLookups: [] as Array<Record<string, string>>,
+  publishResponse: Promise.resolve(true) as Promise<boolean>,
+  publishCourse: vi.fn(),
+  setCourses: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  canWriteCourses: true,
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -31,6 +37,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     refreshStudentGrouping: vi.fn(),
     refreshStudentPopulation: vi.fn(),
     refreshGroupDirectory: vi.fn(),
+    setCourses: testState.setCourses,
   }),
 }));
 
@@ -42,9 +49,38 @@ vi.mock("@/lib/invalidateOrganizationQueries", () => ({
   invalidateOrganizationCourseOverview: vi.fn(),
 }));
 
+vi.mock("@/api/courses", () => ({
+  publishCourse: (courseId: string, isPublished: boolean) => {
+    testState.publishCourse(courseId, isPublished);
+    return testState.publishResponse;
+  },
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: testState.toastSuccess,
+    error: testState.toastError,
+  },
+}));
+
+vi.mock("@/hooks/useStaffPermissions", () => ({
+  RequirePerm: ({ perm, children }: { perm: string; children: any }) =>
+    perm === "courses.write" && testState.canWriteCourses ? children : null,
+}));
+
 vi.mock("@/components/organization/CourseDetailsContent", () => ({
-  CourseDetailsContent: ({ course }: { course: { title: string } }) => (
-    <div data-testid="course-details">{course.title}</div>
+  CourseDetailsContent: ({
+    course,
+    onCourseUpdated,
+  }: {
+    course: { title: string; is_published?: boolean };
+    onCourseUpdated: () => void;
+  }) => (
+    <div data-testid="course-details">
+      <span>{course.title}</span>
+      <span data-testid="publication-state">{course.is_published ? "Опубликован" : "Черновик"}</span>
+      <button type="button" onClick={onCourseUpdated}>Обновить сведения курса</button>
+    </div>
   ),
 }));
 
@@ -92,6 +128,12 @@ describe("CourseDetailsTab URL request ordering", () => {
     testState.selectedCourseId = "course-a";
     testState.courseResponses.clear();
     testState.courseLookups.length = 0;
+    testState.publishResponse = Promise.resolve(true);
+    testState.publishCourse.mockClear();
+    testState.setCourses.mockClear();
+    testState.toastSuccess.mockClear();
+    testState.toastError.mockClear();
+    testState.canWriteCourses = true;
   });
 
   it("keeps course B when the slower course A lookup resolves last", async () => {
@@ -150,5 +192,97 @@ describe("CourseDetailsTab URL request ordering", () => {
       await courseB.promise;
     });
     expect(await screen.findByText("Course B")).toBeInTheDocument();
+  });
+
+  it("publishes a draft only after the server confirms the persisted state", async () => {
+    const publishResponse = deferred<boolean>();
+    testState.publishResponse = publishResponse.promise;
+    testState.courseResponses.set(
+      "course-a",
+      Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
+    );
+
+    render(<CourseDetailsTab />);
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+    expect(screen.getByTestId("publication-state")).toHaveTextContent("Черновик");
+
+    fireEvent.click(screen.getByRole("button", { name: "Опубликовать курс" }));
+
+    expect(testState.publishCourse).toHaveBeenCalledWith("course-a", true);
+    expect(screen.getByRole("button", { name: "Публикуем…" })).toBeDisabled();
+    expect(screen.getByTestId("publication-state")).toHaveTextContent("Черновик");
+    expect(testState.setCourses).not.toHaveBeenCalled();
+
+    await act(async () => {
+      publishResponse.resolve(true);
+      await publishResponse.promise;
+    });
+
+    await waitFor(() => expect(screen.getByTestId("publication-state")).toHaveTextContent("Опубликован"));
+    expect(screen.getByRole("button", { name: "Снять с публикации" })).toBeEnabled();
+    expect(testState.setCourses).toHaveBeenCalledTimes(1);
+    expect(testState.toastSuccess).toHaveBeenCalledWith("Курс опубликован");
+    expect(testState.toastError).not.toHaveBeenCalled();
+  });
+
+  it("keeps a draft unchanged when publication is not confirmed", async () => {
+    testState.publishResponse = Promise.resolve(false);
+    testState.courseResponses.set(
+      "course-a",
+      Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
+    );
+
+    render(<CourseDetailsTab />);
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+    expect(screen.getByTestId("publication-state")).toHaveTextContent("Черновик");
+
+    fireEvent.click(screen.getByRole("button", { name: "Опубликовать курс" }));
+
+    await waitFor(() => expect(testState.toastError).toHaveBeenCalledWith("Ошибка изменения статуса публикации"));
+    expect(screen.getByTestId("publication-state")).toHaveTextContent("Черновик");
+    expect(screen.getByRole("button", { name: "Опубликовать курс" })).toBeEnabled();
+    expect(testState.setCourses).not.toHaveBeenCalled();
+    expect(testState.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("does not show publication controls without courses.write permission", async () => {
+    testState.canWriteCourses = false;
+    testState.courseResponses.set(
+      "course-a",
+      Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
+    );
+
+    render(<CourseDetailsTab />);
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Опубликовать курс" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the confirmed publication state when an older background reload finishes later", async () => {
+    testState.courseResponses.set(
+      "course-a",
+      Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
+    );
+
+    render(<CourseDetailsTab />);
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+
+    const staleReload = deferred<{ data: any; error: null }>();
+    testState.courseResponses.set("course-a", staleReload.promise);
+    fireEvent.click(screen.getByRole("button", { name: "Обновить сведения курса" }));
+    await waitFor(() => expect(testState.courseLookups).toHaveLength(2));
+
+    fireEvent.click(screen.getByRole("button", { name: "Опубликовать курс" }));
+    await waitFor(() => expect(screen.getByTestId("publication-state")).toHaveTextContent("Опубликован"));
+
+    await act(async () => {
+      staleReload.resolve({
+        data: { id: "course-a", title: "Course A (stale)", is_published: false },
+        error: null,
+      });
+      await staleReload.promise;
+    });
+
+    expect(screen.getByTestId("publication-state")).toHaveTextContent("Опубликован");
+    expect(screen.queryByText("Course A (stale)")).not.toBeInTheDocument();
   });
 });

@@ -18,6 +18,7 @@ export function AdminDashboardFooter() {
             <h4 className="text-sm font-semibold">Платформа</h4>
             <ul className="space-y-1.5 text-xs text-muted-foreground">
               <li><a href="/" className="hover:text-foreground transition-colors">Главная</a></li>
+              <li><a href="/help" className="hover:text-foreground transition-colors">Помощь и обучение</a></li>
               <li><a href="/partner" className="hover:text-foreground transition-colors">Партнёрская программа</a></li>
             </ul>
           </div>

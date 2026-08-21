@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import specialOfferBg from "@/assets/special-offer-bg.jpg";
 import { toast } from "sonner";
 
 const PRIVATE_PREFIXES = ["/student", "/organization", "/admin", "/company", "/sales", "/course/", "/partner/dashboard"];
@@ -112,7 +111,7 @@ export function SpecialOfferPopup() {
   };
 
   if (!popup) return null;
-  const imageSrc = popup.image_url || specialOfferBg;
+  const imageSrc = popup.image_url?.trim() || null;
 
   return (
     <AnimatePresence>
@@ -144,7 +143,16 @@ export function SpecialOfferPopup() {
 
               <div className="flex flex-col sm:flex-row">
                 <div className="relative sm:w-[220px] h-[160px] sm:h-auto flex-shrink-0 overflow-hidden">
-                  <img src={imageSrc} alt={popup.title} className="w-full h-full object-cover" />
+                  {imageSrc ? (
+                    <img src={imageSrc} alt={popup.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div
+                      className="flex h-full min-h-[160px] items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/30"
+                      aria-hidden="true"
+                    >
+                      <Sparkles className="h-14 w-14 text-primary/60" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-card/80 via-transparent to-transparent" />
                   {popup.badge_text && (
                     <div className="absolute bottom-3 left-3 sm:bottom-auto sm:top-6 sm:left-4">

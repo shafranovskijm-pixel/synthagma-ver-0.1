@@ -42,9 +42,11 @@ const ROLES = [
   { value: "sales_manager", label: "Менеджер по продажам", icon: Shield, color: "bg-fuchsia-500/10 text-fuchsia-600", description: "Доступ только к разделу «Продажи»: воронка, лиды, КП, договоры, рассылки и компании" },
 ];
 
+const ASSIGNABLE_ROLES = ROLES.filter(r => r.value !== "owner");
+
 // Роль «Владелец» намеренно исключена: передача владения выполняется
 // только через OwnershipTransfer (Phase 5D.2).
-const INVITATION_ROLES: StaffInvitationRole[] = ROLES.filter(r => r.value !== "owner").map(r => ({
+const INVITATION_ROLES: StaffInvitationRole[] = ASSIGNABLE_ROLES.map(r => ({
   value: r.value,
   label: r.label,
   description: r.description,
@@ -62,8 +64,8 @@ interface StaffManagerProps {
 }
 
 export function StaffManager({ organizationId }: StaffManagerProps) {
-  const { user, userRole } = useAuth();
-  const isOwner = userRole === "organization";
+  const { user } = useAuth();
+  const [isOwner, setIsOwner] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -76,6 +78,23 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   const [canReceiveCrmTasks, setCanReceiveCrmTasks] = useState(false);
   const [createPassword, setCreatePassword] = useState(generateStrongPassword());
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setIsOwner(false);
+      return;
+    }
+
+    void (supabase.rpc as any)("is_org_owner", {
+      _user_id: user.id,
+      _organization_id: organizationId,
+    }).then(({ data, error }: { data: boolean | null; error: unknown }) => {
+      if (!cancelled) setIsOwner(!error && data === true);
+    });
+
+    return () => { cancelled = true; };
+  }, [organizationId, user]);
 
   useEffect(() => { loadStaff(); }, [organizationId]);
 
@@ -173,8 +192,10 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("org_staff").delete().eq("id", id);
-    if (error) toast.error("Ошибка удаления");
+    const { data, error } = await (supabase.rpc as any)("remove_org_staff_member", {
+      p_staff_id: id,
+    });
+    if (error || data !== true) toast.error("Ошибка удаления");
     else { toast.success("Сотрудник удалён"); await loadStaff(); }
   };
 
@@ -239,7 +260,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {ROLES.map(r => (
+                              {ASSIGNABLE_ROLES.map(r => (
                                 <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                               ))}
                             </SelectContent>
@@ -353,7 +374,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ROLES.map(r => (
+                    {ASSIGNABLE_ROLES.map(r => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -424,7 +445,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ROLES.map(r => (
+                    {ASSIGNABLE_ROLES.map(r => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>

@@ -1,9 +1,14 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { publishCourse } from "@/api/courses";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
+import { Button } from "@/components/ui/button";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { RequirePerm } from "@/hooks/useStaffPermissions";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
 import { invalidateOrganizationCourseOverview } from "@/lib/invalidateOrganizationQueries";
 
@@ -22,9 +27,18 @@ export function CourseDetailsTab() {
   >("editor");
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isPublicationChanging, setIsPublicationChanging] = useState(false);
   const loadSequenceRef = useRef(0);
+  const publicationSequenceRef = useRef(0);
 
-  useEffect(() => { setActiveTab("editor"); }, [courseId]);
+  useEffect(() => {
+    setActiveTab("editor");
+    // A pending mutation belongs to the course URL from which it started.
+    // Reset the control for a newly opened course and prevent an older
+    // request's finally block from changing its loading state.
+    publicationSequenceRef.current += 1;
+    setIsPublicationChanging(false);
+  }, [courseId]);
 
   useEffect(() => {
     if (!courseId) d.tabNavigation.setActiveTab("courses");
@@ -112,6 +126,49 @@ export function CourseDetailsTab() {
     handleBack();
   }, [d]);
 
+  const handlePublicationChange = useCallback(async () => {
+    if (!course || isPublicationChanging) return;
+
+    const targetCourseId = course.id;
+    const nextPublished = !course.is_published;
+    // Do not let a course snapshot that started before this mutation commit
+    // an older publication state after the server update.
+    loadSequenceRef.current += 1;
+    const requestSequence = ++publicationSequenceRef.current;
+    setIsPublicationChanging(true);
+
+    try {
+      const success = await publishCourse(targetCourseId, nextPublished);
+      if (!success) {
+        toast.error("Ошибка изменения статуса публикации");
+        return;
+      }
+
+      // A background reload may also have started while the mutation was in
+      // flight. Invalidate it before committing the confirmed server value.
+      loadSequenceRef.current += 1;
+      // Update both the open details card and the dashboard's base course
+      // list only after the database returned the persisted value.
+      setCourse((current: any) => current?.id === targetCourseId
+        ? { ...current, is_published: nextPublished }
+        : current);
+      d.setCourses((currentCourses) => currentCourses.map((currentCourse) =>
+        currentCourse.id === targetCourseId
+          ? { ...currentCourse, is_published: nextPublished }
+          : currentCourse
+      ));
+      invalidateOrganizationCourseOverview(qc, organizationId);
+      toast.success(nextPublished ? "Курс опубликован" : "Курс снят с публикации");
+    } catch (error) {
+      console.error("[CourseDetailsTab] publication update failed:", error);
+      toast.error("Ошибка изменения статуса публикации");
+    } finally {
+      if (publicationSequenceRef.current === requestSequence) {
+        setIsPublicationChanging(false);
+      }
+    }
+  }, [course, d, isPublicationChanging, organizationId, qc]);
+
   // Adding/removing lessons inside a course changes lessonsCount on the
   // overview RPC. Invalidate only that key on unmount so the returning
   // course list re-renders with fresh studentsCount / lessonsCount, without
@@ -157,6 +214,22 @@ export function CourseDetailsTab() {
 
   return (
     <div className="animate-in fade-in duration-300">
+      <RequirePerm perm="courses.write">
+        <div className="mb-3 flex justify-end">
+          <Button
+            type="button"
+            variant={course.is_published ? "outline" : "default"}
+            onClick={handlePublicationChange}
+            disabled={isPublicationChanging}
+            aria-busy={isPublicationChanging}
+          >
+            {isPublicationChanging && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+            {isPublicationChanging
+              ? course.is_published ? "Снимаем с публикации…" : "Публикуем…"
+              : course.is_published ? "Снять с публикации" : "Опубликовать курс"}
+          </Button>
+        </div>
+      </RequirePerm>
       <CourseDetailsContent
         course={course}
         courseStudents={[]}

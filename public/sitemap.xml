@@ -1,104 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://sintagma.com.ru/</loc>
-    <lastmod>2026-03-28</lastmod>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/about</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/about</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/features</loc>
-    <lastmod>2026-03-28</lastmod>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/features</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/blog</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/blog</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/login</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/login</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/register</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/register</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/register-organization</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/register-organization</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/roadmap</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/roadmap</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/install</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/install</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/frdo</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/help</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/frdo</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/documents</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/documents</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/video-id</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/video-id</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/labor-safety</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/labor-safety</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/course-store</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/course-store</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/document-checklist</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/document-checklist</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/feature/course-settings</loc>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/feature/course-settings</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sintagma.com.ru/rostechnadzor-courses</loc>
-    <lastmod>2026-03-28</lastmod>
+    <loc>https://xn--80aaiswd0ak.xn--p1ai/rostechnadzor-courses</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

@@ -1,13 +1,12 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Globe, Smartphone, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Sparkles, Globe, Smartphone, ShieldCheck, Zap, ClipboardCheck, LayoutTemplate, Rocket } from "lucide-react";
 import { Link } from "react-router-dom";
-import illustration from "@/assets/website-dev-illustration.png";
 
 const perks = [
-  { icon: Globe, label: "Соответствие требованиям Минобрнауки" },
+  { icon: Globe, label: "Структура сайта согласуется с образовательной организацией" },
   { icon: Smartphone, label: "Адаптивный дизайн под все устройства" },
   { icon: ShieldCheck, label: "Формы заявок и интеграции" },
-  { icon: Zap, label: "Запуск под ключ за 1 неделю" },
+  { icon: Zap, label: "Запуск по согласованному плану" },
 ];
 
 export function WebsiteDevelopmentCard() {
@@ -37,8 +36,8 @@ export function WebsiteDevelopmentCard() {
                   Сайт для образовательной организации под ключ
                 </h3>
                 <p className="text-base text-muted-foreground mb-7 leading-relaxed">
-                  Разработаем сайт учебного центра с каталогом курсов, формами заявок и структурой,
-                  соответствующей требованиям к образовательным организациям.
+                  Разработаем сайт учебного центра с каталогом курсов и формами заявок.
+                  Состав разделов и содержание согласуем с вашей организацией до запуска.
                 </p>
 
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
@@ -77,18 +76,27 @@ export function WebsiteDevelopmentCard() {
                 </div>
               </div>
 
-              {/* Right — illustration */}
+              {/* Right — factual process, not a generic generated illustration. */}
               <div className="hidden lg:flex items-center justify-center">
-                <div className="relative w-full max-w-md">
-                  <div className="absolute inset-0 bg-accent/10 blur-3xl rounded-full" />
-                  <img
-                    src={illustration}
-                    alt="Иллюстрация сайта образовательной организации"
-                    width={1024}
-                    height={1024}
-                    loading="lazy"
-                    className="relative w-full h-auto object-contain drop-shadow-xl"
-                  />
+                <div className="relative w-full max-w-md rounded-3xl border border-border/50 bg-background/60 p-6 shadow-xl">
+                  <p className="mb-5 text-xs font-medium uppercase tracking-widest text-accent">Этапы работы</p>
+                  <div className="space-y-3">
+                    {[
+                      { icon: ClipboardCheck, title: "Согласуем", text: "структуру, материалы и формы" },
+                      { icon: LayoutTemplate, title: "Разработаем", text: "страницы и адаптивную версию" },
+                      { icon: Rocket, title: "Опубликуем", text: "после проверки и согласования" },
+                    ].map(({ icon: Icon, title, text }, index) => (
+                      <div key={title} className="flex items-center gap-4 rounded-2xl border border-border/40 bg-card/80 p-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+                          <Icon className="h-5 w-5 text-accent" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold"><span className="mr-2 text-accent/70">0{index + 1}</span>{title}</p>
+                          <p className="text-xs text-muted-foreground">{text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

@@ -16,6 +16,7 @@ interface Candidate {
   user_id: string;
   display_name: string;
   role: string;
+  expires_at: string | null;
 }
 
 /**
@@ -34,11 +35,13 @@ export function OwnershipTransfer({ organizationId, currentOwnerId }: Props) {
     const load = async () => {
       const { data } = await supabase
         .from("org_staff")
-        .select("user_id, display_name, role")
+        .select("user_id, display_name, role, expires_at")
         .eq("organization_id", organizationId)
         .neq("user_id", currentOwnerId)
         .in("role", ["admin", "school_editor"]);
-      setCandidates((data as Candidate[]) || []);
+      setCandidates(((data as Candidate[]) || []).filter((candidate) =>
+        !candidate.expires_at || new Date(candidate.expires_at).getTime() > Date.now()
+      ));
     };
     load();
   }, [organizationId, currentOwnerId]);

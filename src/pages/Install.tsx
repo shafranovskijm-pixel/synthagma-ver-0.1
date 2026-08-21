@@ -62,14 +62,14 @@ export default function Install() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Установка приложения — СИНТАГМА СДО</title>
-        <meta name="description" content="Установите приложение СИНТАГМА на телефон или компьютер для быстрого доступа к платформе." />
+        <title>Установка веб-приложения — СИНТАГМА СДО</title>
+        <meta name="description" content="Добавьте веб-приложение СИНТАГМА на главный экран телефона или компьютера для быстрого доступа к платформе." />
         <meta name="keywords" content="установка, приложение, PWA, мобильное приложение" />
-        <link rel="canonical" href="https://sintagma.com.ru/install" />
-        <meta property="og:title" content="Установка приложения — СИНТАГМА СДО" />
-        <meta property="og:description" content="Установите приложение СИНТАГМА на телефон или компьютер для быстрого доступа к платформе." />
-        <meta property="og:url" content="https://sintagma.com.ru/install" />
-        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/install" />
+        <meta property="og:title" content="Установка веб-приложения — СИНТАГМА СДО" />
+        <meta property="og:description" content="Добавьте веб-приложение СИНТАГМА на главный экран телефона или компьютера для быстрого доступа к платформе." />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/install" />
+        <meta property="og:image" content="https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg" />
       </Helmet>
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
@@ -87,7 +87,7 @@ export default function Install() {
               <span className="font-display font-bold text-3xl text-background">Σ</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl font-medium mb-4 tracking-tight">
-              Установите приложение
+              Установите веб-приложение
             </h1>
             <p className="text-lg text-muted-foreground mb-6 max-w-md mx-auto">
               Получите быстрый доступ к платформе СИНТАГМА прямо с главного экрана вашего устройства
@@ -126,7 +126,7 @@ export default function Install() {
                   className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg w-full"
                 >
                   <Download className="w-5 h-5" />
-                  Установить приложение
+                  Установить веб-приложение
                 </Button>
               )}
 
@@ -145,19 +145,18 @@ export default function Install() {
                 <CardContent className="py-6">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                    <span className="text-sm font-medium text-accent">Бета-версия</span>
+                    <span className="text-sm font-medium text-accent">Версия для Android</span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Мобильное приложение для Android находится в активной разработке. Текущая версия APK проходит тестирование и может содержать ошибки. Мы будем благодарны за обратную связь!
+                    Отдельный APK для Android находится в разработке. Сейчас используйте веб-приложение PWA.
                   </p>
                   <button
-                    onClick={() => {
-                      import('sonner').then(({ toast }) => toast.info('В разработке, скоро будет доступно'));
-                    }}
-                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors text-base font-medium"
+                    type="button"
+                    disabled
+                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl border border-foreground/20 text-muted-foreground bg-muted/40 cursor-not-allowed text-base font-medium"
                   >
                     <Download className="w-5 h-5" />
-                    Скачать APK
+                    APK в разработке
                   </button>
                 </CardContent>
               </Card>
@@ -178,12 +177,12 @@ export default function Install() {
 
           {/* Features */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
-            <h3 className="font-display text-xl font-medium mb-6">Преимущества приложения</h3>
+            <h3 className="font-display text-xl font-medium mb-6">Преимущества веб-приложения</h3>
             <div className="grid sm:grid-cols-3 gap-4">
               {[
                 { title: "Быстрый доступ", desc: "Запуск в одно касание" },
-                { title: "Работа офлайн", desc: "Доступ без интернета" },
-                { title: "Уведомления", desc: "Push-уведомления о курсах" },
+                { title: "Быстрый повторный запуск", desc: "Основные файлы приложения кешируются браузером" },
+                { title: "Уведомления", desc: "Уведомления внутри кабинета" },
               ].map((feature, index) => (
                 <Card key={index} className="text-center">
                   <CardContent className="py-6">

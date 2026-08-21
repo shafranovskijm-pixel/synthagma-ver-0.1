@@ -11,7 +11,7 @@ export function EditorDemoSection() {
               Интерактивный редактор
             </span>
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 tracking-tight">
-              Создавайте курсы за минуты
+              Создавайте курсы в блочном редакторе
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Блочный редактор с ИИ-генерацией и профессиональной озвучкой помогает быстро

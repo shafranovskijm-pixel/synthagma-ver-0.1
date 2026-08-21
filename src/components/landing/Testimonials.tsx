@@ -1,41 +1,10 @@
 import { useState, useEffect } from "react";
-import { Star, Quote, Clock } from "lucide-react";
+import { Star, Quote } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { TestimonialForm } from "./TestimonialForm";
 import { supabase } from "@/integrations/supabase/client";
-import { differenceInMonths } from "date-fns";
 import { FloatingParticles } from "./FloatingParticles";
-
-const staticTestimonials = [
-  {
-    name: "Анна Морозова",
-    role: "Директор учебного центра",
-    company: "ООО «Профессионал»",
-    content: "Перешли с iSpring — у них стало очень дорого. Тут в разы дешевле, так как оплата не за учеников, а фиксированная в месяц. У нас большие потоки по 200+ учеников в месяц, на Синтагме всё работает без проблем.",
-    rating: 5,
-    highlight: "Экономия на обучении",
-    usageDuration: null as string | null,
-  },
-  {
-    name: "Дмитрий Волков",
-    role: "Руководитель IT-отдела",
-    company: "ПАО «ТехноГрупп»",
-    content: "У нас 50 ГБ видеоуроков — всё разместили на Синтагме. Видео отображается без проблем, ученики довольны качеством и скоростью загрузки.",
-    rating: 5,
-    highlight: "50 ГБ видео без проблем",
-    usageDuration: null as string | null,
-  },
-  {
-    name: "Елена Смирнова",
-    role: "Руководитель HR",
-    company: "Автошкола «Стандарт»",
-    content: "Выгрузка в ФИС ФРДО экономит нам десятки часов работы ежемесячно. Перешли на Синтагму с другой платформы — разница колоссальная.",
-    rating: 5,
-    highlight: "Автоматизация ФРДО",
-    usageDuration: null as string | null,
-  },
-];
 
 interface DbTestimonial {
   id: string;
@@ -44,15 +13,7 @@ interface DbTestimonial {
   rating: number;
   author_name: string;
   author_role: string | null;
-  organizations?: { name: string; created_at: string } | null;
-}
-
-function getUsageDuration(orgCreatedAt: string): string {
-  const months = differenceInMonths(new Date(), new Date(orgCreatedAt));
-  if (months < 1) return "менее месяца";
-  if (months === 1) return "1 месяц";
-  if (months < 5) return `${months} месяца`;
-  return `${months} месяцев`;
+  organizations?: { name: string } | null;
 }
 
 const containerVariants = {
@@ -72,28 +33,32 @@ interface DisplayTestimonial {
   content: string;
   rating: number;
   highlight: string | null;
-  usageDuration: string | null;
 }
 
 export function Testimonials() {
-  const [testimonials, setTestimonials] = useState<DisplayTestimonial[]>(staticTestimonials);
+  const [testimonials, setTestimonials] = useState<DisplayTestimonial[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchTestimonials = async () => {
-    const { data } = await (supabase.from("testimonials") as any)
-      .select("*, organizations(name, created_at)")
-      .eq("is_approved", true)
-      .order("created_at", { ascending: false });
+    setLoading(true);
+    try {
+      const { data } = await (supabase.from("testimonials") as any)
+        .select("*, organizations(name)")
+        .eq("is_approved", true)
+        .order("created_at", { ascending: false });
 
-    if (data && data.length > 0) {
-      setTestimonials(data.map((t: DbTestimonial) => ({
+      setTestimonials((data || []).map((t: DbTestimonial) => ({
         name: t.author_name,
         role: t.author_role || "",
         company: t.organizations?.name || "",
         content: t.content,
         rating: t.rating,
         highlight: t.highlight,
-        usageDuration: t.organizations ? getUsageDuration(t.organizations.created_at) : null,
       })));
+    } catch {
+      setTestimonials([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,20 +82,30 @@ export function Testimonials() {
           </span>
           <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">Что говорят клиенты</h2>
           <div className="divider mb-6" />
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Более 10 организаций уже получили лицензию с нашей платформой</p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Опубликованные отзывы пользователей платформы</p>
         </motion.div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
-        >
-          {testimonials.map((testimonial, idx) => (
-            <TestimonialCard key={idx} testimonial={testimonial} />
-          ))}
-        </motion.div>
+        {loading ? (
+          <div className="max-w-5xl mx-auto mb-8 rounded-2xl border border-border/30 bg-card/30 px-6 py-10 text-center text-muted-foreground">
+            Загружаем отзывы…
+          </div>
+        ) : testimonials.length > 0 ? (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
+          >
+            {testimonials.map((testimonial, idx) => (
+              <TestimonialCard key={idx} testimonial={testimonial} />
+            ))}
+          </motion.div>
+        ) : (
+          <div className="max-w-5xl mx-auto mb-8 rounded-2xl border border-border/30 bg-card/30 px-6 py-10 text-center text-muted-foreground">
+            Пока нет опубликованных отзывов.
+          </div>
+        )}
 
         <div className="flex justify-center">
           <TestimonialForm onSubmitted={fetchTestimonials} />
@@ -177,12 +152,6 @@ function TestimonialCard({ testimonial }: { testimonial: DisplayTestimonial }) {
           <div className="text-xs text-muted-foreground">
             {testimonial.role}{testimonial.company ? `, ${testimonial.company}` : ""}
           </div>
-          {testimonial.usageDuration && (
-            <div className="text-xs text-accent flex items-center gap-1 mt-0.5">
-              <Clock className="w-3 h-3" />
-              Пользуется {testimonial.usageDuration}
-            </div>
-          )}
         </div>
       </div>
     </motion.div>

@@ -1,18 +1,18 @@
 import { useState, useRef } from "react";
-import { Search, BookOpen, GraduationCap, CreditCard, HelpCircle, Sparkles, FileText, MessageCircle, Mail, ExternalLink, ArrowLeft, Phone, Zap, Shield, Users, ChevronRight, Star, ArrowRight, FolderKanban, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, BookOpen, GraduationCap, CreditCard, HelpCircle, Sparkles, FileText, MessageCircle, Mail, ExternalLink, ArrowLeft, Phone, Zap, Shield, Users, ChevronRight, Star, FolderKanban, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
+import { HelpTutorials } from "@/components/help/HelpTutorials";
 
 const categories = [
-  { icon: BookOpen, label: "Начало работы", description: "Первые шаги на платформе", gradient: "from-teal-500 to-cyan-400", anchor: "getting-started" },
-  { icon: GraduationCap, label: "Курсы и обучение", description: "Создание и управление курсами", gradient: "from-emerald-500 to-teal-400", anchor: "getting-started" },
+  { icon: BookOpen, label: "Начало работы", description: "Первые шаги на платформе", gradient: "from-teal-500 to-cyan-400", anchor: "tutorials" },
+  { icon: GraduationCap, label: "Курсы и обучение", description: "Создание и управление курсами", gradient: "from-emerald-500 to-teal-400", anchor: "tutorials" },
   { icon: FolderKanban, label: "Документы группы", description: "Цикл от курса до выпуска", gradient: "from-cyan-500 to-blue-500", anchor: "group-docs" },
   { icon: CreditCard, label: "Тарифы и оплата", description: "Подписки и платежи", gradient: "from-amber-500 to-orange-400", anchor: "faq" },
   { icon: HelpCircle, label: "Частые вопросы", description: "Ответы на популярные вопросы", gradient: "from-blue-500 to-indigo-400", anchor: "faq" },
@@ -20,44 +20,23 @@ const categories = [
   { icon: FileText, label: "Документы", description: "Юридическая информация", gradient: "from-rose-500 to-red-400", anchor: "docs" },
 ];
 
-const orgArticles = [
-  "Как зарегистрировать организацию",
-  "Как создать курс и добавить уроки",
-  "Как записать слушателя на курс",
-  "Как пройти цикл документооборота учебной группы",
-  "Настройка брендирования (логотип, цвета)",
-  "Как выдать документ об обучении",
-  "Как работает магазин курсов",
-  "Настройка видеоидентификации",
-  "Отправка данных во ФРДО",
-];
-
-const studentArticles = [
-  "Как войти в личный кабинет",
-  "Как начать прохождение курса",
-  "Как пройти видеоидентификацию",
-  "Как получить сертификат",
-  "Как связаться с организацией",
-  "Как подписать согласие на обработку данных",
-];
-
 const faqs: { q: string; a: string }[] = [
-  { q: "Как сформировать пакет документов учебной группы?", a: "Проверьте программу, часы, даты, преподавателя и слушателей. Затем откройте группу → «Документы группы» и выберите нужный маршрут: «Пакет компании (Word клиента)» создаёт один договор по клиентскому DOCX-шаблону, а «Пакет физлица» — отдельные договоры слушателей. После успешного сохранения договора Синтагма запускает 9 документов группы." },
-  { q: "Что делать, если договор сохранился, а 9 документов группы не обновились?", a: "Не создавайте договор повторно. Пока карточка группы открыта, используйте предупреждение и кнопку «Повторить 9 документов»: она повторно запускает только пакет группы. До сохранения этого состояния между сессиями функция помечена Beta — после перезагрузки обратитесь к администратору." },
+  { q: "Как сформировать пакет документов учебной группы?", a: "Проверьте программу, часы, даты, преподавателя и слушателей. Затем откройте группу → «Документы группы» и выберите доступный вашей организации маршрут: пакет компании создаёт один договор с приложением, а пакет физического лица — отдельные договоры слушателей. После успешного сохранения договора Синтагма запускает формирование документов группы." },
+  { q: "Что делать, если договор сохранился, а документы группы не обновились?", a: "Не создавайте договор повторно. Если в карточке группы появилось предупреждение с действием повторного формирования, используйте его: оно повторно запускает только пакет группы. Если такого действия нет, сохраните текст ошибки и обратитесь к администратору." },
   { q: "Почему документ остался черновиком?", a: "Итоговый статус доступен только при достаточных исходных данных. Например, расписанию нужны структурированные занятия, а ведомостям — результаты обучения. Откройте блок «Источники и готовность данных», заполните недостающие сведения и повторите формирование." },
-  { q: "Что означает Beta в документах группы?", a: "Beta обозначает функцию, которую можно проверять, но нельзя считать промышленно подтверждённой. Сейчас пакетная сборка ожидает повторной проверки Word-компилятора, 8 макетов сохраняются как HTML, а PDF-копия классного журнала пока недоступна." },
-  { q: "Как создать курс?", a: "Перейдите в раздел «Курсы» → нажмите «Создать курс». Заполните название, описание, добавьте уроки с материалами. Курс можно опубликовать сразу или сохранить как черновик." },
-  { q: "Как записать слушателя на курс?", a: "Откройте нужный курс → вкладка «Слушатели» → «Записать». Можно добавить по email, из списка сотрудников компании или по пригласительной ссылке." },
-  { q: "Как работает видеоидентификация?", a: "При входе на курс слушатель делает фото через камеру. Система сравнивает его с эталонным фото. Это подтверждает, что курс проходит именно тот человек, который записан." },
-  { q: "Как выдать документ об обучении?", a: "После завершения курса перейдите в карточку слушателя → «Выдать документ». Выберите тип (удостоверение, диплом, сертификат), заполните данные и сформируйте PDF." },
-  { q: "Как отправить данные во ФРДО?", a: "Убедитесь, что у курса заполнены ФРДО-поля (тип программы, часы, квалификация). После выдачи документа данные можно отправить в реестр через раздел «ФРДО»." },
+  { q: "Что означает Beta в документах группы?", a: "Beta обозначает функцию, которая продолжает проходить проверку. Ориентируйтесь на статус и предупреждения у конкретного документа: доступный формат и состав файлов зависят от шаблонов вашей организации и готовности исходных данных." },
+  { q: "Как создать курс?", a: "Перейдите в раздел «Курсы» → нажмите «Создать курс». Новый курс создаётся как черновик. Добавьте уроки и материалы, сохраните изменения, проверьте предпросмотр и затем нажмите «Опубликовать курс»." },
+  { q: "Как зачислить ученика на курс?", a: "Откройте нужный курс → вкладка «Ученики» → «Зачислить ученика». Отметьте существующих учеников и нажмите «Зачислить (N)». Для саморегистрации используется отдельный раздел «Ссылки»." },
+  { q: "Как работает видеоидентификация?", a: "Слушатель делает и подтверждает фото, после чего запись сохраняется в журнале идентификации. Организация может просмотреть статус и историю проверки. Платформа не заявляет автоматическое биометрическое сравнение фото." },
+  { q: "Где работать с документами об обучении?", a: "Откройте общий раздел «Документы» и нужный журнал, создайте запись и проверьте доступные действия печати или экспорта. Вкладка «Документы» в карточке ученика предназначена для загрузки исходных документов: паспорта, СНИЛС и документа об образовании." },
+  { q: "Как подготовить данные для ФИС ФРДО?", a: "Заполните обязательные ФРДО-поля, затем используйте экспорт ДПО или ПО. Платформа формирует XLSX-файл для последующей загрузки в ФИС ФРДО; прямую отправку в реестр этот раздел не заявляет." },
   { q: "Сколько стоит платформа?", a: "Платформа работает по подписке. Актуальные тарифы можно узнать в разделе «Тарифы» или связавшись с нами через Telegram." },
-  { q: "Как настроить брендирование?", a: "Перейдите в «Настройки» → «Брендирование». Загрузите логотип, выберите основной цвет. Ваши слушатели увидят фирменный стиль на странице входа и в кабинете." },
-  { q: "Можно ли импортировать слушателей из Excel?", a: "Да, в разделе «Слушатели» есть кнопка «Импорт». Загрузите файл Excel или CSV с колонками ФИО и email — система создаст учётные записи автоматически." },
-  { q: "Как слушатель получает доступ к курсу?", a: "После записи слушатель получает письмо со ссылкой для входа. Также можно отправить пригласительную ссылку напрямую или дать логин/пароль." },
-  { q: "Как связаться с поддержкой?", a: "Напишите нам в Telegram (@sintagma_support) или на email support@sintagma.com.ru. Команда ответит в рабочее время." },
+  { q: "Как настроить брендирование?", a: "Откройте меню профиля организации → «Профиль» → вкладку «Брендирование» или «Бренд. страницы входа». Загрузите логотип и настройте доступные параметры оформления." },
+  { q: "Можно ли импортировать учеников из Excel?", a: "Да. В разделе «Ученики» выберите действие «Импорт учеников» и загрузите подготовленный файл Excel или CSV. Перед подтверждением проверьте сопоставление данных в мастере импорта." },
+  { q: "Как ученик получает доступ к курсу?", a: "Если при создании нового аккаунта указаны email, логин и пароль, платформа пытается отправить учётные данные и показывает результат отправки. Доступ также можно передать через отдельную пригласительную ссылку либо контролируемым способом сообщить логин и пароль." },
+  { q: "Как связаться с поддержкой?", a: "Используйте кнопку Telegram ниже или напишите на support@sintagma.com.ru. Срок и объём поддержки зависят от тарифа или заказа." },
   { q: "Что такое магазин курсов?", a: "Магазин курсов — это маркетплейс, где организации могут покупать готовые курсы у других авторов и использовать их на своей платформе." },
-  { q: "Как работают промокоды?", a: "В настройках курса можно создать промокод с фиксированной скидкой или процентом. Слушатель вводит код при оплате — цена пересчитывается автоматически." },
+  { q: "Как работают промокоды?", a: "Откройте карточку курса → «Страница курса» → «Промокоды». Там можно создать и настроить доступные для страницы курса промокоды." },
 ];
 
 const stats = [
@@ -88,7 +67,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const faqRef = useRef<HTMLDivElement>(null);
-  const startRef = useRef<HTMLDivElement>(null);
+  const tutorialsRef = useRef<HTMLDivElement>(null);
   const groupDocsRef = useRef<HTMLDivElement>(null);
   const docsRef = useRef<HTMLDivElement>(null);
 
@@ -99,8 +78,8 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
   const scrollTo = (anchor: string) => {
     const ref = anchor === "faq"
       ? faqRef
-      : anchor === "getting-started"
-        ? startRef
+      : anchor === "tutorials"
+        ? tutorialsRef
         : anchor === "group-docs"
           ? groupDocsRef
           : docsRef;
@@ -269,62 +248,25 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
           </motion.div>
         )}
 
-        {/* ═══ GETTING STARTED ═══ */}
-        {!search && (
-          <motion.section
-            ref={startRef}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ type: "spring", damping: 20 }}
-          >
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold">Начало работы</h2>
-                <p className="text-sm text-muted-foreground">Пошаговые инструкции для быстрого старта</p>
-              </div>
+        {/* ═══ TRAINING GUIDES ═══ */}
+        <motion.section
+          ref={tutorialsRef}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ type: "spring", damping: 20 }}
+        >
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
-            <Tabs defaultValue="org">
-              <TabsList className="mb-5 rounded-xl bg-muted/50 p-1">
-                <TabsTrigger value="org" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">Для организаций</TabsTrigger>
-                <TabsTrigger value="student" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">Для учеников</TabsTrigger>
-              </TabsList>
-              <TabsContent value="org">
-                <motion.div className="grid sm:grid-cols-2 gap-3" variants={containerVariants} initial="hidden" animate="visible">
-                  {orgArticles.map((a, i) => (
-                    <motion.div key={a} variants={itemVariants}>
-                      <Card className="rounded-xl border-border/50 hover:bg-gradient-to-r hover:from-teal-500/5 hover:to-cyan-500/5 hover:border-teal-500/20 transition-all duration-300 cursor-pointer group">
-                        <CardContent className="p-4 flex items-center gap-3">
-                          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-400 text-white text-xs font-bold shrink-0 shadow-md shadow-teal-500/20 group-hover:shadow-lg group-hover:shadow-teal-500/30 transition-shadow duration-300">{i + 1}</span>
-                          <span className="text-sm flex-1">{a}</span>
-                          <ArrowRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all duration-300" />
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </TabsContent>
-              <TabsContent value="student">
-                <motion.div className="grid sm:grid-cols-2 gap-3" variants={containerVariants} initial="hidden" animate="visible">
-                  {studentArticles.map((a, i) => (
-                    <motion.div key={a} variants={itemVariants}>
-                      <Card className="rounded-xl border-border/50 hover:bg-gradient-to-r hover:from-teal-500/5 hover:to-cyan-500/5 hover:border-teal-500/20 transition-all duration-300 cursor-pointer group">
-                        <CardContent className="p-4 flex items-center gap-3">
-                          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-400 text-white text-xs font-bold shrink-0 shadow-md shadow-teal-500/20">{i + 1}</span>
-                          <span className="text-sm flex-1">{a}</span>
-                          <ArrowRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all duration-300" />
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </TabsContent>
-            </Tabs>
-          </motion.section>
-        )}
+            <div>
+              <h2 className="text-2xl font-bold">Обучающие инструкции</h2>
+              <p className="text-sm text-muted-foreground">Пошаговые сценарии от регистрации до выпуска группы</p>
+            </div>
+          </div>
+          <HelpTutorials query={search} />
+        </motion.section>
 
         {/* ═══ GROUP DOCUMENT FLOW ═══ */}
         {!search && (
@@ -350,7 +292,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 ["Создайте курс", "Укажите программу, часы и форму обучения. До публикации курс можно оставить черновиком."],
                 ["Зарегистрируйте слушателя", "Заполните ФИО и данные, зачислите на курс и убедитесь, что карточка сохранилась после обновления страницы."],
                 ["Создайте учебную группу", "Привяжите курс, участников, даты и преподавателя. В карточке группы проверьте четыре блока готовности."],
-                ["Выберите маршрут договора", "«Пакет компании (Word клиента)» создаёт один DOCX-договор с приложением; «Пакет физлица» — договор на каждого выбранного слушателя."],
+                ["Выберите маршрут договора", "Пакет компании создаёт один договор с приложением; пакет физического лица — отдельный договор на каждого выбранного слушателя."],
                 ["Сформируйте пакет", "Выберите рабочий бланк или данные Синтагмы. Проверьте источники, охват и предупреждения до сохранения."],
                 ["Проверьте выпуск", "Откройте версии документов, статус обучения и готовность данных для ФИС ФРДО."],
               ].map(([title, text], index) => (
@@ -371,8 +313,8 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 <CardContent className="p-5 flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-sm">Готово к демонстрации</h3>
-                    <p className="text-xs leading-relaxed text-muted-foreground mt-1">Создание курса и слушателя, готовность группы, сценарии договора, версии документов и контроль источников данных.</p>
+                    <h3 className="font-semibold text-sm">Перед формированием</h3>
+                    <p className="text-xs leading-relaxed text-muted-foreground mt-1">Проверьте курс, участников, готовность группы, маршрут договора и источники данных.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -380,8 +322,8 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 <CardContent className="p-5 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-sm">Beta до повторной проверки</h3>
-                    <p className="text-xs leading-relaxed text-muted-foreground mt-1">Пакетная сборка 9 документов, HTML-макеты и PDF-копия Word-журнала имеют явные ограничения и пометки в интерфейсе.</p>
+                    <h3 className="font-semibold text-sm">После формирования</h3>
+                    <p className="text-xs leading-relaxed text-muted-foreground mt-1">Откройте каждый результат и учитывайте его текущий статус, формат и предупреждения интерфейса.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -467,7 +409,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Email</h3>
-                  <p className="text-muted-foreground text-sm mb-4">support@sintagma.com.ru — ответим в течение рабочего дня.</p>
+                  <p className="text-muted-foreground text-sm mb-4">support@sintagma.com.ru — срок и объём поддержки зависят от тарифа или заказа.</p>
                   <Button size="sm" className="rounded-xl gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 transition-all" onClick={() => window.open("mailto:support@sintagma.com.ru")}>
                     <ExternalLink className="w-3.5 h-3.5" /> Написать на почту
                   </Button>
@@ -523,7 +465,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
               <div className="absolute bottom-[-30px] left-[-30px] w-[150px] h-[150px] rounded-full bg-cyan-400/10 blur-3xl" />
               <CardContent className="relative p-8 sm:p-12 text-center">
                 <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3">Не нашли ответ?</h3>
-                <p className="text-teal-100/70 mb-6 max-w-md mx-auto">Наша команда поддержки поможет решить любой вопрос. Напишите нам — ответим максимально быстро.</p>
+                <p className="text-teal-100/70 mb-6 max-w-md mx-auto">Опишите задачу в Telegram или по email. Срок и объём поддержки зависят от тарифа или заказа.</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button className="rounded-xl gap-2 bg-white text-teal-900 hover:bg-teal-50 shadow-lg" onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")}>
                     <MessageCircle className="w-4 h-4" /> Telegram

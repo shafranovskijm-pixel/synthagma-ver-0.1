@@ -39,12 +39,8 @@ import docsBg from "@/assets/presentation/documents-bg.jpg";
 import safetyBg from "@/assets/presentation/safety-bg.jpg";
 import mobileBg from "@/assets/presentation/mobile-bg.jpg";
 import ctaBg from "@/assets/presentation/cta-bg.jpg";
-import screenshotMarketplace from "@/assets/presentation/screenshot-marketplace.png";
-import screenshotCatalog from "@/assets/presentation/screenshot-catalog.png";
 import screenshotStudent from "@/assets/presentation/screenshot-student.png";
 import screenshotOrg from "@/assets/presentation/screenshot-org.png";
-import screenshotCompany from "@/assets/presentation/screenshot-company.png";
-import screenshotTeacher from "@/assets/presentation/screenshot-teacher.png";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const PRESENTATION_VERSION = "v3";
@@ -109,7 +105,7 @@ export default function PlatformPresentation() {
             {[
               { step: "1", label: "Заполнение данных", desc: "Из карточки ученика и данных группы" },
               { step: "2", label: "Проверка и подготовка файла", desc: "Показываем ошибки и несоответствия до отправки" },
-              { step: "3", label: "Передача сведений", desc: "Вы загружаете готовый файл. На «Профессиональном» — ФРДО+: выгружаем за вас" },
+              { step: "3", label: "Передача сведений", desc: "Ответственный сотрудник загружает файл. ФРДО+ предоставляется по отдельному согласованию" },
             ].map((s, i) => (
 
               <div key={i} className="flex flex-col items-center flex-1">
@@ -123,8 +119,8 @@ export default function PlatformPresentation() {
       </Section>
 
       <PresentationSafety Section={Section} safetyBg={safetyBg} />
-      <PresentationCabinets Section={Section} screenshots={{ org: screenshotOrg, student: screenshotStudent, company: screenshotCompany, teacher: screenshotTeacher }} />
-      <PresentationMarketplace Section={Section} screenshots={{ marketplace: screenshotMarketplace, catalog: screenshotCatalog }} />
+      <PresentationCabinets Section={Section} screenshots={{ org: screenshotOrg, student: screenshotStudent }} />
+      <PresentationMarketplace Section={Section} />
 
       {/* ═══ СРАВНЕНИЕ С КОНКУРЕНТАМИ ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">

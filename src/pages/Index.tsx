@@ -34,19 +34,20 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <meta name="description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров. Запуск под ключ за 7 дней: готовые курсы, ФИС ФРДО, ИИ-генерация, документы." />
-        <meta name="keywords" content="СДО, СИНТАГМА, учебный центр, дистанционное обучение, ФРДО, 273-ФЗ, готовые курсы, ДПО" />
-        <link rel="canonical" href="https://sintagma.com.ru/" />
+        <meta name="description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров: курсы, ученики, прогресс, документы и подготовка данных для ФИС ФРДО в одном кабинете." />
+        <meta name="keywords" content="СДО, СИНТАГМА, учебный центр, дистанционное обучение, ФРДО, готовые курсы, ДПО" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/" />
 
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://sintagma.com.ru/" />
-        <meta property="og:description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров. Запуск под ключ за 7 дней." />
-        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/" />
+        <meta property="og:description" content="Курсы, ученики, прогресс, документы и подготовка данных для ФИС ФРДО в одном кабинете." />
+        <meta property="og:image" content="https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg" />
+        <meta property="og:image:alt" content="Форма регистрации организации в СИНТАГМЕ" />
         <meta property="og:locale" content="ru_RU" />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров. Запуск под ключ за 7 дней." />
-        <meta name="twitter:image" content="https://sintagma.com.ru/og-image.png" />
+        <meta name="twitter:description" content="Курсы, ученики, прогресс, документы и подготовка данных для ФИС ФРДО в одном кабинете." />
+        <meta name="twitter:image" content="https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg" />
 
 
         <script type="application/ld+json">
@@ -60,13 +61,7 @@ const Index = () => {
             "offers": {
               "@type": "Offer",
               "price": "0",
-              "priceCurrency": "RUB",
-              "priceValidUntil": "2026-12-31"
-            },
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": "4.9",
-              "reviewCount": "127"
+              "priceCurrency": "RUB"
             }
           })}
         </script>

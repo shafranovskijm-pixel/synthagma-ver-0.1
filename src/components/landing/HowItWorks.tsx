@@ -15,13 +15,13 @@ const steps = [
   { icon: Wand2, label: "Создали курс" },
   { icon: UserPlus, label: "Добавили ученика" },
   { icon: GraduationCap, label: "Ученик прошёл обучение" },
-  { icon: FileCheck2, label: "Документы в порядке" },
+  { icon: FileCheck2, label: "Подготовили документы" },
 ];
 
 const miniCards = [
   { icon: Sparkles, label: "ИИ-генерация курсов" },
   { icon: Store, label: "Магазин готовых курсов" },
-  { icon: FileText, label: "Документы для учебного центра" },
+  { icon: FileText, label: "Шаблоны и журналы учебного центра" },
   { icon: BarChart3, label: "Контроль прохождения" },
 ];
 
@@ -40,10 +40,10 @@ export function HowItWorks() {
             Как это работает
           </span>
           <h2 className="font-display text-3xl md:text-4xl font-medium mb-3 tracking-tight">
-            От нажатия кнопки — до выданных документов
+            От создания курса — до подготовки документов
           </h2>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-            Простой путь собственника: вы запускаете обучение, СИНТАГМА берёт на себя всю рутину.
+            Основные шаги обучения и документооборота связаны в одном кабинете.
           </p>
         </motion.div>
 

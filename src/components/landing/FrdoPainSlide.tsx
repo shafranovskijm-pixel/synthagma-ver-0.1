@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { AlertTriangle, Sparkles, ShieldCheck, CheckCircle2, FileSpreadsheet, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
-import frdoErrorsPain from "@/assets/features/frdo-errors-pain.png";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -29,20 +28,20 @@ export function FrdoPainSlide() {
         </div>
 
         <h3 className="font-display text-2xl md:text-3xl font-medium mb-4 tracking-tight leading-tight">
-          Забудь про ручной ввод и <span className="text-destructive">«недопустимый символ»</span> в ФИС ФРДО
+          Сократите ручную проверку файлов для <span className="text-destructive">ФИС ФРДО</span>
         </h3>
 
         <p className="text-base text-muted-foreground mb-6 leading-relaxed">
-          Невидимые пробелы в СНИЛС, неправильные форматы дат, лишние табуляции — и так каждый месяц. Часы ручной чистки Excel перед каждой выгрузкой.
+          При подготовке XLSX встречаются невидимые пробелы, лишние табуляции, незаполненные поля и разные форматы дат. Инструмент помогает найти и исправить часть таких проблем до загрузки файла.
         </p>
 
         <div className="space-y-2.5">
-          <p className="text-sm font-semibold text-foreground mb-2">С Синтагмой — ноль ошибок:</p>
+          <p className="text-sm font-semibold text-foreground mb-2">СИНТАГМА проверяет данные до выгрузки:</p>
           {[
             { icon: Sparkles, text: "Авто-форматирование СНИЛС, дат, ФИО" },
             { icon: ShieldCheck, text: "Очистка скрытых пробелов и табуляций" },
             { icon: CheckCircle2, text: "Проверка полноты данных ДО выгрузки" },
-            { icon: FileSpreadsheet, text: "Шаблоны 35/41 столбцов под актуальные требования" },
+            { icon: FileSpreadsheet, text: "Шаблоны ДПО и ПО на 41/35 столбцов" },
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-card/80 border border-border/50">
               <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
@@ -70,30 +69,34 @@ export function FrdoPainSlide() {
         </div>
       </motion.div>
 
-      {/* Right column — pseudo-browser screenshot of validator errors */}
+      {/* Right column — factual checklist, not a simulated FRDO screen. */}
       <motion.div initial="hidden" animate="visible" variants={fadeUp} className="relative">
-        <div
-          className="relative rounded-xl overflow-hidden shadow-2xl border border-border/50 bg-card"
-          style={{ transform: "rotate(1.5deg)" }}
-        >
-          <div className="flex items-center gap-1.5 px-4 py-3 bg-muted/60 border-b border-border/50">
-            <div className="w-3 h-3 rounded-full bg-destructive/60" />
-            <div className="w-3 h-3 rounded-full bg-muted-foreground/40" />
-            <div className="w-3 h-3 rounded-full bg-accent/60" />
-            <div className="ml-3 px-3 py-1 rounded-md bg-background/80 text-xs text-muted-foreground font-mono truncate">
-              fis-frdo.obrnadzor.gov.ru — лог ошибок
+        <div className="relative rounded-3xl border border-border/50 bg-card/80 p-6 shadow-xl backdrop-blur-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10">
+              <FileSpreadsheet className="h-6 w-6 text-accent" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-accent">Проверка XLSX</p>
+              <h4 className="font-display text-xl font-medium">Перед формированием файла</h4>
             </div>
           </div>
-          <img
-            src={frdoErrorsPain}
-            alt="Реальный лог ошибок валидатора ФИС ФРДО — десятки строк «недопустимый символ»"
-            className="w-full h-auto block"
-            loading="lazy"
-          />
-        </div>
-
-        <div className="absolute -top-4 -right-4 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold shadow-lg rotate-6">
-          Реальный кейс клиента
+          <div className="space-y-3">
+            {[
+              "Нормализация форматов СНИЛС и дат",
+              "Очистка скрытых пробелов и табуляций",
+              "Отметка строк с незаполненными обязательными полями",
+              "Экспорт XLSX по шаблонам на 41 или 35 столбцов",
+            ].map((text) => (
+              <div key={text} className="flex items-start gap-3 rounded-xl border border-border/40 bg-background/60 p-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                <p className="text-sm text-foreground/85">{text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+            Перед загрузкой в ФИС ФРДО ответственный сотрудник проверяет результат и при необходимости дополняет данные вручную.
+          </p>
         </div>
       </motion.div>
       </div>

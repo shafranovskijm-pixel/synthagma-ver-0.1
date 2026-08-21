@@ -19,11 +19,11 @@ const About = () => {
         <title>О платформе СИНТАГМА — СДО нового поколения</title>
         <meta name="description" content="Узнайте больше о платформе СИНТАГМА: история создания, команда разработчиков, преимущества для образовательных организаций." />
         <meta name="keywords" content="о нас, СИНТАГМА, образовательная платформа, команда разработчиков" />
-        <link rel="canonical" href="https://sintagma.com.ru/about" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/about" />
         <meta property="og:title" content="О платформе СИНТАГМА — СДО нового поколения" />
         <meta property="og:description" content="Узнайте больше о платформе СИНТАГМА: история создания, команда разработчиков, преимущества для образовательных организаций." />
-        <meta property="og:url" content="https://sintagma.com.ru/about" />
-        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/about" />
+        <meta property="og:image" content="https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg" />
       </Helmet>
       <LandingHeader />
 

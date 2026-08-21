@@ -62,10 +62,10 @@ export const safetyFeatures = [
 ];
 
 export const mobileFeatures: FeatureItem[] = [
-  { icon: Globe, text: "PWA — работает как нативное приложение" },
-  { icon: Zap, text: "Оффлайн-режим — учёба без интернета" },
-  { icon: MessageSquare, text: "Push-уведомления" },
-  { icon: Smartphone, text: "Android и iOS" },
+  { icon: Globe, text: "PWA — открывается в поддерживаемом браузере" },
+  { icon: Zap, text: "Можно добавить на главный экран устройства" },
+  { icon: MessageSquare, text: "Уведомления внутри платформы" },
+  { icon: Smartphone, text: "Адаптивный интерфейс для телефона и планшета" },
 ];
 
 export interface PricingPlan {
