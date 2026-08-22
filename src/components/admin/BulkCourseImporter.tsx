@@ -7,6 +7,7 @@ import { ConfigStep } from "./bulk-import/ConfigStep";
 import { CreationStep } from "./bulk-import/CreationStep";
 import { CourseCombo } from "./bulk-import/types";
 import { Button } from "@/components/ui/button";
+import { requireCanonicalMarketplaceOrganization } from "@/api/marketplaceOrganization";
 
 interface BulkCourseImporterProps {
   onComplete?: () => void;
@@ -42,25 +43,9 @@ export function BulkCourseImporter({ onComplete }: BulkCourseImporterProps) {
     setCreationState({ current: 0, total: combos.length, currentName: "", completed: [] });
 
     try {
-      // Get or create platform org
-      let platformOrgId: string;
-      const { data: existingOrg } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("name", "Платформа Синтагма")
-        .maybeSingle();
-
-      if (existingOrg) {
-        platformOrgId = existingOrg.id;
-      } else {
-        const { data: newOrg, error: orgError } = await supabase
-          .from("organizations")
-          .insert({ name: "Платформа Синтагма", email: "platform@synthagma.ru" })
-          .select("id")
-          .single();
-        if (orgError) throw orgError;
-        platformOrgId = newOrg.id;
-      }
+      // Never create a second system tenant from a mutable display name.
+      // Missing/unconfigured canonical marketplace data is a deployment error.
+      const platformOrgId = await requireCanonicalMarketplaceOrganization();
 
       const completed: string[] = [];
 

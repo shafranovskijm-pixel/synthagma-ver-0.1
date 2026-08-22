@@ -187,7 +187,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           retryQuery(
             () => supabase
               .from("courses")
-              .select("id, title, description, is_published, created_at, category_id, duration, frdo_duration_hours, training_form, cover_image_url, skip_video_identification, sequential_lessons, allow_video_seek, price")
+              .select("id, title, description, is_published, created_at, system_key, category_id, duration, frdo_duration_hours, training_form, cover_image_url, skip_video_identification, sequential_lessons, allow_video_seek, price")
               .eq("organization_id", orgId!)
               .order("created_at", { ascending: false }),
             "courses"
@@ -233,13 +233,14 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         // --- required: courses ---
         if (coursesResult.status === "fulfilled") {
           setCoursesError(null);
-          const rawCourses = (coursesResult.value || []) as Array<{ id: string; title: string; description: string | null; is_published: boolean; created_at: string; category_id: string | null; duration: string | null; frdo_duration_hours: number | null; training_form: string | null; cover_image_url: string | null; skip_video_identification: boolean | null; sequential_lessons: boolean; allow_video_seek: boolean; price: number }>;
+          const rawCourses = (coursesResult.value || []) as Array<{ id: string; title: string; description: string | null; is_published: boolean; created_at: string; system_key: string | null; category_id: string | null; duration: string | null; frdo_duration_hours: number | null; training_form: string | null; cover_image_url: string | null; skip_video_identification: boolean | null; sequential_lessons: boolean; allow_video_seek: boolean; price: number }>;
           setCourses(rawCourses.map((course) => ({
             id: course.id,
             title: course.title,
             description: course.description,
             is_published: course.is_published,
             created_at: course.created_at,
+            system_key: course.system_key,
             lessonsCount: 0, // filled by useOrganizationSummary.courseOverview
             studentsCount: 0, // filled by useOrganizationSummary.courseOverview
             duration: course.duration || "—",

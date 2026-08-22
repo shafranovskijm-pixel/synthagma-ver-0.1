@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
-import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import {
+  MarketplacePurchaseError,
+  purchaseMarketplaceCourse,
+} from "@/api/marketplacePurchase";
 import {
   fetchCatalog as _fetchCatalog,
   fetchMyCourses as _fetchMyCourses,
@@ -227,8 +230,16 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
   const handleOrder = async () => {
     if (!selectedCourseForOrder) return;
+
+    // The current Beta store delivers a cloned course to an organization.
+    // Student-specific delivery needs a separate enrollment transaction.
+    if (userRole !== 'organization') {
+      toast.error('Покупка для ученика пока недоступна в Beta-версии магазина');
+      return;
+    }
     
-    // Check subscription course limit
+    // Keep the local check for immediate UX feedback. The RPC repeats the
+    // authoritative quota decision in the same transaction as course INSERT.
     const limitResult = checkLimit('course');
     if (!limitResult.allowed) {
       toast.error(limitResult.message);
@@ -238,69 +249,13 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsOrdering(true);
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const orderPrice = userRole === 'organization' 
-        ? selectedCourseForOrder.price_organization 
-        : selectedCourseForOrder.price_student;
-      const { data: orderData, error } = await supabase.from('marketplace_orders').insert({
-        marketplace_course_id: selectedCourseForOrder.id,
-        buyer_user_id: currentUser?.id || userId || null,
-        buyer_organization_id: userRole === 'organization' ? organizationId : null,
-        buyer_type: userRole, price: orderPrice,
-        students_count: userRole === 'organization' ? studentsCount : 1,
-        notes: orderNotes || null, 
-        status: 'paid',
-        payment_method: 'balance',
-        paid_at: new Date().toISOString(),
-      }).select('id').single();
-      if (error) throw error;
+      const purchaseResult = await purchaseMarketplaceCourse({
+        marketplaceCourseId: selectedCourseForOrder.id,
+        organizationId,
+        studentsCount,
+        notes: orderNotes,
+      });
 
-      // Clone course to buyer's organization
-      try {
-        const originalCourseId = selectedCourseForOrder.course_id;
-        const { data: origCourse } = await supabase
-          .from('courses').select('*').eq('id', originalCourseId).single();
-        
-        if (origCourse) {
-          const { id: _id, created_at: _ca, updated_at: _ua, category_id: _cat, ...courseData } = origCourse;
-          const { data: newCourse } = await supabase.from('courses').insert({
-            ...courseData,
-            category_id: null,
-            organization_id: organizationId,
-            source_order_id: orderData.id,
-            source_course_id: originalCourseId,
-          }).select('id').single();
-
-          if (newCourse) {
-            const { data: lessons } = await supabase
-              .from('lessons').select('*').eq('course_id', originalCourseId).order('order_index');
-            
-            if (lessons) {
-              for (const lesson of lessons) {
-                const { id: _lid, created_at: _lca, updated_at: _lua, ...lessonData } = lesson;
-                const { data: newLesson } = await supabase.from('lessons').insert({
-                  ...lessonData,
-                  course_id: newCourse.id,
-                }).select('id').single();
-
-                if (newLesson) {
-                  const { data: questions } = await supabase
-                    .from('test_questions').select('*').eq('lesson_id', lesson.id);
-                  if (questions?.length) {
-                    await supabase.from('test_questions').insert(
-                      questions.map(q => {
-                        const { id: _qid, ...qData } = q;
-                        return { ...qData, lesson_id: newLesson.id };
-                      })
-                    );
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (cloneError) {
-        console.error('Error cloning course:', cloneError);
-      }
       refetchLimits();
 
       // Уведомить список курсов организации, чтобы он подтянул новый курс без перезагрузки
@@ -331,16 +286,16 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
           title: `Новый заказ: ${courseName}`,
           message: `${buyerName} (${buyerEmail}) оформил заказ на курс "${courseName}" — ${studentsCount} уч.`,
           organization_id: selectedCourseForOrder.organization_id,
-          related_id: orderData?.id || null,
+          related_id: purchaseResult.orderId,
           user_id: currentUser?.id || userId || '',
         });
 
         await safeInvoke('notify-course-order', {
           body: {
-            orderId: orderData?.id || 'new', courseName,
+            orderId: purchaseResult.orderId, courseName,
             buyerName, buyerType: userRole,
-            studentsCount: userRole === 'organization' ? studentsCount : 1,
-            price: 0, notes: orderNotes || undefined,
+            studentsCount,
+            price: purchaseResult.price, notes: orderNotes || undefined,
             sellerOrganizationId: selectedCourseForOrder.organization_id,
           },
         });
@@ -348,7 +303,12 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
       setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders);
     } catch (error: any) {
-      console.error('Error creating order:', error); toast.error('Ошибка при добавлении курса');
+      console.error('Error creating order:', error);
+      toast.error(
+        error instanceof MarketplacePurchaseError
+          ? error.message
+          : 'Ошибка при добавлении курса',
+      );
     } finally { setIsOrdering(false); }
   };
 

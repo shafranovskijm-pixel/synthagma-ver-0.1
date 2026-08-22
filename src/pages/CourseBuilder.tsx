@@ -386,9 +386,11 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
       <AlertDialog open={showReviewConfirm} onOpenChange={setShowReviewConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Запустить AI-проверку курса?</AlertDialogTitle>
+            <AlertDialogTitle>Запустить AI-проверку курса (Beta)?</AlertDialogTitle>
             <AlertDialogDescription>
               ИИ прочитает все уроки и тесты курса и предложит список замечаний (актуальность законодательства, ошибки в тестах, рекомендации).
+              <br /><br />
+              <strong>Важно:</strong> ИИ может ошибаться в датах, номерах и статусе нормативных актов. Сверяйте правовые замечания с официальными источниками перед применением.
               <br /><br />
               <strong>Курс при этом не меняется</strong> — вы сами решаете, что делать с каждым замечанием. Также перед проверкой автоматически создастся снимок курса в разделе «История версий».
             </AlertDialogDescription>

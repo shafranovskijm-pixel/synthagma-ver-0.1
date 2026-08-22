@@ -7,6 +7,7 @@ export interface Course {
   created_at: string;
   updated_at?: string;
   organization_id?: string;
+  system_key?: string | null;
   category_id?: string | null;
   duration?: string | null;
   frdo_duration_hours?: number | null;

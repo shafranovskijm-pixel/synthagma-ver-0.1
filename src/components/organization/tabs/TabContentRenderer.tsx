@@ -32,6 +32,8 @@ import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTa
 import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { getDirectDocumentWorkspacePermission } from "@/lib/organization/documentNavigationPermissions";
 
 export function TabContentRenderer() {
   const navigate = useNavigate();
@@ -39,6 +41,7 @@ export function TabContentRenderer() {
   const activeTab = d.tabNavigation.activeTab;
   const organizationId = d.organizationId;
   const [searchParams] = useSearchParams();
+  const { can, loading: permissionsLoading } = useStaffPermissions();
   // Контекст группы для Журналов и ФИС ФРДО (передаётся из папки группы)
   const ctxGroupId = searchParams.get("groupId");
   const ctxCourseId = searchParams.get("courseId");
@@ -76,6 +79,31 @@ export function TabContentRenderer() {
     activeTab !== "contract-editor" &&
     activeTab !== "student-details" &&
     activeTab !== "group-folder";
+
+  const directDocumentPermission = getDirectDocumentWorkspacePermission(activeTab);
+
+  if (directDocumentPermission && permissionsLoading) {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground" role="status">
+        Проверка доступа…
+      </div>
+    );
+  }
+
+  if (directDocumentPermission && !can(directDocumentPermission)) {
+    return (
+      <div
+        className="rounded-2xl border border-border bg-card p-8 text-center"
+        role="alert"
+        data-testid="document-workspace-permission-denied"
+      >
+        <h2 className="font-semibold">Нет доступа к разделу</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Обратитесь к администратору организации, чтобы получить нужное право.
+        </p>
+      </div>
+    );
+  }
 
 
   return (

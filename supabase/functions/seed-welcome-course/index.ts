@@ -233,13 +233,15 @@ async function generateCoverImage(supabase: any, courseId: string, organizationI
 async function seedCourseForOrg(supabase: any, organizationId: string, forceUpdate = false, skipCover = false) {
   const content = lessonContent();
 
-  // Check if welcome course already exists
-  const { data: existing } = await supabase
+  // A stable system marker survives title edits and prevents duplicate seeds.
+  const { data: existing, error: existingError } = await supabase
     .from("courses")
     .select("id")
     .eq("organization_id", organizationId)
-    .eq("title", "Добро пожаловать в СИНТАГМА")
+    .eq("system_key", "welcome")
     .maybeSingle();
+
+  if (existingError) throw existingError;
 
   if (existing && !forceUpdate) return { skipped: true };
 
@@ -294,6 +296,7 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
     .from("courses")
     .insert({
       organization_id: organizationId,
+      system_key: "welcome",
       title: "Добро пожаловать в СИНТАГМА",
       description: "Приветственный курс для знакомства с платформой СИНТАГМА. Узнайте обо всех возможностях: создание курсов с ИИ, тестирование, видеоидентификация, документооборот, ФРДО и многое другое.",
       is_published: true,
@@ -302,6 +305,20 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
     })
     .select("id")
     .single();
+
+  if (courseErr?.code === "23505") {
+    // Two authenticated registration paths can request the seed at the same
+    // time. The partial unique index is authoritative; treat the winner's row
+    // as an idempotent success instead of returning a misleading 500.
+    const { data: concurrentCourse, error: concurrentLookupError } = await supabase
+      .from("courses")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("system_key", "welcome")
+      .maybeSingle();
+    if (concurrentLookupError) throw concurrentLookupError;
+    if (concurrentCourse) return { skipped: true, courseId: concurrentCourse.id };
+  }
 
   if (courseErr) throw courseErr;
   const courseId = course.id;
@@ -362,12 +379,77 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const authHeader = req.headers.get("Authorization");
+
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: authData, error: authError } = await userClient.auth.getUser();
+
+    if (authError || !authData.user) {
+      console.warn("seed-welcome-course authentication failed:", authError);
+      return new Response(JSON.stringify({ error: "Invalid authentication" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json();
     const { organizationId, seedAll, forceUpdate } = body;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    if (seedAll) {
+      const { data: isAdmin, error: roleError } = await userClient.rpc("has_role", {
+        _role: "admin",
+        _user_id: authData.user.id,
+      });
+
+      if (roleError || isAdmin !== true) {
+        console.warn("seed-welcome-course seedAll forbidden:", roleError);
+        return new Response(JSON.stringify({ error: "Admin privileges required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      if (!organizationId) {
+        return new Response(JSON.stringify({ error: "organizationId or seedAll required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: canWriteCourses, error: accessError } = await userClient.rpc(
+        "can_access_organization",
+        {
+          _organization_id: organizationId,
+          _permission: "courses.write",
+        },
+      );
+
+      if (accessError || canWriteCourses !== true) {
+        console.warn("seed-welcome-course organization access forbidden:", accessError);
+        return new Response(JSON.stringify({ error: "Insufficient organization permissions" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Service-role access is created only after the caller has passed the relevant gate.
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     if (seedAll) {
       const { data: orgs, error: orgsErr } = await supabase
@@ -386,13 +468,6 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ ok: true, results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!organizationId) {
-      return new Response(JSON.stringify({ error: "organizationId or seedAll required" }), {
-        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

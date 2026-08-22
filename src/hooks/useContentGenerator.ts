@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import { requireCanonicalMarketplaceOrganization } from "@/api/marketplaceOrganization";
 import { markdownToBlocks, blocksToJson } from "@/components/course-builder/block-editor";
 import type { ContentBlock } from "@/components/course-builder/block-editor";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
@@ -73,7 +73,9 @@ export function useContentGenerator(courses: MarketplaceCourseWithDetails[], dbC
           setGigachatModel(data.gigachat_model || undefined);
           setLovableModel(data.lovable_model || undefined);
         }
-      } catch {}
+      } catch {
+        // Keep the default AI provider when optional platform settings are unavailable.
+      }
     };
     loadAiSettings();
   }, []);
@@ -154,7 +156,7 @@ export function useContentGenerator(courses: MarketplaceCourseWithDetails[], dbC
       }
       if (!contentError && contentData?.content) {
         const cleanedContent = stripAIIntro(contentData.content);
-        let blocks: ContentBlock[] = markdownToBlocks(cleanedContent);
+        const blocks: ContentBlock[] = markdownToBlocks(cleanedContent);
         const heroImageUrl = await generateHeroImage(lesson.title, cleanedContent);
         if (heroImageUrl) {
           blocks.unshift({ id: crypto.randomUUID(), type: "image", content: "", imageSrc: heroImageUrl } as ContentBlock);
@@ -283,7 +285,9 @@ export function useContentGenerator(courses: MarketplaceCourseWithDetails[], dbC
             blocks.splice(idx, 0, sliderBlock);
             insertedCount++;
           }
-        } catch {}
+        } catch {
+          // A failed optional visualization must not discard the generated lesson content.
+        }
       }
 
       if (insertedCount > 0) {
@@ -295,7 +299,9 @@ export function useContentGenerator(courses: MarketplaceCourseWithDetails[], dbC
           items_count: insertedCount, stream_index: streamIdx,
         });
       }
-    } catch {}
+    } catch {
+      // Enrichment is best-effort; the base lesson remains usable when it fails.
+    }
   };
 
   const handleGenerateCourse = async (courseId: string, courseTitle: string) => {
@@ -406,9 +412,7 @@ export function useContentGenerator(courses: MarketplaceCourseWithDetails[], dbC
     if (!newCourseName.trim() || !selectedCategoryId) return;
     setCreatingCourse(true);
     try {
-      const { data: existingOrg } = await supabase.from("organizations").select("id").eq("name", "Платформа Синтагма").maybeSingle();
-      const orgId = existingOrg?.id;
-      if (!orgId) throw new Error("Organization not found");
+      const orgId = await requireCanonicalMarketplaceOrganization();
       const { data: courseData, error: courseError } = await supabase
         .from("courses")
         .insert({ title: newCourseName.trim(), organization_id: orgId, category_id: selectedCategoryId, is_published: true })

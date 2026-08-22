@@ -26,7 +26,7 @@ function txtToHtml(text: string): string {
     s.replace(/&/g, '&amp;')
      .replace(/</g, '&lt;')
      .replace(/>/g, '&gt;')
-     .replace(/\"/g, '&quot;')
+     .replace(/"/g, '&quot;')
      .replace(/'/g, '&#039;');
 
   const parts = text.split(/\n\s*\n/).filter(p => p.trim());
@@ -691,31 +691,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has organization or admin role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (roleError || !roleData) {
-      console.log('Failed to get user role:', roleError?.message);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Не удалось проверить роль пользователя' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (roleData.role !== 'organization' && roleData.role !== 'admin') {
-      console.log('User does not have required role:', roleData.role);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Недостаточно прав для импорта курсов' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`User ${user.id} (${roleData.role}) authenticated for course import`);
-
     const contentType = req.headers.get('content-type') || '';
 
     if (!contentType.includes('multipart/form-data')) {
@@ -726,6 +701,39 @@ serve(async (req) => {
     }
 
     const formData = await req.formData();
+    const organizationIdValue = formData.get('organization_id');
+    const organizationId = typeof organizationIdValue === 'string'
+      ? organizationIdValue.trim()
+      : '';
+
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(organizationId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Не удалось подтвердить организацию для импорта' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use the same tenant-aware permission gate as course RLS. Canonical
+    // organization staff keep their global `student` role and receive access
+    // through org_staff, so checking user_roles here would reject valid
+    // teachers/course editors and would not verify the requested tenant.
+    const { data: canWriteCourses, error: permissionError } = await supabase.rpc(
+      'can_access_organization',
+      {
+        _organization_id: organizationId,
+        _permission: 'courses.write',
+      },
+    );
+
+    if (permissionError || canWriteCourses !== true) {
+      console.log('Course import permission denied:', permissionError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Недостаточно прав для импорта курсов' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`User ${user.id} authenticated for course import in organization ${organizationId}`);
 
     // Collect all files with size validation
     const files: File[] = [];

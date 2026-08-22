@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -11,6 +11,14 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { UploadStep, PreviewStep, CreatingStep, DoneStep, StepIndicator } from "@/components/course-import/CourseImportSteps";
+import {
+  CourseImportScopeError,
+  resolveCourseImportScope,
+  type CourseImportScope,
+} from "@/lib/courseImportScope";
+import { createImportedCourseHeader } from "@/api/courseImport";
+import { CourseCreationError, courseCreationErrorMessage } from "@/api/courses";
+import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 
 interface ParsedLesson {
   id: string;
@@ -50,9 +58,16 @@ interface ImportResult {
 
 type ImportStep = 'upload' | 'processing' | 'preview' | 'creating' | 'done';
 
+type ScopeState =
+  | { status: "loading" }
+  | { status: "ready"; scope: CourseImportScope }
+  | { status: "error"; message: string };
+
 export default function CourseImport() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, userRole } = useAuth();
+  const requestedOrganizationId = searchParams.get("organizationId");
   
   const [step, setStep] = useState<ImportStep>('upload');
   const [isDragging, setIsDragging] = useState(false);
@@ -62,6 +77,34 @@ export default function CourseImport() {
   const [courseTitle, setCourseTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+  const [scopeState, setScopeState] = useState<ScopeState>({ status: "loading" });
+  const [scopeRefreshKey, setScopeRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveScope = async () => {
+      if (!user) return;
+      setScopeState({ status: "loading" });
+
+      try {
+        const scope = await resolveCourseImportScope({
+          userId: user.id,
+          userRole,
+          requestedOrganizationId,
+        });
+        if (!cancelled) setScopeState({ status: "ready", scope });
+      } catch (error) {
+        const message = error instanceof CourseImportScopeError
+          ? error.message
+          : "Не удалось подтвердить организацию. Повторите попытку";
+        if (!cancelled) setScopeState({ status: "error", message });
+      }
+    };
+
+    void resolveScope();
+    return () => { cancelled = true; };
+  }, [user, userRole, requestedOrganizationId, scopeRefreshKey]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -100,7 +143,7 @@ export default function CourseImport() {
     const isHtml = fileName.endsWith('.html') || fileName.endsWith('.htm');
     
     if (!isPptx && !isDocx && !isDoc && !isTxt && !isHtml) {
-      toast.error('Поддерживаются только PPTX, DOC, DOCX, TXT, HTML файлы');
+      toast.error('Поддерживаются PPTX, DOCX, TXT, HTML; старый DOC доступен в Beta-режиме');
       return;
     }
     
@@ -109,6 +152,10 @@ export default function CourseImport() {
       return;
     }
     
+    if (isDoc) {
+      toast.warning('DOC — Beta: рекомендуем сохранить файл как DOCX и проверить импорт перед публикацией');
+    }
+
     setSelectedFile(file);
   };
 
@@ -120,7 +167,7 @@ export default function CourseImport() {
   };
 
   const processFile = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || scopeState.status !== "ready") return;
     
     setStep('processing');
     setProgress(10);
@@ -128,10 +175,11 @@ export default function CourseImport() {
     try {
       const formData = new FormData();
       formData.append('file_0', selectedFile);
+      formData.append('organization_id', scopeState.scope.organizationId);
       
       setProgress(30);
       
-      const { data, error } = await safeInvoke<any>('import-course', {
+      const { data, error } = await safeInvoke<ImportResult>('import-course', {
         body: formData });
       
       setProgress(80);
@@ -140,8 +188,8 @@ export default function CourseImport() {
         throw new Error(error.message || 'Ошибка обработки файла');
       }
       
-      if (!data.success) {
-        throw new Error(data.error || 'Не удалось обработать файл');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Не удалось обработать файл');
       }
       
       setProgress(100);
@@ -158,41 +206,41 @@ export default function CourseImport() {
   };
 
   const createCourse = async () => {
-    if (!importResult || !user) return;
+    if (!importResult || !user || scopeState.status !== "ready") return;
     
     setIsCreating(true);
     setStep('creating');
     
     try {
-      // Get user's organization
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (!profile?.organization_id) {
-        throw new Error('Организация не найдена');
+      // Resolve again at action time. This catches a changed admin-view,
+      // revoked membership or a link that no longer matches the active org.
+      const verifiedScope = await resolveCourseImportScope({
+        userId: user.id,
+        userRole,
+        requestedOrganizationId,
+      });
+      if (verifiedScope.organizationId !== scopeState.scope.organizationId) {
+        throw new CourseImportScopeError(
+          "organization_mismatch",
+          "Активная организация изменилась. Запустите импорт из кабинета снова",
+        );
       }
-      
-      // Create course
-      const { data: course, error: courseError } = await supabase
-        .from('courses')
-        .insert({
-          title: courseTitle,
-          description: `Импортирован из ${selectedFile?.name}`,
-          organization_id: profile.organization_id,
-          is_published: false })
-        .select('id')
-        .single();
-      
-      if (courseError) throw courseError;
+
+      // The RPC atomically rechecks courses.write and the effective tariff
+      // limit before inserting the draft course header.
+      const courseId = await createImportedCourseHeader({
+        organizationId: verifiedScope.organizationId,
+        title: courseTitle,
+        description: `Импортирован из ${selectedFile?.name || "учебных материалов"}`,
+      });
       
       // Create lessons
       const lessonsToInsert = importResult.lessons.map((lesson, index) => ({
-        course_id: course.id,
+        course_id: courseId,
         title: lesson.title,
-        content: lesson.content,
+        // Imported HTML is untrusted even when the uploader may create
+        // courses. Strip executable markup before it reaches lessons.content.
+        content: sanitizeCourseHtml(lesson.content),
         type: 'text',
         order_index: index }));
       
@@ -200,15 +248,31 @@ export default function CourseImport() {
         .from('lessons')
         .insert(lessonsToInsert);
       
-      if (lessonsError) throw lessonsError;
+      if (lessonsError) {
+        // Do not leave an empty draft when lesson persistence fails. The
+        // organization predicate is defence in depth in addition to RLS.
+        const { error: cleanupError } = await supabase
+          .from("courses")
+          .delete()
+          .eq("id", courseId)
+          .eq("organization_id", verifiedScope.organizationId);
+        if (cleanupError) console.error("Course import cleanup failed");
+        throw new CourseCreationError(
+          "unknown",
+          "Не удалось сохранить уроки. Повторите импорт",
+        );
+      }
       
-      setCreatedCourseId(course.id);
+      setCreatedCourseId(courseId);
       setStep('done');
       toast.success('Курс успешно создан!');
       
     } catch (error) {
       console.error('Create course error:', error);
-      toast.error(error instanceof Error ? error.message : 'Ошибка создания курса');
+      const message = error instanceof CourseImportScopeError
+        ? error.message
+        : courseCreationErrorMessage(error);
+      toast.error(message);
       setStep('preview');
     } finally {
       setIsCreating(false);
@@ -247,9 +311,36 @@ export default function CourseImport() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
-        <StepIndicator currentStep={step} />
+        {scopeState.status === "loading" && (
+          <div className="py-20 text-center space-y-4">
+            <SigmaSpinner size="xl" />
+            <p className="font-medium">Подтверждаем организацию и права…</p>
+          </div>
+        )}
 
-        {step === 'upload' && (
+        {scopeState.status === "error" && (
+          <div className="mx-auto max-w-xl rounded-2xl border border-destructive/30 bg-card p-8 text-center space-y-5">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10">
+              <AlertTriangle className="h-7 w-7 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="font-display text-xl font-bold">Импорт недоступен</h1>
+              <p className="text-sm text-muted-foreground">{scopeState.message}</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button variant="outline" onClick={() => navigate(getAdminAwareBackPath())}>
+                Вернуться в кабинет
+              </Button>
+              <Button onClick={() => setScopeRefreshKey((value) => value + 1)}>
+                <RefreshCw className="mr-2 h-4 w-4" />Повторить
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {scopeState.status === "ready" && <StepIndicator currentStep={step} />}
+
+        {scopeState.status === "ready" && step === 'upload' && (
           <UploadStep
             isDragging={isDragging}
             selectedFile={selectedFile}
@@ -262,7 +353,7 @@ export default function CourseImport() {
           />
         )}
 
-        {step === 'processing' && (
+        {scopeState.status === "ready" && step === 'processing' && (
           <div className="text-center space-y-6 py-12">
             <div className="w-20 h-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
               <SigmaSpinner size="xl" />
@@ -274,7 +365,7 @@ export default function CourseImport() {
           </div>
         )}
 
-        {step === 'preview' && importResult && (
+        {scopeState.status === "ready" && step === 'preview' && importResult && (
           <PreviewStep
             importResult={importResult}
             courseTitle={courseTitle}
@@ -284,9 +375,9 @@ export default function CourseImport() {
           />
         )}
 
-        {step === 'creating' && <CreatingStep />}
+        {scopeState.status === "ready" && step === 'creating' && <CreatingStep />}
 
-        {step === 'done' && createdCourseId && (
+        {scopeState.status === "ready" && step === 'done' && createdCourseId && (
           <DoneStep
             lessonsCount={importResult?.lessons.length || 0}
             courseId={createdCourseId}

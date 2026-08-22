@@ -132,9 +132,12 @@ export function CourseReviewDialog({
           <DialogTitle className="flex items-center gap-2">
             <Scale className="w-5 h-5 text-primary" />
             AI Проверка курса
+            <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              Beta
+            </Badge>
           </DialogTitle>
           <DialogDescription>
-            Анализ содержания, законодательства и тестов
+            Анализ содержания, законодательства и тестов. ИИ может ошибаться в реквизитах нормативных актов — проверяйте каждое замечание перед применением.
           </DialogDescription>
         </DialogHeader>
 

@@ -212,6 +212,30 @@ interface OrderDetailsDialogProps {
 }
 
 export function OrderDetailsDialog({ open, onOpenChange, order, onUpdateStatus }: OrderDetailsDialogProps) {
+  const statusOptions = order ? (() => {
+    const optionsByStatus: Record<string, Array<{ value: string; label: string }>> = {
+      pending: [
+        { value: "pending", label: "Ожидает" },
+        { value: "approved", label: "Одобрена" },
+        { value: "cancelled", label: "Отменена" },
+      ],
+      approved: [
+        { value: "approved", label: "Одобрена" },
+        { value: "cancelled", label: "Отменена" },
+      ],
+      paid: [
+        { value: "paid", label: "Оплачена" },
+        { value: "completed", label: "Завершена" },
+      ],
+      completed: [{ value: "completed", label: "Завершена" }],
+      cancelled: [{ value: "cancelled", label: "Отменена" }],
+    };
+
+    return optionsByStatus[order.status] ?? [
+      { value: order.status, label: order.status },
+    ];
+  })() : [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-md">
@@ -226,14 +250,25 @@ export function OrderDetailsDialog({ open, onOpenChange, order, onUpdateStatus }
             </div>
             <div className="space-y-2">
               <Label>Изменить статус</Label>
-              <Select value={order.status} onValueChange={(value) => onUpdateStatus(order.id, value)}>
+              <Select
+                value={order.status}
+                onValueChange={(value) => onUpdateStatus(order.id, value)}
+                disabled={statusOptions.length <= 1}
+              >
                 <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Ожидает</SelectItem><SelectItem value="approved">Одобрена</SelectItem>
-                  <SelectItem value="paid">Оплачена</SelectItem><SelectItem value="completed">Завершена</SelectItem>
-                  <SelectItem value="cancelled">Отменена</SelectItem>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {statusOptions.length <= 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Статус закрыт. Возврат оплаченного заказа оформляется отдельной операцией.
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -14,6 +14,7 @@ import {
   Unlock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 
 interface Lesson {
   id: string;
@@ -144,7 +145,7 @@ export const LessonItem = ({
             ) : (
               <div 
                 className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: lesson.content.slice(0, 200) + "..." }}
+                dangerouslySetInnerHTML={{ __html: sanitizeCourseHtml(lesson.content.slice(0, 200) + "...") }}
               />
             )}
           </div>

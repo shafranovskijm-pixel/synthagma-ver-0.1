@@ -81,7 +81,7 @@ export function UploadStep({ isDragging, selectedFile, onDragOver, onDragLeave, 
             </div>
             <div>
               <p className="font-medium text-lg">Перетащите файл сюда или нажмите для выбора</p>
-              <p className="text-sm text-muted-foreground mt-1">Поддерживаются: PPTX, DOC, DOCX, TXT, HTML (до 50 МБ)</p>
+              <p className="text-sm text-muted-foreground mt-1">PPTX, DOCX, TXT, HTML; старый DOC — Beta (до 50 МБ)</p>
             </div>
           </div>
         )}
@@ -98,11 +98,14 @@ export function UploadStep({ isDragging, selectedFile, onDragOver, onDragLeave, 
           </div>
           <div className="flex items-start gap-3">
             <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <div><p className="font-medium">DOC / DOCX / TXT / HTML</p><p className="text-muted-foreground">Документ будет разбит на уроки по заголовкам</p></div>
+            <div>
+              <p className="font-medium">DOCX / TXT / HTML; DOC — Beta</p>
+              <p className="text-muted-foreground">Документ будет разбит на уроки по заголовкам. Для старого DOC рекомендуем сначала сохранить копию как DOCX.</p>
+            </div>
           </div>
           <div className="flex items-start gap-3">
             <Sparkles className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <div><p className="font-medium">Автоматическая обработка</p><p className="text-muted-foreground">Форматирование, таблицы и изображения сохраняются</p></div>
+            <div><p className="font-medium">Автоматическая обработка</p><p className="text-muted-foreground">Импорт постарается перенести форматирование, таблицы и изображения — проверьте результат перед публикацией</p></div>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { useFrdoReadiness } from "@/hooks/useFrdoReadiness";
 import { supabase } from "@/integrations/supabase/client";
 import { detectGenderFromMiddleName } from "@/constants/frdo";
 import { toast } from "sonner";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
 interface FrdoReadinessBannerProps {
   organizationId: string;
@@ -17,7 +18,7 @@ interface FrdoReadinessBannerProps {
  * FRDO export readiness across all issued documents and offers a CTA
  * to jump into the FRDO module to fill in the missing fields.
  */
-export function FrdoReadinessBanner({ organizationId, onOpenFrdo }: FrdoReadinessBannerProps) {
+function FrdoReadinessBannerContent({ organizationId, onOpenFrdo }: FrdoReadinessBannerProps) {
   const { stats, loading, readinessPercent, refresh } = useFrdoReadiness(organizationId);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
 
@@ -165,4 +166,14 @@ export function FrdoReadinessBanner({ organizationId, onOpenFrdo }: FrdoReadines
       </div>
     </div>
   );
+}
+
+/**
+ * Permission wrapper intentionally sits above the data hook so users without
+ * frdo.read neither see the readiness controls nor start FRDO data requests.
+ */
+export function FrdoReadinessBanner(props: FrdoReadinessBannerProps) {
+  const { can, loading } = useStaffPermissions();
+  if (loading || !can("frdo.read")) return null;
+  return <FrdoReadinessBannerContent {...props} />;
 }

@@ -11,38 +11,54 @@ async function generateToken(params: Record<string, string>, password: string): 
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+type BalanceCreditResult = {
+  transaction_id: string;
+  balance: number;
+  applied: boolean;
+};
+
 async function recordBalanceTransaction(
   supabaseAdmin: ReturnType<typeof createClient>,
   organizationId: string,
   amount: number,
   type: string,
   description: string,
-  relatedOrderId?: string,
-) {
-  // Insert balance transaction
-  await supabaseAdmin.from("balance_transactions").insert({
-    organization_id: organizationId,
-    amount,
-    type,
-    description,
-    related_order_id: relatedOrderId || null,
-    performed_by: null,
+  idempotencyKey: string,
+): Promise<BalanceCreditResult> {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid T-Bank balance credit amount");
+  }
+
+  const { data, error } = await supabaseAdmin.rpc("apply_tbank_balance_credit", {
+    p_organization_id: organizationId,
+    p_amount: amount,
+    p_transaction_type: type,
+    p_description: description,
+    p_idempotency_key: idempotencyKey,
   });
 
-  // Update organization balance by summing all transactions
-  const { data: txSum } = await supabaseAdmin
-    .from("balance_transactions")
-    .select("amount")
-    .eq("organization_id", organizationId);
+  if (error) {
+    throw new Error(`Atomic T-Bank balance credit failed: ${error.message}`);
+  }
 
-  const newBalance = (txSum || []).reduce((sum: number, t: { amount: number }) => sum + t.amount, 0);
+  const result = data as BalanceCreditResult | null;
+  if (
+    !result ||
+    typeof result.transaction_id !== "string" ||
+    typeof result.balance !== "number" ||
+    typeof result.applied !== "boolean"
+  ) {
+    throw new Error("Atomic T-Bank balance credit returned an invalid result");
+  }
 
-  await supabaseAdmin
-    .from("organizations")
-    .update({ balance: newBalance })
-    .eq("id", organizationId);
-
-  console.log("Balance transaction recorded:", { organizationId, amount, type, newBalance });
+  console.log("Balance transaction recorded:", {
+    organizationId,
+    amount,
+    type,
+    balance: result.balance,
+    applied: result.applied,
+  });
+  return result;
 }
 
 Deno.serve(async (req) => {
@@ -165,26 +181,31 @@ Deno.serve(async (req) => {
 
         // Record balance transaction for subscription
         const amountRub = Number(Amount) / 100;
-        await recordBalanceTransaction(
+        const balanceCredit = await recordBalanceTransaction(
           supabaseAdmin,
           (invoice as any).organization_id,
           amountRub,
           "subscription",
           `Оплата подписки "${(invoice as any).plan}" на ${(invoice as any).period_months} мес.`,
+          `tbank:subscription:${(invoice as any).id}`,
         );
 
-        // Реферальная комиссия — не ломаем вебхук при ошибке
-        try {
-          await supabaseAdmin.functions.invoke("referral-commission", {
-            body: {
-              organization_id: (invoice as any).organization_id,
-              amount: amountRub,
-              payment_source: "subscription",
-              invoice_id: (invoice as any).id,
-            },
-          });
-        } catch (e) {
-          console.error("referral-commission invoke failed:", e);
+        // Only the callback that actually applied the idempotent credit starts
+        // referral processing. Replayed callbacks must not duplicate it.
+        if (balanceCredit.applied) {
+          // Реферальная комиссия — не ломаем вебхук при ошибке
+          try {
+            await supabaseAdmin.functions.invoke("referral-commission", {
+              body: {
+                organization_id: (invoice as any).organization_id,
+                amount: amountRub,
+                payment_source: "subscription",
+                invoice_id: (invoice as any).id,
+              },
+            });
+          } catch (e) {
+            console.error("referral-commission invoke failed:", e);
+          }
         }
 
         console.log("Subscription activated:", { org: (invoice as any).organization_id, plan: (invoice as any).plan, until: paidUntil.toISOString() });
@@ -285,7 +306,7 @@ Deno.serve(async (req) => {
         amountRub,
         "payment",
         `Оплата курса "${courseTitle}"`,
-        OrderId,
+        `tbank:course:${payment.id}`,
       );
     } else if (Status === "REJECTED" || Status === "CANCELED") {
       await supabaseAdmin
@@ -297,6 +318,8 @@ Deno.serve(async (req) => {
     return new Response("OK", { status: 200 });
   } catch (err) {
     console.error("tbank-webhook error:", err);
-    return new Response("OK", { status: 200 });
+    // A verified payment must be retried after transient database failures.
+    // The RPC idempotency key makes such retries safe.
+    return new Response("Internal error", { status: 500 });
   }
 });

@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, Download, Sparkles, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronDown, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,8 @@ import { canonicalCourseHours, programHoursMismatch, resolveUniqueCommonCourseId
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import type { Permission } from "@/constants/rolePermissions";
 
 
 
@@ -84,6 +86,26 @@ interface StudentRow {
 
 type FolderKey = "contracts" | "passports" | "snils" | "exams" | "docs";
 
+export const GROUP_WORKFLOW_ITEMS = [
+  { id: "participants", label: "Участники", destination: "members", permission: "students.read", beta: false },
+  { id: "learning", label: "Обучение", destination: "journals", permission: "courses.read", beta: false },
+  { id: "personal-files", label: "Личные дела", destination: "explorer", permission: "documents.read", beta: false },
+  { id: "group-documents", label: "Документы группы", destination: "docs", permission: "documents.read", beta: true },
+  { id: "frdo", label: "ФИС ФРДО", destination: "frdo", permission: "frdo.read", beta: false },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  destination: string;
+  permission: Permission;
+  beta: boolean;
+}>;
+
+type GroupWorkflowItem = (typeof GROUP_WORKFLOW_ITEMS)[number];
+
+export function getVisibleGroupWorkflowItems(can: (permission: Permission) => boolean) {
+  return GROUP_WORKFLOW_ITEMS.filter((item) => can(item.permission));
+}
+
 const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }> = {
   contracts: { title: GROUP_DOCUMENT_TYPE_MAP.contract.title, icon: FileSignature, hint: GROUP_DOCUMENT_TYPE_MAP.contract.hint || "Договоры с учениками группы" },
   passports: { title: "Паспорта", icon: IdCard, hint: "Сканы паспортов учеников" },
@@ -95,6 +117,7 @@ const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }>
 
 export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps) {
   const d = useOrgDashboard();
+  const { can, loading: permissionsLoading } = useStaffPermissions();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showMembers, setShowMembers] = useState(false);
@@ -107,6 +130,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [courseEnrollmentCount, setCourseEnrollmentCount] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
   const folderParam = searchParams.get("folder");
   const openFolder = (["contracts","passports","snils","exams","docs"] as const).includes(folderParam as any) ? (folderParam as FolderKey) : null;
   const setOpenFolder = useCallback((f: FolderKey | null) => {
@@ -475,6 +499,53 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     },
   ];
 
+  const workflowIcons: Record<GroupWorkflowItem["id"], typeof Users> = {
+    participants: Users,
+    learning: ClipboardList,
+    "personal-files": IdCard,
+    "group-documents": FileText,
+    frdo: Shield,
+  };
+  const workflowDetails: Record<GroupWorkflowItem["id"], string> = {
+    participants: `${students.length} в группе`,
+    learning: "Журналы и ход обучения",
+    "personal-files": "Договоры, паспорта и СНИЛС",
+    "group-documents": "Приказы, журналы и ведомости",
+    frdo: `${frdoReadyCount} из ${students.length} готовы`,
+  };
+  const visibleWorkflowItems = permissionsLoading
+    ? []
+    : getVisibleGroupWorkflowItems(can);
+  const workflowItemIsActive = (item: GroupWorkflowItem) => {
+    if (item.destination === "members") return showMembers;
+    if (item.destination === "docs") return !showMembers && openFolder === "docs";
+    if (item.destination === "explorer") return !showMembers && openFolder !== "docs";
+    return false;
+  };
+  const focusWorkspace = (folder: FolderKey | null) => {
+    setShowMembers(false);
+    setOpenFolder(folder);
+    workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const handleWorkflowAction = (item: GroupWorkflowItem) => {
+    switch (item.destination) {
+      case "members":
+        setShowMembers(value => !value);
+        return;
+      case "journals":
+        navigate(groupContextPath("journals", { groupId, courseId: resolvedCourseId }));
+        return;
+      case "explorer":
+        focusWorkspace(null);
+        return;
+      case "docs":
+        focusWorkspace("docs");
+        return;
+      case "frdo":
+        navigate(groupContextPath("frdo", { groupId, courseId: resolvedCourseId }));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Breadcrumbs */}
@@ -529,37 +600,64 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
       {/* Работа с группой */}
       <Card className="p-4 rounded-2xl border-border">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-sm min-w-0">
-            <BookOpen className="w-4 h-4 text-primary shrink-0" />
-            {resolvedCourseId ? (
-              <button
-                className="font-medium text-primary hover:underline inline-flex items-center gap-1 truncate"
-                onClick={() => navigate(courseDetailsPathForGroup(resolvedCourseId))}
-              >
-                <span className="truncate">{resolvedProgramTitle || courseInfo?.title || "Курс группы"}</span>
-                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-              </button>
-            ) : (
-              <span className="text-muted-foreground">Курс не привязан к группе</span>
-            )}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h2 className="font-semibold">Работа с группой</h2>
+            <div className="mt-1 flex items-center gap-2 text-sm min-w-0">
+              <BookOpen className="w-4 h-4 text-primary shrink-0" />
+              {resolvedCourseId ? (
+                <button
+                  className="font-medium text-primary hover:underline inline-flex items-center gap-1 truncate"
+                  onClick={() => navigate(courseDetailsPathForGroup(resolvedCourseId))}
+                >
+                  <span className="truncate">{resolvedProgramTitle || courseInfo?.title || "Курс группы"}</span>
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                </button>
+              ) : (
+                <button className="text-muted-foreground hover:text-foreground hover:underline" onClick={() => setSettingsOpen(true)}>
+                  Курс не привязан — открыть настройки группы
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant={showMembers ? "default" : "outline"} size="sm" className="rounded-xl gap-1.5" onClick={() => setShowMembers(v => !v)}>
-              <Users className="w-4 h-4" /> Участники ({students.length})
-              {showMembers ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5"
-              onClick={() => navigate(groupContextPath("journals", { groupId, courseId: resolvedCourseId }))}>
-              <ClipboardList className="w-4 h-4" /> Журналы группы
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5"
-              onClick={() => navigate(groupContextPath("frdo", { groupId, courseId: resolvedCourseId }))}>
-              <Shield className="w-4 h-4" /> ФИС ФРДО
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setOpenFolder("docs")}>
-              <FileText className="w-4 h-4" /> Документы группы
-            </Button>
+          <p className="max-w-md text-xs text-muted-foreground">
+            Выберите этап — откроется уже существующий рабочий раздел с данными этой группы.
+          </p>
+        </div>
+
+        <div className="mt-4 overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-2" role="navigation" aria-label="Работа с группой">
+            {visibleWorkflowItems.map(item => {
+              const Icon = workflowIcons[item.id];
+              const active = workflowItemIsActive(item);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleWorkflowAction(item)}
+                  aria-current={active ? "page" : undefined}
+                  className={`group flex w-[210px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background hover:border-primary/30 hover:bg-primary/5"
+                  }`}
+                >
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${active ? "bg-primary/15" : "bg-muted"}`}>
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <span className="truncate">{item.label}</span>
+                      {item.beta && <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px]">Beta</Badge>}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{workflowDetails[item.id]}</span>
+                  </span>
+                  {item.destination === "members" && active
+                    ? <ChevronUp className="h-4 w-4 shrink-0" />
+                    : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -668,7 +766,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       </Card>
 
       {/* Windows Explorer inspired workspace */}
-      <Card className="overflow-hidden rounded-xl border-border bg-card shadow-sm">
+      <Card ref={workspaceRef} className="overflow-hidden rounded-xl border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
           <Button
             variant="ghost"

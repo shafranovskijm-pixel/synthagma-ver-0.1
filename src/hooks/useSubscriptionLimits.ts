@@ -60,7 +60,8 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
         supabase
           .from("courses")
           .select("id", { count: "exact", head: true })
-          .eq("organization_id", organizationId),
+          .eq("organization_id", organizationId)
+          .is("system_key", null),
         // Canonical student count — active real students, honours custom_max_students.
         supabase.rpc("get_organization_student_capacity" as any, {
           p_organization_id: organizationId,

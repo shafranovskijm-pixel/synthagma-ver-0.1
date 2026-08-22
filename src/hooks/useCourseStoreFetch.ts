@@ -20,7 +20,9 @@ export async function fetchCatalog(organizationId: string, setCatalogCourses: (v
   const { data, error } = await supabase
     .from('marketplace_courses')
     .select(`*, course:courses(id, title, description, duration, category_id, cover_image_url), organization:organizations(name)`)
-    .eq('is_active', true).neq('organization_id', organizationId);
+    .eq('is_active', true)
+    .eq('is_validated', true)
+    .neq('organization_id', organizationId);
   if (error) { console.error('Error fetching catalog:', error); return; }
   setCatalogCourses(data || []);
 }

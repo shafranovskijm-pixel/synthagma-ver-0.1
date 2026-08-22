@@ -25,6 +25,11 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { QuickStartCard } from "@/components/organization/QuickStartCard";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { courseOverviewErrorMessage } from "./summaryStateMessages";
+import { FirstCourseCreationChoice } from "./courses/FirstCourseCreationChoice";
+import { hasOrganizationCourse, isSystemWelcomeCourse } from "@/lib/organization/firstRun";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+
+const FIRST_COURSE_SKIP_KEY_PREFIX = "org-first-course-choice-skipped-";
 
 interface CoursesTabProps {
   organizationId: string;
@@ -36,6 +41,7 @@ interface CoursesTabProps {
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
   const dashboard = useOrgDashboard();
+  const { can } = useStaffPermissions();
   const { checkLimit, hasCourseSettings, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
   
   const {
@@ -128,8 +134,31 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [isDeletingCourses, setIsDeletingCourses] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["uncategorized"]));
+  const [hasSkippedFirstCourseChoice, setHasSkippedFirstCourseChoice] = useState(false);
+  const [showFirstCourseCreationOptions, setShowFirstCourseCreationOptions] = useState(false);
   const menuSettings = dashboard?.dashboardSettings.menuSettings;
   const setMenuSettings = dashboard?.dashboardSettings.setMenuSettings;
+
+  useEffect(() => {
+    try {
+      setHasSkippedFirstCourseChoice(localStorage.getItem(`${FIRST_COURSE_SKIP_KEY_PREFIX}${organizationId}`) === "1");
+    } catch {
+      setHasSkippedFirstCourseChoice(false);
+    }
+    setShowFirstCourseCreationOptions(false);
+  }, [organizationId]);
+
+  const hasOwnCourse = useMemo(() => hasOrganizationCourse(courses), [courses]);
+  const hasWelcomeCourse = useMemo(() => courses.some(isSystemWelcomeCourse), [courses]);
+  const canCompleteFirstRun =
+    can("courses.write") && can("students.write") && can("documents.write");
+  const isFirstCourseRun =
+    !isLoading &&
+    !loadError &&
+    canCompleteFirstRun &&
+    !hasOwnCourse &&
+    !hasSkippedFirstCourseChoice;
+  const showFirstCourseChoice = isFirstCourseRun && showFirstCourseCreationOptions;
 
   // Source of truth = organization menu_settings. Default: grid + folders.
   // Clean up legacy localStorage key that used to override org settings.
@@ -205,7 +234,12 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   };
 
   const toggleCategoryExpand = (categoryId: string) => {
-    setExpandedCategories(prev => { const s = new Set(prev); s.has(categoryId) ? s.delete(categoryId) : s.add(categoryId); return s; });
+    setExpandedCategories(prev => {
+      const s = new Set(prev);
+      if (s.has(categoryId)) s.delete(categoryId);
+      else s.add(categoryId);
+      return s;
+    });
   };
 
   // Handlers
@@ -231,11 +265,28 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCategoryDialog(true);
   };
 
-  const handleOpenCreateCourseDialog = useCallback(() => {
+  const openManualCreateCourseDialog = useCallback(() => {
     const result = checkLimit('course');
     if (!result.allowed) { showLimitToast(result.message); return; }
     setShowCreateCourseDialog(true);
   }, [checkLimit]);
+
+  const handleOpenCreateCourseDialog = useCallback(() => {
+    if (isFirstCourseRun) {
+      setShowFirstCourseCreationOptions(true);
+      requestAnimationFrame(() => {
+        document.getElementById("first-course-creation-options")?.focus();
+        document.getElementById("first-course-creation-options")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
+    openManualCreateCourseDialog();
+  }, [isFirstCourseRun, openManualCreateCourseDialog]);
+
+  const handleSkipFirstCourseChoice = useCallback(() => {
+    try { localStorage.setItem(`${FIRST_COURSE_SKIP_KEY_PREFIX}${organizationId}`, "1"); } catch { /* ignore */ }
+    setHasSkippedFirstCourseChoice(true);
+  }, [organizationId]);
 
   // Listen for global "create course" requests (from header / quick actions / onboarding)
   useEffect(() => {
@@ -299,7 +350,12 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   const toggleCourseSelection = (courseId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedCourseIds(prev => { const s = new Set(prev); s.has(courseId) ? s.delete(courseId) : s.add(courseId); return s; });
+    setSelectedCourseIds(prev => {
+      const s = new Set(prev);
+      if (s.has(courseId)) s.delete(courseId);
+      else s.add(courseId);
+      return s;
+    });
   };
 
   const toggleAllCourses = () => {
@@ -393,7 +449,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
       {/* Quick start checklist for new orgs */}
-      <QuickStartCard />
+      {!showFirstCourseChoice && (
+        <QuickStartCard
+          courses={courses}
+          isLoadingCourses={isLoading}
+          onDismiss={handleSkipFirstCourseChoice}
+        />
+      )}
 
       {overviewErrorBanner && (
         <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
@@ -406,6 +468,25 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       )}
 
       {/* Courses content */}
+      {isFirstCourseRun ? (
+        showFirstCourseChoice ? (
+        <FirstCourseCreationChoice
+          onImportMaterials={() => {
+            const result = checkLimit("course");
+            if (!result.allowed) {
+              showLimitToast(result.message);
+              return;
+            }
+            navigate(`/course-import?organizationId=${encodeURIComponent(organizationId)}`);
+          }}
+          onOpenMarketplace={() => dashboard.tabNavigation.setActiveTab("services")}
+          onCreateManually={openManualCreateCourseDialog}
+          onBack={() => setShowFirstCourseCreationOptions(false)}
+          onSkip={handleSkipFirstCourseChoice}
+          hasWelcomeCourse={hasWelcomeCourse}
+        />
+        ) : null
+      ) : (
       <>
       {/* Filters */}
       <CoursesToolbar
@@ -565,6 +646,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           </div>
         </DndContext>
       )}
+      </>
+      )}
 
       <CategoryDialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog} editingCategory={editingCategory} name={newCategoryName} setName={setNewCategoryName} color={newCategoryColor} setColor={setNewCategoryColor} isCreating={isCreatingCategory} onSubmit={handleCreateCategory} />
       <CreateCourseDialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog} title={newCourseTitle} setTitle={setNewCourseTitle} description={newCourseDescription} setDescription={setNewCourseDescription} categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId} categories={categories} showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory} inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName} inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor} isCreating={isCreatingCourse} onSubmit={handleCreateCourse} />
@@ -578,7 +661,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         currentOrganizationId={organizationId}
         onTransferred={refresh}
       />
-      </>
     </div>
     </CourseCountsStateContext.Provider>
   );

@@ -4,7 +4,7 @@ import {
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink
+  PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink, HelpCircle, UserRound, UserCog
 } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { organizationTabPath } from "@/lib/organization/workspaceNavigation";
+import { splitPinnedNavigation } from "@/lib/organization/sidebarNavigation";
 
 export type TabType = 
   | "courses" 
@@ -78,6 +79,7 @@ const tabCategoryMap: Record<string, string> = {
   library: "library",
   links: "links",
   documents: "documents",
+  "org-documents": "documents",
   journals: "journals",
   "labor-safety": "labor_safety",
   frdo: "frdo",
@@ -87,9 +89,9 @@ const tabCategoryMap: Record<string, string> = {
 function hexToHsl(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return null;
-  let r = parseInt(result[1], 16) / 255;
-  let g = parseInt(result[2], 16) / 255;
-  let b = parseInt(result[3], 16) / 255;
+  const r = parseInt(result[1], 16) / 255;
+  const g = parseInt(result[2], 16) / 255;
+  const b = parseInt(result[3], 16) / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   let h = 0, s = 0;
@@ -114,7 +116,7 @@ function normalizeBrandColor(color?: string): string {
   return trimmed;
 }
 
-type SectionId = "learning" | "clients" | "tools";
+type SectionId = "people" | "learning" | "documents" | "management";
 
 interface NavItem {
   id: TabType;
@@ -124,13 +126,15 @@ interface NavItem {
   category?: string;
   badge?: number;
   hasNew?: boolean;
+  statusBadge?: "Beta";
   section: SectionId;
 }
 
 const SECTION_LABELS: Record<SectionId, string> = {
+  people: "Люди",
   learning: "Обучение",
-  clients: "Клиенты",
-  tools: "Инструменты",
+  documents: "Документы",
+  management: "Управление",
 };
 
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
@@ -168,15 +172,30 @@ export function OrgSidebar() {
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
   // Sidebar mode: 3 states (expanded / compact-with-captions / icons-only).
+  // Capture this before effects persist the initial state. Otherwise the
+  // persistence effect makes a first-time visitor look like an existing one
+  // and prevents the tablet auto-collapse effect from running.
+  const hadSavedSidebarPreference = useRef<boolean>((() => {
+    try {
+      return !!localStorage.getItem(MODE_KEY)
+        || localStorage.getItem(EXPANDED_KEY) !== null
+        || localStorage.getItem(SHOW_LABELS_KEY) !== null;
+    } catch {
+      return false;
+    }
+  })());
   const [mode, setMode] = useState<SidebarMode>(() => {
     try {
       const raw = localStorage.getItem(MODE_KEY) as SidebarMode | null;
       if (raw === "expanded" || raw === "compact" || raw === "icons") return raw;
-      const legacyExpanded = localStorage.getItem(EXPANDED_KEY) === "1";
-      if (legacyExpanded) return "expanded";
+      const legacyExpanded = localStorage.getItem(EXPANDED_KEY);
+      if (legacyExpanded === "1") return "expanded";
       const legacyLabels = localStorage.getItem(SHOW_LABELS_KEY);
-      return legacyLabels === "0" ? "icons" : "compact";
-    } catch { return "compact"; }
+      if (legacyExpanded !== null || legacyLabels !== null) {
+        return legacyLabels === "0" ? "icons" : "compact";
+      }
+      return "expanded";
+    } catch { return "expanded"; }
   });
 
   const isMobile = useIsMobile();
@@ -190,7 +209,9 @@ export function OrgSidebar() {
       localStorage.setItem(MODE_KEY, mode);
       localStorage.setItem(EXPANDED_KEY, effectiveExpanded ? "1" : "0");
       localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0");
-    } catch {}
+    } catch {
+      // The sidebar continues with its in-memory preferences.
+    }
     window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: effectiveExpanded }));
     window.dispatchEvent(new CustomEvent("org-sidebar-width-change", { detail: width }));
   }, [mode, effectiveExpanded, showLabels, width]);
@@ -198,9 +219,7 @@ export function OrgSidebar() {
   // Auto-collapse only on first load when user has no saved preference
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
-    try {
-      if (localStorage.getItem(MODE_KEY)) return; // respect saved choice
-    } catch {}
+    if (hadSavedSidebarPreference.current) return;
     const mq = window.matchMedia("(max-width: 1279px)");
     if (mq.matches && mode === "expanded") setMode("compact");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,7 +236,9 @@ export function OrgSidebar() {
           toast(next === "expanded" ? "Развёрнутое меню" : next === "compact" ? "Компактное меню" : "Меню — только иконки", { description: desc, duration: 3500 });
           localStorage.setItem("org-sidebar-mode-hint-shown", "1");
         }
-      } catch {}
+      } catch {
+        // Mode switching still works when the hint cannot be persisted.
+      }
       return next;
     });
   }, []);
@@ -239,7 +260,7 @@ export function OrgSidebar() {
 
   const brandHsl = themeAccent || normalizeBrandColor(primaryColor);
 
-  const isLocked = (category: string) => !isEnabled(category as any);
+  const isLocked = useCallback((category: string) => !isEnabled(category as any), [isEnabled]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -260,7 +281,7 @@ export function OrgSidebar() {
       setActiveTab(tab);
     }
     setIsMobileSidebarOpen(false);
-  }, [isEnabled, setActiveTab, setIsMobileSidebarOpen, location.pathname, navigate]);
+  }, [isLocked, setActiveTab, setIsMobileSidebarOpen, location.pathname, navigate]);
 
   const handleGoToSubscription = () => {
     setUpgradeDialogOpen(false);
@@ -271,36 +292,43 @@ export function OrgSidebar() {
   // Build nav items grouped by section
   const rawItems: NavItem[] = [];
 
+  // === ЛЮДИ ===
+  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", description: "Список учеников и их прогресс", category: "students", section: "people" });
+  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Компании", description: "Корпоративные клиенты и их сотрудники", category: "companies", section: "people" });
+  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", description: "Переписка с учениками и компаниями", badge: d.unreadChatsCount, section: "people" });
+
   // === ОБУЧЕНИЕ ===
   if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", description: "Создание и редактирование учебных программ", category: "courses", section: "learning" });
   rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0, section: "learning" });
   if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", description: "Изолированный модуль обучения по ОТ", category: "labor_safety", section: "learning" });
+  if (menuSettings.showLibrary !== false) rawItems.push({ id: "library", icon: HardDrive, label: "Хранилище", description: "Файлы и учебные материалы", category: "library", section: "learning" });
+  if (menuSettings.showServices !== false) rawItems.push({ id: "services", icon: ShoppingBag, label: "Готовые курсы", description: "Магазин готовых учебных программ", category: "services", section: "learning", statusBadge: "Beta" });
 
-  // === КЛИЕНТЫ ===
-  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", description: "Список учеников и их прогресс", category: "students", section: "clients" });
-  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", description: "Корпоративные клиенты и их сотрудники", category: "companies", section: "clients" });
-  // «Продажи» всегда видны (видимость регулируется правами sales.read).
-  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0, section: "clients" });
-  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", description: "Переписка с учениками и компаниями", badge: d.unreadChatsCount, section: "clients" });
+  // === ДОКУМЕНТЫ ===
+  if (menuSettings.showDocuments === true) {
+    // The Documents workspace already contains both learner and organization
+    // documents. Keep the legacy org-documents route available, but do not
+    // render a second sidebar button leading to the same screen.
+    rawItems.push({ id: "documents", icon: FileText, label: "Документы", description: "Личные дела, учебные документы и документы организации", category: "documents", section: "documents" });
+  }
+  if (menuSettings.showJournals !== false) rawItems.push({ id: "journals", icon: ClipboardList, label: "Журналы", description: "Журналы обучения и регистрации", category: "journals", section: "documents" });
+  if (menuSettings.showFrdo !== false) rawItems.push({ id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО", description: "Подготовка и выгрузка сведений в ФРДО", category: "frdo", section: "documents" });
 
-  // === ИНСТРУМЕНТЫ ===
-  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", description: "Аналитика обучения и доходов", section: "tools" });
-  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", description: "Ссылки регистрации на курсы и группы", category: "links", section: "tools" });
+  // === УПРАВЛЕНИЕ ===
+  if (menuSettings.showSales === true) rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0, statusBadge: "Beta", section: "management" });
+  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", description: "Аналитика обучения и доходов", section: "management" });
+  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки регистрации", description: "Ссылки регистрации на курсы и группы", category: "links", section: "management" });
+  rawItems.push({ id: "staff", icon: UserCog, label: "Сотрудники", description: "Роли и доступ сотрудников", section: "management" });
+  rawItems.push({ id: "profile", icon: UserRound, label: "Профиль организации", description: "Реквизиты, брендинг и параметры", section: "management" });
+  if (menuSettings.showSubscription !== false) rawItems.push({ id: "subscription", icon: CreditCard, label: "Тариф и оплата", description: "Тариф, лимиты, счета и оплата", section: "management" });
   // «Финансы» убраны — открываются изнутри «Тариф».
 
   // Фильтр по правам сотрудника
   const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
 
-  // Pinned items (preserve order from `pinned` array)
-  const pinnedItems = pinned
-    .map((id) => navItems.find((i) => i.id === id))
-    .filter((i): i is NavItem => !!i);
-
-  // Group preserving section order
-  const sectionOrder: SectionId[] = ["learning", "clients", "tools"];
-  const grouped = sectionOrder
-    .map((sec) => ({ section: sec, items: navItems.filter((i) => i.section === sec) }))
-    .filter((g) => g.items.length > 0);
+  // Pinned items keep their saved order and are removed from regular sections.
+  const sectionOrder: SectionId[] = ["people", "learning", "documents", "management"];
+  const { pinnedItems, groupedItems: grouped } = splitPinnedNavigation(navItems, pinned, sectionOrder);
 
 
 
@@ -381,6 +409,20 @@ export function OrgSidebar() {
             {item.label}
           </span>
         ) : null}
+        {item.statusBadge && (
+          <span
+            className={cn(
+              "rounded-full border font-semibold uppercase tracking-wide",
+              effectiveExpanded
+                ? "border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8px] text-primary"
+                : "absolute right-0 top-0 border-primary/30 bg-card px-1 py-px text-[7px] text-primary",
+              isActive && "border-primary-foreground/40 bg-primary-foreground/15 text-primary-foreground",
+            )}
+            aria-label="Бета-версия"
+          >
+            {item.statusBadge}
+          </span>
+        )}
         {effectiveExpanded && itemPinned && (
           <Pin className={cn("w-3 h-3 shrink-0", isActive ? "text-primary-foreground/90" : "text-muted-foreground/60")} />
         )}
@@ -401,6 +443,11 @@ export function OrgSidebar() {
                 <div className="flex items-center gap-2 mb-1">
                   <item.icon className="w-4 h-4" style={{ color: `hsl(${brandHsl})` }} />
                   <span className="font-semibold text-sm text-foreground">{item.label}</span>
+                  {item.statusBadge && (
+                    <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-primary">
+                      {item.statusBadge}
+                    </span>
+                  )}
                 </div>
                 {item.description && (
                   <p className="text-xs text-muted-foreground leading-snug">{item.description}</p>
@@ -428,6 +475,64 @@ export function OrgSidebar() {
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+    );
+  };
+
+  const renderFooterAction = ({
+    label,
+    icon: Icon,
+    href,
+    active = false,
+    onActivate,
+  }: {
+    label: string;
+    icon: typeof BookOpen;
+    href: string;
+    active?: boolean;
+    onActivate: () => void;
+  }) => {
+    const link = (
+      <a
+        href={href}
+        onClick={(event) => {
+          if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          onActivate();
+        }}
+        className={cn(
+          "rounded-lg transition-colors",
+          effectiveExpanded
+            ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
+            : showLabels
+              ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
+              : "flex h-9 w-9 items-center justify-center",
+          active
+            ? "bg-primary/15 text-primary"
+            : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+        )}
+        aria-current={active ? "page" : undefined}
+        aria-label={label}
+      >
+        <Icon className="h-[18px] w-[18px] shrink-0" />
+        {effectiveExpanded ? (
+          <span className="text-[13px] font-medium">{label}</span>
+        ) : showLabels ? (
+          <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">
+            {label}
+          </span>
+        ) : null}
+      </a>
+    );
+
+    return (
+      <Tooltip key={label}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        {!effectiveExpanded && (
+          <TooltipContent side="right" className="z-[100]">
+            {label}
+          </TooltipContent>
+        )}
+      </Tooltip>
     );
   };
 
@@ -502,7 +607,7 @@ export function OrgSidebar() {
         </div>
 
         {/* Navigation grouped by section */}
-        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2 justify-center", effectiveExpanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
+        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2 justify-start", effectiveExpanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
 
           {/* Pinned items (favorites) */}
           {pinnedItems.length > 0 && (
@@ -543,8 +648,26 @@ export function OrgSidebar() {
           ))}
         </div>
 
-        {/* Footer: Help, What's new, Collapse toggle, Aa labels, Logout */}
+        {/* Footer: stable help/settings actions, display mode and logout */}
         <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
+
+          {(permsLoading || canSeeOrgTab("settings")) && renderFooterAction({
+            label: "Настройки",
+            icon: Settings,
+            href: organizationTabPath("settings"),
+            active: activeTab === "settings",
+            onActivate: () => handleTabClick("settings"),
+          })}
+
+          {renderFooterAction({
+            label: "Помощь",
+            icon: HelpCircle,
+            href: "/help",
+            onActivate: () => {
+              navigate("/help");
+              setIsMobileSidebarOpen(false);
+            },
+          })}
 
           {/* Cycle mode (desktop only): expanded → compact → icons → expanded */}
           {(() => {

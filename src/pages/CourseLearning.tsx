@@ -32,6 +32,7 @@ import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar
 import { LessonAttachments } from "@/components/course-learning/LessonAttachments";
 import { AiChatPanel } from "@/components/course-learning/AiChatPanel";
 import { LessonAIAvatar } from "@/components/course-learning/LessonAIAvatar";
+import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -203,7 +204,7 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-primary/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><FileText className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-primary")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p></div>
                 </div>
-                {(() => { const blocks = currentLesson.content ? (() => { try { const p = JSON.parse(currentLesson.content); return Array.isArray(p) && p.every((x: any) => x.type && x.id) ? p : []; } catch { return []; } })() : []; return blocks.length > 0 ? <BlockRenderer blocks={blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: currentLesson.content?.replace(/\n/g, '<br/>') || '' }} /></div>; })()}
+                {(() => { const blocks = currentLesson.content ? (() => { try { const p = JSON.parse(currentLesson.content); return Array.isArray(p) && p.every((x: any) => x.type && x.id) ? p : []; } catch { return []; } })() : []; return blocks.length > 0 ? <BlockRenderer blocks={blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sanitizeCourseHtml(currentLesson.content?.replace(/\n/g, '<br/>')) }} /></div>; })()}
               </div>
             )}
 

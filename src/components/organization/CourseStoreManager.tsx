@@ -105,7 +105,10 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                  <div className="flex gap-3 items-start">
                    <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                    <div>
-                     <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
+                     <div className="mb-1 flex flex-wrap items-center gap-2">
+                       <h4 className="font-semibold text-sm text-foreground">Курсы ДПО и профессионального обучения</h4>
+                       <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Beta</Badge>
+                     </div>
                      <p className="text-xs text-muted-foreground leading-relaxed">
                        Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
                      </p>

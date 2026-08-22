@@ -72,7 +72,7 @@ export function courseCreationErrorMessage(error: unknown): string {
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
   const { data: coursesData, error } = await supabase
     .from("courses")
-    .select("id, title, description, is_published, created_at, updated_at, organization_id, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price, hidden_from_catalog")
+    .select("id, title, description, is_published, created_at, updated_at, organization_id, system_key, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price, hidden_from_catalog")
     .eq("organization_id", organizationId)
     .order("catalog_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -92,6 +92,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     created_at: course.created_at,
     updated_at: course.updated_at,
     organization_id: course.organization_id,
+    system_key: course.system_key,
     category_id: course.category_id,
     duration: course.duration,
     lessonsCount: 0,

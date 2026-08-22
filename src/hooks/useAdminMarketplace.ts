@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import { requireCanonicalMarketplaceOrganization } from "@/api/marketplaceOrganization";
 import { PROGRAM_TYPE_GROUPS, AUTO_CATEGORIZE_MAPPINGS } from "./adminMarketplaceHelpers";
 import {
   fetchMarketplaceCourses, fetchMarketplaceOrders, fetchDbCategoriesData,
@@ -124,24 +125,7 @@ export function useAdminMarketplace() {
     }
     setIsCreating(true);
     try {
-      let platformOrgId: string;
-      const { data: existingOrg } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("name", "Платформа Синтагма")
-        .maybeSingle();
-      
-      if (existingOrg) {
-        platformOrgId = existingOrg.id;
-      } else {
-        const { data: newOrg, error: orgError } = await supabase
-          .from("organizations")
-          .insert({ name: "Платформа Синтагма", email: "platform@synthagma.ru" })
-          .select("id")
-          .single();
-        if (orgError) throw orgError;
-        platformOrgId = newOrg.id;
-      }
+      const platformOrgId = await requireCanonicalMarketplaceOrganization();
 
       const { data: courseData, error: courseError } = await supabase
         .from("courses")

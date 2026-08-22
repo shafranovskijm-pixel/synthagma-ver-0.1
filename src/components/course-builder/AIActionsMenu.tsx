@@ -160,8 +160,8 @@ export function AIActionsMenu({
           <DropdownMenuItem onClick={() => onStartReview()} disabled={isReviewing || reviewDisabled}>
             <SearchCheck className="w-4 h-4 mr-2 text-primary" />
             <div className="flex flex-col">
-              <span>AI Проверка</span>
-              <span className="text-[11px] text-muted-foreground">Только анализ, курс не меняется</span>
+              <span>AI Проверка · Beta</span>
+              <span className="text-[11px] text-muted-foreground">Только анализ; нормативные ссылки проверяйте вручную</span>
             </div>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

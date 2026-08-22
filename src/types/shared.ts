@@ -10,6 +10,7 @@ export interface Course {
   description: string | null;
   is_published: boolean;
   created_at: string;
+  system_key?: string | null;
   lessonsCount?: number;
   studentsCount?: number;
   duration?: string;

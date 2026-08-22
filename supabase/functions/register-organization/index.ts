@@ -17,7 +17,7 @@ const RegisterOrganizationSchema = z.object({
   ogrn: z.string().optional().nullable(),
   legal_address: z.string().optional().nullable(),
   director_name: z.string().optional().nullable(),
-  subscription_plan: z.string().optional().nullable(),
+  subscription_plan: z.enum(['free', 'start', 'standard', 'professional', 'maximum']).optional().nullable(),
   promo_code: z.string().optional().nullable(),
   ref_code: z.string().optional().nullable(),
 });
@@ -88,12 +88,27 @@ Deno.serve(async (req) => {
     const { error: freePlanErr } = await supabase.rpc('apply_free_plan_features', { org_id: orgId });
     if (freePlanErr) throw freePlanErr;
 
+    let subscriptionRequestCreated = false;
     if (normalizedPlan !== 'free') {
-      const { error: planErr } = await supabase
-        .from('organizations')
-        .update({ subscription_plan: normalizedPlan } as any)
-        .eq('id', orgId);
-      if (planErr) throw planErr;
+      try {
+        const { error: requestErr } = await supabase
+          .from('subscription_requests')
+          .insert({
+            organization_id: orgId,
+            current_plan: 'free',
+            requested_plan: normalizedPlan,
+            status: 'pending',
+            message: 'Тариф выбран при регистрации организации',
+          } as any);
+
+        if (requestErr) {
+          console.warn('subscription request creation failed; organization remains on free plan:', requestErr);
+        } else {
+          subscriptionRequestCreated = true;
+        }
+      } catch (requestEx) {
+        console.warn('subscription request creation exception; organization remains on free plan:', requestEx);
+      }
     }
 
     const { error: profileErr } = await supabase.from('profiles').upsert({
@@ -127,7 +142,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, user_id: userId, organization_id: orgId, referral: referralResult }),
+    return new Response(JSON.stringify({
+      success: true,
+      user_id: userId,
+      organization_id: orgId,
+      referral: referralResult,
+      subscription_request_created: subscriptionRequestCreated,
+    }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {
     console.error('register-organization error:', e);

@@ -1,5 +1,7 @@
-import { BookOpen, Users, MessageCircle, Briefcase, Menu } from "lucide-react";
+import { useMemo } from "react";
+import { BookOpen, Building2, FileText, MessageCircle, ShoppingBag, Users, Menu } from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { cn } from "@/lib/utils";
 import type { TabType } from "./OrgSidebar";
 
@@ -9,18 +11,58 @@ interface NavItem {
   label: string;
 }
 
-const ITEMS: NavItem[] = [
-  { id: "courses", icon: BookOpen, label: "Курсы" },
-  { id: "students", icon: Users, label: "Ученики" },
-  { id: "chats", icon: MessageCircle, label: "Чаты" },
-  { id: "sales", icon: Briefcase, label: "Продажи" },
-  { id: "__menu__", icon: Menu, label: "Меню" },
-];
-
 export function OrgMobileBottomNav() {
   const d = useOrgDashboard();
+  const { canSeeOrgTab, loading: permissionsLoading } = useStaffPermissions();
   const activeTab = d.tabNavigation.activeTab;
   const unread = d.unreadChatsCount ?? 0;
+  const menuSettings = d.dashboardSettings.menuSettings;
+
+  const items = useMemo<NavItem[]>(() => {
+    const allowed = (id: TabType) => permissionsLoading || canSeeOrgTab(id);
+    const candidates: Array<NavItem & { visible: boolean }> = [
+      {
+        id: "courses",
+        icon: BookOpen,
+        label: "Курсы",
+        visible: menuSettings.showCourses !== false && d.isEnabled("courses"),
+      },
+      {
+        id: "students",
+        icon: Users,
+        label: "Ученики",
+        visible: menuSettings.showStudents !== false && d.isEnabled("students"),
+      },
+      {
+        id: "documents",
+        icon: FileText,
+        label: "Документы",
+        visible: menuSettings.showDocuments === true && d.isEnabled("documents"),
+      },
+      {
+        id: "organizations",
+        icon: Building2,
+        label: "Компании",
+        visible: menuSettings.showCompanies === true && d.isEnabled("companies"),
+      },
+      { id: "chats", icon: MessageCircle, label: "Чаты", visible: true },
+      {
+        id: "services",
+        icon: ShoppingBag,
+        label: "Программы",
+        visible: menuSettings.showServices !== false && d.isEnabled("services"),
+      },
+    ];
+
+    const primary = candidates
+      .filter((item) => item.visible && allowed(item.id as TabType))
+      .slice(0, 4)
+      .map(({ visible: _visible, ...item }) => item);
+
+    return [...primary, { id: "__menu__", icon: Menu, label: "Меню" }];
+  }, [canSeeOrgTab, d, menuSettings, permissionsLoading]);
+
+  const activeIsInPrimary = items.some((item) => item.id !== "__menu__" && item.id === activeTab);
 
   const handleClick = (id: NavItem["id"]) => {
     if (id === "__menu__") {
@@ -36,9 +78,9 @@ export function OrgMobileBottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Главное меню"
     >
-      <ul className="grid grid-cols-5 h-14">
-        {ITEMS.map((item) => {
-          const isActive = item.id !== "__menu__" && activeTab === item.id;
+      <ul className="grid h-14" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map((item) => {
+          const isActive = item.id === "__menu__" ? !activeIsInPrimary : activeTab === item.id;
           return (
             <li key={item.id}>
               <button

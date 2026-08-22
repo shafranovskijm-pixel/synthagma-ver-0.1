@@ -47,7 +47,7 @@ export function parseAnswersFile(text: string, questionsCount: number): { answer
     if (line.startsWith('...')) continue;
 
     // Match patterns: "1-A", "1: A", "1 A", "1-1", "1: 1", "1.A", "1. A"
-    const match = line.match(/^(\d+)\s*[-:.\s]\s*([A-Ha-h]|\d+)/);
+    const match = line.match(/^(\d+)\s*(?:-|:|\.|\s)\s*([A-Ha-h]|\d+)/);
     if (!match) continue;
 
     const qNum = parseInt(match[1]);

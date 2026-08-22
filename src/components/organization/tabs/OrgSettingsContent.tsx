@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Sparkles } from "lucide-react";
+import { LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Sparkles, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
@@ -16,13 +16,14 @@ interface MenuSettings {
   showServices: boolean;
   showCompanies: boolean;
   showAITutors: boolean;
+  showSales: boolean;
   [key: string]: boolean;
 }
 
 const DEFAULT_MENU: MenuSettings = {
   showStats: false, showLinks: false, showLaborSafety: false,
-  showDocuments: false, showServices: true, showCompanies: false,
-  showAITutors: false,
+  showDocuments: true, showServices: true, showCompanies: true,
+  showAITutors: false, showSales: true,
 };
 
 const settingsTabs = [
@@ -36,11 +37,11 @@ function parseMenu(m: any): MenuSettings {
     showStats: m?.showStats === true,
     showLinks: m?.showLinks === true,
     showLaborSafety: m?.showLaborSafety !== false,
-    showDocuments: m?.showDocuments === true,
+    showDocuments: m?.showDocuments !== false,
     showServices: m?.showServices !== false,
-    // Off by default — must be explicitly enabled
-    showCompanies: m?.showCompanies === true,
+    showCompanies: m?.showCompanies !== false,
     showAITutors: m?.showAITutors === true,
+    showSales: m?.showSales !== false,
   };
 }
 
@@ -103,6 +104,7 @@ export function OrgSettingsContent() {
     { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документооборот", key: "showDocuments" as keyof MenuSettings },
     { icon: Building2, bg: "bg-primary/15", color: "text-primary", label: "Компании", desc: "Управление корпоративными клиентами", key: "showCompanies" as keyof MenuSettings },
     { icon: Sparkles, bg: "bg-accent/15", color: "text-accent", label: "ИИ-преподаватели", desc: "Голосовые ИИ-аватары для уроков", key: "showAITutors" as keyof MenuSettings },
+    { icon: Briefcase, bg: "bg-amber-500/15", color: "text-amber-600", label: "Продажи (Beta)", desc: "Лиды, КП, договоры и сделки", key: "showSales" as keyof MenuSettings },
     { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettings },
   ];
 

@@ -28,6 +28,8 @@ import { CounterpartiesSection } from "./documents/CounterpartiesSection";
 import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 import { TestInboxButton } from "@/components/organization/documents/TestInboxButton";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { canAccessDocumentSubTab } from "@/lib/organization/documentNavigationPermissions";
 
 // Подпункты группы «Документы организации» (второй уровень)
 type OrgDocSubValue = Extract<
@@ -88,7 +90,22 @@ interface DocumentsTabProps {
   onNavigateToSubscription?: () => void;
 }
 
-export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
+interface DocumentsTabContentProps extends DocumentsTabProps {
+  canReadJournals: boolean;
+  canReadFrdo: boolean;
+  canReadSales: boolean;
+}
+
+function DocumentsTabContent({
+  organizationId,
+  organizationName,
+  onShowBulkUploadDialog,
+  isOrdersEnabled = true,
+  onNavigateToSubscription,
+  canReadJournals,
+  canReadFrdo,
+  canReadSales,
+}: DocumentsTabContentProps) {
   const h = useDocumentsTab(organizationId, organizationName);
   const dashboard = useOrgDashboard();
 
@@ -100,7 +117,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       if (!dl) return;
       if (dl === "proposals" || dl === "sales_contracts") {
         localStorage.removeItem("documents.deepLink");
-        dashboard?.tabNavigation?.setActiveTab?.("sales" as any);
+        if (canReadSales) dashboard?.tabNavigation?.setActiveTab?.("sales" as any);
         return;
       }
       if (dl.startsWith("open-act-dialog")) {
@@ -126,15 +143,34 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         h.setCounterpartySubTab("invoices");
         h.setShowInvoiceDialog(true);
       }
-    } catch {}
+    } catch {
+      // Ignore an unavailable or malformed optional deep-link value.
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [h.invoices]);
 
   const visibleOrgSubs = useMemo(
-    () => ORG_DOCS_SUBITEMS.filter(i => !i.ordersOnly || isOrdersEnabled),
-    [isOrdersEnabled]
+    () => ORG_DOCS_SUBITEMS.filter((item) => {
+      if (item.ordersOnly && !isOrdersEnabled) return false;
+      if (item.value === "journals" && !canReadJournals) return false;
+      if (item.value === "frdo" && !canReadFrdo) return false;
+      return true;
+    }),
+    [canReadFrdo, canReadJournals, isOrdersEnabled]
   );
   const orgSubValues = useMemo(() => visibleOrgSubs.map(i => i.value as string), [visibleOrgSubs]);
+
+  // If permissions change while the tab is open, leave a now-forbidden
+  // nested workspace immediately instead of retaining its mounted content.
+  useEffect(() => {
+    if (
+      (h.activeTab === "journals" && !canReadJournals) ||
+      (h.activeTab === "frdo" && !canReadFrdo)
+    ) {
+      h.setActiveTab("kpi");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canReadFrdo, canReadJournals, h.activeTab]);
 
   // Вычисляем активный корневой пункт
   const activeRoot: RootValue = useMemo(() => {
@@ -199,18 +235,20 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               );
             })}
 
-            {/* Подсказка-ссылка на «Продажи» */}
-            <div className="ml-auto hidden md:flex items-center pr-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={goToSales}
-                className="text-xs gap-1 text-muted-foreground hover:text-primary"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                КП и договоры — в разделе «Продажи»
-              </Button>
-            </div>
+            {/* Подсказка-ссылка на «Продажи» только для sales.read */}
+            {canReadSales && (
+              <div className="ml-auto hidden md:flex items-center pr-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToSales}
+                  className="text-xs gap-1 text-muted-foreground hover:text-primary"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  КП и договоры — в разделе «Продажи»
+                </Button>
+              </div>
+            )}
           </div>
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
         </div>
@@ -273,7 +311,11 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка дашборда…</div>}>
               <DocumentsKpiDashboard
                 organizationId={organizationId}
-                onNavigate={(tab, prefilter) => h.setActiveTab(tab as DocumentSubTab, prefilter)}
+                onNavigate={(tab, prefilter) => {
+                  if (tab === "journals" && !canReadJournals) return;
+                  if (tab === "frdo" && !canReadFrdo) return;
+                  h.setActiveTab(tab as DocumentSubTab, prefilter);
+                }}
               />
             </Suspense>
           )}
@@ -295,12 +337,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           {h.activeTab === "org" && <OrgDocumentsManager organizationId={organizationId} />}
           {h.activeTab === "orders" && isOrdersEnabled && <DocumentArchiveView organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} />}
           {h.activeTab === "protocols" && <DocumentArchiveView organizationId={organizationId} categoryId="attestation_protocols" title="Протоколы аттестационной комиссии" docTypes={["attestation_protocol"]} />}
-          {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
-          {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
-          {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
+          {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
+          {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
+          {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} />}
-          {h.activeTab === "journals" && <JournalsManager organizationId={organizationId!} />}
-          {h.activeTab === "frdo" && <FRDOManager organizationId={organizationId!} />}
+          {h.activeTab === "journals" && canReadJournals && <JournalsManager organizationId={organizationId!} />}
+          {h.activeTab === "frdo" && canReadFrdo && <FRDOManager organizationId={organizationId!} />}
           {h.activeTab === "signatures" && (
             <SignaturesJournal
               organizationId={organizationId}
@@ -389,5 +431,41 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         />
       )}
     </div>
+  );
+}
+
+export const DocumentsTab = React.memo(function DocumentsTab(props: DocumentsTabProps) {
+  const { can, loading } = useStaffPermissions();
+
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground" role="status">
+        Проверка доступа…
+      </div>
+    );
+  }
+
+  if (!canAccessDocumentSubTab("kpi", can)) {
+    return (
+      <div
+        className="rounded-2xl border border-border bg-card p-8 text-center"
+        role="alert"
+        data-testid="documents-permission-denied"
+      >
+        <h2 className="font-semibold">Нет доступа к документам</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Обратитесь к администратору организации, чтобы получить право documents.read.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <DocumentsTabContent
+      {...props}
+      canReadJournals={canAccessDocumentSubTab("journals", can)}
+      canReadFrdo={canAccessDocumentSubTab("frdo", can)}
+      canReadSales={can("sales.read")}
+    />
   );
 });

@@ -23,6 +23,8 @@ import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
 import { QuickActionChips } from "./QuickActionChips";
 import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
+import { hasOrganizationCourse } from "@/lib/organization/firstRun";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -37,10 +39,18 @@ function getUserInitials(email?: string | null, name?: string | null): string {
 export function OrgDashboardHeader() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
+  const { can } = useStaffPermissions();
   const { theme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const activeTab = d.tabNavigation.activeTab;
+  const isCoursesFirstRun =
+    activeTab === "courses" &&
+    !d.isLoadingCourses &&
+    can("courses.write") &&
+    can("students.write") &&
+    can("documents.write") &&
+    !hasOrganizationCourse(d.courses);
   const organizationName = d.organizationName;
   const organizationId = d.organizationId;
   const customName = d.branding.brandingSettings.customName;
@@ -288,7 +298,11 @@ export function OrgDashboardHeader() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
-                  try { localStorage.setItem("whats-new-last-seen", String(Date.now())); } catch {}
+                  try {
+                    localStorage.setItem("whats-new-last-seen", String(Date.now()));
+                  } catch {
+                    // The destination still opens when local storage is unavailable.
+                  }
                   d.tabNavigation.setActiveTab("whats-new" as any);
                 }}
                 className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
@@ -329,14 +343,16 @@ export function OrgDashboardHeader() {
       </div>
 
       {/* Quick action chips under omnibox — reveal on hover/focus of header */}
-      <div
-        className="max-h-0 opacity-0 overflow-hidden transition-all duration-300 ease-out hover:max-h-20 hover:opacity-100 focus-within:max-h-20 focus-within:opacity-100 group-hover/orgheader:max-h-20 group-hover/orgheader:opacity-100 group-focus-within/orgheader:max-h-20 group-focus-within/orgheader:opacity-100"
-      >
-        <QuickActionChips />
-      </div>
+      {!isCoursesFirstRun && (
+        <div
+          className="max-h-0 opacity-0 overflow-hidden transition-all duration-300 ease-out hover:max-h-20 hover:opacity-100 focus-within:max-h-20 focus-within:opacity-100 group-hover/orgheader:max-h-20 group-hover/orgheader:opacity-100 group-focus-within/orgheader:max-h-20 group-focus-within/orgheader:opacity-100"
+        >
+          <QuickActionChips />
+        </div>
+      )}
 
       {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
-      {activeTab !== "course-details" && (
+      {activeTab !== "course-details" && !isCoursesFirstRun && (
         <HeroBannerSwiper>
           <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
             {logoUrl && (
@@ -413,7 +429,7 @@ export function OrgDashboardHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {activeTab === "courses" && (
+            {activeTab === "courses" && !isCoursesFirstRun && (
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
                   <ShoppingBag className="w-4 h-4" />

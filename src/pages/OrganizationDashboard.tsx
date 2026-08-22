@@ -26,7 +26,7 @@ import { OrgMobileBottomNav } from "@/components/organization/OrgMobileBottomNav
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const d = useOrgDashboard();
 
   // В кабинете разделы переключаются query-параметрами без полной навигации,
@@ -98,31 +98,6 @@ export default function OrganizationDashboard() {
       window.removeEventListener("visual-animation-change", animHandler);
     };
   }, []);
-
-  // Handle the one-shot sales toggle. Workspace navigation is read directly
-  // by useTabNavigation; writing it back here couples history transitions.
-  useEffect(() => {
-    const enableSales = searchParams.get('enableSales');
-
-    // Hidden URL toggle: ?enableSales=1 enables Sales menu permanently
-    if (enableSales === '1' && d.organizationId) {
-      (async () => {
-        const { supabase } = await import('@/integrations/supabase/client');
-        const { data: org } = await supabase.from('organizations').select('menu_settings').eq('id', d.organizationId!).maybeSingle();
-        const current = (org?.menu_settings as any) || {};
-        await supabase.from('organizations').update({ menu_settings: { ...current, showSales: true } as any }).eq('id', d.organizationId!);
-      })();
-    }
-
-    if (enableSales === '1') {
-      // Strip only the one-shot toggle, keep tab context intact
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('enableSales');
-        return next;
-      }, { replace: true });
-    }
-  }, [searchParams, d.organizationId, setSearchParams]);
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 

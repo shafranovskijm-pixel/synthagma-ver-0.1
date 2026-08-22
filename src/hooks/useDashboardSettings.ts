@@ -31,43 +31,42 @@ interface MenuSettings {
 export const defaultMenuSettings: MenuSettings = {
   showStats: false,
   showLinks: false,
-  showDocuments: false,
+  showDocuments: true,
   showLibrary: true,
   showServices: true,
   showLaborSafety: false,
   showCourses: true,
-  showCompanies: false,
+  showCompanies: true,
   showStudents: true,
   showJournals: true,
   showFrdo: true,
   showSubscription: true,
   showAITutors: false,
-  showSales: false,
+  showSales: true,
   courseViewMode: 'grid',
   courseFolderMode: 'folders',
 };
 
 /** Ensures critical menu items are never accidentally hidden */
-function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined): MenuSettings {
+export function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined): MenuSettings {
   if (!raw || typeof raw !== 'object') return { ...defaultMenuSettings };
   return {
     showStats: raw.showStats === true,
     showLinks: raw.showLinks === true,
-    showDocuments: raw.showDocuments === true,
+    showDocuments: raw.showDocuments !== false,
     showLibrary: raw.showLibrary !== false,
     showServices: raw.showServices !== false,
     showLaborSafety: raw.showLaborSafety !== false,
     showCourses: raw.showCourses !== false,
-    // Off by default — user must explicitly enable in settings
-    showCompanies: raw.showCompanies === true,
+    showCompanies: raw.showCompanies !== false,
     showStudents: raw.showStudents !== false,
     showJournals: raw.showJournals !== false,
     showFrdo: raw.showFrdo !== false,
     showSubscription: raw.showSubscription !== false,
     // Off by default — user must explicitly enable in settings
     showAITutors: raw.showAITutors === true,
-    // Off by default — admin or hidden URL toggle to enable
-    showSales: raw.showSales === true,
+    // Visible by default; an organization can still explicitly hide it.
+    showSales: raw.showSales !== false,
     courseViewMode: (raw.courseViewMode === 'list' ? 'list' : 'grid') as 'grid' | 'list',
     courseFolderMode: (raw.courseFolderMode === 'flat' ? 'flat' : 'folders') as 'folders' | 'flat',
   };
