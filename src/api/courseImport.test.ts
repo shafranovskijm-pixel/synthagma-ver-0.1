@@ -32,7 +32,7 @@ describe("createImportedCourseHeader", () => {
     await expect(createImportedCourseHeader({
       organizationId: "org-1",
       title: "   ",
-    })).rejects.toMatchObject<CourseCreationError>({ code: "invalid_input" });
+    })).rejects.toMatchObject({ code: "invalid_input" });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
@@ -45,7 +45,7 @@ describe("createImportedCourseHeader", () => {
     await expect(createImportedCourseHeader({
       organizationId: "org-1",
       title: "Course",
-    })).rejects.toMatchObject<CourseCreationError>({ code: "plan_limit" });
+    })).rejects.toMatchObject({ code: "plan_limit" });
   });
 
   it("maps a revoked courses.write permission without exposing server details", async () => {
@@ -58,7 +58,7 @@ describe("createImportedCourseHeader", () => {
       organizationId: "org-1",
       title: "Course",
     });
-    await expect(promise).rejects.toMatchObject<CourseCreationError>({
+    await expect(promise).rejects.toMatchObject({
       code: "permission_denied",
       message: "Недостаточно прав для создания курса",
     });
