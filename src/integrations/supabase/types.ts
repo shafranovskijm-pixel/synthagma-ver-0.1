@@ -13102,6 +13102,10 @@ export type Database = {
       }
       storage_try_uuid: { Args: { _value: string }; Returns: string }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
+      transfer_org_ownership_atomic: {
+        Args: { p_new_owner_user_id: string; p_organization_id: string }
+        Returns: boolean
+      }
       update_signature_revision_html: {
         Args: { p_html: string; p_revision_id: string }
         Returns: undefined
