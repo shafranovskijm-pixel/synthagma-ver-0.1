@@ -12116,6 +12116,14 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      create_imported_course: {
+        Args: {
+          p_description?: string
+          p_organization_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
         Returns: Json
