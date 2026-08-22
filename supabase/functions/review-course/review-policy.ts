@@ -115,7 +115,7 @@ export function guardUnverifiedLegalFindings(
     const originalSuggestion = String(finding.suggestion || "").trim();
     const combined = `${originalDescription} ${originalSuggestion}`
       .toLocaleLowerCase("ru-RU")
-      .replaceAll("ё", "е");
+      .replace(/ё/g, "е");
     const mentions511 = /(?:№|n|номер|приказ)?\s*511\b/.test(combined);
     const falselyDenies511 = /не\s+(?:существ\w*|изда\w*|издан\w*)|будущ\w+/.test(combined);
     const falselyReplaces511With115 = mentions511 && (

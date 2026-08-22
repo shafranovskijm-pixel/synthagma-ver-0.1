@@ -41,7 +41,7 @@ describe("purchaseMarketplaceCourse", () => {
       marketplaceCourseId: "listing-1",
       organizationId: "org-1",
       studentsCount: 0,
-    })).rejects.toMatchObject<MarketplacePurchaseError>({ code: "invalid_input" });
+    })).rejects.toMatchObject({ code: "invalid_input" });
 
     expect(mocks.rpc).not.toHaveBeenCalled();
   });

@@ -51,7 +51,7 @@ describe("resolveCourseImportScope", () => {
       requestedOrganizationId: "org-from-url",
     });
 
-    await expect(promise).rejects.toMatchObject<CourseImportScopeError>({
+    await expect(promise).rejects.toMatchObject({
       code: "organization_mismatch",
     });
     expect(mocks.rpc).not.toHaveBeenCalledWith("can_access_organization", expect.anything());
@@ -67,7 +67,7 @@ describe("resolveCourseImportScope", () => {
       userId: "teacher-1",
       userRole: "organization",
       requestedOrganizationId: "org-1",
-    })).rejects.toMatchObject<CourseImportScopeError>({ code: "permission_denied" });
+    })).rejects.toMatchObject({ code: "permission_denied" });
   });
 
   it("uses only the verified admin view organization", async () => {
@@ -98,7 +98,7 @@ describe("resolveCourseImportScope", () => {
       userId: "admin-1",
       userRole: "admin",
       requestedOrganizationId: "org-other",
-    })).rejects.toMatchObject<CourseImportScopeError>({ code: "organization_mismatch" });
+    })).rejects.toMatchObject({ code: "organization_mismatch" });
   });
 
   it("requires explicit admin view mode instead of accepting an arbitrary URL", async () => {
@@ -106,7 +106,7 @@ describe("resolveCourseImportScope", () => {
       userId: "admin-1",
       userRole: "admin",
       requestedOrganizationId: "org-from-url",
-    })).rejects.toMatchObject<CourseImportScopeError>({ code: "admin_view_required" });
+    })).rejects.toMatchObject({ code: "admin_view_required" });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
@@ -117,7 +117,7 @@ describe("resolveCourseImportScope", () => {
       userId: "admin-1",
       userRole: "admin",
       requestedOrganizationId: "org-1",
-    })).rejects.toMatchObject<CourseImportScopeError>({ code: "scope_unavailable" });
+    })).rejects.toMatchObject({ code: "scope_unavailable" });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

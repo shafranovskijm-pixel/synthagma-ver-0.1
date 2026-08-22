@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 const testState = vi.hoisted(() => ({
-  courses: [] as Array<{ id: string; title: string; is_published: boolean }>,
+  courses: [] as Array<{ id: string; title: string; is_published: boolean; system_key?: string | null }>,
   studentTotal: 0,
   enrollmentCount: 0,
   documentCount: 0,

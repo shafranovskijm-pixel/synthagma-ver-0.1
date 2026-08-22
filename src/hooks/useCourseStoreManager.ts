@@ -268,7 +268,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       try {
         let buyerName = 'Неизвестный';
         let buyerEmail = '';
-        if (userRole === 'student' && userId) {
+        if ((userRole as string) === 'student' && userId) {
           const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('user_id', userId).single();
           buyerName = profile?.full_name || 'Студент';
           buyerEmail = profile?.email || '';

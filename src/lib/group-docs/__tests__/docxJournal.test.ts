@@ -57,6 +57,10 @@ describe("generateClassJournalDocx", () => {
       fillMode: "blank",
       includeJournal: false,
       otherDocuments: [{
+        id: "doc-1",
+        status: "draft",
+        created_at: "2026-08-15T00:00:00.000Z",
+        layout_format: "legacy_html",
         doc_type: "enrollment_order",
         name: "Приказ",
         document_number: null,

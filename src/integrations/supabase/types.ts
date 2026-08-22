@@ -2442,6 +2442,7 @@ export type Database = {
           slug: string | null
           source_course_id: string | null
           source_order_id: string | null
+          system_key: string | null
           title: string
           training_form: string | null
           updated_at: string
@@ -2484,6 +2485,7 @@ export type Database = {
           slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
+          system_key?: string | null
           title: string
           training_form?: string | null
           updated_at?: string
@@ -2526,6 +2528,7 @@ export type Database = {
           slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
+          system_key?: string | null
           title?: string
           training_form?: string | null
           updated_at?: string
@@ -12116,6 +12119,14 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      create_imported_course: {
+        Args: {
+          p_description?: string
+          p_organization_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
         Returns: Json
@@ -12656,6 +12667,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_org_ownership_identity: {
+        Args: { _organization_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_org_staff_permission: {
         Args: {
           _organization_id: string
@@ -12909,6 +12924,16 @@ export type Database = {
           used_count: number
         }[]
       }
+      purchase_marketplace_course: {
+        Args: {
+          p_buyer_type?: string
+          p_marketplace_course_id: string
+          p_notes?: string
+          p_students_count?: number
+          p_target_organization_id: string
+        }
+        Returns: Json
+      }
       purge_recycle_bin_30d: { Args: never; Returns: number }
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
@@ -12936,6 +12961,10 @@ export type Database = {
             }
             Returns: Json
           }
+      remove_org_staff_member: {
+        Args: { p_staff_id: string }
+        Returns: boolean
+      }
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
@@ -13094,6 +13123,10 @@ export type Database = {
       }
       storage_try_uuid: { Args: { _value: string }; Returns: string }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
+      transfer_org_ownership_atomic: {
+        Args: { p_new_owner_user_id: string; p_organization_id: string }
+        Returns: boolean
+      }
       update_signature_revision_html: {
         Args: { p_html: string; p_revision_id: string }
         Returns: undefined
