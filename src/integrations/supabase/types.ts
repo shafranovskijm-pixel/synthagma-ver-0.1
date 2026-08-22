@@ -12921,6 +12921,16 @@ export type Database = {
           used_count: number
         }[]
       }
+      purchase_marketplace_course: {
+        Args: {
+          p_buyer_type?: string
+          p_marketplace_course_id: string
+          p_notes?: string
+          p_students_count?: number
+          p_target_organization_id: string
+        }
+        Returns: Json
+      }
       purge_recycle_bin_30d: { Args: never; Returns: number }
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
