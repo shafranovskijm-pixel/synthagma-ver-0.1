@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const migration = read(
-  "supabase/migrations/20260822163000_system_welcome_course_marker.sql",
+  "supabase/migrations/20260822123030_eb38356e-5837-4f86-8959-7599ff9adae5.sql",
 );
 const marketplaceMigration = read(
-  "supabase/migrations/20260822162000_harden_unified_course_quota.sql",
+  "supabase/migrations/20260822122920_1acc140d-c059-4397-a0fb-5a65380137cb.sql",
 );
 const welcomeSeed = read("supabase/functions/seed-welcome-course/index.ts");
 const firstRun = read("src/lib/organization/firstRun.ts");

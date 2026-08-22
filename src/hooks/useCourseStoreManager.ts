@@ -268,15 +268,13 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       try {
         let buyerName = 'Неизвестный';
         let buyerEmail = '';
-        if ((userRole as string) === 'student' && userId) {
-          const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('user_id', userId).single();
-          buyerName = profile?.full_name || 'Студент';
-          buyerEmail = profile?.email || '';
-        } else if (userRole === 'organization') {
-          const { data: org } = await supabase.from('organizations').select('name, email').eq('id', organizationId).single();
-          buyerName = org?.name || 'Организация';
-          buyerEmail = org?.email || '';
-        }
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('name, email')
+          .eq('id', organizationId)
+          .single();
+        buyerName = org?.name || 'Организация';
+        buyerEmail = org?.email || '';
 
         const courseName = selectedCourseForOrder.course?.title || 'Курс';
 

@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migrationsDirectory = resolve(process.cwd(), "supabase", "migrations");
-const migrationFile = "20260822160000_harden_organization_update_policy.sql";
+const migrationFile = "20260822122207_5934a82f-c1a3-48c8-aa22-c1451e40bbe7.sql";
 const migration = readFileSync(join(migrationsDirectory, migrationFile), "utf8");
 
 describe("organization UPDATE policy migration contract", () => {

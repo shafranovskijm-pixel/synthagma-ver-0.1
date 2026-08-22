@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  MarketplacePurchaseError,
-  purchaseMarketplaceCourse,
-} from "@/api/marketplacePurchase";
+import { purchaseMarketplaceCourse } from "@/api/marketplacePurchase";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 

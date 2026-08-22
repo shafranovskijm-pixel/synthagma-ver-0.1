@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  CourseImportScopeError,
-  resolveCourseImportScope,
-} from "@/lib/courseImportScope";
+import { resolveCourseImportScope } from "@/lib/courseImportScope";
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),

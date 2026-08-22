@@ -6,13 +6,13 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
 const courseLimitMigration = read(
-  "supabase/migrations/20260822163000_system_welcome_course_marker.sql",
+  "supabase/migrations/20260822123030_eb38356e-5837-4f86-8959-7599ff9adae5.sql",
 );
 const importRpcMigration = read(
-  "supabase/migrations/20260822161000_enforce_course_insert_limit.sql",
+  "supabase/migrations/20260822122237_1b5eab34-c7ad-4eab-911f-ecb7ce86d63a.sql",
 );
 const latestAccessHelperMigration = read(
-  "supabase/migrations/20260822120000_drop_legacy_courses_manage_policy.sql",
+  "supabase/migrations/20260822122025_6be7e00b-82ec-44a9-8476-fac0e09cdd0c.sql",
 );
 const importEdge = read("supabase/functions/import-course/index.ts");
 const importPage = read("src/pages/CourseImport.tsx");

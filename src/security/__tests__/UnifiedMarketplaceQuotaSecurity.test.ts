@@ -6,10 +6,10 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const migration = read(
-  "supabase/migrations/20260822162000_harden_unified_course_quota.sql",
+  "supabase/migrations/20260822122920_1acc140d-c059-4397-a0fb-5a65380137cb.sql",
 );
 const profileIdentityMigration = read(
-  "supabase/migrations/20260822162500_guard_profile_tenant_identity.sql",
+  "supabase/migrations/20260822122951_3eaafed5-8e82-4df4-a45c-9df212ad3b48.sql",
 );
 const purchaseApi = read("src/api/marketplacePurchase.ts");
 const purchaseHook = read("src/hooks/useCourseStoreManager.ts");

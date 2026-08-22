@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createImportedCourseHeader } from "@/api/courseImport";
-import { CourseCreationError } from "@/api/courses";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 

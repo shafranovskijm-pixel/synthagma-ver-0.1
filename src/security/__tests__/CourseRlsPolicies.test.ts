@@ -23,12 +23,12 @@ function lastStatementFor(policyName: string) {
 describe("course RLS migration history", () => {
   it("ends both legacy broad course policies with explicit drops", () => {
     expect(lastStatementFor("Org users can manage their courses")).toEqual({
-      fileName: "20260822120000_drop_legacy_courses_manage_policy.sql",
+      fileName: "20260822122025_6be7e00b-82ec-44a9-8476-fac0e09cdd0c.sql",
       line: 'DROP POLICY IF EXISTS "Org users can manage their courses" ON public.courses;',
     });
 
     expect(lastStatementFor("Org users can view own courses")).toEqual({
-      fileName: "20260822120000_drop_legacy_courses_manage_policy.sql",
+      fileName: "20260822122025_6be7e00b-82ec-44a9-8476-fac0e09cdd0c.sql",
       line: 'DROP POLICY IF EXISTS "Org users can view own courses" ON public.courses;',
     });
   });
@@ -46,7 +46,7 @@ describe("course RLS migration history", () => {
 
   it("keeps staff out of the implicit owner branch", () => {
     const tightenedHelperMigration = readFileSync(
-      join(migrationsDirectory, "20260822120000_drop_legacy_courses_manage_policy.sql"),
+      join(migrationsDirectory, "20260822122025_6be7e00b-82ec-44a9-8476-fac0e09cdd0c.sql"),
       "utf8",
     );
 
@@ -82,11 +82,11 @@ describe("course RLS migration history", () => {
 
   it("keeps staff removal and ownership transfer fail-closed and atomic", () => {
     const staffSecurityMigration = readFileSync(
-      join(migrationsDirectory, "20260822120000_drop_legacy_courses_manage_policy.sql"),
+      join(migrationsDirectory, "20260822122025_6be7e00b-82ec-44a9-8476-fac0e09cdd0c.sql"),
       "utf8",
     );
     const ownershipMigration = readFileSync(
-      join(migrationsDirectory, "20260822121000_atomic_org_ownership_transfer.sql"),
+      join(migrationsDirectory, "20260822122107_9f12759e-f302-471c-bf91-63cd93dd68e5.sql"),
       "utf8",
     );
     const staffManager = readFileSync(

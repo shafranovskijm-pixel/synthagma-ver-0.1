@@ -6,10 +6,10 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
 const limitMigration = read(
-  "supabase/migrations/20260822163000_system_welcome_course_marker.sql",
+  "supabase/migrations/20260822123030_eb38356e-5837-4f86-8959-7599ff9adae5.sql",
 );
 const importMigration = read(
-  "supabase/migrations/20260822161000_enforce_course_insert_limit.sql",
+  "supabase/migrations/20260822122237_1b5eab34-c7ad-4eab-911f-ecb7ce86d63a.sql",
 );
 
 function functionBody(functionName: string, sql = limitMigration): string {
