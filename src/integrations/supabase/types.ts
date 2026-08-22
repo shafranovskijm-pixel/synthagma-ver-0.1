@@ -628,7 +628,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -639,7 +638,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -650,7 +648,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -2445,7 +2442,6 @@ export type Database = {
           slug: string | null
           source_course_id: string | null
           source_order_id: string | null
-          system_key: string | null
           title: string
           training_form: string | null
           updated_at: string
@@ -2488,7 +2484,6 @@ export type Database = {
           slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
-          system_key?: string | null
           title: string
           training_form?: string | null
           updated_at?: string
@@ -2531,7 +2526,6 @@ export type Database = {
           slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
-          system_key?: string | null
           title?: string
           training_form?: string | null
           updated_at?: string
@@ -11941,16 +11935,6 @@ export type Database = {
         Returns: undefined
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
-      apply_tbank_balance_credit: {
-        Args: {
-          p_amount: number
-          p_description: string
-          p_idempotency_key: string
-          p_organization_id: string
-          p_transaction_type: string
-        }
-        Returns: Json
-      }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
         Returns: undefined
@@ -12131,14 +12115,6 @@ export type Database = {
           batch_version: number
           inserted_count: number
         }[]
-      }
-      create_imported_course: {
-        Args: {
-          p_description?: string | null
-          p_organization_id: string
-          p_title: string
-        }
-        Returns: string
       }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
@@ -12932,16 +12908,6 @@ export type Database = {
           token: string
           used_count: number
         }[]
-      }
-      purchase_marketplace_course: {
-        Args: {
-          p_buyer_type?: string
-          p_marketplace_course_id: string
-          p_notes?: string | null
-          p_students_count?: number
-          p_target_organization_id: string
-        }
-        Returns: Json
       }
       purge_recycle_bin_30d: { Args: never; Returns: number }
       recalc_enrollment_time: {
