@@ -12656,6 +12656,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_org_ownership_identity: {
+        Args: { _organization_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_org_staff_permission: {
         Args: {
           _organization_id: string
@@ -12936,6 +12940,10 @@ export type Database = {
             }
             Returns: Json
           }
+      remove_org_staff_member: {
+        Args: { p_staff_id: string }
+        Returns: boolean
+      }
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
