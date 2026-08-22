@@ -2442,6 +2442,7 @@ export type Database = {
           slug: string | null
           source_course_id: string | null
           source_order_id: string | null
+          system_key: string | null
           title: string
           training_form: string | null
           updated_at: string
@@ -2484,6 +2485,7 @@ export type Database = {
           slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
+          system_key?: string | null
           title: string
           training_form?: string | null
           updated_at?: string
@@ -2526,6 +2528,7 @@ export type Database = {
           slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
+          system_key?: string | null
           title?: string
           training_form?: string | null
           updated_at?: string
