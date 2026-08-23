@@ -11,21 +11,26 @@ export interface UtmData {
   utm_campaign?: string;
   utm_term?: string;
   utm_content?: string;
+  yclid?: string;
   page_url?: string;
   referrer?: string;
   saved_at: number;
 }
 
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
+const ATTRIBUTION_KEYS = [...UTM_KEYS, "yclid"] as const;
 
 export function captureUtmFromUrl() {
   try {
     const params = new URLSearchParams(window.location.search);
     const found: Partial<UtmData> = {};
     let hasAny = false;
-    for (const k of UTM_KEYS) {
+    for (const k of ATTRIBUTION_KEYS) {
       const v = params.get(k);
-      if (v) { (found as any)[k] = v.slice(0, 128); hasAny = true; }
+      if (v) {
+        found[k] = v.slice(0, 128);
+        hasAny = true;
+      }
     }
     if (!hasAny) {
       // First visit without UTM → still capture referrer/landing page if not set yet
@@ -62,5 +67,9 @@ export function getUtmData(): UtmData | null {
 }
 
 export function clearUtmData() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn("clearUtmData failed:", error);
+  }
 }
