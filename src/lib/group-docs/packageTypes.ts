@@ -60,8 +60,13 @@ export function shouldGeneratePackageDocs(st: PackageOrchestrationState): boolea
   return st.contractsDone && st.contractCount > 0 && !st.docsGenerated;
 }
 
-/** Обязательные данные для конкретного документа группы. */
-export const DOC_REQUIRED_KEYS: Record<string, string[]> = {
+export type DocumentRequirementProfile = "generic" | "goreltech";
+
+/**
+ * Требования универсальных HTML-макетов. Это исходное поведение Синтагмы:
+ * клиентский пакет ГОРЭЛТЕХ не должен менять блокировки других организаций.
+ */
+export const GENERIC_DOC_REQUIRED_KEYS: Record<string, string[]> = {
   enrollment_order: ["org_name", "org_director_name", "group_number", "program_title", "program_hours", "start_date"],
   expulsion_order: ["org_name", "org_director_name", "group_number", "program_title", "end_date"],
   student_list: ["org_name", "group_number", "program_title", "students"],
@@ -72,6 +77,22 @@ export const DOC_REQUIRED_KEYS: Record<string, string[]> = {
   title_page: ["org_name", "group_number", "program_title"],
   pass: ["org_name", "group_number", "students"],
 };
+
+/** Поля, которые действительно печатаются в оригинальных Word-шаблонах ГОРЭЛТЕХ. */
+export const GORELTECH_DOC_REQUIRED_KEYS: Record<string, string[]> = {
+  enrollment_order: ["org_name", "group_number", "program_title", "program_hours", "start_date", "end_date", "students"],
+  expulsion_order: ["org_name", "group_number", "program_title", "program_hours", "start_date", "end_date", "students"],
+  student_list: ["org_name", "group_number", "program_title", "students"],
+  class_journal: ["org_name", "group_number", "program_title", "program_hours", "instructor_name", "training_dates_4", "students"],
+  schedule: ["program_title", "program_hours", "instructor_name"],
+  attestation_sheet: ["org_name", "group_number", "program_title", "program_hours", "start_date", "end_date", "instructor_name", "students"],
+  registration_book: ["org_name", "group_number", "program_title", "start_date", "end_date", "students"],
+  title_page: ["org_name", "group_number", "program_title", "start_date", "end_date"],
+  pass: ["org_name", "group_number", "program_title", "program_hours", "start_date", "end_date", "students"],
+};
+
+/** Совместимость: общий профиль остаётся профилем по умолчанию. */
+export const DOC_REQUIRED_KEYS = GENERIC_DOC_REQUIRED_KEYS;
 
 export const REQUIRED_KEY_LABELS: Record<string, string> = {
   org_name: "название учебного центра",
@@ -104,8 +125,12 @@ export function missingDocRequirements(
   docType: string,
   src: DocRequirementSource,
   mode: DocumentFillMode = "data",
+  profile: DocumentRequirementProfile = "generic",
 ): string[] {
-  const keys = (DOC_REQUIRED_KEYS[docType] || []).filter(
+  const requirements = profile === "goreltech"
+    ? GORELTECH_DOC_REQUIRED_KEYS
+    : GENERIC_DOC_REQUIRED_KEYS;
+  const keys = (requirements[docType] || []).filter(
     (key) => !(mode === "blank" && key === "training_dates_4"),
   );
   const out: string[] = [];
@@ -123,4 +148,23 @@ export function missingDocRequirements(
     if (blank) out.push(REQUIRED_KEY_LABELS[key] || key);
   }
   return out;
+}
+
+/**
+ * Объединяет требования только для реально формируемых документов пакета.
+ * Порядок стабилен, одинаковые человекочитаемые причины не дублируются.
+ */
+export function missingPackageRequirements(
+  docTypes: readonly string[],
+  src: DocRequirementSource,
+  mode: DocumentFillMode = "data",
+  profile: DocumentRequirementProfile = "generic",
+): string[] {
+  const missing = new Set<string>();
+  for (const docType of docTypes) {
+    for (const label of missingDocRequirements(docType, src, mode, profile)) {
+      missing.add(label);
+    }
+  }
+  return Array.from(missing);
 }

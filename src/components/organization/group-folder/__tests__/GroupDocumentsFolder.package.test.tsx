@@ -19,8 +19,6 @@ const mocks = vi.hoisted(() => ({
   individualSave: vi.fn(),
   legalSave: vi.fn(),
   toastError: vi.fn(),
-  toastInfo: vi.fn(),
-  openPrivateFile: vi.fn(),
   downloadPrivateFile: vi.fn(),
   remove: vi.fn(),
   dialogState: {
@@ -35,7 +33,6 @@ vi.mock("@/hooks/useGroupDocuments", () => ({
 }));
 
 vi.mock("@/utils/storageHelpers", () => ({
-  openPrivateFile: mocks.openPrivateFile,
   downloadPrivateFile: mocks.downloadPrivateFile,
 }));
 
@@ -58,7 +55,7 @@ vi.mock("sonner", () => ({
     error: mocks.toastError,
     success: vi.fn(),
     warning: vi.fn(),
-    info: mocks.toastInfo,
+    info: vi.fn(),
   },
 }));
 
@@ -146,6 +143,7 @@ function mockDocuments(documents: Array<typeof docxRow>) {
 function goreltechContext() {
   const ctx = structuredClone(SAMPLE_CONTEXT);
   ctx.organization.id = GORELTECH_ORGANIZATION_ID;
+  ctx.group.instructor_name = "Ляпко Дарья Константиновна";
   return ctx;
 }
 
@@ -169,9 +167,6 @@ describe("GroupDocumentsFolder package contract routing", () => {
     mocks.dialogState.individualProps = null;
     mocks.dialogState.legalProps = null;
     mocks.toastError.mockReset();
-    mocks.toastInfo.mockReset();
-    mocks.openPrivateFile.mockReset();
-    mocks.openPrivateFile.mockResolvedValue(true);
     mocks.downloadPrivateFile.mockReset();
     mocks.downloadPrivateFile.mockResolvedValue(true);
     mocks.remove.mockReset();
@@ -209,10 +204,22 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.individualSave).not.toHaveBeenCalled();
     expect(mocks.generatePackage).toHaveBeenCalledWith(
       expect.objectContaining({
-        extras: expect.objectContaining({ contract_basis: "Договор № 2026-001" }),
+        extras: expect.objectContaining({
+          contract_basis: "Договор № 2026-001",
+          signatory_position_enrollment_order: SAMPLE_CONTEXT.organization.director_position,
+          signatory_name_enrollment_order: SAMPLE_CONTEXT.organization.director_name,
+        }),
       }),
       PACKAGE_DOC_TYPES.filter((type) => type !== "class_journal"),
       expect.any(Object),
+    );
+    expect(mocks.generateClassJournalDocx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        journalSignatory: {
+          position: SAMPLE_CONTEXT.organization.director_position,
+          name: SAMPLE_CONTEXT.organization.director_name,
+        },
+      }),
     );
   });
 
@@ -277,6 +284,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     genericContext.organization.inn = "0000000000";
     genericContext.organization.director_name = "ТЕСТОВЫЙ РУКОВОДИТЕЛЬ";
     genericContext.organization.director_position = "Директор";
+    genericContext.group.instructor_name = "ТЕСТОВЫЙ ПРЕПОДАВАТЕЛЬ";
 
     renderFolder(genericContext);
 
@@ -338,17 +346,83 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
   });
 
-  it("открывает DOCX в новой вкладке, а скачивает отдельной временной ссылкой", async () => {
+  it("не открывает пакет, если одному из девяти Word-документов не хватает печатаемого поля", () => {
+    const ctx = goreltechContext();
+    ctx.group.instructor_name = "";
+    renderFolder(ctx);
+
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
+
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Заполните обязательные данные группы",
+      { description: "преподаватель" },
+    );
+    expect(mocks.dialogState.docxProps).toBeNull();
+    expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+  });
+
+  it("не подменяет пустой номер группы её названием для пакета ГОРЭЛТЕХ", () => {
+    const ctx = goreltechContext();
+    ctx.group.name = "Группа с названием";
+    ctx.group.number = "";
+    renderFolder(ctx);
+
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
+
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Заполните обязательные данные группы",
+      { description: "номер группы" },
+    );
+    expect(mocks.dialogState.docxProps).toBeNull();
+    expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+  });
+
+  it("не подменяет пустой номер группы её названием для универсального пакета", () => {
+    const ctx = structuredClone(SAMPLE_CONTEXT);
+    ctx.organization.name = "ТЕСТОВАЯ ОРГАНИЗАЦИЯ — НЕ РЕАЛЬНАЯ";
+    ctx.organization.inn = "0000000000";
+    ctx.organization.director_name = "ТЕСТОВЫЙ РУКОВОДИТЕЛЬ";
+    ctx.organization.director_position = "Директор";
+    ctx.group.instructor_name = "ТЕСТОВЫЙ ПРЕПОДАВАТЕЛЬ";
+    ctx.group.name = "Группа с названием";
+    ctx.group.number = "";
+    renderFolder(ctx);
+
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (универсальный)" }));
+
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Заполните обязательные данные группы",
+      { description: "номер группы" },
+    );
+    expect(mocks.dialogState.legalProps).toBeNull();
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();
+  });
+
+  it("показывает некритичную подсказку, но не выдаёт её за блокирующее поле", () => {
+    const ctx = goreltechContext();
+    render(
+      <GroupDocumentsFolder
+        organizationId="org-1"
+        groupId="group-1"
+        groupName="Группа 1"
+        students={ctx.students}
+        ctx={ctx}
+        missingFields={["проверить реквизиты программы"]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
+
+    expect(mocks.dialogState.docxProps).not.toBeNull();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("скачивает DOCX напрямую и не показывает действие, создающее пустую вкладку", async () => {
     mockDocuments([docxRow]);
     renderFolder();
 
-    fireEvent.click(screen.getByRole("button", { name: `Открыть ${docxRow.name}` }));
-    await waitFor(() => {
-      expect(mocks.openPrivateFile).toHaveBeenCalledWith("billing-documents", docxRow.file_path);
-    });
-    expect(mocks.downloadPrivateFile).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: `Скачать ${docxRow.name}` }));
+    expect(screen.queryByRole("button", { name: `Открыть ${docxRow.name}` })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Скачать Word ${docxRow.name}` }));
     await waitFor(() => {
       expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
         "billing-documents",
@@ -356,30 +430,68 @@ describe("GroupDocumentsFolder package contract routing", () => {
         `${docxRow.name}.docx`,
       );
     });
-    expect(mocks.openPrivateFile).toHaveBeenCalledTimes(1);
   });
 
-  it("показывает ошибку, если вкладка или временная ссылка недоступны", async () => {
-    mocks.openPrivateFile.mockResolvedValue(false);
+  it("показывает ошибку, если временная ссылка на Word недоступна", async () => {
     mocks.downloadPrivateFile.mockResolvedValue(false);
     mockDocuments([docxRow]);
     renderFolder();
 
-    fireEvent.click(screen.getByRole("button", { name: `Открыть ${docxRow.name}` }));
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Не удалось открыть файл Word",
-        expect.objectContaining({ description: expect.stringContaining("новую вкладку") }),
-      );
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: `Скачать ${docxRow.name}` }));
+    fireEvent.click(screen.getByRole("button", { name: `Скачать Word ${docxRow.name}` }));
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith(
         "Не удалось скачать файл Word",
         expect.objectContaining({ description: expect.stringContaining("временную ссылку") }),
       );
     });
+  });
+
+  it("передаёт отдельного подписанта журнала и остальных документов", async () => {
+    renderFolder();
+
+    fireEvent.click(screen.getByRole("button", { name: "Подписанты документов" }));
+    const dialog = await screen.findByRole("dialog", { name: "Подписанты документов ГОРЭЛТЕХ" });
+    const position = dialog.querySelector<HTMLInputElement>("#signatory-position-class_journal");
+    const name = dialog.querySelector<HTMLInputElement>("#signatory-name-class_journal");
+    expect(position).not.toBeNull();
+    expect(name).not.toBeNull();
+    fireEvent.change(position!, { target: { value: "Руководитель учебного центра" } });
+    fireEvent.change(name!, { target: { value: "Ляпко Дарья Константиновна" } });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить подписантов" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Сохранить договор Word" }));
+
+    await waitFor(() => {
+      expect(mocks.generateClassJournalDocx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          journalSignatory: {
+            position: "Руководитель учебного центра",
+            name: "Ляпко Дарья Константиновна",
+          },
+        }),
+      );
+    });
+  });
+
+  it("требует явного подтверждения, если подписант оставлен пустым", async () => {
+    const ctx = goreltechContext();
+    ctx.organization.director_position = "";
+    ctx.organization.director_name = "";
+    renderFolder(ctx);
+
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Заполните обязательные данные группы",
+      expect.objectContaining({ description: expect.stringContaining("подтвердите пустые поля подписантов") }),
+    );
+    expect(mocks.dialogState.docxProps).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Подписанты документов" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Подтвердить подписантов" }));
+    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
+
+    expect(await screen.findByRole("button", { name: "Сохранить договор Word" })).toBeInTheDocument();
   });
 
   it("удаляет документ только после явного подтверждения", async () => {

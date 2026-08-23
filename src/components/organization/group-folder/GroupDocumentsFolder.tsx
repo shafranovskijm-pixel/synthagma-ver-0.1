@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Eye, Download, Trash2, FileType2, User, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
+import { FileText, Eye, Download, Trash2, FileType2, User, ChevronDown, AlertTriangle, RotateCcw, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import {
   packageResultMessage,
   shouldGeneratePackageDocs,
   missingDocRequirements,
+  missingPackageRequirements,
 } from "@/lib/group-docs/packageTypes";
 import type { DocType, GenerationContext } from "@/lib/group-docs/schema";
 import { useGroupDocuments, type GroupDocumentRow } from "@/hooks/useGroupDocuments";
@@ -45,7 +46,14 @@ import { GenerateContractDialog } from "./GenerateContractDialog";
 import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
 import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
-import { downloadPrivateFile, openPrivateFile } from "@/utils/storageHelpers";
+import { downloadPrivateFile } from "@/utils/storageHelpers";
+import {
+  defaultGroupDocumentSignatories,
+  hasBlankGroupDocumentSignatory,
+  signatoriesToGenerationExtras,
+  type GroupDocumentSignatories,
+} from "@/lib/group-docs/signatories";
+import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
@@ -98,6 +106,22 @@ export function GroupDocumentsFolder({
   const [deleteRow, setDeleteRow] = useState<GroupDocumentRow | null>(null);
   const [retryPackage, setRetryPackage] = useState<GeneratedContractBatch | null>(null);
   const [mode, setMode] = useState<DocumentFillMode>("blank");
+  const [signatoriesOpen, setSignatoriesOpen] = useState(false);
+  const [blankSignatoriesConfirmed, setBlankSignatoriesConfirmed] = useState(false);
+  const defaultSignatory = useMemo(() => ({
+    position: ctx?.organization.director_position || "",
+    name: ctx?.organization.director_name || "",
+  }), [ctx?.organization.director_name, ctx?.organization.director_position]);
+  const defaultSignatories = useMemo(
+    () => defaultGroupDocumentSignatories(defaultSignatory),
+    [defaultSignatory],
+  );
+  const [documentSignatories, setDocumentSignatories] =
+    useState<GroupDocumentSignatories>(defaultSignatories);
+  useEffect(() => {
+    setDocumentSignatories(defaultSignatories);
+    setBlankSignatoriesConfirmed(false);
+  }, [organizationId, defaultSignatories]);
   const exactGoreltechDocuments = useMemo(
     () => !!ctx && resolveGroupDocumentClientProfile(ctx.organization).key === "goreltech",
     [ctx],
@@ -128,14 +152,23 @@ export function GroupDocumentsFolder({
    */
   const packageBlockers = useMemo(
     () => {
-      const blockers = new Set([...blockingFields, ...missingFields]);
+      // `missingFields` — подсказки из карточки группы. Блокируют только явно
+      // критичные поля и требования реально выбранных документов ниже.
+      const blockers = new Set(blockingFields);
       if (mode === "blank") blockers.delete("4 даты занятий для журнала");
       return Array.from(blockers);
     },
-    [blockingFields, missingFields, mode],
+    [blockingFields, mode],
   );
-  const blocked = packageBlockers.length > 0;
-
+  const requirementProfile = exactGoreltechDocuments ? "goreltech" : "generic";
+  const blankSignatoryBlocker = useMemo(
+    () => exactGoreltechDocuments
+      && hasBlankGroupDocumentSignatory(documentSignatories)
+      && !blankSignatoriesConfirmed
+        ? ["подтвердите пустые поля подписантов"]
+        : [],
+    [blankSignatoriesConfirmed, documentSignatories, exactGoreltechDocuments],
+  );
   /** Источник для проверки требований конкретного документа. */
   const reqSource = useMemo(() => ({
     org_name: ctx?.organization.name,
@@ -150,6 +183,16 @@ export function GroupDocumentsFolder({
     students_count: ctx?.students.length || 0,
   }), [ctx]);
 
+  const packageRequirements = useMemo(
+    () => missingPackageRequirements(PACKAGE_DOC_TYPES, reqSource, mode, requirementProfile),
+    [reqSource, mode, requirementProfile],
+  );
+  const allPackageBlockers = useMemo(
+    () => Array.from(new Set([...packageBlockers, ...packageRequirements, ...blankSignatoryBlocker])),
+    [packageBlockers, packageRequirements, blankSignatoryBlocker],
+  );
+  const blocked = allPackageBlockers.length > 0;
+
   /** Готовность данных по документам пакета — чтобы честно предупредить менеджера. */
   const readiness = useMemo(
     () =>
@@ -162,7 +205,11 @@ export function GroupDocumentsFolder({
 
   const run = async (types: DocType[], docBlockers?: string[], contractBasis?: string) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
-    const gate = docBlockers ?? packageBlockers;
+    const gate = docBlockers ?? Array.from(new Set([
+      ...packageBlockers,
+      ...missingPackageRequirements(types, reqSource, mode, requirementProfile),
+      ...blankSignatoryBlocker,
+    ]));
     if (gate.length > 0) {
       toast.error("Заполните обязательные данные группы", { description: gate.join(", ") });
       return false;
@@ -200,9 +247,16 @@ export function GroupDocumentsFolder({
         return false;
       }
 
-      const generationCtx = contractBasis
-        ? { ...ctx, extras: { ...(ctx.extras || {}), contract_basis: contractBasis } }
-        : ctx;
+      const generationCtx = {
+        ...ctx,
+        extras: {
+          ...(ctx.extras || {}),
+          ...(exactGoreltechDocuments
+            ? signatoriesToGenerationExtras(documentSignatories)
+            : {}),
+          ...(contractBasis ? { contract_basis: contractBasis } : {}),
+        },
+      };
       const genOpts = {
         totalPrice: price,
         mode,
@@ -226,6 +280,7 @@ export function GroupDocumentsFolder({
             groupId,
             fillMode: mode,
             includeJournal,
+            journalSignatory: documentSignatories.class_journal,
             otherDocuments: docs,
           }).then(async result => {
             await refreshDocuments();
@@ -306,23 +361,13 @@ export function GroupDocumentsFolder({
         toast.error("Файл Word недоступен");
         return;
       }
-      const actionLabel = download ? "скачать" : "открыть";
       const downloadName = row.name.toLowerCase().endsWith(".docx") ? row.name : `${row.name}.docx`;
-      const ok = download
-        ? await downloadPrivateFile("billing-documents", row.file_path, downloadName)
-        : await openPrivateFile("billing-documents", row.file_path);
+      const ok = await downloadPrivateFile("billing-documents", row.file_path, downloadName);
       if (!ok) {
-        toast.error(`Не удалось ${actionLabel} файл Word`, {
-          description: download
-            ? "Не удалось получить временную ссылку на скачивание. Попробуйте ещё раз."
-            : "Не удалось получить временную ссылку или браузер заблокировал новую вкладку.",
+        toast.error("Не удалось скачать файл Word", {
+          description: "Не удалось получить временную ссылку на скачивание. Попробуйте ещё раз.",
         });
         return;
-      }
-      if (!download) {
-        toast.info("Открываем оригинал Word", {
-          description: "PDF-копия ещё не формируется, поэтому предпросмотр откроет DOCX.",
-        });
       }
       return;
     }
@@ -384,6 +429,11 @@ export function GroupDocumentsFolder({
             ? "Все 9 документов формируются из оригинальных Word-файлов ГОРЭЛТЕХ."
             : "Используется нейтральный общий макет Синтагмы с реквизитами вашей организации."}
         </div>
+        {exactGoreltechDocuments && (
+          <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            Перед формированием проверьте «Подписанты документов»: Синтагма не подменяет выбранную должность на «Генеральный директор».
+          </div>
+        )}
         {mode === "data" && (
           <div className="mt-3 text-xs space-y-2">
             <div className="font-medium text-foreground">Источники и готовность данных перед генерацией:</div>
@@ -411,12 +461,22 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setCompanyPackageOpen(true); }}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: allPackageBlockers.join(", ") }); return; } setCompanyPackageOpen(true); }}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}
         </Button>
-        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: packageBlockers.join(", ") }); return; } setIndividualPackageOpen(true); }}>
+        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: allPackageBlockers.join(", ") }); return; } setIndividualPackageOpen(true); }}>
           <User className="w-4 h-4" /> Пакет физлица
         </Button>
+        {exactGoreltechDocuments && (
+          <Button
+            variant="outline"
+            className="gap-1.5 rounded-xl"
+            disabled={busy || !ctx}
+            onClick={() => setSignatoriesOpen(true)}
+          >
+            <UserCheck className="w-4 h-4" /> Подписанты документов
+          </Button>
+        )}
         <Badge variant="outline" className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
           Beta
         </Badge>
@@ -428,7 +488,10 @@ export function GroupDocumentsFolder({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-80">
             {DOC_TYPES.map(t => {
-              const docMissing = missingDocRequirements(t.key, reqSource, mode);
+              const docMissing = Array.from(new Set([
+                ...missingDocRequirements(t.key, reqSource, mode, requirementProfile),
+                ...blankSignatoryBlocker,
+              ]));
               return (
                 <DropdownMenuItem
                   key={t.key}
@@ -554,12 +617,20 @@ export function GroupDocumentsFolder({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="ghost" className="gap-1" aria-label={`Открыть ${row.name}`} title={`Открыть ${row.name}`} onClick={() => openDoc(row)}>
-                    <Eye className="w-3.5 h-3.5" /> {row.layout_format === "docx_ooxml" ? "Открыть" : "Превью"}
-                  </Button>
-                  <Button size="sm" variant="ghost" className="gap-1" aria-label={`Скачать ${row.name}`} title={`Скачать ${row.name}`} onClick={() => openDoc(row, true)}>
-                    <Download className="w-3.5 h-3.5" />
-                  </Button>
+                  {row.layout_format === "docx_ooxml" ? (
+                    <Button size="sm" variant="ghost" className="gap-1" aria-label={`Скачать Word ${row.name}`} title={`Скачать Word ${row.name}`} onClick={() => openDoc(row, true)}>
+                      <Download className="w-3.5 h-3.5" /> Скачать Word
+                    </Button>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="ghost" className="gap-1" aria-label={`Открыть ${row.name}`} title={`Открыть ${row.name}`} onClick={() => openDoc(row)}>
+                        <Eye className="w-3.5 h-3.5" /> Превью
+                      </Button>
+                      <Button size="sm" variant="ghost" className="gap-1" aria-label={`Скачать ${row.name}`} title={`Скачать ${row.name}`} onClick={() => openDoc(row, true)}>
+                        <Download className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
                   <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Удалить ${row.name}`} title={`Удалить ${row.name}`} onClick={() => setDeleteRow(row)}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -628,6 +699,23 @@ export function GroupDocumentsFolder({
           fixedScenario="individual"
           onClose={() => setIndividualPackageOpen(false)}
           onGenerated={handleContractsGenerated}
+        />
+      )}
+
+      {exactGoreltechDocuments && (
+        <GoreltechDocumentSignatoriesDialog
+          open={signatoriesOpen}
+          onOpenChange={setSignatoriesOpen}
+          value={documentSignatories}
+          defaultSignatory={defaultSignatory}
+          onChange={(value) => {
+            setDocumentSignatories(value);
+            setBlankSignatoriesConfirmed(false);
+          }}
+          onConfirm={() => {
+            setBlankSignatoriesConfirmed(true);
+            setSignatoriesOpen(false);
+          }}
         />
       )}
 

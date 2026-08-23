@@ -1,4 +1,4 @@
-import type { GenerationContext } from "./schema";
+import type { DocType, GenerationContext } from "./schema";
 import { VARIABLE_CATALOG } from "./variableCatalog";
 import { resolveGroupDocumentClientProfile } from "./clientProfile";
 import {
@@ -268,6 +268,8 @@ export interface BuildVariablesOptions {
   mode?: DocumentFillMode;
   /** Snapshot фактических данных Supabase (обязателен для mode="data"). */
   factual?: GroupFactualData | null;
+  /** Тип документа нужен для выбора подписанта именно этого бланка. */
+  docType?: DocType;
 }
 
 export function buildVariables(
@@ -283,6 +285,24 @@ export function buildVariables(
   const factual = opts.factual || emptyFactualData();
   const journalDates = journalDateColumns(factual.lessonCompletions);
   const clientProfile = resolveGroupDocumentClientProfile(ctx.organization);
+  const signatoryPositionKey = opts.docType
+    ? `signatory_position_${opts.docType}`
+    : "";
+  const signatoryNameKey = opts.docType ? `signatory_name_${opts.docType}` : "";
+  const hasSignatoryPosition = Boolean(
+    signatoryPositionKey
+      && Object.prototype.hasOwnProperty.call(ctx.extras || {}, signatoryPositionKey),
+  );
+  const hasSignatoryName = Boolean(
+    signatoryNameKey
+      && Object.prototype.hasOwnProperty.call(ctx.extras || {}, signatoryNameKey),
+  );
+  const signatoryPosition = hasSignatoryPosition
+    ? String(ctx.extras?.[signatoryPositionKey] ?? "")
+    : String(ctx.organization.director_position || "");
+  const signatoryName = hasSignatoryName
+    ? String(ctx.extras?.[signatoryNameKey] ?? "")
+    : String(ctx.organization.director_name || "");
 
   const hasCompany = !!(ctx.company && ctx.company.name);
   const customerName = hasCompany
@@ -343,9 +363,13 @@ export function buildVariables(
     org_address: ctx.organization.address,
     org_city: organizationCity(ctx.organization.address) || clientProfile.cityFallback,
     org_director_name: ctx.organization.director_name,
-    org_director_position:
-      ctx.organization.director_position || clientProfile.directorPositionFallback,
+    // Должность не выводится из клиентского профиля: пустая карточка должна
+    // остаться пустой, пока организация явно не выберет подписанта.
+    org_director_position: ctx.organization.director_position || "",
     org_director_short: shortName(ctx.organization.director_name),
+    signatory_position: signatoryPosition,
+    signatory_name: signatoryName,
+    signatory_short: shortName(signatoryName),
     org_bank_name: ctx.organization.bank_name || "",
     org_bank_bik: ctx.organization.bank_bik || "",
     org_bank_account: ctx.organization.bank_account || "",

@@ -7,6 +7,10 @@ export interface GenerateClassJournalParams {
   fillMode: "blank" | "data";
   includeJournal?: boolean;
   otherDocuments: GeneratedDocument[];
+  journalSignatory?: {
+    position: string;
+    name: string;
+  };
 }
 
 export interface GenerateClassJournalResult {
@@ -27,6 +31,10 @@ const legacyPayload = (document: GeneratedDocument) => ({
   fill_mode: document.fill_mode,
   layout_format: "legacy_html" as const,
   source_note: document.source_note ?? null,
+  signatory: {
+    position: document.variables.signatory_position ?? "",
+    name: document.variables.signatory_name ?? "",
+  },
 });
 
 /** Сервер перечитывает группу/учеников и сохраняет всю партию одной транзакцией. */
@@ -39,6 +47,7 @@ export async function generateClassJournalDocx(
       groupId: params.groupId,
       fillMode: params.fillMode,
       includeJournal: params.includeJournal ?? true,
+      journalSignatory: params.journalSignatory,
       otherDocuments: params.otherDocuments.map(legacyPayload),
     },
   });

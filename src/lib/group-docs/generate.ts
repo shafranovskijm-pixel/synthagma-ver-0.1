@@ -69,6 +69,7 @@ export function generateDocument(
     totalPrice: opts.totalPrice,
     mode,
     factual: opts.factual ?? null,
+    docType,
   });
 
 

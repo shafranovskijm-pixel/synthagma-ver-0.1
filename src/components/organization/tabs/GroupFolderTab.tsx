@@ -20,6 +20,7 @@ import { canonicalCourseHours, programHoursMismatch, resolveUniqueCommonCourseId
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
+import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
 
@@ -339,7 +340,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       group: {
         id: group.id,
         name: group.name,
-        number: group.group_number || group.name,
+        number: group.group_number || "",
         start_date: group.start_date || "",
         end_date: group.end_date || "",
         program_title: group.program_title || courseInfo?.title || "",
@@ -375,6 +376,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const resolvedProgramHours = group?.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0;
   const courseMasterHours = canonicalCourseHours(courseInfo);
   const hasProgramHoursMismatch = programHoursMismatch(group?.program_hours, courseInfo);
+  const exactGoreltechDocuments = useMemo(
+    () => !!generationContext
+      && resolveGroupDocumentClientProfile(generationContext.organization).key === "goreltech",
+    [generationContext],
+  );
 
   /** Критичные поля: без них документы бессмысленны — генерация блокируется. */
   const blockingDocFields = useMemo(() => {
@@ -383,12 +389,13 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!resolvedProgramHours) missing.push("объём часов");
     if (hasProgramHoursMismatch) missing.push(`часы группы (${group?.program_hours}) не совпадают с курсом (${courseMasterHours})`);
     if (!orgInfo?.inn) missing.push("ИНН учебного центра");
-    if (!orgInfo?.director_name) missing.push("руководитель учебного центра");
-    // Юридически обязательные поля без «типовых» подстановок.
-    if (!orgInfo?.director_position) missing.push("должность руководителя учебного центра");
+    // Только клиентский Word-пакет имеет отдельный подтверждаемый выбор
+    // подписантов. Универсальные документы сохраняют прежние требования.
+    if (!exactGoreltechDocuments && !orgInfo?.director_name) missing.push("руководитель учебного центра");
+    if (!exactGoreltechDocuments && !orgInfo?.director_position) missing.push("должность руководителя учебного центра");
     if (!group?.program_form) missing.push("форма обучения группы");
     return missing;
-  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours]);
+  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours, exactGoreltechDocuments]);
 
   const missingDocFields = useMemo(() => {
     const missing = [...blockingDocFields];

@@ -31,6 +31,36 @@ describe("generateClassJournalDocx", () => {
     });
   });
 
+  it("передаёт выбранного подписанта журнала без подмены должности", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        batch: { batch_id: "batch-1", batch_version: 1, inserted_count: 1 },
+        document: { file_path: "journals/group-1.docx" },
+      },
+      error: null,
+    });
+
+    await generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      fillMode: "blank",
+      journalSignatory: {
+        position: "Руководитель учебного центра",
+        name: "Ляпко Дарья Константиновна",
+      },
+      otherDocuments: [],
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      body: expect.objectContaining({
+        journalSignatory: {
+          position: "Руководитель учебного центра",
+          name: "Ляпко Дарья Константиновна",
+        },
+      }),
+    });
+  });
+
   it("показывает точную серверную причину вместо non-2xx", async () => {
     invokeMock.mockResolvedValue({ data: null, error: new Error("Шаблон журнала не найден") });
 
@@ -65,7 +95,10 @@ describe("generateClassJournalDocx", () => {
         name: "Приказ",
         document_number: null,
         document_date: "2026-08-15",
-        variables: {},
+        variables: {
+          signatory_position: "Руководитель учебного центра",
+          signatory_name: "Ляпко Дарья Константиновна",
+        },
         html: "<html></html>",
         doc_status: "draft",
         fill_mode: "blank",
@@ -74,7 +107,15 @@ describe("generateClassJournalDocx", () => {
     });
 
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
-      body: expect.objectContaining({ includeJournal: false }),
+      body: expect.objectContaining({
+        includeJournal: false,
+        otherDocuments: [expect.objectContaining({
+          signatory: {
+            position: "Руководитель учебного центра",
+            name: "Ляпко Дарья Константиновна",
+          },
+        })],
+      }),
     });
   });
 });

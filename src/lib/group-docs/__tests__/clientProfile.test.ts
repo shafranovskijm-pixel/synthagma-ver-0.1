@@ -98,6 +98,9 @@ describe("профиль документов клиента", () => {
     const generic = context('ЧОУ ДПО «Другая организация»');
     generic.organization.director_position = "Директор";
     expect(buildVariables(generic).org_director_position).toBe("Директор");
+
+    goreltech.organization.director_position = "";
+    expect(buildVariables(goreltech).org_director_position).toBe("");
   });
 
   it("фиксирует ориентацию и честный статус девяти документов", () => {
