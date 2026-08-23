@@ -51,9 +51,11 @@ export interface DocumentSignatoryInput {
 }
 
 export interface LegacyDocumentMetadataInput {
+  docType?: string;
   fillMode: "blank" | "data";
   docStatus: "draft" | "final";
   documentNumber?: string | null;
+  documentDate?: string | null;
 }
 
 /**
@@ -65,7 +67,14 @@ export interface LegacyDocumentMetadataInput {
 export function canonicalizeLegacyDocumentMetadata(
   input: LegacyDocumentMetadataInput,
 ): { docStatus: "draft" | "final"; documentNumber: string | null } {
-  const isFinalData = input.fillMode === "data" && input.docStatus === "final";
+  const requiresFinalOrderRequisites =
+    input.docType === "enrollment_order" || input.docType === "expulsion_order";
+  const hasFinalOrderRequisites =
+    String(input.documentNumber || "").trim() !== ""
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(input.documentDate || "").trim());
+  const isFinalData = input.fillMode === "data"
+    && input.docStatus === "final"
+    && (!requiresFinalOrderRequisites || hasFinalOrderRequisites);
   return {
     docStatus: isFinalData ? "final" : "draft",
     documentNumber: isFinalData ? String(input.documentNumber || "").trim() || null : null,

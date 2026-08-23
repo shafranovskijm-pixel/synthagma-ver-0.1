@@ -52,6 +52,7 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("document_number: metadata.documentNumber");
     expect(source).toContain("documentNumber: document.document_number");
     expect(source).toContain("documentDate: document.document_date");
+    expect(source).toContain('PROGRAM_HOURS: programHours > 0 ? String(programHours) : ""');
     expect(source).not.toContain('|| "Генеральный директор"');
   });
 

@@ -127,6 +127,27 @@ describe("групповые DOCX Beta", () => {
       docStatus: "final",
       documentNumber: " УЦ-5/2026 ",
     })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026" });
+    expect(canonicalizeLegacyDocumentMetadata({
+      docType: "enrollment_order",
+      fillMode: "data",
+      docStatus: "final",
+      documentNumber: null,
+      documentDate: "2026-08-24",
+    })).toEqual({ docStatus: "draft", documentNumber: null });
+    expect(canonicalizeLegacyDocumentMetadata({
+      docType: "expulsion_order",
+      fillMode: "data",
+      docStatus: "final",
+      documentNumber: "УЦ-5/2026",
+      documentDate: null,
+    })).toEqual({ docStatus: "draft", documentNumber: null });
+    expect(canonicalizeLegacyDocumentMetadata({
+      docType: "enrollment_order",
+      fillMode: "data",
+      docStatus: "final",
+      documentNumber: "УЦ-5/2026",
+      documentDate: "2026-08-24",
+    })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026" });
   });
 
   it("выбирает только конечный положительный объём программы", () => {
@@ -138,9 +159,11 @@ describe("групповые DOCX Beta", () => {
   it("перезаписывает злонамеренные ORDER_* каноническими metadata в snapshot и DOCX", async () => {
     const { manifest, documentXml } = await loadGroupTemplate("enrollment_order");
     const metadata = canonicalizeLegacyDocumentMetadata({
+      docType: "enrollment_order",
       fillMode: "data",
       docStatus: "final",
       documentNumber: "УЦ-5/2026",
+      documentDate: "2026-08-24",
     });
     const scalars = buildGroupDocumentScalars({
       order_number: "УЦ-999/2026",

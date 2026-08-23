@@ -153,9 +153,11 @@ Deno.serve(async (req) => {
       ...parsed.data,
       otherDocuments: parsed.data.otherDocuments.map((document) => {
         const metadata = canonicalizeLegacyDocumentMetadata({
+          docType: document.doc_type,
           fillMode: document.fill_mode,
           docStatus: document.doc_status,
           documentNumber: document.document_number,
+          documentDate: document.document_date,
         });
         return {
           ...document,
@@ -441,9 +443,7 @@ Deno.serve(async (req) => {
         ORG_PHONE: String(organization.phone || ""),
         GROUP_NUMBER: String(group.group_number || ""),
         PROGRAM_TITLE: String(group.program_title || course?.title || ""),
-        PROGRAM_HOURS: String(
-          group.program_hours || course?.frdo_duration_hours || course?.duration || "",
-        ),
+        PROGRAM_HOURS: programHours > 0 ? String(programHours) : "",
         INSTRUCTOR_NAME: String(group.instructor_name || ""),
         INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
         INSTRUCTOR_1_SHORT: instructorSlots.first,
