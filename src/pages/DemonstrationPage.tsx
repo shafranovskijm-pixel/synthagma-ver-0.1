@@ -17,6 +17,8 @@ import {
   isDemoRequestAccepted,
   isReasonableDemoPhone,
 } from "@/lib/demoRequest";
+import { reachYandexGoal } from "@/lib/yandexMetrika";
+import { getUtmData } from "@/utils/utmCapture";
 
 import demoHero from "@/assets/demo/demo-hero.jpg";
 import featConstructor from "@/assets/demo/demo-feature-constructor.jpg";
@@ -89,10 +91,20 @@ export default function DemonstrationPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("submit-demo-request", {
-        body: { name, organization: org, phone, email, slot, message, source: "demonstration_page" },
+        body: {
+          name,
+          organization: org,
+          phone,
+          email,
+          slot,
+          message,
+          source: "demonstration_page",
+          tracking: getUtmData(),
+        },
       });
       if (error) throw new Error("Не удалось отправить заявку. Попробуйте ещё раз.");
       if (!isDemoRequestAccepted(data)) throw new Error(demoRequestErrorMessage(data));
+      reachYandexGoal("demo_request_success");
       setSent(true);
       toast.success("Заявка отправлена — свяжемся в ближайшее время");
     } catch (err: unknown) {

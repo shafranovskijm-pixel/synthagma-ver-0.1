@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const edgeSource = read("supabase/functions/submit-demo-request/index.ts");
+const edgeContractSource = read("supabase/functions/submit-demo-request/contract.ts");
 const pageSource = read("src/pages/DemonstrationPage.tsx");
 const generatedTypes = read("src/integrations/supabase/types.ts");
 const salesLeadMigration = read(
@@ -65,6 +66,23 @@ describe("/demonstration submission source contract", () => {
     expect(catchBlock).toContain("toast.error");
     expect(catchBlock).not.toContain("setSent(true)");
     expect(catchBlock).not.toContain("toast.success");
+  });
+
+  it("passes stored attribution and reports the goal only after acceptance", () => {
+    expect(pageSource).toContain("tracking: getUtmData()");
+
+    const acceptanceGate = pageSource.indexOf("if (!isDemoRequestAccepted(data))");
+    const goal = pageSource.indexOf('reachYandexGoal("demo_request_success")');
+
+    expect(acceptanceGate).toBeGreaterThan(-1);
+    expect(goal).toBeGreaterThan(acceptanceGate);
+  });
+
+  it("normalizes attribution without changing the sales_leads insert schema", () => {
+    expect(edgeContractSource).toContain("normalizeDemoRequestTracking(body.tracking)");
+    expect(edgeSource).toContain("...buildAttributionLines(input.tracking)");
+    expect(edgeSource).not.toContain("utm_source:");
+    expect(edgeSource).not.toContain("yclid:");
   });
 
   it("rejects the untouched +7 phone placeholder on both client and server", () => {

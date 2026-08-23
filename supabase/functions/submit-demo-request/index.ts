@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  buildAttributionLines,
   buildEmailHtml,
   buildEmailSubject,
   buildTelegramMessage,
@@ -53,6 +54,7 @@ Deno.serve(async (req) => {
       input.slot ? `Удобное время: ${input.slot}` : null,
       input.message ? `Комментарий: ${input.message}` : null,
       `Источник: ${input.source}`,
+      ...buildAttributionLines(input.tracking),
     ].filter(Boolean).join("\n");
 
     const { data: lead, error: leadError } = await supabase
