@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-tenant-uuid-v8");
+    expect(source).toContain("goreltech-group-package-tenant-uuid-v9");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -44,6 +44,15 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("uploadedPaths");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
+    expect(source).toContain("canonicalizeLegacyDocumentMetadata");
+    expect(source).toContain("buildCanonicalDocumentMetadataScalars");
+    expect(source).toContain("firstPositiveFiniteNumber(");
+    expect(source).toContain("course?.duration");
+    expect(source).toContain("doc_status: metadata.docStatus");
+    expect(source).toContain("document_number: metadata.documentNumber");
+    expect(source).toContain("documentNumber: document.document_number");
+    expect(source).toContain("documentDate: document.document_date");
+    expect(source).not.toContain('|| "Генеральный директор"');
   });
 
   it("не выдаёт фирменные шаблоны организации с теми же названием и ИНН, но другим UUID", () => {

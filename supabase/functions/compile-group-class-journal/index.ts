@@ -15,8 +15,11 @@ import {
 } from "../_shared/docx-ooxml/classJournal.ts";
 import { shortNameRu } from "../_shared/docx-ooxml/money.ts";
 import {
+  buildCanonicalDocumentMetadataScalars,
   buildGroupDocumentScalars,
+  canonicalizeLegacyDocumentMetadata,
   compileGroupDocumentXml,
+  firstPositiveFiniteNumber,
   parseGeneratedHtmlRows,
   resolveDocumentSignatory,
   validateGroupDocumentPrerequisites,
@@ -32,7 +35,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-tenant-uuid-v8";
+export const COMPILER_REVISION = "goreltech-group-package-tenant-uuid-v9";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -146,7 +149,21 @@ Deno.serve(async (req) => {
     if (!parsed.success) {
       return json({ error: "Некорректные данные", details: parsed.error.flatten().fieldErrors }, 400);
     }
-    const body = parsed.data;
+    const body = {
+      ...parsed.data,
+      otherDocuments: parsed.data.otherDocuments.map((document) => {
+        const metadata = canonicalizeLegacyDocumentMetadata({
+          fillMode: document.fill_mode,
+          docStatus: document.doc_status,
+          documentNumber: document.document_number,
+        });
+        return {
+          ...document,
+          doc_status: metadata.docStatus,
+          document_number: metadata.documentNumber,
+        };
+      }),
+    };
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -236,7 +253,11 @@ Deno.serve(async (req) => {
     const instructorSlots = instructorShortSlots(group.instructor_name);
     const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
     const programTitle = String(group.program_title || course?.title || "").trim();
-    const programHours = Number(group.program_hours || course?.frdo_duration_hours || course?.duration || 0);
+    const programHours = firstPositiveFiniteNumber(
+      group.program_hours,
+      course?.frdo_duration_hours,
+      course?.duration,
+    );
     const prerequisiteContext = {
       org_name: organization.name,
       group_number: group.group_number,
@@ -394,6 +415,10 @@ Deno.serve(async (req) => {
       const documentSignatory = resolveDocumentSignatory(document.signatory, organization);
       const packageScalars = buildGroupDocumentScalars(document.variables || {});
       Object.assign(packageScalars, {
+        ...buildCanonicalDocumentMetadataScalars({
+          documentNumber: document.document_number,
+          documentDate: document.document_date,
+        }),
         ORG_NAME: String(organization.name || ""),
         ORG_SHORT_NAME: "ООО «ИЦ «ГОРЭЛТЕХ»",
         ORG_HEADER_LINE_1:
@@ -404,8 +429,7 @@ Deno.serve(async (req) => {
         ORG_OGRN: String(organization.ogrn || ""),
         ORG_ADDRESS: String(organization.legal_address || ""),
         ORG_DIRECTOR_NAME: String(organization.director_name || ""),
-        ORG_DIRECTOR_POSITION:
-          String(organization.director_position || "").trim() || "Генеральный директор",
+        ORG_DIRECTOR_POSITION: String(organization.director_position || "").trim(),
         ORG_DIRECTOR_SHORT: shortNameRu(String(organization.director_name || "")),
         SIGNATORY_POSITION: documentSignatory.position,
         SIGNATORY_SHORT: documentSignatory.shortName,

@@ -55,7 +55,10 @@
       "word/_rels/header1.xml.rels",
       "word/media/image1.jpeg"
     ],
-    "status": "passed_all_rendered_pages_2026-08-15"
+    "status": "passed_all_filled_pages_word_16_2026-08-24",
+    "renderer": "Microsoft Word 16.0 ExportAsFixedFormat",
+    "rendered_pages": 1,
+    "evidence": "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md"
   },
   "template_sha256": "B221BF20A495B32DDC2ABB5510EA1F7A0C5A12ABCC01E3EEAC0C6388A52D4ED8"
 }

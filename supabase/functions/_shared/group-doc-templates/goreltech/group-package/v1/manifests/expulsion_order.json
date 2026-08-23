@@ -37,7 +37,10 @@
     "preserve_package_parts_except": [
       "word/document.xml"
     ],
-    "status": "passed_all_rendered_pages_2026-08-15"
+    "status": "passed_all_filled_pages_word_16_2026-08-24",
+    "renderer": "Microsoft Word 16.0 ExportAsFixedFormat",
+    "rendered_pages": 2,
+    "evidence": "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md"
   },
   "template_sha256": "FFC621DAC8FC2CAB9337B419490ECCC7BABD0C996A9572911643E5CE58E05F7C"
 }

@@ -4,8 +4,11 @@ import path from "node:path";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import {
+  buildCanonicalDocumentMetadataScalars,
   buildGroupDocumentScalars,
+  canonicalizeLegacyDocumentMetadata,
   compileGroupDocumentXml,
+  firstPositiveFiniteNumber,
   parseGeneratedHtmlRows,
   resolveDocumentSignatory,
   validateGroupDocumentPrerequisites,
@@ -108,6 +111,70 @@ describe("групповые DOCX Beta", () => {
     expect(resolveDocumentSignatory(undefined, { director_name: "" }).position).toBe("");
   });
 
+  it("канонизирует blank/draft metadata без повышения статуса и номера", () => {
+    expect(canonicalizeLegacyDocumentMetadata({
+      fillMode: "blank",
+      docStatus: "final",
+      documentNumber: "УЦ-999/2026",
+    })).toEqual({ docStatus: "draft", documentNumber: null });
+    expect(canonicalizeLegacyDocumentMetadata({
+      fillMode: "data",
+      docStatus: "draft",
+      documentNumber: "УЦ-999/2026",
+    })).toEqual({ docStatus: "draft", documentNumber: null });
+    expect(canonicalizeLegacyDocumentMetadata({
+      fillMode: "data",
+      docStatus: "final",
+      documentNumber: " УЦ-5/2026 ",
+    })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026" });
+  });
+
+  it("выбирает только конечный положительный объём программы", () => {
+    expect(firstPositiveFiniteNumber(Number.NaN, "не число", "40")).toBe(40);
+    expect(firstPositiveFiniteNumber(undefined, "нечисловой courses.duration")).toBe(0);
+    expect(firstPositiveFiniteNumber(-1, 0, "72")).toBe(72);
+  });
+
+  it("перезаписывает злонамеренные ORDER_* каноническими metadata в snapshot и DOCX", async () => {
+    const { manifest, documentXml } = await loadGroupTemplate("enrollment_order");
+    const metadata = canonicalizeLegacyDocumentMetadata({
+      fillMode: "data",
+      docStatus: "final",
+      documentNumber: "УЦ-5/2026",
+    });
+    const scalars = buildGroupDocumentScalars({
+      order_number: "УЦ-999/2026",
+      order_date: "31.12.2099",
+    });
+    Object.assign(scalars, buildCanonicalDocumentMetadataScalars({
+      documentNumber: metadata.documentNumber,
+      documentDate: "2026-08-24",
+    }));
+    Object.assign(scalars, scalarValuesFor(documentXml, scalars));
+    expect(scalars.ORDER_NUMBER).toBe("УЦ-5/2026");
+    expect(scalars.ORDER_DATE).toBe("24.08.2026");
+    expect(Object.values(scalars)).not.toContain("УЦ-999/2026");
+    expect(Object.values(scalars)).not.toContain("31.12.2099");
+
+    const rows = [{
+      N: "1",
+      STUDENT_NAME: "Фактический Слушатель",
+      STUDENT_PROGRAM: "Программа",
+      STUDENT_HOURS: "40",
+      STUDENT_PERIOD: "24.08.2026",
+      STUDENT_BASIS: "",
+    }];
+    const compiled = compileGroupDocumentXml({
+      documentXml,
+      manifest,
+      snapshot: { scalars, rows },
+    });
+    expect(xmlText(compiled)).toContain("УЦ-5/2026");
+    expect(xmlText(compiled)).toContain("24.08.2026");
+    expect(xmlText(compiled)).not.toContain("УЦ-999/2026");
+    expect(xmlText(compiled)).not.toContain("31.12.2099");
+  });
+
   it("зеркально проверяет на сервере обязательные скаляры каждого DOCX", () => {
     const expectedFields: Record<string, string[]> = {
       enrollment_order: [
@@ -179,6 +246,14 @@ describe("групповые DOCX Beta", () => {
       fillMode: "blank",
       context: { ...completeContext, training_dates: [] },
     })).toEqual([]);
+    for (const invalidHours of [Number.NaN, "не число"]) {
+      const issues = validateGroupDocumentPrerequisites({
+        docType: "schedule",
+        fillMode: "data",
+        context: { ...completeContext, program_hours: invalidHours },
+      });
+      expect(issues.map((issue) => issue.field)).toContain("program_hours");
+    }
     expect(validateGroupDocumentPrerequisites({
       docType: "class_journal",
       fillMode: "data",
@@ -309,14 +384,16 @@ describe("групповые DOCX Beta", () => {
       const rows = manifest.row_tokens.length
         ? [Object.fromEntries(manifest.row_tokens.map((token) => [token, token === "N" ? "1" : ""]))]
         : [];
+      const scalarSnapshot = scalarValuesFor(documentXml, {
+        SIGNATORY_POSITION: "",
+        SIGNATORY_SHORT: "",
+      });
+      expect(Object.values(scalarSnapshot), docType).not.toContain("Генеральный директор");
       const compiled = compileGroupDocumentXml({
         documentXml,
         manifest,
         snapshot: {
-          scalars: scalarValuesFor(documentXml, {
-            SIGNATORY_POSITION: "",
-            SIGNATORY_SHORT: "",
-          }),
+          scalars: scalarSnapshot,
           rows,
         },
       });

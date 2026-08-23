@@ -34,6 +34,9 @@ export interface GroupDocumentManifest {
     inspect_all_pages?: boolean;
     preserve_package_parts_except?: string[];
     status?: string;
+    renderer?: string;
+    rendered_pages?: number;
+    evidence?: string;
   };
 }
 
@@ -45,6 +48,49 @@ export interface GroupDocumentSnapshot {
 export interface DocumentSignatoryInput {
   position: string;
   name: string;
+}
+
+export interface LegacyDocumentMetadataInput {
+  fillMode: "blank" | "data";
+  docStatus: "draft" | "final";
+  documentNumber?: string | null;
+}
+
+/**
+ * Server-side integrity gate for metadata received from the legacy HTML
+ * generator. A blank or downgraded draft can never carry final status or an
+ * official number. Data-mode final metadata is retained; this function never
+ * promotes a client draft to final.
+ */
+export function canonicalizeLegacyDocumentMetadata(
+  input: LegacyDocumentMetadataInput,
+): { docStatus: "draft" | "final"; documentNumber: string | null } {
+  const isFinalData = input.fillMode === "data" && input.docStatus === "final";
+  return {
+    docStatus: isFinalData ? "final" : "draft",
+    documentNumber: isFinalData ? String(input.documentNumber || "").trim() || null : null,
+  };
+}
+
+/** Canonical metadata scalars override any same-named values from client variables. */
+export function buildCanonicalDocumentMetadataScalars(input: {
+  documentNumber?: string | null;
+  documentDate?: string | null;
+}): { ORDER_NUMBER: string; ORDER_DATE: string } {
+  const isoDate = String(input.documentDate || "").trim();
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return {
+    ORDER_NUMBER: String(input.documentNumber || "").trim(),
+    ORDER_DATE: match ? `${match[3]}.${match[2]}.${match[1]}` : "",
+  };
+}
+
+export function firstPositiveFiniteNumber(...values: unknown[]): number {
+  for (const value of values) {
+    const candidate = Number(value);
+    if (Number.isFinite(candidate) && candidate > 0) return candidate;
+  }
+  return 0;
 }
 
 export type GoreltechCompiledDocumentType =
@@ -174,9 +220,9 @@ export function validateGroupDocumentPrerequisites(params: {
 
     const value = params.context[field];
     const missing = field === "students_count"
-      ? Number(value) <= 0
+      ? !Number.isFinite(Number(value)) || Number(value) <= 0
       : field === "program_hours"
-        ? Number(value) <= 0
+        ? !Number.isFinite(Number(value)) || Number(value) <= 0
         : String(value || "").trim() === "";
     if (missing) {
       issues.push({

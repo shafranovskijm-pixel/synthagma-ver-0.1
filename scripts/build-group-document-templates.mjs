@@ -827,7 +827,11 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
             "word/media/image1.jpeg",
           ]
         : ["word/document.xml"],
-      status: "passed_all_rendered_pages_2026-08-15",
+      status: "passed_all_filled_pages_word_16_2026-08-24",
+      renderer: "Microsoft Word 16.0 ExportAsFixedFormat",
+      rendered_pages: docType === "expulsion_order" ? 2 : 1,
+      evidence:
+        "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md",
     },
   };
 }
