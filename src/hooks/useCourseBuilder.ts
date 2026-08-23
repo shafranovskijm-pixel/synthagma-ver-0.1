@@ -48,7 +48,7 @@ export function useCourseBuilder(propCourseId?: string) {
 
   const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
   const updateLessons = useCallback((updater: Lesson[] | ((prev: Lesson[]) => Lesson[])) => { setLessons(updater); markAsChanged(); }, [markAsChanged]);
-  const getBackPath = () => userRole === 'admin' ? "/admin" : "/organization";
+  const getBackPath = () => userRole === 'admin' ? "/admin" : "/organization?tab=courses";
   const handleBackClick = () => { if (hasUnsavedChanges) setShowExitDialog(true); else navigate(getBackPath()); };
   const handleSaveAndExit = async () => { await saveCourse(); setShowExitDialog(false); navigate(getBackPath()); };
   const handleExitWithoutSave = () => { setShowExitDialog(false); navigate(getBackPath()); };

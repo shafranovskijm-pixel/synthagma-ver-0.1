@@ -11,7 +11,7 @@ export type StudentsView = "active" | "archive" | "groups";
  * record.
  */
 export function organizationTabPath(tab: TabType): string {
-  return tab === "courses"
+  return tab === "home"
     ? "/organization"
     : `/organization?tab=${encodeURIComponent(tab)}`;
 }

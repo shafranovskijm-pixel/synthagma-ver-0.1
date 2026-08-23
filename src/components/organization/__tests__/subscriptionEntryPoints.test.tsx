@@ -2,23 +2,28 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
-/**
- * Regression на РЕАЛЬНЫЕ компоненты кабинета организации (не dev harness).
- * Живой тест показал: обработчик на <button> терялся, URL не менялся.
- * Поэтому проверяем именно нативный URL-переход (anchor + href) и location.search.
- */
-
 const setActiveTab = vi.fn();
+let activeTab = "courses";
+let organizationId = "org-1";
+let plan = "free";
+let emailCampaignsEnabled = false;
+let salesCrmEnabled = false;
+let deniedPermissions = new Set<string>();
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
-    organizationId: "org-1",
+    organizationId,
     courses: [],
     branding: { brandingSettings: { logoUrl: null } },
-    subscriptionLimits: { plan: "free" },
-    tabNavigation: { setActiveTab },
+    subscriptionLimits: {
+      plan,
+      limits: { emailCampaignsEnabled, salesCrmEnabled, reportsEnabled: true },
+    },
+    tabNavigation: { activeTab, setActiveTab },
+    checkLimit: () => ({ allowed: true, message: "" }),
     studentManagement: { setShowAddStudentDialog: vi.fn() },
     setShowImportDialog: vi.fn(),
+    registrationLinks: { setShowCreateLinkDialog: vi.fn() },
   }),
 }));
 
@@ -29,6 +34,12 @@ vi.mock("@/integrations/supabase/client", () => {
   };
   return { supabase: { from: () => chain } };
 });
+
+vi.mock("@/hooks/useStaffPermissions", () => ({
+  useStaffPermissions: () => ({
+    can: (permission: string) => !deniedPermissions.has(permission),
+  }),
+}));
 
 import { QuickActionChips } from "@/components/organization/QuickActionChips";
 import { QuickStartCard } from "@/components/organization/QuickStartCard";
@@ -44,6 +55,7 @@ function renderAt(ui: React.ReactNode) {
       <LocationProbe />
       <Routes>
         <Route path="/organization" element={<>{ui}</>} />
+        <Route path="*" element={null} />
       </Routes>
     </MemoryRouter>,
   );
@@ -52,23 +64,78 @@ function renderAt(ui: React.ReactNode) {
 beforeEach(() => {
   localStorage.clear();
   setActiveTab.mockClear();
+  activeTab = "courses";
+  organizationId = "org-1";
+  plan = "free";
+  emailCampaignsEnabled = false;
+  salesCrmEnabled = false;
+  deniedPermissions = new Set();
 });
 
-describe("QuickActionChips — «Тариф и документы»", () => {
-  it("рендерится как реальная ссылка с href на вкладку тарифа", () => {
-    renderAt(<QuickActionChips />);
-    const chip = screen.getByTestId("quick-chip-send-proposal");
-    expect(chip.tagName).toBe("A");
-    expect(chip.getAttribute("href")).toBe("/organization?tab=subscription");
-    expect(chip.textContent).toContain("Тариф и документы");
+describe("QuickActionChips — контекстные действия", () => {
+  it("не дублирует действия стартового экрана и остаётся доступным на мобильной ширине", () => {
+    activeTab = "home";
+    const { rerender } = renderAt(<QuickActionChips />);
+    expect(screen.queryByText("Быстрые действия:")).not.toBeInTheDocument();
+
+    activeTab = "courses";
+    rerender(
+      <MemoryRouter initialEntries={["/organization?tab=courses"]}>
+        <QuickActionChips />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("quick-chip-create-course").parentElement).not.toHaveClass("hidden");
   });
 
-  it("клик реально меняет location.search на tab=subscription", async () => {
+  it("в курсах показывает только действия курса и убирает «Тариф и документы»", () => {
     renderAt(<QuickActionChips />);
-    fireEvent.click(screen.getByTestId("quick-chip-send-proposal"));
-    await waitFor(() =>
-      expect(screen.getByTestId("loc").textContent).toBe("/organization?tab=subscription"),
+    expect(screen.getByTestId("quick-chip-create-course")).toBeInTheDocument();
+    expect(screen.getByTestId("quick-chip-marketplace")).toHaveAttribute(
+      "href",
+      "/organization?tab=services",
     );
+    expect(screen.queryByText("Тариф и документы")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("quick-chip-add-student")).not.toBeInTheDocument();
+  });
+
+  it("не показывает рассылки на Бесплатном тарифе", () => {
+    activeTab = "chats";
+    emailCampaignsEnabled = true;
+    renderAt(<QuickActionChips />);
+    expect(screen.queryByTestId("quick-chip-mailing")).not.toBeInTheDocument();
+  });
+
+  it("показывает реальную ссылку на рассылки со Старт-тарифа", async () => {
+    activeTab = "chats";
+    plan = "start";
+    emailCampaignsEnabled = true;
+    renderAt(<QuickActionChips />);
+
+    const chip = screen.getByTestId("quick-chip-mailing");
+    expect(chip.tagName).toBe("A");
+    expect(chip).toHaveAttribute("href", "/mailing/app?tab=overview");
+    fireEvent.click(chip);
+    await waitFor(() =>
+      expect(screen.getByTestId("loc").textContent).toBe("/mailing/app?tab=overview"),
+    );
+  });
+
+  it("не показывает рассылки сотруднику без sales.read", () => {
+    activeTab = "chats";
+    plan = "start";
+    emailCampaignsEnabled = true;
+    deniedPermissions = new Set(["sales.read"]);
+    renderAt(<QuickActionChips />);
+
+    expect(screen.queryByTestId("quick-chip-mailing")).not.toBeInTheDocument();
+  });
+
+  it("сохраняет историю под ключом текущей организации", () => {
+    renderAt(<QuickActionChips />);
+    fireEvent.click(screen.getByTestId("quick-chip-marketplace"));
+
+    expect(localStorage.getItem("org-recent-actions")).toBeNull();
+    expect(localStorage.getItem("org-recent-actions:org-1")).toContain("marketplace");
   });
 });
 

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import React, { useCallback, useEffect, useMemo, lazy, Suspense } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
   FolderOpen, Database, FileSignature, ShieldCheck, Inbox, BarChart3, Trash2,
-  ChevronDown, ArrowUpRight
+  ChevronDown, ArrowLeft, ArrowUpRight, LayoutGrid
 } from "lucide-react";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
@@ -23,13 +24,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDocumentsTab, type DocumentSubTab } from "@/hooks/useDocumentsTab";
-import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CounterpartiesSection } from "./documents/CounterpartiesSection";
 import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 import { TestInboxButton } from "@/components/organization/documents/TestInboxButton";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { canAccessDocumentSubTab } from "@/lib/organization/documentNavigationPermissions";
+import {
+  readCounterpartyView,
+  readDocumentView,
+  setDocumentViewParams,
+} from "@/lib/organization/documentWorkspaceNavigation";
+import type { CounterpartySubTab } from "@/hooks/useDocumentsTab";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Подпункты группы «Документы организации» (второй уровень)
 type OrgDocSubValue = Extract<
@@ -94,6 +106,10 @@ interface DocumentsTabContentProps extends DocumentsTabProps {
   canReadJournals: boolean;
   canReadFrdo: boolean;
   canReadSales: boolean;
+  canReadStudents: boolean;
+  canReadCompanies: boolean;
+  canWriteDocuments: boolean;
+  canConfigureDocuments: boolean;
 }
 
 function DocumentsTabContent({
@@ -105,9 +121,75 @@ function DocumentsTabContent({
   canReadJournals,
   canReadFrdo,
   canReadSales,
+  canReadStudents,
+  canReadCompanies,
+  canWriteDocuments,
+  canConfigureDocuments,
 }: DocumentsTabContentProps) {
-  const h = useDocumentsTab(organizationId, organizationName);
-  const dashboard = useOrgDashboard();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedDocumentView = readDocumentView(searchParams);
+  const requestedCounterpartyView = readCounterpartyView(searchParams);
+
+  const canOpenDocumentView = useCallback((tab: DocumentSubTab) => {
+    if (tab === "orders") return isOrdersEnabled;
+    if (tab === "journals") return canReadJournals;
+    if (tab === "frdo") return canReadFrdo;
+    if (tab === "counterparties") return canReadCompanies;
+    if (tab === "constructor") return canConfigureDocuments;
+    return true;
+  }, [canConfigureDocuments, canReadCompanies, canReadFrdo, canReadJournals, isOrdersEnabled]);
+
+  const documentView = requestedDocumentView && canOpenDocumentView(requestedDocumentView)
+    ? requestedDocumentView
+    : null;
+  const counterpartyView = documentView === "counterparties"
+    ? requestedCounterpartyView
+    : "contracts";
+
+  const setDocumentWorkspace = useCallback((
+    tab: DocumentSubTab | null,
+    requestedCounterpartyTab?: CounterpartySubTab,
+  ) => {
+    if (tab && !canOpenDocumentView(tab)) return;
+    setSearchParams(
+      (current) => setDocumentViewParams(current, tab, requestedCounterpartyTab),
+    );
+  }, [canOpenDocumentView, setSearchParams]);
+
+  const setCounterpartyWorkspace = useCallback((tab: CounterpartySubTab) => {
+    setDocumentWorkspace("counterparties", tab);
+  }, [setDocumentWorkspace]);
+
+  const h = useDocumentsTab(organizationId, organizationName, {
+    activeTab: documentView ?? "kpi",
+    onActiveTabChange: (tab) => setDocumentWorkspace(tab),
+    counterpartySubTab: counterpartyView,
+    onCounterpartySubTabChange: setCounterpartyWorkspace,
+  });
+
+  // Invalid, stale and newly forbidden nested routes fall back to the hub.
+  // This also prevents a copied URL from mounting a workspace the staff member
+  // can no longer access.
+  useEffect(() => {
+    const rawDocumentView = searchParams.get("documentView");
+    const rawCounterpartyView = searchParams.get("counterpartyView");
+    const invalidOrForbiddenDocumentView = Boolean(rawDocumentView) && !documentView;
+    const invalidCounterpartyView = documentView === "counterparties"
+      && Boolean(rawCounterpartyView)
+      && rawCounterpartyView !== requestedCounterpartyView;
+    const staleCounterpartyView = documentView !== "counterparties" && Boolean(rawCounterpartyView);
+
+    if (!invalidOrForbiddenDocumentView && !invalidCounterpartyView && !staleCounterpartyView) return;
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (invalidOrForbiddenDocumentView) next.delete("documentView");
+      if (invalidOrForbiddenDocumentView || invalidCounterpartyView || staleCounterpartyView) {
+        next.delete("counterpartyView");
+      }
+      return next;
+    }, { replace: true });
+  }, [documentView, requestedCounterpartyView, searchParams, setSearchParams]);
 
   // Deep-link from Sales / SubscriptionTab: старые маркеры (КП/договоры) теперь ведут в раздел «Продажи»,
   // маркер «open-act-dialog:<invoiceId>» открывает вкладку контрагентов → закрывающие и запускает диалог.
@@ -117,13 +199,20 @@ function DocumentsTabContent({
       if (!dl) return;
       if (dl === "proposals" || dl === "sales_contracts") {
         localStorage.removeItem("documents.deepLink");
-        if (canReadSales) dashboard?.tabNavigation?.setActiveTab?.("sales" as any);
+        if (canReadSales) {
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set("tab", "sales");
+            next.delete("documentView");
+            next.delete("counterpartyView");
+            return next;
+          });
+        }
         return;
       }
       if (dl.startsWith("open-act-dialog")) {
         localStorage.removeItem("documents.deepLink");
-        h.setActiveTab("counterparties");
-        h.setCounterpartySubTab("closing");
+        setDocumentWorkspace("counterparties", "closing");
         const invId = dl.split(":")[1];
         // Ждём подгрузки счетов, потом открываем диалог с предзаполнением
         const timer = setInterval(() => {
@@ -139,8 +228,7 @@ function DocumentsTabContent({
       }
       if (dl === "open-invoice-dialog") {
         localStorage.removeItem("documents.deepLink");
-        h.setActiveTab("counterparties");
-        h.setCounterpartySubTab("invoices");
+        setDocumentWorkspace("counterparties", "invoices");
         h.setShowInvoiceDialog(true);
       }
     } catch {
@@ -159,26 +247,22 @@ function DocumentsTabContent({
     [canReadFrdo, canReadJournals, isOrdersEnabled]
   );
   const orgSubValues = useMemo(() => visibleOrgSubs.map(i => i.value as string), [visibleOrgSubs]);
-
-  // If permissions change while the tab is open, leave a now-forbidden
-  // nested workspace immediately instead of retaining its mounted content.
-  useEffect(() => {
-    if (
-      (h.activeTab === "journals" && !canReadJournals) ||
-      (h.activeTab === "frdo" && !canReadFrdo)
-    ) {
-      h.setActiveTab("kpi");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canReadFrdo, canReadJournals, h.activeTab]);
+  const visibleRootItems = useMemo(
+    () => ROOT_ITEMS.filter((item) => {
+      if (item.value === "counterparties") return canReadCompanies;
+      if (item.value === "constructor") return canConfigureDocuments;
+      return true;
+    }),
+    [canConfigureDocuments, canReadCompanies],
+  );
 
   // Вычисляем активный корневой пункт
   const activeRoot: RootValue = useMemo(() => {
     if (orgSubValues.includes(h.activeTab as string)) return "org_docs";
-    const rootValues = ROOT_ITEMS.map(r => r.value) as string[];
+    const rootValues = visibleRootItems.map(r => r.value) as string[];
     if (rootValues.includes(h.activeTab as string)) return h.activeTab as RootValue;
     return "kpi";
-  }, [h.activeTab, orgSubValues]);
+  }, [h.activeTab, orgSubValues, visibleRootItems]);
 
   const activeOrgSub = orgSubValues.includes(h.activeTab as string)
     ? (h.activeTab as OrgDocSubValue)
@@ -197,7 +281,23 @@ function DocumentsTabContent({
     return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
   }
 
+  const openWorkspace = (tab: DocumentSubTab | "students") => {
+    if (tab === "students") {
+      if (!canReadStudents) return;
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set("tab", "students");
+        next.delete("documentView");
+        next.delete("counterpartyView");
+        return next;
+      });
+      return;
+    }
+    setDocumentWorkspace(tab);
+  };
+
   const handleRootClick = (value: RootValue) => {
+    if (!visibleRootItems.some((item) => item.value === value)) return;
     if (value === "org_docs") {
       if (!activeOrgSub && visibleOrgSubs[0]) h.setActiveTab(visibleOrgSubs[0].value);
       return;
@@ -205,52 +305,157 @@ function DocumentsTabContent({
     h.setActiveTab(value as DocumentSubTab);
   };
 
-  const goToSales = () => dashboard?.tabNavigation?.setActiveTab?.("sales" as any);
+  const goToSales = () => {
+    if (!canReadSales) return;
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("tab", "sales");
+      next.delete("documentView");
+      next.delete("counterpartyView");
+      return next;
+    });
+  };
+
+  if (!documentView) {
+    const primaryWorkspaces = [
+      {
+        id: "students" as const,
+        title: "Ученики и группы",
+        description: "Личные дела, приказы, ведомости, протоколы и документы учебной группы",
+        icon: FileText,
+        visible: canReadStudents,
+      },
+      {
+        id: "counterparties" as const,
+        title: "Компании и расчёты",
+        description: "Договоры, счета, акты и закрывающие документы заказчиков",
+        icon: Building2,
+        visible: canReadCompanies,
+      },
+      {
+        id: "journals" as const,
+        title: "Журналы",
+        description: "Обязательные, автоматические и собственные журналы организации",
+        icon: ClipboardList,
+        visible: canReadJournals,
+      },
+      {
+        id: "frdo" as const,
+        title: "ФИС ФРДО",
+        description: "Готовность сведений, проверка обязательных полей и выгрузка",
+        icon: Database,
+        visible: canReadFrdo,
+      },
+      {
+        id: (visibleOrgSubs[0]?.value ?? "kpi") as DocumentSubTab,
+        title: "Документы организации",
+        description: "Программы, приказы, удостоверения, шаблоны и запросы персональных данных",
+        icon: FolderOpen,
+        visible: true,
+      },
+      {
+        id: "constructor" as const,
+        title: "Настройка документов",
+        description: "Реквизиты, шаблоны, печать, подписи и правила автоматического заполнения",
+        icon: Wrench,
+        visible: canConfigureDocuments,
+      },
+    ].filter((workspace) => workspace.visible);
+
+    return (
+      <section className="space-y-5" data-testid="documents-workspace-chooser">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">Управление</p>
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight lg:text-3xl">Документы</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Выберите рабочую задачу. Все прежние инструменты сохранены внутри разделов.
+            </p>
+          </div>
+          <Button variant="outline" className="rounded-xl gap-2" onClick={() => openWorkspace("kpi")}>
+            <BarChart3 className="h-4 w-4" /> Сводка документооборота
+          </Button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {primaryWorkspaces.map((workspace) => {
+            const Icon = workspace.icon;
+            return (
+              <button
+                key={`${workspace.id}-${workspace.title}`}
+                type="button"
+                onClick={() => openWorkspace(workspace.id)}
+                className="group min-h-36 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="mt-4 block font-display text-base font-semibold">{workspace.title}</span>
+                <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{workspace.description}</span>
+                <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                  Открыть <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-muted/20 p-3">
+          <span className="px-2 text-xs font-medium text-muted-foreground">Дополнительно:</span>
+          <Button variant="ghost" size="sm" className="rounded-lg gap-1.5" onClick={() => openWorkspace("incoming")}>
+            <Inbox className="h-3.5 w-3.5" /> Входящие
+          </Button>
+          <Button variant="ghost" size="sm" className="rounded-lg gap-1.5" onClick={() => openWorkspace("signatures")}>
+            <FileSignature className="h-3.5 w-3.5" /> Подписания
+          </Button>
+          <Button variant="ghost" size="sm" className="rounded-lg gap-1.5" onClick={() => openWorkspace("recycle_bin")}>
+            <Trash2 className="h-3.5 w-3.5" /> Корзина
+          </Button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-0">
-      {/* Горизонтальная навигация — верхний ряд */}
+      {/* Компактная контекстная навигация вместо семи равноправных вкладок. */}
       <div className="bg-card rounded-t-2xl border border-border border-b-0">
-        <div className="relative">
-          <div className="flex overflow-x-auto gap-1.5 p-2 scrollbar-thin">
-            {ROOT_ITEMS.map(item => {
-              const Icon = item.icon;
-              const isActive = activeRoot === item.value;
-              const isOrgDocs = item.value === "org_docs";
-              return (
-                <button
-                  key={item.value}
-                  onClick={() => handleRootClick(item.value)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-all shrink-0",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  )}
-                >
-                  <Icon className={cn("w-4 h-4", isActive ? "" : item.iconColor)} />
-                  <span>{item.label}</span>
-                  {isOrgDocs && <ChevronDown className="w-3.5 h-3.5 opacity-70" />}
-                </button>
-              );
-            })}
-
-            {/* Подсказка-ссылка на «Продажи» только для sales.read */}
-            {canReadSales && (
-              <div className="ml-auto hidden md:flex items-center pr-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goToSales}
-                  className="text-xs gap-1 text-muted-foreground hover:text-primary"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  КП и договоры — в разделе «Продажи»
-                </Button>
-              </div>
-            )}
+        <div className="flex flex-wrap items-center gap-3 p-3">
+          <Button variant="ghost" size="sm" className="rounded-lg gap-1.5" onClick={() => setDocumentWorkspace(null)}>
+            <ArrowLeft className="h-4 w-4" /> Все документы
+          </Button>
+          <div className="h-6 w-px bg-border" />
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <ActiveIcon className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate text-sm font-semibold">{activeItemMeta.label}</span>
           </div>
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="rounded-lg gap-1.5">
+                <LayoutGrid className="h-3.5 w-3.5" /> Сменить раздел <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64 rounded-xl">
+              {visibleRootItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <DropdownMenuItem
+                    key={item.value}
+                    onClick={() => handleRootClick(item.value)}
+                    className={cn("gap-2 rounded-lg", activeRoot === item.value && "bg-primary/10 text-primary")}
+                  >
+                    <Icon className={cn("h-4 w-4", item.iconColor)} />
+                    {item.label}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {canReadSales && (
+            <Button variant="ghost" size="sm" onClick={goToSales} className="hidden rounded-lg text-xs text-muted-foreground hover:text-primary lg:inline-flex">
+              <ArrowUpRight className="mr-1 h-3.5 w-3.5" /> Продажи
+            </Button>
+          )}
         </div>
 
         {/* Второй уровень — подпункты «Документы организации» */}
@@ -297,12 +502,12 @@ function DocumentsTabContent({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {onShowBulkUploadDialog && h.activeTab === "org" && (
+            {canWriteDocuments && onShowBulkUploadDialog && h.activeTab === "org" && (
               <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={onShowBulkUploadDialog}>
                 <Upload className="w-3.5 h-3.5" /><span className="hidden sm:inline">Массовая загрузка</span>
               </Button>
             )}
-            {organizationId && <TestInboxButton organizationId={organizationId} />}
+            {canWriteDocuments && organizationId && <TestInboxButton organizationId={organizationId} />}
           </div>
         </div>
 
@@ -355,6 +560,7 @@ function DocumentsTabContent({
           {h.activeTab === "counterparties" && (
             <CounterpartiesSection
               organizationId={organizationId}
+              canWrite={canWriteDocuments}
               counterpartySubTab={h.counterpartySubTab}
               setCounterpartySubTab={h.setCounterpartySubTab}
               counterpartyDocs={h.counterpartyDocs}
@@ -403,7 +609,7 @@ function DocumentsTabContent({
         onSavePendingInvoice={h.handleSavePendingInvoice}
       />
 
-      {h.orgRequisites && organizationId && (
+      {canWriteDocuments && h.orgRequisites && organizationId && (
         <ContractGenerator
           organizationId={organizationId}
           isOpen={h.showContractGenerator}
@@ -435,7 +641,7 @@ function DocumentsTabContent({
 }
 
 export const DocumentsTab = React.memo(function DocumentsTab(props: DocumentsTabProps) {
-  const { can, loading } = useStaffPermissions();
+  const { can, canSeeOrgTab, loading } = useStaffPermissions();
 
   if (loading) {
     return (
@@ -463,9 +669,13 @@ export const DocumentsTab = React.memo(function DocumentsTab(props: DocumentsTab
   return (
     <DocumentsTabContent
       {...props}
-      canReadJournals={canAccessDocumentSubTab("journals", can)}
-      canReadFrdo={canAccessDocumentSubTab("frdo", can)}
-      canReadSales={can("sales.read")}
+      canReadJournals={canSeeOrgTab("journals") && canAccessDocumentSubTab("journals", can)}
+      canReadFrdo={canSeeOrgTab("frdo") && canAccessDocumentSubTab("frdo", can)}
+      canReadSales={canSeeOrgTab("sales") && can("sales.read")}
+      canReadStudents={canSeeOrgTab("students") && can("students.read")}
+      canReadCompanies={canSeeOrgTab("organizations") && can("companies.read")}
+      canWriteDocuments={canSeeOrgTab("documents") && can("documents.write")}
+      canConfigureDocuments={canSeeOrgTab("settings") && can("settings.write")}
     />
   );
 });

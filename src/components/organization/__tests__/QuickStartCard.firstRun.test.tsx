@@ -12,6 +12,7 @@ const testState = vi.hoisted(() => ({
   setActiveTab: vi.fn(),
   openCourseDetails: vi.fn(),
   setShowAddStudentDialog: vi.fn(),
+  checkLimit: vi.fn(() => ({ allowed: true, message: "" })),
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -28,6 +29,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     studentManagement: {
       setShowAddStudentDialog: testState.setShowAddStudentDialog,
     },
+    checkLimit: testState.checkLimit,
   }),
 }));
 
@@ -94,6 +96,8 @@ beforeEach(() => {
   testState.setActiveTab.mockReset();
   testState.openCourseDetails.mockReset();
   testState.setShowAddStudentDialog.mockReset();
+  testState.checkLimit.mockReset();
+  testState.checkLimit.mockReturnValue({ allowed: true, message: "" });
 });
 
 describe("QuickStartCard — первый рабочий цикл организации", () => {
@@ -122,6 +126,21 @@ describe("QuickStartCard — первый рабочий цикл организ
     fireEvent.click(screen.getByTestId("quickstart-primary-action"));
     expect(testState.setActiveTab).toHaveBeenCalledWith("courses");
     await waitFor(() => expect(courseEvents).toHaveLength(1));
+    window.removeEventListener("org-create-course", onCourse);
+  });
+
+  it("не открывает создание курса при исчерпанном тарифном лимите", async () => {
+    testState.checkLimit.mockReturnValue({ allowed: false, message: "Лимит курсов исчерпан" });
+    const courseEvents: Event[] = [];
+    const onCourse = (event: Event) => courseEvents.push(event);
+    window.addEventListener("org-create-course", onCourse);
+
+    renderCard();
+    fireEvent.click(await screen.findByTestId("quickstart-primary-action"));
+
+    expect(testState.checkLimit).toHaveBeenCalledWith("course");
+    expect(testState.setActiveTab).not.toHaveBeenCalled();
+    expect(courseEvents).toHaveLength(0);
     window.removeEventListener("org-create-course", onCourse);
   });
 

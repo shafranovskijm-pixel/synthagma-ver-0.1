@@ -9,6 +9,7 @@ vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({
     loading: permissionLoading,
     can: (permission: string) => granted.has(permission),
+    canSeeOrgTab: () => true,
   }),
 }));
 

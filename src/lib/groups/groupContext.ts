@@ -85,7 +85,7 @@ export function resolveTabParams(
   tab: string | null | undefined,
 ): URLSearchParams {
   const next = new URLSearchParams(typeof prev === "string" ? prev : prev.toString());
-  if (!tab || tab === "courses") next.delete("tab");
+  if (!tab || tab === "home") next.delete("tab");
   else next.set("tab", tab);
 
   // Entity/view parameters belong only to their own workspace. Keeping them

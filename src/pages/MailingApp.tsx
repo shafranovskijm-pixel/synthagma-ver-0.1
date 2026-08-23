@@ -23,6 +23,7 @@ import { MailingContactsTab } from "@/components/mailing/MailingContactsTab";
 import { MailingReportsTab } from "@/components/mailing/MailingReportsTab";
 import { MailingDeliverabilityTab } from "@/components/mailing/MailingDeliverabilityTab";
 import { MailingRepliesTab } from "@/components/mailing/MailingRepliesTab";
+import { MailingFeatureGate } from "@/components/mailing/MailingFeatureGate";
 
 const MENU = [
   { key: "overview", label: "Обзор", icon: LayoutDashboard },
@@ -38,9 +39,8 @@ const MENU = [
 type TabKey = (typeof MENU)[number]["key"];
 
 export default function MailingApp() {
-  const { organizationId, isLoadingCourses } = useOrgDashboard();
+  const { organizationId } = useOrgDashboard();
   const [params, setParams] = useSearchParams();
-  const loadingOrg = !organizationId && isLoadingCourses;
 
   const rawTab = params.get("tab") as TabKey | null;
   const tab: TabKey = MENU.some((m) => m.key === rawTab) ? (rawTab as TabKey) : "overview";
@@ -71,57 +71,58 @@ export default function MailingApp() {
         </div>
       </header>
 
-      <div className="container mx-auto flex flex-col gap-6 px-4 py-6 lg:flex-row">
-        <nav aria-label="Разделы рассылок" className="lg:w-56 lg:shrink-0">
-          <ul className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
-            {MENU.map((m) => (
-              <li key={m.key}>
-                <button
-                  type="button"
-                  onClick={() => setTab(m.key)}
-                  aria-current={tab === m.key ? "page" : undefined}
-                  className={cn(
-                    "flex w-full items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors",
-                    tab === m.key
-                      ? "bg-primary/10 font-medium text-primary shadow-sm"
-                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                  )}
-                >
-                  <m.icon className="h-4 w-4" />
-                  {m.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+      <MailingFeatureGate>
+        {({ canWrite }) => (
+          <div className="container mx-auto flex flex-col gap-6 px-4 py-6 lg:flex-row">
+            <nav aria-label="Разделы рассылок" className="lg:w-56 lg:shrink-0">
+              <ul className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+                {MENU.map((m) => (
+                  <li key={m.key}>
+                    <button
+                      type="button"
+                      onClick={() => setTab(m.key)}
+                      aria-current={tab === m.key ? "page" : undefined}
+                      className={cn(
+                        "flex w-full items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors",
+                        tab === m.key
+                          ? "bg-primary/10 font-medium text-primary shadow-sm"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                      )}
+                    >
+                      <m.icon className="h-4 w-4" />
+                      {m.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
 
-        <main className="min-w-0 flex-1">
-          {loadingOrg ? (
-            <p className="text-sm text-muted-foreground">Загрузка кабинета…</p>
-          ) : !organizationId ? (
-            <p className="text-sm text-muted-foreground">
-              Организация не найдена для текущей учётной записи.
-            </p>
-          ) : (
-            <>
-              {tab === "overview" && (
-                <MailingOverviewTab
-                  organizationId={organizationId}
-                  onNewCampaign={() => setTab("campaigns")}
-                  onGoToSenders={() => setTab("senders")}
-                />
-              )}
-              {tab === "campaigns" && <CampaignsManager scope="org" organizationId={organizationId} />}
-              {tab === "contacts" && <MailingContactsTab organizationId={organizationId} />}
-              {tab === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
-              {tab === "senders" && <MailingSendersTab organizationId={organizationId} />}
-              {tab === "reports" && <MailingReportsTab organizationId={organizationId} />}
-              {tab === "replies" && <MailingRepliesTab organizationId={organizationId} />}
-              {tab === "deliverability" && <MailingDeliverabilityTab organizationId={organizationId} />}
-            </>
-          )}
-        </main>
-      </div>
+            <fieldset
+              className="m-0 min-w-0 flex-1 border-0 p-0"
+              data-testid="mailing-workspace"
+              disabled={!canWrite}
+            >
+              <legend className="sr-only">Рабочая область рассылок</legend>
+              <main className="min-w-0">
+                {tab === "overview" && (
+                  <MailingOverviewTab
+                    organizationId={organizationId}
+                    onNewCampaign={() => setTab("campaigns")}
+                    onGoToSenders={() => setTab("senders")}
+                  />
+                )}
+                {tab === "campaigns" && <CampaignsManager scope="org" organizationId={organizationId} />}
+                {tab === "contacts" && <MailingContactsTab organizationId={organizationId} />}
+                {tab === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
+                {tab === "senders" && <MailingSendersTab organizationId={organizationId} />}
+                {tab === "reports" && <MailingReportsTab organizationId={organizationId} />}
+                {tab === "replies" && <MailingRepliesTab organizationId={organizationId} />}
+                {tab === "deliverability" && <MailingDeliverabilityTab organizationId={organizationId} />}
+              </main>
+            </fieldset>
+          </div>
+        )}
+      </MailingFeatureGate>
     </div>
   );
 }

@@ -19,9 +19,9 @@ function wrapper(entry: string) {
   );
 }
 
-function useNavigation() {
+function useNavigation(isMobile = false) {
   const navigation = useTabNavigation({
-    isMobile: false,
+    isMobile,
     menuSettings: settings,
     isFrdoEnabled: true,
     isEnabled: () => true,
@@ -31,6 +31,35 @@ function useNavigation() {
 }
 
 describe("useTabNavigation per-window state", () => {
+  it("uses Home as the canonical start workspace and keeps Courses addressable", () => {
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: wrapper("/organization"),
+    });
+
+    expect(result.current.activeTab).toBe("home");
+    expect(result.current.getVisibleTabs()[0]).toBe("home");
+
+    act(() => result.current.setActiveTab("courses"));
+    expect(result.current.activeTab).toBe("courses");
+    expect(result.current.search).toBe("?tab=courses");
+  });
+
+  it("preserves account/catalogue workspaces and does not swipe unknown detail tabs to Home", () => {
+    const { result } = renderHook(() => useNavigation(true), {
+      wrapper: wrapper("/organization?tab=course-details&courseId=course-A"),
+    });
+
+    expect(result.current.getVisibleTabs()).toEqual(expect.arrayContaining([
+      "payments",
+      "subscription",
+      "services",
+    ]));
+
+    act(() => result.current.handleSwipeLeft());
+    expect(result.current.activeTab).toBe("course-details");
+    expect(result.current.search).toBe("?tab=course-details&courseId=course-A");
+  });
+
   it("derives independent entities from two separate router windows", () => {
     const left = renderHook(() => useNavigation(), {
       wrapper: wrapper("/organization?tab=student-details&studentId=student-A"),

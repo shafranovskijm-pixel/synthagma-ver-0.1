@@ -27,6 +27,7 @@ import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
 import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
+import { OrganizationHomeTab } from "@/components/organization/tabs/OrganizationHomeTab";
 
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
 import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
@@ -54,6 +55,7 @@ export function TabContentRenderer() {
   }, [activeTab, d.tabNavigation]);
 
   const shouldShowStatsCards = activeTab !== "organizations" && 
+    activeTab !== "home" &&
     activeTab !== "services" && 
      
     activeTab !== "students" && 
@@ -108,6 +110,8 @@ export function TabContentRenderer() {
 
   return (
     <>
+      {activeTab === "home" && <OrganizationHomeTab />}
+
       {/* Stats cards */}
       {shouldShowStatsCards && (
         <StatsCards

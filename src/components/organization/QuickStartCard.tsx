@@ -20,6 +20,7 @@ import { groupFolderPath } from "@/lib/groups/groupContext";
 import { hasOrganizationCourse, isSystemWelcomeCourse } from "@/lib/organization/firstRun";
 import { subscriptionTabPath } from "@/lib/organization/subscriptionNavigation";
 import { cn } from "@/lib/utils";
+import { showLimitToast } from "@/utils/limitToast";
 
 const DISMISS_KEY_PREFIX = "org-quickstart-dismissed-";
 
@@ -173,6 +174,11 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
         done: hasOwnCourse,
         cta: "Создать курс",
         action: () => {
+          const result = d.checkLimit("course");
+          if (!result.allowed) {
+            showLimitToast(result.message);
+            return;
+          }
           d.tabNavigation.setActiveTab("courses" as any);
           setTimeout(() => window.dispatchEvent(new CustomEvent("org-create-course")), 100);
         },
@@ -185,6 +191,11 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
         done: progress?.hasStudent ?? false,
         cta: "Добавить ученика",
         action: () => {
+          const result = d.checkLimit("student");
+          if (!result.allowed) {
+            showLimitToast(result.message);
+            return;
+          }
           d.tabNavigation.setActiveTab("students" as any);
           setTimeout(() => d.studentManagement?.setShowAddStudentDialog?.(true), 100);
         },

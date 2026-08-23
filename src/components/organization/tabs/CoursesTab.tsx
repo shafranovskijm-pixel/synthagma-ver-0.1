@@ -22,7 +22,6 @@ import { CategoryFolder } from "./courses/CategoryFolder";
 import { CourseCountsStateContext, type CourseCountsState } from "./courses/courseCountsState";
 import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { QuickStartCard } from "@/components/organization/QuickStartCard";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { courseOverviewErrorMessage } from "./summaryStateMessages";
 import { FirstCourseCreationChoice } from "./courses/FirstCourseCreationChoice";
@@ -135,7 +134,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const [isDeletingCourses, setIsDeletingCourses] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["uncategorized"]));
   const [hasSkippedFirstCourseChoice, setHasSkippedFirstCourseChoice] = useState(false);
-  const [showFirstCourseCreationOptions, setShowFirstCourseCreationOptions] = useState(false);
+  const [showFirstCourseCreationOptions, setShowFirstCourseCreationOptions] = useState(true);
   const menuSettings = dashboard?.dashboardSettings.menuSettings;
   const setMenuSettings = dashboard?.dashboardSettings.setMenuSettings;
 
@@ -145,7 +144,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     } catch {
       setHasSkippedFirstCourseChoice(false);
     }
-    setShowFirstCourseCreationOptions(false);
+    setShowFirstCourseCreationOptions(true);
   }, [organizationId]);
 
   const hasOwnCourse = useMemo(() => hasOrganizationCourse(courses), [courses]);
@@ -448,15 +447,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     <div className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
-      {/* Quick start checklist for new orgs */}
-      {!showFirstCourseChoice && (
-        <QuickStartCard
-          courses={courses}
-          isLoadingCourses={isLoading}
-          onDismiss={handleSkipFirstCourseChoice}
-        />
-      )}
-
       {overviewErrorBanner && (
         <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
@@ -481,7 +471,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           }}
           onOpenMarketplace={() => dashboard.tabNavigation.setActiveTab("services")}
           onCreateManually={openManualCreateCourseDialog}
-          onBack={() => setShowFirstCourseCreationOptions(false)}
+          onBack={() => dashboard.tabNavigation.setActiveTab("home")}
           onSkip={handleSkipFirstCourseChoice}
           hasWelcomeCourse={hasWelcomeCourse}
         />

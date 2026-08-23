@@ -7,8 +7,24 @@ import MailingApp from "@/pages/MailingApp";
 // Regression: MailingApp must read the organization from the same verified
 // OrgDashboardProvider flow used by /organization, not from its own query.
 const orgState = { organizationId: "org-1" as string | null, isLoadingCourses: false };
+const subscriptionState = {
+  plan: "start",
+  limits: { emailCampaignsEnabled: true },
+  loading: false,
+};
+const permissionState = {
+  loading: false,
+  canRead: true,
+  canWrite: true,
+};
 vi.mock("@/contexts/OrgDashboardContext", () => ({
-  useOrgDashboard: () => orgState,
+  useOrgDashboard: () => ({ ...orgState, subscriptionLimits: subscriptionState }),
+}));
+vi.mock("@/hooks/useStaffPermissions", () => ({
+  useStaffPermissions: () => ({
+    loading: permissionState.loading,
+    can: (permission: string) => permission === "sales.read" ? permissionState.canRead : permissionState.canWrite,
+  }),
 }));
 
 vi.mock("@/components/admin/broadcast/CampaignsManager", () => ({
@@ -50,6 +66,12 @@ describe("MailingApp shell", () => {
     vi.clearAllMocks();
     orgState.organizationId = "org-1";
     orgState.isLoadingCourses = false;
+    subscriptionState.plan = "start";
+    subscriptionState.limits.emailCampaignsEnabled = true;
+    subscriptionState.loading = false;
+    permissionState.loading = false;
+    permissionState.canRead = true;
+    permissionState.canWrite = true;
   });
 
   it("renders the full left menu", async () => {
@@ -94,7 +116,7 @@ describe("MailingApp shell", () => {
   it("shows a safe empty state when there is no organization membership", async () => {
     orgState.organizationId = null;
     renderAt("");
-    expect(await screen.findByText(/Организация не найдена/)).toBeInTheDocument();
+    expect(await screen.findByTestId("mailing-organization-missing")).toBeInTheDocument();
     expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
   });
 
@@ -102,7 +124,60 @@ describe("MailingApp shell", () => {
     orgState.organizationId = null;
     orgState.isLoadingCourses = true;
     renderAt("");
-    expect(screen.getByText(/Загрузка кабинета/)).toBeInTheDocument();
+    expect(screen.getByText(/Проверяем доступ к рассылкам/)).toBeInTheDocument();
     expect(screen.queryByText(/Организация не найдена/)).not.toBeInTheDocument();
   });
+
+  it("locks the mailing app for the Free plan even if a custom flag is enabled", async () => {
+    subscriptionState.plan = "free";
+    subscriptionState.limits.emailCampaignsEnabled = true;
+    renderAt("");
+
+    expect(await screen.findByTestId("mailing-plan-locked")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Перейти к тарифам" })).toHaveAttribute(
+      "href",
+      "/organization?tab=subscription",
+    );
+    expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+  });
+
+  it("locks a paid plan when email campaigns are disabled", async () => {
+    subscriptionState.plan = "start";
+    subscriptionState.limits.emailCampaignsEnabled = false;
+    renderAt("");
+
+    expect(await screen.findByTestId("mailing-plan-locked")).toBeInTheDocument();
+    expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+  });
+
+  it("requires sales.read before mounting mailing data components", async () => {
+    permissionState.canRead = false;
+    permissionState.canWrite = false;
+    renderAt("");
+
+    expect(await screen.findByTestId("mailing-permission-denied")).toBeInTheDocument();
+    expect(screen.queryByText("overview-tab")).not.toBeInTheDocument();
+  });
+
+  it("allows sales.read in read-only mode and disables workspace actions", async () => {
+    permissionState.canRead = true;
+    permissionState.canWrite = false;
+    renderAt("");
+
+    expect(await screen.findByText("overview-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("mailing-readonly-notice")).toBeInTheDocument();
+    expect(screen.getByTestId("mailing-workspace")).toBeDisabled();
+  });
+
+  it.each(["start", "standard", "professional", "maximum"])(
+    "allows %s with the feature flag and sales.write to use the workspace",
+    async (plan) => {
+      subscriptionState.plan = plan;
+      renderAt("");
+
+      expect(await screen.findByText("overview-tab")).toBeInTheDocument();
+      expect(screen.queryByTestId("mailing-readonly-notice")).not.toBeInTheDocument();
+      expect(screen.getByTestId("mailing-workspace")).not.toBeDisabled();
+    },
+  );
 });

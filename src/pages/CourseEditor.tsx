@@ -47,7 +47,7 @@ const CourseEditor = () => {
   if (h.isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center"><h1 className="text-2xl font-bold mb-4">Курс не найден</h1><Button onClick={() => h.navigate(getAdminAwareBackPath())}>Вернуться к курсам</Button></div>
+      <div className="text-center"><h1 className="text-2xl font-bold mb-4">Курс не найден</h1><Button onClick={() => h.navigate(getAdminAwareBackPath("/organization?tab=courses"))}>Вернуться к курсам</Button></div>
     </div>
   );
 
@@ -56,7 +56,7 @@ const CourseEditor = () => {
       <header className="border-b border-border bg-card px-6 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => h.navigate(h.courseId ? getCourseDetailsPath(h.courseId) : getAdminAwareBackPath())}><ArrowLeft className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => h.navigate(h.courseId ? getCourseDetailsPath(h.courseId) : getAdminAwareBackPath("/organization?tab=courses"))}><ArrowLeft className="w-5 h-5" /></Button>
             <SigmaLogo size="sm" />
           </div>
           <div className="flex items-center gap-3">

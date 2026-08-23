@@ -40,6 +40,7 @@ interface ClientGroup {
 
 interface CounterpartiesSectionProps {
   organizationId: string;
+  canWrite: boolean;
   counterpartySubTab: CounterpartySubTab;
   setCounterpartySubTab: (v: CounterpartySubTab) => void;
   counterpartyDocs: CounterpartyDoc[];
@@ -58,6 +59,7 @@ interface CounterpartiesSectionProps {
 
 export function CounterpartiesSection({
   organizationId,
+  canWrite,
   counterpartySubTab,
   setCounterpartySubTab,
   counterpartyDocs,
@@ -222,13 +224,13 @@ export function CounterpartiesSection({
     // Load saved groups from localStorage
     const saved = localStorage.getItem(`client_groups_${organizationId}`);
     if (saved) {
-      try { setClientGroups(JSON.parse(saved)); } catch {}
+      try { setClientGroups(JSON.parse(saved)); } catch { /* Ignore malformed local preferences. */ }
     }
     // Load saved visible clients/payers
     const savedClients = localStorage.getItem(`visible_clients_${organizationId}`);
-    if (savedClients) try { setVisibleClientIds(new Set(JSON.parse(savedClients))); } catch {}
+    if (savedClients) try { setVisibleClientIds(new Set(JSON.parse(savedClients))); } catch { /* Ignore malformed local preferences. */ }
     const savedPayers = localStorage.getItem(`visible_payers_${organizationId}`);
-    if (savedPayers) try { setVisiblePayerIds(new Set(JSON.parse(savedPayers))); } catch {}
+    if (savedPayers) try { setVisiblePayerIds(new Set(JSON.parse(savedPayers))); } catch { /* Ignore malformed local preferences. */ }
   }, [organizationId]);
 
   const persistVisibleClients = (ids: Set<string>) => {
@@ -333,7 +335,7 @@ export function CounterpartiesSection({
 
   const renderPlatformContracts = () => (
     <div className="space-y-3">
-      <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-primary/30 bg-primary/5">
+      {canWrite && <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-primary/30 bg-primary/5">
         <div className="flex items-center gap-3">
           <Upload className="w-5 h-5 text-primary" />
           <div>
@@ -344,7 +346,7 @@ export function CounterpartiesSection({
         <Button size="sm" className="rounded-xl gap-1.5" onClick={() => setShowExternalUploader(true)}>
           <Upload className="w-3.5 h-3.5" />Загрузить
         </Button>
-      </div>
+      </div>}
 
       {platformExternalContracts.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
@@ -385,7 +387,7 @@ export function CounterpartiesSection({
                         <Eye className="w-4 h-4" />
                       </Button>
                     )}
-                    <Button
+                    {canWrite && <Button
                       variant="ghost"
                       size="sm"
                       title="Удалить договор"
@@ -393,7 +395,7 @@ export function CounterpartiesSection({
                       onClick={() => setContractToDelete({ id: c.id, title: c.document_title })}
                     >
                       <Trash2 className="w-4 h-4" />
-                    </Button>
+                    </Button>}
                   </div>
                 </div>
                 {expandedReviewId === c.id && c.signature_token && (
@@ -424,11 +426,11 @@ export function CounterpartiesSection({
   const renderPlatformInvoices = () => {
     return (
       <div className="space-y-2">
-        <div className="flex items-center justify-end gap-2 pb-1">
+        {canWrite && <div className="flex items-center justify-end gap-2 pb-1">
           <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onShowInvoiceDialog}>
             <Receipt className="w-3.5 h-3.5" />Выставить счёт
           </Button>
-        </div>
+        </div>}
         {invoices.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />
@@ -464,7 +466,7 @@ export function CounterpartiesSection({
                       <Link2 className="w-4 h-4 text-emerald-600" />
                     </Button>
                   ) : (
-                    onShowActDialogForInvoice && (
+                    canWrite && onShowActDialogForInvoice && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -493,11 +495,11 @@ export function CounterpartiesSection({
   const renderPlatformClosing = () => {
     return (
       <div className="space-y-2">
-        <div className="flex items-center justify-end gap-2 pb-1">
+        {canWrite && <div className="flex items-center justify-end gap-2 pb-1">
           <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onShowActDialog}>
             <FileText className="w-3.5 h-3.5" />Сформировать акт
           </Button>
-        </div>
+        </div>}
         {billingDocs.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
@@ -524,7 +526,7 @@ export function CounterpartiesSection({
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="sm" title="Просмотр" onClick={() => onViewDoc(doc)}><Eye className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="sm" title="Скачать" onClick={() => onDownloadDoc(doc)}><Download className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" title="Удалить" onClick={() => onDeleteDoc(doc)}><Trash2 className="w-4 h-4" /></Button>
+                  {canWrite && <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" title="Удалить" onClick={() => onDeleteDoc(doc)}><Trash2 className="w-4 h-4" /></Button>}
                 </div>
               </div>
             );
@@ -542,7 +544,7 @@ export function CounterpartiesSection({
         <div className="text-center py-12 text-muted-foreground">
           {emptyIcon}
           <p className="text-sm">{emptyText}</p>
-          {type === "contract" && (
+          {canWrite && type === "contract" && (
             <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={onCreateContract}>
               <FileText className="w-3.5 h-3.5" />Создать договор
             </Button>
@@ -566,9 +568,9 @@ export function CounterpartiesSection({
             </div>
             <div className="flex items-center gap-2">
               {showAmount && (doc.is_paid ? <span className="text-xs font-medium text-emerald-600">Оплачен</span> : <span className="text-xs font-medium text-amber-600">Не оплачен</span>)}
-              <Button variant="ghost" size="icon" title="Отправить на подписание" onClick={() => openSignDialog(doc)}>
+              {canWrite && <Button variant="ghost" size="icon" title="Отправить на подписание" onClick={() => openSignDialog(doc)}>
                 <Send className="w-4 h-4 text-indigo-500" />
-              </Button>
+              </Button>}
               {doc.file_url && (
                 <Button variant="ghost" size="icon" asChild>
                   <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><Download className="w-4 h-4" /></a>
@@ -911,22 +913,22 @@ export function CounterpartiesSection({
         )}
       </Tabs>
 
-      <SendForSigningDialog
+      {canWrite && <SendForSigningDialog
         open={!!signingPayload}
         onOpenChange={(v) => !v && setSigningPayload(null)}
         payload={signingPayload}
         recipients={signingRecipients}
-      />
+      />}
 
-      <ExternalContractUploader
+      {canWrite && <ExternalContractUploader
         open={showExternalUploader}
         onOpenChange={setShowExternalUploader}
         organizationId={organizationId}
         defaultAdminEmail={adminSigEmail}
         onSent={() => { refreshPlatformContracts(); }}
-      />
+      />}
 
-      <AlertDialog open={!!contractToDelete} onOpenChange={(v) => !v && !deletingContract && setContractToDelete(null)}>
+      {canWrite && <AlertDialog open={!!contractToDelete} onOpenChange={(v) => !v && !deletingContract && setContractToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Хотите удалить договор?</AlertDialogTitle>
@@ -945,7 +947,7 @@ export function CounterpartiesSection({
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>}
     </div>
   );
 }

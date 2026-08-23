@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase, Search, PlayCircle, Star } from "lucide-react";
+import { Menu, CreditCard, HelpCircle, User, LogOut, FileText, Search, PlayCircle, Star } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
-import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +10,6 @@ import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { OrgNotifications } from "./OrgNotifications";
 import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
-import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +51,6 @@ export function OrgDashboardHeader() {
   const organizationName = d.organizationName;
   const organizationId = d.organizationId;
   const customName = d.branding.brandingSettings.customName;
-  const customSubtitle = d.branding.brandingSettings.customSubtitle;
   const logoUrl = d.branding.brandingSettings.logoUrl;
 
   // Tariff info
@@ -92,14 +88,9 @@ export function OrgDashboardHeader() {
   const userEmail = d.user?.email;
   const initials = getUserInitials(userEmail);
 
-  const handleStudentAction = (action: () => void) => {
-    const result = d.checkLimit('student');
-    if (!result.allowed) { showLimitToast(result.message); return; }
-    action();
-  };
-
   const getPageTitle = () => {
     switch (activeTab) {
+      case "home": return "Главная";
       case "courses": return "Курсы";
       case "students": return "Ученики";
       case "organizations": return "Клиенты-компании";
@@ -126,6 +117,7 @@ export function OrgDashboardHeader() {
 
   // Breadcrumbs: section group → page
   const getBreadcrumb = (): { section: string; page: string } | null => {
+    if (activeTab === "home") return { section: "Школа", page: "Главная" };
     const learning = ["courses", "homework-review", "labor-safety"];
     const clients = ["students", "organizations", "sales", "chats"];
     const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
@@ -342,29 +334,9 @@ export function OrgDashboardHeader() {
         </div>
       </div>
 
-      {/* Quick action chips under omnibox — reveal on hover/focus of header */}
+      {/* Compact contextual actions stay visible: no hidden hover-only controls. */}
       {!isCoursesFirstRun && (
-        <div
-          className="max-h-0 opacity-0 overflow-hidden transition-all duration-300 ease-out hover:max-h-20 hover:opacity-100 focus-within:max-h-20 focus-within:opacity-100 group-hover/orgheader:max-h-20 group-hover/orgheader:opacity-100 group-focus-within/orgheader:max-h-20 group-focus-within/orgheader:opacity-100"
-        >
-          <QuickActionChips />
-        </div>
-      )}
-
-      {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
-      {activeTab !== "course-details" && !isCoursesFirstRun && (
-        <HeroBannerSwiper>
-          <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
-            {logoUrl && (
-              <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
-            )}
-            <div className="text-white">
-              <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>
-              <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
-              {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
-            </div>
-          </div>
-        </HeroBannerSwiper>
+        <QuickActionChips />
       )}
 
       {/* Sub-header: breadcrumbs + page title + action buttons */}
@@ -374,7 +346,7 @@ export function OrgDashboardHeader() {
             {breadcrumb && (
               <nav aria-label="Хлебные крошки" className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
                 <button
-                  onClick={() => d.tabNavigation.setActiveTab("courses" as any)}
+                  onClick={() => d.tabNavigation.setActiveTab("home")}
                   className="hover:text-primary transition-colors truncate"
                 >
                   {customName || organizationName || "Школа"}
@@ -395,68 +367,6 @@ export function OrgDashboardHeader() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {activeTab === "links" && (
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Создать ссылку</span>
-              </Button>
-            )}
-            {activeTab === "students" && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm">
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Добавить</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuItem onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))} className="gap-2 cursor-pointer">
-                    <Plus className="w-4 h-4" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">Добавить вручную</span>
-                      <span className="text-xs text-muted-foreground">Одного ученика через форму</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleStudentAction(() => d.setShowImportDialog(true))} className="gap-2 cursor-pointer">
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">Загрузить файлом</span>
-                      <span className="text-xs text-muted-foreground">Массовый импорт из Excel / CSV</span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {activeTab === "courses" && !isCoursesFirstRun && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
-                  <ShoppingBag className="w-4 h-4" />
-                  <span className="hidden sm:inline">Добавить из магазина</span>
-                </Button>
-                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => {
-                  d.tabNavigation.setActiveTab("courses" as any);
-                  setTimeout(() => window.dispatchEvent(new CustomEvent('org-create-course')), 0);
-                }}>
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Создать курс</span>
-                </Button>
-              </div>
-            )}
-            {activeTab === "organizations" && (
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => window.dispatchEvent(new CustomEvent('org-add-company'))}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить компанию</span>
-              </Button>
-            )}
-            {activeTab === "sales" && (
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => window.dispatchEvent(new CustomEvent('org-sales-create-deal'))}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Новая сделка</span>
-              </Button>
-            )}
-          </div>
         </div>
       )}
     </header>

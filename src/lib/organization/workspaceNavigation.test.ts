@@ -13,7 +13,8 @@ import {
 
 describe("organization multi-window navigation", () => {
   it("gives top-level workspaces independent canonical URLs", () => {
-    expect(organizationTabPath("courses")).toBe("/organization");
+    expect(organizationTabPath("home")).toBe("/organization");
+    expect(organizationTabPath("courses")).toBe("/organization?tab=courses");
     expect(organizationTabPath("students")).toBe("/organization?tab=students");
     expect(organizationTabPath("organizations")).toBe("/organization?tab=organizations");
   });

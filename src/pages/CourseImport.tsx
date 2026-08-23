@@ -297,7 +297,7 @@ export default function CourseImport() {
             <Button 
               variant="ghost" 
               size="icon" 
-            onClick={() => navigate(getAdminAwareBackPath())}
+            onClick={() => navigate(getAdminAwareBackPath("/organization?tab=courses"))}
               className="rounded-xl"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -328,7 +328,7 @@ export default function CourseImport() {
               <p className="text-sm text-muted-foreground">{scopeState.message}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button variant="outline" onClick={() => navigate(getAdminAwareBackPath())}>
+              <Button variant="outline" onClick={() => navigate(getAdminAwareBackPath("/organization?tab=courses"))}>
                 Вернуться в кабинет
               </Button>
               <Button onClick={() => setScopeRefreshKey((value) => value + 1)}>
@@ -383,7 +383,7 @@ export default function CourseImport() {
             courseId={createdCourseId}
             onReset={resetImport}
             onNavigate={navigate}
-            backPath={getAdminAwareBackPath()}
+            backPath={getAdminAwareBackPath("/organization?tab=courses")}
           />
         )}
       </main>

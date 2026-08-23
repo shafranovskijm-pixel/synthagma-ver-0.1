@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BookOpen, Building2, FileText, MessageCircle, ShoppingBag, Users, Menu } from "lucide-react";
+import { BookOpen, Building2, FileText, Home, MessageCircle, ShoppingBag, Users, Menu } from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,12 @@ export function OrgMobileBottomNav() {
   const items = useMemo<NavItem[]>(() => {
     const allowed = (id: TabType) => permissionsLoading || canSeeOrgTab(id);
     const candidates: Array<NavItem & { visible: boolean }> = [
+      {
+        id: "home",
+        icon: Home,
+        label: "Главная",
+        visible: true,
+      },
       {
         id: "courses",
         icon: BookOpen,

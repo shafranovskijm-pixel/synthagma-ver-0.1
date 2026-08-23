@@ -14,6 +14,13 @@ export type DocumentSubTab = "kpi" | "constructor" | "programs" | "org" | "order
 export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "history";
 export type CounterpartyType = "platform" | "company" | "payer";
 
+interface DocumentsTabNavigationController {
+  activeTab: DocumentSubTab;
+  onActiveTabChange: (tab: DocumentSubTab) => void;
+  counterpartySubTab: CounterpartySubTab;
+  onCounterpartySubTabChange: (tab: CounterpartySubTab) => void;
+}
+
 export interface CounterpartyOption {
   id: string;
   name: string;
@@ -52,25 +59,36 @@ export interface CounterpartyDoc {
   company_name?: string;
 }
 
-export function useDocumentsTab(organizationId: string | null, organizationName?: string) {
+export function useDocumentsTab(
+  organizationId: string | null,
+  organizationName?: string,
+  navigation?: DocumentsTabNavigationController,
+) {
   const d = useOrgDashboard();
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
 
-  const [activeTab, setActiveTabRaw] = useState<DocumentSubTab>("counterparties");
+  const [localActiveTab, setActiveTabRaw] = useState<DocumentSubTab>("counterparties");
+  const activeTab = navigation?.activeTab ?? localActiveTab;
   // Prefilters allow KPI cards (or other shortcuts) to deep-link into a tab with a status/type filter applied
   const [tabPrefilters, setTabPrefilters] = useState<Partial<Record<DocumentSubTab, Record<string, string>>>>({});
   const setActiveTab = (tab: DocumentSubTab, prefilter?: Record<string, string>) => {
     if (prefilter) setTabPrefilters((prev) => ({ ...prev, [tab]: prefilter }));
     else setTabPrefilters((prev) => { const n = { ...prev }; delete n[tab]; return n; });
-    setActiveTabRaw(tab);
+    if (navigation) navigation.onActiveTabChange(tab);
+    else setActiveTabRaw(tab);
   };
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
-  const [counterpartySubTab, setCounterpartySubTab] = useState<CounterpartySubTab>("contracts");
+  const [localCounterpartySubTab, setLocalCounterpartySubTab] = useState<CounterpartySubTab>("contracts");
+  const counterpartySubTab = navigation?.counterpartySubTab ?? localCounterpartySubTab;
+  const setCounterpartySubTab = (tab: CounterpartySubTab) => {
+    if (navigation) navigation.onCounterpartySubTabChange(tab);
+    else setLocalCounterpartySubTab(tab);
+  };
   const [counterpartyDocs, setCounterpartyDocs] = useState<CounterpartyDoc[]>([]);
   const [counterpartyLoading, setCounterpartyLoading] = useState(false);
 

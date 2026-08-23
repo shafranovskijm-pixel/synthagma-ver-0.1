@@ -359,7 +359,8 @@ export function useCourseDetails(
   const toggleStudentToEnroll = (userId: string) => {
     setSelectedToEnroll((prev) => {
       const s = new Set(prev);
-      s.has(userId) ? s.delete(userId) : s.add(userId);
+      if (s.has(userId)) s.delete(userId);
+      else s.add(userId);
       return s;
     });
   };
@@ -490,7 +491,7 @@ export function useCourseDetails(
       await supabase.from("course_documents").delete().eq("course_id", course.id);
       const { error } = await supabase.from("courses").delete().eq("id", course.id);
       if (error) throw error;
-      toast.success("Курс удалён"); setShowDeleteConfirm(false); onCourseDeleted?.(); navigate("/organization");
+      toast.success("Курс удалён"); setShowDeleteConfirm(false); onCourseDeleted?.(); navigate("/organization?tab=courses");
     } catch (error) { console.error("Error deleting:", error); toast.error("Ошибка удаления курса"); }
     finally { setIsDeleting(false); }
   };

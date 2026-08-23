@@ -74,8 +74,10 @@ describe("group context navigation", () => {
     expect(folder.get("groupId")).toBe(GROUP);
     expect(folder.get("folder")).toBe("contracts");
 
-    // courses is the default tab: no explicit tab param
-    expect(resolveTabParams("tab=library", "courses").get("tab")).toBeNull();
+    // home is the default workspace: it has no explicit tab param, while
+    // Courses keeps a canonical URL that can be opened in another window.
+    expect(resolveTabParams("tab=library", "home").get("tab")).toBeNull();
+    expect(resolveTabParams("tab=library", "courses").get("tab")).toBe("courses");
   });
 
   it("back link from the banner returns to the exact group folder", () => {

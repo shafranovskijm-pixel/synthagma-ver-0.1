@@ -36,7 +36,7 @@ export function useTabNavigation({
 
   // URL is the source of truth for the active tab so that reload and
   // browser Back/Forward correctly restore the previous section.
-  const activeTab = (searchParams.get("tab") as TabType) || "courses";
+  const activeTab = (searchParams.get("tab") as TabType) || "home";
 
   const setActiveTab = useCallback((tab: TabType) => {
     setSearchParams((prev) => {
@@ -127,21 +127,26 @@ export function useTabNavigation({
   }, []);
 
   const getVisibleTabs = useCallback((): TabType[] => {
-    const baseTabs: TabType[] = [];
+    const baseTabs: TabType[] = ["home"];
     
-    if (isEnabled("courses")) baseTabs.push("courses");
-    if (isEnabled("companies")) baseTabs.push("organizations");
-    if (isEnabled("students")) baseTabs.push("students");
+    if (menuSettings.showCourses !== false && isEnabled("courses")) baseTabs.push("courses");
+    if (menuSettings.showCompanies !== false && isEnabled("companies")) baseTabs.push("organizations");
+    if (menuSettings.showStudents !== false && isEnabled("students")) baseTabs.push("students");
     if (menuSettings.showLibrary && isEnabled("library")) baseTabs.push("library");
     if (menuSettings.showStats) baseTabs.push("stats");
     if (menuSettings.showLinks && isEnabled("links")) baseTabs.push("links");
     if (menuSettings.showLaborSafety !== false && isEnabled("labor_safety")) baseTabs.push("labor-safety");
     
+    // Keep the pre-existing account and catalogue workspaces in the swipe
+    // sequence. The semantic sidebar grouping must not make them unreachable
+    // for mobile users.
     baseTabs.push("payments");
     if (menuSettings.showSubscription !== false) baseTabs.push("subscription");
     if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
     baseTabs.push("chats");
-    baseTabs.push("chats");
+    if (menuSettings.showDocuments && isEnabled("documents")) baseTabs.push("documents");
+    if (menuSettings.showJournals !== false && isEnabled("journals")) baseTabs.push("journals");
+    if (isFrdoEnabled && menuSettings.showFrdo !== false && isEnabled("frdo")) baseTabs.push("frdo");
     
     return baseTabs;
   }, [menuSettings, isFrdoEnabled, isEnabled]);
@@ -150,7 +155,7 @@ export function useTabNavigation({
     if (!isMobile) return;
     const tabs = getVisibleTabs();
     const currentIndex = tabs.indexOf(activeTab);
-    if (currentIndex < tabs.length - 1) {
+    if (currentIndex >= 0 && currentIndex < tabs.length - 1) {
       triggerHapticFeedback();
       setSwipeDirection(1);
       setActiveTab(tabs[currentIndex + 1]);

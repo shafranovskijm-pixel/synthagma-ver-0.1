@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }));
+
 // Mock dependencies
 vi.mock("react-router-dom", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigateMock,
   useParams: () => ({ courseId: undefined }),
 }));
 
@@ -153,5 +155,13 @@ describe("useCourseBuilder", () => {
   it("provides DnD sensors", () => {
     const { result } = renderHook(() => useCourseBuilder());
     expect(result.current.sensors).toBeDefined();
+  });
+
+  it("returns an organization user to the explicit Courses workspace", () => {
+    const { result } = renderHook(() => useCourseBuilder());
+
+    act(() => result.current.handleBackClick());
+
+    expect(navigateMock).toHaveBeenCalledWith("/organization?tab=courses");
   });
 });

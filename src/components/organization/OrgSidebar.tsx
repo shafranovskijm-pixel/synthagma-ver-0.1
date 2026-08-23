@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
-  Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink, HelpCircle, UserRound, UserCog
+  Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle,
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Briefcase,
+  PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink, HelpCircle, UserRound, UserCog,
+  Home, ChevronDown, Send, UserPlus, FolderOpen, Handshake
 } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -35,9 +36,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { organizationTabPath } from "@/lib/organization/workspaceNavigation";
-import { splitPinnedNavigation } from "@/lib/organization/sidebarNavigation";
+import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
 
 export type TabType = 
+  | "home"
   | "courses" 
   | "organizations" 
   | "students" 
@@ -116,10 +118,10 @@ function normalizeBrandColor(color?: string): string {
   return trimmed;
 }
 
-type SectionId = "people" | "learning" | "documents" | "management";
-
 interface NavItem {
-  id: TabType;
+  id: string;
+  tab?: TabType;
+  href: string;
   icon: typeof BookOpen;
   label: string;
   description?: string;
@@ -127,15 +129,20 @@ interface NavItem {
   badge?: number;
   hasNew?: boolean;
   statusBadge?: "Beta";
-  section: SectionId;
+  forceLocked?: boolean;
+  pinnable?: boolean;
+  neverActive?: boolean;
 }
 
-const SECTION_LABELS: Record<SectionId, string> = {
-  people: "Люди",
-  learning: "Обучение",
-  documents: "Документы",
-  management: "Управление",
-};
+interface NavGroup {
+  id: "courses" | "students" | "communications" | "documents";
+  icon: typeof BookOpen;
+  label: string;
+  description: string;
+  items: NavItem[];
+  badge?: number;
+  hasNew?: boolean;
+}
 
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
 const EXPANDED_KEY = "org-sidebar-expanded";
@@ -159,6 +166,10 @@ export function OrgSidebar() {
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
   const planName = d.subscriptionLimits?.plan;
+  const mailingEnabled = isMailingEnabled(
+    planName,
+    d.subscriptionLimits?.limits.emailCampaignsEnabled,
+  );
   const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : '';
   const { handleLogoUpload, isUploadingLogo } = d.branding;
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -260,7 +271,10 @@ export function OrgSidebar() {
 
   const brandHsl = themeAccent || normalizeBrandColor(primaryColor);
 
-  const isLocked = useCallback((category: string) => !isEnabled(category as any), [isEnabled]);
+  const isLocked = useCallback(
+    (category: string) => !isEnabled(category as Parameters<typeof isEnabled>[0]),
+    [isEnabled],
+  );
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -289,55 +303,228 @@ export function OrgSidebar() {
     setIsMobileSidebarOpen(false);
   };
 
-  // Build nav items grouped by section
-  const rawItems: NavItem[] = [];
+  const canShowTab = (tab: TabType) => permsLoading || canSeeOrgTab(tab);
+  const makeTabItem = (
+    tab: TabType,
+    options: Omit<NavItem, "tab" | "href"> & { href?: string },
+  ): NavItem => ({
+    ...options,
+    tab,
+    href: options.href ?? organizationTabPath(tab),
+  });
 
-  // === ЛЮДИ ===
-  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", description: "Список учеников и их прогресс", category: "students", section: "people" });
-  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Компании", description: "Корпоративные клиенты и их сотрудники", category: "companies", section: "people" });
-  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", description: "Переписка с учениками и компаниями", badge: d.unreadChatsCount, section: "people" });
+  const orderPinnedFirst = (items: NavItem[]) => {
+    const pinnedOrder = new Map(pinned.map((id, index) => [id, index]));
+    return [...items].sort((a, b) => {
+      const aIndex = pinnedOrder.get(a.id);
+      const bIndex = pinnedOrder.get(b.id);
+      if (aIndex === undefined && bIndex === undefined) return 0;
+      if (aIndex === undefined) return 1;
+      if (bIndex === undefined) return -1;
+      return aIndex - bIndex;
+    });
+  };
 
-  // === ОБУЧЕНИЕ ===
-  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", description: "Создание и редактирование учебных программ", category: "courses", section: "learning" });
-  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0, section: "learning" });
-  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", description: "Изолированный модуль обучения по ОТ", category: "labor_safety", section: "learning" });
-  if (menuSettings.showLibrary !== false) rawItems.push({ id: "library", icon: HardDrive, label: "Хранилище", description: "Файлы и учебные материалы", category: "library", section: "learning" });
-  if (menuSettings.showServices !== false) rawItems.push({ id: "services", icon: ShoppingBag, label: "Готовые курсы", description: "Магазин готовых учебных программ", category: "services", section: "learning", statusBadge: "Beta" });
-
-  // === ДОКУМЕНТЫ ===
-  if (menuSettings.showDocuments === true) {
-    // The Documents workspace already contains both learner and organization
-    // documents. Keep the legacy org-documents route available, but do not
-    // render a second sidebar button leading to the same screen.
-    rawItems.push({ id: "documents", icon: FileText, label: "Документы", description: "Личные дела, учебные документы и документы организации", category: "documents", section: "documents" });
+  // Seven stable roots. Existing workspaces remain available as children, so
+  // the menu is calmer without removing a feature or bypassing staff rights.
+  const mainItems: NavItem[] = [];
+  if (canShowTab("home")) {
+    mainItems.push(makeTabItem("home", {
+      id: "home",
+      icon: Home,
+      label: "Главная",
+      description: "Стартовый экран организации",
+      pinnable: false,
+    }));
   }
-  if (menuSettings.showJournals !== false) rawItems.push({ id: "journals", icon: ClipboardList, label: "Журналы", description: "Журналы обучения и регистрации", category: "journals", section: "documents" });
-  if (menuSettings.showFrdo !== false) rawItems.push({ id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО", description: "Подготовка и выгрузка сведений в ФРДО", category: "frdo", section: "documents" });
 
-  // === УПРАВЛЕНИЕ ===
-  if (menuSettings.showSales === true) rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0, statusBadge: "Beta", section: "management" });
-  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", description: "Аналитика обучения и доходов", section: "management" });
-  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки регистрации", description: "Ссылки регистрации на курсы и группы", category: "links", section: "management" });
-  rawItems.push({ id: "staff", icon: UserCog, label: "Сотрудники", description: "Роли и доступ сотрудников", section: "management" });
-  rawItems.push({ id: "profile", icon: UserRound, label: "Профиль организации", description: "Реквизиты, брендинг и параметры", section: "management" });
-  if (menuSettings.showSubscription !== false) rawItems.push({ id: "subscription", icon: CreditCard, label: "Тариф и оплата", description: "Тариф, лимиты, счета и оплата", section: "management" });
-  // «Финансы» убраны — открываются изнутри «Тариф».
+  const courseItems: NavItem[] = [];
+  if (menuSettings.showCourses !== false && canShowTab("courses")) {
+    courseItems.push(makeTabItem("courses", {
+      id: "courses",
+      icon: BookOpen,
+      label: "Все курсы",
+      description: "Создание и редактирование учебных программ",
+      category: "courses",
+    }));
+  }
+  if (canShowTab("homework-review")) courseItems.push(makeTabItem("homework-review", {
+    id: "homework-review", icon: BookCheck, label: "Домашние работы",
+    description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0,
+  }));
+  if (menuSettings.showLibrary !== false && canShowTab("library")) courseItems.push(makeTabItem("library", {
+    id: "library", icon: HardDrive, label: "Хранилище",
+    description: "Файлы и учебные материалы", category: "library",
+  }));
+  if (menuSettings.showLaborSafety !== false && canShowTab("labor-safety")) courseItems.push(makeTabItem("labor-safety", {
+    id: "labor-safety", icon: HardHat, label: "Охрана труда",
+    description: "Изолированный модуль обучения по ОТ", category: "labor_safety",
+  }));
+  if (menuSettings.showServices !== false && canShowTab("services")) courseItems.push(makeTabItem("services", {
+    id: "services", icon: ShoppingBag, label: "Готовые курсы",
+    description: "Магазин готовых учебных программ", category: "services", statusBadge: "Beta",
+  }));
 
-  // Фильтр по правам сотрудника
-  const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
+  const studentItems: NavItem[] = [];
+  if (menuSettings.showStudents !== false && canShowTab("students")) {
+    studentItems.push(makeTabItem("students", {
+      id: "students", icon: Users, label: "Ученики и группы",
+      description: "Список учеников, группы и прогресс", category: "students",
+    }));
+    studentItems.push(makeTabItem("students", {
+      id: "students-enrollment", icon: UserPlus, label: "Зачисление",
+      description: "Выбор учеников и зачисление на курс", category: "students", pinnable: false, neverActive: true,
+      href: "/organization?tab=students&studentsView=active",
+    }));
+  }
+  if (menuSettings.showLinks && canShowTab("links")) studentItems.push(makeTabItem("links", {
+    id: "links", icon: Link, label: "Ссылки регистрации",
+    description: "Ссылки регистрации на курсы и группы", category: "links",
+  }));
 
-  // Pinned items keep their saved order and are removed from regular sections.
-  const sectionOrder: SectionId[] = ["people", "learning", "documents", "management"];
-  const { pinnedItems, groupedItems: grouped } = splitPinnedNavigation(navItems, pinned, sectionOrder);
+  if (menuSettings.showCompanies !== false && canShowTab("organizations")) {
+    mainItems.push(makeTabItem("organizations", {
+      id: "organizations", icon: Building2, label: "Компании",
+      description: "Корпоративные клиенты и их сотрудники", category: "companies", pinnable: false,
+    }));
+  }
+
+  const communicationItems: NavItem[] = [];
+  if (canShowTab("chats")) communicationItems.push(makeTabItem("chats", {
+    id: "chats", icon: MessageCircle, label: "Чаты",
+    description: "Переписка с учениками и компаниями", badge: d.unreadChatsCount,
+  }));
+  // Mailing shares the existing sales permission, while plan limits decide
+  // whether the entry opens or offers an upgrade. Free users still see where
+  // the function lives instead of discovering it through an undocumented URL.
+  if (canShowTab("sales")) communicationItems.push({
+    id: "mailing",
+    icon: Send,
+    label: "Рассылки",
+    description: mailingEnabled
+      ? "Кампании, база, шаблоны и отправители"
+      : "Доступно с тарифа «Старт»",
+    href: "/mailing/app?tab=overview",
+    forceLocked: !mailingEnabled,
+  });
+
+  const documentItems: NavItem[] = [];
+  if (menuSettings.showDocuments === true && canShowTab("documents")) {
+    documentItems.push(makeTabItem("documents", {
+      id: "documents", icon: BarChart3, label: "Сводка",
+      description: "Состояние документооборота", category: "documents",
+    }));
+    if (canShowTab("students")) {
+      documentItems.push(makeTabItem("documents", {
+        id: "documents-files", icon: FolderOpen, label: "Личные дела и документы групп",
+        description: "Группы, личные дела и учебные документы", category: "documents", pinnable: false, neverActive: true,
+        href: "/organization?tab=students&studentsView=groups",
+      }));
+    }
+    if (canShowTab("organizations")) {
+      documentItems.push(makeTabItem("documents", {
+        id: "documents-contracts", icon: Handshake, label: "Договоры и закрывающие",
+        description: "Открыть компании и их договорные документы", category: "documents", pinnable: false, neverActive: true,
+        href: "/organization?tab=documents&documentView=counterparties&counterpartyView=closing",
+      }));
+    }
+  }
+  if (menuSettings.showJournals !== false && canShowTab("journals")) documentItems.push(makeTabItem("journals", {
+    id: "journals", icon: ClipboardList, label: "Журналы",
+    description: "Журналы обучения и регистрации", category: "journals",
+  }));
+  if (menuSettings.showFrdo !== false && canShowTab("frdo")) documentItems.push(makeTabItem("frdo", {
+    id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО",
+    description: "Подготовка и выгрузка сведений в ФРДО", category: "frdo",
+  }));
+
+  const navGroups: NavGroup[] = [];
+  if (courseItems.length > 0) navGroups.push({
+    id: "courses", icon: BookOpen, label: "Курсы", description: "Курсы и учебные материалы",
+    items: orderPinnedFirst(courseItems), hasNew: newIndicators.homework > 0,
+  });
+  if (studentItems.length > 0) navGroups.push({
+    id: "students", icon: Users, label: "Ученики", description: "Ученики, группы и зачисление",
+    items: orderPinnedFirst(studentItems),
+  });
+  if (communicationItems.length > 0) navGroups.push({
+    id: "communications", icon: MessageCircle, label: "Коммуникации", description: "Чаты и рассылки",
+    items: orderPinnedFirst(communicationItems), badge: d.unreadChatsCount,
+  });
+  if (documentItems.length > 0) navGroups.push({
+    id: "documents", icon: FileText, label: "Документы", description: "Весь документооборот организации",
+    items: orderPinnedFirst(documentItems),
+  });
+
+  const salesItem = menuSettings.showSales === true
+    && d.subscriptionLimits?.limits.salesCrmEnabled
+    && canShowTab("sales")
+    ? makeTabItem("sales", {
+        id: "sales", icon: Briefcase, label: "Продажи",
+        description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0,
+        statusBadge: "Beta", pinnable: false,
+      })
+    : null;
+
+  const reportsItem = canShowTab("stats")
+    ? makeTabItem("stats", {
+        id: "stats", icon: BarChart3, label: "Отчёты",
+        description: d.subscriptionLimits?.limits.reportsEnabled
+          ? "Аналитика обучения и доходов"
+          : "Расширенная аналитика доступна на старших тарифах",
+        forceLocked: d.subscriptionLimits?.limits.reportsEnabled === false,
+        pinnable: false,
+      })
+    : null;
+
+  const settingsItems = orderPinnedFirst([
+    ...(canShowTab("settings") ? [makeTabItem("settings", {
+      id: "settings", icon: Settings, label: "Настройки платформы",
+      description: "Разделы меню и параметры кабинета",
+    })] : []),
+    ...(canShowTab("profile") ? [makeTabItem("profile", {
+      id: "profile", icon: UserRound, label: "Профиль организации",
+      description: "Реквизиты, брендинг и уведомления",
+    })] : []),
+    ...(canShowTab("staff") ? [makeTabItem("staff", {
+      id: "staff", icon: UserCog, label: "Сотрудники и доступы",
+      description: "Роли и права сотрудников",
+    })] : []),
+    ...(menuSettings.showSubscription !== false && canShowTab("subscription") ? [makeTabItem("subscription", {
+      id: "subscription", icon: CreditCard, label: "Тариф и оплата",
+      description: "Тариф, лимиты, счета и оплата",
+    })] : []),
+  ]);
+
+  const isItemActive = (item: NavItem) => {
+    if (item.neverActive) return false;
+    if (item.href.startsWith("/mailing/app")) return location.pathname === "/mailing/app";
+    return !!item.tab && activeTab === item.tab;
+  };
+
+  const activeGroupId = navGroups.find((group) => group.items.some(isItemActive))?.id ?? null;
+  const [expandedGroup, setExpandedGroup] = useState<NavGroup["id"] | null>(null);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
+
+  useEffect(() => {
+    setExpandedGroup(activeGroupId);
+  }, [activeGroupId]);
+
+  useEffect(() => {
+    if (settingsItems.some(isItemActive)) setSettingsExpanded(true);
+  // The active tab is the intended trigger; settingsItems is rebuilt from the
+  // current permission snapshot and must not cause an expansion loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
 
 
   // Render single nav button (used by both pinned and section blocks)
-  const renderNavItem = (item: NavItem) => {
-    const isActive = activeTab === item.id;
-    const locked = item.category ? isLocked(item.category) : false;
-    const itemPinned = isPinned(item.id);
-    const itemHref = organizationTabPath(item.id);
+  const renderNavItem = (item: NavItem, nested = false) => {
+    const isActive = isItemActive(item);
+    const locked = item.forceLocked || (item.category ? isLocked(item.category) : false);
+    const itemPinned = item.pinnable !== false && isPinned(item.id);
+    const itemHref = item.href;
 
     const button = (
       <a
@@ -346,17 +533,22 @@ export function OrgSidebar() {
         onClick={(event) => {
           if (locked) {
             event.preventDefault();
-            handleTabClick(item.id);
+            setUpgradeDialogOpen(true);
             return;
           }
           if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
           event.preventDefault();
-          handleTabClick(item.id);
+          if (!item.tab || item.href !== organizationTabPath(item.tab) || location.pathname !== "/organization") {
+            navigate(item.href);
+            setIsMobileSidebarOpen(false);
+          } else {
+            handleTabClick(item.tab);
+          }
         }}
         className={cn(
           "relative rounded-lg transition-all duration-150 animate-fade-in",
           effectiveExpanded
-            ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
+            ? cn("flex items-center gap-3 h-10 w-full text-left", nested ? "pl-7 pr-2" : "px-2.5")
             : cn(
                 "flex flex-col items-center justify-center px-1 py-1.5",
                 showLabels ? "w-[68px] gap-0.5" : "w-10 h-10"
@@ -469,12 +661,81 @@ export function OrgSidebar() {
               Открыть в новой вкладке
             </ContextMenuItem>
           )}
-          <ContextMenuItem onClick={() => togglePin(item.id)} className="rounded-lg gap-2 py-2">
-            {itemPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-            {itemPinned ? "Открепить" : "Закрепить наверху"}
-          </ContextMenuItem>
+          {item.pinnable !== false && (
+            <ContextMenuItem onClick={() => togglePin(item.id)} className="rounded-lg gap-2 py-2">
+              {itemPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+              {itemPinned ? "Открепить" : "Поднять в подразделе"}
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
+    );
+  };
+
+  const renderNavGroup = (group: NavGroup) => {
+    const open = expandedGroup === group.id;
+    const active = group.items.some(isItemActive);
+    const GroupIcon = group.icon;
+
+    return (
+      <div key={group.id} className="w-full">
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={`org-nav-${group.id}`}
+              aria-label={group.label}
+              onClick={() => setExpandedGroup((current) => current === group.id ? null : group.id)}
+              className={cn(
+                "relative rounded-lg transition-all duration-150",
+                effectiveExpanded
+                  ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
+                  : cn("flex flex-col items-center justify-center px-1 py-1.5", showLabels ? "w-[68px] gap-0.5" : "h-10 w-10"),
+                active
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+              )}
+            >
+              <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+                <GroupIcon className="h-[18px] w-[18px]" />
+                {(group.badge ?? 0) > 0 && (
+                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                    {group.badge! > 99 ? "99+" : group.badge}
+                  </span>
+                )}
+                {!group.badge && group.hasNew && (
+                  <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-card" aria-label="Есть новое" />
+                )}
+              </span>
+              {effectiveExpanded ? (
+                <>
+                  <span className="flex-1 truncate text-[13px] font-medium">{group.label}</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+                </>
+              ) : showLabels ? (
+                <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">{group.label}</span>
+              ) : null}
+            </button>
+          </TooltipTrigger>
+          {!effectiveExpanded && (
+            <TooltipContent side="right" sideOffset={12} className="z-[100] max-w-[240px] rounded-xl p-3">
+              <div className="font-semibold">{group.label}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{group.description}</div>
+            </TooltipContent>
+          )}
+        </Tooltip>
+
+        {open && (
+          <nav
+            id={`org-nav-${group.id}`}
+            aria-label={`${group.label}: подразделы`}
+            className={cn("mt-0.5 flex flex-col gap-0.5", !effectiveExpanded && "items-center border-l border-primary/20 pl-1")}
+          >
+            {group.items.map((item) => renderNavItem(item, true))}
+          </nav>
+        )}
+      </div>
     );
   };
 
@@ -606,58 +867,60 @@ export function OrgSidebar() {
           )}
         </div>
 
-        {/* Navigation grouped by section */}
-        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2 justify-start", effectiveExpanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
-
-          {/* Pinned items (favorites) */}
-          {pinnedItems.length > 0 && (
-            <div className="w-full flex flex-col">
-              {effectiveMode !== "icons" && (
-                <div className={cn("px-1", effectiveExpanded ? "text-left" : "text-center")}>
-                  <span
-                    className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none inline-flex items-center gap-1"
-                    aria-hidden
-                  >
-                    <Pin className="w-2.5 h-2.5" /> Закреплено
-                  </span>
-                </div>
-              )}
-              <nav className={cn("flex flex-col gap-0.5", effectiveMode !== "icons" && "mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
-                {pinnedItems.map((item) => renderNavItem(item))}
-              </nav>
-            </div>
-          )}
-
-          {grouped.map((group, gIdx) => (
-            <div key={group.section} className="w-full flex flex-col">
-              {effectiveMode !== "icons" && (
-                <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", effectiveExpanded ? "text-left" : "text-center")}>
-                  <span
-                    className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
-                    aria-hidden
-                  >
-                    {SECTION_LABELS[group.section]}
-                  </span>
-                </div>
-              )}
-
-              <nav className={cn("flex flex-col gap-0.5", effectiveMode !== "icons" && "mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
-                {group.items.map((item) => renderNavItem(item))}
-              </nav>
-            </div>
-          ))}
+        {/* Seven semantic roots; details appear only inside the selected root. */}
+        <div className={cn("flex flex-1 flex-col justify-start overflow-y-auto py-2 scrollbar-hide", effectiveExpanded ? "gap-0.5 px-2" : "items-center gap-0.5 px-2")}>
+          <nav aria-label="Основные разделы" className={cn("flex w-full flex-col gap-0.5", !effectiveExpanded && "items-center")}>
+            {mainItems.filter((item) => item.id === "home").map((item) => renderNavItem(item))}
+            {navGroups.find((group) => group.id === "courses") && renderNavGroup(navGroups.find((group) => group.id === "courses")!)}
+            {navGroups.find((group) => group.id === "students") && renderNavGroup(navGroups.find((group) => group.id === "students")!)}
+            {mainItems.filter((item) => item.id === "organizations").map((item) => renderNavItem(item))}
+            {navGroups.find((group) => group.id === "communications") && renderNavGroup(navGroups.find((group) => group.id === "communications")!)}
+            {navGroups.find((group) => group.id === "documents") && renderNavGroup(navGroups.find((group) => group.id === "documents")!)}
+            {salesItem && renderNavItem(salesItem)}
+            {reportsItem && renderNavItem(reportsItem)}
+          </nav>
         </div>
 
         {/* Footer: stable help/settings actions, display mode and logout */}
         <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
 
-          {(permsLoading || canSeeOrgTab("settings")) && renderFooterAction({
-            label: "Настройки",
-            icon: Settings,
-            href: organizationTabPath("settings"),
-            active: activeTab === "settings",
-            onActivate: () => handleTabClick("settings"),
-          })}
+          {settingsItems.length > 0 && (
+            <div className="w-full">
+              {settingsExpanded && (
+                <nav id="org-nav-settings" aria-label="Настройки: подразделы" className={cn("mb-1 flex flex-col gap-0.5", !effectiveExpanded && "items-center")}>
+                  {settingsItems.map((item) => renderNavItem(item, true))}
+                </nav>
+              )}
+              <button
+                type="button"
+                aria-expanded={settingsExpanded}
+                aria-controls="org-nav-settings"
+                onClick={() => setSettingsExpanded((open) => !open)}
+                className={cn(
+                  "rounded-lg transition-colors",
+                  effectiveExpanded
+                    ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
+                    : showLabels
+                      ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
+                      : "flex h-9 w-9 items-center justify-center",
+                  settingsItems.some(isItemActive)
+                    ? "bg-primary/15 text-primary"
+                    : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+                )}
+                aria-label="Настройки"
+              >
+                <Settings className="h-[18px] w-[18px] shrink-0" />
+                {effectiveExpanded ? (
+                  <>
+                    <span className="flex-1 text-[13px] font-medium">Настройки</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", settingsExpanded && "rotate-180")} />
+                  </>
+                ) : showLabels ? (
+                  <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Настройки</span>
+                ) : null}
+              </button>
+            </div>
+          )}
 
           {renderFooterAction({
             label: "Помощь",
