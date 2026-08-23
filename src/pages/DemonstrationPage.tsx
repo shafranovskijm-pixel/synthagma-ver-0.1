@@ -12,6 +12,11 @@ import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  demoRequestErrorMessage,
+  isDemoRequestAccepted,
+  isReasonableDemoPhone,
+} from "@/lib/demoRequest";
 
 import demoHero from "@/assets/demo/demo-hero.jpg";
 import featConstructor from "@/assets/demo/demo-feature-constructor.jpg";
@@ -73,23 +78,27 @@ export default function DemonstrationPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      toast.error("Укажите имя и телефон");
+    if (!name.trim()) {
+      toast.error("Укажите имя");
+      return;
+    }
+    if (!isReasonableDemoPhone(phone)) {
+      toast.error("Укажите телефон полностью");
       return;
     }
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke("submit-demo-request", {
+      const { data, error } = await supabase.functions.invoke("submit-demo-request", {
         body: { name, organization: org, phone, email, slot, message, source: "demonstration_page" },
       });
-      if (error) throw error;
+      if (error) throw new Error("Не удалось отправить заявку. Попробуйте ещё раз.");
+      if (!isDemoRequestAccepted(data)) throw new Error(demoRequestErrorMessage(data));
       setSent(true);
       toast.success("Заявка отправлена — свяжемся в ближайшее время");
-    } catch (err: any) {
-      // Fallback: still count as sent (form data logged), but notify
-      console.error(err);
-      setSent(true);
-      toast.success("Заявка принята");
+    } catch (err: unknown) {
+      console.error("Demo request submission failed", err);
+      setSent(false);
+      toast.error(err instanceof Error ? err.message : "Не удалось отправить заявку. Попробуйте ещё раз.");
     } finally {
       setLoading(false);
     }

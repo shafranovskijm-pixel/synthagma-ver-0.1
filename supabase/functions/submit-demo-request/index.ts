@@ -1,4 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  buildEmailHtml,
+  buildEmailSubject,
+  buildTelegramMessage,
+  isReasonablePhone,
+  normalizeDemoRequestInput,
+  notificationInvokeSucceeded,
+  type NotificationDelivery,
+} from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,18 +15,32 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
+  }
 
   try {
-    const body = await req.json();
-    const { name, organization, phone, email, slot, message, source } = body || {};
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
+      return jsonResponse({ ok: false, error: "invalid_json" }, 400);
+    }
 
-    if (!name || !phone) {
-      return new Response(JSON.stringify({ error: "name_and_phone_required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const input = normalizeDemoRequestInput(requestBody);
+    if (!input.name || !input.phone) {
+      return jsonResponse({ ok: false, error: "name_and_phone_required" }, 400);
+    }
+    if (!isReasonablePhone(input.phone)) {
+      return jsonResponse({ ok: false, error: "invalid_phone" }, 400);
     }
 
     const supabase = createClient(
@@ -26,65 +49,105 @@ Deno.serve(async (req) => {
     );
 
     const notes = [
-      slot ? `Удобное время: ${slot}` : null,
-      message ? `Комментарий: ${message}` : null,
-      `Источник: ${source || "demonstration_page"}`,
+      `Контакт: ${input.name}`,
+      input.slot ? `Удобное время: ${input.slot}` : null,
+      input.message ? `Комментарий: ${input.message}` : null,
+      `Источник: ${input.source}`,
     ].filter(Boolean).join("\n");
 
-    const { data: lead, error: leadErr } = await supabase
+    const { data: lead, error: leadError } = await supabase
       .from("sales_leads")
       .insert({
-        contact_name: name,
-        company_name: organization || name,
-        phone,
-        email: email || null,
+        org_name: input.organization || input.name,
+        phone: input.phone,
+        email: input.email || null,
         notes,
         status: "new",
         source: "demo_request",
       })
-      .select()
+      .select("id")
       .single();
 
-    if (leadErr) console.error("lead insert error", leadErr);
-
-    // Best-effort email notification
-    try {
-      await supabase.functions.invoke("send-email", {
-        body: {
-          to: Deno.env.get("SALES_NOTIFY_EMAIL") || "sales@sintagma.com.ru",
-          subject: `Новая заявка на демо: ${name}${organization ? ` (${organization})` : ""}`,
-          html: `
-            <h2>Заявка с /demonstration</h2>
-            <p><b>Имя:</b> ${escapeHtml(name)}</p>
-            <p><b>Организация:</b> ${escapeHtml(organization || "—")}</p>
-            <p><b>Телефон:</b> ${escapeHtml(phone)}</p>
-            <p><b>Email:</b> ${escapeHtml(email || "—")}</p>
-            <p><b>Слот:</b> ${escapeHtml(slot || "—")}</p>
-            <p><b>Комментарий:</b><br/>${escapeHtml(message || "—").replace(/\n/g, "<br/>")}</p>
-          `,
-        },
+    if (leadError || !lead?.id) {
+      console.error("submit-demo-request: lead insert failed", {
+        code: leadError?.code || "missing_lead_id",
       });
-    } catch (e) {
-      console.error("email notify failed", e);
+      return jsonResponse({
+        ok: false,
+        error: "lead_persistence_failed",
+        delivery: {
+          lead: "failed",
+          telegram: "not_attempted",
+          email: "not_attempted",
+        },
+      }, 500);
     }
 
-    return new Response(JSON.stringify({ ok: true, lead_id: lead?.id ?? null }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let telegramDelivery: NotificationDelivery = "failed";
+    try {
+      const supportChatId = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID")?.trim();
+      const telegramBody: Record<string, string> = {
+        message: buildTelegramMessage(input),
+      };
+      if (supportChatId) telegramBody.chat_id = supportChatId;
+
+      const { data: telegramResult, error: telegramError } = await supabase.functions.invoke(
+        "send-telegram-notification",
+        { body: telegramBody },
+      );
+
+      if (!telegramError && notificationInvokeSucceeded(telegramResult)) {
+        telegramDelivery = "sent";
+      } else {
+        console.error("submit-demo-request: Telegram notification failed", {
+          invokeError: Boolean(telegramError),
+          resultAccepted: notificationInvokeSucceeded(telegramResult),
+        });
+      }
+    } catch {
+      console.error("submit-demo-request: Telegram notification threw");
+    }
+
+    // Email is deliberately best-effort: the persisted lead remains accepted.
+    let emailDelivery: NotificationDelivery = "failed";
+    try {
+      const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+        "send-email",
+        {
+          body: {
+            to: Deno.env.get("SALES_NOTIFY_EMAIL") || "sales@sintagma.com.ru",
+            subject: buildEmailSubject(input),
+            html: buildEmailHtml(input),
+          },
+        },
+      );
+
+      if (!emailError && notificationInvokeSucceeded(emailResult)) {
+        emailDelivery = "sent";
+      } else {
+        console.error("submit-demo-request: email notification failed", {
+          invokeError: Boolean(emailError),
+          resultAccepted: notificationInvokeSucceeded(emailResult),
+        });
+      }
+    } catch {
+      console.error("submit-demo-request: email notification threw");
+    }
+
+    return jsonResponse({
+      ok: true,
+      lead_id: lead.id,
+      delivery: {
+        lead: "stored",
+        telegram: telegramDelivery,
+        email: emailDelivery,
+      },
     });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ error: String(e?.message ?? e) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (error: unknown) {
+    console.error(
+      "submit-demo-request: unexpected failure",
+      error instanceof Error ? error.name : "unknown_error",
+    );
+    return jsonResponse({ ok: false, error: "internal_error" }, 500);
   }
 });
-
-function escapeHtml(s: string): string {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
