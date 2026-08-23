@@ -3,6 +3,7 @@ import {
   parseBodyElements,
   uniqueCloneIds,
 } from "./compile.ts";
+import { shortNameRu } from "./money.ts";
 import { findUnresolvedTokens, replaceTokens, splitTopLevel } from "./xml.ts";
 
 export interface GroupDocumentManifest {
@@ -26,6 +27,7 @@ export interface GroupDocumentManifest {
     header_rows: number;
     prototype_row: number;
     continuation_row?: number;
+    minimum_rows?: number;
     strategy: string;
   };
   qa?: {
@@ -38,6 +40,190 @@ export interface GroupDocumentManifest {
 export interface GroupDocumentSnapshot {
   scalars: Record<string, string>;
   rows: Array<Record<string, string>>;
+}
+
+export interface DocumentSignatoryInput {
+  position: string;
+  name: string;
+}
+
+export type GoreltechCompiledDocumentType =
+  | "enrollment_order"
+  | "expulsion_order"
+  | "student_list"
+  | "class_journal"
+  | "schedule"
+  | "attestation_sheet"
+  | "registration_book"
+  | "title_page"
+  | "pass";
+
+export interface GroupDocumentPrerequisiteContext {
+  org_name: unknown;
+  group_number: unknown;
+  program_title: unknown;
+  program_hours: unknown;
+  start_date: unknown;
+  end_date: unknown;
+  instructor_name: unknown;
+  training_dates: unknown[];
+  students_count: number;
+}
+
+export interface GroupDocumentPrerequisiteIssue {
+  code: "missing_prerequisite" | "invalid_training_dates_count";
+  field: string;
+  message: string;
+}
+
+const REQUIRED_PREREQUISITES: Record<
+  GoreltechCompiledDocumentType,
+  Array<Exclude<keyof GroupDocumentPrerequisiteContext, "training_dates"> | "training_dates_4">
+> = {
+  enrollment_order: [
+    "org_name",
+    "group_number",
+    "program_title",
+    "program_hours",
+    "start_date",
+    "end_date",
+    "students_count",
+  ],
+  expulsion_order: [
+    "org_name",
+    "group_number",
+    "program_title",
+    "program_hours",
+    "start_date",
+    "end_date",
+    "students_count",
+  ],
+  student_list: ["org_name", "group_number", "program_title", "students_count"],
+  class_journal: [
+    "org_name",
+    "group_number",
+    "program_title",
+    "program_hours",
+    "instructor_name",
+    "training_dates_4",
+    "students_count",
+  ],
+  schedule: ["program_title", "program_hours", "instructor_name"],
+  attestation_sheet: [
+    "org_name",
+    "group_number",
+    "program_title",
+    "program_hours",
+    "start_date",
+    "end_date",
+    "instructor_name",
+    "students_count",
+  ],
+  registration_book: [
+    "org_name",
+    "group_number",
+    "program_title",
+    "start_date",
+    "end_date",
+    "students_count",
+  ],
+  title_page: ["org_name", "group_number", "program_title", "start_date", "end_date"],
+  pass: [
+    "org_name",
+    "group_number",
+    "program_title",
+    "program_hours",
+    "start_date",
+    "end_date",
+    "students_count",
+  ],
+};
+
+const PREREQUISITE_LABELS: Record<string, string> = {
+  org_name: "наименование организации",
+  group_number: "номер группы",
+  program_title: "наименование программы",
+  program_hours: "объём программы в часах",
+  start_date: "дата начала обучения",
+  end_date: "дата окончания обучения",
+  instructor_name: "ФИО преподавателя",
+  students_count: "слушатели группы",
+};
+
+export function validateGroupDocumentPrerequisites(params: {
+  docType: GoreltechCompiledDocumentType;
+  fillMode: "blank" | "data";
+  context: GroupDocumentPrerequisiteContext;
+}): GroupDocumentPrerequisiteIssue[] {
+  const issues: GroupDocumentPrerequisiteIssue[] = [];
+  for (const field of REQUIRED_PREREQUISITES[params.docType]) {
+    if (field === "training_dates_4") {
+      if (params.fillMode === "blank") continue;
+      const count = params.context.training_dates
+        .map((value) => String(value || "").trim())
+        .filter(Boolean).length;
+      if (count !== 4) {
+        issues.push({
+          code: "invalid_training_dates_count",
+          field,
+          message: "для журнала нужно указать ровно четыре даты занятий",
+        });
+      }
+      continue;
+    }
+
+    const value = params.context[field];
+    const missing = field === "students_count"
+      ? Number(value) <= 0
+      : field === "program_hours"
+        ? Number(value) <= 0
+        : String(value || "").trim() === "";
+    if (missing) {
+      issues.push({
+        code: "missing_prerequisite",
+        field,
+        message: `не заполнено обязательное поле: ${PREREQUISITE_LABELS[field]}`,
+      });
+    }
+  }
+  return issues;
+}
+
+export function resolveDocumentSignatory(
+  override: DocumentSignatoryInput | undefined,
+  organization: { director_position?: unknown; director_name?: unknown },
+): { position: string; shortName: string; source: "request" | "organization_default" } {
+  if (override !== undefined) {
+    return {
+      position: override.position.trim(),
+      shortName: shortNameRu(override.name.trim()),
+      source: "request",
+    };
+  }
+  return {
+    position: String(organization.director_position || "").trim(),
+    shortName: shortNameRu(String(organization.director_name || "").trim()),
+    source: "organization_default",
+  };
+}
+
+function preserveMinimumRows(
+  rows: Array<Record<string, string>>,
+  rowTokens: string[],
+  minimumRows = 0,
+): Array<Record<string, string>> {
+  const result = rows.map((row, index) => ({
+    ...row,
+    ...(rowTokens.includes("N") && !String(row.N || "").trim()
+      ? { N: String(index + 1) }
+      : {}),
+  }));
+  while (result.length < minimumRows) {
+    const blank = Object.fromEntries(rowTokens.map((token) => [token, ""]));
+    if (rowTokens.includes("N")) blank.N = String(result.length + 1);
+    result.push(blank);
+  }
+  return result;
 }
 
 function decodeHtml(value: string): string {
@@ -145,6 +331,11 @@ export function compileGroupDocumentXml(params: {
   const parsed = parseBodyElements(params.documentXml);
   const repeater = params.manifest.repeater;
   if (repeater) {
+    const rows = preserveMinimumRows(
+      params.snapshot.rows,
+      params.manifest.row_tokens,
+      repeater.minimum_rows,
+    );
     const target = parsed.elements.find((element) => element.tableIndex === repeater.table_index);
     if (!target) {
       throw new Error(
@@ -155,14 +346,14 @@ export function compileGroupDocumentXml(params: {
       ? expandRepeaterTable(
           target.xml,
           repeater.prototype_row,
-          params.snapshot.rows,
+          rows,
           repeater.header_rows,
         )
       : expandVerticallyMergedRepeater({
           tableXml: target.xml,
           prototypeRow: repeater.prototype_row,
           continuationRow: repeater.continuation_row,
-          items: params.snapshot.rows,
+          items: rows,
           headerRows: repeater.header_rows,
         });
   }

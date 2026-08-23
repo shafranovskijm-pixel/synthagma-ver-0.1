@@ -20,6 +20,7 @@ export interface ClassJournalManifest {
       table_index: number;
       header_rows: number;
       prototype_row: number;
+      minimum_rows?: number;
       strategy: string;
     }
   >;
@@ -118,6 +119,16 @@ export function compileClassJournalXml(params: {
       ...student,
     })),
   );
+  while (students.length < (repeater.minimum_rows ?? 0)) {
+    students.push({
+      N: String(students.length + 1),
+      STUDENT_NAME: "",
+      MARK_1: "",
+      MARK_2: "",
+      MARK_3: "",
+      MARK_4: "",
+    });
+  }
   target.xml = expandRepeaterTable(
     target.xml,
     repeater.prototype_row,

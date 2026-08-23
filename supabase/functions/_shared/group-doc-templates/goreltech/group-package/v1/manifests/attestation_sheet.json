@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.attestation_sheet",
-  "template_version": "1.0.0-client-source",
+  "template_version": "1.1.0-client-source",
   "scenario": "group_attestation_sheet",
   "source_filename": "attestation_sheet.source.docx",
   "source_sha256": "1A1DCDD74B904A6EF3265728679FB6022677EB05F1228CB753695331CDC27CA1",
@@ -19,12 +19,14 @@
     "table_index": 0,
     "header_rows": 1,
     "prototype_row": 1,
-    "strategy": "clone_prototype_remove_unused"
+    "minimum_rows": 6,
+    "strategy": "clone_prototype_preserve_minimum_rows"
   },
   "changes_applied": [
     "full GORELTECH header retained from the client source",
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
+    "the original blank-form row capacity is preserved without inventing names or marks",
     "all runtime values use explicit tokens; no sample person remains"
   ],
   "qa": {
@@ -34,5 +36,5 @@
     ],
     "status": "passed_all_rendered_pages_2026-08-15"
   },
-  "template_sha256": "BC19BAED5FE1F394B9D85DB90CEB28B790201CA497F4A0FEF55651827CF1A125"
+  "template_sha256": "3C311CD00D47C509C563C416BA54B1B3190757127E53F102A6F7E666B388DE7D"
 }

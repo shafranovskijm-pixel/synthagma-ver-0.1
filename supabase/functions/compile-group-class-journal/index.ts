@@ -11,7 +11,6 @@ import { z } from "npm:zod@3.23.8";
 import {
   compileClassJournalXml,
   formatJournalDate,
-  initialsFirstNameRu,
   type ClassJournalManifest,
 } from "../_shared/docx-ooxml/classJournal.ts";
 import { shortNameRu } from "../_shared/docx-ooxml/money.ts";
@@ -19,6 +18,8 @@ import {
   buildGroupDocumentScalars,
   compileGroupDocumentXml,
   parseGeneratedHtmlRows,
+  resolveDocumentSignatory,
+  validateGroupDocumentPrerequisites,
   type GroupDocumentManifest,
 } from "../_shared/docx-ooxml/groupDocument.ts";
 import {
@@ -31,7 +32,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-tenant-uuid-v7";
+export const COMPILER_REVISION = "goreltech-group-package-tenant-uuid-v8";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -47,6 +48,11 @@ const LEGACY_TYPES = [
   "pass",
 ] as const;
 
+const SignatorySchema = z.object({
+  position: z.string().max(200),
+  name: z.string().max(300),
+});
+
 const LegacyDocumentSchema = z.object({
   doc_type: z.enum(LEGACY_TYPES),
   name: z.string().min(1).max(300),
@@ -58,6 +64,7 @@ const LegacyDocumentSchema = z.object({
   fill_mode: z.enum(["blank", "data"]).default("blank"),
   layout_format: z.literal("legacy_html").default("legacy_html"),
   source_note: z.string().max(2000).nullish(),
+  signatory: SignatorySchema.optional(),
 });
 
 const BodySchema = z.object({
@@ -65,6 +72,7 @@ const BodySchema = z.object({
   groupId: z.string().uuid(),
   fillMode: z.enum(["blank", "data"]).default("blank"),
   includeJournal: z.boolean().default(true),
+  journalSignatory: SignatorySchema.optional(),
   otherDocuments: z.array(LegacyDocumentSchema).max(20).default([]),
 }).refine(
   (body) => body.includeJournal || body.otherDocuments.length > 0,
@@ -90,6 +98,21 @@ function shortInstructorNames(value: unknown): string {
     .filter(Boolean)
     .map(shortNameRu)
     .join("; ");
+}
+
+function instructorShortSlots(value: unknown): {
+  first: string;
+  second: string;
+} {
+  const names = String(value || "")
+    .split(/[;\n]+/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map(shortNameRu);
+  return {
+    first: names[0] || "",
+    second: names.slice(1).join("; "),
+  };
 }
 
 Deno.serve(async (req) => {
@@ -163,7 +186,7 @@ Deno.serve(async (req) => {
     const [groupResult, orgResult, profilesResult] = await Promise.all([
       admin
         .from("student_groups")
-        .select("id, organization_id, name, group_number, program_title, program_hours, course_id, instructor_name, training_dates")
+        .select("id, organization_id, name, group_number, program_title, program_hours, course_id, instructor_name, training_dates, start_date, end_date")
         .eq("id", body.groupId)
         .maybeSingle(),
       admin
@@ -210,6 +233,46 @@ Deno.serve(async (req) => {
       course = courseResult.data;
     }
 
+    const instructorSlots = instructorShortSlots(group.instructor_name);
+    const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
+    const programTitle = String(group.program_title || course?.title || "").trim();
+    const programHours = Number(group.program_hours || course?.frdo_duration_hours || course?.duration || 0);
+    const prerequisiteContext = {
+      org_name: organization.name,
+      group_number: group.group_number,
+      program_title: programTitle,
+      program_hours: programHours,
+      start_date: group.start_date,
+      end_date: group.end_date,
+      instructor_name: group.instructor_name,
+      training_dates: dates,
+      students_count: ((profilesResult.data as any[]) || []).length,
+    };
+    const requestedDocuments = [
+      ...body.otherDocuments.map((document) => ({
+        docType: document.doc_type,
+        fillMode: document.fill_mode,
+      })),
+      ...(body.includeJournal
+        ? [{ docType: "class_journal" as const, fillMode: body.fillMode }]
+        : []),
+    ];
+    for (const requestedDocument of requestedDocuments) {
+      const prerequisiteIssues = validateGroupDocumentPrerequisites({
+        docType: requestedDocument.docType,
+        fillMode: requestedDocument.fillMode,
+        context: prerequisiteContext,
+      });
+      if (prerequisiteIssues.length) {
+        return json({
+          error: `Документ ${requestedDocument.docType} не может быть сформирован: ${prerequisiteIssues.map((issue) => issue.message).join("; ")}`,
+          details: prerequisiteIssues,
+          docType: requestedDocument.docType,
+          stage,
+        }, 422);
+      }
+    }
+
     let journalDocument: Record<string, unknown> | null = null;
     if (body.includeJournal) {
     stage = "template-validation";
@@ -223,16 +286,15 @@ Deno.serve(async (req) => {
       return json({ error: "Контрольная сумма Word-шаблона не совпала с манифестом", stage }, 409);
     }
 
-    const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
-    const programTitle = String(group.program_title || course?.title || "").trim();
-    const programHours = Number(group.program_hours || course?.frdo_duration_hours || course?.duration || 0);
+    const journalSignatory = resolveDocumentSignatory(body.journalSignatory, organization);
     const snapshot = {
       scalars: {
         GROUP_NUMBER: String(group.group_number || "").trim(),
         PROGRAM_TITLE: programTitle,
         PROGRAM_HOURS: programHours > 0 ? String(programHours) : "",
         INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
-        DIRECTOR_SIGNATURE: initialsFirstNameRu(String(organization.director_name || "")),
+        SIGNATORY_POSITION: journalSignatory.position,
+        SIGNATORY_SHORT: journalSignatory.shortName,
         DATE_1: formatJournalDate(dates[0] || ""),
         DATE_2: formatJournalDate(dates[1] || ""),
         DATE_3: formatJournalDate(dates[2] || ""),
@@ -299,6 +361,7 @@ Deno.serve(async (req) => {
           row_number: index + 1,
           full_name: student.STUDENT_NAME,
         })),
+        signatory_source: journalSignatory.source,
         attendance_source: "unavailable_blank",
       },
       docx_sha256: outputHash,
@@ -328,6 +391,7 @@ Deno.serve(async (req) => {
       if (!packageDocumentFile) {
         throw new Error(`Повреждённый Word-шаблон ${document.doc_type}`);
       }
+      const documentSignatory = resolveDocumentSignatory(document.signatory, organization);
       const packageScalars = buildGroupDocumentScalars(document.variables || {});
       Object.assign(packageScalars, {
         ORG_NAME: String(organization.name || ""),
@@ -343,6 +407,8 @@ Deno.serve(async (req) => {
         ORG_DIRECTOR_POSITION:
           String(organization.director_position || "").trim() || "Генеральный директор",
         ORG_DIRECTOR_SHORT: shortNameRu(String(organization.director_name || "")),
+        SIGNATORY_POSITION: documentSignatory.position,
+        SIGNATORY_SHORT: documentSignatory.shortName,
         ORG_BANK_NAME: String(organization.bank_name || ""),
         ORG_BANK_BIK: String(organization.bank_bik || ""),
         ORG_BANK_ACCOUNT: String(organization.bank_account || ""),
@@ -356,6 +422,8 @@ Deno.serve(async (req) => {
         ),
         INSTRUCTOR_NAME: String(group.instructor_name || ""),
         INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
+        INSTRUCTOR_1_SHORT: instructorSlots.first,
+        INSTRUCTOR_2_SHORT: instructorSlots.second,
         RESPONSIBLE_PERSON_NAME: "Ляпко Дарья Константиновна",
         EXPULSION_OUTCOME: "без выдачи удостоверений о повышении квалификации",
         STUDENTS_COUNT: String(((profilesResult.data as any[]) || []).length),
@@ -396,6 +464,7 @@ Deno.serve(async (req) => {
         variables_snapshot: {
           scalars: packageScalars,
           rows: packageRows,
+          signatory_source: documentSignatory.source,
           fidelity_status: packageManifest.fidelity_status,
         },
         docx_sha256: packageHash,

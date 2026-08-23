@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.enrollment_order",
-  "template_version": "1.0.0-client-source",
+  "template_version": "1.1.0-client-source",
   "scenario": "group_enrollment_order",
   "source_filename": "enrollment_order.source.docx",
   "source_sha256": "616E9F6988569F0988B94A9D2D3D23F5268E52D18A25881778B892B7E13CC8AF",
@@ -22,12 +22,14 @@
     "header_rows": 2,
     "prototype_row": 2,
     "continuation_row": 3,
-    "strategy": "clone_prototype_remove_unused"
+    "minimum_rows": 6,
+    "strategy": "clone_prototype_preserve_minimum_rows"
   },
   "changes_applied": [
     "full GORELTECH header retained from the client source",
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
+    "the original blank-form row capacity is preserved without inventing names or marks",
     "all runtime values use explicit tokens; no sample person remains"
   ],
   "qa": {
@@ -37,5 +39,5 @@
     ],
     "status": "passed_all_rendered_pages_2026-08-15"
   },
-  "template_sha256": "9A427A9EEF0D676A2822FF35D317470AB200A9D596031F5F8536514B4ACB4BA4"
+  "template_sha256": "1A5E190569CE7CB152B39C644B3C7200DB88053F5BC9FD4E1F8D9FDE08BAB54C"
 }

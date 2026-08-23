@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.student_list",
-  "template_version": "1.0.0-client-source",
+  "template_version": "1.1.0-client-source",
   "scenario": "group_student_list",
   "source_filename": "student_list.source.docx",
   "source_sha256": "F25B28EC6EC837466D95AB20B6526DA43014848D463156ABE031EAC066851B41",
@@ -21,12 +21,14 @@
     "table_index": 0,
     "header_rows": 2,
     "prototype_row": 2,
-    "strategy": "clone_prototype_remove_unused"
+    "minimum_rows": 6,
+    "strategy": "clone_prototype_preserve_minimum_rows"
   },
   "changes_applied": [
     "full GORELTECH header retained from the client source",
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
+    "the original blank-form row capacity is preserved without inventing names or marks",
     "all runtime values use explicit tokens; no sample person remains"
   ],
   "qa": {
@@ -36,5 +38,5 @@
     ],
     "status": "passed_all_rendered_pages_2026-08-15"
   },
-  "template_sha256": "9C4DF09B42B2C2D226ED42FDCDE4FE97A14E062BAAF8CAA0112CB427FE5416C6"
+  "template_sha256": "1D4FD144831545AEF7EDEAFBA1650386AD925B54ADE7CC9ABD65B04F26BD4AC3"
 }

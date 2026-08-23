@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.title_page",
-  "template_version": "1.0.0-client-source",
+  "template_version": "1.1.0-client-source",
   "scenario": "group_title_page",
   "source_filename": "title_page.source.docx",
   "source_sha256": "A1048257B1233FA78D63B85172D0C9EB5CF5F247F4E52D2D2A6C104668796C16",
@@ -15,6 +15,7 @@
     "full GORELTECH header retained from the client source",
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
+    "the original blank-form row capacity is preserved without inventing names or marks",
     "all runtime values use explicit tokens; no sample person remains"
   ],
   "qa": {
@@ -24,5 +25,5 @@
     ],
     "status": "passed_all_rendered_pages_2026-08-15"
   },
-  "template_sha256": "D41C281952B917F7E32C90210ECFFC9C85F724589C82BB16F0EB540C6C534923"
+  "template_sha256": "41D7D2103B5BD725D8DC3661D90599BFD00413EEE080560B8887D87A9BAD5E69"
 }

@@ -24,7 +24,7 @@ const outputDir = path.join(
 );
 const templateDir = path.join(outputDir, "templates");
 const manifestDir = path.join(outputDir, "manifests");
-const VERSION = "1.0.0-client-source";
+const VERSION = "1.1.0-client-source";
 
 const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex").toUpperCase();
 
@@ -191,6 +191,31 @@ function replaceAllParagraphs(elements, needle, value) {
   for (const element of matches) element.xml = replaceAllTextNodes(element.xml, value);
 }
 
+function replaceParagraphWithCopies(elements, needle, values, occurrence = 0) {
+  const matches = elements
+    .map((element, index) => ({ element, index }))
+    .filter(
+      ({ element }) => element.tag === "w:p" && elementText(element.xml).includes(needle),
+    );
+  const match = matches[occurrence];
+  if (!match) throw new Error(`Paragraph not found: ${needle} #${occurrence + 1}`);
+
+  const copies = values.map((value, index) => {
+    const source = index === 0
+      ? match.element.xml
+      : match.element.xml
+          .replace(/\s+w14:paraId="[^"]*"/g, "")
+          .replace(/\s+w14:textId="[^"]*"/g, "");
+    return {
+      tag: "w:p",
+      xml: replaceAllTextNodes(source, value),
+      start: -1,
+      end: -1,
+    };
+  });
+  elements.splice(match.index, 1, ...copies);
+}
+
 function patchCell(tableXml, rowIndex, cellIndex, value) {
   const rows = splitTopLevel(tableXml, ["w:tr"]);
   if (!rows[rowIndex]) throw new Error(`Missing table row ${rowIndex}`);
@@ -343,7 +368,7 @@ function patchEnrollment(parts) {
   replaceParagraph(
     parts.elements,
     "Руководитель учебного центра",
-    "Генеральный директор [[ORG_SHORT_NAME]] ________________________________ / [[ORG_DIRECTOR_SHORT]] /",
+    "[[SIGNATORY_POSITION]] [[ORG_SHORT_NAME]] ________________________________ / [[SIGNATORY_SHORT]] /",
   );
   const table = parts.elements.find((element) => element.tag === "w:tbl");
   if (!table) throw new Error("Enrollment table not found");
@@ -381,7 +406,7 @@ function patchExpulsion(parts) {
   replaceAllParagraphs(
     parts.elements,
     "Руководитель учебного центра",
-    "Генеральный директор [[ORG_SHORT_NAME]] ________________________________ / [[ORG_DIRECTOR_SHORT]] /",
+    "[[SIGNATORY_POSITION]] [[ORG_SHORT_NAME]] ________________________________ / [[SIGNATORY_SHORT]] /",
   );
   const tables = parts.elements.filter((element) => element.tag === "w:tbl");
   if (tables.length !== 2) throw new Error("Expulsion tables not found");
@@ -406,7 +431,7 @@ function patchStudentList(parts) {
   replaceParagraph(
     parts.elements,
     "Руководитель учебного центра",
-    "Генеральный директор [[ORG_DIRECTOR_SHORT]] __________________________________________",
+    "[[SIGNATORY_POSITION]] [[SIGNATORY_SHORT]] __________________________________________",
   );
   const table = parts.elements.find((element) => element.tag === "w:tbl");
   if (!table) throw new Error("Student-list table not found");
@@ -424,15 +449,18 @@ function patchStudentList(parts) {
 function patchSchedule(parts) {
   replaceParagraph(parts.elements, "«Проектирование", "«[[PROGRAM_TITLE]]»");
   replaceParagraph(parts.elements, "Продолжительность", "Продолжительность: [[PROGRAM_HOURS]] ак. ч.");
-  replaceParagraph(
+  replaceParagraphWithCopies(
     parts.elements,
     "Преподаватель",
-    "Преподаватели [[INSTRUCTOR_SHORT]] __________________________ Подпись __________________________",
+    [
+      "Преподаватель 1 [[INSTRUCTOR_1_SHORT]] __________________________ Подпись __________________________",
+      "Преподаватель 2 [[INSTRUCTOR_2_SHORT]] __________________________ Подпись __________________________",
+    ],
   );
   replaceParagraph(
     parts.elements,
     "Руководитель учебного центра",
-    "Генеральный директор [[ORG_DIRECTOR_SHORT]] __________________________________________",
+    "[[SIGNATORY_POSITION]] [[SIGNATORY_SHORT]] __________________________________________",
   );
   const table = parts.elements.find((element) => element.tag === "w:tbl");
   if (!table) throw new Error("Schedule table not found");
@@ -471,15 +499,18 @@ function patchAttestation(parts) {
     "Объем программы",
     "Объем программы [[PROGRAM_HOURS]] час. Срок обучения [[START_DATE]] – [[END_DATE]]",
   );
-  replaceParagraph(
+  replaceParagraphWithCopies(
     parts.elements,
     "Подпись преподавателя",
-    "Подпись преподавателя __________________________ / [[INSTRUCTOR_SHORT]] /",
+    [
+      "Подпись преподавателя 1 __________________________ / [[INSTRUCTOR_1_SHORT]] /",
+      "Подпись преподавателя 2 __________________________ / [[INSTRUCTOR_2_SHORT]] /",
+    ],
   );
   replaceParagraph(
     parts.elements,
     "Руководитель учебного центра",
-    "Генеральный директор __________________________ / [[ORG_DIRECTOR_SHORT]] /",
+    "[[SIGNATORY_POSITION]] __________________________ / [[SIGNATORY_SHORT]] /",
   );
   const table = parts.elements.find((element) => element.tag === "w:tbl");
   if (!table) throw new Error("Attestation table not found");
@@ -652,7 +683,7 @@ function patchPass(parts) {
   table.xml = constrainTable(table.xml, 9300, 13);
   insertBeforeSection(parts.elements, [
     paragraphXml(
-      "Генеральный директор ________________________________ / [[ORG_DIRECTOR_SHORT]] /",
+      "[[SIGNATORY_POSITION]] ________________________________ / [[SIGNATORY_SHORT]] /",
       { after: 0 },
     ),
   ]);
@@ -664,7 +695,7 @@ const definitions = {
     orientation: "landscape",
     row_source_key: "students_list_rows",
     row_tokens: ["N", "STUDENT_NAME", "STUDENT_PROGRAM", "STUDENT_HOURS", "STUDENT_PERIOD", "STUDENT_BASIS"],
-    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, continuation_row: 3 },
+    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, continuation_row: 3, minimum_rows: 6 },
     patch: patchEnrollment,
   },
   expulsion_order: {
@@ -672,7 +703,7 @@ const definitions = {
     orientation: "landscape",
     row_source_key: "students_list_rows",
     row_tokens: ["N", "STUDENT_NAME", "STUDENT_PROGRAM", "STUDENT_HOURS", "STUDENT_PERIOD", "STUDENT_BASIS"],
-    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, continuation_row: 3 },
+    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, continuation_row: 3, minimum_rows: 6 },
     patch: patchExpulsion,
   },
   student_list: {
@@ -680,7 +711,7 @@ const definitions = {
     orientation: "portrait",
     row_source_key: "student_list_detail_rows",
     row_tokens: ["N", "STUDENT_NAME", "EMAIL", "PASSPORT_SERIES", "PASSPORT_NUMBER", "EDUCATION"],
-    repeater: { table_index: 0, header_rows: 2, prototype_row: 2 },
+    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, minimum_rows: 6 },
     patch: patchStudentList,
     portrait: true,
   },
@@ -698,7 +729,7 @@ const definitions = {
     orientation: "portrait",
     row_source_key: "attestation_rows",
     row_tokens: ["N", "STUDENT_NAME", "PERCENT", "GRADE"],
-    repeater: { table_index: 0, header_rows: 1, prototype_row: 1 },
+    repeater: { table_index: 0, header_rows: 1, prototype_row: 1, minimum_rows: 6 },
     patch: patchAttestation,
   },
   registration_book: {
@@ -723,7 +754,7 @@ const definitions = {
       "LOSS_NOTE",
       "DUPLICATE_SIGN",
     ],
-    repeater: { table_index: 0, header_rows: 2, prototype_row: 2 },
+    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, minimum_rows: 4 },
     patch: patchRegistration,
     repairHeader: true,
     headerSource: "enrollment_order.source.docx",
@@ -743,7 +774,7 @@ const definitions = {
     orientation: "portrait",
     row_source_key: "pass_rows",
     row_tokens: ["N", "STUDENT_NAME", "COMPANY", "EMAIL", "PHONE", "DAY_1", "DAY_2", "DAY_3", "DAY_4"],
-    repeater: { table_index: 0, header_rows: 2, prototype_row: 2 },
+    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, minimum_rows: 6 },
     patch: patchPass,
     portrait: true,
   },
@@ -773,7 +804,7 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
     row_source_key: definition.row_source_key,
     row_tokens: definition.row_tokens,
     repeater: definition.repeater
-      ? { ...definition.repeater, strategy: "clone_prototype_remove_unused" }
+      ? { ...definition.repeater, strategy: "clone_prototype_preserve_minimum_rows" }
       : null,
     changes_applied: [
       repairsHeader
@@ -781,6 +812,7 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
         : "full GORELTECH header retained from the client source",
       "client wording and signature corrections from Telemost applied",
       "portrait/landscape mode follows the Telemost instruction",
+      "the original blank-form row capacity is preserved without inventing names or marks",
       "all runtime values use explicit tokens; no sample person remains",
     ],
     qa: {

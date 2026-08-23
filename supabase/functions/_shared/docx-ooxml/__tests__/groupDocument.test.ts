@@ -7,9 +7,12 @@ import {
   buildGroupDocumentScalars,
   compileGroupDocumentXml,
   parseGeneratedHtmlRows,
+  resolveDocumentSignatory,
+  validateGroupDocumentPrerequisites,
+  type GoreltechCompiledDocumentType,
   type GroupDocumentManifest,
 } from "../groupDocument";
-import { findUnresolvedTokens } from "../xml";
+import { findUnresolvedTokens, splitTopLevel } from "../xml";
 import { generateDocument } from "../../../../../src/lib/group-docs/generate";
 import { SAMPLE_CONTEXT } from "../../../../../src/lib/group-docs/sampleContext";
 import type { DocType } from "../../../../../src/lib/group-docs/schema";
@@ -31,6 +34,34 @@ async function zipPart(zip: JSZip, name: string): Promise<Buffer | null> {
   return file ? Buffer.from(await file.async("uint8array")) : null;
 }
 
+function xmlText(xml: string): string {
+  return (xml.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) || [])
+    .map((node) => node.replace(/<[^>]+>/g, ""))
+    .join("")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+}
+
+async function loadGroupTemplate(docType: string) {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(ROOT, "manifests", `${docType}.json`), "utf8"),
+  ) as GroupDocumentManifest;
+  const template = fs.readFileSync(path.join(ROOT, "templates", `${docType}.docx`));
+  const zip = await JSZip.loadAsync(template);
+  const documentXml = await zip.file("word/document.xml")!.async("string");
+  return { manifest, template, zip, documentXml };
+}
+
+function scalarValuesFor(documentXml: string, overrides: Record<string, string> = {}) {
+  const scalars: Record<string, string> = {};
+  for (const token of Array.from(documentXml.matchAll(/\[\[([A-Z0-9_]+)\]\]/g))) {
+    scalars[token[1]] = "";
+  }
+  return { ...scalars, ...overrides };
+}
+
 describe("групповые DOCX Beta", () => {
   it("превращает HTML-строки только в чистые ячейки", () => {
     const rows = parseGeneratedHtmlRows(
@@ -49,6 +80,110 @@ describe("групповые DOCX Beta", () => {
     expect(goreltech.ORG_HEADER_LINE_1).toContain("ГОРЭЛТЕХ");
     expect(generic.ORG_HEADER_LINE_1).toBe('ЧОУ ДПО «Другая»');
     expect(generic.ORG_HEADER_LINE_2).toBe("");
+  });
+
+  it("сохраняет request override и отличает явно пустого подписанта от отсутствующего", () => {
+    const organization = {
+      director_position: "Генеральный директор",
+      director_name: "Дроздов Дмитрий Викторович",
+    };
+    expect(resolveDocumentSignatory(undefined, organization)).toEqual({
+      position: "Генеральный директор",
+      shortName: "Дроздов Д.В.",
+      source: "organization_default",
+    });
+    expect(resolveDocumentSignatory(
+      { position: "Руководитель учебного центра", name: "Ляпко Дарья Константиновна" },
+      organization,
+    )).toEqual({
+      position: "Руководитель учебного центра",
+      shortName: "Ляпко Д.К.",
+      source: "request",
+    });
+    expect(resolveDocumentSignatory({ position: "", name: "" }, organization)).toEqual({
+      position: "",
+      shortName: "",
+      source: "request",
+    });
+    expect(resolveDocumentSignatory(undefined, { director_name: "" }).position).toBe("");
+  });
+
+  it("зеркально проверяет на сервере обязательные скаляры каждого DOCX", () => {
+    const expectedFields: Record<string, string[]> = {
+      enrollment_order: [
+        "org_name", "group_number", "program_title", "program_hours",
+        "start_date", "end_date", "students_count",
+      ],
+      expulsion_order: [
+        "org_name", "group_number", "program_title", "program_hours",
+        "start_date", "end_date", "students_count",
+      ],
+      student_list: ["org_name", "group_number", "program_title", "students_count"],
+      class_journal: [
+        "org_name", "group_number", "program_title", "program_hours",
+        "instructor_name", "training_dates_4", "students_count",
+      ],
+      schedule: ["program_title", "program_hours", "instructor_name"],
+      attestation_sheet: [
+        "org_name", "group_number", "program_title", "program_hours",
+        "start_date", "end_date", "instructor_name", "students_count",
+      ],
+      registration_book: [
+        "org_name", "group_number", "program_title", "start_date", "end_date", "students_count",
+      ],
+      title_page: ["org_name", "group_number", "program_title", "start_date", "end_date"],
+      pass: [
+        "org_name", "group_number", "program_title", "program_hours",
+        "start_date", "end_date", "students_count",
+      ],
+    };
+    const emptyContext = {
+      org_name: "",
+      group_number: "",
+      program_title: "",
+      program_hours: 0,
+      start_date: "",
+      end_date: "",
+      instructor_name: "",
+      training_dates: [],
+      students_count: 0,
+    };
+    const completeContext = {
+      org_name: "ООО «ИЦ «ГОРЭЛТЕХ»",
+      group_number: "1-ПК-26",
+      program_title: "Программа повышения квалификации",
+      program_hours: 40,
+      start_date: "2026-01-13",
+      end_date: "2026-01-16",
+      instructor_name: "Иванов Иван Иванович; Петров Пётр Петрович; Сидоров Сидор Сидорович",
+      training_dates: ["2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16"],
+      students_count: 1,
+    };
+
+    for (const [docType, fields] of Object.entries(expectedFields)) {
+      const issues = validateGroupDocumentPrerequisites({
+        docType: docType as GoreltechCompiledDocumentType,
+        fillMode: "data",
+        context: emptyContext,
+      });
+      expect(issues.map((issue) => issue.field).sort(), docType).toEqual([...fields].sort());
+      expect(validateGroupDocumentPrerequisites({
+        docType: docType as GoreltechCompiledDocumentType,
+        fillMode: "data",
+        context: completeContext,
+      }), docType).toEqual([]);
+    }
+
+    expect(validateGroupDocumentPrerequisites({
+      docType: "class_journal",
+      fillMode: "blank",
+      context: { ...completeContext, training_dates: [] },
+    })).toEqual([]);
+    expect(validateGroupDocumentPrerequisites({
+      docType: "class_journal",
+      fillMode: "data",
+      context: { ...completeContext, training_dates: ["2026-01-13", "2026-01-14", "2026-01-15"] },
+    }).map((issue) => issue.field)).toEqual(["training_dates_4"]);
   });
 
   it("компилирует все восемь шаблонов без артефактов", async () => {
@@ -81,6 +216,161 @@ describe("групповые DOCX Beta", () => {
     }
   });
 
+  it("сохраняет минимальное число строк исходных бланков и оставляет резерв пустым", async () => {
+    const expectedMinimumRows: Record<string, number> = {
+      enrollment_order: 6,
+      expulsion_order: 6,
+      student_list: 6,
+      attestation_sheet: 6,
+      registration_book: 4,
+      pass: 6,
+    };
+
+    for (const [docType, minimumRows] of Object.entries(expectedMinimumRows)) {
+      const { manifest, documentXml } = await loadGroupTemplate(docType);
+      expect(manifest.repeater?.minimum_rows, docType).toBe(minimumRows);
+      const actualRow = Object.fromEntries(manifest.row_tokens.map((token) => [token, ""]));
+      actualRow.N = "1";
+      actualRow.STUDENT_NAME = "Фактический Слушатель";
+      const compiled = compileGroupDocumentXml({
+        documentXml,
+        manifest,
+        snapshot: {
+          scalars: scalarValuesFor(documentXml),
+          rows: [actualRow],
+        },
+      });
+      const table = splitTopLevel(compiled, ["w:tbl"])[manifest.repeater!.table_index];
+      const rows = splitTopLevel(table.xml, ["w:tr"]);
+      expect(rows, docType).toHaveLength(manifest.repeater!.header_rows + minimumRows);
+      expect(xmlText(rows[manifest.repeater!.header_rows].xml), docType).toContain(
+        "Фактический Слушатель",
+      );
+      for (let index = 1; index < minimumRows; index += 1) {
+        const reserve = xmlText(rows[manifest.repeater!.header_rows + index].xml);
+        expect(reserve, `${docType}: reserve row ${index + 1}`).not.toContain(
+          "Фактический Слушатель",
+        );
+        expect(reserve, `${docType}: reserve row ${index + 1}`).not.toContain("V");
+        const firstCell = splitTopLevel(
+          rows[manifest.repeater!.header_rows + index].xml,
+          ["w:tc"],
+        )[0];
+        expect(xmlText(firstCell.xml), `${docType}: reserve row number`).toBe(String(index + 1));
+      }
+    }
+  });
+
+  it("не обрезает список, если фактических слушателей больше исходного минимума", async () => {
+    const { manifest, documentXml } = await loadGroupTemplate("student_list");
+    const rows = Array.from({ length: 8 }, (_, index) =>
+      Object.fromEntries(
+        manifest.row_tokens.map((token) => [
+          token,
+          token === "N" ? String(index + 1) : token === "STUDENT_NAME" ? `Слушатель ${index + 1}` : "",
+        ]),
+      ));
+    const compiled = compileGroupDocumentXml({
+      documentXml,
+      manifest,
+      snapshot: { scalars: scalarValuesFor(documentXml), rows },
+    });
+    const table = splitTopLevel(compiled, ["w:tbl"])[manifest.repeater!.table_index];
+    expect(splitTopLevel(table.xml, ["w:tr"])).toHaveLength(
+      manifest.repeater!.header_rows + rows.length,
+    );
+    expect(xmlText(table.xml)).toContain("Слушатель 8");
+  });
+
+  it("сохраняет точные согласованные формулировки без сокращения ДПО", async () => {
+    const enrollment = xmlText((await loadGroupTemplate("enrollment_order")).documentXml);
+    const expulsion = xmlText((await loadGroupTemplate("expulsion_order")).documentXml);
+    expect(enrollment).toContain(
+      "дополнительной профессиональной образовательной программе повышения квалификации",
+    );
+    expect(enrollment).toContain("Часов");
+    expect(expulsion).toContain("Отчислить без выдачи удостоверений");
+    expect(`${enrollment} ${expulsion}`).not.toMatch(/(^|[\s«(])ДПО(?=$|[\s»),.])/u);
+  });
+
+  it("не вшивает должность подписанта и допускает явно пустую подпись", async () => {
+    for (const docType of [
+      "enrollment_order",
+      "expulsion_order",
+      "student_list",
+      "schedule",
+      "attestation_sheet",
+      "pass",
+    ]) {
+      const { manifest, documentXml } = await loadGroupTemplate(docType);
+      expect(documentXml, docType).toContain("[[SIGNATORY_POSITION]]");
+      expect(documentXml, docType).toContain("[[SIGNATORY_SHORT]]");
+      expect(xmlText(documentXml), docType).not.toContain("Генеральный директор");
+      const rows = manifest.row_tokens.length
+        ? [Object.fromEntries(manifest.row_tokens.map((token) => [token, token === "N" ? "1" : ""]))]
+        : [];
+      const compiled = compileGroupDocumentXml({
+        documentXml,
+        manifest,
+        snapshot: {
+          scalars: scalarValuesFor(documentXml, {
+            SIGNATORY_POSITION: "",
+            SIGNATORY_SHORT: "",
+          }),
+          rows,
+        },
+      });
+      expect(findUnresolvedTokens(compiled), docType).toEqual([]);
+      expect(xmlText(compiled), docType).not.toContain("Генеральный директор");
+    }
+  });
+
+  it("даёт расписанию и ведомости отдельное место подписи каждого преподавателя", async () => {
+    for (const docType of ["schedule", "attestation_sheet"]) {
+      const { manifest, documentXml } = await loadGroupTemplate(docType);
+      expect(documentXml, docType).toContain("[[INSTRUCTOR_1_SHORT]]");
+      expect(documentXml, docType).toContain("[[INSTRUCTOR_2_SHORT]]");
+      const rows = manifest.row_tokens.length
+        ? [Object.fromEntries(manifest.row_tokens.map((token) => [token, token === "N" ? "1" : ""]))]
+        : [];
+      const compiled = compileGroupDocumentXml({
+        documentXml,
+        manifest,
+        snapshot: {
+          scalars: scalarValuesFor(documentXml, {
+            INSTRUCTOR_1_SHORT: "Иванов И.И.",
+            INSTRUCTOR_2_SHORT: "Петров П.П.",
+          }),
+          rows,
+        },
+      });
+      const instructorParagraphs = splitTopLevel(compiled, ["w:p"])
+        .map((paragraph) => xmlText(paragraph.xml))
+        .filter((text) => /преподавател/i.test(text) && /Иванов|Петров/.test(text));
+      expect(instructorParagraphs.some((text) => text.includes("Иванов И.И.")), docType).toBe(true);
+      expect(instructorParagraphs.some((text) => text.includes("Петров П.П.")), docType).toBe(true);
+      expect(
+        instructorParagraphs.some((text) => text.includes("Иванов И.И.") && text.includes("Петров П.П.")),
+        `${docType}: signatures must be separate`,
+      ).toBe(false);
+
+      const withoutSecond = compileGroupDocumentXml({
+        documentXml,
+        manifest,
+        snapshot: {
+          scalars: scalarValuesFor(documentXml, {
+            INSTRUCTOR_1_SHORT: "Иванов И.И.",
+            INSTRUCTOR_2_SHORT: "",
+          }),
+          rows,
+        },
+      });
+      expect(findUnresolvedTokens(withoutSecond), docType).toEqual([]);
+      expect(xmlText(withoutSecond), docType).not.toContain("Петров П.П.");
+      expect(xmlText(withoutSecond), docType).toMatch(/преподавател(?:ь|я) 2/iu);
+    }
+  });
+
   it("компилирует все восемь шаблонов из реальных данных генератора", async () => {
     const manifestFiles = fs.readdirSync(path.join(ROOT, "manifests"));
 
@@ -102,11 +392,18 @@ describe("групповые DOCX Beta", () => {
       const zip = await JSZip.loadAsync(template);
       const xml = await zip.file("word/document.xml")!.async("string");
 
+      const scalars = buildGroupDocumentScalars(generated.variables);
+      Object.assign(scalars, {
+        SIGNATORY_POSITION: SAMPLE_CONTEXT.organization.director_position,
+        SIGNATORY_SHORT: "Дроздов Д.В.",
+        INSTRUCTOR_1_SHORT: "",
+        INSTRUCTOR_2_SHORT: "",
+      });
       const compiled = compileGroupDocumentXml({
         documentXml: xml,
         manifest,
         snapshot: {
-          scalars: buildGroupDocumentScalars(generated.variables),
+          scalars,
           rows,
         },
       });

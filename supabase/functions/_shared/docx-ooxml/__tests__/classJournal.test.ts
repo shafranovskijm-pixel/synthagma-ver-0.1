@@ -28,7 +28,8 @@ function snapshot(overrides: Partial<ClassJournalSnapshot> = {}): ClassJournalSn
       PROGRAM_TITLE: "Проектирование электроустановок во взрывоопасных зонах",
       PROGRAM_HOURS: "40",
       INSTRUCTOR_SHORT: "Дроздов Д.В.",
-      DIRECTOR_SIGNATURE: "Д.В. Дроздов",
+      SIGNATORY_POSITION: "Генеральный директор",
+      SIGNATORY_SHORT: "Дроздов Д.В.",
       DATE_1: "13.01.2026",
       DATE_2: "14.01.2026",
       DATE_3: "15.01.2026",
@@ -47,6 +48,15 @@ function snapshot(overrides: Partial<ClassJournalSnapshot> = {}): ClassJournalSn
   };
 }
 
+function xmlText(xml: string): string {
+  return (xml.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) || [])
+    .map((node) => node.replace(/<[^>]+>/g, ""))
+    .join("")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 async function loadTemplate() {
   const bytes = fs.readFileSync(path.join(TEMPLATE_DIR, "template.docx"));
   const zip = await JSZip.loadAsync(bytes);
@@ -61,6 +71,8 @@ describe("журнал учёта занятий DOCX-first", () => {
     expect(manifest.constraints?.training_dates_exact_count).toBe(4);
     expect(manifest.constraints?.no_inferred_instructor).toBe(true);
     expect(manifest.constraints?.no_silent_date_truncation).toBe(true);
+    expect(manifest.repeaters.students.minimum_rows).toBe(6);
+    expect(manifest.template_version).toBe("1.2.0-client-source");
   });
 
   it("контрольная сумма файла совпадает с манифестом", async () => {
@@ -91,10 +103,54 @@ describe("журнал учёта занятий DOCX-first", () => {
     const result = compileClassJournalXml({ documentXml, manifest, snapshot: data });
     expect(findUnresolvedTokens(result)).toEqual([]);
     expect(result).toContain("1-ПК-26");
-    expect(result).toContain("Д.В. Дроздов");
+    expect(result).toContain("Генеральный директор");
+    expect(result).toContain("Дроздов Д.В.");
     for (const index of [1, 2, 3]) expect(result).toContain(`Слушатель ${index}`);
     const table = splitTopLevel(result, ["w:tbl"])[0];
-    expect(splitTopLevel(table.xml, ["w:tr"])).toHaveLength(5);
+    const rows = splitTopLevel(table.xml, ["w:tr"]);
+    expect(rows).toHaveLength(8);
+    for (let index = 3; index < 6; index += 1) {
+      const reserve = rows[manifest.repeaters.students.header_rows + index];
+      expect(xmlText(reserve.xml)).not.toContain("Слушатель");
+      expect(xmlText(reserve.xml)).not.toContain("V");
+      const firstCell = splitTopLevel(reserve.xml, ["w:tc"])[0];
+      expect(xmlText(firstCell.xml)).toBe(String(index + 1));
+    }
+  });
+
+  it("не обрезает журнал при числе слушателей больше исходного минимума", async () => {
+    const { documentXml } = await loadTemplate();
+    const data = snapshot({
+      students: Array.from({ length: 7 }, (_, index) => ({
+        STUDENT_NAME: `Слушатель ${index + 1}`,
+        MARK_1: "",
+        MARK_2: "",
+        MARK_3: "",
+        MARK_4: "",
+      })),
+    });
+    const result = compileClassJournalXml({ documentXml, manifest, snapshot: data });
+    const rows = splitTopLevel(splitTopLevel(result, ["w:tbl"])[0].xml, ["w:tr"]);
+    expect(rows).toHaveLength(9);
+    expect(xmlText(rows.at(-1)!.xml)).toContain("Слушатель 7");
+  });
+
+  it("не подставляет руководителя поверх явно пустого подписанта", async () => {
+    const blankSignatory = snapshot();
+    blankSignatory.scalars.SIGNATORY_POSITION = "";
+    blankSignatory.scalars.SIGNATORY_SHORT = "";
+    expect(validateClassJournalSnapshot(manifest, blankSignatory)).toEqual([]);
+    const { documentXml } = await loadTemplate();
+    expect(documentXml).toContain("[[SIGNATORY_POSITION]]");
+    expect(documentXml).toContain("[[SIGNATORY_SHORT]]");
+    expect(xmlText(documentXml)).not.toContain("Генеральный директор");
+    const result = compileClassJournalXml({
+      documentXml,
+      manifest,
+      snapshot: blankSignatory,
+    });
+    expect(findUnresolvedTokens(result)).toEqual([]);
+    expect(xmlText(result)).not.toContain("Генеральный директор");
   });
 
   it("не подменяет неизвестного преподавателя и не обрезает даты", () => {

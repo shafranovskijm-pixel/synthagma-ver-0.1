@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.class_journal",
-  "template_version": "1.1.0-client-source",
+  "template_version": "1.2.0-client-source",
   "scenario": "group_class_journal",
   "source_filename": "class_journal.source.docx",
   "source_sha256": "F22A2C6C5D0368C19FE744041BDAAC1702574AAE6FE69264141D5C52BF3729B1",
-  "template_sha256": "3F6FE93BAFD6B3357BA090BB268661378846E2C16A392DF823E03405488309D8",
+  "template_sha256": "D127540999259FEDB167D43CBDBFF2E5F8E67099834FD7EA31E789E62692049D",
   "fidelity_status": "client_source_with_telemost_corrections",
   "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
   "render_policy": "filled_docx_is_the_single_source_for_preview_pdf_and_download",
@@ -39,11 +39,18 @@
       "required": true
     },
     {
-      "token": "[[DIRECTOR_SIGNATURE]]",
-      "key": "organization.director.signature_name",
+      "token": "[[SIGNATORY_POSITION]]",
+      "key": "document.signatory.position",
+      "type": "string",
+      "source": "request_or_organizations.director_position",
+      "required": false
+    },
+    {
+      "token": "[[SIGNATORY_SHORT]]",
+      "key": "document.signatory.short_name",
       "type": "person_name",
-      "source": "organizations.director_name",
-      "required": true
+      "source": "request_or_organizations.director_name",
+      "required": false
     },
     {
       "token": "[[DATE_1]]",
@@ -127,7 +134,8 @@
       "table_index": 0,
       "header_rows": 2,
       "prototype_row": 2,
-      "strategy": "clone_prototype_remove_unused"
+      "minimum_rows": 6,
+      "strategy": "clone_prototype_preserve_minimum_rows"
     }
   },
   "constraints": {
@@ -137,10 +145,11 @@
     "no_silent_date_truncation": true
   },
   "blocking_rules": [
-    "group number, program title, program hours, instructor and organization director are present",
+    "group number, program title, program hours and instructor are present",
     "exactly four explicit training dates are present because the retained client form has four date columns",
     "at least one student with a non-empty full name is present",
     "attendance marks are never inferred from course completion",
+    "explicitly blank document signatory fields remain blank",
     "no unresolved token remains after compilation"
   ],
   "qa": {

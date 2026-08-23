@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.schedule",
-  "template_version": "1.0.0-client-source",
+  "template_version": "1.1.0-client-source",
   "scenario": "group_schedule",
   "source_filename": "schedule.source.docx",
   "source_sha256": "48F748597C138F274971386C0958C53BC015D833E7982B65680DEDE5E152DF4A",
@@ -15,6 +15,7 @@
     "full GORELTECH header retained from the client source",
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
+    "the original blank-form row capacity is preserved without inventing names or marks",
     "all runtime values use explicit tokens; no sample person remains"
   ],
   "qa": {
@@ -24,5 +25,5 @@
     ],
     "status": "passed_all_rendered_pages_2026-08-15"
   },
-  "template_sha256": "0CC3B21AD4F1CAD23BB56FF5AE69D67064399D24EE2F24ECE0C2330A555053E1"
+  "template_sha256": "6CC810BE349D63F62B89BEA60CB0FC0C64DA52F8B85697C85247E01087527ACF"
 }

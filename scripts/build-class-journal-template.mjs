@@ -167,8 +167,8 @@ function patchDocumentXml(documentXml) {
   ]);
   patchParagraph("Количество учебных", [
     "Количество учебных ",
-    "часов -",
-    "[[PROGRAM_HOURS]]",
+    "часов - [[PROGRAM_HOURS]]",
+    "",
   ]);
   patchParagraph("Преподаватель", [
     "Преподаватели [[INSTRUCTOR_SHORT]] __________________________ Подпись __________________________",
@@ -179,7 +179,7 @@ function patchDocumentXml(documentXml) {
     "",
   ]);
   patchParagraph("Руководитель учебного центра", [
-    "Генеральный директор [[DIRECTOR_SIGNATURE]] __________________________________________",
+    "[[SIGNATORY_POSITION]] [[SIGNATORY_SHORT]] __________________________________________",
     "",
   ]);
 
@@ -204,7 +204,8 @@ function patchDocumentXml(documentXml) {
     "[[PROGRAM_TITLE]]",
     "[[PROGRAM_HOURS]]",
     "[[INSTRUCTOR_SHORT]]",
-    "[[DIRECTOR_SIGNATURE]]",
+    "[[SIGNATORY_POSITION]]",
+    "[[SIGNATORY_SHORT]]",
     "[[DATE_1]]",
     "[[DATE_2]]",
     "[[DATE_3]]",
@@ -243,7 +244,7 @@ const templateHash = sha256(templateBytes);
 const manifest = {
   schema_version: 1,
   template_id: "goreltech.group.class_journal",
-  template_version: "1.1.0-client-source",
+  template_version: "1.2.0-client-source",
   scenario: "group_class_journal",
   source_filename: "class_journal.source.docx",
   source_sha256: sourceHash,
@@ -257,7 +258,8 @@ const manifest = {
     { token: "[[PROGRAM_TITLE]]", key: "program.title", type: "string", source: "student_groups.program_title_or_linked_course", required: true },
     { token: "[[PROGRAM_HOURS]]", key: "program.hours", type: "integer", source: "student_groups.program_hours_or_linked_course", required: true },
     { token: "[[INSTRUCTOR_SHORT]]", key: "group.instructor.short_name", type: "person_name", source: "student_groups.instructor_name", required: true },
-    { token: "[[DIRECTOR_SIGNATURE]]", key: "organization.director.signature_name", type: "person_name", source: "organizations.director_name", required: true },
+    { token: "[[SIGNATORY_POSITION]]", key: "document.signatory.position", type: "string", source: "request_or_organizations.director_position", required: false },
+    { token: "[[SIGNATORY_SHORT]]", key: "document.signatory.short_name", type: "person_name", source: "request_or_organizations.director_name", required: false },
     { token: "[[DATE_1]]", key: "group.training_dates[0]", type: "date", source: "student_groups.training_dates", required: true },
     { token: "[[DATE_2]]", key: "group.training_dates[1]", type: "date", source: "student_groups.training_dates", required: true },
     { token: "[[DATE_3]]", key: "group.training_dates[2]", type: "date", source: "student_groups.training_dates", required: true },
@@ -274,7 +276,8 @@ const manifest = {
       table_index: 0,
       header_rows: 2,
       prototype_row: 2,
-      strategy: "clone_prototype_remove_unused",
+      minimum_rows: 6,
+      strategy: "clone_prototype_preserve_minimum_rows",
     },
   },
   constraints: {
@@ -284,10 +287,11 @@ const manifest = {
     no_silent_date_truncation: true,
   },
   blocking_rules: [
-    "group number, program title, program hours, instructor and organization director are present",
+    "group number, program title, program hours and instructor are present",
     "exactly four explicit training dates are present because the retained client form has four date columns",
     "at least one student with a non-empty full name is present",
     "attendance marks are never inferred from course completion",
+    "explicitly blank document signatory fields remain blank",
     "no unresolved token remains after compilation",
   ],
   qa: {

@@ -31,9 +31,14 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-tenant-uuid-v7");
+    expect(source).toContain("goreltech-group-package-tenant-uuid-v8");
     expect(source).toContain("function shortInstructorNames");
+    expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
+    expect(source).toContain("INSTRUCTOR_1_SHORT: instructorSlots.first");
+    expect(source).toContain("INSTRUCTOR_2_SHORT: instructorSlots.second");
+    expect(source).toContain('second: names.slice(1).join("; ")');
+    expect(source).not.toContain("instructorSlots.overflow");
     expect(source).toContain("GROUP_DOCUMENT_TEMPLATE_BUNDLE");
     expect(source).toContain("compileGroupDocumentXml");
     expect(source).toContain("uploadedPaths");
@@ -51,6 +56,14 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain('/ГОРЭЛТЕХ/i.test(String(organization.name || ""))');
     expect(source).toContain("Точные клиентские Word-шаблоны доступны только организации ГОРЭЛТЕХ");
     expect(source).toContain("includeJournal: z.boolean().default(true)");
+    expect(source).toContain("journalSignatory: SignatorySchema.optional()");
+    expect(source).toContain("signatory: SignatorySchema.optional()");
+    expect(source).toContain("resolveDocumentSignatory(body.journalSignatory, organization)");
+    expect(source).toContain("resolveDocumentSignatory(document.signatory, organization)");
+    expect(source).toContain("validateGroupDocumentPrerequisites");
+    expect(source).toContain("start_date, end_date");
+    expect(source).toContain("prerequisiteIssues");
+    expect(source).toContain("}, 422)");
   });
 
   it("checks the admin role without the ambiguous has_role RPC overload", () => {
@@ -118,7 +131,8 @@ describe("compile-group-class-journal deployment contract", () => {
           PROGRAM_TITLE: "Проектирование электроустановок во взрывоопасных зонах",
           PROGRAM_HOURS: "32",
           INSTRUCTOR_SHORT: "И.И. Иванов",
-          DIRECTOR_SIGNATURE: "Д.В. Дроздов",
+          SIGNATORY_POSITION: "Генеральный директор",
+          SIGNATORY_SHORT: "Дроздов Д.В.",
           DATE_1: "06.08.2026",
           DATE_2: "07.08.2026",
           DATE_3: "10.08.2026",
