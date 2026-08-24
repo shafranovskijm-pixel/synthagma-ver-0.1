@@ -25,7 +25,7 @@ import { showLimitToast } from "@/utils/limitToast";
 const DISMISS_KEY_PREFIX = "org-quickstart-dismissed-";
 
 interface RequiredStep {
-  id: "course" | "student" | "enrollment" | "documents";
+  id: "course" | "student" | "enrollment" | "group" | "documents";
   title: string;
   description: string;
   done: boolean;
@@ -36,6 +36,8 @@ interface RequiredStep {
 interface FirstRunProgress {
   hasStudent: boolean;
   hasEnrollment: boolean;
+  hasGroup: boolean;
+  hasGroupStudent: boolean;
   hasDocuments: boolean;
   groupId: string | null;
 }
@@ -112,7 +114,14 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
     };
 
     const loadGroupDocumentStatus = async () => {
-      if (scopedCourseIds.length === 0) return { hasDocuments: false, groupId: null };
+      if (scopedCourseIds.length === 0) {
+        return {
+          hasGroup: false,
+          hasGroupStudent: false,
+          hasDocuments: false,
+          groupId: null,
+        };
+      }
       const { data: groups, error: groupError } = await supabase
         .from("student_groups")
         .select("id")
@@ -120,22 +129,51 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
         .in("course_id", scopedCourseIds);
       if (groupError) throw groupError;
       const groupIds = (groups ?? []).map((group) => group.id);
-      if (groupIds.length === 0) return { hasDocuments: false, groupId: null };
+      if (groupIds.length === 0) {
+        return {
+          hasGroup: false,
+          hasGroupStudent: false,
+          hasDocuments: false,
+          groupId: null,
+        };
+      }
 
-      const { data: documents, error } = await supabase
-        .from("group_documents")
-        .select("group_id")
-        .eq("organization_id", orgId)
-        .in("group_id", groupIds)
-        .eq("is_current", true)
-        .neq("generation_status", "failed");
-      if (error) throw error;
-      const documentGroupId = documents?.find((document) => document.group_id)?.group_id;
+      const [memberResult, documentResult] = await Promise.allSettled([
+        supabase
+          .from("profiles")
+          .select("student_group_id")
+          .eq("organization_id", orgId)
+          .is("archived_at", null)
+          .in("student_group_id", groupIds),
+        supabase
+          .from("group_documents")
+          .select("group_id")
+          .eq("organization_id", orgId)
+          .in("group_id", groupIds)
+          .eq("is_current", true)
+          .neq("generation_status", "failed"),
+      ]);
+      const memberGroupIds = new Set(
+        memberResult.status === "fulfilled" && !memberResult.value.error
+          ? (memberResult.value.data ?? [])
+            .map((profile) => profile.student_group_id)
+            .filter((groupId): groupId is string => !!groupId)
+          : [],
+      );
+      const documents = documentResult.status === "fulfilled" && !documentResult.value.error
+        ? documentResult.value.data
+        : null;
+      const documentGroupId = documents?.find(
+        (document) => document.group_id && memberGroupIds.has(document.group_id),
+      )?.group_id;
+      const memberGroupId = memberGroupIds.values().next().value ?? null;
       return {
-        hasDocuments: (documents?.length ?? 0) > 0,
+        hasGroup: true,
+        hasGroupStudent: memberGroupIds.size > 0,
+        hasDocuments: !!documentGroupId,
         // If no document exists yet, open a real eligible group so the CTA can
         // take the user straight to the document workspace.
-        groupId: documentGroupId ?? groupIds[0],
+        groupId: documentGroupId ?? memberGroupId ?? groupIds[0],
       };
     };
 
@@ -152,6 +190,10 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
           studentResult.status === "fulfilled" && studentResult.value.active_count > 0,
         hasEnrollment:
           enrollmentResult.status === "fulfilled" && enrollmentResult.value,
+        hasGroup:
+          documentResult.status === "fulfilled" && documentResult.value.hasGroup,
+        hasGroupStudent:
+          documentResult.status === "fulfilled" && documentResult.value.hasGroupStudent,
         hasDocuments:
           documentResult.status === "fulfilled" && documentResult.value.hasDocuments,
         groupId:
@@ -216,17 +258,36 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
         },
       },
       {
+        id: "group",
+        title: "Создайте группу и добавьте ученика",
+        description:
+          progress?.hasGroup
+            ? "Группа создана. Добавьте в неё зачисленного ученика — после этого можно готовить документы группы."
+            : "Свяжите курс с учебной группой. В группе будут собраны участники, сроки, журналы и документы.",
+        done: (progress?.hasGroup && progress?.hasGroupStudent) ?? false,
+        cta: progress?.groupId ? "Добавить ученика в группу" : "Создать группу",
+        action: () => {
+          if (progress?.groupId) {
+            navigate(groupFolderPath(progress.groupId, null, { addStudents: true }));
+            return;
+          }
+          const params = new URLSearchParams();
+          params.set("tab", "students");
+          params.set("studentsView", "groups");
+          params.set("createGroup", "1");
+          if (firstOwnCourse?.id) params.set("groupCourseId", firstOwnCourse.id);
+          navigate(`/organization?${params.toString()}`);
+        },
+      },
+      {
         id: "documents",
         title: "Подготовьте документы",
         description:
-          progress?.groupId
-            ? "Откройте папку учебной группы и подготовьте первый актуальный комплект документов по обучению."
-            : "Создайте учебную группу для курса, добавьте участников и затем подготовьте документы группы.",
+          "Откройте папку учебной группы и подготовьте первый актуальный комплект документов по обучению.",
         done: progress?.hasDocuments ?? false,
-        cta: progress?.groupId ? "Открыть документы группы" : "Открыть группы",
+        cta: "Открыть документы группы",
         action: () => {
           if (progress?.groupId) navigate(groupFolderPath(progress.groupId, "docs"));
-          else d.tabNavigation.setActiveTab("students" as any);
         },
       },
     ],

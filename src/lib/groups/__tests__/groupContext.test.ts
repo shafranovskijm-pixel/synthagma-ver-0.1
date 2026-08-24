@@ -6,6 +6,7 @@ import {
   groupContextPath,
   filterByGroupMembers,
   courseCompletedNotificationPath,
+  resolveTabParams,
 } from "@/lib/groups/groupContext";
 
 describe("groupContext", () => {
@@ -46,5 +47,22 @@ describe("groupContext", () => {
     expect(courseCompletedNotificationPath({ user_id: null, related_id: "c-1" }, fallback))
       .toBe("/course/c-1");
     expect(courseCompletedNotificationPath({}, fallback)).toBeNull();
+  });
+
+  it("keeps the add-students intent in the URL until the group workspace mounts", () => {
+    expect(groupFolderPath("group-1", null, { addStudents: true })).toBe(
+      "/organization?tab=group-folder&studentsView=groups&groupId=group-1&addStudents=1",
+    );
+  });
+
+  it("removes one-shot group intents when navigating to another workspace", () => {
+    const next = resolveTabParams(
+      "tab=group-folder&studentsView=groups&groupId=group-1&addStudents=1&createGroup=1&groupCourseId=course-1",
+      "courses",
+    );
+
+    expect(next.get("addStudents")).toBeNull();
+    expect(next.get("createGroup")).toBeNull();
+    expect(next.get("groupCourseId")).toBeNull();
   });
 });

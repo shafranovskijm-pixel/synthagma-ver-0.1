@@ -11,6 +11,7 @@ let plan = "standard";
 let emailCampaignsEnabled = true;
 let salesCrmEnabled = true;
 let activeTab = "home";
+let isMobile = false;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -58,7 +59,7 @@ vi.mock("@/hooks/useOrgSidebarPinned", () => ({
   }),
 }));
 
-vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
+vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => isMobile }));
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
@@ -85,6 +86,7 @@ beforeEach(() => {
   emailCampaignsEnabled = true;
   salesCrmEnabled = true;
   activeTab = "home";
+  isMobile = false;
   allowedTabs = new Set([
     "home",
     "students",
@@ -169,33 +171,64 @@ describe("OrgSidebar navigation", () => {
     });
   });
 
-  it("opens compact section children in a side flyout without inserting them into the icon rail", () => {
+  it("expands the fixed Windows-like sidebar instead of opening a floating card", () => {
     localStorage.setItem("org-sidebar-mode", "icons");
     renderSidebar();
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Ученики" }));
-    const studentsFlyout = screen.getByRole("navigation", { name: "Ученики: подразделы" });
-    expect(sidebar.contains(studentsFlyout)).toBe(false);
-    expect(within(studentsFlyout).getByRole("link", { name: "Ученики и группы" })).toBeInTheDocument();
+    expect(sidebar).toHaveStyle({ width: "220px" });
+    const studentsSection = within(sidebar).getByRole("navigation", { name: "Ученики: подразделы" });
+    expect(within(studentsSection).getByRole("link", { name: "Ученики и группы" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
     expect(screen.queryByRole("navigation", { name: "Ученики: подразделы" })).not.toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Курсы: подразделы" })).toBeInTheDocument();
+    expect(within(sidebar).getByRole("navigation", { name: "Курсы: подразделы" })).toBeInTheDocument();
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
     expect(screen.queryByRole("navigation", { name: "Курсы: подразделы" })).not.toBeInTheDocument();
   });
 
-  it("opens compact settings in the same flyout pattern", () => {
+  it("expands compact settings inside the fixed sidebar", () => {
     localStorage.setItem("org-sidebar-mode", "compact");
     renderSidebar();
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
 
-    fireEvent.click(within(sidebar).getByRole("button", { name: "Настройки" }));
-    const settingsFlyout = screen.getByRole("navigation", { name: "Настройки: подразделы" });
-    expect(sidebar.contains(settingsFlyout)).toBe(false);
-    expect(within(settingsFlyout).getByRole("link", { name: "Сотрудники и доступы" })).toBeInTheDocument();
+    const settingsButton = within(sidebar).getByRole("button", { name: "Настройки" });
+    fireEvent.click(settingsButton);
+    expect(sidebar).toHaveStyle({ width: "220px" });
+    const settingsSection = within(sidebar).getByRole("navigation", { name: "Настройки: подразделы" });
+    const staffLink = within(settingsSection).getByRole("link", { name: "Сотрудники и доступы" });
+    expect(staffLink).toBeInTheDocument();
+    expect(settingsButton.compareDocumentPosition(staffLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not auto-open an active compact section over the workspace", () => {
+    activeTab = "students";
+    localStorage.setItem("org-sidebar-mode", "icons");
+    renderSidebar();
+
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+    expect(sidebar).toHaveStyle({ width: "64px" });
+    expect(screen.queryByRole("navigation", { name: "Ученики: подразделы" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps grouped destinations reachable in the mobile drawer", () => {
+    isMobile = true;
+    localStorage.setItem("org-sidebar-mode", "compact");
+    renderSidebar();
+
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+    expect(sidebar).toHaveStyle({ width: "88px" });
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
+
+    expect(sidebar).toHaveStyle({ width: "220px" });
+    expect(within(sidebar).getByRole("navigation", { name: "Курсы: подразделы" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("keeps every existing workspace inside seven semantic roots with canonical links", () => {

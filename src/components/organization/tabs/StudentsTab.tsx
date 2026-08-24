@@ -100,6 +100,25 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
+
+  React.useEffect(() => {
+    if (searchParams.get("createGroup") !== "1") return;
+
+    setNewGroupName("");
+    setNewGroupColor("#6366f1");
+    setNewGroupStartDate("");
+    setNewGroupEndDate("");
+    setNewGroupCourseId(searchParams.get("groupCourseId") ?? "");
+    setShowGroupDialog(true);
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("studentsView", "groups");
+      next.delete("createGroup");
+      next.delete("groupCourseId");
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
   
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   React.useEffect(() => {

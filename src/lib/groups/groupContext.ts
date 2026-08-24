@@ -45,12 +45,17 @@ export function courseDetailsPathForGroup(courseId: string): string {
 }
 
 /** Ссылка на папку группы (в т.ч. на конкретную вложенную папку). */
-export function groupFolderPath(groupId: string, folder?: string | null, opts?: { settings?: boolean }): string {
+export function groupFolderPath(
+  groupId: string,
+  folder?: string | null,
+  opts?: { settings?: boolean; addStudents?: boolean },
+): string {
   // tab=group-folder открывает саму папку группы по прямой ссылке
   // (tab=students показал бы только список групп).
   const base = `/organization?tab=group-folder&studentsView=groups&groupId=${encodeURIComponent(groupId)}`;
   const withFolder = folder ? `${base}&folder=${encodeURIComponent(folder)}` : base;
-  return opts?.settings ? `${withFolder}&groupSettings=1` : withFolder;
+  const withSettings = opts?.settings ? `${withFolder}&groupSettings=1` : withFolder;
+  return opts?.addStudents ? `${withSettings}&addStudents=1` : withSettings;
 }
 
 /** Ссылка на вкладку организации с прокинутым контекстом группы. */
@@ -95,7 +100,14 @@ export function resolveTabParams(
   // navigation explicitly clears it in useTabNavigation.setActiveTab.
   if (tab !== "organizations") next.delete("companyId");
   if (tab !== "students" && tab !== "group-folder") next.delete("studentsView");
-  if (tab !== "group-folder") next.delete("groupSettings");
+  if (tab !== "students") {
+    next.delete("createGroup");
+    next.delete("groupCourseId");
+  }
+  if (tab !== "group-folder") {
+    next.delete("groupSettings");
+    next.delete("addStudents");
+  }
 
   const keepGroupContext = isGroupContextTab(tab) && !!next.get("returnToGroupId") && !!next.get("groupId");
 

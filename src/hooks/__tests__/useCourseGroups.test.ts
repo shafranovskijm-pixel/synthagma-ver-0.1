@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   groupOrder: vi.fn(),
+  groupOrganizationEq: vi.fn(),
+  groupCourseEq: vi.fn(),
   groupInsert: vi.fn(),
   groupDelete: vi.fn(),
   groupDeleteIdEq: vi.fn(),
@@ -59,6 +61,8 @@ describe("useCourseGroups", () => {
     vi.clearAllMocks();
 
     mocks.groupOrder.mockResolvedValue({ data: [], error: null });
+    mocks.groupCourseEq.mockReturnValue({ order: mocks.groupOrder });
+    mocks.groupOrganizationEq.mockReturnValue({ eq: mocks.groupCourseEq });
     mocks.groupInsert.mockReturnValue({
       select: vi.fn().mockReturnValue({
         single: vi.fn().mockResolvedValue({ data: { id: "group-new" }, error: null }),
@@ -89,7 +93,7 @@ describe("useCourseGroups", () => {
       if (table === "student_groups") {
         return {
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ order: mocks.groupOrder }),
+            eq: mocks.groupOrganizationEq,
           }),
           insert: mocks.groupInsert,
           delete: mocks.groupDelete,
@@ -144,6 +148,14 @@ describe("useCourseGroups", () => {
       organization_id: "org-1",
       course_id: "course-1",
     }));
+  });
+
+  it("loads only groups linked to the current course", async () => {
+    await renderCourseGroups();
+
+    expect(mocks.groupOrganizationEq).toHaveBeenCalledWith("organization_id", "org-1");
+    expect(mocks.groupCourseEq).toHaveBeenCalledWith("course_id", "course-1");
+    expect(mocks.groupOrder).toHaveBeenCalledWith("name");
   });
 
   it("does not report success when the registration link insert fails", async () => {

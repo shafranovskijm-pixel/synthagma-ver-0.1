@@ -57,7 +57,12 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
   const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase.from("student_groups").select("*").eq("organization_id", organizationId).order("name");
+      const { data } = await supabase
+        .from("student_groups")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("course_id", courseId)
+        .order("name");
       const groupsList = (data as any[] || []) as StudentGroup[];
       setGroups(groupsList);
 

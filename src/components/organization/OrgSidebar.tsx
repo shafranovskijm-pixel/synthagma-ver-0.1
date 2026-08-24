@@ -12,7 +12,6 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
@@ -211,7 +210,10 @@ export function OrgSidebar() {
   });
 
   const isMobile = useIsMobile();
-  const effectiveMode: SidebarMode = mode === "expanded" && isMobile ? "compact" : mode;
+  // The mobile sidebar is already a modal drawer. Let it use the same fixed
+  // expanded width as desktop so grouped destinations remain reachable after
+  // a tap; forcing it back to compact would hide the children completely.
+  const effectiveMode: SidebarMode = mode;
   const effectiveExpanded = effectiveMode === "expanded";
   const showLabels = effectiveMode === "compact";
   const width = MODE_WIDTH[effectiveMode];
@@ -532,6 +534,7 @@ export function OrgSidebar() {
     const button = (
       <a
         href={locked ? undefined : itemHref}
+        title={!itemExpanded ? item.label : undefined}
         data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
         onClick={(event) => {
           if (locked) {
@@ -550,7 +553,7 @@ export function OrgSidebar() {
           if (!effectiveExpanded) setExpandedGroup(null);
         }}
         className={cn(
-          "relative rounded-lg transition-all duration-150 animate-fade-in",
+          "relative rounded-lg transition-colors duration-150 animate-fade-in",
           itemExpanded
             ? cn("flex items-center gap-3 h-10 w-full text-left", nested ? "pl-7 pr-2" : "px-2.5")
             : cn(
@@ -559,8 +562,8 @@ export function OrgSidebar() {
               ),
           locked && "opacity-50",
           isActive
-            ? "text-primary-foreground shadow-sm scale-[1.02]"
-            : "text-foreground/70 hover:text-foreground hover:bg-foreground/5 hover:scale-[1.02]"
+            ? "text-primary-foreground shadow-sm"
+            : "text-foreground/70 hover:text-foreground hover:bg-foreground/5"
         )}
         style={{
           backgroundColor: isActive ? `hsl(${brandHsl})` : undefined,
@@ -634,23 +637,9 @@ export function OrgSidebar() {
               <TooltipContent
                 side="right"
                 sideOffset={12}
-                className="z-[100] rounded-xl p-3 shadow-lg border-border/60 max-w-[240px] bg-card"
+                className="z-[100]"
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <item.icon className="w-4 h-4" style={{ color: `hsl(${brandHsl})` }} />
-                  <span className="font-semibold text-sm text-foreground">{item.label}</span>
-                  {item.statusBadge && (
-                    <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-primary">
-                      {item.statusBadge}
-                    </span>
-                  )}
-                </div>
-                {item.description && (
-                  <p className="text-xs text-muted-foreground leading-snug">{item.description}</p>
-                )}
-                <div className="text-[10px] text-muted-foreground/70 mt-2 pt-2 border-t border-border/50">
-                  ПКМ — {itemPinned ? "открепить" : "закрепить"}
-                </div>
+                {item.label}
               </TooltipContent>
             )}
           </Tooltip>
@@ -683,19 +672,23 @@ export function OrgSidebar() {
     const groupButton = (
       <button
         type="button"
-        aria-expanded={open}
+        aria-expanded={effectiveExpanded && open}
         aria-controls={`org-nav-${group.id}`}
         aria-label={group.label}
         title={!effectiveExpanded ? `${group.label}: ${group.description}` : undefined}
-        // In compact modes Radix Popover owns the trigger state. Handling the
-        // same click here as well makes a second click toggle twice and leaves
-        // the flyout open. Expanded mode is not wrapped in Popover, so it keeps
-        // the explicit accordion toggle.
-        onClick={effectiveExpanded
-          ? () => setExpandedGroup((current) => current === group.id ? null : group.id)
-          : undefined}
+        // Windows-like behaviour: compact rails never open a floating card
+        // over the workspace. Selecting a grouped section expands the fixed
+        // sidebar in place and keeps all root icons anchored to the same rail.
+        onClick={() => {
+          if (effectiveExpanded) {
+            setExpandedGroup((current) => current === group.id ? null : group.id);
+            return;
+          }
+          setExpandedGroup(group.id);
+          setMode("expanded");
+        }}
         className={cn(
-          "relative rounded-lg transition-all duration-150",
+          "relative rounded-lg transition-colors duration-150",
           effectiveExpanded
             ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
             : cn("flex flex-col items-center justify-center px-1 py-1.5", showLabels ? "w-[68px] gap-0.5" : "h-10 w-10"),
@@ -726,46 +719,11 @@ export function OrgSidebar() {
       </button>
     );
 
-    if (!effectiveExpanded) {
-      return (
-        <Popover
-          key={group.id}
-          open={open}
-          onOpenChange={(nextOpen) => setExpandedGroup(nextOpen ? group.id : null)}
-        >
-          <PopoverTrigger asChild>{groupButton}</PopoverTrigger>
-          <PopoverContent
-            side="right"
-            align="start"
-            sideOffset={10}
-            className="z-[90] w-[280px] rounded-2xl border-border/70 p-2 shadow-2xl"
-          >
-            <div className="border-b border-border/60 px-2.5 pb-2 pt-1">
-              <div className="flex items-center gap-2 font-semibold">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <GroupIcon className="h-4 w-4" />
-                </span>
-                {group.label}
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{group.description}</p>
-            </div>
-            <nav
-              id={`org-nav-${group.id}`}
-              aria-label={`${group.label}: подразделы`}
-              className="mt-1 flex flex-col gap-0.5"
-            >
-              {group.items.map((item) => renderNavItem(item, false, true))}
-            </nav>
-          </PopoverContent>
-        </Popover>
-      );
-    }
-
     return (
       <div key={group.id} className="w-full">
         {groupButton}
 
-        {open && (
+        {effectiveExpanded && open && (
           <nav
             id={`org-nav-${group.id}`}
             aria-label={`${group.label}: подразделы`}
@@ -923,77 +881,55 @@ export function OrgSidebar() {
         {/* Footer: stable help/settings actions, display mode and logout */}
         <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
 
-          {settingsItems.length > 0 && (effectiveExpanded ? (
-            <div className="w-full">
-              {settingsExpanded && (
-                <nav id="org-nav-settings" aria-label="Настройки: подразделы" className="mb-1 flex flex-col gap-0.5">
-                  {settingsItems.map((item) => renderNavItem(item, true))}
-                </nav>
-              )}
+          {settingsItems.length > 0 && (
+            <div className="flex w-full flex-col">
               <button
                 type="button"
-                aria-expanded={settingsExpanded}
+                aria-expanded={effectiveExpanded && settingsExpanded}
                 aria-controls="org-nav-settings"
-                onClick={() => setSettingsExpanded((open) => !open)}
+                onClick={() => {
+                  if (effectiveExpanded) {
+                    setSettingsExpanded((open) => !open);
+                    return;
+                  }
+                  setSettingsExpanded(true);
+                  setMode("expanded");
+                }}
                 className={cn(
-                  "flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-left transition-colors",
+                  "rounded-lg transition-colors",
+                  effectiveExpanded
+                    ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
+                    : showLabels
+                      ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
+                      : "mx-auto flex h-9 w-9 items-center justify-center",
                   settingsItems.some(isItemActive)
                     ? "bg-primary/15 text-primary"
                     : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
                 )}
                 aria-label="Настройки"
+                title={!effectiveExpanded ? "Настройки" : undefined}
               >
                 <Settings className="h-[18px] w-[18px] shrink-0" />
-                <span className="flex-1 text-[13px] font-medium">Настройки</span>
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", settingsExpanded && "rotate-180")} />
+                {effectiveExpanded ? (
+                  <>
+                    <span className="flex-1 text-[13px] font-medium">Настройки</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", settingsExpanded && "rotate-180")} />
+                  </>
+                ) : showLabels ? (
+                  <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Настройки</span>
+                ) : null}
               </button>
-            </div>
-          ) : (
-            <Popover open={settingsExpanded} onOpenChange={setSettingsExpanded}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-expanded={settingsExpanded}
-                  aria-controls="org-nav-settings"
-                  className={cn(
-                    "rounded-lg transition-colors",
-                    showLabels
-                      ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
-                      : "flex h-9 w-9 items-center justify-center",
-                    settingsItems.some(isItemActive)
-                      ? "bg-primary/15 text-primary"
-                      : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
-                  )}
-                  aria-label="Настройки"
-                  title="Настройки платформы, профиля и доступов"
+              {effectiveExpanded && settingsExpanded && (
+                <nav
+                  id="org-nav-settings"
+                  aria-label="Настройки: подразделы"
+                  className="order-first mb-1 flex flex-col gap-0.5"
                 >
-                  <Settings className="h-[18px] w-[18px] shrink-0" />
-                  {showLabels && (
-                    <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Настройки</span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                side="right"
-                align="end"
-                sideOffset={10}
-                className="z-[90] w-[280px] rounded-2xl border-border/70 p-2 shadow-2xl"
-              >
-                <div className="border-b border-border/60 px-2.5 pb-2 pt-1">
-                  <div className="flex items-center gap-2 font-semibold">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Settings className="h-4 w-4" />
-                    </span>
-                    Настройки
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Платформа, профиль организации, сотрудники и тариф</p>
-                </div>
-                <nav id="org-nav-settings" aria-label="Настройки: подразделы" className="mt-1 flex flex-col gap-0.5">
-                  {settingsItems.map((item) => renderNavItem(item, false, true))}
+                  {settingsItems.map((item) => renderNavItem(item, true))}
                 </nav>
-              </PopoverContent>
-            </Popover>
-          ))}
+              )}
+            </div>
+          )}
 
           {renderFooterAction({
             label: "Помощь",

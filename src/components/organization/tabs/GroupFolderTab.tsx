@@ -157,6 +157,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     }, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // Durable deep-link from the first-run checklist. The intent remains in
+  // the URL until this workspace mounts, so slow rendering cannot lose it.
+  useEffect(() => {
+    if (searchParams.get("addStudents") !== "1") return;
+    setShowMembers(true);
+    setAddStudentsOpen(true);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("addStudents");
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => { localStorage.setItem("groupFolderView", viewMode); }, [viewMode]);
 
   const backToStudentsGroups = useCallback(() => {

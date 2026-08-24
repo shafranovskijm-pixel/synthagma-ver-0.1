@@ -7,7 +7,8 @@ const testState = vi.hoisted(() => ({
   studentTotal: 0,
   enrollmentCount: 0,
   documentCount: 0,
-  groupIds: ["group-1"] as string[],
+  groupStudents: [] as Array<{ student_group_id: string; archived_at: string | null }>,
+  groupIds: [] as string[],
   documentGroupIds: [] as string[],
   setActiveTab: vi.fn(),
   openCourseDetails: vi.fn(),
@@ -44,10 +45,15 @@ vi.mock("@/api/students", () => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => {
+      let excludeArchivedProfiles = false;
       const result = () => ({
         count: table === "enrollments" ? testState.enrollmentCount : testState.documentCount,
         data: table === "student_groups"
           ? testState.groupIds.map((id) => ({ id }))
+          : table === "profiles"
+            ? testState.groupStudents
+              .filter((profile) => !excludeArchivedProfiles || profile.archived_at === null)
+              .map(({ student_group_id }) => ({ student_group_id }))
           : table === "group_documents"
             ? testState.documentGroupIds.map((group_id) => ({ group_id }))
             : null,
@@ -58,6 +64,12 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: () => builder,
         neq: () => builder,
         in: () => builder,
+        is: (column: string, value: unknown) => {
+          if (table === "profiles" && column === "archived_at" && value === null) {
+            excludeArchivedProfiles = true;
+          }
+          return builder;
+        },
         limit: () => builder,
         maybeSingle: () => Promise.resolve(result()),
         then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
@@ -91,7 +103,8 @@ beforeEach(() => {
   testState.studentTotal = 0;
   testState.enrollmentCount = 0;
   testState.documentCount = 0;
-  testState.groupIds = ["group-1"];
+  testState.groupStudents = [];
+  testState.groupIds = [];
   testState.documentGroupIds = [];
   testState.setActiveTab.mockReset();
   testState.openCourseDetails.mockReset();
@@ -165,11 +178,79 @@ describe("QuickStartCard — первый рабочий цикл организ
     expect(testState.openCourseDetails).toHaveBeenCalledWith("course-1");
   });
 
-  it("после зачисления делает документы текущим шагом и оставляет настройки вторичными", async () => {
+  it("после зачисления открывает устойчивую ссылку создания группы с выбранным курсом", async () => {
+    testState.courses = [{ id: "course-1", title: "Охрана труда", is_published: true }];
+    testState.studentTotal = 1;
+    testState.enrollmentCount = 1;
+
+    renderCard();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("quickstart-step-group")).toHaveAttribute(
+        "data-step-state",
+        "current",
+      ),
+    );
+    expect(screen.getByTestId("quickstart-primary-action")).toHaveTextContent("Создать группу");
+    fireEvent.click(screen.getByTestId("quickstart-primary-action"));
+    expect(screen.getByTestId("location-probe")).toHaveTextContent(
+      "/organization?tab=students&studentsView=groups&createGroup=1&groupCourseId=course-1",
+    );
+  });
+
+  it("не считает пустую группу готовой и ведёт прямо к добавлению ученика", async () => {
+    testState.courses = [{ id: "course-1", title: "Охрана труда", is_published: true }];
+    testState.studentTotal = 1;
+    testState.enrollmentCount = 1;
+    testState.groupIds = ["group-1"];
+
+    renderCard();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("quickstart-step-group")).toHaveAttribute(
+        "data-step-state",
+        "current",
+      ),
+    );
+    expect(screen.getByTestId("quickstart-primary-action")).toHaveTextContent(
+      "Добавить ученика в группу",
+    );
+    fireEvent.click(screen.getByTestId("quickstart-primary-action"));
+    expect(screen.getByTestId("location-probe")).toHaveTextContent(
+      "/organization?tab=group-folder&studentsView=groups&groupId=group-1&addStudents=1",
+    );
+  });
+
+  it("не считает архивного ученика действующим участником группы", async () => {
+    testState.courses = [{ id: "course-1", title: "Охрана труда", is_published: true }];
+    testState.studentTotal = 1;
+    testState.enrollmentCount = 1;
+    testState.groupIds = ["group-1"];
+    testState.groupStudents = [{
+      student_group_id: "group-1",
+      archived_at: "2026-08-25T00:00:00.000Z",
+    }];
+
+    renderCard();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("quickstart-step-group")).toHaveAttribute(
+        "data-step-state",
+        "current",
+      ),
+    );
+    expect(screen.getByTestId("quickstart-primary-action")).toHaveTextContent(
+      "Добавить ученика в группу",
+    );
+  });
+
+  it("после создания группы делает документы текущим шагом и оставляет настройки вторичными", async () => {
     testState.courses = [{ id: "course-1", title: "Охрана труда", is_published: true }];
     testState.studentTotal = 1;
     testState.enrollmentCount = 1;
     testState.documentCount = 0;
+    testState.groupIds = ["group-1"];
+    testState.groupStudents = [{ student_group_id: "group-1", archived_at: null }];
 
     renderCard();
 
@@ -194,10 +275,12 @@ describe("QuickStartCard — первый рабочий цикл организ
     );
   });
 
-  it("скрывается, когда все четыре обязательных шага подтверждены", async () => {
+  it("скрывается, когда все пять обязательных шагов подтверждены", async () => {
     testState.courses = [{ id: "course-1", title: "Охрана труда", is_published: true }];
     testState.studentTotal = 1;
     testState.enrollmentCount = 1;
+    testState.groupIds = ["group-1"];
+    testState.groupStudents = [{ student_group_id: "group-1", archived_at: null }];
     testState.documentCount = 1;
     testState.documentGroupIds = ["group-1"];
 
@@ -211,11 +294,35 @@ describe("QuickStartCard — первый рабочий цикл организ
     testState.studentTotal = 1;
     testState.enrollmentCount = 1;
     testState.groupIds = ["group-1", "group-2"];
+    testState.groupStudents = [{ student_group_id: "group-2", archived_at: null }];
     testState.documentCount = 1;
     testState.documentGroupIds = ["group-2"];
 
     renderCard();
 
     await waitFor(() => expect(screen.queryByText("Первый запуск")).not.toBeInTheDocument());
+  });
+
+  it("не засчитывает документ пустой группы вместо группы с учеником", async () => {
+    testState.courses = [{ id: "course-1", title: "Охрана труда", is_published: true }];
+    testState.studentTotal = 1;
+    testState.enrollmentCount = 1;
+    testState.groupIds = ["group-empty", "group-with-student"];
+    testState.groupStudents = [{ student_group_id: "group-with-student", archived_at: null }];
+    testState.documentCount = 1;
+    testState.documentGroupIds = ["group-empty"];
+
+    renderCard();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("quickstart-step-documents")).toHaveAttribute(
+        "data-step-state",
+        "current",
+      ),
+    );
+    fireEvent.click(screen.getByTestId("quickstart-primary-action"));
+    expect(screen.getByTestId("location-probe")).toHaveTextContent(
+      "/organization?tab=group-folder&studentsView=groups&groupId=group-with-student&folder=docs",
+    );
   });
 });

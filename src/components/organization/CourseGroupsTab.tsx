@@ -88,16 +88,19 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
   if (h.groups.length === 0) return (
     <><div className="flex flex-col items-center justify-center py-16 px-6">
       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center mb-4"><Users className="w-8 h-8 text-blue-500" /></div>
-      <h3 className="text-lg font-semibold mb-2">Группы учеников</h3>
-      <p className="text-sm text-muted-foreground text-center max-w-md mb-6">Группы позволяют массово зачислять учеников на курс и управлять расписанием обучения.</p>
+      <h3 className="text-lg font-semibold mb-2">Группы этого курса</h3>
+      <p className="text-sm text-muted-foreground text-center max-w-md mb-6">Здесь отображаются только группы, привязанные к текущему курсу. Группы без курса можно привязать в разделе «Ученики → Группы».</p>
       <Button className="btn-gradient rounded-xl gap-2" onClick={() => h.setShowCreateDialog(true)}><Plus className="w-4 h-4" />Создать группу</Button>
     </div>{createGroupDialog}</>
   );
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Группы организации</h3>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold">Группы этого курса</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">Группы без курса остаются в разделе «Ученики → Группы» и не смешиваются с этим курсом.</p>
+        </div>
         <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={() => h.setShowCreateDialog(true)}><Plus className="w-4 h-4" />Создать группу</Button>
       </div>
       <div className="space-y-2">
