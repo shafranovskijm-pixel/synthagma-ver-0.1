@@ -197,6 +197,9 @@ describe("GroupDocumentsFolder package contract routing", () => {
     renderFolder();
     await confirmSourceSignatories();
 
+    expect(screen.queryByRole("button", { name: /Отдельный документ/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Пересобрать 9 Word-документов" })).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
 
     expect(await screen.findByRole("button", { name: "Сохранить договор Word" })).toBeInTheDocument();
@@ -258,6 +261,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     const retry = await screen.findByRole("button", { name: "Повторить 9 документов" });
     expect(screen.getByRole("button", { name: "Пакет компании (Word клиента)" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Пакет физлица" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Пересобрать 9 Word-документов" })).toBeDisabled();
 
     fireEvent.click(retry);
 
@@ -507,22 +511,18 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(passName).toHaveValue("");
   });
 
-  it("требует явного подтверждения, если подписант оставлен пустым", async () => {
+  it("сразу открывает проверку пустых подписантов и после подтверждения продолжает пакет", async () => {
     const ctx = goreltechContext();
     ctx.organization.director_position = "";
     ctx.organization.director_name = "";
     renderFolder(ctx);
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Заполните обязательные данные группы",
-      expect.objectContaining({ description: expect.stringContaining("подтвердите пустые поля подписантов") }),
-    );
+    expect(await screen.findByRole("dialog", { name: "Подписанты документов ГОРЭЛТЕХ" })).toBeInTheDocument();
+    expect(mocks.toastError).not.toHaveBeenCalled();
     expect(mocks.dialogState.docxProps).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Подписанты документов" }));
     fireEvent.click(await screen.findByRole("button", { name: "Подтвердить подписантов" }));
-    fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
 
     expect(await screen.findByRole("button", { name: "Сохранить договор Word" })).toBeInTheDocument();
   });

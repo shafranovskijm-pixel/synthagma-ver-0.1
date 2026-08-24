@@ -61,8 +61,9 @@ export function useGroupDocuments(organizationId: string | null, groupId: string
 
   /**
    * Атомарное создание партии документов через RPC:
-   * версия = max(version)+1 по группе, новая партия current,
-   * предыдущие версионированные партии становятся previous.
+   * версия = max(version)+1 по группе, новые документы current;
+   * previous становятся только прежние строки тех же doc_type.
+   * Остальные типы из более ранних партий сохраняют is_current=true.
    * Записи без package_batch_id (созданные до версионирования) не изменяются.
    */
   const saveGenerated = useCallback(async (docs: GeneratedDocument[]) => {

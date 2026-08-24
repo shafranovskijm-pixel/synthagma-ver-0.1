@@ -12,13 +12,14 @@ import { z } from "npm:zod@3.23.8";
 import JSZip from "npm:jszip@3.10.1";
 import { compileDocumentXml, numberStudents, validateSnapshot, type TemplateManifest } from "../_shared/docx-ooxml/compile.ts";
 import { formatMoneyRu, moneyToWordsRu } from "../_shared/docx-ooxml/money.ts";
-import { validateRelations, validateTemplateConsistency } from "../_shared/docx-ooxml/relational.ts";
+import { validateExactContractRoster, validateRelations, validateTemplateConsistency } from "../_shared/docx-ooxml/relational.ts";
+import { sha256CanonicalJson } from "../_shared/docx-ooxml/idempotency.ts";
 import {
   GORELTECH_COMPANY_CONTRACT_MANIFEST_JSON,
   GORELTECH_COMPANY_CONTRACT_TEMPLATE_BASE64,
 } from "../_shared/contract-templates/goreltech/company/v1/embedded.ts";
 
-export const COMPILER_REVISION = "goreltech-company-contract-tenant-uuid-v3";
+export const COMPILER_REVISION = "goreltech-company-contract-idempotent-roster-v4";
 
 const BUCKET = "billing-documents";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
@@ -27,6 +28,7 @@ const GORELTECH_INN = "7806541216";
 const RowSchema = z.record(z.string(), z.union([z.string(), z.number(), z.null()]));
 
 const BodySchema = z.object({
+  submissionKey: z.string().uuid().optional(),
   templateKey: z.string().min(1).max(200),
   organizationId: z.string().uuid(),
   groupId: z.string().uuid().nullish(),
@@ -90,8 +92,33 @@ Deno.serve(async (req) => {
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) return json({ error: "Некорректные данные", details: parsed.error.flatten().fieldErrors }, 400);
     const body = parsed.data;
+    if (!body.groupId) return json({ error: "Учебная группа обязательна для договора с компанией" }, 422);
 
     const admin = createClient(url, service);
+
+    const replayResponse = (existing: any) => {
+      const variables = existing?.variables_snapshot && typeof existing.variables_snapshot === "object"
+        ? existing.variables_snapshot
+        : {};
+      const keptCurricula = Array.isArray(variables.kept_curricula) ? variables.kept_curricula : [];
+      return json({
+        contract: {
+          id: existing.id,
+          name: existing.name,
+          contract_number: existing.contract_number,
+          contract_date: existing.contract_date,
+          docx_path: existing.docx_path,
+          pdf_status: existing.pdf_status,
+          template_version_label: existing.template_version_label,
+          generation_status: existing.generation_status,
+        },
+        docx_sha256: existing.docx_sha256,
+        kept_curricula: keptCurricula,
+        dropped_curricula: [],
+        pdf_status: existing.pdf_status || "unavailable",
+        idempotent_replay: true,
+      });
+    };
 
     // Авторизация: глобальный админ или сотрудник организации с правом на документы.
     const [adminRoleResult, permissionResult, ownerResult] = await Promise.all([
@@ -174,19 +201,35 @@ Deno.serve(async (req) => {
     }
 
     // Реляционная проверка: связи создаём только по данным БД, а не по UUID от клиента.
-    const uniqueStudentIds = Array.from(new Set(body.studentUserIds));
     const [companyRes, groupRes, profilesRes] = await Promise.all([
       admin.from("companies").select("id, organization_id").eq("id", body.companyId).maybeSingle(),
-      body.groupId
-        ? admin.from("student_groups").select("id, organization_id").eq("id", body.groupId).maybeSingle()
-        : Promise.resolve({ data: null, error: null } as any),
-      uniqueStudentIds.length
-        ? admin.from("profiles").select("user_id, organization_id, student_group_id").in("user_id", uniqueStudentIds)
-        : Promise.resolve({ data: [], error: null } as any),
+      admin.from("student_groups").select("id, organization_id").eq("id", body.groupId).maybeSingle(),
+      admin
+        .from("profiles")
+        .select("user_id, organization_id, student_group_id, full_name")
+        .eq("organization_id", body.organizationId)
+        .eq("student_group_id", body.groupId)
+        .is("archived_at", null),
     ]);
     if (companyRes.error) throw companyRes.error;
     if (groupRes.error) throw groupRes.error;
     if (profilesRes.error) throw profilesRes.error;
+
+    const activeProfiles = ((profilesRes.data as any[]) || []) as Array<{
+      user_id: string;
+      organization_id: string;
+      student_group_id: string;
+      full_name: string | null;
+    }>;
+    const activeUserIds = activeProfiles.map((profile) => profile.user_id);
+    const frdoRes = activeUserIds.length
+      ? await admin
+          .from("student_frdo_data")
+          .select("user_id, last_name, first_name, middle_name")
+          .eq("organization_id", body.organizationId)
+          .in("user_id", activeUserIds)
+      : { data: [], error: null } as any;
+    if (frdoRes.error) throw frdoRes.error;
 
     const relational = validateRelations({
       organizationId: body.organizationId,
@@ -196,10 +239,21 @@ Deno.serve(async (req) => {
       studentsMetaIds: body.studentsMeta.map((s) => s.user_id),
       company: (companyRes.data as any) ?? null,
       group: (groupRes.data as any) ?? null,
-      profiles: ((profilesRes.data as any[]) || []) as any,
+      profiles: activeProfiles,
     });
     if (!relational.ok) {
       return json({ error: relational.error, issues: relational.issues }, relational.status);
+    }
+
+    const exactRoster = validateExactContractRoster({
+      studentUserIds: body.studentUserIds,
+      studentsMeta: body.studentsMeta,
+      studentRows: body.students,
+      activeProfiles,
+      frdoRows: ((frdoRes.data as any[]) || []) as any,
+    });
+    if (!exactRoster.ok) {
+      return json({ error: exactRoster.error, issues: exactRoster.issues }, exactRoster.status);
     }
 
     // Снимок данных: суммы считает сервер, чтобы цифры и прописью не расходились.
@@ -219,6 +273,41 @@ Deno.serve(async (req) => {
 
     const issues = validateSnapshot(manifest, snapshot);
     if (issues.length) return json({ error: "Не заполнены обязательные данные договора", issues }, 422);
+
+    // A submission key identifies one logical request. Its canonical hash
+    // prevents a changed form from accidentally replaying an older contract.
+    const submissionSnapshotSha256 = body.submissionKey
+      ? await sha256CanonicalJson({
+          templateKey: registry.template_key,
+          templateVersionLabel: registry.version_label,
+          templateSha256: sourceHash,
+          organizationId: body.organizationId,
+          groupId: body.groupId ?? null,
+          companyId: body.companyId,
+          studentUserIds: body.studentUserIds,
+          studentsMeta: body.studentsMeta,
+          contractName: body.contractName,
+          contractNumber: body.contractNumber,
+          contractDate: body.contractDate,
+          snapshot,
+        })
+      : null;
+
+    if (body.submissionKey) {
+      const { data: existing, error: existingError } = await admin
+        .from("org_contracts")
+        .select("id, name, contract_number, contract_date, docx_path, docx_sha256, pdf_status, template_version_label, generation_status, variables_snapshot, submission_snapshot_sha256")
+        .eq("organization_id", body.organizationId)
+        .eq("submission_key", body.submissionKey)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        if (existing.submission_snapshot_sha256 !== submissionSnapshotSha256) {
+          return json({ error: "Ключ отправки уже использован для другого снимка договора" }, 409);
+        }
+        return replayResponse(existing);
+      }
+    }
 
     const zip = await JSZip.loadAsync(docxBytes);
     const documentFile = zip.file("word/document.xml");
@@ -248,6 +337,8 @@ Deno.serve(async (req) => {
       .insert({
         id: contractId,
         organization_id: body.organizationId,
+        submission_key: body.submissionKey ?? null,
+        submission_snapshot_sha256: submissionSnapshotSha256,
         name: body.contractName,
         contract_number: body.contractNumber,
         contract_date: body.contractDate,
@@ -278,6 +369,29 @@ Deno.serve(async (req) => {
       .select("id, name, contract_number, contract_date, docx_path, pdf_status, template_version_label, generation_status")
       .single();
     if (insertError) {
+      // An insert error may mean the database committed but the response was
+      // lost. Reconcile by submission key before deleting any uploaded file.
+      if (body.submissionKey) {
+        const { data: existing, error: existingError } = await admin
+          .from("org_contracts")
+          .select("id, name, contract_number, contract_date, docx_path, docx_sha256, pdf_status, template_version_label, generation_status, variables_snapshot, submission_snapshot_sha256")
+          .eq("organization_id", body.organizationId)
+          .eq("submission_key", body.submissionKey)
+          .maybeSingle();
+        if (existingError) throw existingError;
+        if (existing) {
+          if (existing.submission_snapshot_sha256 !== submissionSnapshotSha256) {
+            if (existing.docx_path !== docxPath) {
+              await admin.storage.from(BUCKET).remove([docxPath]);
+            }
+            return json({ error: "Ключ отправки уже использован для другого снимка договора" }, 409);
+          }
+          if (existing.docx_path !== docxPath) {
+            await admin.storage.from(BUCKET).remove([docxPath]);
+          }
+          return replayResponse(existing);
+        }
+      }
       await admin.storage.from(BUCKET).remove([docxPath]);
       throw insertError;
     }

@@ -12,6 +12,7 @@ import {
   parseGeneratedHtmlRows,
   resolveDocumentSignatory,
   validateGroupDocumentPrerequisites,
+  validateStudentRowsAgainstRoster,
   type GoreltechCompiledDocumentType,
   type GroupDocumentManifest,
 } from "../groupDocument";
@@ -72,6 +73,43 @@ describe("групповые DOCX Beta", () => {
       ["N", "NAME", "BASIS"],
     );
     expect(rows).toEqual([{ N: "1", NAME: "Иванов & Петров", BASIS: "" }]);
+  });
+
+  it("останавливает документ со старым или неполным составом учеников", () => {
+    expect(validateStudentRowsAgainstRoster({
+      docType: "student_list",
+      fillMode: "blank",
+      rows: [{ STUDENT_NAME: "Иванов Иван Иванович" }],
+      activeStudentNames: ["Иванов Иван Иванович", "Петров Пётр Петрович"],
+    })).toContain("Состав или ФИО");
+
+    expect(validateStudentRowsAgainstRoster({
+      docType: "student_list",
+      fillMode: "blank",
+      rows: [
+        { STUDENT_NAME: "Петров Пётр Петрович" },
+        { STUDENT_NAME: "Иванов Иван Иванович" },
+      ],
+      activeStudentNames: ["Иванов Иван Иванович", "Петров Пётр Петрович"],
+    })).toBeNull();
+  });
+
+  it("не применяет roster gate к расписанию без строк учеников", () => {
+    expect(validateStudentRowsAgainstRoster({
+      docType: "schedule",
+      fillMode: "data",
+      rows: [],
+      activeStudentNames: ["Иванов Иван Иванович"],
+    })).toBeNull();
+  });
+
+  it("для заполненной книги регистрации не допускает чужое ФИО", () => {
+    expect(validateStudentRowsAgainstRoster({
+      docType: "registration_book",
+      fillMode: "data",
+      rows: [{ STUDENT_NAME: "Посторонний Ученик" }],
+      activeStudentNames: ["Иванов Иван Иванович"],
+    })).toContain("нет в активном составе");
   });
 
   it("изолирует фирменную шапку ГОРЭЛТЕХ", () => {

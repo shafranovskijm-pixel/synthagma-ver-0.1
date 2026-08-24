@@ -6,6 +6,7 @@ import path from "node:path";
  * Регрессия на релиз-блокеры RPC create_group_document_batch:
  *  - advisory-блокировка одним 64-битным ключом (pg_advisory_xact_lock(bigint));
  *  - валидация p_docs (null / не массив / пустой / слишком большой) ДО UPDATE is_current.
+ *  - точечная смена is_current только для типов документов из p_docs.
  */
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../../../../supabase/migrations");
@@ -54,5 +55,45 @@ describe("create_group_document_batch migration", () => {
     expect(shapeGuard).toBeGreaterThan(-1);
     expect(countGuard).toBeGreaterThan(shapeGuard);
     expect(update).toBeGreaterThan(countGuard);
+  });
+
+  it("does not retire unrelated document types", () => {
+    const updateStart = sql.indexOf("UPDATE public.group_documents gd");
+    const insertStart = sql.indexOf("INSERT INTO public.group_documents", updateStart);
+    const update = sql.slice(updateStart, insertStart);
+
+    expect(updateStart).toBeGreaterThan(-1);
+    expect(insertStart).toBeGreaterThan(updateStart);
+    expect(update).toContain("gd.doc_type IN");
+    expect(update).toContain("jsonb_array_elements(p_docs)");
+    expect(update).toContain("d->>'doc_type'");
+  });
+
+  it("rejects missing doc_type before changing current rows", () => {
+    const typeGuard = sql.indexOf("each p_docs item must have a non-empty doc_type");
+    const update = sql.indexOf("SET is_current = false");
+    expect(typeGuard).toBeGreaterThan(-1);
+    expect(typeGuard).toBeLessThan(update);
+  });
+
+  it("rejects duplicate doc_type values before changing current rows", () => {
+    const duplicateGuard = sql.indexOf("p_docs must contain unique doc_type values");
+    const update = sql.indexOf("SET is_current = false");
+    expect(duplicateGuard).toBeGreaterThan(-1);
+    expect(duplicateGuard).toBeLessThan(update);
+  });
+
+  it("repairs existing active rows per organization, group and document type", () => {
+    expect(sql).toContain("row_number() OVER");
+    expect(sql).toContain("PARTITION BY gd.organization_id, gd.group_id, gd.doc_type");
+    expect(sql).toContain("gd.status = 'active'");
+    expect(sql).toContain("gd.package_batch_id IS NOT NULL");
+    expect(sql).toContain("is_current = (ranked.position = 1)");
+  });
+
+  it("enforces one active current version per document type", () => {
+    expect(sql).toContain("uq_group_documents_one_current_type");
+    expect(sql).toContain("(organization_id, group_id, doc_type)");
+    expect(sql).toContain("is_current IS TRUE");
   });
 });

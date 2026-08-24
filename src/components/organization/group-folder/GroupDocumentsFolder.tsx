@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateDocument, generatePackage, downloadHtml } from "@/lib/group-docs/generate";
 import { reserveGroupDocumentNumbers, typesRequiringReservation } from "@/lib/group-docs/documentNumbers";
-import { GROUP_DOCUMENT_TYPES } from "@/lib/group-docs/groupDocuments";
+import { GROUP_DOCUMENT_TYPES } from "@/lib/groupDocuments";
 import {
   PACKAGE_DOC_TYPES,
   describePackagePlan,
@@ -55,6 +55,7 @@ import {
   type GroupDocumentSignatories,
 } from "@/lib/group-docs/signatories";
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
+import { localDateIso } from "@/lib/date/localDate";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
@@ -109,6 +110,8 @@ export function GroupDocumentsFolder({
   const [mode, setMode] = useState<DocumentFillMode>("blank");
   const [signatoriesOpen, setSignatoriesOpen] = useState(false);
   const [blankSignatoriesConfirmed, setBlankSignatoriesConfirmed] = useState(false);
+  const [pendingPackageScenario, setPendingPackageScenario] =
+    useState<"legal" | "individual" | null>(null);
   const documentClientProfile = useMemo(
     () => ctx ? resolveGroupDocumentClientProfile(ctx.organization) : null,
     [ctx],
@@ -204,6 +207,21 @@ export function GroupDocumentsFolder({
   );
   const blocked = allPackageBlockers.length > 0;
 
+  const requestPackage = (scenario: "legal" | "individual") => {
+    const dataBlockers = Array.from(new Set([...packageBlockers, ...packageRequirements]));
+    if (dataBlockers.length > 0) {
+      toast.error("Заполните обязательные данные группы", { description: dataBlockers.join(", ") });
+      return;
+    }
+    if (blankSignatoryBlocker.length > 0) {
+      setPendingPackageScenario(scenario);
+      setSignatoriesOpen(true);
+      return;
+    }
+    if (scenario === "legal") setCompanyPackageOpen(true);
+    else setIndividualPackageOpen(true);
+  };
+
   /** Готовность данных по документам пакета — чтобы честно предупредить менеджера. */
   const readiness = useMemo(
     () =>
@@ -289,6 +307,8 @@ export function GroupDocumentsFolder({
         ? await generateClassJournalDocx({
             organizationId,
             groupId,
+            studentUserIds: ctx.students.map((student) => student.user_id),
+            documentDate: docs[0]?.document_date || localDateIso(),
             fillMode: mode,
             includeJournal,
             journalSignatory: documentSignatories.class_journal,
@@ -472,10 +492,10 @@ export function GroupDocumentsFolder({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: allPackageBlockers.join(", ") }); return; } setCompanyPackageOpen(true); }}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}
         </Button>
-        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => { if (blocked) { toast.error("Заполните обязательные данные группы", { description: allPackageBlockers.join(", ") }); return; } setIndividualPackageOpen(true); }}>
+        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("individual")}>
           <User className="w-4 h-4" /> Пакет физлица
         </Button>
         {exactGoreltechDocuments && (
@@ -483,7 +503,10 @@ export function GroupDocumentsFolder({
             variant="outline"
             className="gap-1.5 rounded-xl"
             disabled={busy || !ctx}
-            onClick={() => setSignatoriesOpen(true)}
+            onClick={() => {
+              setPendingPackageScenario(null);
+              setSignatoriesOpen(true);
+            }}
           >
             <UserCheck className="w-4 h-4" /> Подписанты документов
           </Button>
@@ -491,6 +514,17 @@ export function GroupDocumentsFolder({
         <Badge variant="outline" className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
           Beta
         </Badge>
+        {exactGoreltechDocuments ? (
+          <Button
+            variant="outline"
+            className="gap-1.5 rounded-xl"
+            disabled={busy || !ctx || blocked || !!retryPackage}
+            onClick={() => run(PACKAGE_DOC_TYPES, allPackageBlockers)}
+            title="Клиентский комплект пересобирается целиком, чтобы все девять файлов имели один снимок данных"
+          >
+            <RotateCcw className="w-4 h-4" /> Пересобрать 9 Word-документов
+          </Button>
+        ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx}>
@@ -520,6 +554,7 @@ export function GroupDocumentsFolder({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <span>Стоимость, ₽</span>
@@ -601,6 +636,14 @@ export function GroupDocumentsFolder({
                     {row.document_date ? ` · ${format(new Date(row.document_date), "d MMM yyyy", { locale: ru })}` : ""}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {row.package_batch_id && (
+                      <Badge
+                        variant={row.is_current !== false ? "default" : "secondary"}
+                        className="rounded-full text-[10px]"
+                      >
+                        {row.is_current !== false ? "Текущая версия" : "Предыдущая версия"}
+                      </Badge>
+                    )}
                     <Badge variant={row.doc_status === "final" ? "default" : "secondary"} className="rounded-full text-[10px]">
                       {row.doc_status === "final" ? "Итоговый" : "Черновик"}
                     </Badge>
@@ -716,7 +759,10 @@ export function GroupDocumentsFolder({
       {exactGoreltechDocuments && (
         <GoreltechDocumentSignatoriesDialog
           open={signatoriesOpen}
-          onOpenChange={setSignatoriesOpen}
+          onOpenChange={(open) => {
+            setSignatoriesOpen(open);
+            if (!open) setPendingPackageScenario(null);
+          }}
           value={documentSignatories}
           defaultSignatory={defaultSignatory}
           onChange={(value) => {
@@ -726,6 +772,9 @@ export function GroupDocumentsFolder({
           onConfirm={() => {
             setBlankSignatoriesConfirmed(true);
             setSignatoriesOpen(false);
+            if (pendingPackageScenario === "legal") setCompanyPackageOpen(true);
+            if (pendingPackageScenario === "individual") setIndividualPackageOpen(true);
+            setPendingPackageScenario(null);
           }}
         />
       )}

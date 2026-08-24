@@ -315,6 +315,60 @@ export function parseGeneratedHtmlRows(
   return rows;
 }
 
+const ROSTER_ROW_DOCUMENTS = new Set<GoreltechCompiledDocumentType>([
+  "enrollment_order",
+  "expulsion_order",
+  "student_list",
+  "attestation_sheet",
+  "registration_book",
+  "pass",
+]);
+
+function normalizedRosterName(value: unknown): string {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Fail-closed gate for the legacy HTML transport. The five documents listed
+ * above must contain exactly the same active students that were re-read by the
+ * Edge function immediately before compilation. This prevents a stale browser
+ * tab (or an archived profile) from producing a valid-looking Word package.
+ */
+export function validateStudentRowsAgainstRoster(params: {
+  docType: GoreltechCompiledDocumentType;
+  fillMode: "blank" | "data";
+  rows: Array<Record<string, string>>;
+  activeStudentNames: unknown[];
+}): string | null {
+  if (!ROSTER_ROW_DOCUMENTS.has(params.docType)) return null;
+
+  const expected = params.activeStudentNames
+    .map(normalizedRosterName)
+    .sort((left, right) => left.localeCompare(right, "ru"));
+  const actual = params.rows
+    .map((row) => normalizedRosterName(row.STUDENT_NAME))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right, "ru"));
+
+  if (expected.some((name) => !name)) {
+    return "У активного ученика не заполнено ФИО";
+  }
+  if (params.docType === "registration_book" && params.fillMode === "data") {
+    const expectedNames = new Set(expected);
+    if (actual.some((name) => !expectedNames.has(name))) {
+      return "Книга регистрации содержит ученика, которого нет в активном составе группы";
+    }
+    return null;
+  }
+  if (
+    expected.length !== actual.length
+    || expected.some((name, index) => name !== actual[index])
+  ) {
+    return "Состав или ФИО учеников изменились. Обновите страницу перед формированием документов";
+  }
+  return null;
+}
+
 export function buildGroupDocumentScalars(
   variables: Record<string, unknown>,
 ): Record<string, string> {

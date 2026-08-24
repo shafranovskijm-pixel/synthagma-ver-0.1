@@ -34,6 +34,10 @@ vi.mock("@/integrations/supabase/client", () => {
       return query;
     });
     query.eq = vi.fn(() => query);
+    query.is = vi.fn((column: string, value: unknown) => {
+      dbState.events.push(`is:${table}:${column}:${String(value)}`);
+      return query;
+    });
     query.in = vi.fn(() => query);
     query.or = vi.fn(() => query);
     query.order = vi.fn(() => query);
@@ -83,6 +87,13 @@ describe("group document deletion safety", () => {
     dbState.storageError = null;
     dbState.events = [];
     dbState.removedPaths = [];
+  });
+
+  it("не связывает договоры группы с архивными учениками", async () => {
+    const { result } = renderHook(() => useGroupContracts("org-1", "group-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(dbState.events).toContain("is:profiles:archived_at:null");
   });
 
   it("удаляет запись договора до файлов и очищает все уникальные пути", async () => {

@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Footer } from "@/components/landing/Footer";
-import { getGroupDocumentTypes } from "@/lib/group-docs/groupDocuments";
+import { getGroupDocumentTypes } from "@/lib/groupDocuments";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -75,7 +75,8 @@ const readyCapabilities = [
 
 const betaCapabilities = [
   "Пакетная сборка 9 документов — Beta до повторной проверки Word-компилятора",
-  "8 документов формируются как HTML-макеты с явной Beta-меткой",
+  "Универсальные 8 документов пока формируются как HTML-макеты с явной Beta-меткой",
+  "Точные клиентские Word-шаблоны подключаются по согласованному профилю организации",
   "Классный журнал создаётся в Word; PDF-копия пока недоступна",
   "Расписание становится итоговым после заполнения структурированных занятий",
 ];

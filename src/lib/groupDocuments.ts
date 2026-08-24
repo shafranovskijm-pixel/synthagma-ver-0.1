@@ -47,10 +47,10 @@ export const GROUP_DOCUMENT_TYPES: GroupDocumentType[] = [
     key: "contract",
     title: "Договоры",
     folder: "contracts",
-    status: "ready",
+    status: "beta",
     orientation: "portrait",
     layout: "docx_ooxml",
-    hint: "Договоры с учениками и организациями-заказчиками группы",
+    hint: "Word-договоры формируются; юридический текст шаблона ГОРЭЛТЕХ ожидает согласования",
   },
   {
     key: "enrollment_order",

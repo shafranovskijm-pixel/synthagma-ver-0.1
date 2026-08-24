@@ -22,6 +22,7 @@ import {
   firstPositiveFiniteNumber,
   parseGeneratedHtmlRows,
   resolveDocumentSignatory,
+  validateStudentRowsAgainstRoster,
   validateGroupDocumentPrerequisites,
   type GroupDocumentManifest,
 } from "../_shared/docx-ooxml/groupDocument.ts";
@@ -35,7 +36,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-tenant-uuid-v9";
+export const COMPILER_REVISION = "goreltech-group-package-reconcile-v11";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -73,6 +74,8 @@ const LegacyDocumentSchema = z.object({
 const BodySchema = z.object({
   organizationId: z.string().uuid(),
   groupId: z.string().uuid(),
+  studentUserIds: z.array(z.string().uuid()).max(5000),
+  documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   fillMode: z.enum(["blank", "data"]).default("blank"),
   includeJournal: z.boolean().default(true),
   journalSignatory: SignatorySchema.optional(),
@@ -80,6 +83,9 @@ const BodySchema = z.object({
 }).refine(
   (body) => body.includeJournal || body.otherDocuments.length > 0,
   { message: "Не выбран ни один документ" },
+).refine(
+  (body) => new Set(body.otherDocuments.map((document) => document.doc_type)).size === body.otherDocuments.length,
+  { message: "Один тип документа нельзя добавить в пакет дважды", path: ["otherDocuments"] },
 );
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
@@ -157,10 +163,11 @@ Deno.serve(async (req) => {
           fillMode: document.fill_mode,
           docStatus: document.doc_status,
           documentNumber: document.document_number,
-          documentDate: document.document_date,
+          documentDate: parsed.data.documentDate,
         });
         return {
           ...document,
+          document_date: parsed.data.documentDate,
           doc_status: metadata.docStatus,
           document_number: metadata.documentNumber,
         };
@@ -218,6 +225,7 @@ Deno.serve(async (req) => {
         .select("user_id, full_name, organization_id, student_group_id")
         .eq("organization_id", body.organizationId)
         .eq("student_group_id", body.groupId)
+        .is("archived_at", null)
         .order("full_name"),
     ]);
     if (groupResult.error) throw groupResult.error;
@@ -229,6 +237,20 @@ Deno.serve(async (req) => {
       return json({ error: "Группа не принадлежит выбранной организации" }, 409);
     }
     if (!organization) return json({ error: "Организация не найдена" }, 404);
+    const requestedStudentIds = Array.from(new Set(body.studentUserIds)).sort();
+    const activeStudentIds = ((profilesResult.data as any[]) || [])
+      .map((profile) => String(profile.user_id))
+      .sort();
+    if (
+      requestedStudentIds.length !== body.studentUserIds.length
+      || requestedStudentIds.length !== activeStudentIds.length
+      || requestedStudentIds.some((studentId, index) => studentId !== activeStudentIds[index])
+    ) {
+      return json({
+        error: "Состав группы изменился. Обновите страницу перед формированием пакета документов",
+        stage,
+      }, 409);
+    }
     const isExactGoreltechOrganization =
       String(organization.id || "").toLowerCase() === GORELTECH_ORGANIZATION_ID
       && String(organization.inn || "").replace(/\D/g, "") === GORELTECH_INN
@@ -237,6 +259,14 @@ Deno.serve(async (req) => {
       return json({
         error:
           "Точные клиентские Word-шаблоны доступны только организации ГОРЭЛТЕХ; для этой организации используйте общий пакет",
+      }, 409);
+    }
+    const requestedLegacyTypes = new Set(body.otherDocuments.map((document) => document.doc_type));
+    if (!body.includeJournal
+      || body.otherDocuments.length !== LEGACY_TYPES.length
+      || !LEGACY_TYPES.every((docType) => requestedLegacyTypes.has(docType))) {
+      return json({
+        error: "Клиентский комплект ГОРЭЛТЕХ пересобирается только целиком: 9 Word-документов",
       }, 409);
     }
 
@@ -293,6 +323,28 @@ Deno.serve(async (req) => {
           docType: requestedDocument.docType,
           stage,
         }, 422);
+      }
+    }
+
+    const activeStudentNames = ((profilesResult.data as any[]) || [])
+      .map((profile) => profile.full_name);
+    for (const document of body.otherDocuments) {
+      const templateEntry = GROUP_DOCUMENT_TEMPLATE_BUNDLE[document.doc_type];
+      if (!templateEntry) {
+        return json({ error: `Нет Word-шаблона для ${document.doc_type}`, stage }, 422);
+      }
+      const manifest = JSON.parse(templateEntry.manifestJson) as GroupDocumentManifest;
+      const rows = manifest.row_source_key
+        ? parseGeneratedHtmlRows(document.variables?.[manifest.row_source_key], manifest.row_tokens)
+        : [];
+      const rosterIssue = validateStudentRowsAgainstRoster({
+        docType: document.doc_type,
+        fillMode: document.fill_mode,
+        rows,
+        activeStudentNames,
+      });
+      if (rosterIssue) {
+        return json({ error: rosterIssue, docType: document.doc_type, stage }, 409);
       }
     }
 
@@ -361,7 +413,7 @@ Deno.serve(async (req) => {
     if (uploadResult.error) throw uploadResult.error;
     uploadedPaths.push(journalPath);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = body.documentDate;
     journalDocument = {
       doc_type: "class_journal",
       name: `Журнал учета занятий — ${group.name}`,
@@ -505,12 +557,45 @@ Deno.serve(async (req) => {
         ...(journalDocument ? [journalDocument] : []),
       ],
     });
+    let batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
     if (batchResult.error) {
-      if (uploadedPaths.length) await admin.storage.from(BUCKET).remove(uploadedPaths);
+      // The RPC transaction may have committed even if its HTTP response was
+      // lost. Reconcile by the unique uploaded paths before deleting anything.
+      const reconciliation = await admin
+        .from("group_documents")
+        .select("file_path, package_batch_id, package_version")
+        .eq("organization_id", body.organizationId)
+        .eq("group_id", body.groupId)
+        .in("file_path", uploadedPaths);
+
+      if (reconciliation.error) {
+        uploadedPaths.length = 0;
+        throw new Error(
+          "Ответ базы не подтверждён; Word-файлы сохранены для безопасной сверки. Обновите страницу",
+        );
+      }
+
+      const committedRows = ((reconciliation.data as any[]) || []);
+      const committedPaths = new Set(committedRows.map((row) => String(row.file_path || "")));
+      const unreferencedPaths = uploadedPaths.filter((path) => !committedPaths.has(path));
+      if (unreferencedPaths.length) {
+        await admin.storage.from(BUCKET).remove(unreferencedPaths);
+      }
       uploadedPaths.length = 0;
-      throw batchResult.error;
+
+      const batchIds = new Set(committedRows.map((row) => row.package_batch_id).filter(Boolean));
+      if (committedRows.length === committedPaths.size
+        && committedPaths.size === compiledPackageDocuments.length + (journalDocument ? 1 : 0)
+        && batchIds.size === 1) {
+        batch = {
+          batch_id: committedRows[0].package_batch_id,
+          batch_version: committedRows[0].package_version,
+          inserted_count: committedRows.length,
+        };
+      } else {
+        throw batchResult.error;
+      }
     }
-    const batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
     stage = "complete";
     return json({
       document: journalDocument

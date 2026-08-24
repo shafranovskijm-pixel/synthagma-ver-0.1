@@ -1,6 +1,6 @@
 /** Серверная реляционная валидация и согласованность манифеста/реестра. */
 import { describe, expect, it } from "vitest";
-import { validateRelations, validateTemplateConsistency } from "../../../../supabase/functions/_shared/docx-ooxml/relational";
+import { validateExactContractRoster, validateRelations, validateTemplateConsistency } from "../../../../supabase/functions/_shared/docx-ooxml/relational";
 
 const ORG = "11111111-1111-1111-1111-111111111111";
 const OTHER_ORG = "22222222-2222-2222-2222-222222222222";
@@ -82,6 +82,57 @@ describe("validateRelations", () => {
       profiles: [{ user_id: S1, organization_id: ORG, student_group_id: OTHER_GROUP }],
     });
     expect(r.ok).toBe(true);
+  });
+});
+
+describe("validateExactContractRoster", () => {
+  const exact = () => ({
+    studentUserIds: [S1, S2],
+    studentsMeta: [
+      { user_id: S1, full_name: "Иванов Иван Иванович" },
+      { user_id: S2, full_name: "Петров Пётр Петрович" },
+    ],
+    studentRows: [
+      { STUDENT_FIO: "Иванов Иван Иванович" },
+      { STUDENT_FIO: "Петров Пётр Петрович" },
+    ],
+    activeProfiles: [
+      { user_id: S1, full_name: "Иванов И. И." },
+      { user_id: S2, full_name: "Петров Пётр Петрович" },
+    ],
+    frdoRows: [
+      { user_id: S1, last_name: "Иванов", first_name: "Иван", middle_name: "Иванович" },
+    ],
+  });
+
+  it("принимает ровно весь активный roster и ФИО из ФРДО с fallback на профиль", () => {
+    expect(validateExactContractRoster(exact())).toEqual({ ok: true, status: 200 });
+  });
+
+  it("отклоняет подмножество, лишнего слушателя и дубли UUID", () => {
+    expect(validateExactContractRoster({ ...exact(), studentUserIds: [S1] }).ok).toBe(false);
+    expect(validateExactContractRoster({ ...exact(), studentUserIds: [S1, S2, OTHER_GROUP] }).ok).toBe(false);
+    expect(validateExactContractRoster({ ...exact(), studentUserIds: [S1, S1] }).ok).toBe(false);
+  });
+
+  it("отклоняет переставленный studentsMeta и изменённое печатное ФИО", () => {
+    const swapped = exact();
+    swapped.studentsMeta = [swapped.studentsMeta[1], swapped.studentsMeta[0]];
+    expect(validateExactContractRoster(swapped).issues).toEqual([S1, S2]);
+
+    const renamed = exact();
+    renamed.studentRows[1].STUDENT_FIO = "Другой Человек";
+    expect(validateExactContractRoster(renamed).issues).toEqual([S2]);
+  });
+
+  it("нормализует Unicode и повторные пробелы, но не додумывает пустое ФИО", () => {
+    const normalized = exact();
+    normalized.studentsMeta[1].full_name = "  Петров   Пётр Петрович ";
+    normalized.studentRows[1].STUDENT_FIO = "Петров\u00a0Пётр Петрович";
+    expect(validateExactContractRoster(normalized).ok).toBe(true);
+
+    normalized.activeProfiles[1].full_name = "";
+    expect(validateExactContractRoster(normalized).ok).toBe(false);
   });
 });
 

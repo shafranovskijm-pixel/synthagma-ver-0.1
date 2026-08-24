@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-tenant-uuid-v9");
+    expect(source).toContain("goreltech-group-package-reconcile-v11");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -46,12 +46,18 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("compilerRevision");
     expect(source).toContain("canonicalizeLegacyDocumentMetadata");
     expect(source).toContain("buildCanonicalDocumentMetadataScalars");
+    expect(source).toContain("validateStudentRowsAgainstRoster");
+    expect(source).toContain("const today = body.documentDate");
+    expect(source).toContain('from("group_documents")');
+    expect(source).toContain("committedPaths");
+    expect(source).toContain("unreferencedPaths");
     expect(source).toContain("firstPositiveFiniteNumber(");
     expect(source).toContain("course?.duration");
     expect(source).toContain("doc_status: metadata.docStatus");
     expect(source).toContain("document_number: metadata.documentNumber");
     expect(source).toContain("documentNumber: document.document_number");
-    expect(source).toContain("documentDate: document.document_date");
+    expect(source).toContain("documentDate: parsed.data.documentDate");
+    expect(source).toContain("document_date: parsed.data.documentDate");
     expect(source).toContain('PROGRAM_HOURS: programHours > 0 ? String(programHours) : ""');
     expect(source).not.toContain('|| "Генеральный директор"');
   });
@@ -65,6 +71,8 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain('String(organization.inn || "").replace(/\\D/g, "") === GORELTECH_INN');
     expect(source).toContain('/ГОРЭЛТЕХ/i.test(String(organization.name || ""))');
     expect(source).toContain("Точные клиентские Word-шаблоны доступны только организации ГОРЭЛТЕХ");
+    expect(source).toContain("Клиентский комплект ГОРЭЛТЕХ пересобирается только целиком: 9 Word-документов");
+    expect(source).toContain("LEGACY_TYPES.every");
     expect(source).toContain("includeJournal: z.boolean().default(true)");
     expect(source).toContain("journalSignatory: SignatorySchema.optional()");
     expect(source).toContain("signatory: SignatorySchema.optional()");
@@ -98,7 +106,7 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("const authzError = adminRoleResult.error ||");
     expect(source).toContain("if (authzError) throw authzError");
     expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
-    expect(source).toContain("goreltech-company-contract-tenant-uuid-v3");
+    expect(source).toContain("goreltech-company-contract-idempotent-roster-v4");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
   });

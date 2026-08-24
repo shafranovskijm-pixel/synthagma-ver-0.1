@@ -4,6 +4,10 @@ import { safeInvoke } from "@/utils/safeInvoke";
 export interface GenerateClassJournalParams {
   organizationId: string;
   groupId: string;
+  /** Снимок активного состава группы, использованный для всех документов пакета. */
+  studentUserIds: string[];
+  /** Одна локальная дата документа для всех девяти файлов пакета. */
+  documentDate: string;
   fillMode: "blank" | "data";
   includeJournal?: boolean;
   otherDocuments: GeneratedDocument[];
@@ -45,6 +49,8 @@ export async function generateClassJournalDocx(
     body: {
       organizationId: params.organizationId,
       groupId: params.groupId,
+      studentUserIds: params.studentUserIds,
+      documentDate: params.documentDate,
       fillMode: params.fillMode,
       includeJournal: params.includeJournal ?? true,
       journalSignatory: params.journalSignatory,

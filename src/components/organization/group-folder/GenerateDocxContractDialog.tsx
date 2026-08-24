@@ -129,6 +129,7 @@ function SourceHint({ fieldKey, groupId, companyId, edited, onLeave }: { fieldKe
 
 export function GenerateDocxContractDialog({ open, onClose, organizationId, groupId, groupName, students, onGenerated }: Props) {
   const submitLock = useRef(false);
+  const submissionKeyRef = useRef<string | null>(null);
   const [templates, setTemplates] = useState<RegistryTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState<string>("");
   const [companies, setCompanies] = useState<Array<Record<string, any>>>([]);
@@ -174,6 +175,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     setAmount(0);
     setRows([]);
     setAssignedNumber("");
+    submissionKeyRef.current = null;
     setManualKeys(new Set());
     setCurriculumMatched(false);
     setScheduleHint("");
@@ -191,7 +193,8 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
             .from("profiles")
             .select("user_id, full_name, email, contact_email, phone, city, region, job_position")
             .eq("organization_id", organizationId)
-            .eq("student_group_id", groupId),
+            .eq("student_group_id", groupId)
+            .is("archived_at", null),
           supabase
             .from("student_frdo_data")
             .select("user_id, education_level, last_name, first_name, middle_name")
@@ -314,6 +317,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
       };
 
       const res = await generateDocxContract({
+        submissionKey: submissionKeyRef.current ??= crypto.randomUUID(),
         templateKey,
         organizationId,
         groupId,

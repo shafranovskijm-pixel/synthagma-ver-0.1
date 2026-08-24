@@ -91,6 +91,21 @@ describe("batch versioning grouping", () => {
     expect(groups[2].legacy).toBe(true);
     expect(groups[2].isCurrent).toBe(false);
   });
+
+  it("показывает смешанную партию честно и независимо от порядка строк", () => {
+    const rows = [
+      { id: "old", created_at: "2026-02-01T00:00:00Z", package_batch_id: "b1", package_version: 1, is_current: false },
+      { id: "kept", created_at: "2026-02-01T00:00:01Z", package_batch_id: "b1", package_version: 1, is_current: true },
+      { id: "new", created_at: "2026-03-01T00:00:00Z", package_batch_id: "b2", package_version: 2, is_current: true },
+    ];
+
+    const groups = groupDocumentBatches(rows);
+    expect(groups[0].isCurrent).toBe(true);
+    expect(groups[1].isCurrent).toBe(false);
+    expect(groups[1].isPartiallyCurrent).toBe(true);
+    expect(groups[1].currentCount).toBe(1);
+    expect(batchStatusLabel(groups[1])).toBe("Частично текущая · 1 из 2");
+  });
 });
 
 describe("readiness reporting", () => {

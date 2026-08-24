@@ -21,6 +21,8 @@ describe("generateClassJournalDocx", () => {
     await expect(generateClassJournalDocx({
       organizationId: "org-1",
       groupId: "group-1",
+      studentUserIds: ["student-1"],
+      documentDate: "2026-08-25",
       fillMode: "data",
       otherDocuments: [],
     })).resolves.toEqual({
@@ -43,6 +45,8 @@ describe("generateClassJournalDocx", () => {
     await generateClassJournalDocx({
       organizationId: "org-1",
       groupId: "group-1",
+      studentUserIds: ["student-1"],
+      documentDate: "2026-08-25",
       fillMode: "blank",
       journalSignatory: {
         position: "Руководитель учебного центра",
@@ -53,6 +57,8 @@ describe("generateClassJournalDocx", () => {
 
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
       body: expect.objectContaining({
+        studentUserIds: ["student-1"],
+        documentDate: "2026-08-25",
         journalSignatory: {
           position: "Руководитель учебного центра",
           name: "Ляпко Дарья Константиновна",
@@ -67,6 +73,8 @@ describe("generateClassJournalDocx", () => {
     await expect(generateClassJournalDocx({
       organizationId: "org-1",
       groupId: "group-1",
+      studentUserIds: ["student-1"],
+      documentDate: "2026-08-25",
       fillMode: "data",
       otherDocuments: [],
     })).rejects.toThrow("Шаблон журнала не найден");
@@ -84,6 +92,8 @@ describe("generateClassJournalDocx", () => {
     await generateClassJournalDocx({
       organizationId: "org-1",
       groupId: "group-1",
+      studentUserIds: ["student-1"],
+      documentDate: "2026-08-25",
       fillMode: "blank",
       includeJournal: false,
       otherDocuments: [{

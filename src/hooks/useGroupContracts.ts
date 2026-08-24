@@ -48,7 +48,8 @@ export function useGroupContracts(organizationId: string | null, groupId: string
         .from("profiles")
         .select("user_id, full_name")
         .eq("organization_id", organizationId)
-        .eq("student_group_id", groupId);
+        .eq("student_group_id", groupId)
+        .is("archived_at", null);
       const userIds = (profiles || []).map((p: any) => p.user_id);
       const nameByUser = new Map<string, string>((profiles || []).map((p: any) => [p.user_id, p.full_name || "—"]));
 

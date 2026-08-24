@@ -62,6 +62,86 @@ export function validateRelations(input: RelationalInput): RelationalResult {
   return ok;
 }
 
+export interface ExactContractRosterInput {
+  studentUserIds: string[];
+  studentsMeta: Array<{ user_id: string; full_name: string }>;
+  studentRows: Array<Record<string, unknown>>;
+  activeProfiles: Array<{ user_id: string; full_name: string | null }>;
+  frdoRows: Array<{ user_id: string; last_name?: string | null; first_name?: string | null; middle_name?: string | null }>;
+}
+
+function normalizedPersonName(value: unknown): string {
+  return String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim();
+}
+
+function canonicalRosterName(
+  profile: { user_id: string; full_name: string | null },
+  frdoByUser: Map<string, ExactContractRosterInput["frdoRows"][number]>,
+): string {
+  const frdo = frdoByUser.get(profile.user_id);
+  const official = [frdo?.last_name, frdo?.first_name, frdo?.middle_name]
+    .map(normalizedPersonName)
+    .filter(Boolean)
+    .join(" ");
+  return official || normalizedPersonName(profile.full_name);
+}
+
+/**
+ * Company contracts are issued for the whole active group. UUIDs, metadata and
+ * printed names must all describe that exact server-side roster, in one order.
+ */
+export function validateExactContractRoster(input: ExactContractRosterInput): RelationalResult {
+  const expectedIds = input.activeProfiles.map((profile) => profile.user_id);
+  const requestedIds = input.studentUserIds;
+  const metaIds = input.studentsMeta.map((student) => student.user_id);
+  const uniqueRequestedIds = new Set(requestedIds);
+  const uniqueExpectedIds = new Set(expectedIds);
+
+  if (
+    requestedIds.length !== expectedIds.length
+    || input.studentsMeta.length !== expectedIds.length
+    || input.studentRows.length !== expectedIds.length
+    || uniqueRequestedIds.size !== requestedIds.length
+    || uniqueExpectedIds.size !== expectedIds.length
+    || requestedIds.some((id) => !uniqueExpectedIds.has(id))
+    || expectedIds.some((id) => !uniqueRequestedIds.has(id))
+  ) {
+    return {
+      ok: false,
+      status: 422,
+      error: "Состав активной группы изменился. Обновите страницу перед формированием договора",
+    };
+  }
+
+  const profileByUser = new Map(input.activeProfiles.map((profile) => [profile.user_id, profile]));
+  const frdoByUser = new Map(input.frdoRows.map((row) => [row.user_id, row]));
+  const nameIssues: string[] = [];
+  for (let index = 0; index < requestedIds.length; index += 1) {
+    const userId = requestedIds[index];
+    const profile = profileByUser.get(userId);
+    const expectedName = profile ? canonicalRosterName(profile, frdoByUser) : "";
+    const meta = input.studentsMeta[index];
+    const printedName = normalizedPersonName(input.studentRows[index]?.STUDENT_FIO);
+    if (
+      !expectedName
+      || meta?.user_id !== userId
+      || normalizedPersonName(meta?.full_name) !== expectedName
+      || printedName !== expectedName
+    ) {
+      nameIssues.push(userId);
+    }
+  }
+  if (nameIssues.length) {
+    return {
+      ok: false,
+      status: 422,
+      error: "Состав или ФИО слушателей изменились. Обновите страницу перед формированием договора",
+      issues: nameIssues,
+    };
+  }
+  return ok;
+}
+
 /** Согласованность встроенного манифеста и метаданных реестра. */
 export function validateTemplateConsistency(params: {
   manifest: Record<string, unknown>;

@@ -217,7 +217,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           .from("profiles")
           .select("user_id, full_name, email, login, phone")
           .eq("organization_id", organizationId)
-          .eq("student_group_id", groupId);
+          .eq("student_group_id", groupId)
+          .is("archived_at", null);
 
         const userIds = (profiles || []).map((p: any) => p.user_id);
         if (!cancelled) setCourseEnrollmentCount(0);

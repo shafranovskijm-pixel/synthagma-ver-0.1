@@ -507,6 +507,8 @@ export async function acquireContractNumber(
 }
 
 export interface GenerateDocxParams {
+  /** Stable UUID reused only while retrying this exact submission. */
+  submissionKey?: string;
   templateKey: string;
   organizationId: string;
   groupId: string | null;
@@ -530,6 +532,7 @@ export interface GenerateDocxResult {
 export async function generateDocxContract(params: GenerateDocxParams): Promise<GenerateDocxResult> {
   const { data, error } = await supabase.functions.invoke("compile-docx-contract", {
     body: {
+      submissionKey: params.submissionKey,
       templateKey: params.templateKey,
       organizationId: params.organizationId,
       groupId: params.groupId,

@@ -235,8 +235,12 @@ export function ContractsFolder({ organizationId, groupId, groupName, students, 
                     <div className="flex items-center gap-2">
                       <span>{c.name}</span>
                       {isDocxTemplate(c) && (
-                        <Badge variant="outline" className="rounded-full text-[10px]">
-                          Word · {c.template_version_label || "—"}
+                        <Badge
+                          variant="outline"
+                          className="rounded-full border-amber-500/50 text-[10px] text-amber-700 dark:text-amber-300"
+                          title="Word-файл технически сформирован; юридический текст шаблона ГОРЭЛТЕХ ещё не утверждён клиентом"
+                        >
+                          Beta · Word · {c.template_version_label || "—"}
                         </Badge>
                       )}
                       {!isDocxTemplate(c) && (

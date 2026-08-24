@@ -195,6 +195,8 @@ export interface DocumentBatchGroup<T extends BatchRowLike> {
   createdAt: string;
   createdBy: string | null;
   isCurrent: boolean;
+  isPartiallyCurrent: boolean;
+  currentCount: number;
   legacy: boolean;
   label: string;
   rows: T[];
@@ -219,7 +221,9 @@ export function groupDocumentBatches<T extends BatchRowLike>(rows: T[]): Documen
         version: batchId ? (row.package_version ?? null) : null,
         createdAt: row.created_at,
         createdBy: row.created_by ?? null,
-        isCurrent: batchId ? row.is_current !== false : false,
+        isCurrent: false,
+        isPartiallyCurrent: false,
+        currentCount: 0,
         legacy: !batchId,
         label: batchId ? `Версия ${row.package_version ?? "—"}` : LEGACY_BATCH_LABEL,
         rows: [],
@@ -230,6 +234,12 @@ export function groupDocumentBatches<T extends BatchRowLike>(rows: T[]): Documen
     entry.rows.push(row);
   }
   const groups = [...map.values()];
+  for (const group of groups) {
+    if (group.legacy) continue;
+    group.currentCount = group.rows.filter((row) => row.is_current !== false).length;
+    group.isCurrent = group.rows.length > 0 && group.currentCount === group.rows.length;
+    group.isPartiallyCurrent = group.currentCount > 0 && group.currentCount < group.rows.length;
+  }
   groups.sort((a, b) => {
     if (a.legacy !== b.legacy) return a.legacy ? 1 : -1;
     return (b.version ?? 0) - (a.version ?? 0);
@@ -239,5 +249,6 @@ export function groupDocumentBatches<T extends BatchRowLike>(rows: T[]): Documen
 
 export function batchStatusLabel<T extends BatchRowLike>(g: DocumentBatchGroup<T>): string {
   if (g.legacy) return LEGACY_BATCH_LABEL;
+  if (g.isPartiallyCurrent) return `Частично текущая · ${g.currentCount} из ${g.rows.length}`;
   return g.isCurrent ? "Текущая" : "Предыдущая";
 }
