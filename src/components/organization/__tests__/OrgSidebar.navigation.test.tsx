@@ -169,6 +169,32 @@ describe("OrgSidebar navigation", () => {
     });
   });
 
+  it("opens compact section children in a side flyout without inserting them into the icon rail", () => {
+    localStorage.setItem("org-sidebar-mode", "icons");
+    renderSidebar();
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Ученики" }));
+    const studentsFlyout = screen.getByRole("navigation", { name: "Ученики: подразделы" });
+    expect(sidebar.contains(studentsFlyout)).toBe(false);
+    expect(within(studentsFlyout).getByRole("link", { name: "Ученики и группы" })).toBeInTheDocument();
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
+    expect(screen.queryByRole("navigation", { name: "Ученики: подразделы" })).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Курсы: подразделы" })).toBeInTheDocument();
+  });
+
+  it("opens compact settings in the same flyout pattern", () => {
+    localStorage.setItem("org-sidebar-mode", "compact");
+    renderSidebar();
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Настройки" }));
+    const settingsFlyout = screen.getByRole("navigation", { name: "Настройки: подразделы" });
+    expect(sidebar.contains(settingsFlyout)).toBe(false);
+    expect(within(settingsFlyout).getByRole("link", { name: "Сотрудники и доступы" })).toBeInTheDocument();
+  });
+
   it("keeps every existing workspace inside seven semantic roots with canonical links", () => {
     renderSidebar();
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });

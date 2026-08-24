@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, Calendar, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, UserPlus, Calendar, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
+import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddStudentsToGroupDialog";
 
 
 
@@ -130,6 +131,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
   const [courseEnrollmentCount, setCourseEnrollmentCount] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [addStudentsOpen, setAddStudentsOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const folderParam = searchParams.get("folder");
@@ -523,6 +525,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const visibleWorkflowItems = permissionsLoading
     ? []
     : getVisibleGroupWorkflowItems(can);
+  const canManageParticipants = !permissionsLoading && can("students.write");
   const workflowItemIsActive = (item: GroupWorkflowItem) => {
     if (item.destination === "members") return showMembers;
     if (item.destination === "docs") return !showMembers && openFolder === "docs";
@@ -592,6 +595,18 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {canManageParticipants && (
+              <Button
+                size="sm"
+                className="rounded-xl gap-1.5"
+                onClick={() => {
+                  setShowMembers(true);
+                  setAddStudentsOpen(true);
+                }}
+              >
+                <UserPlus className="w-4 h-4" /> Добавить учеников
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setSettingsOpen(true)}>
               <Settings className="w-4 h-4" /> Настройки группы
             </Button>
@@ -669,10 +684,37 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         </div>
 
         {showMembers && (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+          <div className="mt-4 overflow-hidden rounded-xl border border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
+              <div>
+                <div className="font-medium">Участники группы</div>
+                <div className="text-xs text-muted-foreground">
+                  {students.length > 0 ? `${students.length} ученик(ов) добавлено` : "Добавьте учеников, чтобы начать обучение"}
+                </div>
+              </div>
+              {canManageParticipants && (
+                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => setAddStudentsOpen(true)}>
+                  <UserPlus className="h-4 w-4" /> Добавить учеников
+                </Button>
+              )}
+            </div>
             {students.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">В группе ещё нет учеников.</div>
+              <div className="flex flex-col items-center px-6 py-10 text-center">
+                <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                </span>
+                <div className="font-medium">В группе пока нет учеников</div>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                  Выберите существующих учеников без группы или создайте нового прямо здесь.
+                </p>
+                {canManageParticipants && (
+                  <Button className="mt-4 rounded-xl gap-2" onClick={() => setAddStudentsOpen(true)}>
+                    <UserPlus className="h-4 w-4" /> Добавить первого ученика
+                  </Button>
+                )}
+              </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                   <tr>
@@ -733,6 +775,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         )}
@@ -932,6 +975,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         organizationId={organizationId}
         onUpdated={() => setReloadKey(k => k + 1)}
         onDeleted={() => backToStudentsGroups()}
+      />
+      <AddStudentsToGroupDialog
+        open={addStudentsOpen}
+        onOpenChange={setAddStudentsOpen}
+        organizationId={organizationId}
+        groupId={groupId}
+        groupName={group.name}
+        onStudentsChanged={(change) => {
+          setShowMembers(true);
+          setReloadKey((key) => key + 1);
+          if (change === "population") d.refreshStudentPopulation();
+          else d.refreshStudentGrouping();
+        }}
       />
     </div>
   );

@@ -12,6 +12,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
@@ -520,11 +521,13 @@ export function OrgSidebar() {
 
 
   // Render single nav button (used by both pinned and section blocks)
-  const renderNavItem = (item: NavItem, nested = false) => {
+  const renderNavItem = (item: NavItem, nested = false, forceExpanded = false) => {
     const isActive = isItemActive(item);
     const locked = item.forceLocked || (item.category ? isLocked(item.category) : false);
     const itemPinned = item.pinnable !== false && isPinned(item.id);
     const itemHref = item.href;
+    const itemExpanded = effectiveExpanded || forceExpanded;
+    const itemShowLabels = !itemExpanded && showLabels;
 
     const button = (
       <a
@@ -544,14 +547,15 @@ export function OrgSidebar() {
           } else {
             handleTabClick(item.tab);
           }
+          if (!effectiveExpanded) setExpandedGroup(null);
         }}
         className={cn(
           "relative rounded-lg transition-all duration-150 animate-fade-in",
-          effectiveExpanded
+          itemExpanded
             ? cn("flex items-center gap-3 h-10 w-full text-left", nested ? "pl-7 pr-2" : "px-2.5")
             : cn(
                 "flex flex-col items-center justify-center px-1 py-1.5",
-                showLabels ? "w-[68px] gap-0.5" : "w-10 h-10"
+                itemShowLabels ? "w-[68px] gap-0.5" : "w-10 h-10"
               ),
           locked && "opacity-50",
           isActive
@@ -582,7 +586,7 @@ export function OrgSidebar() {
             />
           )}
         </span>
-        {effectiveExpanded ? (
+        {itemExpanded ? (
           <span
             className={cn(
               "text-[13px] font-medium truncate flex-1",
@@ -591,7 +595,7 @@ export function OrgSidebar() {
           >
             {item.label}
           </span>
-        ) : showLabels ? (
+        ) : itemShowLabels ? (
           <span
             className={cn(
               "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
@@ -605,7 +609,7 @@ export function OrgSidebar() {
           <span
             className={cn(
               "rounded-full border font-semibold uppercase tracking-wide",
-              effectiveExpanded
+              itemExpanded
                 ? "border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8px] text-primary"
                 : "absolute right-0 top-0 border-primary/30 bg-card px-1 py-px text-[7px] text-primary",
               isActive && "border-primary-foreground/40 bg-primary-foreground/15 text-primary-foreground",
@@ -615,7 +619,7 @@ export function OrgSidebar() {
             {item.statusBadge}
           </span>
         )}
-        {effectiveExpanded && itemPinned && (
+        {itemExpanded && itemPinned && (
           <Pin className={cn("w-3 h-3 shrink-0", isActive ? "text-primary-foreground/90" : "text-muted-foreground/60")} />
         )}
       </a>
@@ -626,7 +630,7 @@ export function OrgSidebar() {
         <ContextMenuTrigger asChild>
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>{button}</TooltipTrigger>
-            {!effectiveExpanded && (
+            {!itemExpanded && (
               <TooltipContent
                 side="right"
                 sideOffset={12}
@@ -676,61 +680,90 @@ export function OrgSidebar() {
     const open = expandedGroup === group.id;
     const active = group.items.some(isItemActive);
     const GroupIcon = group.icon;
+    const groupButton = (
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`org-nav-${group.id}`}
+        aria-label={group.label}
+        title={!effectiveExpanded ? `${group.label}: ${group.description}` : undefined}
+        onClick={() => setExpandedGroup((current) => current === group.id ? null : group.id)}
+        className={cn(
+          "relative rounded-lg transition-all duration-150",
+          effectiveExpanded
+            ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
+            : cn("flex flex-col items-center justify-center px-1 py-1.5", showLabels ? "w-[68px] gap-0.5" : "h-10 w-10"),
+          active
+            ? "bg-primary/10 text-primary"
+            : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+        )}
+      >
+        <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+          <GroupIcon className="h-[18px] w-[18px]" />
+          {(group.badge ?? 0) > 0 && (
+            <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+              {group.badge! > 99 ? "99+" : group.badge}
+            </span>
+          )}
+          {!group.badge && group.hasNew && (
+            <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-card" aria-label="Есть новое" />
+          )}
+        </span>
+        {effectiveExpanded ? (
+          <>
+            <span className="flex-1 truncate text-[13px] font-medium">{group.label}</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+          </>
+        ) : showLabels ? (
+          <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">{group.label}</span>
+        ) : null}
+      </button>
+    );
+
+    if (!effectiveExpanded) {
+      return (
+        <Popover
+          key={group.id}
+          open={open}
+          onOpenChange={(nextOpen) => setExpandedGroup(nextOpen ? group.id : null)}
+        >
+          <PopoverTrigger asChild>{groupButton}</PopoverTrigger>
+          <PopoverContent
+            side="right"
+            align="start"
+            sideOffset={10}
+            className="z-[90] w-[280px] rounded-2xl border-border/70 p-2 shadow-2xl"
+          >
+            <div className="border-b border-border/60 px-2.5 pb-2 pt-1">
+              <div className="flex items-center gap-2 font-semibold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <GroupIcon className="h-4 w-4" />
+                </span>
+                {group.label}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{group.description}</p>
+            </div>
+            <nav
+              id={`org-nav-${group.id}`}
+              aria-label={`${group.label}: подразделы`}
+              className="mt-1 flex flex-col gap-0.5"
+            >
+              {group.items.map((item) => renderNavItem(item, false, true))}
+            </nav>
+          </PopoverContent>
+        </Popover>
+      );
+    }
 
     return (
       <div key={group.id} className="w-full">
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-controls={`org-nav-${group.id}`}
-              aria-label={group.label}
-              onClick={() => setExpandedGroup((current) => current === group.id ? null : group.id)}
-              className={cn(
-                "relative rounded-lg transition-all duration-150",
-                effectiveExpanded
-                  ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
-                  : cn("flex flex-col items-center justify-center px-1 py-1.5", showLabels ? "w-[68px] gap-0.5" : "h-10 w-10"),
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
-              )}
-            >
-              <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
-                <GroupIcon className="h-[18px] w-[18px]" />
-                {(group.badge ?? 0) > 0 && (
-                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-                    {group.badge! > 99 ? "99+" : group.badge}
-                  </span>
-                )}
-                {!group.badge && group.hasNew && (
-                  <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-card" aria-label="Есть новое" />
-                )}
-              </span>
-              {effectiveExpanded ? (
-                <>
-                  <span className="flex-1 truncate text-[13px] font-medium">{group.label}</span>
-                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-                </>
-              ) : showLabels ? (
-                <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">{group.label}</span>
-              ) : null}
-            </button>
-          </TooltipTrigger>
-          {!effectiveExpanded && (
-            <TooltipContent side="right" sideOffset={12} className="z-[100] max-w-[240px] rounded-xl p-3">
-              <div className="font-semibold">{group.label}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{group.description}</div>
-            </TooltipContent>
-          )}
-        </Tooltip>
+        {groupButton}
 
         {open && (
           <nav
             id={`org-nav-${group.id}`}
             aria-label={`${group.label}: подразделы`}
-            className={cn("mt-0.5 flex flex-col gap-0.5", !effectiveExpanded && "items-center border-l border-primary/20 pl-1")}
+            className="mt-0.5 flex flex-col gap-0.5"
           >
             {group.items.map((item) => renderNavItem(item, true))}
           </nav>
@@ -884,10 +917,10 @@ export function OrgSidebar() {
         {/* Footer: stable help/settings actions, display mode and logout */}
         <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
 
-          {settingsItems.length > 0 && (
+          {settingsItems.length > 0 && (effectiveExpanded ? (
             <div className="w-full">
               {settingsExpanded && (
-                <nav id="org-nav-settings" aria-label="Настройки: подразделы" className={cn("mb-1 flex flex-col gap-0.5", !effectiveExpanded && "items-center")}>
+                <nav id="org-nav-settings" aria-label="Настройки: подразделы" className="mb-1 flex flex-col gap-0.5">
                   {settingsItems.map((item) => renderNavItem(item, true))}
                 </nav>
               )}
@@ -897,12 +930,7 @@ export function OrgSidebar() {
                 aria-controls="org-nav-settings"
                 onClick={() => setSettingsExpanded((open) => !open)}
                 className={cn(
-                  "rounded-lg transition-colors",
-                  effectiveExpanded
-                    ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
-                    : showLabels
-                      ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
-                      : "flex h-9 w-9 items-center justify-center",
+                  "flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-left transition-colors",
                   settingsItems.some(isItemActive)
                     ? "bg-primary/15 text-primary"
                     : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
@@ -910,17 +938,56 @@ export function OrgSidebar() {
                 aria-label="Настройки"
               >
                 <Settings className="h-[18px] w-[18px] shrink-0" />
-                {effectiveExpanded ? (
-                  <>
-                    <span className="flex-1 text-[13px] font-medium">Настройки</span>
-                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", settingsExpanded && "rotate-180")} />
-                  </>
-                ) : showLabels ? (
-                  <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Настройки</span>
-                ) : null}
+                <span className="flex-1 text-[13px] font-medium">Настройки</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", settingsExpanded && "rotate-180")} />
               </button>
             </div>
-          )}
+          ) : (
+            <Popover open={settingsExpanded} onOpenChange={setSettingsExpanded}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-expanded={settingsExpanded}
+                  aria-controls="org-nav-settings"
+                  className={cn(
+                    "rounded-lg transition-colors",
+                    showLabels
+                      ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
+                      : "flex h-9 w-9 items-center justify-center",
+                    settingsItems.some(isItemActive)
+                      ? "bg-primary/15 text-primary"
+                      : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+                  )}
+                  aria-label="Настройки"
+                  title="Настройки платформы, профиля и доступов"
+                >
+                  <Settings className="h-[18px] w-[18px] shrink-0" />
+                  {showLabels && (
+                    <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Настройки</span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="right"
+                align="end"
+                sideOffset={10}
+                className="z-[90] w-[280px] rounded-2xl border-border/70 p-2 shadow-2xl"
+              >
+                <div className="border-b border-border/60 px-2.5 pb-2 pt-1">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Settings className="h-4 w-4" />
+                    </span>
+                    Настройки
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Платформа, профиль организации, сотрудники и тариф</p>
+                </div>
+                <nav id="org-nav-settings" aria-label="Настройки: подразделы" className="mt-1 flex flex-col gap-0.5">
+                  {settingsItems.map((item) => renderNavItem(item, false, true))}
+                </nav>
+              </PopoverContent>
+            </Popover>
+          ))}
 
           {renderFooterAction({
             label: "Помощь",
