@@ -224,4 +224,51 @@ describe("truthful landing copy", () => {
     expect(sitemap).toContain("https://xn--80aaiswd0ak.xn--p1ai/help");
     expect(sitemap).not.toContain("https://sintagma.com.ru/");
   });
+
+  it("keeps secondary public pages free of unsupported claims and stale pricing", () => {
+    const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
+    const demonstration = read("src/pages/DemonstrationPage.tsx");
+    const presentation = read("src/pages/PlatformPresentation.tsx");
+    const presentationSections = read("src/pages/presentationSections.ts");
+    const presentationBlocks = read("src/pages/presentationBlocks.tsx");
+    const about = read("src/pages/About.tsx");
+    const videoId = read("src/pages/FeatureVideoId.tsx");
+    const publicRoutes = read("src/routes/publicRoutes.tsx");
+    const sitemap = read("public/sitemap.xml");
+
+    expect(demonstration).not.toContain("300+ готовых курсов");
+    expect(demonstration).not.toContain("за 7 дней");
+    expect(demonstration).not.toContain("в течение 30 минут");
+    expect(demonstration).not.toContain("электронная подпись");
+    expect(demonstration).not.toContain("IP-телефонию");
+    expect(demonstration).not.toContain("в один клик");
+    expect(demonstration).toContain("https://xn--80aaiswd0ak.xn--p1ai/demonstration");
+    expect(demonstration).toContain("Иллюстрация раздела");
+
+    expect(presentation).not.toContain("Сравнение с конкурентами");
+    expect(presentation).not.toContain("pricingPlans");
+    expect(presentation).not.toContain("3D-тренажёры");
+    expect(presentation).toContain('to="/#pricing"');
+    expect(presentation).toContain("Посмотреть актуальные тарифы");
+    expect(presentationSections).not.toContain("До 70%");
+    expect(presentationSections).not.toContain("за 5 минут");
+    expect(presentationSections).not.toContain("35 уроков");
+    expect(presentationSections).not.toContain("700 слов");
+    expect(presentationSections).not.toContain("15 вопросов");
+    expect(presentationSections).not.toContain("3D-тренажёры");
+    expect(presentationBlocks).not.toContain("~2 минуты");
+    expect(presentationBlocks).not.toContain("актуальным НПА 2026 года");
+
+    expect(about).not.toContain("полностью соответствует требованиям 273-ФЗ");
+    expect(about).not.toContain("готова к интеграции с ФРДО");
+    expect(about).toContain("Соответствие процессов требованиям законодательства обеспечивает образовательная организация");
+    expect(videoId).not.toContain("1 марта 2023 года");
+    expect(videoId).not.toContain("Обеспечьте соответствие требованиям закона");
+    expect(videoId).not.toContain("Видеоидентификация доступна на тарифах");
+    expect(videoId).toContain("определяет образовательная организация");
+
+    expect(publicRoutes).not.toContain('import("@/pages/Features")');
+    expect(publicRoutes).toContain('<Route path="/features" element={<Navigate to="/#pricing" replace />} />');
+    expect(sitemap).not.toContain("/features");
+  });
 });

@@ -46,7 +46,7 @@ const FeatureVideoId = () => {
               Идентификация обучающихся при дистанционной аттестации
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Соответствие требованиям Постановления Правительства РФ о применении электронного обучения и дистанционных образовательных технологий
+              Фотофиксация слушателя с ручной проверкой результата администратором организации
             </motion.p>
           </motion.div>
         </div>
@@ -56,33 +56,33 @@ const FeatureVideoId = () => {
       <section className="py-16">
         <div className="container mx-auto px-6">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-4xl mx-auto">
-            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-8 text-center">Зачем нужна идентификация?</motion.h2>
+            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-8 text-center">Как используется идентификация?</motion.h2>
             <motion.div variants={fadeUp} className="prose prose-lg max-w-none text-muted-foreground space-y-4">
               <p>
-                С <strong className="text-foreground">1 марта 2023 года</strong> вступило в силу <strong className="text-foreground">Постановление Правительства РФ от 11.10.2023 № 1678</strong>, утверждающее Правила применения электронного обучения и дистанционных образовательных технологий при реализации образовательных программ.
+                Платформа фиксирует результат проверки личности перед дистанционной аттестацией и сохраняет его в контексте конкретного зачисления.
               </p>
               <p>
-                Согласно данному постановлению, образовательные организации обязаны обеспечить <strong className="text-foreground">идентификацию и аутентификацию обучающихся</strong> при проведении промежуточной и итоговой аттестации с использованием дистанционных образовательных технологий.
+                Порядок применения и достаточность такого способа идентификации определяет образовательная организация с учётом программы и действующих требований.
               </p>
             </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* Требования закона */}
+      {/* Что фиксирует платформа */}
       <section className="py-16 bg-secondary/30">
         <div className="container mx-auto px-6">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-4xl mx-auto">
-            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4 text-center">Требования законодательства</motion.h2>
+            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4 text-center">Что фиксирует платформа</motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
-              Ключевые нормы Постановления Правительства РФ № 1678
+              Функциональные возможности, которые помогают организовать проверку
             </motion.p>
             <motion.div variants={fadeUp} className="grid sm:grid-cols-2 gap-4">
               {[
-                { icon: UserCheck, text: "Обязательная идентификация личности обучающегося при проведении промежуточной и итоговой аттестации дистанционно" },
-                { icon: Camera, text: "Возможность использования биометрических персональных данных для идентификации и аутентификации" },
-                { icon: Eye, text: "Обеспечение фиксации хода проведения аттестации и контроль условий прохождения испытаний" },
-                { icon: Shield, text: "Защита персональных данных обучающихся в соответствии с ФЗ-152 при проведении идентификации" },
+                { icon: Camera, text: "Фото слушателя перед дистанционной аттестацией" },
+                { icon: UserCheck, text: "Привязка результата к конкретному зачислению и организации" },
+                { icon: Eye, text: "Статусы ожидания, подтверждения и отклонения проверки" },
+                { icon: Shield, text: "Ручное решение администратора и возможность запросить повторную проверку" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50">
                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -130,7 +130,10 @@ const FeatureVideoId = () => {
       <section className="py-16 bg-secondary/30">
         <div className="container mx-auto px-6">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-4xl mx-auto">
-            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-8 text-center">Нормативно-правовая база</motion.h2>
+            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4 text-center">Нормативные документы для самостоятельной проверки</motion.h2>
+            <motion.p variants={fadeUp} className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
+              Образовательная организация самостоятельно определяет применимый порядок идентификации и обработки данных.
+            </motion.p>
             <motion.div variants={fadeUp} className="space-y-3">
               {[
                 "Постановление Правительства РФ от 11.10.2023 № 1678 «Об утверждении Правил применения электронного обучения, дистанционных образовательных технологий»",
@@ -152,10 +155,10 @@ const FeatureVideoId = () => {
         <div className="container mx-auto px-6 text-center">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4">
-              Обеспечьте соответствие требованиям закона
+              Настройте проверку личности в учебном процессе
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Видеоидентификация доступна на тарифах «Профессиональный» и «Максимальный»
+              Доступность функции и лимиты зависят от выбранного тарифа и отображаются в кабинете организации.
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/register-organization">

@@ -111,13 +111,13 @@ const About = () => {
             {/* Card 3 — Соответствие */}
             <div className="relative border-2 border-foreground/20 rounded-tr-3xl rounded-br-3xl p-8 bg-gradient-to-br from-sigma-green/5 to-sigma-green/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-10">
               <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
-              <img src={complianceImg} alt="Иллюстрация соответствия СИНТАГМА требованиям 273-ФЗ" className="absolute -bottom-6 -right-6 w-32 h-32 opacity-15 group-hover:opacity-25 transition-opacity duration-500" loading="lazy" width={512} height={512} />
+              <img src={complianceImg} alt="Иллюстрация раздела о работе образовательной организации" className="absolute -bottom-6 -right-6 w-32 h-32 opacity-15 group-hover:opacity-25 transition-opacity duration-500" loading="lazy" width={512} height={512} />
               <div className="w-14 h-14 rounded-2xl bg-sigma-green/15 flex items-center justify-center mb-5 rotate-[3deg] group-hover:rotate-0 transition-transform">
                 <Shield className="w-7 h-7 text-sigma-green" />
               </div>
               <h3 className="font-display text-xl font-bold mb-3 tracking-tight">Соответствие</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Наша платформа полностью соответствует требованиям 273-ФЗ «Об образовании» и готова к интеграции с ФРДО и государственными системами.
+                Платформа помогает организовать дистанционное обучение, документооборот и подготовку данных для ФИС ФРДО. Соответствие процессов требованиям законодательства обеспечивает образовательная организация.
               </p>
               <div className="absolute bottom-3 right-4 flex gap-1 opacity-30">
                 {[...Array(4)].map((_, i) => <div key={i} className="w-1.5 h-1.5 rounded-full bg-sigma-green" />)}

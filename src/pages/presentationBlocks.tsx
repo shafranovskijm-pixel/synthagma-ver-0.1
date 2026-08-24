@@ -157,8 +157,8 @@ export function PresentationAI({ Section, aiBg }: { Section: SectionComponent; a
           </div>
           <div className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/20 shadow-[0_0_40px_hsl(262_80%_50%/0.2)]">
             <div className="space-y-4">
-              <div className="flex justify-end"><div className="bg-[hsl(174_72%_46%)] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-[80%]">Сгенерируй курс «Охрана труда» на 10 уроков</div></div>
-              <div className="flex justify-start"><div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm max-w-[90%] text-white/90">Создаю курс «Охрана труда»: 10 уроков с тестами, контент по актуальным НПА 2026 года. Генерация займёт ~2 минуты...</div></div>
+              <div className="flex justify-end"><div className="bg-[hsl(174_72%_46%)] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-[80%]">Помоги подготовить структуру курса по охране труда</div></div>
+              <div className="flex justify-start"><div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm max-w-[90%] text-white/90">Подготавливаю черновик структуры и материалов. Перед публикацией проверьте содержание и нормативные ссылки.</div></div>
             </div>
           </div>
         </div>

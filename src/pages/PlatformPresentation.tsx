@@ -1,23 +1,10 @@
 import React, { useRef } from "react";
 import { Link } from "react-router-dom";
-import { ProposalDownloadButton } from "@/components/proposal/ProposalDownloadButton";
 import { motion, useInView } from "framer-motion";
-import {
-  GraduationCap, Building2, Users, BookOpen, Brain, FileText,
-  Smartphone, CheckCircle2, Landmark, HardHat,
-  Factory, Flame, Waves, Download, Copy, Check, ExternalLink,
-  Zap
-} from "lucide-react";
-import {
-  problemCards, solutionMarquee, lmsFeatures, aiFeatures,
-  documentTypes, safetyFeatures, mobileFeatures, pricingPlans,
-} from "./presentationSections";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { Landmark, Zap } from "lucide-react";
 import { Footer } from "@/components/landing/Footer";
 import { LandingHeader } from "@/components/landing/LandingHeader";
-import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
-import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { InViewTypewriterText } from "@/components/ui/TypewriterText";
 import {
   PresentationHero,
   PresentationProblem,
@@ -41,9 +28,6 @@ import mobileBg from "@/assets/presentation/mobile-bg.jpg";
 import ctaBg from "@/assets/presentation/cta-bg.jpg";
 import screenshotStudent from "@/assets/presentation/screenshot-student.png";
 import screenshotOrg from "@/assets/presentation/screenshot-org.png";
-import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-
-const PRESENTATION_VERSION = "v3";
 
 /* ─── Animated Section Wrapper ─── */
 function Section({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -62,24 +46,8 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
   );
 }
 
-import { compData, type Status, type CompRow } from "./presentationData";
-
-type Competitor = "getcourse" | "ispring" | "moodle";
-const competitorLabels: Record<Competitor, string> = { getcourse: "GetCourse", ispring: "iSpring", moodle: "Moodle" };
-
-function StatusBadge({ value }: { value: Status }) {
-  if (value === "yes") return <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600">✅</span>;
-  if (value === "no") return <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-500/15 text-red-600">❌</span>;
-  if (value === "partial") return <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600">⚠️</span>;
-  return <span className="text-xs font-medium">{value}</span>;
-}
-
 /* ─── Main Component ─── */
 export default function PlatformPresentation() {
-  const [competitor, setCompetitor] = React.useState<Competitor>("getcourse");
-
-  const categories = [...new Set(compData.map(r => r.category))];
-
   return (
     <div className="min-h-screen bg-background">
       <LandingHeader />
@@ -122,57 +90,6 @@ export default function PlatformPresentation() {
       <PresentationCabinets Section={Section} screenshots={{ org: screenshotOrg, student: screenshotStudent }} />
       <PresentationMarketplace Section={Section} />
 
-      {/* ═══ СРАВНЕНИЕ С КОНКУРЕНТАМИ ═══ */}
-      <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Сравнение с конкурентами" speed={35} delay={200} /></h2>
-          <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-8">Почему организации выбирают Синтагму</p>
-
-          <div className="flex items-center gap-2 mb-6">
-            {(["getcourse", "ispring", "moodle"] as Competitor[]).map(c => (
-              <button key={c} onClick={() => setCompetitor(c)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${competitor === c
-                  ? "bg-[hsl(174_72%_46%)] text-white"
-                  : "bg-[hsl(0_0%_90%)] dark:bg-white/10 text-[hsl(0_0%_45%)] dark:text-white/60 hover:bg-[hsl(0_0%_85%)] dark:hover:bg-white/15"
-                }`}>
-                vs {competitorLabels[c]}
-              </button>
-            ))}
-          </div>
-
-          <div className="overflow-x-auto -mx-4 md:mx-0">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead>
-                <tr className="border-b border-[hsl(40_15%_90%)] dark:border-white/10">
-                  <th className="text-left py-3 px-4 font-semibold text-[hsl(0_0%_45%)] dark:text-white/60 w-[200px]">Критерий</th>
-                  <th className="text-center py-3 px-4 font-semibold text-[hsl(174_72%_46%)] bg-[hsl(174_72%_46%/0.05)] w-[150px]">Синтагма</th>
-                  <th className="text-center py-3 px-4 font-semibold text-[hsl(0_0%_45%)] dark:text-white/60 w-[150px]">{competitorLabels[competitor]}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map(cat => {
-                  const rows = compData.filter(r => r.category === cat);
-                  return (
-                    <React.Fragment key={`cat-${cat}`}>
-                      <tr>
-                        <td colSpan={3} className="py-2 px-4 font-bold text-xs uppercase tracking-wider text-[hsl(0_0%_60%)] dark:text-white/40 bg-[hsl(0_0%_95%)] dark:bg-white/5">{cat}</td>
-                      </tr>
-                      {rows.map(row => (
-                        <tr key={row.feature} className="border-b border-[hsl(40_15%_94%)] dark:border-white/5">
-                          <td className="py-2.5 px-4 text-[hsl(0_0%_20%)] dark:text-white/80">{row.feature}</td>
-                          <td className="py-2.5 px-4 text-center bg-[hsl(174_72%_46%/0.03)]"><StatusBadge value={row.sintagma} /></td>
-                          <td className="py-2.5 px-4 text-center"><StatusBadge value={row[competitor]} /></td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Section>
-
       {/* ═══ EMAIL-РАССЫЛКИ ═══ */}
       <Section className="bg-white dark:bg-[hsl(0_0%_10%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
@@ -211,57 +128,17 @@ export default function PlatformPresentation() {
 
       {/* ═══ ТАРИФЫ ═══ */}
       <Section className="bg-[hsl(0_0%_6%)] text-white">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold mb-3 text-center"><InViewTypewriterText text="Тарифы" speed={60} delay={200} /></h2>
-          <p className="text-base md:text-xl text-white/60 mb-10 text-center">Все функции доступны на каждом тарифе. Разница только в лимитах.</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-            {pricingPlans.map((p, i) => (
-              <div key={i} className={`rounded-2xl p-4 md:p-5 border flex flex-col relative ${p.popular ? "bg-[hsl(174_72%_46%/0.1)] border-[hsl(174_72%_46%)] ring-1 ring-[hsl(174_72%_46%/0.3)]" : "bg-white/5 border-white/10"}`}>
-                {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[hsl(174_72%_46%)] text-xs font-medium text-white whitespace-nowrap">Рекомендуем</span>}
-                <h3 className="text-sm md:text-base font-bold mb-0.5">{p.name}</h3>
-                <p className="text-[10px] text-white/40 mb-2">{p.desc}</p>
-                <div className="mb-3">
-                  <span className="text-xl md:text-2xl font-bold">{p.price}</span>
-                  <span className="text-xs text-white/60">{p.price === "0" ? " ₽" : " ₽/мес"}</span>
-                </div>
-                <div className="space-y-1.5 text-xs text-white/70 mb-3">
-                  <div className="font-semibold text-white/90">📚 {p.courses} Курсов</div>
-                  <div className="font-semibold text-white/90">👥 {p.students} Учеников</div>
-                </div>
-                <div className="space-y-1 text-[11px] text-white/60 flex-1">
-                  {p.features.map((f, j) => {
-                    const accent = f.includes("ФРДО+") || f === "Видеосервис+" || f.startsWith("3D-тренажёры");
-                    return (
-                      <div key={j} className="flex items-center gap-1.5">
-                        <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${accent ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
-                        <span className={accent ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 pt-3 border-t border-white/10 text-center">
-                  <span className="text-[10px] text-white/40">{p.price === "0" ? "Начать бесплатно" : "Подключить"}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО — проверка и подготовка данных и файла. ФИС ФРДО+ — выгружаем сведения за вас на тарифе «Профессиональный». 3D-тренажёры — за дополнительную плату.</p>
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="font-semibold">Коммерческое предложение одним файлом</div>
-              <p className="mt-1 text-sm text-white/50">Состав платформы, тарифы и условия — актуально на сегодня.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <ProposalDownloadButton size="lg" withOnlineLink onlineLinkClassName="inline-flex items-center gap-1.5 text-sm text-white/70 underline underline-offset-4 hover:text-white" />
-              <Link
-                to="/proposal/contract"
-                className="px-5 py-3 rounded-2xl border border-white/30 text-sm font-semibold text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                Проект договора
-              </Link>
-            </div>
-          </div>
-
+        <div className="max-w-4xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">
+          <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="Тарифы и лимиты" speed={60} delay={200} /></h2>
+          <p className="text-base md:text-xl text-white/60 mb-8">
+            Актуальные цены, лимиты и состав функций опубликованы на главной странице.
+          </p>
+          <Link
+            to="/#pricing"
+            className="inline-flex px-6 py-3 rounded-2xl bg-[hsl(174_72%_46%)] text-sm font-semibold text-white hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Посмотреть актуальные тарифы
+          </Link>
         </div>
       </Section>
 

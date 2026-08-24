@@ -30,25 +30,25 @@ import featCrm from "@/assets/demo/demo-feature-crm.jpg";
 
 const benefits = [
   "Покажем систему изнутри — экраны курсов, учеников, документов и ФИС ФРДО",
-  "Разберём, как за 7 дней запустить обучение именно в вашем учебном центре",
-  "Подберём подходящий тариф и посчитаем экономию времени и штата",
-  "Ответим на любые технические и юридические вопросы вживую",
+  "Разберём последовательность запуска обучения для вашего учебного центра",
+  "Сверим нужные процессы с возможностями и лимитами платформы",
+  "Ответим на вопросы о работе показанных модулей",
 ];
 
 const steps = [
-  { n: "01", title: "Оставляете заявку", text: "Заполните короткую форму — мы свяжемся в течение 30 минут в рабочее время." },
+  { n: "01", title: "Оставляете заявку", text: "Заполните короткую форму — мы свяжемся, чтобы согласовать удобное время." },
   { n: "02", title: "Согласуем время", text: "Время демонстрации согласуем после заявки. Демо идёт 40 минут по видеосвязи." },
   { n: "03", title: "Проводим демонстрацию", text: "Показываем именно те модули, которые важны вашему учебному центру." },
   { n: "04", title: "Открываем кабинет", text: "Бесплатный кабинет для знакомства + помощь с настройкой под ваши программы." },
 ];
 
 const features = [
-  { img: featConstructor, title: "Конструктор курсов", text: "Собирайте курсы из блоков: видео, лонгриды, тесты, файлы. ИИ поможет сгенерировать материал за минуты." },
-  { img: featCatalog, title: "300+ готовых курсов", text: "Охрана труда, пожарная безопасность, Ростехнадзор, электробезопасность — уже внутри системы." },
+  { img: featConstructor, title: "Конструктор курсов", text: "Покажем блочный редактор, материалы, тесты и доступные инструменты генерации контента." },
+  { img: featCatalog, title: "Каталог готовых курсов", text: "Покажем текущий каталог и карточки программ, доступные в платформе на момент демонстрации." },
   { img: featFrdo, title: "ФИС ФРДО", text: "Проверка и подготовка данных и файла к выгрузке, подсказки по ошибкам. На тарифе ФРДО+ выгружаем за вас." },
-  { img: featStudents, title: "Ученики и группы", text: "Приглашения, автозачисление, контроль прогресса, отчёты и напоминания в один клик." },
-  { img: featDocuments, title: "Документы под ключ", text: "Договоры, приказы, ведомости, удостоверения — генерация из шаблонов и электронная подпись." },
-  { img: featCrm, title: "CRM и продажи", text: "Лиды, задачи, звонки через IP-телефонию, коммерческие предложения и статистика по менеджерам." },
+  { img: featStudents, title: "Ученики и группы", text: "Покажем добавление слушателей, учебные группы, назначение курсов и контроль прогресса." },
+  { img: featDocuments, title: "Документы", text: "Покажем доступные сценарии договоров и документов группы, формируемых из шаблонов." },
+  { img: featCrm, title: "CRM и продажи", text: "Покажем доступные инструменты для сделок, задач и коммерческих предложений." },
 ];
 
 const proposalHighlights = [
@@ -63,9 +63,9 @@ const slots = ["Вт 10:00", "Вт 14:00", "Ср 11:00", "Ср 16:00", "Чт 12:
 
 // Kinescope video ID = часть URL после https://kinescope.io/
 const demoVideos: { title: string; text: string; kinescopeId: string }[] = [
-  { title: "Создание курса", text: "Собираем курс из блоков за несколько минут — видео, лонгриды, тесты, файлы.", kinescopeId: "0zLbxNWaXqqVirutHe2hFX" },
-  { title: "Добавление ученика", text: "Приглашение, автозачисление на программу и контроль прогресса.", kinescopeId: "8oJbrRNKBv7byqNjBPsZg9" },
-  { title: "Выдача документов", text: "Формирование удостоверений и протоколов из шаблонов.", kinescopeId: "aB9Q2ScCA7PrPrrHm8TdaT" },
+  { title: "Создание курса", text: "Работа с блоками курса: видео, текстовые материалы, тесты и файлы.", kinescopeId: "0zLbxNWaXqqVirutHe2hFX" },
+  { title: "Добавление ученика", text: "Добавление слушателя, назначение программы и просмотр прогресса.", kinescopeId: "8oJbrRNKBv7byqNjBPsZg9" },
+  { title: "Документы группы", text: "Обзор доступных документов и сценариев формирования из шаблонов.", kinescopeId: "aB9Q2ScCA7PrPrrHm8TdaT" },
 ];
 
 export default function DemonstrationPage() {
@@ -120,8 +120,8 @@ export default function DemonstrationPage() {
     <>
       <Helmet>
         <title>Демонстрация возможностей СИНТАГМА — СДО для учебных центров</title>
-        <meta name="description" content="Живая демонстрация СИНТАГМА за 40 минут: конструктор курсов, ФИС ФРДО, документы, ученики и CRM. Оставьте заявку — покажем, как запустить обучение за 7 дней." />
-        <link rel="canonical" href="https://sintagma.com.ru/demonstration" />
+        <meta name="description" content="Живая демонстрация СИНТАГМА: конструктор курсов, подготовка данных для ФИС ФРДО, документы, ученики и CRM." />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/demonstration" />
       </Helmet>
 
       <LandingHeader />
@@ -142,8 +142,8 @@ export default function DemonstrationPage() {
                 Покажем СИНТАГМУ <span className="text-accent">в деле</span>
               </h1>
               <p className="text-base md:text-lg text-muted-foreground leading-relaxed mb-8 max-w-xl">
-                Проведём демонстрацию системы под ваш учебный центр: покажем реальные экраны, разберём кейсы
-                и посчитаем, сколько времени и денег сэкономит СДО.
+                Проведём демонстрацию системы под ваш учебный центр: покажем реальные экраны
+                и разберём подходящие рабочие сценарии.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <a href="#form">
@@ -178,7 +178,10 @@ export default function DemonstrationPage() {
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.1 }} className="relative">
               <div className="relative rounded-3xl overflow-hidden border border-border bg-card shadow-2xl">
-                <img src={demoHero} alt="Демонстрация СИНТАГМА" width={1280} height={1024} className="w-full h-auto" />
+                <img src={demoHero} alt="Иллюстрация к демонстрации СИНТАГМА" width={1280} height={1024} className="w-full h-auto" />
+                <span className="absolute bottom-3 right-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs text-muted-foreground">
+                  Иллюстрация
+                </span>
               </div>
               <div className="absolute -bottom-4 -left-4 max-w-[16rem] bg-card border border-border rounded-2xl p-4 shadow-xl hidden md:block">
                 <div className="flex items-center gap-3">
@@ -294,9 +297,10 @@ export default function DemonstrationPage() {
                 className="rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:shadow-accent/5 transition-shadow"
               >
                 <div className="aspect-[3/2] overflow-hidden bg-secondary/40">
-                  <img src={f.img} alt={f.title} loading="lazy" width={768} height={512} className="w-full h-full object-cover" />
+                  <img src={f.img} alt={`Иллюстрация: ${f.title}`} loading="lazy" width={768} height={512} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-5">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Иллюстрация раздела</div>
                   <div className="font-semibold mb-2">{f.title}</div>
                   <div className="text-sm text-muted-foreground leading-relaxed">{f.text}</div>
                 </div>
@@ -387,7 +391,7 @@ export default function DemonstrationPage() {
                 Записаться на демонстрацию
               </h2>
               <p className="text-muted-foreground">
-                Оставьте заявку — свяжемся в течение 30 минут и подтвердим удобное время.
+                Оставьте заявку — свяжемся, чтобы подтвердить удобное время.
               </p>
             </div>
 
@@ -402,7 +406,7 @@ export default function DemonstrationPage() {
                 </div>
                 <h3 className="font-display text-2xl font-medium mb-2">Спасибо, заявка принята!</h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Наш менеджер свяжется с вами в течение 30 минут в рабочее время, чтобы подтвердить удобное время демо.
+                  Наш менеджер свяжется с вами, чтобы подтвердить удобное время демонстрации.
                 </p>
               </motion.div>
             ) : (
