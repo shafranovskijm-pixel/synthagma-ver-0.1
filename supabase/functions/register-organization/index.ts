@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://esm.sh/zod@3.24.1';
+import { runWithRegistrationCleanup } from './registrationFlow.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,94 +54,130 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Create confirmed user
-    const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-      email, password, email_confirm: true,
-      user_metadata: { full_name },
-    });
-    if (createErr || !created.user) throw createErr ?? new Error('Не удалось создать пользователя');
-    const userId = created.user.id;
-
-    const { data: createdOrg, error: orgErr } = await supabase
-      .from('organizations')
-      .insert({
-        name: org_name,
-        email,
-        phone: phone || null,
-        inn: inn || null,
-        contact_name: full_name,
-        kpp: kpp || null,
-        ogrn: ogrn || null,
-        legal_address: legal_address || null,
-        director_name: director_name || null,
-        subscription_plan: 'free',
-        tariff_type: 'free',
-        is_paid: false,
-        ai_enabled: false,
-        promo_code: promo_code || null,
-      } as any)
-      .select('id')
-      .single();
-    if (orgErr || !createdOrg) throw orgErr ?? new Error('Не удалось создать организацию');
-
-    const orgId = createdOrg.id;
-
-    const { error: freePlanErr } = await supabase.rpc('apply_free_plan_features', { org_id: orgId });
-    if (freePlanErr) throw freePlanErr;
-
-    let subscriptionRequestCreated = false;
-    if (normalizedPlan !== 'free') {
-      try {
-        const { error: requestErr } = await supabase
-          .from('subscription_requests')
-          .insert({
-            organization_id: orgId,
-            current_plan: 'free',
-            requested_plan: normalizedPlan,
-            status: 'pending',
-            message: 'Тариф выбран при регистрации организации',
-          } as any);
-
-        if (requestErr) {
-          console.warn('subscription request creation failed; organization remains on free plan:', requestErr);
-        } else {
-          subscriptionRequestCreated = true;
-        }
-      } catch (requestEx) {
-        console.warn('subscription request creation exception; organization remains on free plan:', requestEx);
-      }
-    }
-
-    const { error: profileErr } = await supabase.from('profiles').upsert({
-      user_id: userId,
-      organization_id: orgId,
-      full_name,
-      email,
-    }, { onConflict: 'user_id' });
-    if (profileErr) throw profileErr;
-
-    const { error: roleErr } = await supabase.from('user_roles').upsert({
-      user_id: userId,
-      role: 'organization',
-    }, { onConflict: 'user_id' });
-    if (roleErr) throw roleErr;
-
-    // Referral attribution — server-side, BEFORE returning so it survives any client failure
-    let referralResult: unknown = null;
-    if (ref_code && ref_code.trim()) {
-      try {
-        const { data: refData, error: refErr } = await supabase.rpc('register_referral', {
-          p_ref_code: ref_code.trim(),
-          p_organization_id: orgId,
-          p_source: 'register-organization',
-          p_user_agent: userAgent,
+    const registration = await runWithRegistrationCleanup(
+      {
+        deleteRole: async (userId) => {
+          const { error } = await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', userId)
+            .eq('role', 'organization');
+          if (error) throw error;
+        },
+        deleteProfile: async (userId) => {
+          const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
+          if (error) throw error;
+        },
+        deleteOrganization: async (organizationId) => {
+          const { error } = await supabase.from('organizations').delete().eq('id', organizationId);
+          if (error) throw error;
+        },
+        deleteAuthUser: async (userId) => {
+          const { error } = await supabase.auth.admin.deleteUser(userId);
+          if (error) throw error;
+        },
+      },
+      async (tracker) => {
+        // Create confirmed user. The tracker is updated only after the server
+        // confirms that this request created the entity, so a pre-existing
+        // account can never become a cleanup target.
+        const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+          email, password, email_confirm: true,
+          user_metadata: { full_name },
         });
-        if (refErr) console.warn('register_referral failed:', refErr);
-        else referralResult = refData;
-      } catch (refEx) {
-        console.warn('register_referral exception:', refEx);
-      }
-    }
+        if (createErr || !created.user) throw createErr ?? new Error('Не удалось создать пользователя');
+        const userId = created.user.id;
+        tracker.markUserCreated(userId);
+
+        const { data: createdOrg, error: orgErr } = await supabase
+          .from('organizations')
+          .insert({
+            name: org_name,
+            email,
+            phone: phone || null,
+            inn: inn || null,
+            contact_name: full_name,
+            kpp: kpp || null,
+            ogrn: ogrn || null,
+            legal_address: legal_address || null,
+            director_name: director_name || null,
+            subscription_plan: 'free',
+            tariff_type: 'free',
+            is_paid: false,
+            ai_enabled: false,
+            promo_code: promo_code || null,
+          } as any)
+          .select('id')
+          .single();
+        if (orgErr || !createdOrg) throw orgErr ?? new Error('Не удалось создать организацию');
+
+        const orgId = createdOrg.id;
+        tracker.markOrganizationCreated(orgId);
+
+        const { error: freePlanErr } = await supabase.rpc('apply_free_plan_features', { org_id: orgId });
+        if (freePlanErr) throw freePlanErr;
+
+        let subscriptionRequestCreated = false;
+        if (normalizedPlan !== 'free') {
+          try {
+            const { error: requestErr } = await supabase
+              .from('subscription_requests')
+              .insert({
+                organization_id: orgId,
+                current_plan: 'free',
+                requested_plan: normalizedPlan,
+                status: 'pending',
+                message: 'Тариф выбран при регистрации организации',
+              } as any);
+
+            if (requestErr) {
+              console.warn('subscription request creation failed; organization remains on free plan:', requestErr);
+            } else {
+              subscriptionRequestCreated = true;
+            }
+          } catch (requestEx) {
+            console.warn('subscription request creation exception; organization remains on free plan:', requestEx);
+          }
+        }
+
+        const { error: profileErr } = await supabase.from('profiles').upsert({
+          user_id: userId,
+          organization_id: orgId,
+          full_name,
+          email,
+        }, { onConflict: 'user_id' });
+        if (profileErr) throw profileErr;
+        tracker.markProfileCreated();
+
+        const { error: roleErr } = await supabase.from('user_roles').upsert({
+          user_id: userId,
+          role: 'organization',
+        }, { onConflict: 'user_id' });
+        if (roleErr) throw roleErr;
+        tracker.markRoleCreated();
+
+        // Referral attribution — server-side, BEFORE returning so it survives any client failure
+        let referralResult: unknown = null;
+        if (ref_code && ref_code.trim()) {
+          try {
+            const { data: refData, error: refErr } = await supabase.rpc('register_referral', {
+              p_ref_code: ref_code.trim(),
+              p_organization_id: orgId,
+              p_source: 'register-organization',
+              p_user_agent: userAgent,
+            });
+            if (refErr) console.warn('register_referral failed:', refErr);
+            else referralResult = refData;
+          } catch (refEx) {
+            console.warn('register_referral exception:', refEx);
+          }
+        }
+
+        return { userId, orgId, referralResult, subscriptionRequestCreated };
+      },
+    );
+
+    const { userId, orgId, referralResult, subscriptionRequestCreated } = registration;
 
     return new Response(JSON.stringify({
       success: true,
