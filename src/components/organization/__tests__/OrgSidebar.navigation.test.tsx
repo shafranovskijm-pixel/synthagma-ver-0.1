@@ -12,6 +12,7 @@ let emailCampaignsEnabled = true;
 let salesCrmEnabled = true;
 let activeTab = "home";
 let isMobile = false;
+let isMobileSidebarOpen = false;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -34,7 +35,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     },
     dashboardSettings: { menuSettings },
     isEnabled: () => true,
-    isMobileSidebarOpen: false,
+    isMobileSidebarOpen,
     setIsMobileSidebarOpen: vi.fn(),
     handleLogout: vi.fn(),
   }),
@@ -65,6 +66,7 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
 }));
 
+import { OrgMobileBottomNav } from "@/components/organization/OrgMobileBottomNav";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
 
 function renderSidebar() {
@@ -77,6 +79,10 @@ function renderSidebar() {
   );
 }
 
+function renderMobileBottomNav() {
+  return render(<OrgMobileBottomNav />);
+}
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem("org-sidebar-mode", "expanded");
@@ -87,6 +93,7 @@ beforeEach(() => {
   salesCrmEnabled = true;
   activeTab = "home";
   isMobile = false;
+  isMobileSidebarOpen = false;
   allowedTabs = new Set([
     "home",
     "students",
@@ -226,6 +233,7 @@ describe("OrgSidebar navigation", () => {
 
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
     expect(sidebar).toHaveStyle({ width: "220px" });
+    expect(sidebar).toHaveClass("bg-background");
     expect(within(sidebar).getByText("Учебный центр")).toBeInTheDocument();
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
@@ -241,6 +249,13 @@ describe("OrgSidebar navigation", () => {
     expect(screen.getByRole("navigation", { name: "Основная навигация" })).toHaveStyle({
       width: `${desktopWidth}px`,
     });
+  });
+
+  it("hides the mobile bottom bar while the navigation drawer is open", () => {
+    isMobileSidebarOpen = true;
+    renderMobileBottomNav();
+
+    expect(screen.queryByRole("navigation", { name: "Главное меню" })).not.toBeInTheDocument();
   });
 
   it("keeps every existing workspace inside seven semantic roots with canonical links", () => {

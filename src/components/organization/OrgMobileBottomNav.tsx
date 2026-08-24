@@ -78,6 +78,11 @@ export function OrgMobileBottomNav() {
     d.tabNavigation.setActiveTab(id as TabType);
   };
 
+  // The sidebar is the active mobile navigation surface. Hiding the bottom
+  // bar prevents two competing menus from overlapping inside the same modal
+  // layer and keeps the drawer visually solid and Windows-like.
+  if (d.isMobileSidebarOpen) return null;
+
   return (
     <nav
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
