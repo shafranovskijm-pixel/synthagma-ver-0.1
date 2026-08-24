@@ -52,12 +52,16 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
     const { data: docs } = courseIds.length > 0
       ? await supabase
           .from("course_documents")
-          .select("course_id")
+          .select("course_id, file_url")
           .in("course_id", courseIds)
           .eq("type", "program")
       : { data: [] };
 
-    const docsSet = new Set((docs || []).map(d => d.course_id));
+    const docsSet = new Set(
+      (docs || [])
+        .filter(d => typeof d.file_url === "string" && d.file_url.trim().length > 0)
+        .map(d => d.course_id)
+    );
     const pendingOrders = new Set(
       (orders || [])
         .filter(o => o.status === "pending" || o.status === "in_progress")
@@ -131,8 +135,8 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
           <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Образовательные программы</p>
-            По законодательству у каждого курса должна быть образовательная программа. 
-            Добавьте программу самостоятельно в документы курса или закажите разработку у нас.
+            Синтагма не останавливает обучение, если файл программы не прикреплён. Прикреплённый
+            файл пока не подставляется в курс, договоры или пакет документов автоматически.
           </div>
         </CardContent>
       </Card>
