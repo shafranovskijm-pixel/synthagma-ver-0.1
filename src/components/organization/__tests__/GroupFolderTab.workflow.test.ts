@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getVisibleGroupWorkflowItems,
+  GROUP_WORKFLOW_LAYOUT_CLASSES,
   GROUP_WORKFLOW_ITEMS,
 } from "@/components/organization/tabs/GroupFolderTab";
 
@@ -34,5 +35,19 @@ describe("GroupFolderTab workflow", () => {
     expect(
       getVisibleGroupWorkflowItems((permission) => allowed.has(permission)).map(item => item.id),
     ).toEqual(["participants", "personal-files", "group-documents"]);
+  });
+
+  it("uses a container-driven workflow grid and keeps the readiness counter on one line", () => {
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.navigation).toContain("auto-fit");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.navigation).not.toContain("min-w-max");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.item).toContain("w-full");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.item).toContain("min-w-0");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.item).not.toContain("w-[210px]");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.headerActions).toContain("grid w-full");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.headerActions).toContain("sm:flex");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.breadcrumbs).toContain("min-w-0");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.breadcrumbCurrent).toContain("truncate");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.readinessBadge).toContain("shrink-0");
+    expect(GROUP_WORKFLOW_LAYOUT_CLASSES.readinessBadge).toContain("whitespace-nowrap");
   });
 });

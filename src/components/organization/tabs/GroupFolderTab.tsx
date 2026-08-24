@@ -117,6 +117,15 @@ export function getVisibleGroupWorkflowItems(can: (permission: Permission) => bo
   return GROUP_WORKFLOW_ITEMS.filter((item) => can(item.permission));
 }
 
+export const GROUP_WORKFLOW_LAYOUT_CLASSES = {
+  breadcrumbs: "flex min-w-0 items-center gap-2 text-sm text-muted-foreground",
+  breadcrumbCurrent: "min-w-0 truncate font-medium text-foreground",
+  navigation: "grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-2",
+  item: "group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors",
+  headerActions: "grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center",
+  readinessBadge: "shrink-0 self-start whitespace-nowrap rounded-full sm:self-auto",
+} as const;
+
 const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }> = {
   contracts: { title: GROUP_DOCUMENT_TYPE_MAP.contract.title, icon: FileSignature, hint: GROUP_DOCUMENT_TYPE_MAP.contract.hint || "Договоры с учениками группы" },
   passports: { title: "Паспорта", icon: IdCard, hint: "Сканы паспортов учеников" },
@@ -607,18 +616,18 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   return (
     <div className="space-y-4">
       {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <button className="hover:text-foreground" onClick={() => backToStudentsGroups()}>Ученики</button>
-        <span>/</span>
-        <span>Группы</span>
-        <span>/</span>
-        <span className="text-foreground font-medium">{group.name}</span>
+      <div className={GROUP_WORKFLOW_LAYOUT_CLASSES.breadcrumbs}>
+        <button className="shrink-0 hover:text-foreground" onClick={() => backToStudentsGroups()}>Ученики</button>
+        <span className="shrink-0">/</span>
+        <span className="shrink-0">Группы</span>
+        <span className="shrink-0">/</span>
+        <span className={GROUP_WORKFLOW_LAYOUT_CLASSES.breadcrumbCurrent}>{group.name}</span>
       </div>
 
       {/* Header */}
       <Card className="p-5 rounded-2xl border-border">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex w-full min-w-0 items-center gap-3 sm:flex-1">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
               style={{ background: (group.color || "#6366f1") + "22", color: group.color || "#6366f1" }}>
               <Folder className="w-6 h-6" />
@@ -633,20 +642,22 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                     {group.start_date ? format(new Date(group.start_date), "dd.MM.yyyy") : "—"} — {group.end_date ? format(new Date(group.end_date), "dd.MM.yyyy") : "—"}
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1">
-                  <BookOpen className="w-4 h-4" />
-                  {resolvedProgramTitle || courseInfo?.title || "Курс не привязан"}
-                  {resolvedProgramHours ? ` · ${resolvedProgramHours} ч.` : ""}
+                <span className="inline-flex min-w-0 max-w-full items-center gap-1 overflow-hidden">
+                  <BookOpen className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {resolvedProgramTitle || courseInfo?.title || "Курс не привязан"}
+                    {resolvedProgramHours ? ` · ${resolvedProgramHours} ч.` : ""}
+                  </span>
                 </span>
               </div>
 
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className={GROUP_WORKFLOW_LAYOUT_CLASSES.headerActions}>
             {canManageParticipants && (
               <Button
                 size="sm"
-                className="rounded-xl gap-1.5"
+                className="w-full justify-start gap-1.5 rounded-xl sm:w-auto"
                 onClick={() => {
                   setShowMembers(true);
                   setAddStudentsOpen(true);
@@ -655,10 +666,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                 <UserPlus className="w-4 h-4" /> Добавить учеников
               </Button>
             )}
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setSettingsOpen(true)}>
+            <Button variant="outline" size="sm" className="w-full justify-start gap-1.5 rounded-xl sm:w-auto" onClick={() => setSettingsOpen(true)}>
               <Settings className="w-4 h-4" /> Настройки группы
             </Button>
-            <Button variant="ghost" size="sm" className="rounded-xl gap-1.5" onClick={() => {
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-1.5 rounded-xl sm:w-auto" onClick={() => {
               if (openFolder) setOpenFolder(null);
               else backToStudentsGroups();
             }}>
@@ -695,8 +706,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </p>
         </div>
 
-        <div className="mt-4 overflow-x-auto pb-1 xl:overflow-visible">
-          <div className="flex min-w-max gap-2 xl:grid xl:min-w-0 xl:grid-cols-5" role="navigation" aria-label="Работа с группой">
+        <div className="mt-4 pb-1">
+          <div className={GROUP_WORKFLOW_LAYOUT_CLASSES.navigation} role="navigation" aria-label="Работа с группой">
             {visibleWorkflowItems.map(item => {
               const Icon = workflowIcons[item.id];
               const active = workflowItemIsActive(item);
@@ -706,7 +717,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   type="button"
                   onClick={() => handleWorkflowAction(item)}
                   aria-current={active ? "page" : undefined}
-                  className={`group flex w-[210px] items-center gap-3 rounded-xl border p-3 text-left transition-colors xl:w-auto xl:min-w-0 ${
+                  className={`${GROUP_WORKFLOW_LAYOUT_CLASSES.item} ${
                     active
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-background hover:border-primary/30 hover:bg-primary/5"
@@ -839,7 +850,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </div>
           <Badge
             variant={confirmedStepsCount === readinessSteps.length ? "default" : "secondary"}
-            className="shrink-0 self-start whitespace-nowrap rounded-full sm:self-auto"
+            className={GROUP_WORKFLOW_LAYOUT_CLASSES.readinessBadge}
           >
             Подтверждено {confirmedStepsCount} из {readinessSteps.length}
           </Badge>
