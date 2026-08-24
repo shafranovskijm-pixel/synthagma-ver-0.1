@@ -182,6 +182,9 @@ describe("OrgSidebar navigation", () => {
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
     expect(screen.queryByRole("navigation", { name: "Ученики: подразделы" })).not.toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Курсы: подразделы" })).toBeInTheDocument();
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
+    expect(screen.queryByRole("navigation", { name: "Курсы: подразделы" })).not.toBeInTheDocument();
   });
 
   it("opens compact settings in the same flyout pattern", () => {

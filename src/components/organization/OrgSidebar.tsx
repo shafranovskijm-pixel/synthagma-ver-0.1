@@ -687,7 +687,13 @@ export function OrgSidebar() {
         aria-controls={`org-nav-${group.id}`}
         aria-label={group.label}
         title={!effectiveExpanded ? `${group.label}: ${group.description}` : undefined}
-        onClick={() => setExpandedGroup((current) => current === group.id ? null : group.id)}
+        // In compact modes Radix Popover owns the trigger state. Handling the
+        // same click here as well makes a second click toggle twice and leaves
+        // the flyout open. Expanded mode is not wrapped in Popover, so it keeps
+        // the explicit accordion toggle.
+        onClick={effectiveExpanded
+          ? () => setExpandedGroup((current) => current === group.id ? null : group.id)
+          : undefined}
         className={cn(
           "relative rounded-lg transition-all duration-150",
           effectiveExpanded
