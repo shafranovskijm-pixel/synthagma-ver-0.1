@@ -527,6 +527,60 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(await screen.findByRole("button", { name: "Сохранить договор Word" })).toBeInTheDocument();
   });
 
+  it("объясняет скрытую блокировку пересборки и продолжает после подтверждения подписантов", async () => {
+    renderFolder();
+
+    const rebuild = screen.getByRole("button", {
+      name: "Проверить подписантов и пересобрать 9 Word-документов",
+    });
+    expect(rebuild).toBeEnabled();
+
+    fireEvent.click(rebuild);
+
+    expect(await screen.findByRole("dialog", { name: "Подписанты документов ГОРЭЛТЕХ" })).toBeInTheDocument();
+    expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить подписантов" }));
+
+    await waitFor(() => expect(mocks.generateClassJournalDocx).toHaveBeenCalledTimes(1));
+    expect(mocks.generatePackage).toHaveBeenCalledWith(
+      expect.any(Object),
+      PACKAGE_DOC_TYPES.filter((type) => type !== "class_journal"),
+      expect.any(Object),
+    );
+    expect(screen.getByRole("button", { name: "Пересобрать 9 Word-документов" })).toBeEnabled();
+  });
+
+  it("повторно проверяет обязательные данные после открытия диалога подписантов", async () => {
+    const view = renderFolder();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "Проверить подписантов и пересобрать 9 Word-документов",
+    }));
+    expect(await screen.findByRole("dialog", { name: "Подписанты документов ГОРЭЛТЕХ" })).toBeInTheDocument();
+
+    view.rerender(
+      <GroupDocumentsFolder
+        organizationId="org-1"
+        groupId="group-1"
+        groupName="Группа 1"
+        students={SAMPLE_CONTEXT.students}
+        ctx={goreltechContext()}
+        blockingFields={["номер группы"]}
+        onDataChanged={mocks.onDataChanged}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить подписантов" }));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
+      "Заполните обязательные данные группы",
+      expect.objectContaining({ description: "номер группы" }),
+    ));
+    expect(mocks.generatePackage).not.toHaveBeenCalled();
+    expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+  });
+
   it("удаляет документ только после явного подтверждения", async () => {
     mockDocuments([docxRow]);
     renderFolder();

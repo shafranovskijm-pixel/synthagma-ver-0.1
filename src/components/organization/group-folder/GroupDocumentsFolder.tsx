@@ -111,7 +111,7 @@ export function GroupDocumentsFolder({
   const [signatoriesOpen, setSignatoriesOpen] = useState(false);
   const [blankSignatoriesConfirmed, setBlankSignatoriesConfirmed] = useState(false);
   const [pendingPackageScenario, setPendingPackageScenario] =
-    useState<"legal" | "individual" | null>(null);
+    useState<"legal" | "individual" | "documents" | null>(null);
   const documentClientProfile = useMemo(
     () => ctx ? resolveGroupDocumentClientProfile(ctx.organization) : null,
     [ctx],
@@ -201,16 +201,15 @@ export function GroupDocumentsFolder({
     () => missingPackageRequirements(PACKAGE_DOC_TYPES, reqSource, mode, requirementProfile),
     [reqSource, mode, requirementProfile],
   );
-  const allPackageBlockers = useMemo(
-    () => Array.from(new Set([...packageBlockers, ...packageRequirements, ...blankSignatoryBlocker])),
-    [packageBlockers, packageRequirements, blankSignatoryBlocker],
+  const packageDataBlockers = useMemo(
+    () => Array.from(new Set([...packageBlockers, ...packageRequirements])),
+    [packageBlockers, packageRequirements],
   );
-  const blocked = allPackageBlockers.length > 0;
+  const dataBlocked = packageDataBlockers.length > 0;
 
   const requestPackage = (scenario: "legal" | "individual") => {
-    const dataBlockers = Array.from(new Set([...packageBlockers, ...packageRequirements]));
-    if (dataBlockers.length > 0) {
-      toast.error("Заполните обязательные данные группы", { description: dataBlockers.join(", ") });
+    if (packageDataBlockers.length > 0) {
+      toast.error("Заполните обязательные данные группы", { description: packageDataBlockers.join(", ") });
       return;
     }
     if (blankSignatoryBlocker.length > 0) {
@@ -220,6 +219,19 @@ export function GroupDocumentsFolder({
     }
     if (scenario === "legal") setCompanyPackageOpen(true);
     else setIndividualPackageOpen(true);
+  };
+
+  const requestDocumentsRebuild = () => {
+    if (packageDataBlockers.length > 0) {
+      toast.error("Заполните обязательные данные группы", { description: packageDataBlockers.join(", ") });
+      return;
+    }
+    if (blankSignatoryBlocker.length > 0) {
+      setPendingPackageScenario("documents");
+      setSignatoriesOpen(true);
+      return;
+    }
+    void run(PACKAGE_DOC_TYPES, packageDataBlockers);
   };
 
   /** Готовность данных по документам пакета — чтобы честно предупредить менеджера. */
@@ -429,7 +441,7 @@ export function GroupDocumentsFolder({
             <AlertTriangle className="w-4 h-4 mt-0.5 text-primary shrink-0" />
             <div className="text-sm">
               <div className="font-medium">
-                {blocked ? "Генерация недоступна: заполните обязательные данные" : "Заполните данные, чтобы документы были без пропусков"}
+                {dataBlocked ? "Генерация недоступна: заполните обязательные данные" : "Заполните данные, чтобы документы были без пропусков"}
               </div>
               <div className="text-muted-foreground mt-0.5">Не заполнено: {missingFields.join(", ")}</div>
               {onOpenGroupSettings && (
@@ -518,11 +530,16 @@ export function GroupDocumentsFolder({
           <Button
             variant="outline"
             className="gap-1.5 rounded-xl"
-            disabled={busy || !ctx || blocked || !!retryPackage}
-            onClick={() => run(PACKAGE_DOC_TYPES, allPackageBlockers)}
-            title="Клиентский комплект пересобирается целиком, чтобы все девять файлов имели один снимок данных"
+            disabled={busy || !ctx || !!retryPackage}
+            onClick={requestDocumentsRebuild}
+            title={blankSignatoryBlocker.length > 0
+              ? "Сначала откроется проверка подписантов, затем будут пересобраны все девять Word-документов"
+              : "Клиентский комплект пересобирается целиком, чтобы все девять файлов имели один снимок данных"}
           >
-            <RotateCcw className="w-4 h-4" /> Пересобрать 9 Word-документов
+            <RotateCcw className="w-4 h-4" />
+            {blankSignatoryBlocker.length > 0
+              ? "Проверить подписантов и пересобрать 9 Word-документов"
+              : "Пересобрать 9 Word-документов"}
           </Button>
         ) : (
         <DropdownMenu>
@@ -774,6 +791,7 @@ export function GroupDocumentsFolder({
             setSignatoriesOpen(false);
             if (pendingPackageScenario === "legal") setCompanyPackageOpen(true);
             if (pendingPackageScenario === "individual") setIndividualPackageOpen(true);
+            if (pendingPackageScenario === "documents") void run(PACKAGE_DOC_TYPES, packageDataBlockers);
             setPendingPackageScenario(null);
           }}
         />
