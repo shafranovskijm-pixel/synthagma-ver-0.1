@@ -160,6 +160,11 @@ function renderFolder(ctx = goreltechContext()) {
   );
 }
 
+async function confirmSourceSignatories() {
+  fireEvent.click(screen.getByRole("button", { name: "Подписанты документов" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Подтвердить подписантов" }));
+}
+
 describe("GroupDocumentsFolder package contract routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -190,6 +195,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
 
   it("направляет пакет компании в Word-диалог и запускает 9 документов после одного договора", async () => {
     renderFolder();
+    await confirmSourceSignatories();
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
 
@@ -206,8 +212,8 @@ describe("GroupDocumentsFolder package contract routing", () => {
       expect.objectContaining({
         extras: expect.objectContaining({
           contract_basis: "Договор № 2026-001",
-          signatory_position_enrollment_order: SAMPLE_CONTEXT.organization.director_position,
-          signatory_name_enrollment_order: SAMPLE_CONTEXT.organization.director_name,
+          signatory_position_enrollment_order: "Руководитель учебного центра",
+          signatory_name_enrollment_order: "",
         }),
       }),
       PACKAGE_DOC_TYPES.filter((type) => type !== "class_journal"),
@@ -216,7 +222,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.generateClassJournalDocx).toHaveBeenCalledWith(
       expect.objectContaining({
         journalSignatory: {
-          position: SAMPLE_CONTEXT.organization.director_position,
+          position: "Руководитель учебного центра",
           name: SAMPLE_CONTEXT.organization.director_name,
         },
       }),
@@ -225,6 +231,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
 
   it("не считает два юрлица-договора успешным пакетом компании", async () => {
     renderFolder();
+    await confirmSourceSignatories();
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
     await screen.findByRole("button", { name: "Сохранить договор Word" });
 
@@ -243,6 +250,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ version: 2 });
     renderFolder();
+    await confirmSourceSignatories();
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
     fireEvent.click(await screen.findByRole("button", { name: "Сохранить договор Word" }));
@@ -263,6 +271,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
 
   it("сохраняет универсальный HTML-мастер только для пакета физлиц", async () => {
     renderFolder();
+    await confirmSourceSignatories();
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет физлица" }));
 
@@ -316,7 +325,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.docxSave).not.toHaveBeenCalled();
   });
 
-  it("оставляет заблокированные package-кнопки кликабельными и объясняет причину", () => {
+  it("оставляет заблокированные package-кнопки кликабельными и объясняет причину", async () => {
     const ctx = goreltechContext();
     render(
       <GroupDocumentsFolder
@@ -334,6 +343,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     const individual = screen.getByRole("button", { name: "Пакет физлица" });
     expect(company).not.toBeDisabled();
     expect(individual).not.toBeDisabled();
+    await confirmSourceSignatories();
 
     fireEvent.click(company);
 
@@ -346,10 +356,11 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
   });
 
-  it("не открывает пакет, если одному из девяти Word-документов не хватает печатаемого поля", () => {
+  it("не открывает пакет, если одному из девяти Word-документов не хватает печатаемого поля", async () => {
     const ctx = goreltechContext();
     ctx.group.instructor_name = "";
     renderFolder(ctx);
+    await confirmSourceSignatories();
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
 
@@ -361,11 +372,12 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
   });
 
-  it("не подменяет пустой номер группы её названием для пакета ГОРЭЛТЕХ", () => {
+  it("не подменяет пустой номер группы её названием для пакета ГОРЭЛТЕХ", async () => {
     const ctx = goreltechContext();
     ctx.group.name = "Группа с названием";
     ctx.group.number = "";
     renderFolder(ctx);
+    await confirmSourceSignatories();
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
 
@@ -398,7 +410,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.saveGenerated).not.toHaveBeenCalled();
   });
 
-  it("показывает некритичную подсказку, но не выдаёт её за блокирующее поле", () => {
+  it("показывает некритичную подсказку, но не выдаёт её за блокирующее поле", async () => {
     const ctx = goreltechContext();
     render(
       <GroupDocumentsFolder
@@ -410,6 +422,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
         missingFields={["проверить реквизиты программы"]}
       />,
     );
+    await confirmSourceSignatories();
 
     fireEvent.click(screen.getByRole("button", { name: "Пакет компании (Word клиента)" }));
 
@@ -472,6 +485,26 @@ describe("GroupDocumentsFolder package contract routing", () => {
         }),
       );
     });
+  });
+
+  it("берёт должность подписанта ГОРЭЛТЕХ из оригинального Word-шаблона", async () => {
+    renderFolder();
+
+    fireEvent.click(screen.getByRole("button", { name: "Подписанты документов" }));
+    const dialog = await screen.findByRole("dialog", { name: "Подписанты документов ГОРЭЛТЕХ" });
+    const orderPosition = dialog.querySelector<HTMLInputElement>("#signatory-position-enrollment_order");
+    const orderName = dialog.querySelector<HTMLInputElement>("#signatory-name-enrollment_order");
+    const journalPosition = dialog.querySelector<HTMLInputElement>("#signatory-position-class_journal");
+    const journalName = dialog.querySelector<HTMLInputElement>("#signatory-name-class_journal");
+    const passPosition = dialog.querySelector<HTMLInputElement>("#signatory-position-pass");
+    const passName = dialog.querySelector<HTMLInputElement>("#signatory-name-pass");
+
+    expect(orderPosition).toHaveValue("Руководитель учебного центра");
+    expect(orderName).toHaveValue("");
+    expect(journalPosition).toHaveValue("Руководитель учебного центра");
+    expect(journalName).toHaveValue("Дроздов Дмитрий Викторович");
+    expect(passPosition).toHaveValue("");
+    expect(passName).toHaveValue("");
   });
 
   it("требует явного подтверждения, если подписант оставлен пустым", async () => {

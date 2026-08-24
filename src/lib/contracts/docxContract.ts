@@ -467,9 +467,6 @@ export function studentRowFromSources(src: StudentSources): StudentDraftRow {
   };
 }
 
-export const DEFAULT_PAYMENT_CLAUSE =
-  "Оплата производится в течение 5 (пяти) банковских дней с даты выставления счёта.";
-
 /**
  * Начальное состояние диалога. Вызывается при каждом открытии, поэтому
  * повторная генерация всегда начинается с чистых данных группы и компании.
@@ -486,7 +483,9 @@ export function initialDocxScalars(group: GroupLike | null | undefined, dateIso:
     PROG_FORM: group?.program_form || "",
     STUDENT_DATES: groupDatesText(group?.start_date, group?.end_date),
     TAX_CLAUSE: "",
-    PAYMENT_CLAUSE: DEFAULT_PAYMENT_CLAUSE,
+    // В оригинальном договоре ГОРЭЛТЕХ порядок и срок оплаты оставлены
+    // пустыми. Не подставляем коммерческое условие, которого клиент не давал.
+    PAYMENT_CLAUSE: "",
   };
 }
 

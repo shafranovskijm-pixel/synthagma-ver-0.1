@@ -14,7 +14,6 @@ import {
   evaluateDocxReadiness,
   studentRowFromSources,
   GORELTECH_CURRICULA,
-  DEFAULT_PAYMENT_CLAUSE,
 } from "../docxContract";
 
 const A = {
@@ -48,7 +47,7 @@ describe("смена компании", () => {
     const next = applyCompanySelection(base, A);
     expect(next.DOC_NO).toBe("Д-7");
     expect(next.TRAINING_ADDR).toBe("СПб");
-    expect(next.PAYMENT_CLAUSE).toBe(DEFAULT_PAYMENT_CLAUSE);
+    expect(next.PAYMENT_CLAUSE).toBe("");
   });
 
   it("companyScalars всегда возвращает все ключи компании", () => {
@@ -68,6 +67,7 @@ describe("повторное открытие диалога", () => {
     expect(dirty.CUST_NAME).toBe("ООО А");
     expect(fresh.CUST_NAME).toBe("");
     expect(fresh.TAX_CLAUSE).toBe("");
+    expect(fresh.PAYMENT_CLAUSE).toBe("");
     expect(fresh.TRAINING_ADDR).toBe("");
     expect(fresh.DOC_NO).toBe("");
   });

@@ -32,6 +32,29 @@ export function defaultGroupDocumentSignatories(
 }
 
 /**
+ * Стартовые подписанты строго по оригинальным Word-файлам ГОРЭЛТЕХ.
+ *
+ * В приказах исходник оставляет ФИО пустым, а в пропуске вообще нет
+ * подтверждённой строки подписанта. Эти поля намеренно не заполняются:
+ * менеджер должен либо выбрать подписанта, либо явно подтвердить пустое место.
+ */
+export function defaultGoreltechGroupDocumentSignatories(
+  manager: GroupDocumentSignatory,
+): GroupDocumentSignatories {
+  const position = manager.position;
+  const namedManager = { position, name: manager.name };
+  return {
+    enrollment_order: { position, name: "" },
+    expulsion_order: { position, name: "" },
+    student_list: { ...namedManager },
+    class_journal: { ...namedManager },
+    schedule: { ...namedManager },
+    attestation_sheet: { ...namedManager },
+    pass: { position: "", name: "" },
+  };
+}
+
+/**
  * Per-document fields are passed through the existing immutable generation
  * snapshot. Empty strings are intentional: the organization may leave a
  * signature line for manual completion instead of inventing a signer.

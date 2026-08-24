@@ -1,7 +1,7 @@
 export interface GroupDocumentClientProfile {
   key: "goreltech" | "generic";
   shortName: string;
-  directorPositionFallback: string;
+  groupDocumentManagerPosition: string;
   responsiblePersonFallback: string;
   expulsionOutcomeFallback: string;
   cityFallback: string;
@@ -36,7 +36,10 @@ export function resolveGroupDocumentClientProfile(
     return {
       key: "goreltech",
       shortName: "ООО «ИЦ «ГОРЭЛТЕХ»",
-      directorPositionFallback: "Генеральный директор",
+      // Точное наименование должности из оригинальных Word-шаблонов ГОРЭЛТЕХ.
+      // Это значение используется только как стартовое в проверяемом диалоге
+      // подписантов и не распространяется на другие организации.
+      groupDocumentManagerPosition: "Руководитель учебного центра",
       responsiblePersonFallback: "Ляпко Дарья Константиновна",
       expulsionOutcomeFallback: "без выдачи удостоверений о повышении квалификации",
       cityFallback: "Санкт-Петербург",
@@ -46,7 +49,7 @@ export function resolveGroupDocumentClientProfile(
   return {
     key: "generic",
     shortName: organization.name,
-    directorPositionFallback: "",
+    groupDocumentManagerPosition: "",
     responsiblePersonFallback: "",
     expulsionOutcomeFallback: "",
     cityFallback: "",

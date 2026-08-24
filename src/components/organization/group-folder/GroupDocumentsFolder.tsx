@@ -48,6 +48,7 @@ import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { downloadPrivateFile } from "@/utils/storageHelpers";
 import {
+  defaultGoreltechGroupDocumentSignatories,
   defaultGroupDocumentSignatories,
   hasBlankGroupDocumentSignatory,
   signatoriesToGenerationExtras,
@@ -108,13 +109,27 @@ export function GroupDocumentsFolder({
   const [mode, setMode] = useState<DocumentFillMode>("blank");
   const [signatoriesOpen, setSignatoriesOpen] = useState(false);
   const [blankSignatoriesConfirmed, setBlankSignatoriesConfirmed] = useState(false);
+  const documentClientProfile = useMemo(
+    () => ctx ? resolveGroupDocumentClientProfile(ctx.organization) : null,
+    [ctx],
+  );
+  const exactGoreltechDocuments = documentClientProfile?.key === "goreltech";
   const defaultSignatory = useMemo(() => ({
-    position: ctx?.organization.director_position || "",
+    position: exactGoreltechDocuments
+      ? documentClientProfile?.groupDocumentManagerPosition || ""
+      : ctx?.organization.director_position || "",
     name: ctx?.organization.director_name || "",
-  }), [ctx?.organization.director_name, ctx?.organization.director_position]);
+  }), [
+    ctx?.organization.director_name,
+    ctx?.organization.director_position,
+    documentClientProfile?.groupDocumentManagerPosition,
+    exactGoreltechDocuments,
+  ]);
   const defaultSignatories = useMemo(
-    () => defaultGroupDocumentSignatories(defaultSignatory),
-    [defaultSignatory],
+    () => exactGoreltechDocuments
+      ? defaultGoreltechGroupDocumentSignatories(defaultSignatory)
+      : defaultGroupDocumentSignatories(defaultSignatory),
+    [defaultSignatory, exactGoreltechDocuments],
   );
   const [documentSignatories, setDocumentSignatories] =
     useState<GroupDocumentSignatories>(defaultSignatories);
@@ -122,10 +137,6 @@ export function GroupDocumentsFolder({
     setDocumentSignatories(defaultSignatories);
     setBlankSignatoriesConfirmed(false);
   }, [organizationId, defaultSignatories]);
-  const exactGoreltechDocuments = useMemo(
-    () => !!ctx && resolveGroupDocumentClientProfile(ctx.organization).key === "goreltech",
-    [ctx],
-  );
   const { factual } = useGroupFactualData(
     organizationId,
     courseId,

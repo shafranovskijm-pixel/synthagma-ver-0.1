@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_CONTEXT } from "../sampleContext";
 import {
+  defaultGoreltechGroupDocumentSignatories,
   defaultGroupDocumentSignatories,
   hasBlankGroupDocumentSignatory,
   signatoriesToGenerationExtras,
@@ -48,6 +49,24 @@ describe("group document signatories", () => {
       name: "Ляпко Дарья Константиновна",
     });
     expect(hasBlankGroupDocumentSignatory(defaults)).toBe(false);
+  });
+
+  it("uses the exact GORELTECH source map without inventing blank signers", () => {
+    const defaults = defaultGoreltechGroupDocumentSignatories({
+      position: "Руководитель учебного центра",
+      name: "Дроздов Дмитрий Викторович",
+    });
+
+    expect(defaults.enrollment_order).toEqual({
+      position: "Руководитель учебного центра",
+      name: "",
+    });
+    expect(defaults.class_journal).toEqual({
+      position: "Руководитель учебного центра",
+      name: "Дроздов Дмитрий Викторович",
+    });
+    expect(defaults.pass).toEqual({ position: "", name: "" });
+    expect(hasBlankGroupDocumentSignatory(defaults)).toBe(true);
   });
 
   it("does not invent a signer title when the organization left it empty", () => {
