@@ -216,19 +216,31 @@ describe("OrgSidebar navigation", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("keeps grouped destinations reachable in the mobile drawer", () => {
+  it.each([
+    ["compact", 88],
+    ["icons", 64],
+  ] as const)("keeps the mobile drawer expanded without overwriting saved %s desktop mode", (savedMode, desktopWidth) => {
     isMobile = true;
-    localStorage.setItem("org-sidebar-mode", "compact");
-    renderSidebar();
+    localStorage.setItem("org-sidebar-mode", savedMode);
+    const mobileView = renderSidebar();
 
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
-    expect(sidebar).toHaveStyle({ width: "88px" });
+    expect(sidebar).toHaveStyle({ width: "220px" });
+    expect(within(sidebar).getByText("Учебный центр")).toBeInTheDocument();
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
 
-    expect(sidebar).toHaveStyle({ width: "220px" });
     expect(within(sidebar).getByRole("navigation", { name: "Курсы: подразделы" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    expect(localStorage.getItem("org-sidebar-mode")).toBe(savedMode);
+    mobileView.unmount();
+
+    isMobile = false;
+    renderSidebar();
+    expect(screen.getByRole("navigation", { name: "Основная навигация" })).toHaveStyle({
+      width: `${desktopWidth}px`,
+    });
   });
 
   it("keeps every existing workspace inside seven semantic roots with canonical links", () => {

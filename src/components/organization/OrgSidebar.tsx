@@ -213,7 +213,7 @@ export function OrgSidebar() {
   // The mobile sidebar is already a modal drawer. Let it use the same fixed
   // expanded width as desktop so grouped destinations remain reachable after
   // a tap; forcing it back to compact would hide the children completely.
-  const effectiveMode: SidebarMode = mode;
+  const effectiveMode: SidebarMode = isMobile ? "expanded" : mode;
   const effectiveExpanded = effectiveMode === "expanded";
   const showLabels = effectiveMode === "compact";
   const width = MODE_WIDTH[effectiveMode];
