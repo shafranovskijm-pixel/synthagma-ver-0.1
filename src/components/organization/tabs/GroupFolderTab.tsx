@@ -695,8 +695,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </p>
         </div>
 
-        <div className="mt-4 overflow-x-auto pb-1">
-          <div className="flex min-w-max gap-2" role="navigation" aria-label="Работа с группой">
+        <div className="mt-4 overflow-x-auto pb-1 xl:overflow-visible">
+          <div className="flex min-w-max gap-2 xl:grid xl:min-w-0 xl:grid-cols-5" role="navigation" aria-label="Работа с группой">
             {visibleWorkflowItems.map(item => {
               const Icon = workflowIcons[item.id];
               const active = workflowItemIsActive(item);
@@ -706,7 +706,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   type="button"
                   onClick={() => handleWorkflowAction(item)}
                   aria-current={active ? "page" : undefined}
-                  className={`group flex w-[210px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  className={`group flex w-[210px] items-center gap-3 rounded-xl border p-3 text-left transition-colors xl:w-auto xl:min-w-0 ${
                     active
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-background hover:border-primary/30 hover:bg-primary/5"
@@ -830,14 +830,17 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       </Card>
 
       <Card className="rounded-2xl border-border p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
             <h2 className="font-semibold">Предварительная готовность группы</h2>
             <p className="text-sm text-muted-foreground">
               Зелёным отмечены только этапы, подтверждённые данными. Пакет документов и выгрузка ФРДО проверяются отдельно.
             </p>
           </div>
-          <Badge variant={confirmedStepsCount === readinessSteps.length ? "default" : "secondary"} className="rounded-full">
+          <Badge
+            variant={confirmedStepsCount === readinessSteps.length ? "default" : "secondary"}
+            className="shrink-0 self-start whitespace-nowrap rounded-full sm:self-auto"
+          >
             Подтверждено {confirmedStepsCount} из {readinessSteps.length}
           </Badge>
         </div>
