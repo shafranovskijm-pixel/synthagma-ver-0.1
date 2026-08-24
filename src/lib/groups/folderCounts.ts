@@ -30,13 +30,13 @@ export function countUniqueContracts(rows: Array<{ id: string }> | null | undefi
 }
 
 export function countIdentityDocs(
-  rows: Array<{ document_type: string }> | null | undefined,
+  rows: Array<{ type: string }> | null | undefined,
 ): { passports: number; snils: number } {
   let passports = 0;
   let snils = 0;
   for (const r of rows || []) {
-    if (r.document_type === "passport") passports += 1;
-    if (r.document_type === "snils") snils += 1;
+    if (r.type === "passport") passports += 1;
+    if (r.type === "snils") snils += 1;
   }
   return { passports, snils };
 }
@@ -75,7 +75,7 @@ export async function fetchGroupFolderCounts(
     .eq("status", "active");
 
   const identityQuery = userIds.length > 0
-    ? client.from("student_identity_documents").select("user_id, document_type").in("user_id", userIds)
+    ? client.from("student_identity_documents").select("user_id, type").in("user_id", userIds)
     : Promise.resolve({ data: [] });
 
   const attemptsQuery = userIds.length > 0

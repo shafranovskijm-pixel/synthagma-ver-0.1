@@ -34,9 +34,9 @@ const acceptanceData: FakeData = {
   org_contracts: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
   group_documents: Array.from({ length: 19 }, (_, i) => ({ id: `d${i}` })),
   student_identity_documents: [
-    { user_id: "u1", document_type: "passport" },
-    { user_id: "u1", document_type: "snils" },
-    { user_id: "u2", document_type: "passport" },
+    { user_id: "u1", type: "passport" },
+    { user_id: "u1", type: "snils" },
+    { user_id: "u2", type: "passport" },
   ],
   test_attempts: [{ id: "a1" }],
 };

@@ -17,6 +17,15 @@ import type { GenerationContext } from "@/lib/group-docs/schema";
 import { getGroupDocumentTypes, GROUP_DOCUMENT_TYPE_MAP } from "@/lib/groupDocuments";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { canonicalCourseHours, programHoursMismatch, resolveUniqueCommonCourseId } from "@/lib/groups/groupSettings";
+import {
+  confirmedReadinessCount,
+  resolveDocumentsReadiness,
+  resolveFrdoReadinessStage,
+  resolveLearningReadiness,
+  resolveParticipantsReadiness,
+  type EnrollmentEvidence,
+  type ProofStatus,
+} from "@/lib/groups/releaseReadiness";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
 import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
@@ -129,7 +138,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
-  const [courseEnrollmentCount, setCourseEnrollmentCount] = useState(0);
+  const [courseEnrollments, setCourseEnrollments] = useState<EnrollmentEvidence[]>([]);
+  const [courseEnrollmentEvidenceError, setCourseEnrollmentEvidenceError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [addStudentsOpen, setAddStudentsOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -190,7 +200,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       setLoading(true);
       setGroup(null);
       setCourseInfo(null);
-      setCourseEnrollmentCount(0);
+      setCourseEnrollments([]);
+      setCourseEnrollmentEvidenceError(false);
       setStudents([]);
       try {
         const { data: groupData } = await supabase
@@ -221,7 +232,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           .is("archived_at", null);
 
         const userIds = (profiles || []).map((p: any) => p.user_id);
-        if (!cancelled) setCourseEnrollmentCount(0);
+        if (!cancelled) {
+          setCourseEnrollments([]);
+          setCourseEnrollmentEvidenceError(false);
+        }
 
         let resolvedCourseId: string | null = linkedCourseId;
         if (!resolvedCourseId && userIds.length > 0) {
@@ -245,12 +259,15 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             setCourseInfo(courseRow as any);
           }
           if (resolvedCourseId && userIds.length > 0) {
-            const { data: courseEnrollments } = await (supabase as any)
+            const { data: enrollmentRows, error: enrollmentError } = await (supabase as any)
               .from("enrollments")
-              .select("user_id")
+              .select("user_id, status, progress, completed_at")
               .eq("course_id", resolvedCourseId)
               .in("user_id", userIds);
-            if (!cancelled) setCourseEnrollmentCount(new Set((courseEnrollments || []).map((row: any) => row.user_id)).size);
+            if (!cancelled) {
+              setCourseEnrollmentEvidenceError(Boolean(enrollmentError));
+              setCourseEnrollments(enrollmentError ? [] : (enrollmentRows || []) as EnrollmentEvidence[]);
+            }
           }
         } else if (!cancelled) {
           setCourseInfo(null);
@@ -264,7 +281,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         const [docsRes, contractsRes, attemptsRes, frdoRes] = await Promise.all([
           (supabase as any)
             .from("student_identity_documents")
-            .select("user_id, document_type")
+            .select("user_id, type")
             .in("user_id", userIds),
           (supabase as any)
             .from("org_contracts")
@@ -285,8 +302,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         const docsByUser = new Map<string, { passport: number; snils: number }>();
         for (const row of (docsRes.data as any[]) || []) {
           const cur = docsByUser.get(row.user_id) || { passport: 0, snils: 0 };
-          if (row.document_type === "passport") cur.passport += 1;
-          if (row.document_type === "snils") cur.snils += 1;
+          if (row.type === "passport") cur.passport += 1;
+          if (row.type === "snils") cur.snils += 1;
           docsByUser.set(row.user_id, cur);
         }
         const contractsByUser = new Map<string, number>();
@@ -426,11 +443,28 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     () => students.filter(student => resolveFrdoReadiness(student.frdo, student.full_name).status === "complete").length,
     [students],
   );
-  const participantsReady = students.length > 0;
-  const learningReady = participantsReady && !!resolvedCourseId && courseEnrollmentCount === students.length;
-  const documentsReady = missingDocFields.length === 0 && counts.contracts > 0;
-  const frdoReady = participantsReady && frdoReadyCount === students.length;
-  const readyStepsCount = [participantsReady, learningReady, documentsReady, frdoReady].filter(Boolean).length;
+  const participantsReadiness = resolveParticipantsReadiness(students.length);
+  const learningReadiness = resolveLearningReadiness({
+    participantUserIds: students.map(student => student.user_id),
+    courseId: resolvedCourseId,
+    enrollments: courseEnrollments,
+    evidenceError: courseEnrollmentEvidenceError,
+  });
+  const documentsReadiness = resolveDocumentsReadiness({
+    missingFieldCount: missingDocFields.length,
+    documentCount: Number(counts.docs) || 0,
+    contractCount: Number(counts.contracts) || 0,
+  });
+  const frdoReadiness = resolveFrdoReadinessStage({
+    participantCount: students.length,
+    completeDataCount: frdoReadyCount,
+  });
+  const confirmedStepsCount = confirmedReadinessCount([
+    participantsReadiness,
+    learningReadiness,
+    documentsReadiness,
+    frdoReadiness,
+  ]);
 
 
 
@@ -494,29 +528,29 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const readinessSteps = [
     {
       title: "Участники",
-      detail: participantsReady ? `${students.length} в группе` : "Добавьте учеников",
-      ready: participantsReady,
+      detail: participantsReadiness.detail,
+      status: participantsReadiness.status,
       icon: Users,
       action: () => setShowMembers(true),
     },
     {
       title: "Обучение",
-      detail: !resolvedCourseId ? "Курс не привязан" : `${courseEnrollmentCount} из ${students.length} зачислено`,
-      ready: learningReady,
+      detail: learningReadiness.detail,
+      status: learningReadiness.status,
       icon: BookOpen,
       action: () => resolvedCourseId ? navigate(courseDetailsPathForGroup(resolvedCourseId)) : setSettingsOpen(true),
     },
     {
       title: "Документы",
-      detail: documentsReady ? "Данные готовы" : `${missingDocFields.length + (counts.contracts > 0 ? 0 : 1)} замечаний`,
-      ready: documentsReady,
+      detail: documentsReadiness.detail,
+      status: documentsReadiness.status,
       icon: FileText,
       action: () => setOpenFolder("docs"),
     },
     {
-      title: "ФИС ФРДО",
-      detail: `${frdoReadyCount} из ${students.length} готовы`,
-      ready: frdoReady,
+      title: "Данные ФИС ФРДО",
+      detail: frdoReadiness.detail,
+      status: frdoReadiness.status,
       icon: Shield,
       action: () => navigate(groupContextPath("frdo", { groupId, courseId: resolvedCourseId })),
     },
@@ -534,7 +568,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     learning: "Журналы и ход обучения",
     "personal-files": "Договоры, паспорта и СНИЛС",
     "group-documents": "Приказы, журналы и ведомости",
-    frdo: `${frdoReadyCount} из ${students.length} готовы`,
+    frdo: `${frdoReadyCount} из ${students.length} данных заполнено`,
   };
   const visibleWorkflowItems = permissionsLoading
     ? []
@@ -798,23 +832,32 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       <Card className="rounded-2xl border-border p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">Готовность группы к выпуску</h2>
-            <p className="text-sm text-muted-foreground">Все зависимые действия собраны в одном месте.</p>
+            <h2 className="font-semibold">Предварительная готовность группы</h2>
+            <p className="text-sm text-muted-foreground">
+              Зелёным отмечены только этапы, подтверждённые данными. Пакет документов и выгрузка ФРДО проверяются отдельно.
+            </p>
           </div>
-          <Badge variant={readyStepsCount === readinessSteps.length ? "default" : "secondary"} className="rounded-full">
-            {readyStepsCount} из {readinessSteps.length} этапов
+          <Badge variant={confirmedStepsCount === readinessSteps.length ? "default" : "secondary"} className="rounded-full">
+            Подтверждено {confirmedStepsCount} из {readinessSteps.length}
           </Badge>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {readinessSteps.map(step => (
+          {readinessSteps.map(step => {
+            const statusClass: Record<ProofStatus, string> = {
+              ready: "text-emerald-600",
+              attention: "text-amber-600",
+              blocked: "text-rose-600",
+              unknown: "text-muted-foreground",
+            };
+            return (
             <button
               key={step.title}
               type="button"
               onClick={step.action}
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-muted/50"
             >
-              <div className={step.ready ? "text-emerald-600" : "text-amber-600"}>
-                {step.ready ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+              <div className={statusClass[step.status]}>
+                {step.status === "ready" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 font-medium">
@@ -825,7 +868,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
-          ))}
+            );
+          })}
         </div>
       </Card>
 
