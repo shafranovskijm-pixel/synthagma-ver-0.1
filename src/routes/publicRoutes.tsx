@@ -7,6 +7,7 @@ const Login = lazyWithRetry(() => import("@/pages/Login"));
 const BrandedLogin = lazyWithRetry(() => import("@/pages/BrandedLogin"));
 const ResetPassword = lazyWithRetry(() => import("@/pages/ResetPassword"));
 const RegisterOrganization = lazyWithRetry(() => import("@/pages/RegisterOrganization"));
+const Features = lazyWithRetry(() => import("@/pages/Features"));
 const About = lazyWithRetry(() => import("@/pages/About"));
 const Blog = lazyWithRetry(() => import("@/pages/Blog"));
 const BlogPost = lazyWithRetry(() => import("@/pages/BlogPost"));
@@ -68,7 +69,7 @@ export const publicRoutes = (
     <Route path="/course/:courseId/landing" element={<CourseLanding />} />
     <Route path="/c/:slug" element={<CourseLanding />} />
     <Route path="/o/:slug" element={<OrganizationShowcase />} />
-    <Route path="/features" element={<Navigate to="/#pricing" replace />} />
+    <Route path="/features" element={<Features />} />
     <Route path="/about" element={<About />} />
     <Route path="/blog" element={<Blog />} />
     <Route path="/blog/:slug" element={<BlogPost />} />

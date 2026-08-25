@@ -134,7 +134,7 @@ export default function PlatformPresentation() {
             Актуальные цены, лимиты и состав функций опубликованы на главной странице.
           </p>
           <Link
-            to="/#pricing"
+            to="/features#pricing"
             className="inline-flex px-6 py-3 rounded-2xl bg-[hsl(174_72%_46%)] text-sm font-semibold text-white hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             Посмотреть актуальные тарифы

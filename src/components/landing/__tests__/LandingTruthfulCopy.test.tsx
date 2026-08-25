@@ -201,7 +201,7 @@ describe("truthful landing copy", () => {
     expect(html).not.toContain("gpt-engineer-file-uploads");
     expect(html).not.toContain("ChatGPT_Image");
     expect(html).toContain("курсы, ученики, прогресс, документы и подготовка данных для ФИС ФРДО");
-    expect(html).toContain("https://xn--80aaiswd0ak.xn--p1ai/");
+    expect(html).not.toContain('<link rel="canonical"');
     expect(indexPage).toContain("https://xn--80aaiswd0ak.xn--p1ai/og-registration-organization.jpg");
     expect(existsSync(resolve(process.cwd(), "public/og-registration-organization.jpg"))).toBe(true);
     expect(features).toContain("Подготовка XLSX-файлов");
@@ -231,6 +231,7 @@ describe("truthful landing copy", () => {
     const presentation = read("src/pages/PlatformPresentation.tsx");
     const presentationSections = read("src/pages/presentationSections.ts");
     const presentationBlocks = read("src/pages/presentationBlocks.tsx");
+    const featuresPage = read("src/pages/Features.tsx");
     const about = read("src/pages/About.tsx");
     const videoId = read("src/pages/FeatureVideoId.tsx");
     const publicRoutes = read("src/routes/publicRoutes.tsx");
@@ -248,7 +249,7 @@ describe("truthful landing copy", () => {
     expect(presentation).not.toContain("Сравнение с конкурентами");
     expect(presentation).not.toContain("pricingPlans");
     expect(presentation).not.toContain("3D-тренажёры");
-    expect(presentation).toContain('to="/#pricing"');
+    expect(presentation).toContain('to="/features#pricing"');
     expect(presentation).toContain("Посмотреть актуальные тарифы");
     expect(presentationSections).not.toContain("До 70%");
     expect(presentationSections).not.toContain("за 5 минут");
@@ -267,8 +268,14 @@ describe("truthful landing copy", () => {
     expect(videoId).not.toContain("Видеоидентификация доступна на тарифах");
     expect(videoId).toContain("определяет образовательная организация");
 
-    expect(publicRoutes).not.toContain('import("@/pages/Features")');
-    expect(publicRoutes).toContain('<Route path="/features" element={<Navigate to="/#pricing" replace />} />');
-    expect(sitemap).not.toContain("/features");
+    expect(featuresPage).toContain("LandingFeatures");
+    expect(featuresPage).toContain("PricingPlans");
+    expect(featuresPage).not.toContain("system_feature_categories");
+    expect(featuresPage).not.toContain("baseMonthlyPrice");
+    expect(featuresPage).not.toContain("Все функции включены");
+    expect(featuresPage).not.toContain("generateFeaturesPdfHtml");
+    expect(publicRoutes).toContain('const Features = lazyWithRetry(() => import("@/pages/Features"));');
+    expect(publicRoutes).toContain('<Route path="/features" element={<Features />} />');
+    expect(sitemap).toContain("https://xn--80aaiswd0ak.xn--p1ai/features");
   });
 });
