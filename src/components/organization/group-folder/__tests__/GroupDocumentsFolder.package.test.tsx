@@ -360,6 +360,57 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
   });
 
+  it("направляет незаполненный ИНН в реквизиты организации, а не в настройки группы", () => {
+    const ctx = goreltechContext();
+    const onOpenOrganizationRequisites = vi.fn();
+    const onOpenGroupSettings = vi.fn();
+    render(
+      <GroupDocumentsFolder
+        organizationId="org-1"
+        groupId="group-1"
+        groupName="Группа 1"
+        students={ctx.students}
+        ctx={ctx}
+        missingFields={["ИНН учебного центра"]}
+        blockingFields={["ИНН учебного центра"]}
+        organizationMissingFields={["ИНН учебного центра"]}
+        onOpenOrganizationRequisites={onOpenOrganizationRequisites}
+        onOpenGroupSettings={onOpenGroupSettings}
+      />,
+    );
+
+    expect(screen.getByText(/Создание курса, зачисление и обучение остаются доступны/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Открыть настройки группы" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Заполнить реквизиты организации" }));
+    expect(onOpenOrganizationRequisites).toHaveBeenCalledTimes(1);
+    expect(onOpenGroupSettings).not.toHaveBeenCalled();
+  });
+
+  it("показывает разные действия для пропусков организации и группы", () => {
+    const ctx = goreltechContext();
+    const onOpenOrganizationRequisites = vi.fn();
+    const onOpenGroupSettings = vi.fn();
+    render(
+      <GroupDocumentsFolder
+        organizationId="org-1"
+        groupId="group-1"
+        groupName="Группа 1"
+        students={ctx.students}
+        ctx={ctx}
+        missingFields={["ИНН учебного центра", "номер группы"]}
+        blockingFields={["ИНН учебного центра"]}
+        organizationMissingFields={["ИНН учебного центра"]}
+        onOpenOrganizationRequisites={onOpenOrganizationRequisites}
+        onOpenGroupSettings={onOpenGroupSettings}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Заполнить реквизиты организации" }));
+    fireEvent.click(screen.getByRole("button", { name: "Открыть настройки группы" }));
+    expect(onOpenOrganizationRequisites).toHaveBeenCalledTimes(1);
+    expect(onOpenGroupSettings).toHaveBeenCalledTimes(1);
+  });
+
   it("не открывает пакет, если одному из девяти Word-документов не хватает печатаемого поля", async () => {
     const ctx = goreltechContext();
     ctx.group.instructor_name = "";

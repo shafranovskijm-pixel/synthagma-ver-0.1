@@ -137,7 +137,7 @@ const FOLDER_META: Record<FolderKey, { title: string; icon: any; hint: string }>
 
 export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps) {
   const d = useOrgDashboard();
-  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const { can, canSeeOrgTab, loading: permissionsLoading } = useStaffPermissions();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showMembers, setShowMembers] = useState(false);
@@ -424,20 +424,27 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     [generationContext],
   );
 
+  /** Поля карточки организации: редактируются не в настройках группы. */
+  const missingOrganizationDocFields = useMemo(() => {
+    const missing: string[] = [];
+    if (!orgInfo?.inn) missing.push("ИНН учебного центра");
+    // Только клиентский Word-пакет имеет отдельный подтверждаемый выбор
+    // подписантов. Универсальные документы сохраняют прежние требования.
+    if (!exactGoreltechDocuments && !orgInfo?.director_name) missing.push("руководитель учебного центра");
+    if (!exactGoreltechDocuments && !orgInfo?.director_position) missing.push("должность руководителя учебного центра");
+    return missing;
+  }, [orgInfo, exactGoreltechDocuments]);
+
   /** Критичные поля: без них документы бессмысленны — генерация блокируется. */
   const blockingDocFields = useMemo(() => {
     const missing: string[] = [];
     if (!resolvedProgramTitle) missing.push("название программы (или курс группы)");
     if (!resolvedProgramHours) missing.push("объём часов");
     if (hasProgramHoursMismatch) missing.push(`часы группы (${group?.program_hours}) не совпадают с курсом (${courseMasterHours})`);
-    if (!orgInfo?.inn) missing.push("ИНН учебного центра");
-    // Только клиентский Word-пакет имеет отдельный подтверждаемый выбор
-    // подписантов. Универсальные документы сохраняют прежние требования.
-    if (!exactGoreltechDocuments && !orgInfo?.director_name) missing.push("руководитель учебного центра");
-    if (!exactGoreltechDocuments && !orgInfo?.director_position) missing.push("должность руководителя учебного центра");
+    missing.push(...missingOrganizationDocFields);
     if (!group?.program_form) missing.push("форма обучения группы");
     return missing;
-  }, [resolvedProgramTitle, resolvedProgramHours, orgInfo, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours, exactGoreltechDocuments]);
+  }, [resolvedProgramTitle, resolvedProgramHours, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours, missingOrganizationDocFields]);
 
   const missingDocFields = useMemo(() => {
     const missing = [...blockingDocFields];
@@ -1017,8 +1024,12 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   defaultPrice={group?.default_price ?? null}
                   missingFields={missingDocFields}
                   blockingFields={blockingDocFields}
+                  organizationMissingFields={missingOrganizationDocFields}
                   courseId={group?.course_id || courseInfo?.id || null}
                   onOpenGroupSettings={() => setSettingsOpen(true)}
+                  onOpenOrganizationRequisites={!permissionsLoading && canSeeOrgTab("settings") && can("settings.write")
+                    ? () => navigate("/organization?tab=documents&documentView=constructor")
+                    : undefined}
                   onDataChanged={refreshCounts}
                 />
               ) : (

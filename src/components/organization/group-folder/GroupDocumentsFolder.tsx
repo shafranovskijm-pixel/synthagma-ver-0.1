@@ -76,9 +76,12 @@ interface Props {
   missingFields?: string[];
   /** Критичные незаполненные поля — генерация полностью блокируется. */
   blockingFields?: string[];
+  /** Поля карточки организации, которые нельзя заполнить в настройках группы. */
+  organizationMissingFields?: string[];
   /** Курс, привязанный к группе — подставляется в мастер договора. */
   courseId?: string | null;
   onOpenGroupSettings?: () => void;
+  onOpenOrganizationRequisites?: () => void;
   /** Вызывается после генерации/удаления документов — чтобы обновить счётчики папок. */
   onDataChanged?: () => void;
 }
@@ -95,8 +98,10 @@ export function GroupDocumentsFolder({
   defaultPrice,
   missingFields = [],
   blockingFields = [],
+  organizationMissingFields = [],
   courseId = null,
   onOpenGroupSettings,
+  onOpenOrganizationRequisites,
   onDataChanged,
 }: Props) {
   const { documents, loading, refresh: refreshDocuments, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
@@ -206,6 +211,10 @@ export function GroupDocumentsFolder({
     [packageBlockers, packageRequirements],
   );
   const dataBlocked = packageDataBlockers.length > 0;
+  const hasGroupMissingFields = useMemo(() => {
+    const organizationFields = new Set(organizationMissingFields);
+    return missingFields.some((field) => !organizationFields.has(field));
+  }, [missingFields, organizationMissingFields]);
 
   const requestPackage = (scenario: "legal" | "individual") => {
     if (packageDataBlockers.length > 0) {
@@ -444,11 +453,21 @@ export function GroupDocumentsFolder({
                 {dataBlocked ? "Генерация недоступна: заполните обязательные данные" : "Заполните данные, чтобы документы были без пропусков"}
               </div>
               <div className="text-muted-foreground mt-0.5">Не заполнено: {missingFields.join(", ")}</div>
-              {onOpenGroupSettings && (
-                <Button variant="outline" size="sm" className="mt-2 rounded-xl" onClick={onOpenGroupSettings}>
-                  Открыть настройки группы
-                </Button>
-              )}
+              <div className="text-muted-foreground mt-1">
+                Эти данные нужны для формирования документов. Создание курса, зачисление и обучение остаются доступны.
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {organizationMissingFields.length > 0 && onOpenOrganizationRequisites && (
+                  <Button variant="outline" size="sm" className="rounded-xl" onClick={onOpenOrganizationRequisites}>
+                    Заполнить реквизиты организации
+                  </Button>
+                )}
+                {hasGroupMissingFields && onOpenGroupSettings && (
+                  <Button variant="outline" size="sm" className="rounded-xl" onClick={onOpenGroupSettings}>
+                    Открыть настройки группы
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Card>
