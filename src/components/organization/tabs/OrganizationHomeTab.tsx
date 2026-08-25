@@ -101,6 +101,15 @@ export function OrganizationHomeTab() {
     window.setTimeout(() => window.dispatchEvent(new CustomEvent("org-create-course")), 100);
   };
 
+  const addStudent = () => {
+    if (!canAddStudent) return;
+    openTab("students");
+    window.setTimeout(
+      () => d.studentManagement?.setShowAddStudentDialog?.(true),
+      100,
+    );
+  };
+
   return (
     <div className="space-y-6" data-testid="organization-home">
       <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between lg:p-6">
@@ -115,7 +124,7 @@ export function OrganizationHomeTab() {
         </div>
         <div className="flex flex-wrap gap-2">
           {canAddStudent && (
-            <Button variant="outline" className="rounded-xl" onClick={() => openTab("students")}>
+            <Button variant="outline" className="rounded-xl" onClick={addStudent}>
               <Users className="mr-2 h-4 w-4" />
               Добавить ученика
             </Button>

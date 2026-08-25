@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 const setActiveTab = vi.fn();
+const setShowAddStudentDialog = vi.fn();
 let granted = new Set<string>();
 let visibleTabs = new Set<string>();
 let limits = { canCreateCourse: true, canAddStudent: true };
@@ -18,6 +19,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
       ...limits,
     },
     tabNavigation: { setActiveTab },
+    studentManagement: { setShowAddStudentDialog },
     courses: [],
     isLoadingCourses: false,
     stats: {},
@@ -57,6 +59,7 @@ function renderHome() {
 
 beforeEach(() => {
   setActiveTab.mockReset();
+  setShowAddStudentDialog.mockReset();
   granted = new Set();
   visibleTabs = new Set();
   limits = { canCreateCourse: true, canAddStudent: true };
@@ -82,6 +85,17 @@ describe("OrganizationHomeTab permission-aware actions", () => {
 
     expect(screen.queryByRole("button", { name: "Создать курс" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Добавить ученика" })).not.toBeInTheDocument();
+  });
+
+  it("opens the add-student dialog directly from the primary CTA", async () => {
+    granted = new Set(["students.read", "students.write"]);
+    visibleTabs = new Set(["students"]);
+    renderHome();
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить ученика" }));
+
+    expect(setActiveTab).toHaveBeenCalledWith("students");
+    await waitFor(() => expect(setShowAddStudentDialog).toHaveBeenCalledWith(true));
   });
 
   it("opens mailing directly when mailing is readable but chats are not", () => {
