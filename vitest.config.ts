@@ -1,6 +1,8 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -11,6 +13,7 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}", "supabase/functions/**/*.{test,spec}.ts"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
+  root: projectRoot,
 });

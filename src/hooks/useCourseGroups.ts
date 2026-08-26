@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 
 export interface StudentGroup {
   id: string;
@@ -155,18 +159,27 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
   const handleEnrollGroup = async (groupId: string) => {
     setEnrollingGroupId(groupId);
     try {
-      const { data: profiles } = await supabase.from("profiles").select("user_id").eq("organization_id", organizationId).eq("student_group_id", groupId);
+      const { data: profiles, error: profilesError } = await supabase.from("profiles").select("user_id").eq("organization_id", organizationId).eq("student_group_id", groupId);
+      if (profilesError) throw profilesError;
       const userIds = (profiles as any[] || []).map((p: any) => p.user_id);
       if (userIds.length === 0) { const group = groups.find(g => g.id === groupId); if (group) handleOpenAddStudents(group); return; }
-      const { data: existing } = await supabase.from("enrollments").select("user_id").eq("course_id", courseId).in("user_id", userIds);
+      const { data: existing, error: existingError } = await supabase.from("enrollments").select("user_id").eq("course_id", courseId).in("user_id", userIds);
+      if (existingError) throw existingError;
       const existingSet = new Set((existing || []).map((e: any) => e.user_id));
       const toEnroll = userIds.filter((uid: string) => !existingSet.has(uid));
       if (toEnroll.length === 0) { toast.info("Все ученики группы уже зачислены на этот курс"); return; }
-      const { error } = await supabase.from("enrollments").insert(toEnroll.map((uid: string) => ({ user_id: uid, course_id: courseId, status: "active", progress: 0, time_spent: 0 })));
-      if (error) throw error;
+      await insertEnrollmentsVerified(toEnroll.map((uid: string) => ({ user_id: uid, course_id: courseId, status: "active", progress: 0, time_spent: 0 })));
       toast.success(`Зачислено ${toEnroll.length} уч. из группы`);
       onEnrollmentChanged?.(); loadGroups();
-    } catch { toast.error("Ошибка зачисления группы"); }
+    } catch (error) {
+      if (error instanceof EnrollmentPersistenceError) {
+        onEnrollmentChanged?.();
+        void loadGroups();
+        toast.error("База не подтвердила зачисление всей группы. Список обновлён.");
+      } else {
+        toast.error("Ошибка зачисления группы");
+      }
+    }
     finally { setEnrollingGroupId(null); }
   };
 

@@ -2,6 +2,10 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Company, CompanyStudent } from "./useCompaniesManager";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 
 interface AvailableStudent {
   id: string;
@@ -11,6 +15,8 @@ interface AvailableStudent {
   company_id: string | null;
   company_name: string | null;
 }
+
+const ENROLLMENT_BATCH_SIZE = 100;
 
 export function useCompanyStudentsManager(organizationId: string) {
   // Students dialog
@@ -191,32 +197,54 @@ export function useCompanyStudentsManager(organizationId: string) {
         return;
       }
 
-      // Create enrollments for each student-course combination
-      const enrollments = [];
-      for (const profile of profiles) {
-        for (const courseId of selectedCourseIds) {
-          enrollments.push({
-            user_id: profile.user_id,
-            course_id: courseId,
-            status: "active",
-            progress: 0,
-          });
+      const userIds = Array.from(new Set(profiles.map((profile) => profile.user_id)));
+      let enrolledCount = 0;
+
+      // Existing rows must remain untouched: upsert would reset status/progress.
+      for (const courseId of selectedCourseIds) {
+        const existingUserIds = new Set<string>();
+        for (let offset = 0; offset < userIds.length; offset += ENROLLMENT_BATCH_SIZE) {
+          const userIdChunk = userIds.slice(offset, offset + ENROLLMENT_BATCH_SIZE);
+          const { data: existing, error: existingError } = await supabase
+            .from("enrollments")
+            .select("user_id")
+            .eq("course_id", courseId)
+            .in("user_id", userIdChunk);
+
+          if (existingError) throw existingError;
+          for (const row of existing || []) existingUserIds.add(row.user_id);
+        }
+
+        const missingUserIds = userIds.filter((userId) => !existingUserIds.has(userId));
+        for (let offset = 0; offset < missingUserIds.length; offset += ENROLLMENT_BATCH_SIZE) {
+          const missingRows = missingUserIds
+            .slice(offset, offset + ENROLLMENT_BATCH_SIZE)
+            .map((userId) => ({
+              user_id: userId,
+              course_id: courseId,
+              status: "active",
+              progress: 0,
+            }));
+
+          await insertEnrollmentsVerified(missingRows);
+          enrolledCount += missingRows.length;
         }
       }
 
-      // Upsert to avoid duplicates
-      const { error: enrollError } = await supabase
-        .from("enrollments")
-        .upsert(enrollments, { onConflict: "user_id,course_id" });
-
-      if (enrollError) throw enrollError;
-
-      toast.success(`Зачислено на ${selectedCourseIds.length} курс(ов)`);
+      if (enrolledCount > 0) {
+        toast.success(`Добавлено зачислений: ${enrolledCount}`);
+      } else {
+        toast.info("Все ученики уже зачислены на выбранные курсы");
+      }
       setShowBulkEnrollDialog(false);
       setSelectedCourseIds([]);
     } catch (error) {
       console.error("Error enrolling company:", error);
-      toast.error("Ошибка зачисления");
+      if (error instanceof EnrollmentPersistenceError) {
+        toast.error("База не подтвердила зачисление. Повторите операцию.");
+      } else {
+        toast.error("Ошибка зачисления");
+      }
     } finally {
       setIsEnrolling(false);
     }

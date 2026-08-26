@@ -78,11 +78,16 @@ serve(async (req) => {
     );
 
     // ── Проверяем курс ─────────────────────────────────────────
-    const { data: course } = await admin
+    const { data: course, error: courseError } = await admin
       .from("courses")
       .select("id, organization_id, is_published, landing_content, default_access_days")
       .eq("id", body.course_id)
       .maybeSingle();
+
+    if (courseError) {
+      console.error("course lookup err:", courseError);
+      return json({ error: "Не удалось проверить курс." }, 500);
+    }
 
     if (!course || !course.is_published) return json({ error: "Курс не найден или не опубликован" }, 404);
 
@@ -103,12 +108,17 @@ serve(async (req) => {
 
     // ── Existing profile in same org → idempotent, no new slot ──
     const normalizedEmail = body.email.trim().toLowerCase();
-    const { data: existingProfile } = await admin
+    const { data: existingProfile, error: existingProfileError } = await admin
       .from("profiles")
       .select("user_id, organization_id, archived_at")
       .eq("email", normalizedEmail)
       .eq("organization_id", course.organization_id)
       .maybeSingle();
+
+    if (existingProfileError) {
+      console.error("existing profile lookup err:", existingProfileError);
+      return json({ error: "Не удалось проверить существующую учётную запись." }, 500);
+    }
 
     // Do NOT reveal PII to anonymous callers: no login/password returned
     // for existing accounts; just proceed to enroll them silently.
@@ -116,6 +126,16 @@ serve(async (req) => {
     let createdNew = false;
     let login = "";
     let password = "";
+
+    const rollbackCreatedUser = async () => {
+      if (!createdNew) return;
+      try {
+        const { error: rollbackError } = await admin.auth.admin.deleteUser(userId);
+        if (rollbackError) console.error("enrollment rollback err:", rollbackError);
+      } catch (rollbackError) {
+        console.error("enrollment rollback exception:", rollbackError);
+      }
+    };
 
     if (existingProfile) {
       if (existingProfile.archived_at) {
@@ -190,28 +210,61 @@ serve(async (req) => {
     }
 
     // ── Зачисление ─────────────────────────────────────────────
-    const { data: existingEnroll } = await admin
+    const { data: existingEnroll, error: existingEnrollError } = await admin
       .from("enrollments")
       .select("id")
       .eq("user_id", userId)
       .eq("course_id", course.id)
       .maybeSingle();
 
+    if (existingEnrollError) {
+      console.error("existing enrollment lookup err:", existingEnrollError);
+      await rollbackCreatedUser();
+      return json({ error: "Не удалось проверить зачисление." }, 500);
+    }
+
     let enrolled = false;
     if (!existingEnroll) {
       const accessDays = course.default_access_days ?? null;
       const expiresAt = accessDays ? new Date(Date.now() + accessDays * 86_400_000).toISOString() : null;
-      const { error: enrErr } = await admin.from("enrollments").insert({
-        user_id: userId,
-        course_id: course.id,
-        status: "active",
-        progress: 0,
-        access_days: accessDays,
-        expires_at: expiresAt,
-      });
-      if (enrErr) {
+      const { data: insertedEnrollment, error: enrErr } = await admin
+        .from("enrollments")
+        .insert({
+          user_id: userId,
+          course_id: course.id,
+          status: "active",
+          progress: 0,
+          access_days: accessDays,
+          expires_at: expiresAt,
+        })
+        .select("id, user_id, course_id")
+        .maybeSingle();
+      if (
+        enrErr
+        || !insertedEnrollment
+        || insertedEnrollment.user_id !== userId
+        || insertedEnrollment.course_id !== course.id
+      ) {
         console.error("enroll err:", enrErr);
-        return json({ error: "Ошибка зачисления: " + enrErr.message }, 500);
+        await rollbackCreatedUser();
+        return json({ error: "Ошибка зачисления: база не подтвердила вставку." }, 500);
+      }
+
+      const { data: persistedEnrollment, error: verificationError } = await admin
+        .from("enrollments")
+        .select("id, user_id, course_id")
+        .eq("id", insertedEnrollment.id)
+        .eq("user_id", userId)
+        .eq("course_id", course.id)
+        .maybeSingle();
+      if (
+        verificationError
+        || !persistedEnrollment
+        || persistedEnrollment.id !== insertedEnrollment.id
+      ) {
+        console.error("enrollment verification err:", verificationError);
+        await rollbackCreatedUser();
+        return json({ error: "Ошибка зачисления: база не подтвердила сохранение." }, 500);
       }
       enrolled = true;
     }
@@ -304,7 +357,9 @@ serve(async (req) => {
       enrolled,
       email_sent: emailSent,
       message: createdNew
-        ? "Вы успешно зарегистрированы и зачислены на курс. Логин и пароль отправлены на почту."
+        ? emailSent
+          ? "Вы успешно зарегистрированы и зачислены на курс. Логин и пароль отправлены на почту."
+          : "Вы успешно зарегистрированы и зачислены на курс. Для получения данных для входа обратитесь к администратору школы."
         : "Вы зачислены на курс. Войдите под существующей учётной записью.",
     });
   } catch (e: any) {

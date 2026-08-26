@@ -7,6 +7,10 @@ import { Student, Course } from "@/types/shared";
 import { deleteStudent, fetchStudentsByUserIds } from "@/api/students";
 import { qk } from "@/lib/queryKeys";
 import { invalidateOrganizationEnrollmentData } from "@/lib/invalidateOrganizationQueries";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 
 /**
  * Phase 4A.2 — hard cap on bulk mutations that hit `.in(...)` directly.
@@ -166,15 +170,14 @@ export function useEnrollmentActions(
       }
 
       // ---------- Mutation ------------------------------------------------
-      const { error: insertError } = await supabase
-        .from("enrollments")
-        .insert(newUserIds.map(userId => ({
+      await insertEnrollmentsVerified(
+        newUserIds.map(userId => ({
           user_id: userId,
           course_id: courseId,
           status: "active",
           progress: 0,
-        })));
-      if (insertError) throw insertError;
+        })),
+      );
 
       // ---------- Enrollment order (post-mutation, separate error) --------
       try {
@@ -212,7 +215,13 @@ export function useEnrollmentActions(
       return true;
     } catch (error) {
       console.error("Error enrolling students:", error);
-      toast.error("Ошибка зачисления");
+      if (error instanceof EnrollmentPersistenceError) {
+        invalidateCourse(courseId);
+        onEnrollmentChanged();
+        toast.error("База не подтвердила зачисление. Список обновлён — повторите операцию.");
+      } else {
+        toast.error("Ошибка зачисления");
+      }
       return false;
     } finally {
       setIsEnrolling(false);

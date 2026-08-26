@@ -11,6 +11,10 @@ import {
   type CourseStudentPageRow,
   type AvailableStudentRow,
 } from "@/api/courseStudents";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 import { isTransientNetworkError, classifyDataError, type UserFacingErrorKind } from "@/utils/isTransientNetworkError";
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -338,8 +342,7 @@ export function useCourseDetails(
         progress: 0,
         ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
       }));
-      const { error } = await supabase.from("enrollments").insert(rows);
-      if (error) throw error;
+      await insertEnrollmentsVerified(rows);
       toast.success(
         `Зачислено ${newIds.length} ${
           newIds.length === 1 ? "ученик" : newIds.length < 5 ? "ученика" : "учеников"
@@ -350,7 +353,12 @@ export function useCourseDetails(
       invalidateStudents();
     } catch (error) {
       console.error("Error enrolling:", error);
-      toast.error("Ошибка зачисления");
+      if (error instanceof EnrollmentPersistenceError) {
+        invalidateStudents();
+        toast.error("База не подтвердила зачисление. Список обновлён — повторите операцию.");
+      } else {
+        toast.error("Ошибка зачисления");
+      }
     } finally {
       setIsEnrolling(false);
     }

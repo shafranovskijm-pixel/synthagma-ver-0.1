@@ -9,7 +9,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { insertEnrollmentsVerified } from "@/api/enrollments";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { toast } from "sonner";
 // xlsx is dynamically imported inside handlers to keep it out of the main bundle
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -27,6 +29,84 @@ interface ImportStudent {
   courses: string[];
   status: "pending" | "importing" | "success" | "error";
   error?: string;
+}
+
+interface CourseEnrollmentResult {
+  confirmedCourseIds: string[];
+  failures: Array<{ courseId: string; error: string }>;
+}
+
+async function ensureCourseEnrollments(
+  userId: string,
+  courseIds: string[],
+): Promise<CourseEnrollmentResult> {
+  const uniqueCourseIds = Array.from(new Set(courseIds.filter(Boolean)));
+  if (uniqueCourseIds.length === 0) {
+    return { confirmedCourseIds: [], failures: [] };
+  }
+
+  const { data: existingRows, error: lookupError } = await supabase
+    .from("enrollments")
+    .select("course_id")
+    .eq("user_id", userId)
+    .in("course_id", uniqueCourseIds);
+  if (lookupError) throw lookupError;
+
+  const confirmed = new Set(
+    (existingRows ?? [])
+      .map((row) => row.course_id)
+      .filter((courseId): courseId is string => uniqueCourseIds.includes(courseId)),
+  );
+  const failures: CourseEnrollmentResult["failures"] = [];
+
+  for (const courseId of uniqueCourseIds) {
+    if (confirmed.has(courseId)) continue;
+    try {
+      await insertEnrollmentsVerified([{
+        user_id: userId,
+        course_id: courseId,
+        status: "active",
+        progress: 0,
+        time_spent: 0,
+      }]);
+      confirmed.add(courseId);
+    } catch (error) {
+      failures.push({ courseId, error: getErrorMessage(error) });
+    }
+  }
+
+  return { confirmedCourseIds: Array.from(confirmed), failures };
+}
+
+async function insertPendingEnrollmentVerified({
+  organizationId,
+  userId,
+  courseTitle,
+}: {
+  organizationId: string;
+  userId: string;
+  courseTitle: string;
+}): Promise<void> {
+  const { data: inserted, error: insertError } = await supabase
+    .from("pending_enrollments")
+    .insert({
+      organization_id: organizationId,
+      user_id: userId,
+      course_title: courseTitle,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+  if (insertError) throw insertError;
+  if (!inserted?.id) throw new Error("Сервер не подтвердил отложенное зачисление");
+
+  const { data: persisted, error: verificationError } = await supabase
+    .from("pending_enrollments")
+    .select("id")
+    .eq("id", inserted.id)
+    .maybeSingle();
+  if (verificationError) throw verificationError;
+  if (!persisted?.id) throw new Error("Отложенное зачисление не найдено после записи");
 }
 
 export function StudentBulkImportDialog({ open, onOpenChange, organizationId, onImportComplete }: Props) {
@@ -83,12 +163,18 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
   const handleImport = async () => {
     setImporting(true);
     const updated = [...rows];
+    let registeredCount = 0;
 
     // Fetch existing courses for this org to match immediately
-    const { data: existingCourses } = await supabase
+    const { data: existingCourses, error: coursesError } = await supabase
       .from("courses")
       .select("id, title")
       .eq("organization_id", organizationId);
+    if (coursesError) {
+      setImporting(false);
+      toast.error(`Не удалось загрузить курсы: ${getErrorMessage(coursesError)}`);
+      return;
+    }
 
     const courseMap = new Map<string, string>();
     (existingCourses || []).forEach(c => courseMap.set(c.title.toLowerCase().trim(), c.id));
@@ -108,27 +194,50 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
 
         const userId = data?.userId || data?.user_id;
         if (!userId) throw new Error("Не получен user_id");
+        registeredCount += 1;
 
-        // Process courses
-        for (const courseTitle of updated[i].courses) {
+        const courseTitles = Array.from(new Set(
+          updated[i].courses.map((courseTitle) => courseTitle.trim()).filter(Boolean),
+        ));
+        const knownCourses: Array<{ courseId: string; courseTitle: string }> = [];
+        const pendingCourseTitles: string[] = [];
+        for (const courseTitle of courseTitles) {
           const courseId = courseMap.get(courseTitle.toLowerCase().trim());
-          
           if (courseId) {
-            // Course exists — enroll directly
-            await supabase.from("enrollments").upsert({
-              user_id: userId,
-              course_id: courseId,
-              status: "active",
-              progress: 0,
-              time_spent: 0 }, { onConflict: "user_id,course_id" });
+            knownCourses.push({ courseId, courseTitle });
           } else {
-            // Course doesn't exist yet — create pending enrollment
-            await supabase.from("pending_enrollments").insert({
-              organization_id: organizationId,
-              user_id: userId,
-              course_title: courseTitle.trim(),
-              status: "pending" });
+            pendingCourseTitles.push(courseTitle);
           }
+        }
+
+        let confirmedCourseCount = 0;
+        const courseFailures: string[] = [];
+
+        if (knownCourses.length > 0) {
+          const enrollmentResult = await ensureCourseEnrollments(
+            userId,
+            knownCourses.map(({ courseId }) => courseId),
+          );
+          confirmedCourseCount += enrollmentResult.confirmedCourseIds.length;
+          for (const failure of enrollmentResult.failures) {
+            const title = knownCourses.find(({ courseId }) => courseId === failure.courseId)?.courseTitle;
+            courseFailures.push(`${title || failure.courseId}: ${failure.error}`);
+          }
+        }
+
+        for (const courseTitle of pendingCourseTitles) {
+          try {
+            await insertPendingEnrollmentVerified({ organizationId, userId, courseTitle });
+            confirmedCourseCount += 1;
+          } catch (error) {
+            courseFailures.push(`${courseTitle}: ${getErrorMessage(error)}`);
+          }
+        }
+
+        if (courseFailures.length > 0) {
+          throw new Error(
+            `Подтверждено ${confirmedCourseCount} из ${courseTitles.length} курсов. ${courseFailures[0]}`,
+          );
         }
 
         updated[i].status = "success";
@@ -143,10 +252,16 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
 
     setImporting(false);
     setDone(true);
-    onImportComplete();
+    if (registeredCount > 0) onImportComplete();
 
     const successCount = updated.filter(r => r.status === "success").length;
-    toast.success(`Импорт завершён: ${successCount} из ${updated.length}`);
+    if (successCount === updated.length) {
+      toast.success(`Импорт завершён: ${successCount} из ${updated.length}`);
+    } else if (successCount === 0) {
+      toast.error(`Импорт завершён с ошибками: 0 из ${updated.length}`);
+    } else {
+      toast.warning(`Импорт завершён частично: ${successCount} из ${updated.length}`);
+    }
   };
 
   const handleClose = (v: boolean) => {

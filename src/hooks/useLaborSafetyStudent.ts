@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { openPrivateFile, extractStoragePath } from "@/utils/storageHelpers";
 import { toast } from "sonner";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 
 interface LaborSafetyRecord {
   id: string;
@@ -236,15 +240,28 @@ export function useLaborSafetyStudent(
     try {
       let enrolledCount = 0, alreadyCount = 0;
       for (const courseId of selectedCourseIds) {
-        const { data: existing } = await supabase.from("enrollments").select("id").eq("user_id", profile.user_id).eq("course_id", courseId).maybeSingle();
+        const { data: existing, error: existingError } = await supabase.from("enrollments").select("id").eq("user_id", profile.user_id).eq("course_id", courseId).maybeSingle();
+        if (existingError) throw existingError;
         if (existing) { alreadyCount++; continue; }
-        await supabase.from("enrollments").insert({ user_id: profile.user_id, course_id: courseId, status: "active" });
+        await insertEnrollmentsVerified([{
+          user_id: profile.user_id,
+          course_id: courseId,
+          status: "active",
+          progress: 0,
+        }]);
         enrolledCount++;
       }
       if (enrolledCount > 0) toast.success(`Зачислен на ${enrolledCount} курс(ов)`);
       if (alreadyCount > 0) toast.info(`Уже зачислен на ${alreadyCount} курс(ов)`);
       setIsAddingCourse(false); setSelectedCourseIds([]); loadData();
-    } catch { toast.error("Ошибка зачисления"); }
+    } catch (error) {
+      if (error instanceof EnrollmentPersistenceError) {
+        loadData();
+        toast.error("База не подтвердила зачисление. Список обновлён — повторите операцию.");
+      } else {
+        toast.error("Ошибка зачисления");
+      }
+    }
     finally { setIsEnrolling(false); }
   };
 

@@ -4,6 +4,10 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { generateStrongPassword, isValidEmail } from "@/utils/credentials";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 
 interface UseStudentManagementProps {
   organizationId: string | null;
@@ -86,18 +90,34 @@ export function useStudentManagement({
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (
+        firstCourseId
+        && data?.enrollment_created !== true
+        && data?.already_enrolled !== true
+      ) {
+        throw new Error("База не подтвердила зачисление на выбранный курс");
+      }
 
       // Enroll in remaining courses
       const remainingCourseIds = effectiveCourseIds.slice(1);
       if (remainingCourseIds.length > 0 && data.user_id) {
-        for (const cId of remainingCourseIds) {
-          const { error: enrollErr } = await supabase.from("enrollments").insert({
+        const { data: existingRemaining, error: existingRemainingError } = await supabase
+          .from("enrollments")
+          .select("course_id")
+          .eq("user_id", data.user_id)
+          .in("course_id", remainingCourseIds);
+        if (existingRemainingError) throw existingRemainingError;
+
+        const existingCourseIds = new Set(
+          (existingRemaining ?? []).map((row) => row.course_id),
+        );
+        for (const cId of remainingCourseIds.filter((id) => !existingCourseIds.has(id))) {
+          await insertEnrollmentsVerified([{
             user_id: data.user_id,
             course_id: cId,
             status: "active",
             progress: 0,
-          });
-          if (enrollErr) console.error("Enrollment error for course", cId, enrollErr);
+          }]);
         }
       }
 
@@ -139,7 +159,12 @@ export function useStudentManagement({
       return true;
     } catch (error: any) {
       console.error("Error creating student:", error);
-      toast.error(error.message || "Ошибка создания ученика");
+      if (error instanceof EnrollmentPersistenceError) {
+        onRefresh();
+        toast.error("Ученик создан, но база не подтвердила зачисление на все выбранные курсы. Проверьте его карточку.");
+      } else {
+        toast.error(error.message || "Ошибка создания ученика");
+      }
       return false;
     } finally {
       setIsCreatingStudent(false);

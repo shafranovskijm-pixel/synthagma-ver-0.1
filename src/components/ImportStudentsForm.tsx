@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { insertEnrollmentsVerified } from "@/api/enrollments";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +49,53 @@ interface ImportStudentsFormProps {
 }
 
 const nkey = (s: string) => s.trim().toLowerCase().replace(/ё/g, "е");
+
+interface CourseEnrollmentResult {
+  confirmedCourseIds: string[];
+  failures: Array<{ courseId: string; error: string }>;
+}
+
+async function ensureCourseEnrollments(
+  userId: string,
+  courseIds: string[],
+): Promise<CourseEnrollmentResult> {
+  const uniqueCourseIds = Array.from(new Set(courseIds.filter(Boolean)));
+  if (uniqueCourseIds.length === 0) {
+    return { confirmedCourseIds: [], failures: [] };
+  }
+
+  const { data: existingRows, error: lookupError } = await supabase
+    .from("enrollments")
+    .select("course_id")
+    .eq("user_id", userId)
+    .in("course_id", uniqueCourseIds);
+  if (lookupError) throw lookupError;
+
+  const confirmed = new Set(
+    (existingRows ?? [])
+      .map((row) => row.course_id)
+      .filter((courseId): courseId is string => uniqueCourseIds.includes(courseId)),
+  );
+  const failures: CourseEnrollmentResult["failures"] = [];
+
+  for (const courseId of uniqueCourseIds) {
+    if (confirmed.has(courseId)) continue;
+    try {
+      await insertEnrollmentsVerified([{
+        user_id: userId,
+        course_id: courseId,
+        status: "active",
+        progress: 0,
+        time_spent: 0,
+      }]);
+      confirmed.add(courseId);
+    } catch (error) {
+      failures.push({ courseId, error: getErrorMessage(error) });
+    }
+  }
+
+  return { confirmedCourseIds: Array.from(confirmed), failures };
+}
 
 export default function ImportStudentsForm({ organizationId, courses, companies, onSuccess }: ImportStudentsFormProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -201,6 +249,8 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       for (let i = 0; i < dedupedRows.length; i++) {
         const row = dedupedRows[i];
         setProgress({ current: i, total: dedupedRows.length });
+        let confirmedEnrollmentCount = 0;
+        let missingCourseTitles: string[] = [];
 
         try {
           if (!row.full_name) throw new Error("Пустое ФИО");
@@ -216,8 +266,10 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             const id = courseByName.get(nkey(title));
             if (id) courseIds.push(id); else missing.push(title);
           });
+          const requestedCourseIds = Array.from(new Set(courseIds));
+          missingCourseTitles = missing;
           const fallbackCourse = selectedCourseId || null;
-          const firstCourse = courseIds[0] || fallbackCourse;
+          const firstCourse = requestedCourseIds[0] || fallbackCourse;
 
           const { data, error } = await safeInvoke<any>("register-student", {
             body: {
@@ -266,11 +318,21 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             const userId: string | undefined = data?.user_id;
             const isExisting = !!data?.is_existing;
 
-            let enrolled = firstCourse ? 1 : 0;
-            if (userId && courseIds.length > 1) {
-              const extras = courseIds.slice(1).map(cid => ({ user_id: userId, course_id: cid, status: "active" }));
-              const { error: eErr } = await supabase.from("enrollments").upsert(extras, { onConflict: "user_id,course_id", ignoreDuplicates: true });
-              if (!eErr) enrolled += extras.length;
+            const coursesToConfirm = requestedCourseIds.length > 0
+              ? requestedCourseIds
+              : (firstCourse ? [firstCourse] : []);
+            if (coursesToConfirm.length > 0 && !userId) {
+              throw new Error("Не получен user_id для подтверждения зачисления");
+            }
+            if (userId && coursesToConfirm.length > 0) {
+              const enrollmentResult = await ensureCourseEnrollments(userId, coursesToConfirm);
+              confirmedEnrollmentCount = enrollmentResult.confirmedCourseIds.length;
+              if (enrollmentResult.failures.length > 0) {
+                throw new Error(
+                  `Подтверждено ${confirmedEnrollmentCount} из ${coursesToConfirm.length} курсов. `
+                  + `Ошибка зачисления: ${enrollmentResult.failures[0].error}`,
+                );
+              }
             }
 
             out.push({
@@ -281,7 +343,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
               password: data?.password || row.password,
               email: row.email,
               group_name: row.group_name,
-              courses_enrolled: enrolled,
+              courses_enrolled: confirmedEnrollmentCount,
               courses_missing: missing,
             });
           }
@@ -293,8 +355,8 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             login: row.login,
             email: row.email,
             group_name: row.group_name,
-            courses_enrolled: 0,
-            courses_missing: [],
+            courses_enrolled: confirmedEnrollmentCount,
+            courses_missing: missingCourseTitles,
             error: err?.message || "Ошибка создания",
           });
         }

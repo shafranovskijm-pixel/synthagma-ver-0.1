@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
+import { insertEnrollmentsVerified } from "@/api/enrollments";
 
 export interface LaborSafetyCourse {
   id: string;
@@ -426,7 +427,8 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
           const { data: registerData, error: registerError } = await supabase.functions.invoke("register-student", { body: { organization_id: organizationId, full_name: record.full_name } });
           if (registerError || !registerData?.user_id) { failCount++; continue; }
           userId = registerData.user_id;
-          await supabase.from("labor_safety_profiles").upsert({ user_id: userId, full_name: record.full_name, login: registerData.login, generated_password: registerData.generated_password, email: registerData.email, organization_id: organizationId, record_id: record.id }, { onConflict: 'record_id' });
+          const { error: linkError } = await supabase.from("labor_safety_profiles").upsert({ user_id: userId, full_name: record.full_name, login: registerData.login, generated_password: registerData.generated_password, email: registerData.email, organization_id: organizationId, record_id: record.id }, { onConflict: 'record_id' });
+          if (linkError) { failCount++; continue; }
            // Sync credentials to main profiles table as fallback
            if (registerData.login) {
              await supabase.from("profiles").update({ login: registerData.login, generated_password: registerData.generated_password }).eq("user_id", userId).is("login", null);
@@ -434,10 +436,21 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
         }
         if (!userId) { failCount++; continue; }
         for (const courseId of selectedCourseIds) {
-          const { data: existing } = await supabase.from("enrollments").select("id").eq("user_id", userId).eq("course_id", courseId).maybeSingle();
+          const { data: existing, error: existingError } = await supabase.from("enrollments").select("id").eq("user_id", userId).eq("course_id", courseId).maybeSingle();
+          if (existingError) { failCount++; continue; }
           if (existing) { alreadyEnrolledCount++; continue; }
-          const { error: enrollError } = await supabase.from("enrollments").insert({ user_id: userId, course_id: courseId, status: "active" });
-          if (enrollError) failCount++; else successCount++;
+          try {
+            await insertEnrollmentsVerified([{
+              user_id: userId,
+              course_id: courseId,
+              status: "active",
+              progress: 0,
+            }]);
+            successCount++;
+          } catch (enrollError) {
+            console.error("Error confirming labor safety enrollment:", enrollError);
+            failCount++;
+          }
         }
       }
       if (successCount > 0) toast.success(`Зачислено: ${successCount} записей`);

@@ -11,16 +11,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const REGISTER_STUDENT_REVISION = "enrollment-persistence-v1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Expose-Headers": "X-Sintagma-Register-Student-Revision",
 };
 
 const j = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "X-Sintagma-Register-Student-Revision": REGISTER_STUDENT_REVISION,
+    },
   });
 
 serve(async (req) => {
@@ -209,6 +216,34 @@ serve(async (req) => {
 
     if (!effectiveOrgId) {
       return j({ error: "Не удалось определить организацию для ученика" }, 400);
+    }
+
+    if (effectiveCourseId) {
+      const { data: effectiveCourse, error: coursePreflightError } = await supabaseAdmin
+        .from("courses")
+        .select("id, organization_id")
+        .eq("id", effectiveCourseId)
+        .maybeSingle();
+
+      if (coursePreflightError) {
+        console.error("[register-student] course preflight failed:", coursePreflightError);
+        return j({
+          error: "Не удалось проверить курс для зачисления.",
+          code: "COURSE_PREFLIGHT_FAILED",
+        }, 500);
+      }
+      if (!effectiveCourse) {
+        return j({
+          error: "Курс для зачисления не найден.",
+          code: "COURSE_NOT_FOUND",
+        }, 404);
+      }
+      if (effectiveCourse.organization_id !== effectiveOrgId) {
+        return j({
+          error: "Курс не принадлежит выбранной организации.",
+          code: "COURSE_ORGANIZATION_MISMATCH",
+        }, 403);
+      }
     }
 
     console.log(`[register-student] ${publicRegistration ? "public" : "auth"} → org ${effectiveOrgId}`);
@@ -429,19 +464,65 @@ serve(async (req) => {
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
     if (effectiveCourseId) {
-      const { data: existingEnrollment } = await supabaseAdmin
+      const { data: existingEnrollment, error: existingEnrollmentError } = await supabaseAdmin
         .from("enrollments")
         .select("id")
         .eq("user_id", userId)
         .eq("course_id", effectiveCourseId)
         .maybeSingle();
-      if (existingEnrollment) {
+      if (existingEnrollmentError) {
+        console.error("[register-student] enrollment preflight failed:", existingEnrollmentError);
+        if (!isExisting && userId) {
+          try { await supabaseAdmin.auth.admin.deleteUser(userId); } catch {}
+        }
+        return j({
+          error: "Не удалось проверить зачисление. Регистрация не завершена — обновите список учеников и повторите операцию.",
+          code: "ENROLLMENT_PREFLIGHT_FAILED",
+        }, 500);
+      } else if (existingEnrollment) {
         alreadyEnrolled = true;
       } else {
-        const { error: enrollError } = await supabaseAdmin
+        const { data: insertedEnrollment, error: enrollError } = await supabaseAdmin
           .from("enrollments")
-          .insert({ user_id: userId, course_id: effectiveCourseId, status: "active", progress: 0 });
-        if (!enrollError) enrollmentCreated = true;
+          .insert({ user_id: userId, course_id: effectiveCourseId, status: "active", progress: 0 })
+          .select("id, user_id, course_id")
+          .maybeSingle();
+
+        let verifiedEnrollment: { id: string } | null = null;
+        let verifyError: any = null;
+        if (!enrollError && insertedEnrollment?.id) {
+          const verifyResult = await supabaseAdmin
+            .from("enrollments")
+            .select("id")
+            .eq("id", insertedEnrollment.id)
+            .eq("user_id", userId)
+            .eq("course_id", effectiveCourseId)
+            .maybeSingle();
+          verifiedEnrollment = verifyResult.data;
+          verifyError = verifyResult.error;
+        }
+
+        if (enrollError || verifyError || !insertedEnrollment?.id || !verifiedEnrollment?.id) {
+          console.error("[register-student] enrollment was not confirmed:", {
+            enrollError,
+            verifyError,
+            insertedId: insertedEnrollment?.id || null,
+            verifiedId: verifiedEnrollment?.id || null,
+          });
+          // Keep student creation + first enrollment atomic for a new user.
+          // Existing profiles are never deleted; their failed enrollment is
+          // reported explicitly so the UI cannot emit a false success.
+          if (!isExisting && userId) {
+            try { await supabaseAdmin.auth.admin.deleteUser(userId); } catch {}
+          }
+          return j({
+            error: isExisting
+              ? "Ученик найден, но база не подтвердила зачисление на курс. Повторите операцию."
+              : "Не удалось подтвердить зачисление. Регистрация отменена — обновите список учеников и повторите операцию.",
+            code: "ENROLLMENT_NOT_CONFIRMED",
+          }, 409);
+        }
+        enrollmentCreated = true;
       }
     }
 
@@ -483,6 +564,7 @@ serve(async (req) => {
       user_id: userId,
       is_existing: isExisting,
       enrollment_created: enrollmentCreated,
+      already_enrolled: alreadyEnrolled,
       login: generatedLogin || undefined,
       password: returnPassword,
       message,

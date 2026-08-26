@@ -13,6 +13,10 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import {
+  EnrollmentPersistenceError,
+  insertEnrollmentsVerified,
+} from "@/api/enrollments";
 
 interface EnrollmentRequest {
   id: string;
@@ -114,13 +118,12 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
       const groupId = selectedGroupId[request.id];
 
       // Create enrollment
-      const { error: enrollError } = await supabase.from("enrollments").insert({
+      await insertEnrollmentsVerified([{
         user_id: request.user_id,
         course_id: request.course_id,
         status: "active",
         progress: 0,
-        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) });
-      if (enrollError) throw enrollError;
+        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) }]);
 
       // If a group was selected, assign student to group
       if (groupId) {
@@ -171,6 +174,10 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
       loadRequests();
       onRefreshStudents?.();
     } catch (e) {
+      if (e instanceof EnrollmentPersistenceError) {
+        loadRequests();
+        onRefreshStudents?.();
+      }
       toast.error("Ошибка одобрения заявки", { description: getErrorMessage(e) });
     } finally {
       setProcessingId(null);

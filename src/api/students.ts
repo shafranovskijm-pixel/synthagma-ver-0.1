@@ -3,6 +3,7 @@ import { fetchAllRows } from "@/utils/retryFetch";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { logStudentDeletion } from "@/utils/logStudentDeletion";
 import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
+import { insertEnrollmentsVerified } from "@/api/enrollments";
 
 // ============= Students API =============
 
@@ -299,34 +300,36 @@ export async function createStudent(params: {
 
 export async function enrollStudent(userId: string, courseId: string): Promise<{ success: boolean; enrollmentId?: string; error?: string }> {
   // Check if already enrolled
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("enrollments")
     .select("id")
     .eq("user_id", userId)
     .eq("course_id", courseId)
-    .single();
+    .maybeSingle();
+
+  if (existingError) {
+    return { success: false, error: existingError.message };
+  }
 
   if (existing) {
     return { success: false, error: "Ученик уже зачислен на этот курс" };
   }
 
-  const { data, error } = await supabase
-    .from("enrollments")
-    .insert({
+  try {
+    const [confirmed] = await insertEnrollmentsVerified([{
       user_id: userId,
       course_id: courseId,
       status: "active",
       progress: 0,
       time_spent: 0
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    return { success: false, error: error.message };
+    }]);
+    return { success: true, enrollmentId: confirmed.id };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
-
-  return { success: true, enrollmentId: data.id };
 }
 
 export async function unenrollStudent(enrollmentId: string): Promise<boolean> {
