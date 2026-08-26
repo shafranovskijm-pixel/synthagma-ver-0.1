@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { groupFolderPath } from "@/lib/groups/groupContext";
-import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck, AlertTriangle, RefreshCw } from "lucide-react";
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import { FRDOExportDialog } from "@/components/organization/FRDOExportDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { fetchOrganizationStudentEnrollments } from "@/api/students";
 
 const TABS = [
   { key: "profile", label: "Личное дело", icon: User },
@@ -79,6 +80,9 @@ export function StudentDetailsTab() {
   const [student, setStudent] = useState<StudentData | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [enrollmentsError, setEnrollmentsError] = useState<string | null>(null);
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [sendDocOpen, setSendDocOpen] = useState(false);
   const loadSequenceRef = useRef(0);
 
@@ -97,20 +101,24 @@ export function StudentDetailsTab() {
       setEnrollments([]);
       setLoading(true);
     }
+    setProfileLoadError(null);
+    setEnrollmentsError(null);
+    setEnrollmentsLoading(true);
 
     try {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id, company_id, companies(name)")
+        .select("user_id, full_name, email, login, generated_password, last_visit_at, archived_at, organization_id, company_id, companies(name)")
         .eq("user_id", studentId)
         .eq("organization_id", organizationId)
         .maybeSingle();
 
       if (!isCurrentRequest()) return;
-      if (profileError || !profile) {
-        if (profileError) console.warn("[StudentDetailsTab] profile lookup failed:", profileError);
+      if (profileError) throw profileError;
+      if (!profile) {
         setStudent(null);
         setEnrollments([]);
+        setEnrollmentsLoading(false);
         return;
       }
 
@@ -146,42 +154,34 @@ export function StudentDetailsTab() {
         last_visit_at: profile.last_visit_at,
       });
 
-      const { data: orgCourses } = await supabase
-        .from("courses")
-        .select("id")
-        .eq("organization_id", organizationId);
-
-      if (!isCurrentRequest()) return;
-      const courseIds = (orgCourses || []).map(c => c.id);
-
-      if (courseIds.length > 0) {
-        const { data: enrs } = await supabase
-          .from("enrollments")
-          .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
-          .eq("user_id", profile.user_id)
-          .in("course_id", courseIds);
+      try {
+        const confirmedEnrollments = await fetchOrganizationStudentEnrollments({
+          organizationId,
+          userId: profile.user_id,
+          login: profile.login,
+          email: profile.email,
+          fullName: profile.full_name,
+          archiveMode: profile.archived_at ? "archive" : "active",
+        });
 
         if (!isCurrentRequest()) return;
-        setEnrollments((enrs || []).map((e: any) => ({
-          id: e.id,
-          course_id: e.course_id,
-          course_title: e.courses?.title || "Без названия",
-          progress: e.progress || 0,
-          status: e.status || "active",
-          started_at: e.started_at,
-          completed_at: e.completed_at,
-          time_spent: e.time_spent || 0,
-          access_days: e.access_days,
-          expires_at: e.expires_at,
-        })));
-      } else {
-        setEnrollments([]);
+        setEnrollments(confirmedEnrollments);
+      } catch (error) {
+        if (!isCurrentRequest()) return;
+        console.error("[StudentDetailsTab] enrollment load failed:", error);
+        setEnrollmentsError(
+          "Не удалось подтвердить список курсов ученика. Мы не показываем 0, чтобы не скрыть реальные зачисления.",
+        );
+      } finally {
+        if (isCurrentRequest()) setEnrollmentsLoading(false);
       }
     } catch (error) {
       if (!isCurrentRequest()) return;
-      console.error("[StudentDetailsTab] student load failed:", error);
-      setStudent(null);
-      setEnrollments([]);
+      console.error("[StudentDetailsTab] profile load failed:", error);
+      setProfileLoadError(
+        "Не удалось подтвердить профиль ученика. Проверьте соединение и повторите загрузку.",
+      );
+      setEnrollmentsLoading(false);
     } finally {
       if (showSpinner && isCurrentRequest()) setLoading(false);
     }
@@ -215,6 +215,24 @@ export function StudentDetailsTab() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
+  }
+
+  if (profileLoadError) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
+          <ArrowLeft className="w-4 h-4" /> Назад к ученикам
+        </Button>
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+          <p className="font-semibold text-foreground">Не удалось загрузить профиль ученика</p>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{profileLoadError}</p>
+          <Button variant="outline" className="mt-4 gap-2 rounded-xl" onClick={() => void loadStudent(true)}>
+            <RefreshCw className="h-4 w-4" /> Повторить
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (!student) {
@@ -360,9 +378,31 @@ export function StudentDetailsTab() {
             <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
           ) : (
             <>
-              {h.activeTab === "profile" && <ProfileTab student={student} enrollmentsCount={enrollments.length} h={h} orgPlan={orgPlan} />}
+              {h.activeTab === "profile" && (
+                <ProfileTab
+                  student={student}
+                  enrollmentsCount={enrollmentsError || enrollmentsLoading ? null : enrollments.length}
+                  h={h}
+                  orgPlan={orgPlan}
+                />
+              )}
               {h.activeTab === "identification" && <IdentificationTab h={h} />}
-              {h.activeTab === "courses" && <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />}
+              {h.activeTab === "courses" && (
+                enrollmentsLoading ? (
+                  <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
+                ) : enrollmentsError ? (
+                  <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+                    <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+                    <p className="font-semibold text-foreground">Не удалось подтвердить список курсов</p>
+                    <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{enrollmentsError}</p>
+                    <Button variant="outline" className="mt-4 gap-2 rounded-xl" onClick={() => void loadStudent(false)}>
+                      <RefreshCw className="h-4 w-4" /> Повторить
+                    </Button>
+                  </div>
+                ) : (
+                  <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />
+                )
+              )}
               {h.activeTab === "documents" && <DocumentsTab h={h} />}
               {h.activeTab === "activity" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />}
               {h.activeTab === "testing" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} defaultSubTab="tests" onlySubTab />}

@@ -453,6 +453,7 @@ export interface FetchOrgStudentsPageInput {
   status?: string | null;
   docsFilter?: string | null;
   archiveMode?: "active" | "archive";
+  strictEnrollments?: boolean;
 }
 
 function toStudentFromServerRow(r: any): Student {
@@ -514,6 +515,9 @@ export async function fetchOrganizationStudentsPage(
   if (error) throw error;
 
   const list = (data ?? []) as any[];
+  if (input.strictEnrollments && list.some(row => !Array.isArray(row?.enrollments))) {
+    throw new Error("Некорректный ответ сервера: список зачислений не подтверждён");
+  }
   const first = list[0];
   const totalFiltered = first ? Number(first.total_count ?? 0) : 0;
   const activeTotal = first ? Number(first.active_count ?? 0) : 0;
@@ -521,6 +525,101 @@ export async function fetchOrganizationStudentsPage(
   const rows = list.map(toStudentFromServerRow);
   const nextOffset = offset + rows.length < totalFiltered ? offset + rows.length : null;
   return { rows, totalFiltered, activeTotal, archivedTotal, nextOffset };
+}
+
+export interface FetchOrganizationStudentEnrollmentsInput {
+  organizationId: string;
+  userId: string;
+  login?: string | null;
+  email?: string | null;
+  fullName?: string | null;
+  archiveMode?: "active" | "archive";
+}
+
+/**
+ * Load one student's enrollment list from the same tenant-scoped
+ * SECURITY DEFINER RPC that powers the organization student table.
+ *
+ * The RPC has no exact `p_user_id` argument, so we narrow it with the
+ * profile's login (then email/full name), page through every server-filtered
+ * match and still require an exact user_id. This covers logins containing
+ * ILIKE wildcard characters and duplicate names without turning a first-page
+ * miss into a false zero.
+ *
+ * Access metadata is fetched only by enrollment ids already returned by the
+ * organization-scoped RPC. Missing/hidden metadata is rejected instead of
+ * being rendered as an unlimited-access enrollment.
+ */
+export async function fetchOrganizationStudentEnrollments(
+  input: FetchOrganizationStudentEnrollmentsInput,
+): Promise<StudentEnrollment[]> {
+  const lookupCandidates = Array.from(new Set(
+    [input.login, input.email, input.fullName]
+      .map(value => value?.trim() ?? "")
+      .filter(Boolean),
+  ));
+
+  if (lookupCandidates.length === 0) {
+    throw new Error("У профиля нет логина, email или ФИО для точного поиска зачислений");
+  }
+
+  let exactStudent: Student | undefined;
+  for (const search of lookupCandidates) {
+    let offset = 0;
+    do {
+      const page = await fetchOrganizationStudentsPage({
+        organizationId: input.organizationId,
+        limit: 100,
+        offset,
+        search,
+        archiveMode: input.archiveMode ?? "active",
+        strictEnrollments: true,
+      });
+      exactStudent = page.rows.find(student => student.user_id === input.userId);
+      if (exactStudent) break;
+      if (page.nextOffset === null) break;
+      offset = page.nextOffset;
+    } while (true);
+
+    if (exactStudent) break;
+  }
+
+  if (!exactStudent) {
+    throw new Error("Точный профиль ученика не найден в списке организации");
+  }
+
+  const enrollments = exactStudent.enrollments ?? [];
+  if (enrollments.length === 0) return [];
+
+  const enrollmentIds = Array.from(new Set(enrollments.map(enrollment => enrollment.id)));
+  const { data: accessRows, error: accessError } = await supabase
+    .from("enrollments")
+    .select("id, access_days, expires_at")
+    .in("id", enrollmentIds);
+  if (accessError) throw accessError;
+
+  const accessById = new Map(
+    ((accessRows ?? []) as Array<{
+      id: string;
+      access_days: number | null;
+      expires_at: string | null;
+    }>).map(row => [row.id, row]),
+  );
+
+  if (accessById.size !== enrollmentIds.length) {
+    throw new Error(
+      `Не удалось подтвердить параметры доступа для всех зачислений: ожидалось ${enrollmentIds.length}, получено ${accessById.size}`,
+    );
+  }
+
+  return enrollments.map(enrollment => {
+    const access = accessById.get(enrollment.id)!;
+    return {
+      ...enrollment,
+      access_days: access.access_days,
+      expires_at: access.expires_at,
+    };
+  });
 }
 
 export interface OrgStudentsCounts {

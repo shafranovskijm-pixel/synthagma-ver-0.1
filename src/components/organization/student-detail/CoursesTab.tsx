@@ -33,6 +33,12 @@ interface StudentGroup {
   color: string | null;
 }
 
+export function formatEnrollmentAccessLabel(accessDays: number | null | undefined): string {
+  if (accessDays === undefined) return "Доступ не подтверждён";
+  if (accessDays === null) return "Доступ: без ограничений";
+  return `Доступ: ${accessDays} дн.`;
+}
+
 export function CoursesTab({ enrollments, h, organizationId, studentUserId }: CoursesTabProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
@@ -241,7 +247,7 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
                         title="Ограничить доступ по дням"
                       >
                         <Clock className="w-3.5 h-3.5" />
-                        {e.access_days ? `Доступ: ${e.access_days} дн.` : "Доступ: безлимитный"}
+                        {formatEnrollmentAccessLabel(e.access_days)}
                       </button>
                     )}
                   </div>

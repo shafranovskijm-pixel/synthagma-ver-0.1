@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +18,9 @@ const testState = vi.hoisted(() => ({
   profileResponses: new Map<string, Promise<{ data: any; error: any }>>(),
   profileLookups: [] as Array<Record<string, string>>,
   decryptCalls: [] as string[],
+  activeTab: "profile",
+  studentPageError: null as Error | null,
+  studentPageCalls: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -49,7 +52,7 @@ vi.mock("@/lib/invalidateOrganizationQueries", () => ({
 
 vi.mock("@/hooks/useStudentDetailCard", () => ({
   useStudentDetailCardLogic: () => ({
-    activeTab: "profile",
+    activeTab: testState.activeTab,
     setActiveTab: vi.fn(),
     isLoading: false,
     previewDoc: null,
@@ -62,9 +65,18 @@ vi.mock("@/hooks/useStudentDetailCard", () => ({
   }),
 }));
 
-vi.mock("@/components/organization/student-detail/ProfileTab", () => ({ ProfileTab: () => null }));
+vi.mock("@/components/organization/student-detail/ProfileTab", () => ({
+  ProfileTab: ({ enrollmentsCount }: { enrollmentsCount: number | null }) => (
+    <div>
+      <div>Личное дело доступно</div>
+      <div>Курсы: {enrollmentsCount === null ? "Не подтверждено" : enrollmentsCount}</div>
+    </div>
+  ),
+}));
 vi.mock("@/components/organization/student-detail/IdentificationTab", () => ({ IdentificationTab: () => null }));
-vi.mock("@/components/organization/student-detail/CoursesTab", () => ({ CoursesTab: () => null }));
+vi.mock("@/components/organization/student-detail/CoursesTab", () => ({
+  CoursesTab: ({ enrollments }: { enrollments: unknown[] }) => <div>Курсы ({enrollments.length})</div>,
+}));
 vi.mock("@/components/organization/student-detail/DocumentsTab", () => ({ DocumentsTab: () => null }));
 vi.mock("@/components/organization/student-detail/ActivityTab", () => ({ ActivityTab: () => null }));
 vi.mock("@/components/organization/student-detail/ChatTab", () => ({ ChatTab: () => null }));
@@ -96,18 +108,9 @@ vi.mock("@/integrations/supabase/client", () => ({
         return query;
       }
 
-      if (table === "courses") {
-        const query = {
-          select: () => query,
-          eq: () => Promise.resolve({ data: [], error: null }),
-        };
-        return query;
-      }
-
       if (table === "enrollments") {
         const query = {
           select: () => query,
-          eq: () => query,
           in: () => Promise.resolve({ data: [], error: null }),
         };
         return query;
@@ -115,9 +118,37 @@ vi.mock("@/integrations/supabase/client", () => ({
 
       throw new Error(`Unexpected table: ${table}`);
     },
-    rpc: (_name: string, args: { p_user_id: string }) => {
-      testState.decryptCalls.push(args.p_user_id);
-      return Promise.resolve({ data: `password-${args.p_user_id}`, error: null });
+    rpc: (name: string, args: Record<string, any>) => {
+      if (name === "get_decrypted_student_password") {
+        testState.decryptCalls.push(args.p_user_id);
+        return Promise.resolve({ data: `password-${args.p_user_id}`, error: null });
+      }
+      if (name === "get_organization_students_page") {
+        testState.studentPageCalls.push(args);
+        if (testState.studentPageError) {
+          return Promise.resolve({ data: null, error: testState.studentPageError });
+        }
+        const id = String(args.p_search);
+        return Promise.resolve({
+          data: [{
+            id: `profile-${id}`,
+            user_id: id,
+            full_name: `Student ${id}`,
+            email: `${id}@example.test`,
+            login: id,
+            archived_at: null,
+            progress: 0,
+            status: null,
+            last_activity: null,
+            enrollments: [],
+            total_count: 1,
+            active_count: 1,
+            archived_count: 0,
+          }],
+          error: null,
+        });
+      }
+      throw new Error(`Unexpected RPC: ${name}`);
     },
   },
 }));
@@ -134,6 +165,7 @@ const profile = (id: string, name: string) => ({
   organization_id: "org-1",
   company_id: null,
   companies: null,
+  archived_at: null,
 });
 
 const renderDetails = () => render(
@@ -148,6 +180,9 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.profileResponses.clear();
     testState.profileLookups.length = 0;
     testState.decryptCalls.length = 0;
+    testState.activeTab = "profile";
+    testState.studentPageError = null;
+    testState.studentPageCalls.length = 0;
   });
 
   it("keeps student B when the slower student A lookup resolves last", async () => {
@@ -204,5 +239,48 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
       organization_id: "org-1",
     });
     expect(testState.decryptCalls).toEqual([]);
+  });
+
+  it("keeps the profile available and does not report zero when the enrollment RPC fails", async () => {
+    testState.activeTab = "profile";
+    testState.studentPageError = new Error("database unavailable");
+    testState.profileResponses.set(
+      "student-a",
+      Promise.resolve({ data: profile("student-a", "Student A"), error: null }),
+    );
+
+    renderDetails();
+
+    expect(await screen.findByText("Личное дело доступно")).toBeInTheDocument();
+    expect(screen.getByText("Курсы: Не подтверждено")).toBeInTheDocument();
+    expect(screen.queryByText("Курсы: 0")).not.toBeInTheDocument();
+    expect(screen.queryByText("Не удалось загрузить профиль ученика")).not.toBeInTheDocument();
+  });
+
+  it("shows an inline retry state instead of zero courses when the canonical enrollment RPC fails", async () => {
+    testState.activeTab = "courses";
+    testState.studentPageError = new Error("database unavailable");
+    testState.profileResponses.set(
+      "student-a",
+      Promise.resolve({ data: profile("student-a", "Student A"), error: null }),
+    );
+
+    renderDetails();
+
+    expect(await screen.findByText("Не удалось подтвердить список курсов")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Повторить" })).toBeInTheDocument();
+    expect(screen.queryByText("Курсы (0)")).not.toBeInTheDocument();
+
+    testState.studentPageError = null;
+    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+
+    expect(await screen.findByText("Курсы (0)")).toBeInTheDocument();
+    expect(screen.queryByText("Не удалось подтвердить список курсов")).not.toBeInTheDocument();
+    expect(testState.studentPageCalls.at(-1)).toEqual(expect.objectContaining({
+      p_organization_id: "org-1",
+      p_search: "student-a",
+      p_limit: 100,
+      p_offset: 0,
+    }));
   });
 });

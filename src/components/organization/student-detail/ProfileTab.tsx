@@ -26,7 +26,7 @@ interface ProfileTabProps {
     generated_password?: string | null;
     user_id?: string;
   };
-  enrollmentsCount: number;
+  enrollmentsCount: number | null;
   h: any;
   orgPlan?: string;
 }
@@ -120,7 +120,9 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
         )}
         <div className="p-4 rounded-xl bg-muted/50">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1"><GraduationCap className="w-4 h-4" />Курсы</div>
-          <div className="font-medium">{enrollmentsCount}</div>
+          <div className={`font-medium ${enrollmentsCount === null ? "text-amber-700" : ""}`}>
+            {enrollmentsCount === null ? "Не подтверждено" : enrollmentsCount}
+          </div>
         </div>
       </div>
 
