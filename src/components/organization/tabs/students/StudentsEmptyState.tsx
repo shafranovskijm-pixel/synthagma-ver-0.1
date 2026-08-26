@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Key, Mail, BookOpen, CheckCircle2, FileCheck, FolderOpen, FileSpreadsheet, FileText, MessageCircle, Plus, Eye } from "lucide-react";
+import { GraduationCap, Key, Mail, BookOpen, CheckCircle2, FileCheck, FolderOpen, FileSpreadsheet, FileText, MessageCircle, Plus } from "lucide-react";
 
 interface StudentsEmptyStateProps {
   onAddStudent?: () => void;
@@ -16,9 +16,6 @@ export function StudentsEmptyState({ onAddStudent, onImportStudents, onNavigateT
         </div>
         <h2 className="text-2xl font-bold text-foreground">Управляйте обучением эффективно</h2>
         <p className="text-muted-foreground mt-2 max-w-lg mx-auto">Добавьте учеников и начните отслеживать их прогресс, документы и результаты</p>
-        <Button variant="outline" className="rounded-xl gap-2 mt-4" onClick={() => { window.open('/demo-student-login', '_blank'); }}>
-          <Eye className="w-4 h-4" />Посмотрите, как выглядит кабинет ученика
-        </Button>
       </div>
       <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         <EmptyCard title="Добавить ученика" description="Создайте профиль ученика с автоматической генерацией логина и пароля для входа в систему." icon={Plus} color="primary" items={[{ icon: Key, text: "Автогенерация учётных данных" }, { icon: Mail, text: "Отправка доступа на почту" }, { icon: GraduationCap, text: "Зачисление на курсы" }]} action={onAddStudent && <Button onClick={onAddStudent} className="w-full rounded-xl gap-2 btn-gradient mt-2"><Plus className="w-4 h-4" />Добавить ученика</Button>} />

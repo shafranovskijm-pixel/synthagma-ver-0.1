@@ -231,10 +231,12 @@ export default function StudentDashboard() {
   const isAdminViewFromStorage = (() => {
     try { return !!localStorage.getItem('adminViewAsStudent'); } catch { return false; }
   })();
-  const isDemoStudent = (() => {
-    try { return !!localStorage.getItem('demoStudentReturn'); } catch { return false; }
-  })();
   const isPreviewFromStorage = false;
+
+  useEffect(() => {
+    // Remove refresh/access tokens left by the retired shared demo-account flow.
+    try { localStorage.removeItem("demoStudentReturn"); } catch { return; }
+  }, []);
 
   const {
     user, navigate, theme, setTheme,
@@ -375,7 +377,7 @@ export default function StudentDashboard() {
           <Button variant="secondary" size="sm" onClick={() => {
             const raw = localStorage.getItem('adminViewAsStudent');
             let returnPath = '/admin';
-            try { const d = JSON.parse(raw || '{}'); if (d.orgReturn) returnPath = d.orgReturn; } catch {}
+            try { const d = JSON.parse(raw || '{}'); if (d.orgReturn) returnPath = d.orgReturn; } catch { returnPath = '/admin'; }
             localStorage.removeItem('adminViewAsStudent');
             navigate(returnPath);
           }} className="gap-1">
@@ -383,52 +385,12 @@ export default function StudentDashboard() {
           </Button>
         </div>
       )}
-      {isPreviewMode && !isAdminView && !isDemoStudent && (
+      {isPreviewMode && !isAdminView && (
         <div className="fixed top-0 inset-x-0 bg-primary text-primary-foreground py-2 px-4 text-center text-sm z-50 flex items-center justify-center gap-2">
           <Eye className="w-4 h-4" />Режим предпросмотра
           <Button size="sm" variant="secondary" className="ml-4 h-7" onClick={() => window.close()}>Закрыть</Button>
         </div>
       )}
-      {isDemoStudent && !isAdminView && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4" />
-            <span className="text-sm font-medium">Демо-кабинет ученика</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" className="gap-1" onClick={async () => {
-              try {
-                const raw = localStorage.getItem('demoStudentReturn');
-                const data = raw ? JSON.parse(raw) : null;
-                localStorage.removeItem('demoStudentReturn');
-                if (data?.access_token && data?.refresh_token) {
-                  await supabase.auth.signOut();
-                  const { error } = await supabase.auth.setSession({
-                    access_token: data.access_token,
-                    refresh_token: data.refresh_token,
-                  });
-                  if (error) throw error;
-                  window.location.href = data.returnPath || '/organization';
-                } else {
-                  navigate('/auth');
-                }
-              } catch (e) {
-                console.error('Return to org failed', e);
-                toast.error('Не удалось вернуться. Войдите заново.');
-                navigate('/auth');
-              }
-            }}>← Назад в организацию</Button>
-            <Button variant="secondary" size="sm" className="gap-1" onClick={async () => {
-              localStorage.removeItem('demoStudentReturn');
-              await supabase.auth.signOut();
-              navigate('/auth');
-            }}>
-              <X className="w-3 h-3" />Выйти
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Desktop sidebar — hidden on mobile */}
       <div className="hidden md:block">
         <StudentSidebar
@@ -443,7 +405,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Main content */}
-      <div className={cn("flex-1 flex flex-col min-w-0", (isPreviewMode || isAdminView || isDemoStudent) && "md:mt-10")}>
+      <div className={cn("flex-1 flex flex-col min-w-0", (isPreviewMode || isAdminView) && "md:mt-10")}>
         {/* Top header */}
         <StudentHeader
           fullName={profile?.full_name || null}

@@ -4,7 +4,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
@@ -19,19 +19,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
-
-
-const DEMO_ACCOUNTS = {
-  admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
-  organization: { email: "org@demo.sigma", password: "demo123456", role: "organization", label: "Организация", icon: Building2, color: "bg-sigma-blue" },
-  student: { email: "student@demo.sigma", password: "demo123456", role: "student", label: "Слушатель", icon: GraduationCap, color: "bg-sigma-green" } };
-
 const Login = () => {
   const [email, setEmail] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"email" | "login">("email");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -50,7 +42,7 @@ const Login = () => {
       if (u) { setLogin(u); setLoginMode("login"); }
       if (p) setPassword(p);
       // Clean URL so credentials don't linger in history.
-      try { window.history.replaceState({}, "", window.location.pathname); } catch {}
+      try { window.history.replaceState({}, "", window.location.pathname); } catch { return; }
     }
   }, [searchParams]);
   useEffect(() => {
@@ -165,89 +157,6 @@ const Login = () => {
     }
     
     setIsResetting(false);
-  };
-
-  const handleDemoLogin = async (accountType: keyof typeof DEMO_ACCOUNTS) => {
-    const account = DEMO_ACCOUNTS[accountType];
-    setDemoLoading(accountType);
-
-    // Try to sign in first
-    let { error } = await signIn(account.email, account.password);
-
-    // If user doesn't exist, create them
-    if (error?.message === "Invalid login credentials") {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: account.email,
-        password: account.password,
-        options: {
-          data: {
-            full_name: account.label + " (Демо)" }
-        }
-      });
-
-      if (signUpError) {
-        toast.error("Ошибка", { description: "Не удалось создать демо-аккаунт" });
-        setDemoLoading(null);
-        return;
-      }
-
-      // If organization, create org and upgrade role using secure RPC
-      if (accountType === "organization" && signUpData.user) {
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .insert({
-            name: "Демо Организация",
-            email: account.email })
-          .select()
-          .single();
-
-        if (orgData) {
-          await supabase
-            .from("profiles")
-            .update({ organization_id: orgData.id })
-            .eq("user_id", signUpData.user.id);
-
-          // Use secure RPC function to upgrade role
-          await supabase.rpc('upgrade_to_organization_role', {
-            p_user_id: signUpData.user.id,
-            p_organization_id: orgData.id
-          });
-        }
-      }
-
-      // For admin demo accounts, the admin role must be assigned via database seeding
-      // or by an existing admin using admin_update_user_role RPC
-      // Client-side admin role creation is intentionally blocked for security
-      if (accountType === "admin" && signUpData.user) {
-        // Note: Admin role assignment requires existing admin privileges
-        // Demo admin accounts should be pre-seeded in the database
-      }
-
-      // Sign in with new account
-      const { error: loginError } = await signIn(account.email, account.password);
-      if (loginError) {
-        toast.error("Ошибка", { description: "Не удалось войти" });
-        setDemoLoading(null);
-        return;
-      }
-    } else if (error) {
-      toast.error("Ошибка входа", { description: getErrorMessage(error) });
-      setDemoLoading(null);
-      return;
-    }
-
-    toast.success("Добро пожаловать!", { description: `Вы вошли как ${account.label}` });
-
-    // Navigate based on role
-    if (accountType === "admin") {
-      navigate("/admin");
-    } else if (accountType === "organization") {
-      navigate("/organization");
-    } else {
-      navigate("/student");
-    }
-
-    setDemoLoading(null);
   };
 
   if (loading) {
