@@ -102,6 +102,12 @@ async function purgeAllCaches() {
   }
 })();
 
+try {
+  localStorage.removeItem("demoStudentReturn");
+} catch {
+  // Storage can be unavailable in hardened or private browser contexts.
+}
+
 async function bootstrapApp() {
   const [{ createRoot }, { default: App }] = await Promise.all([
     import("react-dom/client"),
