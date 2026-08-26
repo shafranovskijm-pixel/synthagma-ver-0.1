@@ -101,4 +101,47 @@ describe("useStudentManagement enrollment release compatibility", () => {
     );
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
+
+  it("surfaces a persisted-profile partial success without a success toast, mail, or client read-back", async () => {
+    const partialMessage = "Ученик сохранён, но зачисление на курс не подтверждено.";
+    mocks.safeInvoke.mockResolvedValueOnce({
+      data: {
+        success: false,
+        partial_success: true,
+        profile_persisted: true,
+        enrollment_confirmed: false,
+        user_id: "student-1",
+        is_existing: false,
+        login: "student_12345",
+        password: "StrongPass123",
+        code: "STUDENT_CREATED_ENROLLMENT_FAILED",
+        message: partialMessage,
+      },
+      error: null,
+    });
+    mocks.maybeSingle.mockRejectedValue(new Error("partial success must not trigger a read-back"));
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh,
+    }));
+
+    let created = true;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Белык А. Ю.",
+        email: "belyk@example.test",
+        courseIds: ["course-1"],
+      });
+    });
+
+    expect(created).toBe(false);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(mocks.toastWarning).toHaveBeenCalledWith(expect.stringContaining(partialMessage));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
+    expect(mocks.safeInvoke).toHaveBeenCalledTimes(1);
+    expect(mocks.safeInvoke).toHaveBeenCalledWith("register-student", expect.any(Object));
+  });
 });

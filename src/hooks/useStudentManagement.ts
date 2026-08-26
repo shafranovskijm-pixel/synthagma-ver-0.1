@@ -89,6 +89,17 @@ export function useStudentManagement({
       });
 
       if (error) throw error;
+      if (data?.partial_success) {
+        const credentials = data.student_created && data.login && data.password
+          ? ` Логин: ${data.login}, пароль: ${data.password}.`
+          : "";
+        onRefresh();
+        setShowAddStudentDialog(false);
+        toast.warning(
+          `${data.message || data.error || "Операция завершилась частично; проверьте карточку ученика."}${credentials}`,
+        );
+        return false;
+      }
       if (data?.error) throw new Error(data.error);
       if (firstCourseId) {
         const registeredUserId = data?.user_id;

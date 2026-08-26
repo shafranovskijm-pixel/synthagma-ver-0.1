@@ -291,8 +291,8 @@ export async function createStudent(params: {
     return { success: false, error: error.message };
   }
 
-  if (data?.error) {
-    return { success: false, error: data.error };
+  if (data?.partial_success || data?.error) {
+    return { success: false, data, error: data.error || data.message };
   }
 
   return { success: true, data: { ...data, password } };
