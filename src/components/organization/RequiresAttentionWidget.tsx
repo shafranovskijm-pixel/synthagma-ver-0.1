@@ -7,21 +7,21 @@
  *
  * Скрывается, если все счётчики = 0.
  *
- * Inline-режим: клик по карточке «Заявки на зачисление» раскрывает
- * превью 3 заявок с кнопками «Одобрить» / «Отклонить» прямо в виджете.
+ * Клик по карточке «Заявки на зачисление» раскрывает превью 3 заявок.
+ * Решение по заявке выполняется только в штатной вкладке курса «Заявки»,
+ * где подтверждение связано с созданием и проверкой зачисления.
  */
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Inbox, FileCheck2, Receipt, PenTool, ChevronRight, Check, X, Loader2 } from "lucide-react";
+import { Inbox, FileCheck2, Receipt, PenTool, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { qk } from "@/lib/queryKeys";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -34,6 +34,7 @@ interface AttentionCounts {
 
 interface EnrollmentRequestPreview {
   id: string;
+  course_id: string | null;
   full_name: string | null;
   email: string | null;
   course_title: string | null;
@@ -73,17 +74,20 @@ async function fetchCounts(orgId: string): Promise<AttentionCounts> {
 
 async function fetchEnrollmentPreview(orgId: string): Promise<EnrollmentRequestPreview[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from("enrollment_requests")
-    .select("id, full_name, email, created_at, courses(title)")
+    .select("id, course_id, full_name, email, created_at, courses(title)")
     .eq("organization_id", orgId)
     .eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(3);
 
+  if (error) throw error;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data as any[]) || []).map((r: any) => ({
     id: r.id,
+    course_id: r.course_id,
     full_name: r.full_name,
     email: r.email,
     course_title: r.courses?.title ?? null,
@@ -130,11 +134,9 @@ function AttentionCard({ label, count, icon: Icon, accent, onClick, active }: At
 
 export function RequiresAttentionWidget() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const d = useOrgDashboard();
   const orgId = d.organizationId;
   const [expanded, setExpanded] = useState<"enrollment" | null>(null);
-  const [actingId, setActingId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: orgId ? qk.org.attentionWidget(orgId) : ["__noop__"],
@@ -144,7 +146,11 @@ export function RequiresAttentionWidget() {
     refetchOnMount: true,
   });
 
-  const { data: enrollmentPreview = [] } = useQuery({
+  const {
+    data: enrollmentPreview = [],
+    isLoading: isEnrollmentPreviewLoading,
+    isError: isEnrollmentPreviewError,
+  } = useQuery({
     queryKey: orgId ? [...qk.org.enrollmentRequests(orgId), "preview"] : ["__noop__"],
     enabled: !!orgId && expanded === "enrollment",
     queryFn: () => fetchEnrollmentPreview(orgId!),
@@ -159,37 +165,23 @@ export function RequiresAttentionWidget() {
     data.signaturesExpiring;
   if (total === 0) return null;
 
-  const handleAct = async (id: string, status: "approved" | "rejected") => {
-    if (!orgId) return;
-    setActingId(id);
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("enrollment_requests")
-        .update({ status, decided_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-      toast.success(status === "approved" ? "Заявка одобрена" : "Заявка отклонена");
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: qk.org.attentionWidget(orgId) }),
-        qc.invalidateQueries({ queryKey: qk.org.enrollmentRequests(orgId) }),
-      ]);
-    } catch (e) {
-      toast.error(getErrorMessage(e));
-    } finally {
-      setActingId(null);
+  const openRequestFlow = (request: EnrollmentRequestPreview) => {
+    if (!request.course_id) {
+      d.tabNavigation.setActiveTab("courses" as never);
+      toast.warning(
+        "У заявки не указан курс. Выберите курс и откройте вкладку «Заявки» — решение из виджета не выполнялось.",
+      );
+      return;
     }
+
+    d.tabNavigation.openCourseDetails(request.course_id);
+    toast.info(
+      "Откройте вкладку «Заявки» в карточке курса. Только там подтверждение создаёт и проверяет зачисление.",
+    );
   };
 
   const toggleEnrollment = () => {
-    if (expanded === "enrollment") {
-      setExpanded(null);
-    } else if (data.enrollmentRequests > 3) {
-      // Если заявок много — сразу в полный список
-      d.tabNavigation.setActiveTab("students" as never);
-    } else {
-      setExpanded("enrollment");
-    }
+    setExpanded(expanded === "enrollment" ? null : "enrollment");
   };
 
   return (
@@ -246,9 +238,20 @@ export function RequiresAttentionWidget() {
       {/* Inline-разворот для заявок на зачисление */}
       {expanded === "enrollment" && (
         <div className="mt-3 pt-3 border-t border-border/60 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-          {enrollmentPreview.length === 0 ? (
+          <p className="text-xs text-muted-foreground px-1 pb-1">
+            Откройте курс и подтвердите заявку во вкладке «Заявки». Виджет не меняет статус и не зачисляет ученика.
+          </p>
+          {isEnrollmentPreviewLoading ? (
             <div className="text-xs text-muted-foreground text-center py-3">
               Загружаем заявки...
+            </div>
+          ) : isEnrollmentPreviewError ? (
+            <div className="text-xs text-destructive text-center py-3">
+              Не удалось загрузить заявки. Перейдите в «Курсы» и откройте вкладку «Заявки» нужного курса.
+            </div>
+          ) : enrollmentPreview.length === 0 ? (
+            <div className="text-xs text-muted-foreground text-center py-3">
+              Новых заявок в превью нет. Обновите страницу или проверьте заявки внутри курса.
             </div>
           ) : (
             enrollmentPreview.map((req) => (
@@ -267,27 +270,12 @@ export function RequiresAttentionWidget() {
                 </div>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-primary hover:bg-primary/10"
-                  onClick={() => handleAct(req.id, "approved")}
-                  disabled={actingId === req.id}
-                  aria-label="Одобрить"
+                  variant="outline"
+                  className="h-8 shrink-0 gap-1"
+                  onClick={() => openRequestFlow(req)}
                 >
-                  {actingId === req.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                  onClick={() => handleAct(req.id, "rejected")}
-                  disabled={actingId === req.id}
-                  aria-label="Отклонить"
-                >
-                  <X className="w-4 h-4" />
+                  {req.course_id ? "Открыть заявку" : "Выбрать курс"}
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
             ))
@@ -297,9 +285,12 @@ export function RequiresAttentionWidget() {
               variant="ghost"
               size="sm"
               className="w-full text-xs h-7 mt-1"
-              onClick={() => d.tabNavigation.setActiveTab("students" as never)}
+              onClick={() => {
+                d.tabNavigation.setActiveTab("courses" as never);
+                toast.info("Откройте нужный курс и перейдите во вкладку «Заявки».");
+              }}
             >
-              Показать все ({data.enrollmentRequests})
+              Открыть курсы — всего заявок {data.enrollmentRequests}
             </Button>
           )}
         </div>
