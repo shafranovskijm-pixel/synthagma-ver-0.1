@@ -18,7 +18,8 @@ export interface MarkLessonDeps {
   saveLessonTime: () => Promise<void>;
   upsertLessonProgress: (lessonId: string, userId: string) => Promise<{ error: unknown | null }>;
   updateEnrollmentProgress: (enrollmentId: string, progress: number) => Promise<{ error: unknown | null }>;
-  handleCourseCompletion: () => Promise<void>;
+  /** true только после подтверждённого перевода enrollment в completed. */
+  handleCourseCompletion: () => Promise<boolean>;
   goToNextLesson: () => void;
   /**
    * Вызывается ПОСЛЕ успешной записи lesson_progress и enrollments.
@@ -36,6 +37,8 @@ export interface MarkLessonState {
   completed: Set<string>;
   /** Флаг, что handleCourseCompletion уже запущен (защита от повторного вызова). */
   courseCompletionStarted: { value: boolean };
+  /** Отдельный серверно подтверждённый статус; started не равен completed. */
+  courseCompletionConfirmed: { value: boolean };
 }
 
 export interface MarkLessonInput {
@@ -56,10 +59,14 @@ export type MarkLessonOutcome =
       completed: boolean;
       alreadyCompleted?: boolean;
       skipped?: boolean;
+      courseCompleted?: boolean;
     }
   | {
       ok: false;
-      reason: "progress_save_failed" | "enrollment_update_failed" | "no_enrollment";
+      reason: "progress_save_failed" | "enrollment_update_failed" | "no_enrollment" | "course_completion_failed";
+      /** Прогресс уроков уже сохранён, но завершение enrollment не подтверждено. */
+      progress?: number;
+      lessonCompleted?: boolean;
     };
 
 function percentOf(count: number, total: number): number {
@@ -82,12 +89,44 @@ export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLe
 
   // Урок уже завершён — не увеличиваем прогресс, но всё равно двигаемся дальше.
   if (state.completed.has(lessonId)) {
-    if (autoAdvance) deps.goToNextLesson();
+    const progress = percentOf(state.completed.size, totalLessons);
+    if (progress >= 100 && state.courseCompletionConfirmed.value) {
+      if (autoAdvance) deps.goToNextLesson();
+      return { ok: true, progress, completed: false, alreadyCompleted: true, courseCompleted: true };
+    }
+    // Последний урок мог сохраниться, а серверное завершение курса — временно
+    // упасть или быть отклонено лимитом. Повторный клик должен повторить именно
+    // завершение enrollment, а не навсегда уходить в alreadyCompleted.
+    if (progress >= 100 && !state.courseCompletionStarted.value) {
+      state.courseCompletionStarted.value = true;
+      try {
+        const confirmed = await deps.handleCourseCompletion();
+        if (!confirmed) {
+          state.courseCompletionStarted.value = false;
+          return { ok: false, reason: "course_completion_failed", progress, lessonCompleted: true };
+        }
+        state.courseCompletionConfirmed.value = true;
+      } catch (e) {
+        console.error("[markLessonProgress] handleCourseCompletion threw", e);
+        state.courseCompletionStarted.value = false;
+        return { ok: false, reason: "course_completion_failed", progress, lessonCompleted: true };
+      }
+      if (autoAdvance) deps.goToNextLesson();
+      return { ok: true, progress, completed: false, alreadyCompleted: true, courseCompleted: true };
+    }
+    if (progress < 100) {
+      if (autoAdvance) deps.goToNextLesson();
+      return { ok: true, progress, completed: false, alreadyCompleted: true, courseCompleted: false };
+    }
+    // started=true означает только выполняющийся запрос. До server-confirmed
+    // результата не двигаем UI дальше и не сообщаем о завершении.
     return {
       ok: true,
-      progress: percentOf(state.completed.size, totalLessons),
+      progress,
       completed: false,
       alreadyCompleted: true,
+      courseCompleted: false,
+      skipped: progress >= 100 && state.courseCompletionStarted.value,
     };
   }
 
@@ -128,19 +167,28 @@ export async function markLessonProgress(input: MarkLessonInput): Promise<MarkLe
       if (!state.courseCompletionStarted.value) {
         state.courseCompletionStarted.value = true;
         try {
-          await deps.handleCourseCompletion();
+          const confirmed = await deps.handleCourseCompletion();
+          if (!confirmed) {
+            state.courseCompletionStarted.value = false;
+            return { ok: false, reason: "course_completion_failed", progress, lessonCompleted: true };
+          }
+          state.courseCompletionConfirmed.value = true;
         } catch (e) {
           console.error("[markLessonProgress] handleCourseCompletion threw", e);
           // Разрешаем повторную попытку завершения.
           state.courseCompletionStarted.value = false;
+          return { ok: false, reason: "course_completion_failed", progress, lessonCompleted: true };
         }
       }
     } else {
       deps.toastSuccess("Урок завершён!");
     }
 
+    if (progress >= 100 && !state.courseCompletionConfirmed.value) {
+      return { ok: false, reason: "course_completion_failed", progress, lessonCompleted: true };
+    }
     if (autoAdvance) deps.goToNextLesson();
-    return { ok: true, progress, completed: true };
+    return { ok: true, progress, completed: true, courseCompleted: progress >= 100 && state.courseCompletionConfirmed.value };
   } finally {
     state.inFlight.delete(lessonId);
   }

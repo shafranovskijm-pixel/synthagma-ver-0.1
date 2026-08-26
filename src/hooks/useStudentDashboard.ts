@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -77,6 +77,12 @@ interface DocumentsProgress {
   requiredTypes: RequiredDocumentType[];
 }
 
+export interface DashboardLoadError {
+  message: string;
+  /** true, когда вместо свежего ответа оставлены последние корректные данные. */
+  usingCachedData: boolean;
+}
+
 const DEFAULT_REQUIRED_DOCUMENT_TYPES: RequiredDocumentType[] = ["passport", "snils", "education_document"];
 
 function resolveRequiredDocumentTypes(courses: Array<{ landing_content?: any }>): RequiredDocumentType[] {
@@ -136,6 +142,29 @@ export function useStudentDashboard() {
   const [branding, setBranding] = useState<Branding | null>(null);
   const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
   const [loading, setLoading] = useState(true);
+  const [dashboardLoadError, setDashboardLoadError] = useState<DashboardLoadError | null>(null);
+  const [hasDashboardData, setHasDashboardData] = useState(false);
+  const [isRetryingDashboard, setIsRetryingDashboard] = useState(false);
+  const dashboardDataOwnerRef = useRef<string | null>(null);
+  const dashboardOrganizationRef = useRef<string | null | undefined>(undefined);
+  const activeDashboardUserRef = useRef<string | null>(null);
+  const dashboardRequestGenerationRef = useRef(0);
+  const dashboardRetryInFlightRef = useRef<{ uid: string; token: symbol; promise: Promise<void> } | null>(null);
+  const snapshotErrorRef = useRef<unknown>(null);
+  const legacyDashboardErrorRef = useRef<{
+    uid: string;
+    organizationId: string | null | undefined;
+    error: DashboardLoadError;
+  } | null>(null);
+  const legacyDashboardFreshScopeRef = useRef<{
+    uid: string;
+    organizationId: string | null;
+    observedSnapshotVersion: number;
+  } | null>(null);
+  const snapshotDataVersionRef = useRef<{
+    data: unknown;
+    version: number;
+  }>({ data: undefined, version: 0 });
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
   const [isPreviewMode] = useState(false);
@@ -188,17 +217,90 @@ export function useStudentDashboard() {
   // ⚡ Быстрый снимок дашборда одним RPC — выставляет данные ДО окончания тяжёлого loadData.
   // Если снапшот пришёл раньше — пользователь видит контент мгновенно, фоновый loadData потом
   // обновит каталог и прочие детали.
-  const { data: snapshot } = useStudentDashboardSnapshot(effectiveUserId);
+  const { data: snapshot, error: snapshotError, refetch: refetchSnapshot } = useStudentDashboardSnapshot(effectiveUserId);
+  // Ошибка/её очистка не делают удерживаемый React Query data новым снимком.
+  // Версию повышаем только при смене самого data, чтобы более свежий legacy
+  // ответ мог стать авторитетным, пока старый snapshot остаётся в кеше.
+  if (snapshotDataVersionRef.current.data !== snapshot) {
+    snapshotDataVersionRef.current = {
+      data: snapshot,
+      version: snapshotDataVersionRef.current.version + 1,
+    };
+  }
+  const snapshotDataVersion = snapshotDataVersionRef.current.version;
+  const currentSnapshotOrganizationId = (
+    effectiveUserId
+    && snapshot?.profile?.user_id === effectiveUserId
+  ) ? (snapshot.profile.organization_id ?? null) : undefined;
+  useEffect(() => {
+    snapshotErrorRef.current = snapshotError ?? null;
+  }, [snapshotError]);
   useEffect(() => {
     if (!snapshot) return;
-    if (snapshot.profile) {
-      setProfile(prev => ({
-        full_name: snapshot.profile.full_name ?? prev?.full_name ?? null,
-        organization_id: snapshot.profile.organization_id ?? prev?.organization_id ?? null,
-        organization_name: snapshot.org?.name ?? prev?.organization_name ?? null,
-        org_description: snapshot.org?.description ?? prev?.org_description ?? null,
-      }));
+    // React Query сохраняет предыдущий data при ошибке refetch. Не применяем
+    // снимок другого ученика после смены effective uid/admin-view.
+    if (!effectiveUserId || snapshot.profile?.user_id !== effectiveUserId) return;
+    const snapshotOrganizationId = snapshot.profile.organization_id ?? null;
+    const freshLegacyScope = legacyDashboardFreshScopeRef.current;
+    // React Query может удерживать старый data вместе с refetch error. Такой
+    // snapshot не является новой границей арендатора и не должен блокировать
+    // или перезаписывать подтверждённый legacy-ответ.
+    if (snapshotError) return;
+    // Snapshot — bootstrap-источник. После полного свежего legacy-ответа того
+    // же uid/org он уже не вправе откатывать курсы и прогресс назад.
+    if (
+      freshLegacyScope?.uid === effectiveUserId
+      && freshLegacyScope.organizationId === snapshotOrganizationId
+    ) return;
+    if (freshLegacyScope?.uid === effectiveUserId) {
+      // Удерживаемый старый snapshot A не может снова стать авторитетнее
+      // успешного legacy-ответа B. Новая tenant boundary подтверждается только
+      // новым data, которого legacy-запрос ещё не наблюдал.
+      if (snapshotDataVersion <= freshLegacyScope.observedSnapshotVersion) return;
+      // Успешный snapshot другого org — реальная новая tenant boundary.
+      legacyDashboardFreshScopeRef.current = null;
     }
+    const scopedLegacyError = legacyDashboardErrorRef.current;
+    const matchingLegacyError = (
+      scopedLegacyError?.uid === effectiveUserId
+      && (
+        scopedLegacyError.organizationId === undefined
+        || scopedLegacyError.organizationId === snapshotOrganizationId
+      )
+    ) ? scopedLegacyError.error : null;
+    const switchingSnapshotOwner = (
+      dashboardDataOwnerRef.current !== effectiveUserId
+      || (
+        dashboardDataOwnerRef.current === effectiveUserId
+        && dashboardOrganizationRef.current !== undefined
+        && dashboardOrganizationRef.current !== snapshotOrganizationId
+      )
+    );
+    if (switchingSnapshotOwner) {
+      // Инвалидируем любой pending legacy load предыдущего uid/org до того,
+      // как применить новый snapshot. Иначе поздний org A мог перезаписать B.
+      dashboardRequestGenerationRef.current += 1;
+      dashboardRetryInFlightRef.current = null;
+      setIsRetryingDashboard(false);
+      // Новый подтверждённый snapshot — атомарная граница арендатора. Поля,
+      // которых нет в snapshot B, не должны наследоваться от ученика A.
+      setCatalogCourses([]);
+      setCategories([]);
+      setMessages(initialMessages);
+      setInputValue("");
+      setShowVideoIdentification(false);
+      setShowConsentForm(false);
+      setShowDocumentsUpload(false);
+      setShowAchievements(false);
+      if (!matchingLegacyError) legacyDashboardErrorRef.current = null;
+    }
+    dashboardOrganizationRef.current = snapshotOrganizationId;
+    setProfile({
+      full_name: snapshot.profile.full_name ?? null,
+      organization_id: snapshot.profile.organization_id ?? null,
+      organization_name: snapshot.org?.name ?? null,
+      org_description: snapshot.org?.description ?? null,
+    });
     if (snapshot.org?.branding && typeof snapshot.org.branding === 'object') {
       const b = snapshot.org.branding as Record<string, unknown>;
       setBranding({
@@ -208,6 +310,8 @@ export function useStudentDashboard() {
         logoUrl: (b.logoUrl as string) || '',
         showOrgName: b.showOrgName !== false,
       });
+    } else {
+      setBranding(null);
     }
     if (snapshot.org?.student_dashboard_settings && typeof snapshot.org.student_dashboard_settings === 'object') {
       const s = snapshot.org.student_dashboard_settings as Record<string, unknown>;
@@ -221,8 +325,10 @@ export function useStudentDashboard() {
         catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
         studentTheme: (s.studentTheme as string | null) ?? null,
       });
+    } else {
+      setDashboardSettings({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
     }
-    if (snapshot.org?.subscription_plan) setOrgPlan(snapshot.org.subscription_plan);
+    setOrgPlan(snapshot.org?.subscription_plan || "free");
     if (snapshot.enrollments && snapshot.enrollments.length >= 0) {
       const mapped: StudentCourse[] = snapshot.enrollments.map((e) => ({
         id: e.course_id,
@@ -237,6 +343,11 @@ export function useStudentDashboard() {
         cover_image_url: e.cover_image_url ?? null,
       }));
       setCourses(mapped);
+      dashboardDataOwnerRef.current = effectiveUserId;
+      setHasDashboardData(true);
+      // Snapshot подтверждает профиль и зачисления, но не каталог. Ошибка
+      // legacy-загрузки каталога для того же uid/org должна оставаться видимой.
+      setDashboardLoadError(matchingLegacyError);
       setTotalCompletedLessons(mapped.reduce((sum, c) => sum + c.completedLessons, 0));
       setTotalTimeSpent(snapshot.enrollments.reduce((sum, e) => sum + (e.time_spent || 0), 0));
     }
@@ -246,17 +357,20 @@ export function useStudentDashboard() {
         total: 3,
         requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES,
       });
+    } else {
+      setDocumentsProgress({ completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
     }
     setIsVideoIdentified(!!snapshot.video_identified);
-    if (typeof snapshot.profile.onboarding_completed === 'boolean' && !snapshot.profile.onboarding_completed && !isAdminView) {
-      setShowOnboarding(true);
-    }
+    setShowOnboarding(snapshot.profile.onboarding_completed === false && !isAdminView);
     // Снимок отдаёт основные данные → можно отключить спиннер сразу
     setLoading(false);
-  }, [snapshot, isAdminView]);
+  }, [snapshot, snapshotError, snapshotDataVersion, isAdminView, effectiveUserId]);
 
   useEffect(() => {
     if (effectiveUserId) { loadData(); }
+  }, [effectiveUserId, currentSnapshotOrganizationId]);
+
+  useEffect(() => {
     if (user && !isAdminView) {
       // fire-and-forget — не блокируем первый рендер
       trackUserVisit();
@@ -296,12 +410,74 @@ export function useStudentDashboard() {
 
   const loadData = async () => {
     const uid = effectiveUserId;
-    if (!uid) { setLoading(false); return; }
-    setLoading(true);
+    if (!uid) { setLoading(false); return false; }
+    const previousActiveUid = activeDashboardUserRef.current;
+    activeDashboardUserRef.current = uid;
+    const requestGeneration = ++dashboardRequestGenerationRef.current;
+    const isCurrentRequest = () => (
+      activeDashboardUserRef.current === uid
+      && dashboardRequestGenerationRef.current === requestGeneration
+    );
+    const switchingUser = (
+      (previousActiveUid && previousActiveUid !== uid)
+      || (dashboardDataOwnerRef.current && dashboardDataOwnerRef.current !== uid)
+    );
+    if (switchingUser) {
+      legacyDashboardErrorRef.current = null;
+      legacyDashboardFreshScopeRef.current = null;
+      if (dashboardRetryInFlightRef.current?.uid !== uid) {
+        dashboardRetryInFlightRef.current = null;
+        setIsRetryingDashboard(false);
+      }
+      // Никогда не показываем кеш/данные одного ученика другому при смене
+      // цели режима "просмотр как ученик".
+      setCatalogCourses([]);
+      setCategories([]);
+      setMessages(initialMessages);
+      setInputValue("");
+      setShowVideoIdentification(false);
+      setShowConsentForm(false);
+      setShowDocumentsUpload(false);
+      setShowAchievements(false);
+      // Эффект snapshot выполняется перед legacy loadData. Если он уже дал
+      // подтверждённые данные именно B, сохраняем их; очищаем только остатки A,
+      // которые snapshot не покрывает. Иначе сбрасываем весь tenant-state.
+      if (dashboardDataOwnerRef.current !== uid) {
+        dashboardDataOwnerRef.current = null;
+        dashboardOrganizationRef.current = undefined;
+        setHasDashboardData(false);
+        setCourses([]);
+        setProfile(null);
+        setBranding(null);
+        setDashboardSettings({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
+        setTotalTimeSpent(0);
+        setTotalCompletedLessons(0);
+        setDocumentsProgress({ completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
+        setIsVideoIdentified(false);
+        setOrgPlan("free");
+        setDashboardLoadError(null);
+        setShowOnboarding(false);
+      }
+    }
+    const hasCurrentData = dashboardDataOwnerRef.current === uid;
+    setLoading(!hasCurrentData);
 
 
     // Safety timeout: never show spinner for more than 15 seconds
+    let requestSettled = false;
     const safetyTimer = setTimeout(() => {
+      if (requestSettled || !isCurrentRequest()) return;
+      const usingCachedData = dashboardDataOwnerRef.current === uid;
+      const timeoutError: DashboardLoadError = {
+        message: 'Не удалось загрузить курсы. Проверьте соединение и повторите попытку.',
+        usingCachedData,
+      };
+      legacyDashboardErrorRef.current = {
+        uid,
+        organizationId: dashboardOrganizationRef.current,
+        error: timeoutError,
+      };
+      setDashboardLoadError(timeoutError);
       setLoading(false);
     }, 15000);
 
@@ -313,47 +489,78 @@ export function useStudentDashboard() {
         supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid),
       ]);
 
-      const profileData = profileRes.data;
-      let effectiveOrgId: string | null = profileData?.organization_id || null;
-      let effectiveOrgName: string | null = null;
-      let effectiveBranding: any = null;
-      let effectiveDashboardSettings: any = null;
+      if (!isCurrentRequest()) return false;
 
-      if (profileData) {
-        const org = profileData.organizations as any;
-        effectiveOrgName = org?.name || null;
-        effectiveBranding = org?.branding;
-        effectiveDashboardSettings = org?.student_dashboard_settings;
-        if (org?.subscription_plan) setOrgPlan(org.subscription_plan);
-        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: (org as any)?.description || null });
+      const initialLoadError = profileRes.error || laborRes.error || enrollmentsRes.error;
+      if (initialLoadError || !Array.isArray(enrollmentsRes.data)) {
+        const cause = initialLoadError instanceof Error
+          ? initialLoadError
+          : new Error('enrollments_unavailable');
+        throw cause;
       }
 
+      const profileData = profileRes.data;
       const laborProfile = laborRes.data;
+      let effectiveOrgId: string | null = profileData?.organization_id || null;
+      const profileOrg = profileData?.organizations as any;
+      let effectiveOrgName: string | null = profileOrg?.name || null;
+      let effectiveOrgDescription: string | null = profileOrg?.description || null;
+      let effectiveBranding: any = profileOrg?.branding ?? null;
+      let effectiveDashboardSettings: any = profileOrg?.student_dashboard_settings ?? null;
+      let effectiveOrgPlan = profileOrg?.subscription_plan || "free";
+      let effectiveFullName: string | null = profileData?.full_name || null;
+
       if (laborProfile?.organization_id) {
+        const organizationChangedByLabor = effectiveOrgId !== laborProfile.organization_id;
         effectiveOrgId = laborProfile.organization_id;
         const laborOrg = laborProfile.organizations as any;
-        effectiveOrgName = laborOrg?.name || effectiveOrgName;
-        effectiveBranding = laborOrg?.branding ?? effectiveBranding;
-        effectiveDashboardSettings = laborOrg?.student_dashboard_settings ?? effectiveDashboardSettings;
-        if (laborOrg?.subscription_plan) setOrgPlan(laborOrg.subscription_plan);
-        setProfile(prev => {
-          const prevName = prev?.full_name?.trim() || "";
-          const prevParts = prevName ? prevName.split(/\s+/).length : 0;
-          const laborName = laborProfile.full_name?.trim() || "";
-          const laborParts = laborName ? laborName.split(/\s+/).length : 0;
-          const fullName = (laborParts >= 2 && prevParts < 2) ? laborProfile.full_name : (laborParts > prevParts ? laborProfile.full_name : (prev?.full_name || laborProfile.full_name));
-          return { full_name: fullName || prev?.full_name || null, organization_id: laborProfile.organization_id, organization_name: effectiveOrgName || prev?.organization_name || null };
-        });
+        effectiveOrgName = laborOrg?.name || (organizationChangedByLabor ? null : effectiveOrgName);
+        effectiveOrgDescription = organizationChangedByLabor ? null : effectiveOrgDescription;
+        effectiveBranding = laborOrg?.branding ?? (organizationChangedByLabor ? null : effectiveBranding);
+        effectiveDashboardSettings = laborOrg?.student_dashboard_settings ?? (organizationChangedByLabor ? null : effectiveDashboardSettings);
+        effectiveOrgPlan = laborOrg?.subscription_plan || (organizationChangedByLabor ? "free" : effectiveOrgPlan);
+        const profileName = effectiveFullName?.trim() || "";
+        const profileParts = profileName ? profileName.split(/\s+/).length : 0;
+        const laborName = laborProfile.full_name?.trim() || "";
+        const laborParts = laborName ? laborName.split(/\s+/).length : 0;
+        if (laborParts > profileParts || (laborParts >= 2 && profileParts < 2)) {
+          effectiveFullName = laborProfile.full_name;
+        } else if (!effectiveFullName) {
+          effectiveFullName = laborProfile.full_name || null;
+        }
       }
+
+      const organizationChanged = (
+        dashboardDataOwnerRef.current === uid
+        && dashboardOrganizationRef.current !== undefined
+        && dashboardOrganizationRef.current !== effectiveOrgId
+      );
+      if (organizationChanged) {
+        setCatalogCourses([]);
+        setCategories([]);
+        setMessages(initialMessages);
+        setInputValue("");
+        setDocumentsProgress({ completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
+        setIsVideoIdentified(false);
+      }
+      dashboardOrganizationRef.current = effectiveOrgId;
+
+      setProfile(profileData || laborProfile ? {
+        full_name: effectiveFullName,
+        organization_name: effectiveOrgName,
+        organization_id: effectiveOrgId,
+        org_description: effectiveOrgDescription,
+      } : null);
+      setOrgPlan(effectiveOrgPlan);
 
       if (effectiveBranding && typeof effectiveBranding === 'object') {
         const b = effectiveBranding as Record<string, unknown>;
         setBranding({ coverUrl: (b.coverUrl as string) || '', primaryColor: (b.primaryColor as string) || '#0d9488', secondaryColor: (b.secondaryColor as string) || '#14b8a6', logoUrl: (b.logoUrl as string) || '', showOrgName: b.showOrgName !== false });
-      }
+      } else setBranding(null);
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
         setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, showRadio: s.showRadio === true, showAnnouncements: s.showAnnouncements === true, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
-      }
+      } else setDashboardSettings({ showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog", studentTheme: null });
 
       let cachedCoursesData: StudentCourse[] = [];
       let cachedTotalTime = 0;
@@ -366,15 +573,21 @@ export function useStudentDashboard() {
         const allCourseIds = validEnrollments.map(e => (e.courses as any).id);
 
         // Batch fetch: all lessons for all courses in one query
-        const { data: allLessons } = allCourseIds.length > 0
+        const allLessonsResult = allCourseIds.length > 0
           ? await supabase.from("lessons").select("id, course_id").in("course_id", allCourseIds)
-          : { data: [] as { id: string; course_id: string }[] };
+          : { data: [] as { id: string; course_id: string }[], error: null };
+        if (!isCurrentRequest()) return false;
+        if (allLessonsResult.error) throw allLessonsResult.error;
+        const allLessons = allLessonsResult.data;
 
         // Batch fetch: all completed lesson progress for this user in one query
         const allLessonIds = (allLessons || []).map(l => l.id);
-        const { data: allProgress } = allLessonIds.length > 0
+        const allProgressResult = allLessonIds.length > 0
           ? await supabase.from("lesson_progress").select("lesson_id").eq("user_id", uid).in("lesson_id", allLessonIds).eq("completed", true)
-          : { data: [] as { lesson_id: string }[] };
+          : { data: [] as { lesson_id: string }[], error: null };
+        if (!isCurrentRequest()) return false;
+        if (allProgressResult.error) throw allProgressResult.error;
+        const allProgress = allProgressResult.data;
 
         // Build lookup maps for O(1) access
         const lessonsByCourse = new Map<string, string[]>();
@@ -400,6 +613,8 @@ export function useStudentDashboard() {
           });
         }
         setCourses(cachedCoursesData);
+        dashboardDataOwnerRef.current = uid;
+        setHasDashboardData(true);
         setTotalTimeSpent(cachedTotalTime);
         setTotalCompletedLessons(cachedCompletedLessonsTotal);
       }
@@ -411,6 +626,9 @@ export function useStudentDashboard() {
           supabase.from("course_categories").select("id, name, color, hidden_from_catalog").eq("organization_id", effectiveOrgId),
           supabase.from("enrollment_requests").select("course_id, status").eq("user_id", uid).eq("status", "pending"),
         ]);
+        if (!isCurrentRequest()) return false;
+        const catalogLoadError = coursesRes.error || catsRes.error || pendingRequestsRes.error;
+        if (catalogLoadError) throw catalogLoadError;
         const allOrgCourses = coursesRes.data || [];
         const cats = (catsRes.data || []).filter((c: any) => !c.hidden_from_catalog);
         const hiddenCategoryIds = new Set((catsRes.data || []).filter((c: any) => c.hidden_from_catalog).map((c: any) => c.id));
@@ -421,9 +639,12 @@ export function useStudentDashboard() {
 
         // Count lessons per course
         const courseIds = allOrgCourses.map(c => c.id);
-        const { data: lessonCounts } = courseIds.length > 0
+        const lessonCountsResult = courseIds.length > 0
           ? await supabase.from("lessons").select("course_id").in("course_id", courseIds)
-          : { data: [] as { course_id: string }[] };
+          : { data: [] as { course_id: string }[], error: null };
+        if (!isCurrentRequest()) return false;
+        if (lessonCountsResult.error) throw lessonCountsResult.error;
+        const lessonCounts = lessonCountsResult.data;
         const lessonCountMap = new Map<string, number>();
         for (const l of lessonCounts || []) {
           lessonCountMap.set(l.course_id, (lessonCountMap.get(l.course_id) || 0) + 1);
@@ -462,6 +683,9 @@ export function useStudentDashboard() {
           supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId),
           supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
+        if (!isCurrentRequest()) return false;
+        const identityLoadError = identityRes.error || videoIdRes.error;
+        if (identityLoadError) throw identityLoadError;
         const identityDocs = identityRes.data;
         if (identityDocs) {
           const hasType = (type: RequiredDocumentType) => {
@@ -490,29 +714,72 @@ export function useStudentDashboard() {
           documentsProgress: docsProgress,
         }).catch(() => {});
       }
+      legacyDashboardFreshScopeRef.current = {
+        uid,
+        organizationId: effectiveOrgId,
+        observedSnapshotVersion: snapshotDataVersionRef.current.version,
+      };
+      legacyDashboardErrorRef.current = null;
+      setDashboardLoadError(null);
+      return true;
     } catch (error) {
+      if (!isCurrentRequest()) return false;
       console.error("Error loading data:", error);
-      
-      // Try loading from cache as fallback
-      if (uid) {
-        const cached = await getCachedDashboardData(uid);
-        if (cached) {
-          setCourses(cached.courses || []);
-          if (cached.profile) setProfile(cached.profile);
-          if (cached.branding) setBranding(cached.branding);
-          if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
-          setTotalTimeSpent(cached.totalTimeSpent || 0);
-          setTotalCompletedLessons(cached.totalCompletedLessons || 0);
-          const cachedDocs = cached.documentsProgress as Partial<DocumentsProgress> | undefined;
-          setDocumentsProgress({
-            completed: cachedDocs?.completed ?? 0,
-            total: cachedDocs?.total ?? DEFAULT_REQUIRED_DOCUMENT_TYPES.length,
-            requiredTypes: cachedDocs?.requiredTypes ?? DEFAULT_REQUIRED_DOCUMENT_TYPES,
-          });
-          toast.info('Загружены данные из кеша', { description:"'Данные могут быть устаревшими'" });
+
+      // Не затираем уже показанный корректный snapshot/последний ответ. Кеш
+      // поднимаем только если для этого ученика ещё нет надёжных данных.
+      let usingCachedData = dashboardDataOwnerRef.current === uid;
+      if (!usingCachedData) {
+        try {
+          const cached = await getCachedDashboardData(uid);
+          if (!isCurrentRequest()) return false;
+          const cachedOrganizationId = cached?.profile?.organization_id ?? null;
+          const confirmedOrganizationId = dashboardOrganizationRef.current;
+          const cacheMatchesConfirmedOrganization = (
+            confirmedOrganizationId === undefined
+            || cachedOrganizationId === confirmedOrganizationId
+          );
+          if (cached && cacheMatchesConfirmedOrganization) {
+            setCourses(cached.courses || []);
+            if (cached.profile) setProfile(cached.profile);
+            if (cached.branding) setBranding(cached.branding);
+            if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
+            setTotalTimeSpent(cached.totalTimeSpent || 0);
+            setTotalCompletedLessons(cached.totalCompletedLessons || 0);
+            const cachedDocs = cached.documentsProgress as Partial<DocumentsProgress> | undefined;
+            setDocumentsProgress({
+              completed: cachedDocs?.completed ?? 0,
+              total: cachedDocs?.total ?? DEFAULT_REQUIRED_DOCUMENT_TYPES.length,
+              requiredTypes: cachedDocs?.requiredTypes ?? DEFAULT_REQUIRED_DOCUMENT_TYPES,
+            });
+            dashboardDataOwnerRef.current = uid;
+            dashboardOrganizationRef.current = cachedOrganizationId;
+            setHasDashboardData(true);
+            usingCachedData = true;
+            toast.info('Загружены данные из кеша', { description: 'Данные могут быть устаревшими' });
+          }
+        } catch (cacheError) {
+          console.error('Error loading dashboard cache:', cacheError);
         }
       }
-    } finally { clearTimeout(safetyTimer); setLoading(false); }
+
+      const source = snapshotErrorRef.current ? 'снимок и список курсов' : 'список курсов';
+      const loadError: DashboardLoadError = {
+        message: `Не удалось обновить ${source}. Проверьте соединение и повторите попытку.`,
+        usingCachedData,
+      };
+      legacyDashboardErrorRef.current = {
+        uid,
+        organizationId: dashboardOrganizationRef.current,
+        error: loadError,
+      };
+      setDashboardLoadError(loadError);
+      return false;
+    } finally {
+      requestSettled = true;
+      clearTimeout(safetyTimer);
+      if (isCurrentRequest()) setLoading(false);
+    }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
@@ -535,11 +802,74 @@ export function useStudentDashboard() {
     } finally { setIsAiLoading(false); }
   };
 
-  const handleRefresh = useCallback(async () => { await loadData(); toast.success("Данные обновлены"); }, []);
+  const retryDashboardLoad = (): Promise<void> => {
+    const retryUid = effectiveUserId;
+    if (!retryUid) return Promise.resolve();
+    const existingRetry = dashboardRetryInFlightRef.current;
+    if (existingRetry?.uid === retryUid) return existingRetry.promise;
+
+    const token = Symbol(retryUid);
+    setIsRetryingDashboard(true);
+    const promise = (async () => {
+      try {
+        await Promise.allSettled([
+          refetchSnapshot(),
+          loadData(),
+        ]);
+      } finally {
+        if (dashboardRetryInFlightRef.current?.token === token) {
+          dashboardRetryInFlightRef.current = null;
+          setIsRetryingDashboard(false);
+        }
+      }
+    })();
+    dashboardRetryInFlightRef.current = { uid: retryUid, token, promise };
+    return promise;
+  };
+
+  const handleRefresh = useCallback(async () => {
+    const loaded = await loadData();
+    if (loaded) toast.success("Данные обновлены");
+  }, [effectiveUserId]);
   const { ref: pullToRefreshRef, pullDistance, isRefreshing, canRefresh } = usePullToRefresh<HTMLElement>({ onRefresh: handleRefresh, threshold: 80, maxPull: 120 });
 
-  const totalProgress = courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length) : 0;
-  const nameParts = profile?.full_name?.split(" ") || [];
+  // useEffect очищает tenant-state при смене uid, но первый render нового uid
+  // происходит до эффекта. На этом render синхронно скрываем данные прежнего
+  // владельца, чтобы не было даже краткого межпользовательского показа.
+  const freshLegacyScope = (
+    legacyDashboardFreshScopeRef.current?.uid === effectiveUserId
+  ) ? legacyDashboardFreshScopeRef.current : null;
+  const snapshotIsAuthoritative = (
+    currentSnapshotOrganizationId !== undefined
+    && !snapshotError
+    && (
+      !freshLegacyScope
+      || (
+        freshLegacyScope.organizationId !== currentSnapshotOrganizationId
+        && snapshotDataVersion > freshLegacyScope.observedSnapshotVersion
+      )
+    )
+  );
+  const authoritativeOrganizationId = snapshotIsAuthoritative
+    ? currentSnapshotOrganizationId
+    : freshLegacyScope?.organizationId;
+  const renderedDataBelongsToCurrentUser = (
+    dashboardDataOwnerRef.current === null
+    || dashboardDataOwnerRef.current === effectiveUserId
+  ) && (
+    authoritativeOrganizationId === undefined
+    || dashboardOrganizationRef.current === authoritativeOrganizationId
+  );
+  const visibleCourses = renderedDataBelongsToCurrentUser ? courses : [];
+  const visibleProfile = renderedDataBelongsToCurrentUser ? profile : null;
+  const visibleDashboardSettings = renderedDataBelongsToCurrentUser
+    ? dashboardSettings
+    : { showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: "catalog" as const, studentTheme: null };
+  const visibleDocumentsProgress = renderedDataBelongsToCurrentUser
+    ? documentsProgress
+    : { completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES };
+  const totalProgress = visibleCourses.length > 0 ? Math.round(visibleCourses.reduce((acc, c) => acc + c.progress, 0) / visibleCourses.length) : 0;
+  const nameParts = visibleProfile?.full_name?.split(" ") || [];
   const firstName = nameParts.length >= 2 ? nameParts[1] : "Ученик";
 
   const formatTime = (minutes: number) => {
@@ -557,14 +887,36 @@ export function useStudentDashboard() {
 
   return {
     user, navigate, isMobile, theme, setTheme,
-    activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
-    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
-    totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
-    isPreviewMode, showVideoIdentification, setShowVideoIdentification,
-    showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
-    showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
-    documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
+    activeTab, setActiveTab, messages: renderedDataBelongsToCurrentUser ? messages : initialMessages,
+    inputValue: renderedDataBelongsToCurrentUser ? inputValue : "", setInputValue, isAiLoading, handleSendMessage,
+    courses: visibleCourses,
+    catalogCourses: renderedDataBelongsToCurrentUser ? catalogCourses : [],
+    categories: renderedDataBelongsToCurrentUser ? categories : [],
+    profile: visibleProfile,
+    branding: renderedDataBelongsToCurrentUser ? branding : null,
+    dashboardSettings: visibleDashboardSettings,
+    loading: renderedDataBelongsToCurrentUser ? loading : true,
+    dashboardLoadError: renderedDataBelongsToCurrentUser ? dashboardLoadError : null,
+    hasDashboardData: renderedDataBelongsToCurrentUser ? hasDashboardData : false,
+    isRetryingDashboard, retryDashboardLoad,
+    totalTimeSpent: renderedDataBelongsToCurrentUser ? totalTimeSpent : 0,
+    totalCompletedLessons: renderedDataBelongsToCurrentUser ? totalCompletedLessons : 0,
+    totalProgress, firstName, formatTime,
+    isPreviewMode,
+    showVideoIdentification: renderedDataBelongsToCurrentUser ? showVideoIdentification : false,
+    setShowVideoIdentification,
+    showConsentForm: renderedDataBelongsToCurrentUser ? showConsentForm : false,
+    setShowConsentForm,
+    showDocumentsUpload: renderedDataBelongsToCurrentUser ? showDocumentsUpload : false,
+    setShowDocumentsUpload,
+    showAchievements: renderedDataBelongsToCurrentUser ? showAchievements : false,
+    setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
+    documentsProgress: visibleDocumentsProgress,
+    isVideoIdentified: renderedDataBelongsToCurrentUser ? isVideoIdentified : false,
+    setIsVideoIdentified,
+    showOnboarding: renderedDataBelongsToCurrentUser ? showOnboarding : false,
+    handleOnboardingClose,
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
-    signOut, orgPlan, isAdminView, adminViewStudentName,
+    signOut, orgPlan: renderedDataBelongsToCurrentUser ? orgPlan : "free", isAdminView, adminViewStudentName,
   };
 }

@@ -17,12 +17,15 @@ interface UseLessonTestParams {
   course: { title: string; duration: string | null } | null;
   setLessonProgress: React.Dispatch<React.SetStateAction<LessonProgress[]>>;
   saveLessonTime: () => Promise<void>;
-  handleCourseCompletion: (testScore?: { score: number; max: number }) => Promise<void>;
+  handleCourseCompletion: (testScore?: { score: number; max: number }) => Promise<boolean>;
+  /** Проверяет, что async-операция всё ещё относится к открытому course route. */
+  isCurrentContext: () => boolean;
 }
 
 export function useLessonTest({
   currentLesson, user, lessons, lessonProgress, completedCount,
   enrollmentId, courseId, course, setLessonProgress, saveLessonTime, handleCourseCompletion,
+  isCurrentContext,
 }: UseLessonTestParams) {
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [allBankQuestions, setAllBankQuestions] = useState<TestQuestion[]>([]);
@@ -38,9 +41,13 @@ export function useLessonTest({
   const [testQuestionsLoading, setTestQuestionsLoading] = useState(false);
   const [testQuestionsError, setTestQuestionsError] = useState<string | null>(null);
   const testQuestionRequestRef = useRef(0);
+  const testSubmissionRequestRef = useRef(0);
+  const activeTestLessonIdRef = useRef<string | null>(null);
+  activeTestLessonIdRef.current = currentLesson?.id ?? null;
 
   useEffect(() => {
     const requestId = ++testQuestionRequestRef.current;
+    testSubmissionRequestRef.current += 1;
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({});
     setAllBankQuestions([]); setUsedQuestionIds([]); setTestExplanations({});
     setTestMaxAttempts(null); setTestAttemptsUsed(0);
@@ -137,7 +144,15 @@ export function useLessonTest({
       return;
     }
     if (testQuestions.length === 0) { toast.error('Нет вопросов для теста.'); return; }
+    const submissionId = ++testSubmissionRequestRef.current;
+    const submissionLessonId = currentLesson.id;
+    const isCurrentSubmission = () => (
+      testSubmissionRequestRef.current === submissionId
+      && activeTestLessonIdRef.current === submissionLessonId
+      && isCurrentContext()
+    );
     await saveLessonTime();
+    if (!isCurrentSubmission()) return;
     const shownIds = testQuestions.map(q => q.id);
     try {
       const { data: gradeResult, error: gradeError } = await safeInvoke<{
@@ -145,10 +160,12 @@ export function useLessonTest({
         correctAnswers: Record<string, number>; explanations?: Record<string, string | null>;
         maxAttempts?: number | null; attemptsUsed?: number;
       }>('grade-test', { body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds } });
+      if (!isCurrentSubmission()) return;
       if (gradeError || !gradeResult) {
         // Fallback: ставим в очередь, чтобы при восстановлении сети ответ ушёл.
         // Это спасает учеников за корпоративным firewall, у которых edge-функции не открываются.
-        await enqueueTestSubmission({ lessonId: currentLesson.id, answers, shownQuestionIds: shownIds });
+        await enqueueTestSubmission({ lessonId: submissionLessonId, answers, shownQuestionIds: shownIds });
+        if (!isCurrentSubmission()) return;
         toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
         return;
       }
@@ -160,20 +177,26 @@ export function useLessonTest({
       setTestSubmitted(true);
       setTestScore({ score, max: maxScore });
       if (passed) {
-        setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== currentLesson.id), { lesson_id: currentLesson.id, completed: true }]);
+        setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== submissionLessonId), { lesson_id: submissionLessonId, completed: true }]);
         const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
-        if (newProgress >= 100) { await handleCourseCompletion({ score, max: maxScore }); } else { toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`); }
+        if (newProgress >= 100) {
+          if (isCurrentSubmission()) await handleCourseCompletion({ score, max: maxScore });
+        } else if (isCurrentSubmission()) {
+          toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`);
+        }
       } else {
         toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%.`);
       }
     } catch (err) {
+      if (!isCurrentSubmission()) return;
       console.error('Error submitting test:', err);
       // Сохраняем в очередь даже при необработанном исключении
       try {
-        await enqueueTestSubmission({ lessonId: currentLesson.id, answers, shownQuestionIds: shownIds });
+        await enqueueTestSubmission({ lessonId: submissionLessonId, answers, shownQuestionIds: shownIds });
+        if (!isCurrentSubmission()) return;
         toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
       } catch {
-        toast.error('Ошибка отправки теста');
+        if (isCurrentSubmission()) toast.error('Ошибка отправки теста');
       }
     }
   };

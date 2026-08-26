@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BookOpen, MessageCircle, Menu, Eye, X, User,
+  BookOpen, MessageCircle, Menu, Eye, X, User, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -240,6 +240,7 @@ export default function StudentDashboard() {
     user, navigate, theme, setTheme,
     activeTab, setActiveTab: setActiveTabRaw, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
     courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
+    dashboardLoadError, hasDashboardData, isRetryingDashboard, retryDashboardLoad,
     totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
@@ -471,7 +472,26 @@ export default function StudentDashboard() {
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
-          {(currentTab === "catalog" || currentTab === "chat") && (
+          {dashboardLoadError && (
+            <div className="p-4 md:px-6 md:pt-6 max-w-[1400px] mx-auto w-full">
+              <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">Не удалось обновить данные кабинета</p>
+                  <p className="text-sm text-muted-foreground">
+                    {dashboardLoadError.message}
+                    {dashboardLoadError.usingCachedData && ' Показаны последние сохранённые данные.'}
+                  </p>
+                </div>
+                <Button variant="outline" onClick={retryDashboardLoad} disabled={isRetryingDashboard} className="shrink-0">
+                  <RefreshCw className={cn("w-4 h-4 mr-2", isRetryingDashboard && "animate-spin")} />
+                  {isRetryingDashboard ? 'Повторяем…' : 'Повторить'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {(!dashboardLoadError || hasDashboardData) && (currentTab === "catalog" || currentTab === "chat") && (
             <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto w-full flex-1">
               <OrgBanner
                 orgName={profile?.organization_name || null}

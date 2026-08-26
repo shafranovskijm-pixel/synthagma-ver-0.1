@@ -6,7 +6,7 @@ function makeDeps(overrides: Partial<MarkLessonDeps> = {}): MarkLessonDeps {
     saveLessonTime: vi.fn().mockResolvedValue(undefined),
     upsertLessonProgress: vi.fn().mockResolvedValue({ error: null }),
     updateEnrollmentProgress: vi.fn().mockResolvedValue({ error: null }),
-    handleCourseCompletion: vi.fn().mockResolvedValue(undefined),
+    handleCourseCompletion: vi.fn().mockResolvedValue(true),
     goToNextLesson: vi.fn(),
     onProgressUpdated: vi.fn(),
     toastSuccess: vi.fn(),
@@ -20,6 +20,7 @@ function makeState(): MarkLessonState {
     inFlight: new Set<string>(),
     completed: new Set<string>(),
     courseCompletionStarted: { value: false },
+    courseCompletionConfirmed: { value: false },
   };
 }
 
@@ -185,5 +186,62 @@ describe("markLessonProgress — завершение курса", () => {
     ]);
 
     expect(deps.handleCourseCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it("не сообщает об успешном завершении курса и сбрасывает one-shot при отказе RPC/лимита", async () => {
+    const state = makeState();
+    const deps = makeDeps({
+      handleCourseCompletion: vi.fn().mockResolvedValue(false),
+    });
+
+    const result = await markLessonProgress({
+      lessonId: "last", userId: "u", enrollmentId: "e", totalLessons: 1, autoAdvance: true, state, deps,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "course_completion_failed",
+      progress: 100,
+      lessonCompleted: true,
+    });
+    expect(state.courseCompletionStarted.value).toBe(false);
+    expect(deps.goToNextLesson).not.toHaveBeenCalled();
+    expect(deps.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("повторяет завершение для уже сохранённого последнего урока после временной ошибки", async () => {
+    const state = makeState();
+    const complete = vi.fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const deps = makeDeps({ handleCourseCompletion: complete });
+    const input = {
+      lessonId: "last", userId: "u", enrollmentId: "e", totalLessons: 1, autoAdvance: false, state, deps,
+    };
+
+    const first = await markLessonProgress(input);
+    const retry = await markLessonProgress(input);
+
+    expect(first).toMatchObject({ ok: false, reason: "course_completion_failed" });
+    expect(retry).toMatchObject({ ok: true, alreadyCompleted: true, courseCompleted: true });
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(state.courseCompletionStarted.value).toBe(true);
+    expect(state.courseCompletionConfirmed.value).toBe(true);
+  });
+
+  it("не считает started=true подтверждённым завершением и не двигает UI дальше", async () => {
+    const state = makeState();
+    state.completed.add("last");
+    state.courseCompletionStarted.value = true;
+    state.courseCompletionConfirmed.value = false;
+    const deps = makeDeps();
+
+    const result = await markLessonProgress({
+      lessonId: "last", userId: "u", enrollmentId: "e", totalLessons: 1, autoAdvance: true, state, deps,
+    });
+
+    expect(result).toMatchObject({ ok: true, courseCompleted: false, skipped: true });
+    expect(deps.handleCourseCompletion).not.toHaveBeenCalled();
+    expect(deps.goToNextLesson).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -52,6 +52,7 @@ export function useCourseLearning() {
   const [loading, setLoading] = useState(true);
   const [lessonAttachments, setLessonAttachments] = useState<Record<string, { id: string; name: string; file_url: string; file_type: string | null; file_size: number | null; category: string }[]>>({});
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [courseCompletionConfirmed, setCourseCompletionConfirmed] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -70,6 +71,12 @@ export function useCourseLearning() {
   const completedIdsRef = useRef<Set<string>>(new Set());
   const markInFlightRef = useRef<Set<string>>(new Set());
   const courseCompletionStartedRef = useRef<{ value: boolean }>({ value: false });
+  const courseCompletionConfirmedRef = useRef<{ value: boolean }>({ value: false });
+  const activeEnrollmentIdRef = useRef<string | null>(null);
+  const activeCourseContextRef = useRef<string | null>(null);
+  const courseContextGenerationRef = useRef(0);
+  const activeLessonIdRef = useRef<string | null>(null);
+  const courseContextKey = `${courseId ?? ''}:${effectiveUserId ?? ''}:${isAdminView ? 'admin' : 'student'}`;
 
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
@@ -88,6 +95,7 @@ export function useCourseLearning() {
   const currentLesson = baseLesson
     ? ({ ...baseLesson, content: baseLesson.content ?? lessonContents[baseLesson.id] ?? null } as Lesson)
     : (undefined as unknown as Lesson);
+  activeLessonIdRef.current = currentLesson?.id ?? null;
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
@@ -103,6 +111,7 @@ export function useCourseLearning() {
   // Сбрасываем "one-shot" защиту завершения курса при смене курса/enrollment,
   // чтобы повторный вход в тот же курс мог снова корректно завершиться.
   useEffect(() => {
+    activeEnrollmentIdRef.current = enrollmentId;
     courseCompletionStartedRef.current = { value: false };
     markInFlightRef.current = new Set();
   }, [enrollmentId]);
@@ -114,10 +123,17 @@ export function useCourseLearning() {
   const loadLessonContent = useCallback(async (lessonId: string) => {
     if (!lessonId) return;
     if (contentLoadingRef.current.has(lessonId)) return;
+    const requestContextKey = activeCourseContextRef.current;
+    const requestGeneration = courseContextGenerationRef.current;
+    const isCurrentRequest = () => (
+      activeCourseContextRef.current === requestContextKey
+      && courseContextGenerationRef.current === requestGeneration
+    );
     contentLoadingRef.current.add(lessonId);
     try {
       const { data, error } = await supabase
         .from('lessons').select('content').eq('id', lessonId).maybeSingle();
+      if (!isCurrentRequest()) return;
       if (error) throw error;
       setLessonContents(prev => (prev[lessonId] !== undefined ? prev : { ...prev, [lessonId]: (data?.content ?? null) as string | null }));
     } catch (e) {
@@ -153,62 +169,113 @@ export function useCourseLearning() {
     } catch (err) { console.error('[saveLessonTime] error:', err); }
   }, [currentLesson?.id, user, enrollmentId, isAdminView]);
 
-  const handleCourseCompletion = async (testScoreData?: { score: number; max: number }) => {
-    if (isAdminView) return; // never complete the student's course in admin view
-    if (!course || !user || !courseId) return;
+  const handleCourseCompletion = async (testScoreData?: { score: number; max: number }): Promise<boolean> => {
+    if (isAdminView) return false; // never complete the student's course in admin view
+    if (!course || !user || !courseId) {
+      toast.error('Не удалось завершить курс: данные курса не загружены.');
+      return false;
+    }
+    const completionContextKey = activeCourseContextRef.current;
+    const completionGeneration = courseContextGenerationRef.current;
+    const completionEnrollmentId = enrollmentId;
+    const isCurrentCompletion = () => (
+      completionContextKey !== null
+      && activeCourseContextRef.current === completionContextKey
+      && courseContextGenerationRef.current === completionGeneration
+      && activeEnrollmentIdRef.current === completionEnrollmentId
+    );
+    if (!completionEnrollmentId || !isCurrentCompletion()) return false;
     try {
-      const { data: profile } = await supabase.from('profiles').select('full_name, organization_id').eq('user_id', user.id).maybeSingle();
-      if (!profile?.organization_id) return;
+      const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name, organization_id').eq('user_id', user.id).maybeSingle();
+      if (!isCurrentCompletion()) return false;
+      if (profileError || !profile?.organization_id) {
+        console.error('[course-completion] student profile unavailable:', profileError);
+        toast.error('Не удалось завершить курс. Обновите страницу и попробуйте ещё раз.');
+        return false;
+      }
 
-      const { data: org } = await supabase.from('organizations').select('id, name, director_name, director_position, subscription_plan').eq('id', profile.organization_id).single();
-      if (!org) return;
+      const { data: org, error: orgError } = await supabase.from('organizations').select('id, name, director_name, director_position, subscription_plan').eq('id', profile.organization_id).single();
+      if (!isCurrentCompletion()) return false;
+      if (orgError || !org) {
+        console.error('[course-completion] organization unavailable:', orgError);
+        toast.error('Не удалось завершить курс. Обновите страницу и попробуйте ещё раз.');
+        return false;
+      }
 
       const planInfo = (await import('@/constants/subscriptionPlans')).getPlanInfo(org.subscription_plan as Parameters<typeof import('@/constants/subscriptionPlans').getPlanInfo>[0]);
+      if (!isCurrentCompletion()) return false;
       if (planInfo.limits.maxTrainedPerMonth !== -1) {
-        const { data: countData } = await supabase.rpc('count_org_completions_this_month' as never, { org_id: profile.organization_id } as never);
+        const { data: countData, error: countError } = await supabase.rpc('count_org_completions_this_month' as never, { org_id: profile.organization_id } as never);
+        if (!isCurrentCompletion()) return false;
+        if (countError) {
+          console.error('[course-completion] completion limit check failed:', countError);
+          toast.error('Не удалось проверить лимит завершений. Попробуйте ещё раз.');
+          return false;
+        }
         const trainedCount = Number(countData) || 0;
         if (trainedCount >= planInfo.limits.maxTrainedPerMonth) {
           showLimitToast(`Лимит тарифа "${planInfo.name}": ${planInfo.limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`);
-          return;
+          return false;
         }
-      }
-
-      if (!enrollmentId) {
-        toast.error('Не удалось определить запись на курс. Обновите страницу и попробуйте ещё раз.');
-        return;
       }
 
       // Validate every lesson and complete the enrollment in one server-side
       // transaction. The RPC also repairs progress for an already-passed test.
       const { data: updatedEnrollment, error: enrollmentUpdateErr } = await supabase.rpc(
         'complete_own_course_enrollment' as never,
-        { p_enrollment_id: enrollmentId } as never,
+        { p_enrollment_id: completionEnrollmentId } as never,
       );
 
+      if (!isCurrentCompletion()) return false;
       if (enrollmentUpdateErr || !updatedEnrollment) {
         console.error('[course-completion] failed to mark enrollment completed:', enrollmentUpdateErr);
         toast.error('Не удалось завершить курс. Попробуйте ещё раз.');
-        return;
+        return false;
       }
 
+      const completionPayload = updatedEnrollment as unknown as { status?: unknown; progress?: unknown };
+      if (completionPayload.status !== 'completed' || Number(completionPayload.progress) < 100) {
+        console.error('[course-completion] RPC returned an unconfirmed enrollment state:', updatedEnrollment);
+        toast.error('Сервер не подтвердил завершение курса. Попробуйте ещё раз.');
+        return false;
+      }
+
+      courseCompletionConfirmedRef.current.value = true;
+      setCourseCompletionConfirmed(true);
       setLessonProgress(lessons.map(lesson => ({ lesson_id: lesson.id, completed: true })));
 
-      const protocolName = await generateAttestationProtocol({
-        organizationId: org.id, organizationName: org.name, directorName: org.director_name, directorPosition: org.director_position,
-        studentName: profile.full_name || 'Слушатель', courseName: course.title, courseDuration: course.duration,
-        completedAt: new Date(), testScore: testScoreData?.score, testMaxScore: testScoreData?.max,
-      });
-      if (protocolName) toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
+      // Enrollment уже подтверждён сервером. Ошибка последующего документа не
+      // должна превращать фактическое завершение в ложный client-side failure.
+      try {
+        const protocolName = await generateAttestationProtocol({
+          organizationId: org.id, organizationName: org.name, directorName: org.director_name, directorPosition: org.director_position,
+          studentName: profile.full_name || 'Слушатель', courseName: course.title, courseDuration: course.duration,
+          completedAt: new Date(), testScore: testScoreData?.score, testMaxScore: testScoreData?.max,
+        });
+        if (!isCurrentCompletion()) return false;
+        if (protocolName) toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
+      } catch (protocolError) {
+        if (isCurrentCompletion()) console.error('[course-completion] protocol generation failed after confirmed completion:', protocolError);
+      }
 
       // Best-effort email/edge notification. Failure here MUST NOT undo the completion
       // or the DB-triggered organization notification.
-      const notifyKey = `notified:course-completion:${enrollmentId}:${courseId}`;
-      const alreadyNotified = typeof sessionStorage !== 'undefined' && sessionStorage.getItem(notifyKey);
+      if (!isCurrentCompletion()) return false;
+      const notifyKey = `notified:course-completion:${completionEnrollmentId}:${courseId}`;
+      let alreadyNotified = false;
+      try {
+        alreadyNotified = typeof sessionStorage !== 'undefined' && Boolean(sessionStorage.getItem(notifyKey));
+      } catch (storageError) {
+        // Storage может быть запрещён политикой браузера. Enrollment уже
+        // подтверждён сервером, поэтому это не должно превращать успех в false.
+        console.warn('[course-completion] sessionStorage unavailable:', storageError);
+      }
       if (!alreadyNotified) {
         try {
           const result = await safeInvoke('notify-course-completion', {
-            body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id },
+            body: { enrollment_id: completionEnrollmentId, course_id: courseId, user_id: user.id },
           });
+          if (!isCurrentCompletion()) return false;
           if (result.error) {
             console.error('[course-completion] notify edge error:', result.error);
           } else {
@@ -219,15 +286,38 @@ export function useCourseLearning() {
         }
       }
 
+      return isCurrentCompletion();
+    } catch (error) {
+      if (!isCurrentCompletion()) return false;
+      console.error('Error handling course completion:', error);
+      toast.error('Не удалось завершить курс. Попробуйте ещё раз.');
+      return false;
+    }
+  };
 
-    } catch (error) { console.error('Error handling course completion:', error); }
+  const retryCourseCompletion = async (testScoreData?: { score: number; max: number }): Promise<boolean> => {
+    if (courseCompletionConfirmedRef.current.value) return true;
+    const completionStarted = courseCompletionStartedRef.current;
+    if (completionStarted.value) return false;
+    completionStarted.value = true;
+    const confirmed = await handleCourseCompletion(testScoreData);
+    if (!confirmed) completionStarted.value = false;
+    return confirmed;
   };
 
   const testHook = useLessonTest({
     currentLesson, user, lessons, lessonProgress, completedCount,
     enrollmentId, courseId, course, setLessonProgress,
     saveLessonTime: () => saveLessonTime(),
-    handleCourseCompletion,
+    handleCourseCompletion: retryCourseCompletion,
+    isCurrentContext: (() => {
+      const renderContextKey = courseContextKey;
+      const renderGeneration = courseContextGenerationRef.current;
+      return () => (
+        activeCourseContextRef.current === renderContextKey
+        && courseContextGenerationRef.current === renderGeneration
+      );
+    })(),
   });
 
   const ttsHook = useLessonTTS({
@@ -255,26 +345,56 @@ export function useCourseLearning() {
   };
 
   const goToNextLesson = () => {
+    const navigationContextKey = activeCourseContextRef.current;
+    const navigationGeneration = courseContextGenerationRef.current;
+    const isCurrentNavigation = () => (
+      navigationContextKey !== null
+      && activeCourseContextRef.current === navigationContextKey
+      && courseContextGenerationRef.current === navigationGeneration
+    );
     const nextIndex = currentLessonIndex + 1;
     if (nextIndex < lessons.length) {
       if (!isLessonAccessible(nextIndex)) { toast.error('Сначала завершите текущий урок'); return; }
       setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
-      setTimeout(() => { setCurrentLessonIndex(nextIndex); setIsTransitioning(false); }, 300);
+      setTimeout(() => {
+        if (!isCurrentNavigation()) return;
+        setCurrentLessonIndex(nextIndex); setIsTransitioning(false);
+      }, 300);
     }
   };
 
   const goToPrevLesson = () => {
+    const navigationContextKey = activeCourseContextRef.current;
+    const navigationGeneration = courseContextGenerationRef.current;
+    const isCurrentNavigation = () => (
+      navigationContextKey !== null
+      && activeCourseContextRef.current === navigationContextKey
+      && courseContextGenerationRef.current === navigationGeneration
+    );
     if (currentLessonIndex > 0) {
       setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
-      setTimeout(() => { setCurrentLessonIndex(prev => prev - 1); setIsTransitioning(false); }, 300);
+      setTimeout(() => {
+        if (!isCurrentNavigation()) return;
+        setCurrentLessonIndex(prev => prev - 1); setIsTransitioning(false);
+      }, 300);
     }
   };
 
   const goToLesson = (index: number) => {
+    const navigationContextKey = activeCourseContextRef.current;
+    const navigationGeneration = courseContextGenerationRef.current;
+    const isCurrentNavigation = () => (
+      navigationContextKey !== null
+      && activeCourseContextRef.current === navigationContextKey
+      && courseContextGenerationRef.current === navigationGeneration
+    );
     if (index !== currentLessonIndex) {
       if (!isLessonAccessible(index)) { toast.error('Этот урок пока недоступен. Пройдите предыдущие уроки.'); return; }
       setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
-      setTimeout(() => { setCurrentLessonIndex(index); setIsTransitioning(false); }, 300);
+      setTimeout(() => {
+        if (!isCurrentNavigation()) return;
+        setCurrentLessonIndex(index); setIsTransitioning(false);
+      }, 300);
     }
   };
 
@@ -287,6 +407,15 @@ export function useCourseLearning() {
     }
 
     const lessonId = currentLesson.id;
+    const markContextKey = activeCourseContextRef.current;
+    const markGeneration = courseContextGenerationRef.current;
+    const markEnrollmentId = enrollmentId;
+    const isCurrentMark = () => (
+      markContextKey !== null
+      && activeCourseContextRef.current === markContextKey
+      && courseContextGenerationRef.current === markGeneration
+      && activeEnrollmentIdRef.current === markEnrollmentId
+    );
     await markLessonProgress({
       lessonId,
       userId: user.id,
@@ -297,6 +426,7 @@ export function useCourseLearning() {
         inFlight: markInFlightRef.current,
         completed: completedIdsRef.current,
         courseCompletionStarted: courseCompletionStartedRef.current,
+        courseCompletionConfirmed: courseCompletionConfirmedRef.current,
       },
       deps: {
         saveLessonTime: () => saveLessonTime(),
@@ -316,13 +446,13 @@ export function useCourseLearning() {
           const { error } = await supabase.from('enrollments').update({ progress }).eq('id', eid);
           return { error: error ?? null };
         },
-        handleCourseCompletion: () => handleCourseCompletion(),
-        goToNextLesson,
+        handleCourseCompletion: () => isCurrentMark() ? handleCourseCompletion() : Promise.resolve(false),
+        goToNextLesson: () => { if (isCurrentMark()) goToNextLesson(); },
         onProgressUpdated: (completedIds) => {
-          setLessonProgress(completedIds.map(id => ({ lesson_id: id, completed: true })));
+          if (isCurrentMark()) setLessonProgress(completedIds.map(id => ({ lesson_id: id, completed: true })));
         },
-        toastSuccess: (msg) => toast.success(msg),
-        toastError: (msg) => toast.error(msg),
+        toastSuccess: (msg) => { if (isCurrentMark()) toast.success(msg); },
+        toastError: (msg) => { if (isCurrentMark()) toast.error(msg); },
       },
     });
   };
@@ -330,41 +460,117 @@ export function useCourseLearning() {
   const resetCourseProgress = async () => {
     if (isAdminView) { toast.info('Сброс прогресса недоступен в режиме просмотра'); return; }
     if (!user || !courseId) return;
+    const resetContextKey = activeCourseContextRef.current;
+    const resetGeneration = courseContextGenerationRef.current;
+    const isCurrentReset = () => (
+      resetContextKey !== null
+      && activeCourseContextRef.current === resetContextKey
+      && courseContextGenerationRef.current === resetGeneration
+    );
     try {
       const lessonIds = lessons.map(l => l.id);
       if (lessonIds.length > 0) {
         await supabase.from('lesson_progress').delete().eq('user_id', user.id).in('lesson_id', lessonIds);
+        if (!isCurrentReset()) return;
         await supabase.from('test_attempts').delete().eq('user_id', user.id).in('lesson_id', lessonIds);
+        if (!isCurrentReset()) return;
       }
       await supabase.from('enrollments').update({ progress: 0, status: 'active', completed_at: null }).eq('user_id', user.id).eq('course_id', courseId);
-      setLessonProgress([]); setCurrentLessonIndex(0); videoHook.setVideoWatchProgress(0);
+      if (!isCurrentReset()) return;
+      setLessonProgress([]); setCurrentLessonIndex(0); setCourseCompletionConfirmed(false); videoHook.setVideoWatchProgress(0);
+      courseCompletionConfirmedRef.current.value = false;
+      courseCompletionStartedRef.current = { value: false };
       toast.success('Прогресс курса сброшен. Начните прохождение заново!');
-    } catch (error) { console.error('Error resetting progress:', error); toast.error('Ошибка сброса прогресса'); }
+    } catch (error) {
+      if (!isCurrentReset()) return;
+      console.error('Error resetting progress:', error); toast.error('Ошибка сброса прогресса');
+    }
   };
 
   const submitFeedback = async () => {
     if (isAdminView) { toast.info('Отправка отзывов недоступна в режиме просмотра'); return; }
     if (!currentLesson || !user || !feedbackAnswer.trim()) return;
+    const feedbackContextKey = activeCourseContextRef.current;
+    const feedbackGeneration = courseContextGenerationRef.current;
+    const feedbackLessonId = currentLesson.id;
+    const isCurrentFeedback = () => (
+      feedbackContextKey !== null
+      && activeCourseContextRef.current === feedbackContextKey
+      && courseContextGenerationRef.current === feedbackGeneration
+      && activeLessonIdRef.current === feedbackLessonId
+    );
     setFeedbackSending(true);
     try {
       const { data: courseData } = await supabase.from('courses').select('organization_id').eq('id', courseId).single();
+      if (!isCurrentFeedback()) return;
       if (!courseData?.organization_id) { toast.error('Не удалось определить организацию'); setFeedbackSending(false); return; }
       const messageContent = `📋 Обратная связь (урок "${currentLesson.title}"): ${feedbackAnswer.trim()}`;
       const { error } = await supabase.from('org_student_messages').insert({
         organization_id: courseData.organization_id, student_user_id: user.id, sender_user_id: user.id, content: messageContent,
       });
+      if (!isCurrentFeedback()) return;
       if (error) throw error;
       setFeedbackSent(true);
       toast.success('Ваш ответ отправлен');
       await markLessonComplete(false);
-    } catch (err) { console.error('Feedback submit error:', err); toast.error('Ошибка отправки ответа'); }
-    finally { setFeedbackSending(false); }
+    } catch (err) {
+      if (!isCurrentFeedback()) return;
+      console.error('Feedback submit error:', err); toast.error('Ошибка отправки ответа');
+    }
+    finally { if (isCurrentFeedback()) setFeedbackSending(false); }
   };
 
   // Data fetching
-  useEffect(() => { if (courseId && user) fetchCourseData(); }, [courseId, user]);
+  useLayoutEffect(() => {
+    const requestCourseId = courseId;
+    const requestUserId = effectiveUserId;
+    const actorUserId = user?.id ?? null;
+    const generation = ++courseContextGenerationRef.current;
+    activeCourseContextRef.current = courseContextKey;
+
+    // Route/user context is a hard ownership boundary. Use new ref objects so
+    // a late async operation from A cannot mutate B's one-shot/confirmed state.
+    courseCompletionStartedRef.current = { value: false };
+    courseCompletionConfirmedRef.current = { value: false };
+    activeEnrollmentIdRef.current = null;
+    completedIdsRef.current = new Set();
+    markInFlightRef.current = new Set();
+    contentLoadingRef.current = new Set();
+    setCourse(null);
+    setLessons([]);
+    setCurrentLessonIndex(0);
+    setIsTransitioning(false);
+    setLessonProgress([]);
+    setLessonAttachments({});
+    setLessonContents({});
+    setEnrollmentId(null);
+    setCourseCompletionConfirmed(false);
+    setIsOfflineMode(false);
+    setOfflineCachedAt(undefined);
+    setLoading(Boolean(requestCourseId && actorUserId));
+
+    if (requestCourseId && actorUserId) {
+      void fetchCourseData({
+        key: courseContextKey,
+        generation,
+        courseId: requestCourseId,
+        lookupUserId: requestUserId,
+        actorUserId,
+      });
+    }
+
+    return () => {
+      if (
+        activeCourseContextRef.current === courseContextKey
+        && courseContextGenerationRef.current === generation
+      ) {
+        activeCourseContextRef.current = null;
+        courseContextGenerationRef.current += 1;
+      }
+    };
+  }, [courseContextKey]);
   useEffect(() => {
-    setFeedbackAnswer(''); setFeedbackSent(false);
+    setFeedbackAnswer(''); setFeedbackSent(false); setFeedbackSending(false);
   }, [currentLesson?.id]);
   useEffect(() => { if (contentRef.current) contentRef.current.scrollTo({ top: 0, behavior: 'smooth' }); }, [currentLessonIndex]);
   useEffect(() => {
@@ -405,34 +611,48 @@ export function useCourseLearning() {
     return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [user, enrollmentId, currentLesson?.id, saveLessonTime, isAdminView]);
 
-  const fetchCourseData = async () => {
+  const fetchCourseData = async (request: {
+    key: string;
+    generation: number;
+    courseId: string;
+    lookupUserId: string | undefined;
+    actorUserId: string;
+  }) => {
+    const isCurrentRequest = () => (
+      activeCourseContextRef.current === request.key
+      && courseContextGenerationRef.current === request.generation
+    );
     try {
-      const lookupUserId = effectiveUserId; // target student in admin view, otherwise current user
+      const lookupUserId = request.lookupUserId; // target student in admin view, otherwise current user
       const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
         supabase
           .from('courses')
           .select('id, title, description, duration, sequential_lessons, allow_video_seek, skip_video_identification, landing_content')
-          .eq('id', courseId)
+          .eq('id', request.courseId)
           .single(),
         supabase
           .from('lessons')
           .select('id, course_id, title, type, order_index, module_id, is_locked, test_passing_score, test_questions_to_show, test_show_answers, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model')
-          .eq('course_id', courseId)
+          .eq('course_id', request.courseId)
           .order('order_index'),
         lookupUserId
-          ? supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', lookupUserId).maybeSingle()
+          ? supabase.from('enrollments').select('*').eq('course_id', request.courseId).eq('user_id', lookupUserId).maybeSingle()
           : Promise.resolve({ data: null, error: null }),
       ]);
+      if (!isCurrentRequest()) return;
       if (courseResult.error) throw courseResult.error;
+      if (enrollmentResult.error) throw enrollmentResult.error;
       const courseData = courseResult.data;
       setCourse(courseData);
       setIsOfflineMode(false);
 
       // Skip the video-identification gate when an admin/manager is previewing.
-      if (!isAdminView && courseData.skip_video_identification === false && user) {
-        const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+      if (!isAdminView && courseData.skip_video_identification === false) {
+        const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', request.actorUserId).maybeSingle();
+        if (!isCurrentRequest()) return;
         if (profileData?.organization_id) {
-          const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
+          const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', request.actorUserId).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
+          if (!isCurrentRequest()) return;
           if (!videoId) {
             toast.error('Требуется видеоидентификация', { description: 'Пройдите видеоидентификацию перед началом курса' });
             navigate('/student');
@@ -451,6 +671,7 @@ export function useCourseLearning() {
             supabase.from("module_access_schedules" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]),
             supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", lookupUserId),
           ]);
+          if (!isCurrentRequest()) return;
           const schedMap = new Map<string, string>();
           ((schedRes.data as any[]) || []).forEach((r) => schedMap.set(r.module_id, r.unlock_at));
           const ovrMap = new Map<string, string | null>();
@@ -463,6 +684,7 @@ export function useCourseLearning() {
         }
       } catch (e) { console.warn("[module access] load failed", e); }
 
+      if (!isCurrentRequest()) return;
       setLessons(lessonsData);
 
       let enrollment = enrollmentResult.data;
@@ -487,12 +709,18 @@ export function useCourseLearning() {
       }
 
       if (enrollment) {
+        if (!isCurrentRequest()) return;
         setEnrollmentId(enrollment.id);
+        activeEnrollmentIdRef.current = enrollment.id;
+        const enrollmentCompleted = enrollment.status === 'completed';
+        courseCompletionConfirmedRef.current.value = enrollmentCompleted;
+        setCourseCompletionConfirmed(enrollmentCompleted);
         // Don't write access logs in admin preview mode.
-        if (!isAdminView && user) {
-          const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+        if (!isAdminView) {
+          const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', request.actorUserId).maybeSingle();
+          if (!isCurrentRequest()) return;
           supabase.from('course_access_log').insert({
-            user_id: user.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
+            user_id: request.actorUserId, course_id: request.courseId, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
           }).then(() => {});
         }
       }
@@ -506,6 +734,8 @@ export function useCourseLearning() {
           supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', lookupUserId).in('lesson_id', courseLessonIds),
           supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
         ]);
+        if (!isCurrentRequest()) return;
+        if (progressResult.error) throw progressResult.error;
         if (attachmentsResult.error) console.error('Error fetching lesson attachments:', attachmentsResult.error);
         progressData = (progressResult.data || []) as LessonProgress[];
         setLessonProgress(progressData);
@@ -518,18 +748,23 @@ export function useCourseLearning() {
         setLessonProgress([]);
       }
 
-      if (courseId) { cacheCourseData(courseId, courseData, lessonsData, progressData, attMap).catch(() => {}); }
+      if (!isCurrentRequest()) return;
+      cacheCourseData(request.courseId, courseData, lessonsData, progressData, attMap).catch(() => {});
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('Error fetching course:', error);
-      if (courseId) {
-        const cached = await getCachedCourseData(courseId);
+      if (request.courseId) {
+        const cached = await getCachedCourseData(request.courseId);
+        if (!isCurrentRequest()) return;
         if (cached) {
           setCourse(cached.course); setLessons(cached.lessons); setLessonProgress(cached.lessonProgress); setLessonAttachments(cached.lessonAttachments);
           setIsOfflineMode(true); setOfflineCachedAt(cached.cachedAt);
           toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
         } else { toast.error('Ошибка загрузки курса'); }
       } else { toast.error('Ошибка загрузки курса'); }
-    } finally { setLoading(false); }
+    } finally {
+      if (isCurrentRequest()) setLoading(false);
+    }
   };
 
   // Swipe gestures
@@ -553,14 +788,14 @@ export function useCourseLearning() {
   const getLessonIcon = (type: string) => type;
 
   return {
-    course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
+    course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId, courseCompletionConfirmed,
     lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
     isOfflineMode, offlineCachedAt,
     isAdminView, adminViewStudentName: adminView?.name || '',
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
     sidebarOpen, setSidebarOpen, isLessonCompleted, isLessonAccessible,
     markLessonComplete, resetCourseProgress,
-    retryCourseCompletion: () => handleCourseCompletion(testHook.testScore ?? undefined),
+    retryCourseCompletion: () => retryCourseCompletion(testHook.testScore ?? undefined),
     ...testHook,
     feedbackAnswer, setFeedbackAnswer, feedbackSent, feedbackSending, submitFeedback,
     ...videoHook,
