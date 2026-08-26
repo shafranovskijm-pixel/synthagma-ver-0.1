@@ -90,12 +90,35 @@ export function useStudentManagement({
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (
-        firstCourseId
-        && data?.enrollment_created !== true
-        && data?.already_enrolled !== true
-      ) {
-        throw new Error("База не подтвердила зачисление на выбранный курс");
+      if (firstCourseId) {
+        const registeredUserId = data?.user_id;
+        if (!registeredUserId) {
+          throw new Error("Сервер не вернул идентификатор ученика для проверки зачисления");
+        }
+
+        // Older deployed revisions do not return the enrollment flags. Prove
+        // the exact row independently before announcing success.
+        const { data: confirmedEnrollment, error: confirmationError } = await supabase
+          .from("enrollments")
+          .select("id, user_id, course_id")
+          .eq("user_id", registeredUserId)
+          .eq("course_id", firstCourseId)
+          .maybeSingle();
+        if (confirmationError) throw confirmationError;
+        if (
+          !confirmedEnrollment?.id
+          || confirmedEnrollment.user_id !== registeredUserId
+          || confirmedEnrollment.course_id !== firstCourseId
+        ) {
+          const returnedUserIds = (
+            data?.enrollment_created === true || data?.already_enrolled === true
+          ) ? [registeredUserId] : [];
+          throw new EnrollmentPersistenceError({
+            expectedUserIds: [registeredUserId],
+            returnedUserIds,
+            persistedUserIds: [],
+          });
+        }
       }
 
       // Enroll in remaining courses
