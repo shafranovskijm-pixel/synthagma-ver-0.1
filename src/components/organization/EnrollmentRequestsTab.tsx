@@ -133,16 +133,13 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
       if (!initialRequest) {
         throw new Error("Заявка не найдена или недоступна.");
       }
-      if (initialRequest.status === "approved") {
-        toast.success(`Заявка уже одобрена: ${request.user_name}`);
-        loadRequests();
-        onRefreshStudents?.();
-        return;
-      }
-      if (initialRequest.status !== "pending") {
+      const requestAlreadyApproved = initialRequest.status === "approved";
+      if (!requestAlreadyApproved && initialRequest.status !== "pending") {
         throw new Error("Заявка уже обработана и не может быть одобрена повторно.");
       }
 
+      // Even an already-approved request must prove the exact enrollment row.
+      // This repairs legacy/partial states instead of repeating a false success.
       await ensureEnrollmentVerified({
         user_id: request.user_id,
         course_id: request.course_id,
@@ -151,6 +148,13 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
         ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
       });
       enrollmentConfirmed = true;
+
+      if (requestAlreadyApproved) {
+        toast.success(`Заявка уже одобрена: ${request.user_name}`);
+        loadRequests();
+        onRefreshStudents?.();
+        return;
+      }
 
       let selectedGroup: CourseGroup | undefined;
 
