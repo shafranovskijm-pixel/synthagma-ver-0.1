@@ -4,6 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   safeInvoke: vi.fn(),
   maybeSingle: vi.fn(),
+  remainingResult: {
+    data: [] as Array<{
+      id: string;
+      user_id: string;
+      course_id: string;
+      status: string | null;
+      expires_at: string | null;
+    }>,
+    error: null as unknown,
+  },
+  insertEnrollmentsVerified: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
@@ -21,6 +32,13 @@ vi.mock("sonner", () => ({
     warning: mocks.toastWarning,
   },
 }));
+vi.mock("@/api/enrollments", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/enrollments")>();
+  return {
+    ...actual,
+    insertEnrollmentsVerified: mocks.insertEnrollmentsVerified,
+  };
+});
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => {
@@ -29,6 +47,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         select: () => ({
           eq: () => ({
             eq: () => ({ maybeSingle: mocks.maybeSingle }),
+            in: () => Promise.resolve(mocks.remainingResult),
           }),
         }),
       };
@@ -37,6 +56,14 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { useStudentManagement } from "@/hooks/useStudentManagement";
+
+const activeCourse = (courseId: string) => ({
+  id: `enrollment-${courseId}`,
+  user_id: "student-1",
+  course_id: courseId,
+  status: "active",
+  expires_at: null,
+});
 
 describe("useStudentManagement enrollment release compatibility", () => {
   beforeEach(() => {
@@ -50,13 +77,15 @@ describe("useStudentManagement enrollment release compatibility", () => {
       },
       error: null,
     });
-  });
-
-  it("accepts an older Edge response only after a fresh enrollment read-back", async () => {
     mocks.maybeSingle.mockResolvedValue({
-      data: { id: "enrollment-1", user_id: "student-1", course_id: "course-1" },
+      data: activeCourse("course-1"),
       error: null,
     });
+    mocks.remainingResult = { data: [], error: null };
+    mocks.insertEnrollmentsVerified.mockResolvedValue([]);
+  });
+
+  it("accepts an older Edge response only after a fresh active enrollment read-back", async () => {
     const onRefresh = vi.fn();
     const { result } = renderHook(() => useStudentManagement({
       organizationId: "org-1",
@@ -66,13 +95,21 @@ describe("useStudentManagement enrollment release compatibility", () => {
     let created = false;
     await act(async () => {
       created = await result.current.createStudent({
-        name: "Белык А. Ю.",
+        name: "Билык А. Ю.",
         courseIds: ["course-1"],
       });
     });
 
     expect(created).toBe(true);
     expect(mocks.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(mocks.safeInvoke).toHaveBeenCalledWith(
+      "register-student",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          enrollment_request_source: "organization_add_student",
+        }),
+      }),
+    );
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Ученик зачислен на курс");
     expect(mocks.toastError).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalledTimes(1);
@@ -89,7 +126,7 @@ describe("useStudentManagement enrollment release compatibility", () => {
     let created = true;
     await act(async () => {
       created = await result.current.createStudent({
-        name: "Белык А. Ю.",
+        name: "Билык А. Ю.",
         courseIds: ["course-1"],
       });
     });
@@ -100,6 +137,111 @@ describe("useStudentManagement enrollment release compatibility", () => {
       "Ученик создан, но база не подтвердила зачисление на все выбранные курсы. Проверьте его карточку.",
     );
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a first-course success when learner access has expired", async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: {
+        ...activeCourse("course-1"),
+        expires_at: "2020-01-01T00:00:00.000Z",
+      },
+      error: null,
+    });
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh,
+    }));
+
+    let created = true;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Билык А. Ю.",
+        courseIds: ["course-1"],
+      });
+    });
+
+    expect(created).toBe(false);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+    );
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report multi-course success when a remaining course expired", async () => {
+    mocks.remainingResult = {
+      data: [{
+        ...activeCourse("course-2"),
+        expires_at: "2020-01-01T00:00:00.000Z",
+      }],
+      error: null,
+    };
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh,
+    }));
+
+    let created = true;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Билык А. Ю.",
+        courseIds: ["course-1", "course-2"],
+      });
+    });
+
+    expect(created).toBe(false);
+    expect(mocks.insertEnrollmentsVerified).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+    );
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an active remaining enrollment without inserting a duplicate", async () => {
+    mocks.remainingResult = { data: [activeCourse("course-2")], error: null };
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh: vi.fn(),
+    }));
+
+    let created = false;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Билык А. Ю.",
+        courseIds: ["course-1", "course-2"],
+      });
+    });
+
+    expect(created).toBe(true);
+    expect(mocks.insertEnrollmentsVerified).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("inserts and verifies a missing remaining enrollment", async () => {
+    mocks.remainingResult = { data: [], error: null };
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh: vi.fn(),
+    }));
+
+    let created = false;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Билык А. Ю.",
+        courseIds: ["course-1", "course-2"],
+      });
+    });
+
+    expect(created).toBe(true);
+    expect(mocks.insertEnrollmentsVerified).toHaveBeenCalledWith([{
+      user_id: "student-1",
+      course_id: "course-2",
+      status: "active",
+      progress: 0,
+    }]);
   });
 
   it("surfaces a persisted-profile partial success without a success toast, mail, or client read-back", async () => {
@@ -129,8 +271,8 @@ describe("useStudentManagement enrollment release compatibility", () => {
     let created = true;
     await act(async () => {
       created = await result.current.createStudent({
-        name: "Белык А. Ю.",
-        email: "belyk@example.test",
+        name: "Билык А. Ю.",
+        email: "bilyk@example.test",
         courseIds: ["course-1"],
       });
     });
