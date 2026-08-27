@@ -76,9 +76,13 @@ export function useStudentManagement({
     }
 
     setIsCreatingStudent(true);
+    let registeredStudent: any = null;
+    let generatedPassword = "";
+
     try {
       const firstCourseId = effectiveCourseIds[0] || null;
       const password = customPassword || generateStrongPassword();
+      generatedPassword = password;
       const { data, error } = await safeInvoke<any>("register-student", {
         body: {
           token: null,
@@ -107,6 +111,8 @@ export function useStudentManagement({
         return false;
       }
       if (data?.error) throw new Error(data.error);
+      registeredStudent = data;
+
       if (firstCourseId) {
         const registeredUserId = data?.user_id;
         if (!registeredUserId) {
@@ -215,7 +221,25 @@ export function useStudentManagement({
       return true;
     } catch (error: any) {
       console.error("Error creating student:", error);
-      if (error instanceof EnrollmentAccessExpiredError) {
+
+      if (registeredStudent?.user_id) {
+        const wasExisting = registeredStudent.is_existing === true;
+        const displayLogin = registeredStudent.login || customLogin;
+        const displayPassword = registeredStudent.password || generatedPassword;
+        const credentials = !wasExisting && displayLogin && displayPassword
+          ? ` Логин: ${displayLogin}, пароль: ${displayPassword}.`
+          : "";
+        const partialReason = error instanceof EnrollmentPersistenceError
+          ? "база не подтвердила зачисление на все выбранные курсы"
+          : (error?.message || "не удалось завершить зачисление на все выбранные курсы");
+
+        onRefresh();
+        setShowAddStudentDialog(false);
+        toast.warning(
+          `${wasExisting ? "Ученик найден" : "Ученик создан"}, но операция завершилась частично: ${partialReason}.${credentials} Откройте карточку ученика и проверьте курсы перед повторным действием.`,
+          { duration: 30000 },
+        );
+      } else if (error instanceof EnrollmentAccessExpiredError) {
         onRefresh();
         toast.error(error.message);
       } else if (error instanceof EnrollmentPersistenceError) {
