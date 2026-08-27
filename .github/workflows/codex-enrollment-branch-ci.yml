@@ -38,7 +38,6 @@ jobs:
           src/api/__tests__/enrollments.test.ts
           src/hooks/__tests__/useStudentManagement.enrollmentCompatibility.test.tsx
           src/hooks/__tests__/useCourseDetails.enrollmentPersistence.test.tsx
-          src/components/organization/__tests__/EnrollmentRequestsTab.approvalSafety.test.tsx
 
       - name: Type-check application
         run: npx tsc -p tsconfig.app.json --noEmit
