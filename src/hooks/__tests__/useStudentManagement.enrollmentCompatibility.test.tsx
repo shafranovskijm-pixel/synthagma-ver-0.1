@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
     }>,
     error: null as unknown,
   },
-  insertEnrollmentsVerified: vi.fn(),
+  ensureEnrollmentVerified: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("@/api/enrollments", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/enrollments")>();
   return {
     ...actual,
-    insertEnrollmentsVerified: mocks.insertEnrollmentsVerified,
+    ensureEnrollmentVerified: mocks.ensureEnrollmentVerified,
   };
 });
 vi.mock("@/integrations/supabase/client", () => ({
@@ -82,7 +82,7 @@ describe("useStudentManagement enrollment release compatibility", () => {
       error: null,
     });
     mocks.remainingResult = { data: [], error: null };
-    mocks.insertEnrollmentsVerified.mockResolvedValue([]);
+    mocks.ensureEnrollmentVerified.mockResolvedValue(activeCourse("course-2"));
   });
 
   it("accepts an older Edge response only after a fresh active enrollment read-back", async () => {
@@ -192,7 +192,7 @@ describe("useStudentManagement enrollment release compatibility", () => {
     });
 
     expect(created).toBe(false);
-    expect(mocks.insertEnrollmentsVerified).not.toHaveBeenCalled();
+    expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
     expect(mocks.toastError).toHaveBeenCalledWith(
       "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
@@ -216,7 +216,7 @@ describe("useStudentManagement enrollment release compatibility", () => {
     });
 
     expect(created).toBe(true);
-    expect(mocks.insertEnrollmentsVerified).not.toHaveBeenCalled();
+    expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledTimes(1);
   });
 
@@ -236,12 +236,12 @@ describe("useStudentManagement enrollment release compatibility", () => {
     });
 
     expect(created).toBe(true);
-    expect(mocks.insertEnrollmentsVerified).toHaveBeenCalledWith([{
+    expect(mocks.ensureEnrollmentVerified).toHaveBeenCalledWith({
       user_id: "student-1",
       course_id: "course-2",
       status: "active",
       progress: 0,
-    }]);
+    });
   });
 
   it("surfaces a persisted-profile partial success without a success toast, mail, or client read-back", async () => {
