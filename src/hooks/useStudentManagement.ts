@@ -7,7 +7,7 @@ import { getBaseUrl } from "@/utils/getBaseUrl";
 import {
   EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
-  insertEnrollmentsVerified,
+  ensureEnrollmentVerified,
   isEnrollmentAccessExpired,
   type EnrollmentAccessRow,
 } from "@/api/enrollments";
@@ -168,12 +168,12 @@ export function useStudentManagement({
         for (const courseId of remainingCourseIds) {
           if (existingCourseIds.has(courseId)) continue;
 
-          await insertEnrollmentsVerified([{
+          await ensureEnrollmentVerified({
             user_id: data.user_id,
             course_id: courseId,
             status: "active",
             progress: 0,
-          }]);
+          });
         }
       }
 
