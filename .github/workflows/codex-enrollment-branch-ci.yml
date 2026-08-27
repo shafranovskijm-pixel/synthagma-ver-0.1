@@ -1,0 +1,46 @@
+name: Codex enrollment branch CI
+
+on:
+  push:
+    branches:
+      - codex/enrollment-false-success-final-20260828
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run enrollment regression tests
+        run: >
+          npx vitest run
+          src/api/__tests__/existingEnrollmentAccess.test.ts
+          src/api/__tests__/registerStudentEnrollmentContract.test.ts
+          src/api/__tests__/enrollments.test.ts
+          src/hooks/__tests__/useStudentManagement.enrollmentCompatibility.test.tsx
+          src/components/organization/__tests__/EnrollmentRequestsTab.approvalSafety.test.tsx
+
+      - name: Type-check application
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+      - name: Type-check tooling
+        run: npx tsc -p tsconfig.node.json --noEmit
+
+      - name: Build production bundle
+        run: npm run build
