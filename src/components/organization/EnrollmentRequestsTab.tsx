@@ -14,9 +14,8 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
-  EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
-  ensureEnrollmentVerified,
+  insertEnrollmentsVerified,
 } from "@/api/enrollments";
 
 interface EnrollmentRequest {
@@ -115,233 +114,71 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
 
   const handleApprove = async (request: EnrollmentRequest) => {
     setProcessingId(request.id);
-    let enrollmentConfirmed = false;
-    let requestApproved = false;
-    let requestTransitioned = false;
-    let approvalRecoveryRequired = false;
-
     try {
       const groupId = selectedGroupId[request.id];
 
-      const { data: initialRequest, error: initialRequestError } = await supabase
-        .from("enrollment_requests")
-        .select("id, status, course_id, user_id")
-        .eq("id", request.id)
-        .eq("course_id", request.course_id)
-        .eq("user_id", request.user_id)
-        .maybeSingle();
+      // Create enrollment
+      await insertEnrollmentsVerified([{
+        user_id: request.user_id,
+        course_id: request.course_id,
+        status: "active",
+        progress: 0,
+        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) }]);
 
-      if (initialRequestError) throw initialRequestError;
-      if (!initialRequest) {
-        throw new Error("Заявка не найдена или недоступна.");
-      }
-
-      const requestInitiallyApproved = initialRequest.status === "approved";
-      if (!requestInitiallyApproved && initialRequest.status !== "pending") {
-        throw new Error("Заявка уже обработана и не может быть одобрена повторно.");
-      }
-
-      if (requestInitiallyApproved) {
-        requestApproved = true;
-      } else {
-        // Claim the exact pending request before creating enrollment or changing
-        // the group. Only one approve/reject action can win this transition.
-        const { data: transitionedRequest, error: updateError } = await supabase
-          .from("enrollment_requests")
-          .update({
-            status: "approved",
-            resolved_at: new Date().toISOString(),
-          } as any)
-          .eq("id", request.id)
-          .eq("course_id", request.course_id)
-          .eq("user_id", request.user_id)
-          .eq("status", "pending")
-          .select("id, status, course_id, user_id")
-          .maybeSingle();
-
-        if (!updateError && transitionedRequest) {
-          if (
-            transitionedRequest.id !== request.id
-            || transitionedRequest.course_id !== request.course_id
-            || transitionedRequest.user_id !== request.user_id
-            || transitionedRequest.status !== "approved"
-          ) {
-            throw new Error("База вернула другую заявку вместо подтверждённой.");
-          }
-          requestTransitioned = true;
-          requestApproved = true;
-        } else {
-          // Reconcile a concurrent winner or a response lost after commit.
-          const { data: approvedReadback, error: approvedReadbackError } = await supabase
-            .from("enrollment_requests")
-            .select("id, status, course_id, user_id")
-            .eq("id", request.id)
-            .eq("course_id", request.course_id)
-            .eq("user_id", request.user_id)
-            .maybeSingle();
-
-          if (approvedReadbackError) {
-            throw updateError || approvedReadbackError;
-          }
-          if (
-            !approvedReadback
-            || approvedReadback.id !== request.id
-            || approvedReadback.course_id !== request.course_id
-            || approvedReadback.user_id !== request.user_id
-          ) {
-            if (updateError) throw updateError;
-            throw new Error("База не подтвердила обработку заявки.");
-          }
-          if (approvedReadback.status === "rejected") {
-            throw new Error("Заявка уже отклонена другим пользователем.");
-          }
-          if (approvedReadback.status !== "approved") {
-            if (updateError) throw updateError;
-            throw new Error("База не подтвердила одобрение заявки.");
-          }
-
-          requestApproved = true;
-        }
-      }
-
-      try {
-        // Even an already-approved or concurrently-approved request must prove
-        // the exact enrollment row before the UI may report success.
-        await ensureEnrollmentVerified({
-          user_id: request.user_id,
-          course_id: request.course_id,
-          status: "active",
-          progress: 0,
-          ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
-        });
-        enrollmentConfirmed = true;
-      } catch (enrollmentError) {
-        if (requestTransitioned) {
-          try {
-            const { data: rolledBackRequest, error: rollbackError } = await supabase
-              .from("enrollment_requests")
-              .update({ status: "pending", resolved_at: null } as any)
-              .eq("id", request.id)
-              .eq("course_id", request.course_id)
-              .eq("user_id", request.user_id)
-              .eq("status", "approved")
-              .select("id, status, course_id, user_id")
-              .maybeSingle();
-
-            if (
-              rollbackError
-              || !rolledBackRequest
-              || rolledBackRequest.id !== request.id
-              || rolledBackRequest.course_id !== request.course_id
-              || rolledBackRequest.user_id !== request.user_id
-              || rolledBackRequest.status !== "pending"
-            ) {
-              approvalRecoveryRequired = true;
-            } else {
-              requestApproved = false;
-              requestTransitioned = false;
-            }
-          } catch {
-            approvalRecoveryRequired = true;
-          }
-        }
-        throw enrollmentError;
-      }
-
-      if (!requestTransitioned) {
-        toast.success(`Заявка уже одобрена: ${request.user_name}`);
-        loadRequests();
-        onRefreshStudents?.();
-        return;
-      }
-
-      let selectedGroup: CourseGroup | undefined;
+      // If a group was selected, assign student to group
       if (groupId) {
-        const { data: updatedProfile, error: groupUpdateError } = await supabase
+        await supabase
           .from("profiles")
           .update({ student_group_id: groupId } as any)
-          .eq("user_id", request.user_id)
-          .select("user_id, student_group_id")
-          .maybeSingle();
+          .eq("user_id", request.user_id);
 
-        if (groupUpdateError) throw groupUpdateError;
-        if (
-          !updatedProfile
-          || updatedProfile.user_id !== request.user_id
-          || updatedProfile.student_group_id !== groupId
-        ) {
-          throw new Error("База не подтвердила назначение ученика в выбранную группу.");
-        }
-
-        selectedGroup = groups.find((group) => group.id === groupId);
-      }
-
-      // Notifications are best-effort and cannot roll back a confirmed approval.
-      try {
-        if (selectedGroup) {
-          const startInfo = selectedGroup.start_date
-            ? `, старт: ${format(
-                new Date(selectedGroup.start_date),
-                "d MMMM yyyy",
-                { locale: ru },
-              )}`
+        // Send chat notification about group assignment
+        const group = groups.find(g => g.id === groupId);
+        if (group) {
+          const startInfo = group.start_date
+            ? `, старт: ${format(new Date(group.start_date), "d MMMM yyyy", { locale: ru })}`
             : "";
-
+          
           await supabase.from("chat_messages").insert({
             user_id: request.user_id,
             course_id: request.course_id,
             role: "system",
-            content: `Вы зачислены в группу «${selectedGroup.name}»${startInfo}. Добро пожаловать!`,
-          });
+            content: `Вы зачислены в группу «${group.name}»${startInfo}. Добро пожаловать!` });
         }
+      }
 
-        const { data: courseInfo } = await supabase
-          .from("courses")
-          .select("title, organization_id")
-          .eq("id", request.course_id)
-          .maybeSingle();
+      // Update request status
+      const { error: updateError } = await supabase
+        .from("enrollment_requests")
+        .update({ status: "approved", resolved_at: new Date().toISOString() } as any)
+        .eq("id", request.id);
+      if (updateError) throw updateError;
 
-        if (courseInfo?.organization_id) {
-          await supabase.from("org_general_messages").insert({
-            organization_id: courseInfo.organization_id,
-            sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
-            content: `✅ Заявка одобрена: ${request.user_name} зачислен(а) на курс «${courseInfo.title}»`,
-          });
-        }
-      } catch (notificationError) {
-        console.warn("Approval notification was not sent", notificationError);
+      // Get course info for chat message
+      const { data: courseInfo } = await supabase
+        .from("courses")
+        .select("title, organization_id")
+        .eq("id", request.course_id)
+        .maybeSingle();
+
+      // Send approval message to org general chat
+      if (courseInfo?.organization_id) {
+        await supabase.from("org_general_messages").insert({
+          organization_id: courseInfo.organization_id,
+          sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
+          content: `✅ Заявка одобрена: ${request.user_name} зачислен(а) на курс «${courseInfo.title}»`,
+        });
       }
 
       toast.success(`Заявка одобрена: ${request.user_name}`);
       loadRequests();
       onRefreshStudents?.();
-    } catch (error) {
-      loadRequests();
-
-      if (
-        enrollmentConfirmed
-        || requestApproved
-        || error instanceof EnrollmentPersistenceError
-        || error instanceof EnrollmentAccessExpiredError
-      ) {
+    } catch (e) {
+      if (e instanceof EnrollmentPersistenceError) {
+        loadRequests();
         onRefreshStudents?.();
       }
-
-      let description = getErrorMessage(error);
-      if (approvalRecoveryRequired) {
-        description =
-          `Зачисление не подтверждено, а статус заявки не удалось безопасно вернуть: ${description} ` +
-          "Обновите страницу и не создавайте дубль.";
-      } else if (error instanceof EnrollmentPersistenceError) {
-        description =
-          "База не подтвердила зачисление. Обновите список учеников и повторите операцию.";
-      } else if (requestApproved && enrollmentConfirmed) {
-        description =
-          `Зачисление и заявка уже подтверждены, но выбранная группа не назначена: ${description} ` +
-          "Назначьте группу в карточке ученика.";
-      }
-
-      toast.error("Ошибка одобрения заявки", { description });
+      toast.error("Ошибка одобрения заявки", { description: getErrorMessage(e) });
     } finally {
       setProcessingId(null);
     }
@@ -349,89 +186,33 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
 
   const handleReject = async (request: EnrollmentRequest) => {
     setProcessingId(request.id);
-
     try {
-      const { data: transitionedRequest, error: updateError } = await supabase
+      const { error } = await supabase
         .from("enrollment_requests")
-        .update({
-          status: "rejected",
-          resolved_at: new Date().toISOString(),
-        } as any)
-        .eq("id", request.id)
-        .eq("course_id", request.course_id)
-        .eq("user_id", request.user_id)
-        .eq("status", "pending")
-        .select("id, status, course_id, user_id")
+        .update({ status: "rejected", resolved_at: new Date().toISOString() } as any)
+        .eq("id", request.id);
+      if (error) throw error;
+
+      // Get course info for chat message
+      const { data: courseInfo } = await supabase
+        .from("courses")
+        .select("title, organization_id")
+        .eq("id", request.course_id)
         .maybeSingle();
 
-      let requestTransitioned = false;
-      if (!updateError && transitionedRequest) {
-        if (
-          transitionedRequest.id !== request.id
-          || transitionedRequest.course_id !== request.course_id
-          || transitionedRequest.user_id !== request.user_id
-          || transitionedRequest.status !== "rejected"
-        ) {
-          throw new Error("База вернула другую заявку вместо отклонённой.");
-        }
-        requestTransitioned = true;
-      } else {
-        const { data: requestReadback, error: readbackError } = await supabase
-          .from("enrollment_requests")
-          .select("id, status, course_id, user_id")
-          .eq("id", request.id)
-          .eq("course_id", request.course_id)
-          .eq("user_id", request.user_id)
-          .maybeSingle();
-
-        if (readbackError) throw updateError || readbackError;
-        if (
-          !requestReadback
-          || requestReadback.id !== request.id
-          || requestReadback.course_id !== request.course_id
-          || requestReadback.user_id !== request.user_id
-        ) {
-          if (updateError) throw updateError;
-          throw new Error("База не подтвердила обработку заявки.");
-        }
-        if (requestReadback.status === "approved") {
-          throw new Error("Заявка уже одобрена и не может быть отклонена.");
-        }
-        if (requestReadback.status !== "rejected") {
-          if (updateError) throw updateError;
-          throw new Error("База не подтвердила отклонение заявки.");
-        }
+      // Send rejection message to org general chat
+      if (courseInfo?.organization_id) {
+        await supabase.from("org_general_messages").insert({
+          organization_id: courseInfo.organization_id,
+          sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
+          content: `❌ Заявка отклонена: ${request.user_name} — курс «${courseInfo.title}»`,
+        });
       }
 
-      if (requestTransitioned) {
-        try {
-          const { data: courseInfo } = await supabase
-            .from("courses")
-            .select("title, organization_id")
-            .eq("id", request.course_id)
-            .maybeSingle();
-
-          if (courseInfo?.organization_id) {
-            await supabase.from("org_general_messages").insert({
-              organization_id: courseInfo.organization_id,
-              sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
-              content: `❌ Заявка отклонена: ${request.user_name} — курс «${courseInfo.title}»`,
-            });
-          }
-        } catch (notificationError) {
-          console.warn("Rejection notification was not sent", notificationError);
-        }
-      }
-
-      toast.success(
-        requestTransitioned
-          ? `Заявка отклонена: ${request.user_name}`
-          : `Заявка уже отклонена: ${request.user_name}`,
-      );
+      toast.success(`Заявка отклонена: ${request.user_name}`);
       loadRequests();
-    } catch (error) {
-      loadRequests();
-      toast.error("Ошибка отклонения заявки", { description: getErrorMessage(error) });
+    } catch (e) {
+      toast.error("Ошибка отклонения заявки", { description: getErrorMessage(e) });
     } finally {
       setProcessingId(null);
     }
