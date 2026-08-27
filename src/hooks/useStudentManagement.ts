@@ -155,7 +155,7 @@ export function useStudentManagement({
 
         const remainingRows = (existingRemaining ?? []) as EnrollmentAccessRow[];
         const expiredCourseIds = remainingRows
-          .filter(isEnrollmentAccessExpired)
+          .filter((row) => isEnrollmentAccessExpired(row))
           .map((row) => row.course_id);
 
         // Fail before inserting any missing remaining course, so the UI cannot
