@@ -14,8 +14,9 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
+  EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
-  insertEnrollmentsVerified,
+  ensureEnrollmentVerified,
 } from "@/api/enrollments";
 
 interface EnrollmentRequest {
@@ -114,71 +115,167 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
 
   const handleApprove = async (request: EnrollmentRequest) => {
     setProcessingId(request.id);
+    let enrollmentConfirmed = false;
+
     try {
       const groupId = selectedGroupId[request.id];
 
-      // Create enrollment
-      await insertEnrollmentsVerified([{
+      // Protect a retry whose previous response was lost after approval committed.
+      const { data: initialRequest, error: initialRequestError } = await supabase
+        .from("enrollment_requests")
+        .select("id, status, course_id, user_id")
+        .eq("id", request.id)
+        .eq("course_id", request.course_id)
+        .eq("user_id", request.user_id)
+        .maybeSingle();
+
+      if (initialRequestError) throw initialRequestError;
+      if (!initialRequest) {
+        throw new Error("Заявка не найдена или недоступна.");
+      }
+      if (initialRequest.status === "approved") {
+        toast.success(`Заявка уже одобрена: ${request.user_name}`);
+        loadRequests();
+        onRefreshStudents?.();
+        return;
+      }
+      if (initialRequest.status !== "pending") {
+        throw new Error("Заявка уже обработана и не может быть одобрена повторно.");
+      }
+
+      await ensureEnrollmentVerified({
         user_id: request.user_id,
         course_id: request.course_id,
         status: "active",
         progress: 0,
-        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) }]);
+        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
+      });
+      enrollmentConfirmed = true;
 
-      // If a group was selected, assign student to group
+      let selectedGroup: CourseGroup | undefined;
+
       if (groupId) {
-        await supabase
+        const { data: updatedProfile, error: groupUpdateError } = await supabase
           .from("profiles")
           .update({ student_group_id: groupId } as any)
-          .eq("user_id", request.user_id);
+          .eq("user_id", request.user_id)
+          .select("user_id, student_group_id")
+          .maybeSingle();
 
-        // Send chat notification about group assignment
-        const group = groups.find(g => g.id === groupId);
-        if (group) {
-          const startInfo = group.start_date
-            ? `, старт: ${format(new Date(group.start_date), "d MMMM yyyy", { locale: ru })}`
+        if (groupUpdateError) throw groupUpdateError;
+        if (
+          !updatedProfile
+          || updatedProfile.user_id !== request.user_id
+          || updatedProfile.student_group_id !== groupId
+        ) {
+          throw new Error("База не подтвердила назначение ученика в выбранную группу.");
+        }
+
+        selectedGroup = groups.find((group) => group.id === groupId);
+      }
+
+      const { data: transitionedRequest, error: updateError } = await supabase
+        .from("enrollment_requests")
+        .update({
+          status: "approved",
+          resolved_at: new Date().toISOString(),
+        } as any)
+        .eq("id", request.id)
+        .eq("course_id", request.course_id)
+        .eq("user_id", request.user_id)
+        .eq("status", "pending")
+        .select("id, status, course_id, user_id")
+        .maybeSingle();
+
+      if (updateError) throw updateError;
+
+      let requestTransitioned = Boolean(transitionedRequest);
+      if (transitionedRequest) {
+        if (
+          transitionedRequest.id !== request.id
+          || transitionedRequest.course_id !== request.course_id
+          || transitionedRequest.user_id !== request.user_id
+          || transitionedRequest.status !== "approved"
+        ) {
+          throw new Error("База вернула другую заявку вместо подтверждённой.");
+        }
+      } else {
+        // Reconcile a concurrent approval or a committed response lost in transit.
+        const { data: approvedReadback, error: approvedReadbackError } = await supabase
+          .from("enrollment_requests")
+          .select("id, status, course_id, user_id")
+          .eq("id", request.id)
+          .eq("course_id", request.course_id)
+          .eq("user_id", request.user_id)
+          .maybeSingle();
+
+        if (approvedReadbackError) throw approvedReadbackError;
+        if (!approvedReadback || approvedReadback.status !== "approved") {
+          throw new Error("База не подтвердила одобрение заявки.");
+        }
+
+        requestTransitioned = false;
+      }
+
+      // Notifications run only for the request that actually changed pending → approved.
+      if (requestTransitioned) {
+        if (selectedGroup) {
+          const startInfo = selectedGroup.start_date
+            ? `, старт: ${format(
+                new Date(selectedGroup.start_date),
+                "d MMMM yyyy",
+                { locale: ru },
+              )}`
             : "";
-          
+
           await supabase.from("chat_messages").insert({
             user_id: request.user_id,
             course_id: request.course_id,
             role: "system",
-            content: `Вы зачислены в группу «${group.name}»${startInfo}. Добро пожаловать!` });
+            content: `Вы зачислены в группу «${selectedGroup.name}»${startInfo}. Добро пожаловать!`,
+          });
         }
-      }
 
-      // Update request status
-      const { error: updateError } = await supabase
-        .from("enrollment_requests")
-        .update({ status: "approved", resolved_at: new Date().toISOString() } as any)
-        .eq("id", request.id);
-      if (updateError) throw updateError;
+        const { data: courseInfo } = await supabase
+          .from("courses")
+          .select("title, organization_id")
+          .eq("id", request.course_id)
+          .maybeSingle();
 
-      // Get course info for chat message
-      const { data: courseInfo } = await supabase
-        .from("courses")
-        .select("title, organization_id")
-        .eq("id", request.course_id)
-        .maybeSingle();
-
-      // Send approval message to org general chat
-      if (courseInfo?.organization_id) {
-        await supabase.from("org_general_messages").insert({
-          organization_id: courseInfo.organization_id,
-          sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
-          content: `✅ Заявка одобрена: ${request.user_name} зачислен(а) на курс «${courseInfo.title}»`,
-        });
+        if (courseInfo?.organization_id) {
+          await supabase.from("org_general_messages").insert({
+            organization_id: courseInfo.organization_id,
+            sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
+            content: `✅ Заявка одобрена: ${request.user_name} зачислен(а) на курс «${courseInfo.title}»`,
+          });
+        }
       }
 
       toast.success(`Заявка одобрена: ${request.user_name}`);
       loadRequests();
       onRefreshStudents?.();
-    } catch (e) {
-      if (e instanceof EnrollmentPersistenceError) {
-        loadRequests();
+    } catch (error) {
+      loadRequests();
+
+      if (
+        enrollmentConfirmed
+        || error instanceof EnrollmentPersistenceError
+        || error instanceof EnrollmentAccessExpiredError
+      ) {
         onRefreshStudents?.();
       }
-      toast.error("Ошибка одобрения заявки", { description: getErrorMessage(e) });
+
+      let description = getErrorMessage(error);
+      if (error instanceof EnrollmentPersistenceError) {
+        description =
+          "База не подтвердила зачисление. Обновите список учеников и повторите операцию.";
+      } else if (enrollmentConfirmed) {
+        description =
+          `Зачисление уже подтверждено, но заявка обработана не полностью: ${description} ` +
+          "Повторите одобрение — дубль зачисления не создастся.";
+      }
+
+      toast.error("Ошибка одобрения заявки", { description });
     } finally {
       setProcessingId(null);
     }
