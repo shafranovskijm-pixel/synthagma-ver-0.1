@@ -133,9 +133,13 @@ describe("useStudentManagement enrollment release compatibility", () => {
 
     expect(created).toBe(false);
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Ученик создан, но база не подтвердила зачисление на все выбранные курсы. Проверьте его карточку.",
+    expect(mocks.toastWarning).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "база не подтвердила зачисление на все выбранные курсы",
+      ),
+      { duration: 30000 },
     );
+    expect(mocks.toastError).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
@@ -163,9 +167,13 @@ describe("useStudentManagement enrollment release compatibility", () => {
 
     expect(created).toBe(false);
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+    expect(mocks.toastWarning).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+      ),
+      { duration: 30000 },
     );
+    expect(mocks.toastError).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
@@ -194,9 +202,13 @@ describe("useStudentManagement enrollment release compatibility", () => {
     expect(created).toBe(false);
     expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+    expect(mocks.toastWarning).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+      ),
+      { duration: 30000 },
     );
+    expect(mocks.toastError).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
@@ -242,6 +254,74 @@ describe("useStudentManagement enrollment release compatibility", () => {
       status: "active",
       progress: 0,
     });
+  });
+
+  it("closes the form and preserves generated credentials after partial multi-course creation", async () => {
+    mocks.safeInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        user_id: "student-1",
+        is_existing: false,
+        login: "student_12345",
+        password: "StrongPass123",
+      },
+      error: null,
+    });
+    mocks.ensureEnrollmentVerified
+      .mockResolvedValueOnce(activeCourse("course-2"))
+      .mockRejectedValueOnce(new Error("course-3 unavailable"));
+
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh,
+    }));
+
+    act(() => {
+      result.current.setShowAddStudentDialog(true);
+    });
+
+    let created = true;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Новый Ученик",
+        courseIds: ["course-1", "course-2", "course-3"],
+      });
+    });
+
+    expect(created).toBe(false);
+    expect(mocks.ensureEnrollmentVerified).toHaveBeenNthCalledWith(1, {
+      user_id: "student-1",
+      course_id: "course-2",
+      status: "active",
+      progress: 0,
+    });
+    expect(mocks.ensureEnrollmentVerified).toHaveBeenNthCalledWith(2, {
+      user_id: "student-1",
+      course_id: "course-3",
+      status: "active",
+      progress: 0,
+    });
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(result.current.showAddStudentDialog).toBe(false);
+    expect(mocks.toastWarning).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Логин: student_12345, пароль: StrongPass123",
+      ),
+      { duration: 30000 },
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.safeInvoke).toHaveBeenCalledWith(
+      "register-student",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          email: null,
+          custom_login: null,
+          custom_password: null,
+        }),
+      }),
+    );
   });
 
   it("surfaces a persisted-profile partial success without a success toast, mail, or client read-back", async () => {
