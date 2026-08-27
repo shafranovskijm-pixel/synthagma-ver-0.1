@@ -15,6 +15,60 @@ export interface ConfirmedEnrollmentRow {
   course_id: string;
 }
 
+export interface EnrollmentAccessRow extends ConfirmedEnrollmentRow {
+  status: string | null;
+  expires_at: string | null;
+}
+
+export class EnrollmentAccessExpiredError extends Error {
+  readonly courseIds: string[];
+
+  constructor(courseIds: string[]) {
+    const uniqueCourseIds = Array.from(new Set(courseIds.filter(Boolean))).sort();
+    super(
+      uniqueCourseIds.length > 1
+        ? "Для одного или нескольких выбранных курсов срок доступа ученика истёк. Измените срок доступа в карточке ученика."
+        : "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+    );
+    this.name = "EnrollmentAccessExpiredError";
+    this.courseIds = uniqueCourseIds;
+  }
+}
+
+export function isEnrollmentAccessExpired(
+  enrollment: Pick<EnrollmentAccessRow, "status" | "expires_at">,
+  now: Date = new Date(),
+): boolean {
+  if (!enrollment.expires_at || enrollment.status === "completed") return false;
+
+  const expiresAt = new Date(enrollment.expires_at);
+  return Number.isFinite(expiresAt.getTime()) && expiresAt < now;
+}
+
+function getDatabaseErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("code" in error)) return null;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+}
+
+async function readExactEnrollmentAccess(
+  userId: string,
+  courseId: string,
+): Promise<EnrollmentAccessRow | null> {
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("id, user_id, course_id, status, expires_at")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  if (data.user_id !== userId || data.course_id !== courseId) return null;
+
+  return data as EnrollmentAccessRow;
+}
+
 /** Raised when the server accepted INSERT but did not prove persistence. */
 export class EnrollmentPersistenceError extends Error {
   readonly expectedUserIds: string[];
@@ -109,4 +163,42 @@ export async function insertEnrollmentsVerified(
   return persistedRows.filter(
     (row) => row.course_id === courseId && expected.has(row.user_id),
   );
+}
+
+/**
+ * Used only by workflows that must safely resume after a partial success.
+ * An existing exact enrollment is accepted only when learner access is valid.
+ */
+export async function ensureEnrollmentVerified(
+  row: EnrollmentInsertRow,
+): Promise<EnrollmentAccessRow> {
+  const existing = await readExactEnrollmentAccess(row.user_id, row.course_id);
+  if (existing) {
+    if (isEnrollmentAccessExpired(existing)) {
+      throw new EnrollmentAccessExpiredError([row.course_id]);
+    }
+    return existing;
+  }
+
+  try {
+    await insertEnrollmentsVerified([row]);
+  } catch (error) {
+    // A concurrent request or a retry may have created the exact row.
+    // Only 23505 is reconciled; all other write errors remain fail-closed.
+    if (getDatabaseErrorCode(error) !== "23505") throw error;
+  }
+
+  const persisted = await readExactEnrollmentAccess(row.user_id, row.course_id);
+  if (!persisted) {
+    throw new EnrollmentPersistenceError({
+      expectedUserIds: [row.user_id],
+      returnedUserIds: [],
+      persistedUserIds: [],
+    });
+  }
+  if (isEnrollmentAccessExpired(persisted)) {
+    throw new EnrollmentAccessExpiredError([row.course_id]);
+  }
+
+  return persisted;
 }
