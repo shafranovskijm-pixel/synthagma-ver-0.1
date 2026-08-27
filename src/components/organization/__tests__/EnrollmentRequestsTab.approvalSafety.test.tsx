@@ -143,7 +143,7 @@ describe("EnrollmentRequestsTab approval safety", () => {
     ];
   });
 
-  it("recovers a retry after enrollment persisted but request status failed", async () => {
+  it("retries only after a failed request transition and never creates a premature enrollment", async () => {
     const onRefreshStudents = vi.fn();
     render(
       <EnrollmentRequestsTab
@@ -159,11 +159,13 @@ describe("EnrollmentRequestsTab approval safety", () => {
       expect(testState.toastError).toHaveBeenCalledWith(
         "Ошибка одобрения заявки",
         expect.objectContaining({
-          description: expect.stringContaining("Зачисление уже подтверждено"),
+          description: expect.stringContaining("request update unavailable"),
         }),
       );
     });
     expect(testState.toastSuccess).not.toHaveBeenCalled();
+    expect(testState.ensureEnrollmentVerified).not.toHaveBeenCalled();
+    expect(onRefreshStudents).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Одобрить/ })).not.toBeDisabled();
@@ -176,11 +178,61 @@ describe("EnrollmentRequestsTab approval safety", () => {
       );
     });
 
-    expect(testState.ensureEnrollmentVerified).toHaveBeenCalledTimes(2);
-    expect(onRefreshStudents).toHaveBeenCalledTimes(2);
+    expect(testState.ensureEnrollmentVerified).toHaveBeenCalledTimes(1);
+    expect(onRefreshStudents).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the exact approval order and fail-closed read-backs", () => {
+  it("rolls a claimed approval back to pending when enrollment is not confirmed", async () => {
+    const onRefreshStudents = vi.fn();
+    testState.ensureEnrollmentVerified.mockRejectedValueOnce(
+      new Error("enrollment insert failed"),
+    );
+    testState.requestUpdateResults = [
+      {
+        data: {
+          id: "request-1",
+          course_id: "course-1",
+          user_id: "student-1",
+          status: "approved",
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: "request-1",
+          course_id: "course-1",
+          user_id: "student-1",
+          status: "pending",
+        },
+        error: null,
+      },
+    ];
+
+    render(
+      <EnrollmentRequestsTab
+        courseId="course-1"
+        onRefreshStudents={onRefreshStudents}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /Одобрить/ }));
+
+    await waitFor(() => {
+      expect(testState.toastError).toHaveBeenCalledWith(
+        "Ошибка одобрения заявки",
+        expect.objectContaining({
+          description: expect.stringContaining("enrollment insert failed"),
+        }),
+      );
+    });
+
+    expect(testState.ensureEnrollmentVerified).toHaveBeenCalledTimes(1);
+    expect(testState.requestUpdateResults).toHaveLength(0);
+    expect(testState.toastSuccess).not.toHaveBeenCalled();
+    expect(onRefreshStudents).not.toHaveBeenCalled();
+  });
+
+  it("keeps request transitions ahead of side effects with exact fail-closed read-backs", () => {
     const source = fs.readFileSync(
       resolve(
         process.cwd(),
@@ -189,39 +241,66 @@ describe("EnrollmentRequestsTab approval safety", () => {
       "utf8",
     );
 
+    const handleApprove = source.indexOf("const handleApprove");
     const requestPreflight = source.indexOf(
       '.select("id, status, course_id, user_id")',
-    );
-    const enrollmentEnsure = source.indexOf(
-      "await ensureEnrollmentVerified",
-      requestPreflight,
-    );
-    const groupReadback = source.indexOf(
-      '.select("user_id, student_group_id")',
-      enrollmentEnsure,
+      handleApprove,
     );
     const pendingTransition = source.indexOf(
       '.eq("status", "pending")',
-      groupReadback,
+      requestPreflight,
     );
     const transitionReadback = source.indexOf(
       '.select("id, status, course_id, user_id")',
       pendingTransition,
     );
-    const notificationGuard = source.indexOf(
-      "if (requestTransitioned)",
+    const enrollmentEnsure = source.indexOf(
+      "await ensureEnrollmentVerified",
       transitionReadback,
     );
+    const groupReadback = source.indexOf(
+      '.select("user_id, student_group_id")',
+      enrollmentEnsure,
+    );
+    const notificationBlock = source.indexOf(
+      "// Notifications are best-effort",
+      groupReadback,
+    );
 
-    expect(requestPreflight).toBeGreaterThan(-1);
-    expect(enrollmentEnsure).toBeGreaterThan(requestPreflight);
-    expect(groupReadback).toBeGreaterThan(enrollmentEnsure);
-    expect(pendingTransition).toBeGreaterThan(groupReadback);
+    expect(handleApprove).toBeGreaterThan(-1);
+    expect(requestPreflight).toBeGreaterThan(handleApprove);
+    expect(pendingTransition).toBeGreaterThan(requestPreflight);
     expect(transitionReadback).toBeGreaterThan(pendingTransition);
-    expect(notificationGuard).toBeGreaterThan(transitionReadback);
+    expect(enrollmentEnsure).toBeGreaterThan(transitionReadback);
+    expect(groupReadback).toBeGreaterThan(enrollmentEnsure);
+    expect(notificationBlock).toBeGreaterThan(groupReadback);
     expect(source).toContain(
       "База не подтвердила назначение ученика в выбранную группу.",
     );
     expect(source).toContain("База не подтвердила одобрение заявки.");
+
+    const handleReject = source.indexOf("const handleReject");
+    const rejectTransition = source.indexOf(
+      'status: "rejected"',
+      handleReject,
+    );
+    const rejectPendingGuard = source.indexOf(
+      '.eq("status", "pending")',
+      rejectTransition,
+    );
+    const rejectReadback = source.indexOf(
+      '.select("id, status, course_id, user_id")',
+      rejectPendingGuard,
+    );
+    const rejectApprovedGuard = source.indexOf(
+      'requestReadback.status === "approved"',
+      rejectReadback,
+    );
+
+    expect(handleReject).toBeGreaterThan(notificationBlock);
+    expect(rejectTransition).toBeGreaterThan(handleReject);
+    expect(rejectPendingGuard).toBeGreaterThan(rejectTransition);
+    expect(rejectReadback).toBeGreaterThan(rejectPendingGuard);
+    expect(rejectApprovedGuard).toBeGreaterThan(rejectReadback);
   });
 });
