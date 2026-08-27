@@ -165,8 +165,10 @@ describe("EnrollmentRequestsTab approval safety", () => {
     });
     expect(testState.toastSuccess).not.toHaveBeenCalled();
 
-    await waitFor(() => expect(approveButton).not.toBeDisabled());
-    fireEvent.click(approveButton);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Одобрить/ })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Одобрить/ }));
 
     await waitFor(() => {
       expect(testState.toastSuccess).toHaveBeenCalledWith(
