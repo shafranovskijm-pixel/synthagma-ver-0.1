@@ -5,8 +5,11 @@ import { toast } from "sonner";
 import { generateStrongPassword, isValidEmail } from "@/utils/credentials";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import {
+  EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
-  insertEnrollmentsVerified,
+  ensureEnrollmentVerified,
+  isEnrollmentAccessExpired,
+  type EnrollmentAccessRow,
 } from "@/api/enrollments";
 
 interface UseStudentManagementProps {
@@ -56,7 +59,9 @@ export function useStudentManagement({
 
     const effectiveName = (overrides?.name ?? "").trim();
     const effectiveEmail = (overrides?.email ?? "").trim();
-    const effectiveCourseIds = overrides?.courseIds ?? [];
+    const effectiveCourseIds = Array.from(
+      new Set((overrides?.courseIds ?? []).filter(Boolean)),
+    );
     const effectiveCompanyId = overrides?.companyId ?? "";
     const customLogin = overrides?.login || undefined;
     const customPassword = overrides?.password || undefined;
@@ -71,9 +76,13 @@ export function useStudentManagement({
     }
 
     setIsCreatingStudent(true);
+    let registeredStudent: any = null;
+    let generatedPassword = "";
+
     try {
       const firstCourseId = effectiveCourseIds[0] || null;
       const password = customPassword || generateStrongPassword();
+      generatedPassword = password;
       const { data, error } = await safeInvoke<any>("register-student", {
         body: {
           token: null,
@@ -85,6 +94,7 @@ export function useStudentManagement({
           company_id: effectiveCompanyId || null,
           custom_login: customLogin || null,
           custom_password: customPassword || null,
+          enrollment_request_source: "organization_add_student",
         },
       });
 
@@ -101,6 +111,8 @@ export function useStudentManagement({
         return false;
       }
       if (data?.error) throw new Error(data.error);
+      registeredStudent = data;
+
       if (firstCourseId) {
         const registeredUserId = data?.user_id;
         if (!registeredUserId) {
@@ -111,7 +123,7 @@ export function useStudentManagement({
         // the exact row independently before announcing success.
         const { data: confirmedEnrollment, error: confirmationError } = await supabase
           .from("enrollments")
-          .select("id, user_id, course_id")
+          .select("id, user_id, course_id, status, expires_at")
           .eq("user_id", registeredUserId)
           .eq("course_id", firstCourseId)
           .maybeSingle();
@@ -130,6 +142,10 @@ export function useStudentManagement({
             persistedUserIds: [],
           });
         }
+
+        if (isEnrollmentAccessExpired(confirmedEnrollment as EnrollmentAccessRow)) {
+          throw new EnrollmentAccessExpiredError([firstCourseId]);
+        }
       }
 
       // Enroll in remaining courses
@@ -137,21 +153,33 @@ export function useStudentManagement({
       if (remainingCourseIds.length > 0 && data.user_id) {
         const { data: existingRemaining, error: existingRemainingError } = await supabase
           .from("enrollments")
-          .select("course_id")
+          .select("id, user_id, course_id, status, expires_at")
           .eq("user_id", data.user_id)
           .in("course_id", remainingCourseIds);
+
         if (existingRemainingError) throw existingRemainingError;
 
-        const existingCourseIds = new Set(
-          (existingRemaining ?? []).map((row) => row.course_id),
-        );
-        for (const cId of remainingCourseIds.filter((id) => !existingCourseIds.has(id))) {
-          await insertEnrollmentsVerified([{
+        const remainingRows = (existingRemaining ?? []) as EnrollmentAccessRow[];
+        const expiredCourseIds = remainingRows
+          .filter((row) => isEnrollmentAccessExpired(row))
+          .map((row) => row.course_id);
+
+        // Fail before inserting any missing remaining course, so the UI cannot
+        // announce all-selected-courses success for a partially valid set.
+        if (expiredCourseIds.length > 0) {
+          throw new EnrollmentAccessExpiredError(expiredCourseIds);
+        }
+
+        const existingCourseIds = new Set(remainingRows.map((row) => row.course_id));
+        for (const courseId of remainingCourseIds) {
+          if (existingCourseIds.has(courseId)) continue;
+
+          await ensureEnrollmentVerified({
             user_id: data.user_id,
-            course_id: cId,
+            course_id: courseId,
             status: "active",
             progress: 0,
-          }]);
+          });
         }
       }
 
@@ -193,9 +221,32 @@ export function useStudentManagement({
       return true;
     } catch (error: any) {
       console.error("Error creating student:", error);
-      if (error instanceof EnrollmentPersistenceError) {
+
+      if (registeredStudent?.user_id) {
+        const wasExisting = registeredStudent.is_existing === true;
+        const displayLogin = registeredStudent.login || customLogin;
+        const displayPassword = registeredStudent.password || generatedPassword;
+        const credentials = !wasExisting && displayLogin && displayPassword
+          ? ` Логин: ${displayLogin}, пароль: ${displayPassword}.`
+          : "";
+        const partialReason = error instanceof EnrollmentPersistenceError
+          ? "база не подтвердила зачисление на все выбранные курсы"
+          : (error?.message || "не удалось завершить зачисление на все выбранные курсы");
+
         onRefresh();
-        toast.error("Ученик создан, но база не подтвердила зачисление на все выбранные курсы. Проверьте его карточку.");
+        setShowAddStudentDialog(false);
+        toast.warning(
+          `${wasExisting ? "Ученик найден" : "Ученик создан"}, но операция завершилась частично: ${partialReason}.${credentials} Откройте карточку ученика и проверьте курсы перед повторным действием.`,
+          { duration: 30000 },
+        );
+      } else if (error instanceof EnrollmentAccessExpiredError) {
+        onRefresh();
+        toast.error(error.message);
+      } else if (error instanceof EnrollmentPersistenceError) {
+        onRefresh();
+        toast.error(
+          "Ученик создан, но база не подтвердила зачисление на все выбранные курсы. Проверьте его карточку.",
+        );
       } else {
         toast.error(error.message || "Ошибка создания ученика");
       }
