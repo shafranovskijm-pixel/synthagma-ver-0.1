@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAiGenerationLimit, setAiLimitContext } from "@/hooks/useAiGenerationLimit";
 import { toast } from "sonner";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { resolveCourseWriteScope } from "@/lib/courseImportScope";
 import { ContentBlock, blocksToJson, markdownToBlocks, jsonToBlocks } from "@/components/course-builder/block-editor";
 import { closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -19,16 +20,17 @@ export function useCourseBuilder(propCourseId?: string) {
   const navigate = useNavigate();
   const { courseId: paramCourseId } = useParams();
   const externalCourseId = propCourseId || paramCourseId;
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!externalCourseId);
+  const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [scopeError, setScopeError] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [savedCourseIdState, setSavedCourseIdState] = useState<string | null>(null);
   const courseId = savedCourseIdState || externalCourseId;
@@ -65,19 +67,16 @@ export function useCourseBuilder(propCourseId?: string) {
     finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
-  // Load data — parallelize independent queries to cut waterfall latency.
-  // Before: profile → org → course → modules → lessons → (questions + attachments)  [6 sequential round-trips]
-  // After:  [profile, course, modules, lessons] in parallel, then [questions, attachments] in parallel.
-  //         Subscription plan is fetched in the background (doesn't block UI).
+  // Load the course and its content in parallel, but do not expose or mutate it
+  // until the server-backed tenant resolver confirms courses.write for the
+  // selected organization. This is especially important in admin view mode:
+  // an administrator's own profile organization must never become a fallback.
   useEffect(() => {
     const fetchData = async () => {
-      if (!user || isDataLoaded) return;
+      if (!user || authLoading || !userRole || isDataLoaded) return;
 
-      const profilePromise = supabase
-        .from("profiles")
-        .select("organization_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      setIsLoading(true);
+      setScopeError(null);
 
       const coursePromise = courseId
         ? supabase.from("courses").select("*").eq("id", courseId).single()
@@ -103,29 +102,40 @@ export function useCourseBuilder(propCourseId?: string) {
             .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
 
-      const [{ data: profile }, courseRes, modulesRes, lessonsRes] = await Promise.all([
-        profilePromise, coursePromise, modulesPromise, lessonsPromise,
-      ]);
+      try {
+        const [courseRes, modulesRes, lessonsRes] = await Promise.all([
+          coursePromise, modulesPromise, lessonsPromise,
+        ]);
 
-      const course = courseRes?.data ?? null;
-      const modulesData = modulesRes?.data ?? null;
-      const lessonsData = lessonsRes?.data ?? null;
+        const course = courseRes?.data ?? null;
+        if (courseId && (courseRes?.error || !course)) {
+          throw new Error("Не удалось загрузить курс или подтвердить его организацию");
+        }
 
-      if (course) {
-        setCourseTitle(course.title);
-        setCourseDescription(course.description || "");
-      }
-      if (modulesData) {
-        setModules((modulesData as any[]).map((m: any) => ({
-          id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false,
-        })));
-      }
+        const scope = await resolveCourseWriteScope({
+          userId: user.id,
+          userRole,
+          requestedOrganizationId: course?.organization_id ?? null,
+        });
+        const orgId = scope.organizationId;
+        const modulesData = modulesRes?.data ?? null;
+        const lessonsData = lessonsRes?.data ?? null;
 
-      // Resolve organization id (prefer profile, fall back to course's org).
-      const orgId = profile?.organization_id || course?.organization_id || null;
-      if (orgId) {
         setOrganizationId(orgId);
-        // Subscription plan is only needed for AI limits — fetch in background.
+        setSubscriptionPlan('free');
+
+        if (course) {
+          setCourseTitle(course.title);
+          setCourseDescription(course.description || "");
+        }
+        if (modulesData) {
+          setModules((modulesData as any[]).map((m: any) => ({
+            id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false,
+          })));
+        }
+
+        // The AI quota and tariff always follow the verified tenant, including
+        // when a platform administrator is viewing a client organization.
         supabase
           .from("organizations")
           .select("subscription_plan")
@@ -139,9 +149,8 @@ export function useCourseBuilder(propCourseId?: string) {
               setAiLimitContext(orgId, 'free');
             }
           });
-      }
 
-      if (lessonsData) {
+        if (lessonsData) {
         const testLessonIds = lessonsData.filter((l: any) => l.type === 'test').map((l: any) => l.id);
         const allLessonIds = lessonsData.map((l: any) => l.id);
 
@@ -181,13 +190,21 @@ export function useCourseBuilder(propCourseId?: string) {
         if (normalized.length > 0) {
           setActiveLessonId(prev => prev ?? normalized[0].id);
         }
-      }
+        }
 
-      setIsLoading(false);
-      setIsDataLoaded(true);
+        setIsDataLoaded(true);
+      } catch (error) {
+        console.error("Course builder scope resolution failed", error);
+        setOrganizationId(null);
+        setScopeError(error instanceof Error
+          ? error.message
+          : "Не удалось подтвердить организацию курса");
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchData();
-  }, [user, courseId, isDataLoaded]);
+  }, [user?.id, userRole, authLoading, courseId, isDataLoaded]);
 
   // Restore local draft
   useEffect(() => {
@@ -476,11 +493,7 @@ export function useCourseBuilder(propCourseId?: string) {
 
   const ensureOrganizationId = async (): Promise<string | null> => {
     if (organizationId) return organizationId;
-    if (!user) return null;
-    const { data } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-    const orgId = data?.organization_id ?? null;
-    if (orgId) setOrganizationId(orgId);
-    return orgId;
+    return null;
   };
 
   const saveCourse = async (silent = false): Promise<boolean> => {
@@ -609,7 +622,7 @@ export function useCourseBuilder(propCourseId?: string) {
     handleBackClick, handleSaveAndExit, handleExitWithoutSave, handleFileImport,
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
-    sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId,
+    sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId, scopeError,
     activeLessonId, setActiveLessonId, scrollToLesson, expandLesson, loadLessonContent,
     // Modules
     modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,

@@ -46,7 +46,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
-    organizationId,
+    organizationId, scopeError,
     activeLessonId, setActiveLessonId, scrollToLesson, loadLessonContent,
     modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
     collapseAllModules, expandAllModules } = useCourseBuilder(embeddedCourseId);
@@ -153,6 +153,22 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   };
 
   if (isLoading) return <div className={cn(embedded ? "py-16" : "min-h-screen", "bg-background flex items-center justify-center")}><SigmaSpinner size="lg" /></div>;
+
+  if (scopeError) return (
+    <div className={cn(embedded ? "py-12" : "min-h-screen", "bg-background flex items-center justify-center px-4")}>
+      <div className="w-full max-w-lg rounded-2xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
+          <AlertCircle className="h-6 w-6 text-destructive" />
+        </span>
+        <h1 className="font-display text-lg font-semibold">Организация курса не подтверждена</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{scopeError}</p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={handleBackClick}>Вернуться к курсам</Button>
+          <Button className="rounded-xl" onClick={() => window.location.reload()}>Повторить проверку</Button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <TooltipProvider delayDuration={300}>

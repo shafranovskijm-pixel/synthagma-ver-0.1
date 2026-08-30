@@ -91,7 +91,7 @@ describe("AddStudentsToGroupDialog", () => {
     });
 
     fireEvent.click(screen.getByLabelText("Выбрать Иванов Иван"));
-    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранных (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить только в группу (1)" }));
 
     await waitFor(() => expect(supabaseMocks.from).toHaveBeenCalledWith("profiles"));
     expect(supabaseMocks.builder.update).toHaveBeenCalledWith({ student_group_id: "group-1" });
@@ -100,6 +100,9 @@ describe("AddStudentsToGroupDialog", () => {
     expect(supabaseMocks.builder.in).toHaveBeenCalledWith("user_id", ["student-1"]);
     expect(props.onStudentsChanged).toHaveBeenCalledWith("grouping");
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
+    expect(toastMocks.success).toHaveBeenCalledWith("1 ученик добавлен только в группу", {
+      description: "На курс ещё не зачислены. Следующий шаг — «Зачислить на курс».",
+    });
     expect(supabaseMocks.invoke).not.toHaveBeenCalled();
   });
 
@@ -108,7 +111,7 @@ describe("AddStudentsToGroupDialog", () => {
     const props = renderDialog();
 
     fireEvent.click(await screen.findByLabelText("Выбрать Иванов Иван"));
-    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранных (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить только в группу (1)" }));
 
     await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith("Не удалось добавить учеников в группу"));
     expect(props.onStudentsChanged).not.toHaveBeenCalled();
@@ -123,7 +126,7 @@ describe("AddStudentsToGroupDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Создать нового" }));
     fireEvent.change(screen.getByLabelText("ФИО *"), { target: { value: "Сидорова Анна" } });
     fireEvent.change(screen.getByLabelText("Email (необязательно)"), { target: { value: "anna@example.ru" } });
-    fireEvent.click(screen.getByRole("button", { name: "Создать и добавить" }));
+    fireEvent.click(screen.getByRole("button", { name: "Создать и добавить только в группу" }));
 
     await waitFor(() => expect(supabaseMocks.invoke).toHaveBeenCalledWith("register-student", {
       body: {
@@ -134,6 +137,9 @@ describe("AddStudentsToGroupDialog", () => {
       },
     }));
     expect(props.onStudentsChanged).toHaveBeenCalledWith("population");
+    expect(toastMocks.success).toHaveBeenCalledWith("Создан", {
+      description: "На курс ещё не зачислен. Следующий шаг — «Зачислить на курс».",
+    });
     expect(supabaseMocks.from).not.toHaveBeenCalled();
   });
 });

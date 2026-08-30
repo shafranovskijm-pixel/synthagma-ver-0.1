@@ -126,7 +126,9 @@ export function AddStudentsToGroupDialog({
         throw new Error(`Updated ${updatedCount} of ${userIds.length} student profiles`);
       }
 
-      toast.success(`${updatedCount} ${updatedCount === 1 ? "ученик добавлен" : "ученика добавлено"} в группу`);
+      toast.success(`${updatedCount} ${updatedCount === 1 ? "ученик добавлен" : "ученика добавлено"} только в группу`, {
+        description: "На курс ещё не зачислены. Следующий шаг — «Зачислить на курс».",
+      });
       await onStudentsChanged("grouping");
       onOpenChange(false);
     } catch (error) {
@@ -153,7 +155,9 @@ export function AddStudentsToGroupDialog({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success(data?.message || "Ученик создан и добавлен в группу");
+      toast.success(data?.message || "Ученик создан и добавлен только в группу", {
+        description: "На курс ещё не зачислен. Следующий шаг — «Зачислить на курс».",
+      });
       await onStudentsChanged("population");
       onOpenChange(false);
     } catch (error) {
@@ -170,7 +174,7 @@ export function AddStudentsToGroupDialog({
         <DialogHeader>
           <DialogTitle>Добавить учеников в «{groupName}»</DialogTitle>
           <DialogDescription>
-            Выберите учеников без группы или создайте нового — он сразу появится в этой группе. Зачисление на курс выполняется отдельно на этапе «Обучение».
+            Выберите учеников без группы или создайте нового. Это добавит их только в группу — зачисление на курс выполняется отдельно на этапе «Обучение».
           </DialogDescription>
         </DialogHeader>
 
@@ -208,7 +212,7 @@ export function AddStudentsToGroupDialog({
                 disabled={!newStudentName.trim() || creating}
               >
                 {creating ? <SigmaSpinner size="sm" /> : <UserPlus className="h-4 w-4" />}
-                Создать и добавить
+                Создать и добавить только в группу
               </Button>
               <Button variant="outline" className="rounded-xl" onClick={() => setShowCreateForm(false)} disabled={creating}>
                 Отмена
@@ -281,8 +285,11 @@ export function AddStudentsToGroupDialog({
               disabled={selectedIds.size === 0 || adding}
             >
               {adding ? <SigmaSpinner size="sm" /> : <UserPlus className="h-4 w-4" />}
-              Добавить выбранных{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+              Добавить только в группу{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Следующий шаг после добавления — «Зачислить на курс» в разделе «Обучение».
+            </p>
           </>
         )}
       </DialogContent>

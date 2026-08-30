@@ -226,7 +226,9 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
         throw new Error(`Updated ${updatedCount} of ${userIds.length} student profiles`);
       }
 
-      toast.success(`${userIds.length} уч. добавлено в группу`);
+      toast.success(`${userIds.length} уч. добавлено только в группу`, {
+        description: "На курс ещё не зачислены. Следующий шаг — «Зачислить на курс».",
+      });
       setShowAddStudentsDialog(false); await loadGroups(); onGroupingChanged?.();
     } catch { toast.error("Ошибка добавления учеников"); }
     finally { setAddingStudents(false); }
@@ -241,7 +243,9 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
       const { data, error } = await supabase.functions.invoke("register-student", { body: { full_name: newStudentName.trim(), email: newStudentEmail.trim() || undefined, organization_id: organizationId, student_group_id: selectedGroupForAdd.id } });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
-      toast.success(data?.message || "Ученик создан и добавлен в группу");
+      toast.success(data?.message || "Ученик создан и добавлен только в группу", {
+        description: "На курс ещё не зачислен. Следующий шаг — «Зачислить на курс».",
+      });
       setNewStudentName(""); setNewStudentEmail(""); setShowNewStudentForm(false);
       handleOpenAddStudents(selectedGroupForAdd); loadGroups(); onStudentPopulationChanged?.();
     } catch (err: any) { toast.error("Ошибка создания ученика: " + (err.message || "")); }

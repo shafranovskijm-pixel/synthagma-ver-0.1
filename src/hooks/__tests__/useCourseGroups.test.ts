@@ -335,8 +335,12 @@ describe("useCourseGroups", () => {
     });
 
     expect(mocks.toastSuccess).toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("2 уч. добавлено только в группу", {
+      description: "На курс ещё не зачислены. Следующий шаг — «Зачислить на курс».",
+    });
     expect(mocks.toastError).not.toHaveBeenCalled();
     expect(result.current.showAddStudentsDialog).toBe(false);
     expect(onGroupingChanged).toHaveBeenCalledOnce();
+    expect(mocks.from).not.toHaveBeenCalledWith("enrollments");
   });
 });
