@@ -52,7 +52,7 @@ export function ApiMonitorTab() {
     setTesting(true);
     setProgress(0);
     const allResults: FunctionStatus[] = [];
-    const fns = EDGE_FUNCTIONS;
+    const fns = EDGE_FUNCTIONS.filter((fn) => fn.browserHealthCheck !== false);
     const batchSize = 4;
 
     for (let i = 0; i < fns.length; i += batchSize) {
@@ -97,7 +97,7 @@ export function ApiMonitorTab() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground font-mono">
-          {EDGE_FUNCTIONS.length} функций · {results.length > 0 ? `${results.length} проверено` : "не проверено"}
+          {EDGE_FUNCTIONS.length} функций · {results.length > 0 ? `${results.length} проверено в браузере` : "не проверено"}
         </div>
         <Button variant="default" size="sm" onClick={runHealthCheck} disabled={testing} className="gap-2 rounded-xl">
           {testing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
@@ -164,6 +164,9 @@ export function ApiMonitorTab() {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-medium truncate">{fn.name}</span>
                       <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">{catMeta?.label}</Badge>
+                      {fn.browserHealthCheck === false && (
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5 shrink-0">только сервер</Badge>
+                      )}
                     </div>
                     <div className="text-[11px] text-muted-foreground">{fn.description}</div>
                   </div>

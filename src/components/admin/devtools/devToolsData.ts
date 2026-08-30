@@ -210,6 +210,7 @@ export interface EdgeFunc {
   name: string;
   category: string;
   description: string;
+  browserHealthCheck?: boolean;
 }
 
 export const EDGE_FUNCTIONS: EdgeFunc[] = [
@@ -230,7 +231,12 @@ export const EDGE_FUNCTIONS: EdgeFunc[] = [
   { name: "send-password-reset", category: "notifications", description: "Отправка ссылки сброса" },
   { name: "send-course-invitation", category: "notifications", description: "Приглашение на курс" },
   { name: "send-documents-reminder", category: "notifications", description: "Напоминание о документах" },
-  { name: "send-telegram-notification", category: "notifications", description: "Telegram уведомление" },
+  {
+    name: "send-telegram-notification",
+    category: "notifications",
+    description: "Telegram уведомление (только сервер)",
+    browserHealthCheck: false,
+  },
   { name: "notify-course-completion", category: "notifications", description: "Уведомление о завершении курса" },
   { name: "notify-course-order", category: "notifications", description: "Уведомление о заказе курса" },
   { name: "notify-order-status", category: "notifications", description: "Статус заказа" },

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { telegramHtmlValue } from "../_shared/telegram-html.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,10 +107,10 @@ serve(async (req) => {
     if (tgEnabled && tgChatId) {
       try {
         const message = `📋 <b>Новая заявка на запись</b>\n\n` +
-          `<b>Курс:</b> ${course.title}\n` +
-          `<b>Ученик:</b> ${studentName}\n` +
+          `<b>Курс:</b> ${telegramHtmlValue(course.title, 200)}\n` +
+          `<b>Ученик:</b> ${telegramHtmlValue(studentName, 200)}\n` +
           (course.price > 0 ? `<b>Цена:</b> ${formattedPrice} ₽\n` : `<b>Цена:</b> Бесплатно\n`) +
-          `<b>Email:</b> ${profile?.email || user.email || "—"}`;
+          `<b>Email:</b> ${telegramHtmlValue(profile?.email || user.email, 254)}`;
         await supabaseAdmin.functions.invoke("send-telegram-notification", {
           body: { chat_id: tgChatId, message },
         });

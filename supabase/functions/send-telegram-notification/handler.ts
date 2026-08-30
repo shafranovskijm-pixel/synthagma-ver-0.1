@@ -29,10 +29,13 @@ interface TelegramDeliveryResult {
   messageId?: number;
 }
 
+export const TELEGRAM_OUTBOUND_TIMEOUT_MS = 10_000;
+
 export interface TelegramRelayDependencies {
   env: EnvReader;
   fetch: typeof fetch;
   subtle?: SubtleCrypto;
+  timeoutSignal?: (timeoutMs: number) => AbortSignal;
 }
 
 function jsonResponse(body: Record<string, unknown>, status: number, headers?: HeadersInit): Response {
@@ -54,12 +57,16 @@ async function callTelegramApi(
 ): Promise<TelegramDeliveryResult> {
   let response: Response;
   try {
+    const timeoutSignal = dependencies.timeoutSignal
+      ? dependencies.timeoutSignal(TELEGRAM_OUTBOUND_TIMEOUT_MS)
+      : AbortSignal.timeout(TELEGRAM_OUTBOUND_TIMEOUT_MS);
     response = await dependencies.fetch(
       `https://api.telegram.org/bot${config.botToken}/${method}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: timeoutSignal,
       },
     );
   } catch {

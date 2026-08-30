@@ -6,6 +6,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
+import {
+  formatTelegramUtm,
+  telegramHtmlValue,
+} from "../_shared/telegram-html.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -175,7 +179,7 @@ serve(async (req) => {
       const claim: any = claimRes;
       if (claimErr || !claim || !claim.success) {
         // Rollback the auth-user we just created.
-        try { await admin.auth.admin.deleteUser(userId); } catch {}
+        try { await admin.auth.admin.deleteUser(userId); } catch { /* Best-effort rollback. */ }
         console.error("claim err:", claimErr, claim);
         if (claim?.code === "STUDENT_LIMIT_EXCEEDED") {
           return json({
@@ -278,16 +282,20 @@ serve(async (req) => {
     const tgChatId = (orgData as any)?.telegram_notify_chat_id;
     if (enrollmentCfg.notify_telegram !== false && tgEnabled && tgChatId) {
       try {
-        const courseTitle = ((course as any).landing_content?.hero?.title) || "(без названия)";
-        const utmStr = body.utm && Object.keys(body.utm).length > 0
-          ? `\n<b>UTM:</b> ${Object.entries(body.utm).map(([k, v]) => `${k}=${v}`).join(", ")}`
-          : "";
-        const sourceStr = body.source ? `\n<b>Источник:</b> ${body.source}` : "";
+        const courseTitle = telegramHtmlValue(
+          (course as any).landing_content?.hero?.title,
+          200,
+          "(без названия)",
+        );
+        const utm = formatTelegramUtm(body.utm);
+        const utmStr = utm ? `\n<b>UTM:</b> ${utm}` : "";
+        const source = telegramHtmlValue(body.source, 128, "");
+        const sourceStr = source ? `\n<b>Источник:</b> ${source}` : "";
         const message = `🎓 <b>Новая регистрация на лендинге</b>\n\n` +
           `<b>Курс:</b> ${courseTitle}\n` +
-          `<b>Имя:</b> ${body.full_name}\n` +
-          `<b>Email:</b> ${body.email}\n` +
-          (body.phone ? `<b>Телефон:</b> ${body.phone}\n` : "") +
+          `<b>Имя:</b> ${telegramHtmlValue(body.full_name, 200)}\n` +
+          `<b>Email:</b> ${telegramHtmlValue(body.email, 254)}\n` +
+          (body.phone ? `<b>Телефон:</b> ${telegramHtmlValue(body.phone, 64)}\n` : "") +
           `<b>Режим:</b> мгновенное зачисление` +
           sourceStr + utmStr;
         await admin.functions.invoke("send-telegram-notification", {

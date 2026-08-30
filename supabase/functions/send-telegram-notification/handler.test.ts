@@ -1,7 +1,11 @@
 import { webcrypto } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TELEGRAM_REQUEST_BODY_MAX_BYTES } from "./contract";
-import { createTelegramRelayHandler, type TelegramRelayDependencies } from "./handler";
+import {
+  createTelegramRelayHandler,
+  TELEGRAM_OUTBOUND_TIMEOUT_MS,
+  type TelegramRelayDependencies,
+} from "./handler";
 
 const SERVICE_ROLE_KEY = `service-role-${"s".repeat(64)}`;
 const AUTHENTICATED_USER_JWT = `user-jwt-${"u".repeat(64)}`;
@@ -170,6 +174,53 @@ describe("send-telegram-notification handler", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[0][0])).toContain("/sendPhoto");
     expect(String(fetchMock.mock.calls[1][0])).toContain("/sendMessage");
+  });
+
+  it("uses a bounded outbound signal and falls back to text when sendPhoto times out", async () => {
+    const timeoutController = new AbortController();
+    const timeoutSignal = vi.fn(() => timeoutController.signal);
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockRejectedValueOnce(new DOMException("Timed out", "TimeoutError"))
+      .mockResolvedValueOnce(telegramResponse(true, 790));
+    const handler = createTelegramRelayHandler({
+      ...dependencies(fetchMock),
+      timeoutSignal,
+    });
+
+    const response = await handler(postRequest({
+      message: "photo timeout fallback",
+      photo_url: "https://cdn.example.test/photo.png",
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true, message_id: 790 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(timeoutSignal).toHaveBeenNthCalledWith(1, TELEGRAM_OUTBOUND_TIMEOUT_MS);
+    expect(timeoutSignal).toHaveBeenNthCalledWith(2, TELEGRAM_OUTBOUND_TIMEOUT_MS);
+    expect(fetchMock.mock.calls[0][1]?.signal).toBe(timeoutController.signal);
+    expect(fetchMock.mock.calls[1][1]?.signal).toBe(timeoutController.signal);
+  });
+
+  it("fails closed with a stable 502 when the text request times out", async () => {
+    const timeoutController = new AbortController();
+    const timeoutSignal = vi.fn(() => timeoutController.signal);
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(
+      new DOMException("Timed out", "TimeoutError"),
+    );
+    const handler = createTelegramRelayHandler({
+      ...dependencies(fetchMock),
+      timeoutSignal,
+    });
+
+    const response = await handler(postRequest({ message: "text timeout" }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: "telegram_delivery_failed",
+    });
+    expect(timeoutSignal).toHaveBeenCalledOnce();
+    expect(timeoutSignal).toHaveBeenCalledWith(TELEGRAM_OUTBOUND_TIMEOUT_MS);
   });
 
   it("returns a stable 502 and emits no console payload or secret logs when Telegram fails", async () => {

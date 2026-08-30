@@ -1,5 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  buildRegistrationFailureMessage,
+  hmacSha256Hex,
+  readRegistrationAttemptBody,
+  registrationClientAddress,
+  REGISTRATION_ATTEMPT_GLOBAL_RATE_MAX,
+  REGISTRATION_ATTEMPT_RATE_MAX,
+  REGISTRATION_ATTEMPT_RATE_WINDOW_SECONDS,
+  REGISTRATION_FAILURE_GLOBAL_RATE_MAX,
+  REGISTRATION_FAILURE_GLOBAL_RATE_WINDOW_SECONDS,
+  REGISTRATION_FAILURE_RATE_MAX,
+  REGISTRATION_FAILURE_RATE_WINDOW_SECONDS,
+  REGISTRATION_FAILURE_WINDOW_SECONDS,
+  RegistrationAttemptContractError,
+  type RegistrationAttemptPayload,
+} from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,161 +26,205 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface AttemptPayload {
-  attempt_id?: string;
-  step: "submitted" | "success" | "failed";
-  email?: string;
-  phone?: string;
-  org_name?: string;
-  contact_name?: string;
-  inn?: string;
-  selected_plan?: string;
-  promo_code?: string;
-  ref_code?: string;
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_term?: string;
-  utm_content?: string;
-  page_url?: string;
-  referrer?: string;
-  error_message?: string;
-  user_id?: string;
-  organization_id?: string;
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
+type AdminClient = SupabaseClient<any>;
+
+function json(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
-// In-memory dedupe for Telegram failed alerts (per email, 1 hour)
-const tgDedupe = new Map<string, number>();
-const TG_DEDUPE_MS = 60 * 60 * 1000;
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-function clean(v: unknown, max = 500): string | null {
-  if (typeof v !== "string") return null;
-  const t = v.trim();
-  if (!t) return null;
-  return t.slice(0, max);
+function rowFromPayload(payload: RegistrationAttemptPayload, ip: string, userAgent: string | null) {
+  const { attempt_id: _attemptId, ...fields } = payload;
+  return {
+    ...fields,
+    user_agent: userAgent?.slice(0, 500) || undefined,
+    ip,
+  };
 }
 
-async function notifyTelegramOnFailure(p: AttemptPayload, ip: string | null) {
-  const email = p.email || "";
-  if (email) {
-    const last = tgDedupe.get(email);
-    if (last && Date.now() - last < TG_DEDUPE_MS) return;
-    tgDedupe.set(email, Date.now());
+type RegistrationRateScope =
+  | "event_client"
+  | "event_global"
+  | "failure_client"
+  | "failure_global";
+
+async function claimRate(
+  admin: AdminClient,
+  scope: RegistrationRateScope,
+  actorHash: string,
+  maxRequests: number,
+  windowSeconds: number,
+): Promise<"allowed" | "rate_limited" | "unavailable"> {
+  const { data, error } = await admin.rpc("claim_registration_attempt_rate", {
+    _scope: scope,
+    _actor_hash: actorHash,
+    _max_requests: maxRequests,
+    _window_seconds: windowSeconds,
+  });
+  if (error) {
+    console.error("registration attempt rate claim failed", { scope, code: error.code || "unknown" });
+    return "unavailable";
   }
-  const utm = [p.utm_source, p.utm_medium, p.utm_campaign].filter(Boolean).join(" / ");
-  const message =
-    `⚠️ <b>ОШИБКА регистрации организации</b>\n\n` +
-    `<b>Организация:</b> ${p.org_name || "—"}\n` +
-    `<b>Контакт:</b> ${p.contact_name || "—"}\n` +
-    `<b>Email:</b> ${p.email || "—"}\n` +
-    `<b>Телефон:</b> ${p.phone || "—"}\n` +
-    `<b>ИНН:</b> ${p.inn || "—"}\n` +
-    `<b>Тариф:</b> ${p.selected_plan || "—"}\n` +
-    (utm ? `<b>Источник:</b> ${utm}\n` : "") +
-    (ip ? `<b>IP:</b> ${ip}\n` : "") +
-    `\n<b>Ошибка:</b> ${p.error_message || "—"}\n\n` +
-    `📞 Перезвоните клиенту — он не смог зарегистрироваться сам!`;
-  try {
-    await supabase.functions.invoke("send-telegram-notification", { body: { message } });
-  } catch (e) {
-    console.error("Telegram notify failed:", e);
+  return data === "allowed" || data === "rate_limited"
+    ? data
+    : "unavailable";
+}
+
+async function claimFailureAlert(
+  admin: AdminClient,
+  actorHash: string,
+  dedupHash: string,
+): Promise<"claimed" | "duplicate" | "unavailable"> {
+  const { data, error } = await admin.rpc("claim_registration_failure_alert", {
+    _actor_hash: actorHash,
+    _dedup_hash: dedupHash,
+    _lease_seconds: 300,
+  });
+  if (error) {
+    console.error("registration failure alert claim failed", { code: error.code || "unknown" });
+    return "unavailable";
+  }
+  return data === "claimed" || data === "duplicate" ? data : "unavailable";
+}
+
+async function completeFailureAlert(
+  admin: AdminClient,
+  dedupHash: string,
+  delivered: boolean,
+): Promise<void> {
+  const { error } = await admin.rpc("complete_registration_failure_alert", {
+    _dedup_hash: dedupHash,
+    _delivered: delivered,
+    _retry_after_seconds: delivered ? 300 : 60,
+  });
+  if (error) {
+    console.error("registration failure alert completion failed", { code: error.code || "unknown" });
   }
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+async function notifyTelegramOnFailure(
+  admin: AdminClient,
+  payload: RegistrationAttemptPayload,
+  ip: string,
+  serviceRoleKey: string,
+): Promise<void> {
+  const clientRateActor = await hmacSha256Hex(`failure-rate-client:${ip}`, serviceRoleKey);
+  const globalRateActor = await hmacSha256Hex("failure-rate-global", serviceRoleKey);
+  const clientRate = await claimRate(
+    admin,
+    "failure_client",
+    clientRateActor,
+    REGISTRATION_FAILURE_RATE_MAX,
+    REGISTRATION_FAILURE_RATE_WINDOW_SECONDS,
+  );
+  if (clientRate !== "allowed") return;
+  const globalRate = await claimRate(
+    admin,
+    "failure_global",
+    globalRateActor,
+    REGISTRATION_FAILURE_GLOBAL_RATE_MAX,
+    REGISTRATION_FAILURE_GLOBAL_RATE_WINDOW_SECONDS,
+  );
+  if (globalRate !== "allowed") return;
+
+  const identity = payload.email?.toLowerCase() || payload.attempt_id || ip || "unknown";
+  const actorHash = await hmacSha256Hex(`failure-actor:${identity}`, serviceRoleKey);
+  const hourBucket = Math.floor(Date.now() / (REGISTRATION_FAILURE_WINDOW_SECONDS * 1000));
+  const dedupHash = await hmacSha256Hex(`failure-dedup:${identity}:${hourBucket}`, serviceRoleKey);
+  const claim = await claimFailureAlert(admin, actorHash, dedupHash);
+  if (claim !== "claimed") return;
+
+  let delivered = false;
+  try {
+    const { data, error } = await admin.functions.invoke("send-telegram-notification", {
+      body: { message: buildRegistrationFailureMessage(payload, ip) },
+    });
+    delivered = !error && !!data && typeof data === "object" &&
+      (data as Record<string, unknown>).success === true;
+  } catch {
+    delivered = false;
+  }
+  await completeFailureAlert(admin, dedupHash, delivered);
+  if (!delivered) {
+    console.warn("registration failure Telegram delivery not confirmed");
+  }
+}
+
+serve(async (request) => {
+  if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
-    const ct = req.headers.get("content-type") || "";
-    let raw: any;
-    if (ct.includes("application/json")) {
-      raw = await req.json();
-    } else {
-      // sendBeacon may send text/plain
-      const text = await req.text();
-      try { raw = JSON.parse(text); } catch { raw = {}; }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() || "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() || "";
+    if (!supabaseUrl || serviceRoleKey.length < 32) {
+      return json({ error: "service_unavailable" }, 503);
     }
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    const step = clean(raw.step, 16);
-    if (!step || !["submitted", "success", "failed"].includes(step)) {
-      return new Response(JSON.stringify({ error: "invalid step" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const payload = await readRegistrationAttemptBody(request);
+    const ip = registrationClientAddress(request);
+    const clientIdentity = ip === "unknown"
+      ? request.headers.get("user-agent")?.slice(0, 500) || "unknown"
+      : ip;
+    const clientActorHash = await hmacSha256Hex(`event-rate-client:${clientIdentity}`, serviceRoleKey);
+    const clientRate = await claimRate(
+      admin,
+      "event_client",
+      clientActorHash,
+      REGISTRATION_ATTEMPT_RATE_MAX,
+      REGISTRATION_ATTEMPT_RATE_WINDOW_SECONDS,
+    );
+    if (clientRate === "unavailable") return json({ error: "logging_unavailable" }, 503);
+    if (clientRate === "rate_limited") return json({ error: "rate_limited" }, 429);
 
-    const ip =
-      req.headers.get("cf-connecting-ip") ||
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      null;
+    const globalActorHash = await hmacSha256Hex("event-rate-global", serviceRoleKey);
+    const globalRate = await claimRate(
+      admin,
+      "event_global",
+      globalActorHash,
+      REGISTRATION_ATTEMPT_GLOBAL_RATE_MAX,
+      REGISTRATION_ATTEMPT_RATE_WINDOW_SECONDS,
+    );
+    if (globalRate === "unavailable") return json({ error: "logging_unavailable" }, 503);
+    if (globalRate === "rate_limited") return json({ error: "rate_limited" }, 429);
 
-    const payload: AttemptPayload = {
-      step: step as any,
-      email: clean(raw.email, 255) || undefined,
-      phone: clean(raw.phone, 64) || undefined,
-      org_name: clean(raw.org_name, 255) || undefined,
-      contact_name: clean(raw.contact_name, 255) || undefined,
-      inn: clean(raw.inn, 32) || undefined,
-      selected_plan: clean(raw.selected_plan, 64) || undefined,
-      promo_code: clean(raw.promo_code, 64) || undefined,
-      ref_code: clean(raw.ref_code, 64) || undefined,
-      utm_source: clean(raw.utm_source, 128) || undefined,
-      utm_medium: clean(raw.utm_medium, 128) || undefined,
-      utm_campaign: clean(raw.utm_campaign, 128) || undefined,
-      utm_term: clean(raw.utm_term, 128) || undefined,
-      utm_content: clean(raw.utm_content, 128) || undefined,
-      page_url: clean(raw.page_url, 1024) || undefined,
-      referrer: clean(raw.referrer, 1024) || undefined,
-      error_message: clean(raw.error_message, 2000) || undefined,
-      user_id: clean(raw.user_id, 64) || undefined,
-      organization_id: clean(raw.organization_id, 64) || undefined,
-    };
-
-    const row: any = {
-      ...payload,
-      user_agent: clean(req.headers.get("user-agent"), 500) || undefined,
-      ip,
-    };
-
-    let attemptId: string | null = clean(raw.attempt_id, 64);
+    const row = rowFromPayload(payload, ip, request.headers.get("user-agent"));
+    let attemptId: string | null = payload.attempt_id || null;
     if (attemptId) {
-      // Update existing record
-      const updateRow = { ...row };
-      delete updateRow.created_at;
-      const { error } = await supabase
+      const { data, error } = await admin
         .from("registration_attempts")
-        .update(updateRow)
-        .eq("id", attemptId);
-      if (error) {
-        // If not found, fall back to insert
-        console.warn("Update failed, inserting:", error.message);
-        const { data, error: insErr } = await supabase
-          .from("registration_attempts").insert(row).select("id").maybeSingle();
-        if (insErr) throw insErr;
-        attemptId = data?.id || attemptId;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("registration_attempts").insert(row).select("id").maybeSingle();
+        .update(row)
+        .eq("id", attemptId)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.id) attemptId = null;
+    }
+    if (!attemptId) {
+      const { data, error } = await admin
+        .from("registration_attempts")
+        .insert(row)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
       attemptId = data?.id || null;
     }
 
-    if (step === "failed") {
-      notifyTelegramOnFailure(payload, ip);
+    if (payload.step === "failed") {
+      await notifyTelegramOnFailure(admin, payload, ip, serviceRoleKey);
     }
 
-    return new Response(JSON.stringify({ ok: true, attempt_id: attemptId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return json({ ok: true, attempt_id: attemptId });
+  } catch (error) {
+    if (error instanceof RegistrationAttemptContractError) {
+      return json({ error: error.code }, error.status);
+    }
+    console.error("log-registration-attempt failed", {
+      kind: error instanceof Error ? error.name : "unknown",
     });
-  } catch (err: any) {
-    console.error("log-registration-attempt error:", err);
-    return new Response(JSON.stringify({ error: err.message || "internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "internal_error" }, 500);
   }
 });
