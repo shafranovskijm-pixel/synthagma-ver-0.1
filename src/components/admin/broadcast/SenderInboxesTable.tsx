@@ -34,7 +34,7 @@ type Sender = {
 
 const providerIcon = (email: string) => {
   const domain = (email.split("@")[1] || "").toLowerCase();
-  if (domain.endsWith("gmail.com") || domain.endsWith("yi.mannni.com")) {
+  if (domain.endsWith("gmail.com")) {
     return { color: "bg-white border", letter: "G", text: "text-[#EA4335]" };
   }
   if (domain.endsWith("vk.com") || domain.endsWith("mail.ru")) {
@@ -359,7 +359,7 @@ export function SenderInboxesTable() {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Email</label>
-              <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@yi.mannni.com" />
+              <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@gmail.com" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">App-пароль (16 символов, Gmail SMTP)</label>

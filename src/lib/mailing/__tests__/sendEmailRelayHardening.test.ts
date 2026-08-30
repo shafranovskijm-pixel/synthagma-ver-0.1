@@ -329,6 +329,14 @@ describe("retired SMTP account cleanup", () => {
     resolve(ROOT, "supabase/migrations/20260830160000_remove_retired_sender_domain.sql"),
     "utf8",
   );
+  const autocheck = readFileSync(
+    resolve(ROOT, "supabase/functions/autocheck-sender-pool/index.ts"),
+    "utf8",
+  );
+  const senderInboxes = readFileSync(
+    resolve(ROOT, "src/components/admin/broadcast/SenderInboxesTable.tsx"),
+    "utf8",
+  );
 
   it("removes account records and credentials from the historical seed in the current tree", () => {
     expect(retiredSeed).not.toMatch(/app_password|UPDATE\s+public\.email_sender_pool/i);
@@ -365,5 +373,12 @@ describe("retired SMTP account cleanup", () => {
     );
     expect(forward).not.toMatch(/\b(?:LIKE|ILIKE)\b/i);
     expect(forward).not.toMatch(/DELETE\s+FROM\s+public\.email_warmup_pings|DELETE\s+FROM\s+public\.email_conversations|DELETE\s+FROM\s+public\.email_messages/i);
+  });
+
+  it("keeps the retired domain out of the sender UI and SMTP autocheck", () => {
+    expect(senderInboxes).not.toMatch(/yi\.mannni\.com/i);
+    expect(senderInboxes).toContain('placeholder="name@gmail.com"');
+    expect(autocheck).not.toMatch(/yi\.mannni\.com|\.like\(/i);
+    expect(autocheck).toMatch(/from\("email_sender_pool"\)[\s\S]{0,180}select\("id,email,app_password,host,port,encryption,from_name"\)/);
   });
 });
