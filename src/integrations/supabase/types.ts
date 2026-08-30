@@ -628,6 +628,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -638,6 +639,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -648,6 +650,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -11058,6 +11061,27 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_domain_rate_limits: {
+        Row: {
+          action: string
+          actor_hash: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          action: string
+          actor_hash: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          action?: string
+          actor_hash?: string
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       test_attempts: {
         Row: {
           answers: Json
@@ -11937,6 +11961,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_tbank_balance_credit: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_idempotency_key: string
+          p_organization_id: string
+          p_transaction_type: string
+        }
+        Returns: Json
+      }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
@@ -12054,6 +12088,16 @@ export type Database = {
         }
       }
       claim_notification_dedup: { Args: { _key: string }; Returns: boolean }
+      claim_telegram_domain_delivery: {
+        Args: {
+          _action: string
+          _actor_hash: string
+          _dedup_key: string
+          _max_requests: number
+          _window_seconds: number
+        }
+        Returns: string
+      }
       claim_org_email_quota: {
         Args: {
           p_count: number
