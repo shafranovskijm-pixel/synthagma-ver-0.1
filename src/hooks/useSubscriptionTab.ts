@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo } from "@/constants/subscriptionPlans";
@@ -90,6 +90,7 @@ export function useSubscriptionTab() {
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
   const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const upgradeRequestIdRef = useRef(crypto.randomUUID());
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
@@ -126,42 +127,24 @@ export function useSubscriptionTab() {
   const handleRequestUpgrade = async () => {
     if (!organizationId || !selectedPlan) return;
     setSubmitting(true);
-    const { error } = await supabase.from("subscription_requests" as any).insert({
-      organization_id: organizationId,
-      current_plan: currentPlan,
-      requested_plan: selectedPlan,
-      message: message || null,
-    } as any);
+    const { data, error } = await supabase.functions.invoke("request-subscription-upgrade", {
+      body: {
+        request_id: upgradeRequestIdRef.current,
+        organization_id: organizationId,
+        requested_plan: selectedPlan,
+        comment: message || null,
+      },
+    });
 
-    if (error) {
-      toast.error("Ошибка", { description: getErrorMessage(error) });
+    if (error || (data as any)?.ok !== true || (data as any)?.stored !== true) {
+      toast.error("Ошибка", { description: getErrorMessage(error || new Error((data as any)?.error || "request_not_stored")) });
     } else {
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для оформления перехода на новый тариф" });
-      setPendingRequest({ requested_plan: selectedPlan, created_at: new Date().toISOString() });
+      setPendingRequest({ requested_plan: selectedPlan, created_at: (data as any)?.created_at || new Date().toISOString() });
       setShowUpgradeDialog(false);
       setMessage("");
       setSelectedPlan(null);
-
-      const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
-      const orgDisplayName = d.organizationName || organizationId;
-      try {
-        await supabase.functions.invoke("send-telegram-notification", {
-          body: {
-            message: `📋 <b>Заявка на повышение тарифа</b>\n\n` +
-              `🏢 Организация: ${orgDisplayName}\n` +
-              (orgContact.contact_name ? `👤 Контакт: ${orgContact.contact_name}\n` : '') +
-              (orgContact.email ? `📧 Email: ${orgContact.email}\n` : '') +
-              (orgContact.phone ? `📞 Телефон: ${orgContact.phone}\n` : '') +
-              `📊 Текущий тариф: ${SUBSCRIPTION_PLANS[currentPlan]?.name || currentPlan}\n` +
-              `🆕 Запрошенный тариф: ${planInfo?.name || selectedPlan}\n` +
-              `💰 Стоимость: ${planInfo?.price?.toLocaleString() || '?'} ₽/мес\n` +
-              (message ? `💬 Комментарий: ${message}\n` : '') +
-              `\n🕐 ${new Date().toLocaleString('ru-RU')}`,
-          },
-        });
-      } catch (tgErr) {
-        console.error("Telegram notification failed:", tgErr);
-      }
+      upgradeRequestIdRef.current = crypto.randomUUID();
     }
     setSubmitting(false);
   };

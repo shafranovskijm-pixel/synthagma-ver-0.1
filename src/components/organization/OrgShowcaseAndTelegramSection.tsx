@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,12 @@ export function OrgShowcaseAndTelegramSection({ organizationId }: Props) {
   const [slug, setSlug] = useState<string>("");
   const [tgEnabled, setTgEnabled] = useState(false);
   const [tgChatId, setTgChatId] = useState("");
-  const [orgName, setOrgName] = useState("");
   const [coursesCount, setCoursesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [testing, setTesting] = useState(false);
+  const testRequestIdRef = useRef(crypto.randomUUID());
 
   useEffect(() => {
     if (!organizationId) return;
@@ -34,11 +34,10 @@ export function OrgShowcaseAndTelegramSection({ organizationId }: Props) {
       setLoading(true);
       const { data: org } = await supabase
         .from("organizations")
-        .select("name, public_slug, telegram_notify_enabled, telegram_notify_chat_id")
+        .select("public_slug, telegram_notify_enabled, telegram_notify_chat_id")
         .eq("id", organizationId)
         .maybeSingle();
       if (org) {
-        setOrgName(org.name || "");
         setSlug(org.public_slug || "");
         setTgEnabled((org as any).telegram_notify_enabled || false);
         setTgChatId((org as any).telegram_notify_chat_id || "");
@@ -85,15 +84,23 @@ export function OrgShowcaseAndTelegramSection({ organizationId }: Props) {
     }
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-telegram-notification", {
+      const { data, error } = await supabase.functions.invoke("test-organization-telegram", {
         body: {
           organization_id: organizationId,
-          test: true,
-          message: `🎉 Тестовое уведомление от Синтагмы. Школа: ${orgName}.`,
+          request_id: testRequestIdRef.current,
         },
       });
-      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
-      toast.success("Сообщение отправлено в Telegram");
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
+      const delivery = (data as any)?.delivery;
+      if (delivery === "sent") {
+        toast.success("Сообщение отправлено в Telegram");
+        testRequestIdRef.current = crypto.randomUUID();
+      } else if (delivery === "duplicate") {
+        toast.info("Тест уже обработан — проверьте Telegram");
+        testRequestIdRef.current = crypto.randomUUID();
+      } else {
+        throw new Error("Статус доставки не подтверждён — проверьте Telegram перед повтором");
+      }
     } catch (e: any) {
       toast.error("Не отправлено: " + (e?.message || "проверьте chat ID и подключение бота"));
     } finally {

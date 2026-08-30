@@ -69,6 +69,7 @@ const demoVideos: { title: string; text: string; kinescopeId: string }[] = [
 ];
 
 export default function DemonstrationPage() {
+  const [requestId] = useState(() => crypto.randomUUID());
   const [name, setName] = useState("");
   const [org, setOrg] = useState("");
   const [phone, setPhone] = useState("+7 ");
@@ -92,6 +93,7 @@ export default function DemonstrationPage() {
     try {
       const { data, error } = await supabase.functions.invoke("submit-demo-request", {
         body: {
+          request_id: requestId,
           name,
           organization: org,
           phone,

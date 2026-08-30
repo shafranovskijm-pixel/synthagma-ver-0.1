@@ -9,6 +9,12 @@ import {
   notificationInvokeSucceeded,
   type NotificationDelivery,
 } from "./contract.ts";
+import {
+  attemptDemoTelegramDelivery,
+  createDemoTelegramMetadata,
+  DEMO_NOTIFICATION_TYPE,
+  isDemoNotificationRecord,
+} from "./telegramDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,20 +63,54 @@ Deno.serve(async (req) => {
       ...buildAttributionLines(input.tracking),
     ].filter(Boolean).join("\n");
 
-    const { data: lead, error: leadError } = await supabase
-      .from("sales_leads")
-      .insert({
-        org_name: input.organization || input.name,
-        phone: input.phone,
-        email: input.email || null,
-        notes,
-        status: "new",
-        source: "demo_request",
-      })
-      .select("id")
-      .single();
+    const leadId = input.request_id || crypto.randomUUID();
+    const leadPayload = {
+      id: leadId,
+      org_name: input.organization || input.name,
+      phone: input.phone,
+      email: input.email || null,
+      notes,
+      status: "new",
+      source: "demo_request",
+    };
 
-    if (leadError || !lead?.id) {
+    const { data: insertedLead, error: leadError } = await supabase
+      .from("sales_leads")
+      .insert(leadPayload)
+      .select("id, org_name, phone, email, notes, source")
+      .maybeSingle();
+
+    let lead = insertedLead;
+    let leadWasCreated = Boolean(insertedLead?.id && !leadError);
+
+    if (leadError?.code === "23505") {
+      const { data: existingLead, error: existingLeadError } = await supabase
+        .from("sales_leads")
+        .select("id, org_name, phone, email, notes, source")
+        .eq("id", leadId)
+        .maybeSingle();
+
+      const matchesOriginalRequest = Boolean(
+        existingLead &&
+          existingLead.source === "demo_request" &&
+          existingLead.org_name === leadPayload.org_name &&
+          existingLead.phone === leadPayload.phone &&
+          (existingLead.email || null) === leadPayload.email &&
+          (existingLead.notes || "") === leadPayload.notes,
+      );
+
+      if (existingLeadError || !matchesOriginalRequest) {
+        return jsonResponse({ ok: false, error: "request_id_conflict" }, 409);
+      }
+      lead = existingLead;
+      leadWasCreated = false;
+    } else if (leadError) {
+      console.error("submit-demo-request: lead insert failed", {
+        code: leadError.code || "missing_lead_id",
+      });
+    }
+
+    if (!lead?.id) {
       console.error("submit-demo-request: lead insert failed", {
         code: leadError?.code || "missing_lead_id",
       });
@@ -85,34 +125,61 @@ Deno.serve(async (req) => {
       }, 500);
     }
 
+    const telegramMessage = buildTelegramMessage(input);
+    const deliveryMetadata = createDemoTelegramMetadata(lead.id, telegramMessage);
+    const { error: notificationInsertError } = await supabase
+      .from("admin_notifications")
+      .upsert({
+        id: lead.id,
+        type: DEMO_NOTIFICATION_TYPE,
+        title: "Заявка на демо сохранена",
+        message: "Лид сохранён в разделе «Продажи». Доставка в Telegram ожидает подтверждения.",
+        is_read: false,
+        metadata: deliveryMetadata,
+        related_entity_id: lead.id,
+      }, { onConflict: "id", ignoreDuplicates: true });
+
     let telegramDelivery: NotificationDelivery = "failed";
-    try {
-      const supportChatId = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID")?.trim();
-      const telegramBody: Record<string, string> = {
-        message: buildTelegramMessage(input),
-      };
-      if (supportChatId) telegramBody.chat_id = supportChatId;
+    if (!notificationInsertError) {
+      const { data: deliveryRecord, error: deliveryRecordError } = await supabase
+        .from("admin_notifications")
+        .select("id, related_entity_id, type, metadata")
+        .eq("id", lead.id)
+        .maybeSingle();
 
-      const { data: telegramResult, error: telegramError } = await supabase.functions.invoke(
-        "send-telegram-notification",
-        { body: telegramBody },
-      );
-
-      if (!telegramError && notificationInvokeSucceeded(telegramResult)) {
-        telegramDelivery = "sent";
+      if (!deliveryRecordError && deliveryRecord && isDemoNotificationRecord(deliveryRecord)) {
+        telegramDelivery = await attemptDemoTelegramDelivery(supabase, deliveryRecord);
       } else {
-        console.error("submit-demo-request: Telegram notification failed", {
-          invokeError: Boolean(telegramError),
-          resultAccepted: notificationInvokeSucceeded(telegramResult),
+        console.error("submit-demo-request: durable delivery record is unavailable");
+      }
+    } else {
+      console.error("submit-demo-request: durable delivery record insert failed", {
+        code: notificationInsertError.code || "unknown",
+      });
+    }
+
+    if (telegramDelivery === "failed") {
+      const warning = "Системное уведомление: доставку заявки в Telegram требуется проверить вручную.";
+      const durableNotes = lead.notes?.includes(warning)
+        ? lead.notes
+        : `${lead.notes || notes}\n\n${warning}`;
+      const { error: leadWarningError } = await supabase
+        .from("sales_leads")
+        .update({ notes: durableNotes })
+        .eq("id", lead.id);
+      if (leadWarningError) {
+        console.error("submit-demo-request: lead delivery warning update failed", {
+          code: leadWarningError.code || "unknown",
         });
       }
-    } catch {
-      console.error("submit-demo-request: Telegram notification threw");
     }
 
     // Email is deliberately best-effort: the persisted lead remains accepted.
-    let emailDelivery: NotificationDelivery = "failed";
+    let emailDelivery: NotificationDelivery = "not_attempted";
     try {
+      if (!leadWasCreated) {
+        throw new Error("idempotent_retry_skips_email");
+      }
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         "send-email",
         {
@@ -127,13 +194,19 @@ Deno.serve(async (req) => {
       if (!emailError && notificationInvokeSucceeded(emailResult)) {
         emailDelivery = "sent";
       } else {
+        emailDelivery = "failed";
         console.error("submit-demo-request: email notification failed", {
           invokeError: Boolean(emailError),
           resultAccepted: notificationInvokeSucceeded(emailResult),
         });
       }
-    } catch {
-      console.error("submit-demo-request: email notification threw");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "idempotent_retry_skips_email") {
+        emailDelivery = "not_attempted";
+      } else {
+        emailDelivery = "failed";
+        console.error("submit-demo-request: email notification threw");
+      }
     }
 
     return jsonResponse({

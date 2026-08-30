@@ -223,8 +223,11 @@ export function useRegisterOrganization() {
       }
 
       try {
-        const telegramMessage = `🏢 <b>Новая организация зарегистрирована!</b>\n\n<b>Название:</b> ${orgName}\n<b>Контактное лицо:</b> ${contactName || "—"}\n<b>Email:</b> ${email}\n<b>Телефон:</b> ${phone || "—"}\n<b>ИНН:</b> ${inn || "—"}\n<b>Тариф:</b> ${selectedPlan}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
-        await supabase.functions.invoke("send-telegram-notification", { body: { message: telegramMessage } });
+        if (orgId) {
+          await supabase.functions.invoke("notify-organization-registration", {
+            body: { organization_id: orgId },
+          });
+        }
       } catch (tgErr) { console.error("Telegram notification error:", tgErr); }
 
       try { if (orgId) await supabase.functions.invoke("seed-welcome-course", { body: { organizationId: orgId } }); }

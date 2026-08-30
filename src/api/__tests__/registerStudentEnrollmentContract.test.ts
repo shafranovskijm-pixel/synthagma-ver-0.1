@@ -7,13 +7,18 @@ const REGISTER_STUDENT_SOURCE = resolve(
   "supabase/functions/register-student/index.ts",
 );
 
+const ORGANIZATION_STUDENT_MANAGEMENT_SOURCE = resolve(
+  process.cwd(),
+  "src/hooks/useStudentManagement.ts",
+);
+
 describe("register-student enrollment deployment contract", () => {
   const readSource = () => fs.readFileSync(REGISTER_STUDENT_SOURCE, "utf8");
 
   it("fails closed unless the first course enrollment is persisted", () => {
     const source = readSource();
 
-    expect(source).toContain('const REGISTER_STUDENT_REVISION = "enrollment-persistence-v2"');
+    expect(source).toContain('const REGISTER_STUDENT_REVISION = "enrollment-persistence-v3"');
     expect(source).toContain('"X-Sintagma-Register-Student-Revision"');
     expect(source).toContain('.select("id, user_id, course_id")');
     expect(source).toContain('.eq("id", insertedEnrollment.id)');
@@ -97,4 +102,112 @@ describe("register-student enrollment deployment contract", () => {
     expect(reconciliation).toContain('.eq("course_id", effectiveCourseId)');
     expect(reconciliation).toContain("alreadyEnrolled = true");
   });
+
+  it("rejects an expired existing enrollment before reporting already enrolled", () => {
+    const source = readSource();
+    const organizationUiSource = fs.readFileSync(
+      ORGANIZATION_STUDENT_MANAGEMENT_SOURCE,
+      "utf8",
+    );
+
+    const existingRead = source.indexOf(
+      '.select("id, status, expires_at")',
+    );
+    const organizationSourceGuard = source.indexOf(
+      '&& enrollment_request_source === "organization_add_student"',
+      existingRead,
+    );
+    const authenticatedGuard = source.indexOf(
+      "&& !publicRegistration",
+      organizationSourceGuard,
+    );
+    const expiryGuard = source.indexOf(
+      "&& isEnrollmentAccessExpired(existingEnrollment)",
+      authenticatedGuard,
+    );
+    const expiredCode = source.indexOf(
+      '"ENROLLMENT_ACCESS_EXPIRED"',
+      expiryGuard,
+    );
+    const alreadyEnrolled = source.indexOf(
+      "alreadyEnrolled = true",
+      expiryGuard,
+    );
+
+    expect(source).toContain(
+      'import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts"',
+    );
+    expect(organizationUiSource).toContain(
+      'enrollment_request_source: "organization_add_student"',
+    );
+
+    const requestMarker = organizationUiSource.indexOf(
+      'enrollment_request_source: "organization_add_student"',
+    );
+    const uiErrorGuard = organizationUiSource.indexOf(
+      "if (error) throw error",
+      requestMarker,
+    );
+    const uiSuccessToast = organizationUiSource.indexOf(
+      "toast.success",
+      uiErrorGuard,
+    );
+
+    expect(uiErrorGuard).toBeGreaterThan(requestMarker);
+    expect(uiSuccessToast).toBeGreaterThan(uiErrorGuard);
+
+    for (const excludedCaller of [
+      "src/components/ImportStudentsForm.tsx",
+      "src/components/admin/StudentBulkImportDialog.tsx",
+      "src/hooks/useCourseGroups.ts",
+      "src/pages/JoinByLink.tsx",
+    ]) {
+      expect(
+        fs.readFileSync(resolve(process.cwd(), excludedCaller), "utf8"),
+      ).not.toContain("enrollment_request_source");
+    }
+
+    expect(existingRead).toBeGreaterThan(-1);
+    expect(organizationSourceGuard).toBeGreaterThan(existingRead);
+    expect(authenticatedGuard).toBeGreaterThan(organizationSourceGuard);
+    expect(expiryGuard).toBeGreaterThan(authenticatedGuard);
+    expect(expiredCode).toBeGreaterThan(expiryGuard);
+    expect(alreadyEnrolled).toBeGreaterThan(expiredCode);
+  });
+
+  it("does not turn a concurrent expired enrollment into an idempotent success", () => {
+    const source = readSource();
+
+    const duplicateRace = source.indexOf(
+      'if (enrollError?.code === "23505")',
+    );
+    const concurrentRead = source.indexOf(
+      '.select("id, user_id, course_id, status, expires_at")',
+      duplicateRace,
+    );
+    const exactReadback = source.indexOf(
+      "concurrentEnrollment.course_id !== effectiveCourseId",
+      concurrentRead,
+    );
+    const expiryGuard = source.indexOf(
+      "isEnrollmentAccessExpired(concurrentEnrollment)",
+      exactReadback,
+    );
+    const expiredCode = source.indexOf(
+      '"ENROLLMENT_ACCESS_EXPIRED"',
+      expiryGuard,
+    );
+    const alreadyEnrolled = source.indexOf(
+      "alreadyEnrolled = true",
+      expiryGuard,
+    );
+
+    expect(duplicateRace).toBeGreaterThan(-1);
+    expect(concurrentRead).toBeGreaterThan(duplicateRace);
+    expect(exactReadback).toBeGreaterThan(concurrentRead);
+    expect(expiryGuard).toBeGreaterThan(exactReadback);
+    expect(expiredCode).toBeGreaterThan(expiryGuard);
+    expect(alreadyEnrolled).toBeGreaterThan(expiredCode);
+  });
+
 });

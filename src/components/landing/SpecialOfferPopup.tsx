@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export function SpecialOfferPopup() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
+  const requestIdRef = useRef(crypto.randomUUID());
   const location = useLocation();
 
   const isPrivatePage = PRIVATE_PREFIXES.some(p => location.pathname.startsWith(p));
@@ -83,22 +84,16 @@ export function SpecialOfferPopup() {
     if (!name.trim() || !phone.trim() || !popup) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("plan_requests").insert({
-        full_name: name.trim(),
-        phone: phone.trim(),
-        email: `${phone.trim()}@lead.local`,
-        plan: popup.source_tag || "special_offer",
+      const { data, error } = await supabase.functions.invoke("submit-special-offer-request", {
+        body: {
+          request_id: requestIdRef.current,
+          popup_id: popup.id,
+          name: name.trim(),
+          phone: phone.trim(),
+        },
       });
-      if (error) throw error;
-
-      try {
-        await supabase.functions.invoke("send-telegram-notification", {
-          body: {
-            message: `🎁 <b>Заявка со спецпредложения</b>\n\n<b>Имя:</b> ${name.trim()}\n<b>Телефон:</b> ${phone.trim()}\n<b>Источник:</b> Попап «${popup.title}»`,
-          },
-        });
-      } catch {
-        // best-effort
+      if (error || (data as any)?.ok !== true || (data as any)?.stored !== true) {
+        throw error || new Error((data as any)?.error || "request_not_stored");
       }
 
       toast.success("Заявка отправлена!", { description: "Мы свяжемся с вами в ближайшее время." });

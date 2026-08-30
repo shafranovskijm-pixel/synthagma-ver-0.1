@@ -10,6 +10,7 @@ export interface DemoRequestTracking {
 }
 
 export interface DemoRequestInput {
+  request_id: string;
   name: string;
   organization: string;
   phone: string;
@@ -20,7 +21,7 @@ export interface DemoRequestInput {
   tracking: DemoRequestTracking;
 }
 
-export type NotificationDelivery = "sent" | "failed";
+export type NotificationDelivery = "sent" | "failed" | "pending" | "not_attempted";
 
 export const TELEGRAM_MESSAGE_MAX_LENGTH = 4_000;
 
@@ -30,6 +31,13 @@ function trimmedString(value: unknown): string {
 
 function limitedString(value: unknown, maxLength: number): string {
   return trimmedString(value).slice(0, maxLength);
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function normalizeDemoRequestId(value: unknown): string {
+  const requestId = trimmedString(value);
+  return UUID_PATTERN.test(requestId) ? requestId.toLowerCase() : "";
 }
 
 export function normalizeDemoRequestTracking(value: unknown): DemoRequestTracking {
@@ -55,6 +63,7 @@ export function normalizeDemoRequestInput(value: unknown): DemoRequestInput {
     : {};
 
   return {
+    request_id: normalizeDemoRequestId(body.request_id),
     name: trimmedString(body.name),
     organization: trimmedString(body.organization),
     phone: trimmedString(body.phone),

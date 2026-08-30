@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, Users, Check, Gift } from "lucide-react";
+import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, Users, Check, Gift, RefreshCw } from "lucide-react";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -33,6 +33,8 @@ interface AdminDashboardHeaderProps {
   unreadCount: number;
   onMarkAllRead: () => void;
   onNotificationClick?: (notification: any) => void;
+  onNotificationRetry?: (notification: any, action?: "retry" | "confirm") => void;
+  retryingNotificationId?: string | null;
   branding: {
     coverUrl: string | null;
     logoUrl: string | null;
@@ -81,6 +83,8 @@ export function AdminDashboardHeader({
   unreadCount,
   onMarkAllRead,
   onNotificationClick,
+  onNotificationRetry,
+  retryingNotificationId,
   branding,
   onCoverUpload }: AdminDashboardHeaderProps) {
   const { theme, setTheme } = useTheme();
@@ -164,6 +168,41 @@ export function AdminDashboardHeader({
                     >
                       <p className="text-sm font-medium">{n.title}</p>
                       {n.message && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{n.message}</p>}
+                      {n.type === "demo_request_delivery" &&
+                        ["failed", "pending", "sending"].includes(n.metadata?.telegram_status) &&
+                        onNotificationRetry && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {n.metadata?.telegram_status !== "failed" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={retryingNotificationId === n.id}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onNotificationRetry(n, "confirm");
+                                }}
+                              >
+                                Уже доставлено
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              disabled={retryingNotificationId === n.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onNotificationRetry(n, "retry");
+                              }}
+                            >
+                              <RefreshCw className={`mr-1 h-3 w-3 ${retryingNotificationId === n.id ? "animate-spin" : ""}`} />
+                              {n.metadata?.telegram_status === "failed"
+                                ? "Повторить Telegram"
+                                : "Не найдено — повторить"}
+                            </Button>
+                          </div>
+                        )}
                       <p className="text-[10px] text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ru })}
                       </p>

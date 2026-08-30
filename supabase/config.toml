@@ -58,7 +58,22 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-telegram-notification]
+verify_jwt = true
+
+[functions.submit-special-offer-request]
 verify_jwt = false
+
+[functions.notify-organization-registration]
+verify_jwt = true
+
+[functions.notify-support-request]
+verify_jwt = true
+
+[functions.test-organization-telegram]
+verify_jwt = true
+
+[functions.request-subscription-upgrade]
+verify_jwt = true
 
 [functions.notify-course-completion]
 verify_jwt = false
@@ -82,7 +97,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-email]
-verify_jwt = false
+verify_jwt = true
+
+[functions.autocheck-sender-pool]
+verify_jwt = true
 
 [functions.submit-demo-request]
 verify_jwt = false

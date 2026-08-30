@@ -46,9 +46,11 @@ export function SupportRequestForm() {
 
     setSending(true);
     try {
+      if (!user) throw new Error("authentication_required");
+
       // Get profile info
       let userName = "";
-      let userEmail = user?.email || "";
+      const userEmail = user?.email || "";
       let orgId = "";
       if (user) {
         const { data: profile } = await supabase
@@ -60,17 +62,6 @@ export function SupportRequestForm() {
           userName = profile.full_name || "";
           orgId = profile.organization_id || "";
         }
-      }
-
-      // Determine chat_id: org-specific or global fallback
-      let chatId: string | null = null;
-      if (orgId) {
-        const { data: org } = await supabase
-          .from("organizations")
-          .select("telegram_chat_id")
-          .eq("id", orgId)
-          .single();
-        chatId = org?.telegram_chat_id || null;
       }
 
       // Upload screenshot if present
@@ -97,9 +88,11 @@ export function SupportRequestForm() {
         ? errors.map((e, i) => `${i + 1}. ${e.message}`).join("\n")
         : "Нет";
 
-      // Save to DB
-      if (user) {
-        await supabase.from("support_requests").insert({
+      // Persist first. Notification delivery must never be the only copy of a
+      // support request and the browser must not choose Telegram content/target.
+      const { data: storedRequest, error: storeError } = await supabase
+        .from("support_requests")
+        .insert({
           user_id: user.id,
           user_name: userName || null,
           user_email: userEmail || null,
@@ -110,37 +103,17 @@ export function SupportRequestForm() {
           screenshot_url: photoUrl,
           browser_info: navigator.userAgent.slice(0, 200),
           page_url: window.location.href,
-          error_logs: errorsText !== "Нет" ? errorsText : null });
-      }
-
-      // Build message
-      const roleName = userRole === "organization" ? "Организация" : userRole === "admin" ? "Админ" : "Ученик";
-      const now = new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
-      const ua = navigator.userAgent.slice(0, 120);
-
-      const message = `🆘 <b>Обращение в поддержку</b>
-
-<b>Пользователь:</b> ${userName || "—"} (${userEmail})
-<b>Роль:</b> ${roleName}${contactPhone.trim() ? `\n<b>Телефон для связи:</b> ${contactPhone.trim()}` : ""}
-${orgId ? `<b>Организация ID:</b> <code>${orgId}</code>` : ""}
-<b>Время:</b> ${now}
-
-<b>Описание проблемы:</b>
-${description.slice(0, 1000)}
-
-<b>Браузер:</b> ${ua}
-<b>URL:</b> ${window.location.href}
-
-<b>Последние ошибки:</b>
-${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
-
-      const body: Record<string, string> = { message };
-      if (chatId) body.chat_id = chatId;
-      if (photoUrl) body.photo_url = photoUrl;
+          error_logs: errorsText !== "Нет" ? errorsText : null,
+        })
+        .select("id")
+        .single();
+      if (storeError || !storedRequest?.id) throw storeError || new Error("support_request_not_stored");
 
       // Non-blocking: don't fail the whole request if Telegram is down
       try {
-        await supabase.functions.invoke("send-telegram-notification", { body });
+        await supabase.functions.invoke("notify-support-request", {
+          body: { request_id: storedRequest.id },
+        });
       } catch (telegramErr) {
         // Telegram notification failed (non-blocking)
       }
