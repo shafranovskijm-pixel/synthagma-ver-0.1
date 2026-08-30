@@ -18,7 +18,7 @@ export class CourseImportScopeError extends Error {
   }
 }
 
-interface ResolveCourseImportScopeInput {
+export interface ResolveCourseWriteScopeInput {
   userId: string;
   userRole: string | null;
   requestedOrganizationId?: string | null;
@@ -42,18 +42,23 @@ function scopeError(code: CourseImportScopeErrorCode): CourseImportScopeError {
 }
 
 /**
- * Resolve the organization that owns a course import.
+ * Resolve the organization that owns a course write operation.
  *
  * The organizationId query parameter is deliberately treated only as a
  * consistency check. The active tenant comes from the server-backed admin
  * view resolver or current_organization_id(), and courses.write is verified
- * by the canonical authorization RPC before the page can process a file.
+ * by the canonical authorization RPC before the caller can read into editor
+ * state or persist course content.
  */
-export async function resolveCourseImportScope({
+export async function resolveCourseWriteScope({
   userId,
   userRole,
   requestedOrganizationId,
-}: ResolveCourseImportScopeInput): Promise<CourseImportScope> {
+}: ResolveCourseWriteScopeInput): Promise<CourseImportScope> {
+  if (!userRole) {
+    throw scopeError("scope_unavailable");
+  }
+
   const requestedId = requestedOrganizationId?.trim() || null;
   const adminResolution = await resolveAdminViewOrg(userId);
 
@@ -98,4 +103,10 @@ export async function resolveCourseImportScope({
   if (canWrite !== true) throw scopeError("permission_denied");
 
   return { organizationId, source };
+}
+
+export async function resolveCourseImportScope(
+  input: ResolveCourseWriteScopeInput,
+): Promise<CourseImportScope> {
+  return resolveCourseWriteScope(input);
 }

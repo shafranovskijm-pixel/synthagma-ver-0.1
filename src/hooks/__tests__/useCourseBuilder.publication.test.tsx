@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   lessonInsert: vi.fn(),
   saveDraft: vi.fn(),
   clearDraft: vi.fn(),
+  resolveCourseWriteScope: vi.fn(),
+  authRole: "organization" as "organization" | "admin",
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -20,8 +22,13 @@ vi.mock("react-router-dom", () => ({
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { id: "user-1", email: "organization@example.test" },
-    userRole: "organization",
+    userRole: mocks.authRole,
+    loading: false,
   }),
+}));
+
+vi.mock("@/lib/courseImportScope", () => ({
+  resolveCourseWriteScope: mocks.resolveCourseWriteScope,
 }));
 
 vi.mock("@/hooks/useAiGenerationLimit", () => ({
@@ -188,6 +195,11 @@ describe("useCourseBuilder publication safety", () => {
     vi.clearAllMocks();
     persistedCourse = null;
     nextCourseNumber = 1;
+    mocks.authRole = "organization";
+    mocks.resolveCourseWriteScope.mockResolvedValue({
+      organizationId: "org-1",
+      source: "current_organization",
+    });
     installSupabaseMock();
 
     mocks.courseInsert.mockImplementation((payload: Omit<PersistedCourse, "id">) => {
@@ -254,6 +266,88 @@ describe("useCourseBuilder publication safety", () => {
 
     expect(mocks.courseUpdate.mock.calls[0][0]).not.toHaveProperty("is_published");
     expect(persistedCourse?.is_published).toBe(true);
+    hook.unmount();
+  });
+
+  it("uses the verified admin-view organization for a new course and its AI tariff context", async () => {
+    mocks.authRole = "admin";
+    mocks.resolveCourseWriteScope.mockResolvedValueOnce({
+      organizationId: "org-admin-view",
+      source: "admin_view",
+    });
+
+    const hook = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(hook.result.current.organizationId).toBe("org-admin-view"));
+    act(() => hook.result.current.setCourseTitle("Курс клиента"));
+
+    await act(async () => {
+      await expect(hook.result.current.saveCourse(true)).resolves.toBe(true);
+    });
+
+    expect(mocks.resolveCourseWriteScope).toHaveBeenCalledWith({
+      userId: "user-1",
+      userRole: "admin",
+      requestedOrganizationId: null,
+    });
+    expect(mocks.courseInsert).toHaveBeenCalledWith(expect.objectContaining({
+      organization_id: "org-admin-view",
+      is_published: false,
+    }));
+    hook.unmount();
+  });
+
+  it("does not expose or update an existing course when its organization mismatches the verified scope", async () => {
+    persistedCourse = {
+      id: "course-foreign",
+      organization_id: "org-foreign",
+      title: "Чужой курс",
+      description: null,
+      is_published: false,
+    };
+    mocks.authRole = "admin";
+    mocks.resolveCourseWriteScope.mockRejectedValueOnce(new Error("Курс открыт для другой организации"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const hook = renderHook(() => useCourseBuilder("course-foreign"));
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
+
+    expect(mocks.resolveCourseWriteScope).toHaveBeenCalledWith({
+      userId: "user-1",
+      userRole: "admin",
+      requestedOrganizationId: "org-foreign",
+    });
+    expect(hook.result.current.scopeError).toBe("Курс открыт для другой организации");
+    expect(hook.result.current.organizationId).toBeNull();
+    expect(hook.result.current.courseTitle).toBe("");
+    expect(mocks.courseUpdate).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+    hook.unmount();
+  });
+
+  it("fails closed when the organization scope cannot be confirmed", async () => {
+    mocks.resolveCourseWriteScope.mockRejectedValueOnce(new Error("Не удалось подтвердить организацию"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const hook = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
+
+    expect(hook.result.current.scopeError).toBe("Не удалось подтвердить организацию");
+    expect(hook.result.current.organizationId).toBeNull();
+    expect(mocks.courseInsert).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+    hook.unmount();
+  });
+
+  it("uses the ordinary organization's verified current scope", async () => {
+    const hook = await renderNewCourse();
+
+    expect(mocks.resolveCourseWriteScope).toHaveBeenCalledWith({
+      userId: "user-1",
+      userRole: "organization",
+      requestedOrganizationId: null,
+    });
+    expect(hook.result.current.scopeError).toBeNull();
+    expect(hook.result.current.organizationId).toBe("org-1");
     hook.unmount();
   });
 

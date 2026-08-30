@@ -107,6 +107,17 @@ describe("resolveCourseImportScope", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it("fails closed while the authenticated role is still unknown", async () => {
+    await expect(resolveCourseImportScope({
+      userId: "user-1",
+      userRole: null,
+      requestedOrganizationId: "org-1",
+    })).rejects.toMatchObject({ code: "scope_unavailable" });
+
+    expect(mocks.resolveAdminViewOrg).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("does not fall back when admin-view verification is temporarily unknown", async () => {
     mocks.resolveAdminViewOrg.mockResolvedValue({ status: "unknown" });
 

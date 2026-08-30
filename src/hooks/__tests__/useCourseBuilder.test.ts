@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }));
 
@@ -12,6 +12,15 @@ vi.mock("react-router-dom", () => ({
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { id: "test-user-id", email: "test@test.com" },
+    userRole: "organization",
+    loading: false,
+  }),
+}));
+
+vi.mock("@/lib/courseImportScope", () => ({
+  resolveCourseWriteScope: vi.fn().mockResolvedValue({
+    organizationId: "org-1",
+    source: "current_organization",
   }),
 }));
 
@@ -70,15 +79,17 @@ describe("useCourseBuilder", () => {
     vi.clearAllMocks();
   });
 
-  it("initializes with empty state for new course", () => {
+  it("initializes with empty state for new course", async () => {
     const { result } = renderHook(() => useCourseBuilder());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.courseTitle).toBe("");
     expect(result.current.courseDescription).toBe("");
     expect(result.current.lessons).toEqual([]);
     expect(result.current.isGenerating).toBe(false);
     expect(result.current.isSaving).toBe(false);
-    expect(result.current.isLoading).toBe(false); // no courseId
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.isImporting).toBe(false);
     expect(result.current.hasUnsavedChanges).toBe(false);
     expect(result.current.showExitDialog).toBe(false);

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,12 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
   const addStudentsDialog = (
     <Dialog open={h.showAddStudentsDialog} onOpenChange={h.setShowAddStudentsDialog}>
       <DialogContent className="rounded-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader><DialogTitle>Добавить учеников в «{h.selectedGroupForAdd?.name}»</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Добавить учеников в «{h.selectedGroupForAdd?.name}»</DialogTitle>
+          <DialogDescription>
+            Это действие добавляет учеников только в группу. На текущий курс их нужно зачислить отдельной кнопкой.
+          </DialogDescription>
+        </DialogHeader>
         {h.showNewStudentForm ? (
           <div className="space-y-3 p-3 rounded-xl border border-border bg-muted/30">
             <div className="text-sm font-medium">Новый ученик</div>
@@ -32,7 +37,7 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
             <Input placeholder="Email (необязательно)" value={h.newStudentEmail} onChange={e => h.setNewStudentEmail(e.target.value)} className="rounded-xl" type="email" />
             <div className="flex gap-2">
               <Button size="sm" className="rounded-xl flex-1" disabled={!h.newStudentName.trim() || h.creatingStudent} onClick={h.handleCreateStudentInGroup}>
-                {h.creatingStudent ? <SigmaSpinner size="sm" className="mr-1" /> : <Plus className="w-4 h-4 mr-1" />}Создать
+                {h.creatingStudent ? <SigmaSpinner size="sm" className="mr-1" /> : <Plus className="w-4 h-4 mr-1" />}Создать и добавить только в группу
               </Button>
               <Button size="sm" variant="outline" className="rounded-xl" onClick={() => h.setShowNewStudentForm(false)}>Отмена</Button>
             </div>
@@ -54,9 +59,12 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
         </div>
         {h.unassignedStudents.length > 0 && (
           <Button className="w-full btn-gradient rounded-xl mt-2" disabled={h.selectedStudentIds.size === 0 || h.addingStudents} onClick={h.handleAddStudentsToGroup}>
-            {h.addingStudents ? <SigmaSpinner size="sm" className="mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}Добавить ({h.selectedStudentIds.size})
+            {h.addingStudents ? <SigmaSpinner size="sm" className="mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}Добавить только в группу ({h.selectedStudentIds.size})
           </Button>
         )}
+        <p className="text-center text-xs text-muted-foreground">
+          Следующий шаг — «Зачислить на курс».
+        </p>
       </DialogContent>
     </Dialog>
   );
@@ -124,7 +132,7 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
                 {hasLink && <Button size="sm" variant="ghost" className="rounded-xl gap-1.5 text-xs" onClick={() => h.handleCopyLink(group.id)} title="Скопировать ссылку регистрации"><Copy className="w-3.5 h-3.5" />Ссылка</Button>}
                 <Button size="sm" variant="outline" className="rounded-xl gap-1.5 text-xs" onClick={() => h.handleOpenAddStudents(group)}><UserPlus className="w-3.5 h-3.5" />+ Ученики</Button>
                 <Button size="sm" className="rounded-xl gap-1.5 ml-1" disabled={isEnrolling || allEnrolled} onClick={() => h.handleEnrollGroup(group.id)}>
-                  {isEnrolling ? <SigmaSpinner size="sm" /> : allEnrolled ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}{allEnrolled ? "Зачислены" : "Зачислить"}
+                  {isEnrolling ? <SigmaSpinner size="sm" /> : allEnrolled ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}{allEnrolled ? "Зачислены" : "Зачислить на курс"}
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
