@@ -58,7 +58,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-telegram-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.submit-special-offer-request]
 verify_jwt = false
