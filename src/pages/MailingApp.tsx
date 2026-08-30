@@ -38,42 +38,53 @@ const MENU = [
 
 type TabKey = (typeof MENU)[number]["key"];
 
-export default function MailingApp() {
+interface MailingAppProps {
+  embedded?: boolean;
+}
+
+export default function MailingApp({ embedded = false }: MailingAppProps) {
   const { organizationId } = useOrgDashboard();
   const [params, setParams] = useSearchParams();
 
-  const rawTab = params.get("tab") as TabKey | null;
+  const tabParam = embedded ? "mailingTab" : "tab";
+  const rawTab = params.get(tabParam) as TabKey | null;
   const tab: TabKey = MENU.some((m) => m.key === rawTab) ? (rawTab as TabKey) : "overview";
 
   const setTab = (key: TabKey) => {
     const next = new URLSearchParams(params);
-    next.set("tab", key);
+    next.set(tabParam, key);
+    if (embedded) next.set("tab", "mailing");
     setParams(next, { replace: false });
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn("bg-background", !embedded && "min-h-screen")}>
       <Helmet>
         <title>Кабинет рассылок — СИНТАГМА</title>
         <meta name="description" content="Кабинет email-рассылок СИНТАГМЫ: кампании, база контактов, шаблоны, отправители, отчёты и доставляемость." />
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <header className="border-b bg-card/60">
-        <div className="container mx-auto flex flex-wrap items-center gap-3 px-4 py-3">
-          <h1 className="flex-1 font-display text-lg font-semibold">Рассылки СИНТАГМА</h1>
-          <Button asChild variant="ghost" size="sm" className="gap-1">
-            <Link to="/organization">
-              <ArrowLeft className="h-4 w-4" />
-              В кабинет организации
-            </Link>
-          </Button>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="border-b bg-card/60">
+          <div className="container mx-auto flex flex-wrap items-center gap-3 px-4 py-3">
+            <h1 className="flex-1 font-display text-lg font-semibold">Рассылки СИНТАГМА</h1>
+            <Button asChild variant="ghost" size="sm" className="gap-1">
+              <Link to="/organization">
+                <ArrowLeft className="h-4 w-4" />
+                В кабинет организации
+              </Link>
+            </Button>
+          </div>
+        </header>
+      )}
 
       <MailingFeatureGate>
         {({ canWrite }) => (
-          <div className="container mx-auto flex flex-col gap-6 px-4 py-6 lg:flex-row">
+          <div className={cn(
+            "flex flex-col gap-6 lg:flex-row",
+            embedded ? "py-2" : "container mx-auto px-4 py-6",
+          )}>
             <nav aria-label="Разделы рассылок" className="lg:w-56 lg:shrink-0">
               <ul className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
                 {MENU.map((m) => (
@@ -103,7 +114,7 @@ export default function MailingApp() {
               disabled={!canWrite}
             >
               <legend className="sr-only">Рабочая область рассылок</legend>
-              <main className="min-w-0">
+              <section className="min-w-0" aria-label="Содержимое раздела рассылок">
                 {tab === "overview" && (
                   <MailingOverviewTab
                     organizationId={organizationId}
@@ -118,7 +129,7 @@ export default function MailingApp() {
                 {tab === "reports" && <MailingReportsTab organizationId={organizationId} />}
                 {tab === "replies" && <MailingRepliesTab organizationId={organizationId} />}
                 {tab === "deliverability" && <MailingDeliverabilityTab organizationId={organizationId} />}
-              </main>
+              </section>
             </fieldset>
           </div>
         )}

@@ -109,6 +109,7 @@ beforeEach(() => {
     "journals",
     "frdo",
     "sales",
+    "mailing",
     "stats",
     "links",
     "staff",
@@ -294,7 +295,7 @@ describe("OrgSidebar navigation", () => {
     fireEvent.click(within(sidebar).getByRole("button", { name: "Коммуникации" }));
     expect(within(sidebar).getByRole("link", { name: "Рассылки" })).toHaveAttribute(
       "href",
-      "/mailing/app?tab=overview",
+      "/organization?tab=mailing&mailingTab=overview",
     );
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Документы" }));
@@ -392,7 +393,24 @@ describe("OrgSidebar navigation", () => {
     emailCampaignsEnabled = true;
     renderSidebar();
     fireEvent.click(screen.getByRole("button", { name: "Коммуникации" }));
-    expect(screen.getByRole("link", { name: "Рассылки" })).toHaveAttribute("href", "/mailing/app?tab=overview");
+    expect(screen.getByRole("link", { name: "Рассылки" })).toHaveAttribute(
+      "href",
+      "/organization?tab=mailing&mailingTab=overview",
+    );
     expect(screen.queryByRole("link", { name: "Продажи" })).not.toBeInTheDocument();
+  });
+
+  it("marks the embedded mailing workspace as the active communication destination", () => {
+    activeTab = "mailing";
+    renderSidebar();
+
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+    const communications = within(sidebar).getByRole("navigation", {
+      name: "Коммуникации: подразделы",
+    });
+    expect(within(communications).getByRole("link", { name: "Рассылки" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

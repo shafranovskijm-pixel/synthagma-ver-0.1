@@ -35,7 +35,7 @@ import { SectionBreadcrumbDropdown } from "@/components/organization/SectionBrea
 
 beforeEach(() => {
   setActiveTab.mockClear();
-  allowedTabs = new Set(["students", "organizations", "sales", "chats", "documents", "frdo"]);
+  allowedTabs = new Set(["students", "organizations", "sales", "mailing", "chats", "documents", "frdo"]);
   menuSettings = {
     showStudents: true,
     showCompanies: true,
@@ -63,5 +63,17 @@ describe("SectionBreadcrumbDropdown access", () => {
     expect(screen.queryByRole("button", { name: "Документы учеников" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "ФИС ФРДО" }));
     expect(setActiveTab).toHaveBeenCalledWith("frdo");
+  });
+
+  it("shows mailing only when the staff permission mapping allows it", () => {
+    const allowedView = render(
+      <SectionBreadcrumbDropdown section="clients" label="Клиенты" activeTab="mailing" />,
+    );
+    expect(screen.getByRole("button", { name: "Рассылки" })).toBeInTheDocument();
+
+    allowedView.unmount();
+    allowedTabs.delete("mailing");
+    render(<SectionBreadcrumbDropdown section="clients" label="Клиенты" activeTab="students" />);
+    expect(screen.queryByRole("button", { name: "Рассылки" })).not.toBeInTheDocument();
   });
 });

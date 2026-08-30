@@ -16,7 +16,10 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useRecentActions } from "@/hooks/useOrgSidebarPinned";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
-import { organizationTabPath } from "@/lib/organization/workspaceNavigation";
+import {
+  organizationMailingPath,
+  organizationTabPath,
+} from "@/lib/organization/workspaceNavigation";
 import { showLimitToast } from "@/utils/limitToast";
 
 interface ActionDef {
@@ -126,7 +129,7 @@ export function QuickActionChips() {
       label: "Рассылки",
       icon: Mail,
       allowed: mailingEnabled && can("sales.read"),
-      href: "/mailing/app?tab=overview",
+      href: organizationMailingPath("overview"),
     },
     chats: {
       id: "chats",

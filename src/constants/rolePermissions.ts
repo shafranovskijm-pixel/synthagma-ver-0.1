@@ -180,6 +180,7 @@ export const ORG_TAB_TO_PERMISSION: Record<string, Permission> = {
   'ai-tutors': 'courses.read',
   webinars: 'webinars.read',
   sales: 'sales.read',
+  mailing: 'sales.read',
   profile: 'settings.read',
   stats: 'courses.read',
 };

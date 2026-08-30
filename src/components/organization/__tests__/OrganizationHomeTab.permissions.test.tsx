@@ -100,9 +100,12 @@ describe("OrganizationHomeTab permission-aware actions", () => {
 
   it("opens mailing directly when mailing is readable but chats are not", () => {
     granted.add("sales.read");
+    visibleTabs.add("mailing");
     renderHome();
 
     fireEvent.click(screen.getByRole("button", { name: /Открыть коммуникации/ }));
-    expect(screen.getByTestId("location")).toHaveTextContent("/mailing/app?tab=overview");
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/organization?tab=mailing&mailingTab=overview",
+    );
   });
 });

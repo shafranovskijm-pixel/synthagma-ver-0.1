@@ -113,10 +113,15 @@ describe("QuickActionChips — контекстные действия", () => {
 
     const chip = screen.getByTestId("quick-chip-mailing");
     expect(chip.tagName).toBe("A");
-    expect(chip).toHaveAttribute("href", "/mailing/app?tab=overview");
+    expect(chip).toHaveAttribute(
+      "href",
+      "/organization?tab=mailing&mailingTab=overview",
+    );
     fireEvent.click(chip);
     await waitFor(() =>
-      expect(screen.getByTestId("loc").textContent).toBe("/mailing/app?tab=overview"),
+      expect(screen.getByTestId("loc").textContent).toBe(
+        "/organization?tab=mailing&mailingTab=overview",
+      ),
     );
   });
 
