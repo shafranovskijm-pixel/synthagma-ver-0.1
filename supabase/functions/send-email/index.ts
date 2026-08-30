@@ -1,83 +1,75 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
+import { createSendEmailHandler } from "./handler.ts";
+import {
+  authorizeSendEmail,
+  isAllowedConfiguredSender,
+} from "./policy.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-interface EmailRequest {
-  to: string;
-  subject: string;
-  html: string;
-  from?: string;
-}
-
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { to, subject, html, from }: EmailRequest = await req.json();
-
-    if (!to || !subject || !html) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: to, subject, and html are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Служебные @student.local — не почта, тихо пропускаем (без 500-ошибок).
-    if (String(to).trim().toLowerCase().endsWith("@student.local")) {
-      console.log("send-email skipped @student.local recipient:", to);
-      return new Response(
-        JSON.stringify({ success: true, skipped: "no_real_email" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log("Sending email to:", to, "subject:", subject);
-
-
-    const result = await sendPlatformEmail({
-      to,
-      subject,
-      html,
-      fromOverride: from,
+const handler = createSendEmailHandler({
+  authorize: (req) => authorizeSendEmail(req, {
+    serviceRoleKey,
+    getVerifiedUser: async (accessToken) => {
+      if (!supabaseUrl || !anonKey) return null;
+      const userClient = createClient(supabaseUrl, anonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+      const { data, error } = await userClient.auth.getUser(accessToken);
+      if (error || !data.user) return null;
+      return { id: data.user.id };
+    },
+    hasAdminRole: async (userId) => {
+      if (!supabaseUrl || !serviceRoleKey) return false;
+      // This service-role lookup is intentionally reached only after
+      // auth.getUser has verified the browser caller.
+      const admin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data, error } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .limit(1)
+        .maybeSingle();
+      return !error && data?.role === "admin";
+    },
+  }),
+  isAdminSenderAllowed: async (mailbox) => {
+    if (!supabaseUrl || !serviceRoleKey) return false;
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
-
-    if (!result.ok) {
-      if (result.rateLimited) {
-        return new Response(
-          JSON.stringify({ error: result.error, retryAfterSeconds: result.retryAfterSeconds }),
-          {
-            status: 429,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-              "Retry-After": String(result.retryAfterSeconds || 60),
-            },
-          }
-        );
-      }
-      throw new Error(result.error || "send failed");
-    }
-
-    console.log("Email sent successfully to:", to);
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    const { data, error } = await admin
+      .from("email_sender_pool")
+      .select("email")
+      .eq("is_active", true)
+      .not("app_password", "is", null)
+      .neq("app_password", "")
+      .limit(1000);
+    if (error) throw new Error("sender_configuration_unavailable");
+    return isAllowedConfiguredSender(
+      mailbox,
+      Deno.env.get("SMTP_FROM") ?? null,
+      (data ?? []).map((row) => String(row.email ?? "")),
     );
-  } catch (error: unknown) {
-    console.error("Error in send-email function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-};
+  },
+  send: (payload) => sendPlatformEmail({
+    to: payload.to,
+    subject: payload.subject,
+    html: payload.html,
+    fromOverride: payload.from,
+  }),
+  reportError: (error) => console.error(
+    "send-email failed:",
+    error instanceof Error ? error.name : "unknown_error",
+  ),
+});
 
 serve(handler);

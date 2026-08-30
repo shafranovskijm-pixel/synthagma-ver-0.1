@@ -96,7 +96,7 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
 
   // Подключение: TLS сразу для 465; для 587/2525 — STARTTLS.
   const useImplicitTls = cfg.port === 465 || cfg.encryption === "ssl";
-  const conn: Deno.Conn = await withSmtpTimeout(
+  const conn: Deno.Conn = await withSmtpTimeout<Deno.Conn>(
     useImplicitTls
       ? Deno.connectTls({ hostname: cfg.host, port: cfg.port })
       : Deno.connect({ hostname: cfg.host, port: cfg.port }),
