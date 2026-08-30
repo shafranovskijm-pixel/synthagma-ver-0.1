@@ -282,7 +282,7 @@ export function useCourseBuilder(propCourseId?: string) {
     if (!courseTitle.trim()) setCourseTitle("Новый курс");
     const { data: newCourse, error } = await supabase
       .from("courses")
-      .insert({ title: courseTitle.trim() || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId })
+      .insert({ title: courseTitle.trim() || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId, is_published: false })
       .select()
       .single();
     if (error || !newCourse) return null;
@@ -491,8 +491,8 @@ export function useCourseBuilder(propCourseId?: string) {
     setIsSaving(true); setAutoSaveStatus('saving');
     try {
       let savedCourseId = courseId;
-      if (courseId) { const { error } = await supabase.from("courses").update({ title: courseTitle.trim(), description: courseDescription.trim() || null, is_published: true }).eq("id", courseId); if (error) throw error; }
-      else { const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: true }).select().single(); if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`); }
+      if (courseId) { const { error } = await supabase.from("courses").update({ title: courseTitle.trim(), description: courseDescription.trim() || null }).eq("id", courseId); if (error) throw error; }
+      else { const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single(); if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`); }
 
       if (lessons.length > 0 && savedCourseId) {
         const currentLessonIds = lessons.map(l => l.id);
@@ -591,7 +591,7 @@ export function useCourseBuilder(propCourseId?: string) {
       let savedCourseId = courseId;
       if (!savedCourseId) {
         if (!courseTitle.trim()) setCourseTitle(lesson.title || "Новый курс");
-        const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim() || lesson.title || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId }).select().single();
+        const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim() || lesson.title || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single();
         if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
