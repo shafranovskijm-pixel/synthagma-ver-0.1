@@ -6,6 +6,7 @@ import {
   buildTelegramMessage,
   isReasonablePhone,
   normalizeDemoRequestInput,
+  normalizeDemoRequestId,
   notificationInvokeSucceeded,
   TELEGRAM_MESSAGE_MAX_LENGTH,
 } from "./contract";
@@ -18,6 +19,7 @@ describe("submit-demo-request notification contract", () => {
       source: "   ",
       message: 42,
     })).toEqual({
+      request_id: "",
       name: "Максим",
       organization: "",
       phone: "+7 900 000-00-00",
@@ -36,6 +38,13 @@ describe("submit-demo-request notification contract", () => {
         referrer: "",
       },
     });
+  });
+
+  it("accepts only a UUID request id used for idempotent retries", () => {
+    expect(normalizeDemoRequestId(" 8DF1B898-B788-4CE2-A689-9A470EAE5CF1 "))
+      .toBe("8df1b898-b788-4ce2-a689-9a470eae5cf1");
+    expect(normalizeDemoRequestId("lead-1")).toBe("");
+    expect(normalizeDemoRequestId(null)).toBe("");
   });
 
   it("normalizes only supported attribution fields and limits their size", () => {

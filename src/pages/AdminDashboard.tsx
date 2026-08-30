@@ -31,6 +31,7 @@ const AdminDocumentsManager = lazyWithRetry(() => import("@/components/admin/Adm
 
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { clearAdminSalesView } from "@/utils/adminViewMode";
 
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
@@ -49,6 +50,7 @@ const AdminDashboard = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [openOrgId, setOpenOrgId] = useState<string | null>(null);
   const [pendingExpandContractId, setPendingExpandContractId] = useState<string | null>(null);
+  const [retryingNotificationId, setRetryingNotificationId] = useState<string | null>(null);
   const adminBranding = useAdminBranding();
 
   // Visual theme
@@ -113,7 +115,9 @@ const AdminDashboard = () => {
       await supabase.from("admin_notifications").update({ is_read: true }).eq("id", n.id);
       fetchNotifications();
     }
-    if (n.type === "invoice" && n.related_entity_id) {
+    if (n.type === "demo_request_delivery") {
+      setActiveTab("sales");
+    } else if (n.type === "invoice" && n.related_entity_id) {
       setOpenOrgId(n.related_entity_id);
       setActiveTab("organizations");
     } else if (n.type === "signature") {
@@ -126,6 +130,29 @@ const AdminDashboard = () => {
         return;
       }
       setActiveTab("billing");
+    }
+  };
+
+  const retryDemoNotification = async (notification: any) => {
+    if (!notification?.id || retryingNotificationId) return;
+    setRetryingNotificationId(notification.id);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "retry-demo-request-notification",
+        { body: { notification_id: notification.id } },
+      );
+      if (error || !data?.ok) throw new Error("retry_failed");
+      if (data.status === "sent") {
+        toast.success("Telegram-уведомление доставлено");
+      } else {
+        toast.info("Доставка уже выполняется");
+      }
+      await fetchNotifications();
+    } catch {
+      toast.error("Telegram пока не принял уведомление. Лид сохранён в «Продажах».");
+      await fetchNotifications();
+    } finally {
+      setRetryingNotificationId(null);
     }
   };
 
@@ -177,6 +204,8 @@ const AdminDashboard = () => {
           unreadCount={unreadCount}
           onMarkAllRead={markAllRead}
           onNotificationClick={handleNotificationClick}
+          onNotificationRetry={retryDemoNotification}
+          retryingNotificationId={retryingNotificationId}
           branding={adminBranding.branding}
           onCoverUpload={adminBranding.handleCoverUpload}
         />

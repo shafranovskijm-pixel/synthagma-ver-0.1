@@ -1,6 +1,6 @@
 export interface DemoRequestDelivery {
   lead?: "stored" | "failed" | "not_attempted";
-  telegram?: "sent" | "failed" | "not_attempted";
+  telegram?: "sent" | "failed" | "pending" | "not_attempted";
   email?: "sent" | "failed" | "not_attempted";
 }
 
