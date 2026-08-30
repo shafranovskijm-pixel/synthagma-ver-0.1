@@ -32,6 +32,16 @@ vi.mock("@/components/organization/tabs/ContractEditorTab", () => ({
   ContractEditorTab: () => <div data-testid="contract-editor">Contract editor</div>,
 }));
 
+vi.mock("@/components/organization/tabs/StatsCards", () => ({
+  StatsCards: () => <div data-testid="stats-cards">Stats</div>,
+}));
+
+vi.mock("@/pages/MailingApp", () => ({
+  default: ({ embedded }: { embedded?: boolean }) => (
+    <div data-testid="mailing-app" data-embedded={String(embedded)}>Mailing</div>
+  ),
+}));
+
 import { TabContentRenderer } from "@/components/organization/tabs/TabContentRenderer";
 
 function renderRenderer() {
@@ -87,5 +97,13 @@ describe("TabContentRenderer document workspace permissions", () => {
 
     expect(screen.getByTestId("contract-editor")).toBeInTheDocument();
     expect(screen.queryByTestId("document-workspace-permission-denied")).not.toBeInTheDocument();
+  });
+
+  it("embeds mailing without rendering the generic stats summary", () => {
+    activeTab = "mailing";
+    renderRenderer();
+
+    expect(screen.getByTestId("mailing-app")).toHaveAttribute("data-embedded", "true");
+    expect(screen.queryByTestId("stats-cards")).not.toBeInTheDocument();
   });
 });

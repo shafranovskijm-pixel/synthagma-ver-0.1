@@ -1,6 +1,15 @@
 import type { TabType } from "@/components/organization/OrgSidebar";
 
 export type StudentsView = "active" | "archive" | "groups";
+export type MailingWorkspaceTab =
+  | "overview"
+  | "campaigns"
+  | "contacts"
+  | "templates"
+  | "senders"
+  | "reports"
+  | "replies"
+  | "deliverability";
 
 /**
  * Canonical link to an organization workspace section.
@@ -14,6 +23,13 @@ export function organizationTabPath(tab: TabType): string {
   return tab === "home"
     ? "/organization"
     : `/organization?tab=${encodeURIComponent(tab)}`;
+}
+
+/** Canonical link to a mailing sub-workspace inside the organization shell. */
+export function organizationMailingPath(
+  tab: MailingWorkspaceTab = "overview",
+): string {
+  return `/organization?tab=mailing&mailingTab=${encodeURIComponent(tab)}`;
 }
 
 /** URL is the only source of truth for the students workspace. */

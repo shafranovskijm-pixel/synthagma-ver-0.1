@@ -13,6 +13,7 @@ import { QuickStartCard } from "@/components/organization/QuickStartCard";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
+import { organizationMailingPath } from "@/lib/organization/workspaceNavigation";
 import { cn } from "@/lib/utils";
 import { StatsCards } from "./StatsCards";
 
@@ -79,7 +80,10 @@ export function OrganizationHomeTab() {
   const canReadCompanies = !permissionsLoading && canSeeOrgTab("organizations") && can("companies.read");
   const canReadDocuments = !permissionsLoading && canSeeOrgTab("documents") && can("documents.read");
   const canReadChats = !permissionsLoading && canSeeOrgTab("chats") && can("chats.read");
-  const canReadMailing = !permissionsLoading && can("sales.read") && mailingEnabled;
+  const canReadMailing = !permissionsLoading
+    && canSeeOrgTab("mailing")
+    && can("sales.read")
+    && mailingEnabled;
   const canCreateCourse = canReadCourses
     && can("courses.write")
     && d.subscriptionLimits?.canCreateCourse === true;
@@ -206,7 +210,7 @@ export function OrganizationHomeTab() {
               icon={MessageCircle}
               onOpen={() => {
                 if (canReadChats) openTab("chats");
-                else navigate("/mailing/app?tab=overview");
+                else navigate(organizationMailingPath("overview"));
               }}
             />
           )}

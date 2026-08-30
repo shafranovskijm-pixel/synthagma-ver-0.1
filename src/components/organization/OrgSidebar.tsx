@@ -35,7 +35,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { organizationTabPath } from "@/lib/organization/workspaceNavigation";
+import {
+  organizationMailingPath,
+  organizationTabPath,
+} from "@/lib/organization/workspaceNavigation";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
 
 export type TabType = 
@@ -65,6 +68,7 @@ export type TabType =
   | "webinars"
   | "frdo"
   | "sales"
+  | "mailing"
   | "profile"
   | "whats-new"
   | "org-documents"
@@ -400,16 +404,16 @@ export function OrgSidebar() {
   // Mailing shares the existing sales permission, while plan limits decide
   // whether the entry opens or offers an upgrade. Free users still see where
   // the function lives instead of discovering it through an undocumented URL.
-  if (canShowTab("sales")) communicationItems.push({
+  if (canShowTab("mailing")) communicationItems.push(makeTabItem("mailing", {
     id: "mailing",
     icon: Send,
     label: "Рассылки",
     description: mailingEnabled
       ? "Кампании, база, шаблоны и отправители"
       : "Доступно с тарифа «Старт»",
-    href: "/mailing/app?tab=overview",
+    href: organizationMailingPath("overview"),
     forceLocked: !mailingEnabled,
-  });
+  }));
 
   const documentItems: NavItem[] = [];
   if (menuSettings.showDocuments === true && canShowTab("documents")) {
@@ -501,7 +505,6 @@ export function OrgSidebar() {
 
   const isItemActive = (item: NavItem) => {
     if (item.neverActive) return false;
-    if (item.href.startsWith("/mailing/app")) return location.pathname === "/mailing/app";
     return !!item.tab && activeTab === item.tab;
   };
 

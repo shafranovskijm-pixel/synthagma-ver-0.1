@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import MailingApp from "@/pages/MailingApp";
 
@@ -52,11 +52,17 @@ vi.mock("@/components/mailing/MailingRepliesTab", () => ({
   MailingRepliesTab: () => <div>replies-tab</div>,
 }));
 
-const renderAt = (search: string) =>
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+}
+
+const renderAt = (search: string, embedded = false) =>
   render(
     <HelmetProvider>
-      <MemoryRouter initialEntries={[`/mailing/app${search}`]}>
-        <MailingApp />
+      <MemoryRouter initialEntries={[`${embedded ? "/organization" : "/mailing/app"}${search}`]}>
+        <LocationProbe />
+        <MailingApp embedded={embedded} />
       </MemoryRouter>
     </HelmetProvider>,
   );
@@ -99,6 +105,24 @@ describe("MailingApp shell", () => {
   it("opens the centralized campaign replies tab", async () => {
     renderAt("?tab=replies");
     expect(await screen.findByText("replies-tab")).toBeInTheDocument();
+  });
+
+  it("renders a mailing subtab inside the organization shell without the standalone header", async () => {
+    renderAt("?tab=mailing&mailingTab=reports", true);
+
+    expect(await screen.findByText("reports-tab")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "В кабинет организации" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Рассылки СИНТАГМА" })).not.toBeInTheDocument();
+  });
+
+  it("changes only mailingTab while preserving the organization workspace tab", async () => {
+    renderAt("?tab=mailing&mailingTab=overview", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Отчёты" }));
+    expect(await screen.findByText("reports-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/organization?tab=mailing&mailingTab=reports",
+    );
   });
 
   it("falls back to overview for an unknown tab", async () => {

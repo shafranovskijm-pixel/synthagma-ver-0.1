@@ -21,6 +21,7 @@ const SECTION_ITEMS: Record<SectionId, { tab: TabType; label: string }[]> = {
     { tab: "students", label: "Ученики" },
     { tab: "organizations", label: "Клиенты-компании" },
     { tab: "sales", label: "Продажи" },
+    { tab: "mailing", label: "Рассылки" },
     { tab: "chats", label: "Чаты" },
   ],
   tools: [

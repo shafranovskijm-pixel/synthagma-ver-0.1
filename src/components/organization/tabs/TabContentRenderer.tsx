@@ -31,6 +31,7 @@ import { OrganizationHomeTab } from "@/components/organization/tabs/Organization
 
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
 import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
+import MailingApp from "@/pages/MailingApp";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -72,6 +73,7 @@ export function TabContentRenderer() {
     activeTab !== "staff" &&
     activeTab !== "webinars" &&
     activeTab !== "sales" &&
+    activeTab !== "mailing" &&
     activeTab !== "profile" &&
     activeTab !== "settings" &&
     activeTab !== "whats-new" &&
@@ -280,6 +282,9 @@ export function TabContentRenderer() {
 
       {/* Sales Tab — единый «Кабинет менеджера» (КП/Договоры/Рассылки/SMTP + заглушки Сделок 360°/Задач) */}
       {activeTab === ("sales" as any) && organizationId && <OrgSalesManager />}
+
+      {/* Full mailing workspace embedded into the organization shell. */}
+      {activeTab === "mailing" && <MailingApp embedded />}
 
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
