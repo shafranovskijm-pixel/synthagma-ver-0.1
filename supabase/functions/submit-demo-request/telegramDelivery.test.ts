@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   createDemoTelegramMetadata,
-  demoNotificationMessage,
+  createSentDemoTelegramMetadata,
   DEMO_NOTIFICATION_KIND,
   DEMO_NOTIFICATION_TYPE,
+  demoNotificationMessage,
+  demoTelegramForceRetryKey,
   isDemoNotificationRecord,
   parseDemoTelegramMetadata,
 } from "./telegramDelivery";
@@ -38,7 +40,9 @@ describe("demo Telegram durable delivery metadata", () => {
       type: DEMO_NOTIFICATION_TYPE,
       metadata,
     })).toBe(false);
-    expect(parseDemoTelegramMetadata({ ...metadata, telegram_status: "unknown" })).toBeNull();
+    expect(
+      parseDemoTelegramMetadata({ ...metadata, telegram_status: "unknown" }),
+    ).toBeNull();
   });
 
   it("normalizes unsafe counters without accepting an invalid payload", () => {
@@ -50,9 +54,36 @@ describe("demo Telegram durable delivery metadata", () => {
   });
 
   it("never labels pending or in-progress delivery as sent", () => {
-    expect(demoNotificationMessage("pending")).toContain("ожидает");
-    expect(demoNotificationMessage("sending")).toContain("выполняется");
+    expect(demoNotificationMessage("pending")).toContain("не подтверждён");
+    expect(demoNotificationMessage("sending")).toContain("не подтверждён");
     expect(demoNotificationMessage("failed")).toContain("не доставил");
     expect(demoNotificationMessage("sent")).toContain("доставлено");
+  });
+
+  it("removes the persisted Telegram PII payload after confirmed delivery", () => {
+    const sent = createSentDemoTelegramMetadata(
+      {
+        ...createDemoTelegramMetadata(REQUEST_ID, "Имя, телефон и комментарий"),
+        telegram_status: "sending",
+        attempt_count: 1,
+        last_attempt_at: "2026-08-30T08:00:00.000Z",
+      },
+      "2026-08-30T08:00:05.000Z",
+    );
+
+    expect(sent.telegram_status).toBe("sent");
+    expect(sent.telegram_message).toBe("");
+    expect(sent.delivered_at).toBe("2026-08-30T08:00:05.000Z");
+    expect(sent.failure_code).toBeNull();
+  });
+
+  it("uses a separate permanent claim for each explicit force-retry attempt", () => {
+    const metadata = createDemoTelegramMetadata(REQUEST_ID, "message");
+    expect(demoTelegramForceRetryKey(metadata)).toBe(
+      `demo-telegram:${REQUEST_ID}:force-retry:1`,
+    );
+    expect(demoTelegramForceRetryKey({ ...metadata, attempt_count: 3 })).toBe(
+      `demo-telegram:${REQUEST_ID}:force-retry:4`,
+    );
   });
 });

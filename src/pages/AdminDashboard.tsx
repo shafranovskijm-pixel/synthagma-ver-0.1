@@ -40,6 +40,8 @@ import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
 
+const DEMO_FORCE_RETRY_CONFIRMATION = "telegram_delivery_may_duplicate";
+const ADMIN_NOTIFICATION_POLL_MS = 30_000;
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -91,11 +93,22 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchNotifications();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void fetchNotifications();
+    };
     const channel = supabase
       .channel(`admin-notifications-bell-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_notifications" }, () => fetchNotifications())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const pollId = window.setInterval(refreshWhenVisible, ADMIN_NOTIFICATION_POLL_MS);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(pollId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      supabase.removeChannel(channel);
+    };
   }, [fetchNotifications]);
 
   const markAllRead = async () => {
@@ -133,19 +146,51 @@ const AdminDashboard = () => {
     }
   };
 
-  const retryDemoNotification = async (notification: any) => {
+  const retryDemoNotification = async (
+    notification: any,
+    action: "retry" | "confirm" = "retry",
+  ) => {
     if (!notification?.id || retryingNotificationId) return;
+    const telegramStatus = notification.metadata?.telegram_status;
+    const failureCode = notification.metadata?.failure_code;
+    const uncertainDelivery = telegramStatus === "pending" ||
+      telegramStatus === "sending" ||
+      failureCode === "telegram_invoke_failed" ||
+      failureCode === "telegram_delivery_outcome_unknown";
+    if (action === "confirm") {
+      const confirmed = window.confirm(
+        "Подтвердить, что заявка уже найдена в Telegram? После подтверждения повторная отправка будет заблокирована.",
+      );
+      if (!confirmed) return;
+    } else if (uncertainDelivery) {
+      const confirmed = window.confirm(
+        "Сначала проверьте чат Telegram. Статус предыдущей отправки неизвестен: " +
+        "принудительный повтор может отправить заявку второй раз. Всё равно повторить?",
+      );
+      if (!confirmed) return;
+    }
     setRetryingNotificationId(notification.id);
     try {
       const { data, error } = await supabase.functions.invoke(
         "retry-demo-request-notification",
-        { body: { notification_id: notification.id } },
+        {
+          body: {
+            notification_id: notification.id,
+            confirm_delivered: action === "confirm",
+            force_retry: action === "retry" && uncertainDelivery,
+            confirm_duplicate_risk: action === "retry" && uncertainDelivery
+              ? DEMO_FORCE_RETRY_CONFIRMATION
+              : undefined,
+          },
+        },
       );
       if (error || !data?.ok) throw new Error("retry_failed");
       if (data.status === "sent") {
         toast.success("Telegram-уведомление доставлено");
+      } else if (data.refresh_required === true) {
+        toast.info("Эта попытка уже обрабатывалась. Список обновлён — проверьте Telegram и новый статус.");
       } else {
-        toast.info("Доставка уже выполняется");
+        toast.info("Статус доставки не подтверждён. Проверьте чат Telegram перед повтором.");
       }
       await fetchNotifications();
     } catch {

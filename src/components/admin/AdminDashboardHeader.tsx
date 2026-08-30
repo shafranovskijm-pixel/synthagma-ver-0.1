@@ -33,7 +33,7 @@ interface AdminDashboardHeaderProps {
   unreadCount: number;
   onMarkAllRead: () => void;
   onNotificationClick?: (notification: any) => void;
-  onNotificationRetry?: (notification: any) => void;
+  onNotificationRetry?: (notification: any, action?: "retry" | "confirm") => void;
   retryingNotificationId?: string | null;
   branding: {
     coverUrl: string | null;
@@ -168,21 +168,41 @@ export function AdminDashboardHeader({
                     >
                       <p className="text-sm font-medium">{n.title}</p>
                       {n.message && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{n.message}</p>}
-                      {n.type === "demo_request_delivery" && n.metadata?.telegram_status === "failed" && onNotificationRetry && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 h-7 text-xs"
-                          disabled={retryingNotificationId === n.id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onNotificationRetry(n);
-                          }}
-                        >
-                          <RefreshCw className={`mr-1 h-3 w-3 ${retryingNotificationId === n.id ? "animate-spin" : ""}`} />
-                          Повторить Telegram
-                        </Button>
-                      )}
+                      {n.type === "demo_request_delivery" &&
+                        ["failed", "pending", "sending"].includes(n.metadata?.telegram_status) &&
+                        onNotificationRetry && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {n.metadata?.telegram_status !== "failed" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={retryingNotificationId === n.id}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onNotificationRetry(n, "confirm");
+                                }}
+                              >
+                                Уже доставлено
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              disabled={retryingNotificationId === n.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onNotificationRetry(n, "retry");
+                              }}
+                            >
+                              <RefreshCw className={`mr-1 h-3 w-3 ${retryingNotificationId === n.id ? "animate-spin" : ""}`} />
+                              {n.metadata?.telegram_status === "failed"
+                                ? "Повторить Telegram"
+                                : "Не найдено — повторить"}
+                            </Button>
+                          </div>
+                        )}
                       <p className="text-[10px] text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ru })}
                       </p>

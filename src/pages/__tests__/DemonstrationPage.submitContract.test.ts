@@ -11,6 +11,9 @@ const pageSource = read("src/pages/DemonstrationPage.tsx");
 const adminPageSource = read("src/pages/AdminDashboard.tsx");
 const adminHeaderSource = read("src/components/admin/AdminDashboardHeader.tsx");
 const generatedTypes = read("src/integrations/supabase/types.ts");
+const claimPermissionMigration = read(
+  "supabase/migrations/20260830183500_restrict_notification_dedup_claim.sql",
+);
 const salesLeadMigration = read(
   "supabase/migrations/20260216024439_4a1d4046-6e1b-4033-b26b-d517fedef52d.sql",
 );
@@ -94,6 +97,7 @@ describe("/demonstration submission source contract", () => {
     expect(edgeSource).toContain("id: leadId");
     expect(edgeSource).toContain('leadError?.code === "23505"');
     expect(edgeSource).toContain('existingLead.source === "demo_request"');
+    expect(edgeSource).toContain('(existingLead.notes || "") === leadPayload.notes');
     expect(edgeSource).toContain('error: "request_id_conflict"');
   });
 
@@ -106,6 +110,20 @@ describe("/demonstration submission source contract", () => {
     expect(edgeSource).toContain("доставку заявки в Telegram требуется проверить вручную");
     expect(deliverySource).toContain('"claim_notification_dedup"');
     expect(deliverySource).toContain('.from("notification_dedup_log")');
+    expect(deliverySource).toContain('failure_code: "telegram_delivery_outcome_unknown"');
+    expect(deliverySource).toContain('telegram_status: "pending"');
+    expect(deliverySource).toContain('.select("id, related_entity_id, type, metadata")');
+    expect(deliverySource).toMatch(
+      /:force-retry:\$\{\s*metadata\.attempt_count \+ 1\s*\}/,
+    );
+    expect(deliverySource).toContain('const activeClaimKey = forceRetryKey');
+    expect(retrySource).toContain('preclaimedKey = forceClaim.claim_key');
+    const safePreInvokeRelease = deliverySource.indexOf('.delete()');
+    const externalInvoke = deliverySource.indexOf('supabase.functions.invoke(');
+    const unknownOutcome = deliverySource.indexOf('failure_code: "telegram_delivery_outcome_unknown"');
+    expect(safePreInvokeRelease).toBeGreaterThan(-1);
+    expect(safePreInvokeRelease).toBeLessThan(externalInvoke);
+    expect(deliverySource.slice(unknownOutcome)).not.toContain('.delete()');
   });
 
   it("offers an explicit admin-only retry and routes the notification to Sales", () => {
@@ -113,8 +131,34 @@ describe("/demonstration submission source contract", () => {
     expect(retrySource).toContain('userClient.rpc("has_role"');
     expect(retrySource).toContain("isAdmin !== true");
     expect(adminHeaderSource).toContain("Повторить Telegram");
+    expect(adminHeaderSource).toContain("Уже доставлено");
+    expect(adminHeaderSource).toContain("Не найдено — повторить");
     expect(adminPageSource).toContain('"retry-demo-request-notification"');
+    expect(adminPageSource).toContain("confirm_duplicate_risk");
+    expect(adminPageSource).toContain("confirm_delivered");
     expect(adminPageSource).toContain('setActiveTab("sales")');
+  });
+
+  it("restricts the delivery claim RPC to service_role", () => {
+    expect(claimPermissionMigration).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.claim_notification_dedup\(TEXT\) FROM PUBLIC;/,
+    );
+    expect(claimPermissionMigration).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.claim_notification_dedup\(TEXT\) FROM anon;/,
+    );
+    expect(claimPermissionMigration).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.claim_notification_dedup\(TEXT\) FROM authenticated;/,
+    );
+    expect(claimPermissionMigration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.claim_notification_dedup\(TEXT\) TO service_role;/,
+    );
+  });
+
+  it("refreshes the admin notification bell without depending on Realtime", () => {
+    expect(adminPageSource).toContain("window.setInterval(refreshWhenVisible");
+    expect(adminPageSource).toContain('window.addEventListener("focus", refreshWhenVisible)');
+    expect(adminPageSource).toContain('document.addEventListener("visibilitychange", refreshWhenVisible)');
+    expect(adminPageSource).toContain("window.clearInterval(pollId)");
   });
 
   it("rejects the untouched +7 phone placeholder on both client and server", () => {

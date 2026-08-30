@@ -95,7 +95,8 @@ Deno.serve(async (req) => {
           existingLead.source === "demo_request" &&
           existingLead.org_name === leadPayload.org_name &&
           existingLead.phone === leadPayload.phone &&
-          (existingLead.email || null) === leadPayload.email,
+          (existingLead.email || null) === leadPayload.email &&
+          (existingLead.notes || "") === leadPayload.notes,
       );
 
       if (existingLeadError || !matchesOriginalRequest) {
