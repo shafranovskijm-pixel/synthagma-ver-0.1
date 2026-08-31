@@ -6482,6 +6482,8 @@ export type Database = {
           student_group_id: string | null
           student_user_id: string | null
           students: Json
+          submission_key: string | null
+          submission_snapshot_sha256: string | null
           template_format: string
           template_id: string | null
           template_manifest: Json | null
@@ -6517,6 +6519,8 @@ export type Database = {
           student_group_id?: string | null
           student_user_id?: string | null
           students?: Json
+          submission_key?: string | null
+          submission_snapshot_sha256?: string | null
           template_format?: string
           template_id?: string | null
           template_manifest?: Json | null
@@ -6552,6 +6556,8 @@ export type Database = {
           student_group_id?: string | null
           student_user_id?: string | null
           students?: Json
+          submission_key?: string | null
+          submission_snapshot_sha256?: string | null
           template_format?: string
           template_id?: string | null
           template_manifest?: Json | null
@@ -8889,6 +8895,27 @@ export type Database = {
           },
         ]
       }
+      registration_attempt_rate_limits: {
+        Row: {
+          actor_hash: string
+          created_at: string
+          id: number
+          scope: string
+        }
+        Insert: {
+          actor_hash: string
+          created_at?: string
+          id?: number
+          scope: string
+        }
+        Update: {
+          actor_hash?: string
+          created_at?: string
+          id?: number
+          scope?: string
+        }
+        Relationships: []
+      }
       registration_attempts: {
         Row: {
           contact_name: string | null
@@ -8967,6 +8994,36 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+        }
+        Relationships: []
+      }
+      registration_failure_alert_claims: {
+        Row: {
+          actor_hash: string
+          created_at: string
+          dedup_hash: string
+          delivered_at: string | null
+          lease_until: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          actor_hash: string
+          created_at?: string
+          dedup_hash: string
+          delivered_at?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          actor_hash?: string
+          created_at?: string
+          dedup_hash?: string
+          delivered_at?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -11058,6 +11115,27 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_domain_rate_limits: {
+        Row: {
+          action: string
+          actor_hash: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          action: string
+          actor_hash: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          action?: string
+          actor_hash?: string
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       test_attempts: {
         Row: {
           answers: Json
@@ -12062,11 +12140,46 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_registration_attempt_rate: {
+        Args: {
+          _actor_hash: string
+          _max_requests: number
+          _scope: string
+          _window_seconds: number
+        }
+        Returns: string
+      }
+      claim_registration_failure_alert: {
+        Args: {
+          _actor_hash: string
+          _dedup_hash: string
+          _lease_seconds: number
+        }
+        Returns: string
+      }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
+      claim_telegram_domain_delivery: {
+        Args: {
+          _action: string
+          _actor_hash: string
+          _dedup_key: string
+          _max_requests: number
+          _window_seconds: number
+        }
+        Returns: string
+      }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
       complete_own_course_enrollment: {
         Args: { p_enrollment_id: string }
         Returns: Json
+      }
+      complete_registration_failure_alert: {
+        Args: {
+          _dedup_hash: string
+          _delivered: boolean
+          _retry_after_seconds?: number
+        }
+        Returns: undefined
       }
       confirm_campaign_send_consent: {
         Args: { p_campaign_id: string; p_method?: string }
