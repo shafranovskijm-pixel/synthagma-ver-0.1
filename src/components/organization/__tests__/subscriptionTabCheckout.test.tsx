@@ -111,6 +111,14 @@ beforeEach(() => {
 });
 
 describe("SubscriptionTab — открытие мастера", () => {
+  it("сохраняет тариф и счета, но не показывает демо-финансы и T-Bank", () => {
+    renderTab();
+
+    expect(screen.queryByText("Финансовые операции")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Оплатить онлайн/ })).not.toBeInTheDocument();
+    expect(setActiveTab).not.toHaveBeenCalled();
+  });
+
   it("«Оформить тариф» открывает один мастер с дефолтом Старт", async () => {
     renderTab();
     fireEvent.click(screen.getByRole("button", { name: /Оформить тариф/ }));

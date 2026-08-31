@@ -42,6 +42,7 @@ const ORG_PERMISSION_GROUPS: { title: string; perms: { key: Permission; label: s
       { key: "students.write", label: "Ученики" },
       { key: "companies.write", label: "Компании-клиенты" },
       { key: "chats.write", label: "Чаты" },
+      { key: "sales.write", label: "Рассылки" },
     ],
   },
   {
@@ -60,7 +61,6 @@ const ORG_PERMISSION_GROUPS: { title: string; perms: { key: Permission; label: s
       { key: "staff.write", label: "Сотрудники" },
       { key: "billing.write", label: "Биллинг" },
       { key: "settings.write", label: "Настройки школы" },
-      { key: "sales.write", label: "Продажи (CRM)" },
     ],
   },
 ];

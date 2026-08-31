@@ -4,6 +4,7 @@ import { MoreVertical, ImagePlus, Wand2 } from "lucide-react";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -59,10 +60,10 @@ type CourseTabKey = "students" | "materials" | "history" | "tests" | "landing" |
 
 type GroupKey = "editor" | "students" | "page" | "settings";
 
-const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[] }[] = [
+const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[]; beta?: boolean }[] = [
   { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },
   { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "tests", "achievements", "reminders"] },
-  { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing"] },
+  { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing"], beta: true },
   { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings"] },
 ];
 
@@ -297,6 +298,7 @@ export function CourseDetailsContent({
               <button
                 key={g.key}
                 onClick={() => handleGroupClick(g.key)}
+                aria-label={g.label}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap",
                   isActive
@@ -306,6 +308,7 @@ export function CourseDetailsContent({
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 {g.label}
+                {g.beta && <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px]">Beta</Badge>}
               </button>
             );
           })}

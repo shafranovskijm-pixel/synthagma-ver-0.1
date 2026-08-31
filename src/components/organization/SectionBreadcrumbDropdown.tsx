@@ -20,7 +20,6 @@ const SECTION_ITEMS: Record<SectionId, { tab: TabType; label: string }[]> = {
   clients: [
     { tab: "students", label: "Ученики" },
     { tab: "organizations", label: "Клиенты-компании" },
-    { tab: "sales", label: "Продажи" },
     { tab: "mailing", label: "Рассылки" },
     { tab: "chats", label: "Чаты" },
   ],
@@ -84,8 +83,6 @@ export function SectionBreadcrumbDropdown({ section, label, activeTab }: Section
         return menu?.showJournals !== false && featureEnabled("journals");
       case "frdo":
         return menu?.showFrdo !== false && featureEnabled("frdo");
-      case "sales":
-        return menu?.showSales === true && d.subscriptionLimits?.limits.salesCrmEnabled === true;
       case "subscription":
         return menu?.showSubscription !== false;
       default:

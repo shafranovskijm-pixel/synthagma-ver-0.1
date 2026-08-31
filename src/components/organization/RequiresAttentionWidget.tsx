@@ -221,7 +221,7 @@ export function RequiresAttentionWidget() {
             count={data.billingUnpaid}
             icon={Receipt}
             accent="bg-rose-500/15 text-rose-600 dark:text-rose-400"
-            onClick={() => d.tabNavigation.setActiveTab("payments" as never)}
+            onClick={() => d.tabNavigation.setActiveTab("documents" as never)}
           />
         )}
         {data.signaturesExpiring > 0 && (

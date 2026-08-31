@@ -105,7 +105,6 @@ interface DocumentsTabProps {
 interface DocumentsTabContentProps extends DocumentsTabProps {
   canReadJournals: boolean;
   canReadFrdo: boolean;
-  canReadSales: boolean;
   canReadStudents: boolean;
   canReadCompanies: boolean;
   canWriteDocuments: boolean;
@@ -120,7 +119,6 @@ function DocumentsTabContent({
   onNavigateToSubscription,
   canReadJournals,
   canReadFrdo,
-  canReadSales,
   canReadStudents,
   canReadCompanies,
   canWriteDocuments,
@@ -191,23 +189,16 @@ function DocumentsTabContent({
     }, { replace: true });
   }, [documentView, requestedCounterpartyView, searchParams, setSearchParams]);
 
-  // Deep-link from Sales / SubscriptionTab: старые маркеры (КП/договоры) теперь ведут в раздел «Продажи»,
-  // маркер «open-act-dialog:<invoiceId>» открывает вкладку контрагентов → закрывающие и запускает диалог.
+  // Legacy commercial-document markers now stay inside the Documents
+  // workspace. The unfinished Sales workspace is not exposed to organizations.
+  // «open-act-dialog:<invoiceId>» opens counterparties → closing documents.
   useEffect(() => {
     try {
       const dl = localStorage.getItem("documents.deepLink");
       if (!dl) return;
       if (dl === "proposals" || dl === "sales_contracts") {
         localStorage.removeItem("documents.deepLink");
-        if (canReadSales) {
-          setSearchParams((current) => {
-            const next = new URLSearchParams(current);
-            next.set("tab", "sales");
-            next.delete("documentView");
-            next.delete("counterpartyView");
-            return next;
-          });
-        }
+        if (canReadCompanies) setDocumentWorkspace("counterparties", "contracts");
         return;
       }
       if (dl.startsWith("open-act-dialog")) {
@@ -303,17 +294,6 @@ function DocumentsTabContent({
       return;
     }
     h.setActiveTab(value as DocumentSubTab);
-  };
-
-  const goToSales = () => {
-    if (!canReadSales) return;
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("tab", "sales");
-      next.delete("documentView");
-      next.delete("counterpartyView");
-      return next;
-    });
   };
 
   if (!documentView) {
@@ -451,11 +431,6 @@ function DocumentsTabContent({
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-          {canReadSales && (
-            <Button variant="ghost" size="sm" onClick={goToSales} className="hidden rounded-lg text-xs text-muted-foreground hover:text-primary lg:inline-flex">
-              <ArrowUpRight className="mr-1 h-3.5 w-3.5" /> Продажи
-            </Button>
-          )}
         </div>
 
         {/* Второй уровень — подпункты «Документы организации» */}
@@ -671,7 +646,6 @@ export const DocumentsTab = React.memo(function DocumentsTab(props: DocumentsTab
       {...props}
       canReadJournals={canSeeOrgTab("journals") && canAccessDocumentSubTab("journals", can)}
       canReadFrdo={canSeeOrgTab("frdo") && canAccessDocumentSubTab("frdo", can)}
-      canReadSales={canSeeOrgTab("sales") && can("sales.read")}
       canReadStudents={canSeeOrgTab("students") && can("students.read")}
       canReadCompanies={canSeeOrgTab("organizations") && can("companies.read")}
       canWriteDocuments={canSeeOrgTab("documents") && can("documents.write")}

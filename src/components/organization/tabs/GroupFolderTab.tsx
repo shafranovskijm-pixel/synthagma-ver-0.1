@@ -102,7 +102,7 @@ export const GROUP_WORKFLOW_ITEMS = [
   { id: "learning", label: "Обучение", destination: "journals", permission: "courses.read", beta: false },
   { id: "personal-files", label: "Личные дела", destination: "explorer", permission: "documents.read", beta: false },
   { id: "group-documents", label: "Документы группы", destination: "docs", permission: "documents.read", beta: true },
-  { id: "frdo", label: "ФИС ФРДО", destination: "frdo", permission: "frdo.read", beta: false },
+  { id: "frdo", label: "ФИС ФРДО", destination: "frdo", permission: "frdo.read", beta: true },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;

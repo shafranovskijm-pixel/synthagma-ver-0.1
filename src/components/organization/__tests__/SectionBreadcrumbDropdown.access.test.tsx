@@ -43,11 +43,11 @@ beforeEach(() => {
     showDocuments: true,
     showFrdo: true,
   };
-  salesCrmEnabled = false;
+  salesCrmEnabled = true;
 });
 
 describe("SectionBreadcrumbDropdown access", () => {
-  it("does not expose tariff- or permission-blocked destinations", () => {
+  it("does not expose hidden Sales even when tariff and permission allow it", () => {
     allowedTabs.delete("organizations");
     render(<SectionBreadcrumbDropdown section="clients" label="Клиенты" activeTab="students" />);
 

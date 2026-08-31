@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Briefcase,
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck,
   PanelLeftClose, PanelLeftOpen, Pin, PinOff, ExternalLink, HelpCircle, UserRound, UserCog,
   Home, ChevronDown, Send, UserPlus, FolderOpen, Handshake
 } from "lucide-react";
@@ -357,7 +357,7 @@ export function OrgSidebar() {
   }
   if (canShowTab("homework-review")) courseItems.push(makeTabItem("homework-review", {
     id: "homework-review", icon: BookCheck, label: "Домашние работы",
-    description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0,
+    description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0, statusBadge: "Beta",
   }));
   if (menuSettings.showLibrary !== false && canShowTab("library")) courseItems.push(makeTabItem("library", {
     id: "library", icon: HardDrive, label: "Хранилище",
@@ -413,6 +413,7 @@ export function OrgSidebar() {
       : "Доступно с тарифа «Старт»",
     href: organizationMailingPath("overview"),
     forceLocked: !mailingEnabled,
+    statusBadge: "Beta",
   }));
 
   const documentItems: NavItem[] = [];
@@ -438,11 +439,11 @@ export function OrgSidebar() {
   }
   if (menuSettings.showJournals !== false && canShowTab("journals")) documentItems.push(makeTabItem("journals", {
     id: "journals", icon: ClipboardList, label: "Журналы",
-    description: "Журналы обучения и регистрации", category: "journals",
+    description: "Журналы обучения и регистрации", category: "journals", statusBadge: "Beta",
   }));
   if (menuSettings.showFrdo !== false && canShowTab("frdo")) documentItems.push(makeTabItem("frdo", {
     id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО",
-    description: "Подготовка и выгрузка сведений в ФРДО", category: "frdo",
+    description: "Подготовка и выгрузка сведений в ФРДО", category: "frdo", statusBadge: "Beta",
   }));
 
   const navGroups: NavGroup[] = [];
@@ -463,16 +464,6 @@ export function OrgSidebar() {
     items: orderPinnedFirst(documentItems),
   });
 
-  const salesItem = menuSettings.showSales === true
-    && d.subscriptionLimits?.limits.salesCrmEnabled
-    && canShowTab("sales")
-    ? makeTabItem("sales", {
-        id: "sales", icon: Briefcase, label: "Продажи",
-        description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0,
-        statusBadge: "Beta", pinnable: false,
-      })
-    : null;
-
   const reportsItem = canShowTab("stats")
     ? makeTabItem("stats", {
         id: "stats", icon: BarChart3, label: "Отчёты",
@@ -480,7 +471,7 @@ export function OrgSidebar() {
           ? "Аналитика обучения и доходов"
           : "Расширенная аналитика доступна на старших тарифах",
         forceLocked: d.subscriptionLimits?.limits.reportsEnabled === false,
-        pinnable: false,
+        pinnable: false, statusBadge: "Beta",
       })
     : null;
 
@@ -876,7 +867,6 @@ export function OrgSidebar() {
             {mainItems.filter((item) => item.id === "organizations").map((item) => renderNavItem(item))}
             {navGroups.find((group) => group.id === "communications") && renderNavGroup(navGroups.find((group) => group.id === "communications")!)}
             {navGroups.find((group) => group.id === "documents") && renderNavGroup(navGroups.find((group) => group.id === "documents")!)}
-            {salesItem && renderNavItem(salesItem)}
             {reportsItem && renderNavItem(reportsItem)}
           </nav>
         </div>

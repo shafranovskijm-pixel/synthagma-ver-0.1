@@ -269,7 +269,7 @@ describe("OrgSidebar navigation", () => {
     expect(within(sidebar).getByRole("link", { name: "Компании" })).toHaveAttribute("href", "/organization?tab=organizations");
     expect(within(sidebar).getByRole("button", { name: "Коммуникации" })).toBeInTheDocument();
     expect(within(sidebar).getByRole("button", { name: "Документы" })).toBeInTheDocument();
-    expect(within(sidebar).getByRole("link", { name: "Продажи" })).toHaveAttribute("href", "/organization?tab=sales");
+    expect(within(sidebar).queryByRole("link", { name: "Продажи" })).not.toBeInTheDocument();
     expect(within(sidebar).getByRole("link", { name: "Отчёты" })).toHaveAttribute("href", "/organization?tab=stats");
 
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
@@ -337,21 +337,33 @@ describe("OrgSidebar navigation", () => {
     expect(within(courseChildren).getAllByRole("link")[0]).toHaveAccessibleName("Хранилище");
   });
 
-  it("shows Beta only on experimental workspaces and honours visibility plus permissions", () => {
+  it("marks experimental workspaces as Beta and honours visibility plus permissions", () => {
     menuSettings = { ...menuSettings, showDocuments: false };
     allowedTabs.delete("staff");
     renderSidebar();
 
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
     fireEvent.click(within(sidebar).getByRole("button", { name: "Курсы" }));
+    const homeworkLink = within(sidebar).getByRole("link", { name: "Домашние работы" });
     const courseStoreLink = within(sidebar).getByRole("link", { name: "Готовые курсы" });
-    const salesLink = within(sidebar).getByRole("link", { name: "Продажи" });
-
+    expect(within(homeworkLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
     expect(within(courseStoreLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
-    expect(within(salesLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
-    expect(within(sidebar).getAllByLabelText("Бета-версия")).toHaveLength(2);
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Коммуникации" }));
+    const mailingLink = within(sidebar).getByRole("link", { name: "Рассылки" });
+    expect(within(mailingLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
+
     fireEvent.click(within(sidebar).getByRole("button", { name: "Документы" }));
     expect(screen.queryByRole("link", { name: "Сводка" })).not.toBeInTheDocument();
+    const journalsLink = within(sidebar).getByRole("link", { name: "Журналы" });
+    const frdoLink = within(sidebar).getByRole("link", { name: "ФИС ФРДО" });
+    expect(within(journalsLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
+    expect(within(frdoLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
+
+    const reportsLink = within(sidebar).getByRole("link", { name: "Отчёты" });
+    expect(within(reportsLink).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
+    expect(screen.queryByRole("link", { name: "Продажи" })).not.toBeInTheDocument();
+
     fireEvent.click(within(sidebar).getByRole("button", { name: "Настройки" }));
     expect(screen.queryByRole("link", { name: "Сотрудники и доступы" })).not.toBeInTheDocument();
   });
@@ -376,7 +388,7 @@ describe("OrgSidebar navigation", () => {
     expect(screen.queryByRole("link", { name: "Договоры и закрывающие" })).not.toBeInTheDocument();
   });
 
-  it("shows locked mailing on Free, enables it on Start, and gates Sales by CRM tariff", () => {
+  it("shows locked mailing on Free, enables it on Start, and never exposes Sales", () => {
     plan = "free";
     // Free remains locked even if a stale/custom limit flag is accidentally true.
     emailCampaignsEnabled = true;

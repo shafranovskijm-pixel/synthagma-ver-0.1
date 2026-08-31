@@ -47,8 +47,6 @@ export function QuickActionChips() {
     d.subscriptionLimits?.plan,
     limits?.emailCampaignsEnabled,
   );
-  const salesEnabled = limits?.salesCrmEnabled === true;
-
   const allActions: Record<string, ActionDef> = useMemo(() => ({
     "create-course": {
       id: "create-course",
@@ -145,17 +143,7 @@ export function QuickActionChips() {
       allowed: can("courses.read") && limits?.reportsEnabled === true,
       href: organizationTabPath("stats"),
     },
-    "new-deal": {
-      id: "new-deal",
-      label: "Новая сделка",
-      icon: Plus,
-      allowed: salesEnabled && can("sales.write"),
-      run: () => {
-        d.tabNavigation.setActiveTab("sales");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("org-sales-create-deal")), 100);
-      },
-    },
-  }), [can, d, limits?.reportsEnabled, mailingEnabled, salesEnabled]);
+  }), [can, d, limits?.reportsEnabled, mailingEnabled]);
 
   // Два-три действия на раздел: это сохраняет шапку компактной и предсказуемой.
   const chips = useMemo<ActionDef[]>(() => {
@@ -173,7 +161,6 @@ export function QuickActionChips() {
       frdo: ["student-groups", "reports"],
       chats: ["mailing", "student-groups"],
       communications: ["mailing", "chats"],
-      sales: ["new-deal", "mailing", "add-company"],
       stats: ["student-groups", "mailing"],
       services: ["create-course", "marketplace"],
     };

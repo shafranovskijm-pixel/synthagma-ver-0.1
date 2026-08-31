@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
 import { CourseDetailsTab } from "./CourseDetailsTab";
 import { StudentDetailsTab } from "./StudentDetailsTab";
@@ -18,7 +18,6 @@ import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
 import { OrgChatsTab } from "@/components/organization/OrgChatsTab";
 import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
-import { PaymentsTab } from "@/components/organization/PaymentsTab";
 import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { OrgProfileTab as ProfileTab } from "@/components/organization/tabs/OrgProfileTab";
@@ -30,7 +29,6 @@ import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
 import { OrganizationHomeTab } from "@/components/organization/tabs/OrganizationHomeTab";
 
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
-import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
 import MailingApp from "@/pages/MailingApp";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -38,7 +36,6 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { getDirectDocumentWorkspacePermission } from "@/lib/organization/documentNavigationPermissions";
 
 export function TabContentRenderer() {
-  const navigate = useNavigate();
   const d = useOrgDashboard();
   const activeTab = d.tabNavigation.activeTab;
   const organizationId = d.organizationId;
@@ -65,14 +62,12 @@ export function TabContentRenderer() {
     activeTab !== "journals" && 
     activeTab !== "labor-safety" &&
     activeTab !== "subscription" &&
-    activeTab !== "payments" &&
     activeTab !== "chats" &&
     activeTab !== "courses" &&
     activeTab !== "homework-review" &&
     activeTab !== "ai-tutors" &&
     activeTab !== "staff" &&
     activeTab !== "webinars" &&
-    activeTab !== "sales" &&
     activeTab !== "mailing" &&
     activeTab !== "profile" &&
     activeTab !== "settings" &&
@@ -276,12 +271,6 @@ export function TabContentRenderer() {
           userId={d.user?.id}
         />
       )}
-
-      {/* Payments Tab */}
-      {activeTab === "payments" && <PaymentsTab />}
-
-      {/* Sales Tab — единый «Кабинет менеджера» (КП/Договоры/Рассылки/SMTP + заглушки Сделок 360°/Задач) */}
-      {activeTab === ("sales" as any) && organizationId && <OrgSalesManager />}
 
       {/* Full mailing workspace embedded into the organization shell. */}
       {activeTab === "mailing" && <MailingApp embedded />}

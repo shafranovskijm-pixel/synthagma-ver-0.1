@@ -8,9 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, Mail, ListTodo, KeyRound, Copy } from "lucide-react";
+import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, Mail, KeyRound, Copy } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
@@ -30,7 +29,6 @@ interface StaffMember {
   visibility: string;
   expires_at: string | null;
   created_at: string;
-  can_receive_crm_tasks?: boolean;
 }
 
 const ROLES = [
@@ -39,9 +37,12 @@ const ROLES = [
   { value: "school_editor", label: "Редактор школы", icon: Edit3, color: "bg-blue-500/10 text-blue-600", description: "Редактирование страниц школы, лендингов, дизайна" },
   { value: "course_editor", label: "Редактор курсов", icon: BookOpen, color: "bg-green-500/10 text-green-600", description: "Создание и редактирование курсов и уроков" },
   { value: "teacher", label: "Преподаватель", icon: Users, color: "bg-indigo-500/10 text-indigo-600", description: "Проверка заданий, общение с учениками, доступ к курсам" },
-  { value: "sales_manager", label: "Менеджер по продажам", icon: Shield, color: "bg-fuchsia-500/10 text-fuchsia-600", description: "Доступ только к разделу «Продажи»: воронка, лиды, КП, договоры, рассылки и компании" },
+  { value: "sales_manager", label: "Специалист по рассылкам", icon: Mail, color: "bg-fuchsia-500/10 text-fuchsia-600", description: "Рассылки, компании, чаты и просмотр связанных данных учеников и документов" },
 ];
 
+// The database role keeps its legacy `sales_manager` key because mailing
+// authorization currently relies on sales.read/write. In the organization UI
+// it is presented only as a mailing role; the unfinished CRM stays hidden.
 const ASSIGNABLE_ROLES = ROLES.filter(r => r.value !== "owner");
 
 // Роль «Владелец» намеренно исключена: передача владения выполняется
@@ -75,7 +76,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState("teacher");
   const [visibility, setVisibility] = useState("all");
-  const [canReceiveCrmTasks, setCanReceiveCrmTasks] = useState(false);
   const [createPassword, setCreatePassword] = useState(generateStrongPassword());
   const [saving, setSaving] = useState(false);
 
@@ -131,7 +131,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       role,
       display_name: displayName.trim() || email.trim(),
       visibility,
-      can_receive_crm_tasks: canReceiveCrmTasks,
     } as any);
 
     if (error) {
@@ -140,7 +139,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
     } else {
       toast.success("Сотрудник добавлен");
       setDialogOpen(false);
-      setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all"); setCanReceiveCrmTasks(false);
+      setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all");
       await loadStaff();
     }
     setSaving(false);
@@ -159,7 +158,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
           role,
           displayName: displayName.trim() || email.trim(),
           visibility,
-          canReceiveCrmTasks,
         },
       });
       if (error || data?.error) {
@@ -172,17 +170,11 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
           toast.success(`Создан. Логин: ${data.login}, пароль: ${data.password} (скопировано)`, { duration: 10000 });
         }
         setCreateOpen(false);
-        setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all"); setCanReceiveCrmTasks(false);
+        setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all");
         setCreatePassword(generateStrongPassword());
         await loadStaff();
       }
     } finally { setSaving(false); }
-  };
-
-  const handleToggleCrmFlag = async (id: string, value: boolean) => {
-    const { error } = await supabase.from("org_staff").update({ can_receive_crm_tasks: value } as any).eq("id", id);
-    if (error) toast.error("Ошибка: " + error.message);
-    else { setStaff(prev => prev.map(s => s.id === id ? { ...s, can_receive_crm_tasks: value } : s)); }
   };
 
   const handleChangeRole = async (id: string, newRole: string) => {
@@ -242,9 +234,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                     <TableHead>Роль</TableHead>
                     <TableHead>Срок действия</TableHead>
                     <TableHead>Видимость</TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <span className="flex items-center gap-1"><ListTodo className="w-3.5 h-3.5" />CRM-задачи</span>
-                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -288,21 +277,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                             <Eye className="w-3.5 h-3.5" />
                             {VISIBILITY.find(v => v.value === s.visibility)?.label || s.visibility}
                           </span>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="inline-flex">
-                                <Switch
-                                  checked={!!s.can_receive_crm_tasks}
-                                  onCheckedChange={(v) => handleToggleCrmFlag(s.id, v)}
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[260px]">
-                              Если включено — сотрудник появится в списке исполнителей задач CRM (раздел «Продажи»).
-                            </TooltipContent>
-                          </Tooltip>
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
@@ -394,13 +368,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div className="space-y-0.5 pr-3">
-                  <Label className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Может получать задачи CRM</Label>
-                  <p className="text-xs text-muted-foreground">Сотрудник появится в списке исполнителей в разделе «Продажи».</p>
-                </div>
-                <Switch checked={canReceiveCrmTasks} onCheckedChange={setCanReceiveCrmTasks} />
-              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
@@ -462,13 +429,6 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div className="space-y-0.5 pr-3">
-                  <Label className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Может получать задачи CRM</Label>
-                  <p className="text-xs text-muted-foreground">Сотрудник появится в списке исполнителей в разделе «Продажи».</p>
-                </div>
-                <Switch checked={canReceiveCrmTasks} onCheckedChange={setCanReceiveCrmTasks} />
               </div>
             </div>
             <DialogFooter>

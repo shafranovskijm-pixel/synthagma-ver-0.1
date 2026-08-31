@@ -12,6 +12,22 @@ export type MailingWorkspaceTab =
   | "deliverability";
 
 /**
+ * Organization workspaces that are intentionally hidden from the client UI.
+ *
+ * `payments` was a demo surface for course payments/T-Bank, while `sales`
+ * exposed an unfinished CRM. Keep the legacy tab names in TabType so old
+ * links and stored permissions remain reversible, but route them to stable
+ * organization workspaces.
+ */
+export function normalizeOrganizationWorkspaceTab(
+  tab: TabType | null | undefined,
+): TabType {
+  if (tab === "payments") return "subscription";
+  if (tab === "sales") return "home";
+  return tab ?? "home";
+}
+
+/**
  * Canonical link to an organization workspace section.
  *
  * It intentionally starts from an empty query string. Entity-specific state
@@ -20,9 +36,10 @@ export type MailingWorkspaceTab =
  * record.
  */
 export function organizationTabPath(tab: TabType): string {
-  return tab === "home"
+  const normalizedTab = normalizeOrganizationWorkspaceTab(tab);
+  return normalizedTab === "home"
     ? "/organization"
-    : `/organization?tab=${encodeURIComponent(tab)}`;
+    : `/organization?tab=${encodeURIComponent(normalizedTab)}`;
 }
 
 /** Canonical link to a mailing sub-workspace inside the organization shell. */

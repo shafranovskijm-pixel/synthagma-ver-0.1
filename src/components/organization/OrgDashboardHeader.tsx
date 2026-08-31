@@ -102,13 +102,11 @@ export function OrgDashboardHeader() {
       case "labor-safety": return "Охрана труда";
       case "services": return "Готовые программы";
       case "settings": return "Настройки";
-      case "payments": return "Финансы";
       case "subscription": return "Тариф";
       case "chats": return "Чаты";
       case "frdo": return "ФИС ФРДО";
       case "profile": return "Профиль";
       case "homework-review": return "Домашние работы";
-      case "sales": return "Продажи";
       case "mailing": return "Рассылки";
       case "org-documents": return "Документы школы";
       case "whats-new": return "Что нового";
@@ -120,9 +118,9 @@ export function OrgDashboardHeader() {
   const getBreadcrumb = (): { section: string; page: string } | null => {
     if (activeTab === "home") return { section: "Школа", page: "Главная" };
     const learning = ["courses", "homework-review", "labor-safety"];
-    const clients = ["students", "organizations", "sales", "mailing", "chats"];
+    const clients = ["students", "organizations", "mailing", "chats"];
     const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
-    const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];
+    const settings = ["profile", "subscription", "org-documents", "whats-new", "settings"];
     const title = getPageTitle();
     if (!title) return null;
     if (learning.includes(activeTab)) return { section: "Обучение", page: title };
@@ -141,9 +139,9 @@ export function OrgDashboardHeader() {
   // Map active tab to section id for breadcrumb dropdown
   const getSectionId = (): "learning" | "clients" | "tools" | "settings" | null => {
     const learning = ["courses", "homework-review", "labor-safety"];
-    const clients = ["students", "organizations", "sales", "mailing", "chats"];
+    const clients = ["students", "organizations", "mailing", "chats"];
     const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
-    const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];
+    const settings = ["profile", "subscription", "org-documents", "whats-new", "settings"];
     if (learning.includes(activeTab)) return "learning";
     if (clients.includes(activeTab)) return "clients";
     if (tools.includes(activeTab)) return "tools";

@@ -42,9 +42,9 @@ const PERMISSION_GROUPS: Record<string, { label: string; perms: Permission[] }> 
   billing: { label: "Биллинг", perms: ["billing.read", "billing.write"] },
   settings: { label: "Настройки", perms: ["settings.read", "settings.write"] },
   chats: { label: "Чаты", perms: ["chats.read", "chats.write"] },
+  mailing: { label: "Рассылки", perms: ["sales.read", "sales.write"] },
   homework: { label: "Задания", perms: ["homework.read", "homework.write"] },
   webinars: { label: "Вебинары", perms: ["webinars.read", "webinars.write"] },
-  sales: { label: "Продажи", perms: ["sales.read", "sales.write"] },
 };
 
 const BASE_ROLE_OPTIONS: { value: OrgStaffRole | "none"; label: string }[] = [

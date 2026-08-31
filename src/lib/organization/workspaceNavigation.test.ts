@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizeOrganizationWorkspaceTab,
   organizationTabPath,
   resolveStudentsViewParams,
   studentsViewFromParams,
@@ -17,6 +18,13 @@ describe("organization multi-window navigation", () => {
     expect(organizationTabPath("courses")).toBe("/organization?tab=courses");
     expect(organizationTabPath("students")).toBe("/organization?tab=students");
     expect(organizationTabPath("organizations")).toBe("/organization?tab=organizations");
+  });
+
+  it("keeps legacy Sales and demo payments out of organization URLs", () => {
+    expect(normalizeOrganizationWorkspaceTab("sales")).toBe("home");
+    expect(normalizeOrganizationWorkspaceTab("payments")).toBe("subscription");
+    expect(organizationTabPath("sales")).toBe("/organization");
+    expect(organizationTabPath("payments")).toBe("/organization?tab=subscription");
   });
 
   it("gives student, company and group records stable deep links", () => {

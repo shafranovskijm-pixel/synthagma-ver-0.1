@@ -42,7 +42,7 @@ export const defaultMenuSettings: MenuSettings = {
   showFrdo: true,
   showSubscription: true,
   showAITutors: false,
-  showSales: true,
+  showSales: false,
   courseViewMode: 'grid',
   courseFolderMode: 'folders',
 };
@@ -65,8 +65,9 @@ export function normalizeMenuSettings(raw: Record<string, unknown> | null | unde
     showSubscription: raw.showSubscription !== false,
     // Off by default — user must explicitly enable in settings
     showAITutors: raw.showAITutors === true,
-    // Visible by default; an organization can still explicitly hide it.
-    showSales: raw.showSales !== false,
+    // Retained in stored settings for rollback, but disabled by default while
+    // the unfinished CRM is not part of the organization workspace.
+    showSales: raw.showSales === true,
     courseViewMode: (raw.courseViewMode === 'list' ? 'list' : 'grid') as 'grid' | 'list',
     courseFolderMode: (raw.courseFolderMode === 'flat' ? 'flat' : 'folders') as 'folders' | 'flat',
   };

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle, LayoutGrid, GraduationCap, Users, BarChart3, Link as LinkIcon, HardHat, FileText, Building2, ShoppingBag, RefreshCw, RotateCcw, Briefcase, Sparkles, BookOpen, ClipboardList, Award, Wallet, CreditCard, Bot, MessageSquare, FolderOpen } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle, LayoutGrid, GraduationCap, Users, BarChart3, Link as LinkIcon, HardHat, FileText, Building2, ShoppingBag, RefreshCw, RotateCcw, Sparkles, BookOpen, ClipboardList, Award, Wallet, CreditCard, Bot, MessageSquare, FolderOpen } from "lucide-react";
 import { useDashboardSettings, defaultMenuSettings } from "@/hooks/useDashboardSettings";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
@@ -782,10 +782,9 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
             ],
           },
           {
-            title: "Бизнес",
-            desc: "Финансы, маркетинг, продажи",
+            title: "Дополнительные возможности",
+            desc: "Опциональные и тестовые модули",
             items: [
-              { icon: Briefcase, bg: "bg-accent/15", color: "text-accent", label: "Продажи", desc: "CRM: воронка, лиды, КП, рассылки", alwaysOn: true, badge: "always" },
               { icon: Bot, bg: "bg-primary/15", color: "text-primary", label: "ИИ-преподаватели", desc: "Голосовые ИИ-аватары", key: "showAITutors", badge: "beta" },
               { icon: ShoppingBag, bg: "bg-accent/15", color: "text-accent", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" },
               { icon: Sparkles, bg: "bg-primary/15", color: "text-primary", label: "Витрина и Telegram", desc: "Публичная витрина курсов", alwaysOn: true, badge: "always" },

@@ -16,9 +16,10 @@ describe("GroupFolderTab workflow", () => {
     ]);
   });
 
-  it("marks only the mixed group-document package as Beta", () => {
+  it("marks the mixed group-document package and FRDO as Beta", () => {
     expect(GROUP_WORKFLOW_ITEMS.filter(item => item.beta).map(item => item.id)).toEqual([
       "group-documents",
+      "frdo",
     ]);
   });
 

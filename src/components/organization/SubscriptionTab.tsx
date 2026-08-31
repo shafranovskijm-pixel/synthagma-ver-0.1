@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, CreditCard, Wallet, FileStack
+  ExternalLink, CreditCard, FileStack
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -52,26 +52,6 @@ export function SubscriptionTab() {
 
   return (
     <div className="space-y-6">
-      {/* Быстрая ссылка на Финансовые операции (раньше жила в боковом меню) */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-              <Wallet className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm">Финансовые операции</p>
-              <p className="text-xs text-muted-foreground">Платежи, транзакции и история операций по подписке</p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" className="rounded-xl gap-2"
-            onClick={() => d.tabNavigation.setActiveTab("payments" as any)}>
-            Открыть
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </CardContent>
-      </Card>
-
       <Accordion type="single" collapsible defaultValue="tariff" className="w-full">
         <AccordionItem value="tariff" className="border rounded-lg">
           <AccordionTrigger className="px-6 py-4 hover:no-underline">
@@ -370,11 +350,6 @@ export function SubscriptionTab() {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => s.setShowUpgradeDialog(false)}>Отмена</Button>
             <Button onClick={s.handleRequestUpgrade} disabled={s.submitting}>{s.submitting ? "Отправка..." : "Отправить заявку"}</Button>
-            {s.selectedPlan && SUBSCRIPTION_PLANS[s.selectedPlan].price > 0 && PLAN_ORDER.indexOf(s.selectedPlan) > s.currentPlanIndex && (
-              <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700" disabled={s.payingOnline} onClick={s.handlePayOnline}>
-                <CreditCard className="w-4 h-4 mr-2" />{s.payingOnline ? "Переход к оплате..." : "Оплатить онлайн"}
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
@@ -44,20 +44,30 @@ describe("useTabNavigation per-window state", () => {
     expect(result.current.search).toBe("?tab=courses");
   });
 
-  it("preserves account/catalogue workspaces and does not swipe unknown detail tabs to Home", () => {
+  it("preserves subscription/catalogue workspaces and does not swipe unknown detail tabs to Home", () => {
     const { result } = renderHook(() => useNavigation(true), {
       wrapper: wrapper("/organization?tab=course-details&courseId=course-A"),
     });
 
     expect(result.current.getVisibleTabs()).toEqual(expect.arrayContaining([
-      "payments",
       "subscription",
       "services",
     ]));
+    expect(result.current.getVisibleTabs()).not.toContain("payments");
 
     act(() => result.current.handleSwipeLeft());
     expect(result.current.activeTab).toBe("course-details");
     expect(result.current.search).toBe("?tab=course-details&courseId=course-A");
+  });
+
+  it.each([
+    ["/organization?tab=payments", "subscription", "?tab=subscription"],
+    ["/organization?tab=sales", "home", ""],
+  ] as const)("normalizes hidden legacy workspace %s", async (entry, expectedTab, expectedSearch) => {
+    const { result } = renderHook(() => useNavigation(), { wrapper: wrapper(entry) });
+
+    expect(result.current.activeTab).toBe(expectedTab);
+    await waitFor(() => expect(result.current.search).toBe(expectedSearch));
   });
 
   it("derives independent entities from two separate router windows", () => {

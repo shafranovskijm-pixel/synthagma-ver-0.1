@@ -135,6 +135,16 @@ describe("QuickActionChips — контекстные действия", () => {
     expect(screen.queryByTestId("quick-chip-mailing")).not.toBeInTheDocument();
   });
 
+  it("не возвращает скрытую CRM через быстрые действия", () => {
+    activeTab = "sales";
+    plan = "professional";
+    salesCrmEnabled = true;
+    renderAt(<QuickActionChips />);
+
+    expect(screen.queryByTestId("quick-chip-new-deal")).not.toBeInTheDocument();
+    expect(screen.queryByText("Новая сделка")).not.toBeInTheDocument();
+  });
+
   it("сохраняет историю под ключом текущей организации", () => {
     renderAt(<QuickActionChips />);
     fireEvent.click(screen.getByTestId("quick-chip-marketplace"));
