@@ -8895,6 +8895,27 @@ export type Database = {
           },
         ]
       }
+      registration_attempt_rate_limits: {
+        Row: {
+          actor_hash: string
+          created_at: string
+          id: number
+          scope: string
+        }
+        Insert: {
+          actor_hash: string
+          created_at?: string
+          id?: number
+          scope: string
+        }
+        Update: {
+          actor_hash?: string
+          created_at?: string
+          id?: number
+          scope?: string
+        }
+        Relationships: []
+      }
       registration_attempts: {
         Row: {
           contact_name: string | null
@@ -8973,6 +8994,36 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+        }
+        Relationships: []
+      }
+      registration_failure_alert_claims: {
+        Row: {
+          actor_hash: string
+          created_at: string
+          dedup_hash: string
+          delivered_at: string | null
+          lease_until: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          actor_hash: string
+          created_at?: string
+          dedup_hash: string
+          delivered_at?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          actor_hash?: string
+          created_at?: string
+          dedup_hash?: string
+          delivered_at?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -12089,6 +12140,23 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_registration_attempt_rate: {
+        Args: {
+          _actor_hash: string
+          _max_requests: number
+          _scope: string
+          _window_seconds: number
+        }
+        Returns: string
+      }
+      claim_registration_failure_alert: {
+        Args: {
+          _actor_hash: string
+          _dedup_hash: string
+          _lease_seconds: number
+        }
+        Returns: string
+      }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
       claim_telegram_domain_delivery: {
         Args: {
@@ -12104,6 +12172,14 @@ export type Database = {
       complete_own_course_enrollment: {
         Args: { p_enrollment_id: string }
         Returns: Json
+      }
+      complete_registration_failure_alert: {
+        Args: {
+          _dedup_hash: string
+          _delivered: boolean
+          _retry_after_seconds?: number
+        }
+        Returns: undefined
       }
       confirm_campaign_send_consent: {
         Args: { p_campaign_id: string; p_method?: string }
