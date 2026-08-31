@@ -21,7 +21,10 @@ export interface DemoRequestInput {
   tracking: DemoRequestTracking;
 }
 
-export type NotificationDelivery = "sent" | "failed" | "pending" | "not_attempted";
+export {
+  type NotificationDelivery,
+  notificationInvokeSucceeded,
+} from "../_shared/demoTelegramDelivery.ts";
 
 export const TELEGRAM_MESSAGE_MAX_LENGTH = 4_000;
 
@@ -174,12 +177,4 @@ export function buildEmailHtml(input: DemoRequestInput): string {
     <p><b>Комментарий:</b><br>${emailHtmlValue(input.message)}</p>
     ${attributionHtml}
   `;
-}
-
-export function notificationInvokeSucceeded(result: unknown): boolean {
-  return Boolean(
-    result &&
-      typeof result === "object" &&
-      (result as Record<string, unknown>).success === true,
-  );
 }

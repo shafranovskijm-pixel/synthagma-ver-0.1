@@ -2,13 +2,32 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(
-  resolve(
-    process.cwd(),
-    "supabase/functions/retry-demo-request-notification/index.ts",
-  ),
+const read = (path: string) => readFileSync(
+  resolve(process.cwd(), path),
   "utf8",
 );
+
+const source = read(
+  "supabase/functions/retry-demo-request-notification/index.ts",
+);
+const submitSource = read(
+  "supabase/functions/submit-demo-request/index.ts",
+);
+const sharedDeliverySource = read(
+  "supabase/functions/_shared/demoTelegramDelivery.ts",
+);
+
+describe("retry demo Telegram notification bundle contract", () => {
+  it("loads delivery code only from _shared for independent function deploys", () => {
+    expect(source).toContain('from "../_shared/demoTelegramDelivery.ts"');
+    expect(submitSource).toContain('from "../_shared/demoTelegramDelivery.ts"');
+    expect(source).not.toMatch(/from\s+["']\.\.\/submit-demo-request\//);
+    expect(submitSource).not.toMatch(/from\s+["']\.\.\/retry-demo-request-notification\//);
+    expect(sharedDeliverySource).not.toMatch(
+      /from\s+["']\.\.\/(submit-demo-request|retry-demo-request-notification)\//,
+    );
+  });
+});
 
 describe("retry demo Telegram notification authorization contract", () => {
   it("requires a real user and the platform admin role before service-role access", () => {

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const edgeSource = read("supabase/functions/submit-demo-request/index.ts");
 const edgeContractSource = read("supabase/functions/submit-demo-request/contract.ts");
-const deliverySource = read("supabase/functions/submit-demo-request/telegramDelivery.ts");
+const deliverySource = read("supabase/functions/_shared/demoTelegramDelivery.ts");
 const retrySource = read("supabase/functions/retry-demo-request-notification/index.ts");
 const pageSource = read("src/pages/DemonstrationPage.tsx");
 const adminPageSource = read("src/pages/AdminDashboard.tsx");
