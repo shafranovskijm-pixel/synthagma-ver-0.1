@@ -6482,6 +6482,8 @@ export type Database = {
           student_group_id: string | null
           student_user_id: string | null
           students: Json
+          submission_key: string | null
+          submission_snapshot_sha256: string | null
           template_format: string
           template_id: string | null
           template_manifest: Json | null
@@ -6517,6 +6519,8 @@ export type Database = {
           student_group_id?: string | null
           student_user_id?: string | null
           students?: Json
+          submission_key?: string | null
+          submission_snapshot_sha256?: string | null
           template_format?: string
           template_id?: string | null
           template_manifest?: Json | null
@@ -6552,6 +6556,8 @@ export type Database = {
           student_group_id?: string | null
           student_user_id?: string | null
           students?: Json
+          submission_key?: string | null
+          submission_snapshot_sha256?: string | null
           template_format?: string
           template_id?: string | null
           template_manifest?: Json | null
