@@ -208,12 +208,13 @@ export interface FetchCourseStudentsPageInput {
   search?: string | null;
   status?: "all" | "active" | "completed" | null;
   resultFilter?: CourseResultFilter | null;
+  signal?: AbortSignal;
 }
 
 export async function fetchCourseStudentsPage({
-  courseId, limit = 10, offset = 0, search, status, resultFilter,
+  courseId, limit = 10, offset = 0, search, status, resultFilter, signal,
 }: FetchCourseStudentsPageInput): Promise<CourseStudentsPage> {
-  const { data, error } = await supabase.rpc("get_course_student_test_results_page" as any, {
+  const request = supabase.rpc("get_course_student_test_results_page" as any, {
     p_course_id: courseId,
     p_limit: limit,
     p_offset: offset,
@@ -221,6 +222,7 @@ export async function fetchCourseStudentsPage({
     p_status: status && status !== "all" ? status : undefined,
     p_result_filter: resultFilter && resultFilter !== "all" ? resultFilter : undefined,
   });
+  const { data, error } = await (signal ? request.abortSignal(signal) : request);
   if (error) throw error;
 
   const list = (data ?? []) as any[];

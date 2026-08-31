@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ChevronDown, ChevronRight, BarChart3, Download } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStudents } from "@/hooks/useStudents";
@@ -23,8 +23,20 @@ import { StudentTableRow } from "./students/StudentTableRow";
 import { StudentMobileCard } from "./students/StudentMobileCard";
 import { StudentsEmptyState } from "./students/StudentsEmptyState";
 import { StudentConfirmDialogs } from "./students/StudentConfirmDialogs";
+import { StudentTestResultsDialog } from "./students/StudentTestResultsDialog";
 import { groupCourseDefaults } from "@/lib/groups/groupSettings";
 import { groupFolderPath } from "@/lib/groups/groupContext";
+import {
+  fetchOrganizationStudentResults,
+  type OrganizationStudentCourseResult,
+  type StudentResultsProgress,
+} from "@/api/organizationStudentResults";
+import {
+  flattenStudentTestResults,
+  studentTestWorkbookColumnWidths,
+  toStudentTestWorkbookRows,
+} from "@/lib/studentTestResults";
+import { exportToExcel } from "@/utils/xlsxHelper";
 import {
   resolveStudentsViewParams,
   studentsViewFromParams,
@@ -60,6 +72,32 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
+  const [showTestResults, setShowTestResults] = useState(false);
+  const [studentResultRows, setStudentResultRows] = useState<OrganizationStudentCourseResult[]>([]);
+  const [isLoadingStudentResults, setIsLoadingStudentResults] = useState(false);
+  const [isExportingStudentResults, setIsExportingStudentResults] = useState(false);
+  const [studentResultsError, setStudentResultsError] = useState<Error | null>(null);
+  const [studentResultsProgress, setStudentResultsProgress] = useState<StudentResultsProgress | null>(null);
+  const studentResultsCacheRef = React.useRef<{
+    organizationId: string;
+    rows: OrganizationStudentCourseResult[];
+  } | null>(null);
+  const studentResultsRequestRef = React.useRef<Promise<OrganizationStudentCourseResult[]> | null>(null);
+  const studentResultsAbortRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    studentResultsAbortRef.current?.abort();
+    studentResultsAbortRef.current = null;
+    studentResultsRequestRef.current = null;
+    studentResultsCacheRef.current = null;
+    setStudentResultRows([]);
+    setStudentResultsError(null);
+    setStudentResultsProgress(null);
+    setIsLoadingStudentResults(false);
+    return () => {
+      studentResultsAbortRef.current?.abort();
+    };
+  }, [organizationId]);
 
   // Each browser tab/window owns its own workspace state through its URL.
   // localStorage is deliberately not used here: it is shared by every window
@@ -191,6 +229,89 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     }
     return count;
   }, [selectedStudentIds, students]);
+
+  const loadStudentResults = useCallback(async (
+    force = false,
+  ): Promise<OrganizationStudentCourseResult[]> => {
+    if (!force && studentResultsCacheRef.current?.organizationId === organizationId) {
+      const cachedRows = studentResultsCacheRef.current.rows;
+      setStudentResultRows(cachedRows);
+      setStudentResultsError(null);
+      setStudentResultsProgress(null);
+      return cachedRows;
+    }
+    if (studentResultsRequestRef.current) {
+      return studentResultsRequestRef.current;
+    }
+
+    if (force) studentResultsCacheRef.current = null;
+
+    const controller = new AbortController();
+    studentResultsAbortRef.current = controller;
+    setIsLoadingStudentResults(true);
+    setStudentResultsError(null);
+    setStudentResultsProgress(null);
+
+    const request = fetchOrganizationStudentResults({
+      organizationId,
+      signal: controller.signal,
+      onProgress: setStudentResultsProgress,
+    });
+    studentResultsRequestRef.current = request;
+
+    try {
+      const rows = await request;
+      if (controller.signal.aborted) throw Object.assign(new Error("Загрузка результатов отменена"), { name: "AbortError" });
+      studentResultsCacheRef.current = { organizationId, rows };
+      setStudentResultRows(rows);
+      return rows;
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error("Не удалось загрузить результаты");
+      if (normalizedError.name !== "AbortError") {
+        setStudentResultRows([]);
+        setStudentResultsError(normalizedError);
+      }
+      throw normalizedError;
+    } finally {
+      if (studentResultsAbortRef.current === controller) {
+        studentResultsAbortRef.current = null;
+        studentResultsRequestRef.current = null;
+        setIsLoadingStudentResults(false);
+      }
+    }
+  }, [organizationId]);
+
+  const handleExportStudentResults = useCallback(async () => {
+    setIsExportingStudentResults(true);
+    try {
+      const allRows = await loadStudentResults(true);
+      const scopedRows = courseFilter === "all"
+        ? allRows
+        : allRows.filter((row) => row.course_id === courseFilter);
+      const workbookRows = toStudentTestWorkbookRows(flattenStudentTestResults(scopedRows));
+
+      if (workbookRows.length === 0) {
+        toast.info(courseFilter === "all"
+          ? "Нет данных для экспорта"
+          : "Нет данных для экспорта по выбранному курсу");
+        return;
+      }
+
+      const date = new Date().toISOString().slice(0, 10);
+      await exportToExcel(
+        workbookRows,
+        "Результаты",
+        `результаты_тестирования_${date}.xlsx`,
+        studentTestWorkbookColumnWidths,
+      );
+      toast.success(`Экспортировано строк: ${workbookRows.length}`);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      toast.error("Не удалось экспортировать результаты. Частичный файл не создан.");
+    } finally {
+      setIsExportingStudentResults(false);
+    }
+  }, [courseFilter, loadStudentResults]);
 
   const handleExportStudents = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -389,6 +510,34 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                 <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground shrink-0">
                   <X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить курс</span>
                 </Button>
+              )}
+              {panelMode === "active" && (
+                <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-xl gap-2 text-xs sm:flex-none lg:text-sm"
+                    onClick={() => setShowTestResults(true)}
+                    disabled={courses.length === 0}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Результаты тестирования
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-xl gap-2 text-xs sm:flex-none lg:text-sm"
+                    onClick={() => void handleExportStudentResults()}
+                    disabled={courses.length === 0 || isExportingStudentResults}
+                  >
+                    {isExportingStudentResults
+                      ? <SigmaSpinner size="sm" />
+                      : <Download className="w-4 h-4" />}
+                    Экспорт результатов
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -634,6 +783,18 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       </Dialog>
 
       {settingsGroupId && <GroupSettingsDialog open={!!settingsGroupId} onOpenChange={v => { if (!v) setSettingsGroupId(null); }} groupId={settingsGroupId} organizationId={organizationId} onDeleted={() => { setSettingsGroupId(null); if (groupFilter === settingsGroupId) setGroupFilter("all"); refreshGroups(); refreshRows(); }} onUpdated={() => refreshGroups()} />}
+
+      <StudentTestResultsDialog
+        open={showTestResults}
+        onOpenChange={setShowTestResults}
+        courses={courses}
+        initialCourseId={courseFilter}
+        rows={studentResultRows}
+        isLoading={isLoadingStudentResults}
+        error={studentResultsError}
+        progress={studentResultsProgress}
+        onLoad={loadStudentResults}
+      />
 
       <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} />
     </div>
