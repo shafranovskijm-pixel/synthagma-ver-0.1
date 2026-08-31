@@ -11064,6 +11064,27 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_domain_rate_limits: {
+        Row: {
+          action: string
+          actor_hash: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          action: string
+          actor_hash: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          action?: string
+          actor_hash?: string
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       test_attempts: {
         Row: {
           answers: Json
@@ -12069,6 +12090,16 @@ export type Database = {
         Returns: Json
       }
       claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
+      claim_telegram_domain_delivery: {
+        Args: {
+          _action: string
+          _actor_hash: string
+          _dedup_key: string
+          _max_requests: number
+          _window_seconds: number
+        }
+        Returns: string
+      }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
       complete_own_course_enrollment: {
         Args: { p_enrollment_id: string }
