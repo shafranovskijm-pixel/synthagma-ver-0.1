@@ -1,8 +1,14 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
-  type NotificationDelivery,
-  notificationInvokeSucceeded,
-} from "./contract.ts";
+
+export type NotificationDelivery = "sent" | "failed" | "pending" | "not_attempted";
+
+export function notificationInvokeSucceeded(result: unknown): boolean {
+  return Boolean(
+    result &&
+      typeof result === "object" &&
+      (result as Record<string, unknown>).success === true,
+  );
+}
 
 export const DEMO_NOTIFICATION_TYPE = "demo_request_delivery";
 export const DEMO_NOTIFICATION_KIND = "demo_request_telegram";

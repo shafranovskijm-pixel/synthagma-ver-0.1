@@ -6,7 +6,7 @@ import {
   forceReclaimDemoTelegramClaim,
   isDemoNotificationRecord,
   parseDemoTelegramMetadata,
-} from "../submit-demo-request/telegramDelivery.ts";
+} from "../_shared/demoTelegramDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

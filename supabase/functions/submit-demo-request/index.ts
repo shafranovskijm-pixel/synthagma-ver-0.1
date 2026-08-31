@@ -14,7 +14,7 @@ import {
   createDemoTelegramMetadata,
   DEMO_NOTIFICATION_TYPE,
   isDemoNotificationRecord,
-} from "./telegramDelivery.ts";
+} from "../_shared/demoTelegramDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
