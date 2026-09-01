@@ -81,11 +81,6 @@ vi.mock("@/components/organization/tabs/students/StudentTableRow", () => ({ Stud
 vi.mock("@/components/organization/tabs/students/StudentMobileCard", () => ({ StudentMobileCard: () => null }));
 vi.mock("@/components/organization/tabs/students/StudentsEmptyState", () => ({ StudentsEmptyState: () => null }));
 vi.mock("@/components/organization/tabs/students/StudentConfirmDialogs", () => ({ StudentConfirmDialogs: () => null }));
-vi.mock("@/components/organization/tabs/students/StudentTestResultsDialog", () => ({
-  StudentTestResultsDialog: ({ open }: { open: boolean }) => (
-    open ? <div role="dialog" aria-label="Окно результатов тестирования" /> : null
-  ),
-}));
 
 import { StudentsTab } from "@/components/organization/tabs/StudentsTab";
 
@@ -151,12 +146,15 @@ describe("StudentsTab result actions", () => {
     mocks.exportToExcel.mockResolvedValue(undefined);
   });
 
-  it("opens the test-results dialog when the action is clicked", () => {
+  it("opens the dialog and renders factual existing test results", async () => {
     renderStudentsTab();
 
     fireEvent.click(screen.getByRole("button", { name: "Результаты тестирования" }));
 
-    expect(screen.getByRole("dialog", { name: "Окно результатов тестирования" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText("Итоговый тест")).toBeInTheDocument();
+    expect(screen.getByText("8/10 · 80%")).toBeInTheDocument();
+    expect(screen.getByText("ivanov@example.ru")).toBeInTheDocument();
   });
 
   it("loads complete results and downloads the requested workbook columns", async () => {
@@ -165,7 +163,10 @@ describe("StudentsTab result actions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Экспорт результатов" }));
 
     await waitFor(() => expect(mocks.exportToExcel).toHaveBeenCalledTimes(1));
-    expect(mocks.fetchResults).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org-1" }));
+    expect(mocks.fetchResults).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: "org-1",
+      courses: [{ id: "course-1", title: "Пожарная безопасность" }],
+    }));
     const [rows, sheetName, fileName] = mocks.exportToExcel.mock.calls[0];
     expect(sheetName).toBe("Результаты");
     expect(fileName).toMatch(/^результаты_тестирования_\d{4}-\d{2}-\d{2}\.xlsx$/);
@@ -175,5 +176,17 @@ describe("StudentsTab result actions", () => {
       "Курс": "Пожарная безопасность",
       "Результат тестирования": "80% — Сдан",
     });
+  });
+
+  it("shows a load error and never presents a failed request as an empty report", async () => {
+    mocks.fetchResults.mockRejectedValueOnce(new Error("database unavailable"));
+    renderStudentsTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Результаты тестирования" }));
+
+    expect(await screen.findByText("Не удалось загрузить результаты")).toBeInTheDocument();
+    expect(screen.getByText("Причина: database unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Результаты не найдены")).not.toBeInTheDocument();
+    expect(mocks.exportToExcel).not.toHaveBeenCalled();
   });
 });

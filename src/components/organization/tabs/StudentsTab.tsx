@@ -79,8 +79,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [isExportingStudentResults, setIsExportingStudentResults] = useState(false);
   const [studentResultsError, setStudentResultsError] = useState<Error | null>(null);
   const [studentResultsProgress, setStudentResultsProgress] = useState<StudentResultsProgress | null>(null);
+  const resultCourses = React.useMemo(
+    () => courses.map((course) => ({ id: course.id, title: course.title })),
+    [courses],
+  );
+  const resultCoursesSignature = React.useMemo(
+    () => resultCourses.map((course) => `${course.id}:${course.title}`).join("|"),
+    [resultCourses],
+  );
   const studentResultsCacheRef = React.useRef<{
     organizationId: string;
+    courseSignature: string;
     rows: OrganizationStudentCourseResult[];
   } | null>(null);
   const studentResultsRequestRef = React.useRef<Promise<OrganizationStudentCourseResult[]> | null>(null);
@@ -98,7 +107,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     return () => {
       studentResultsAbortRef.current?.abort();
     };
-  }, [organizationId]);
+  }, [organizationId, resultCoursesSignature]);
 
   // Each browser tab/window owns its own workspace state through its URL.
   // localStorage is deliberately not used here: it is shared by every window
@@ -234,7 +243,11 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const loadStudentResults = useCallback(async (
     force = false,
   ): Promise<OrganizationStudentCourseResult[]> => {
-    if (!force && studentResultsCacheRef.current?.organizationId === organizationId) {
+    if (
+      !force
+      && studentResultsCacheRef.current?.organizationId === organizationId
+      && studentResultsCacheRef.current.courseSignature === resultCoursesSignature
+    ) {
       const cachedRows = studentResultsCacheRef.current.rows;
       setStudentResultRows(cachedRows);
       setStudentResultsError(null);
@@ -255,6 +268,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
 
     const request = fetchOrganizationStudentResults({
       organizationId,
+      courses: resultCourses,
       signal: controller.signal,
       onProgress: setStudentResultsProgress,
     });
@@ -263,12 +277,21 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     try {
       const rows = await request;
       if (controller.signal.aborted) throw Object.assign(new Error("Загрузка результатов отменена"), { name: "AbortError" });
-      studentResultsCacheRef.current = { organizationId, rows };
+      studentResultsCacheRef.current = {
+        organizationId,
+        courseSignature: resultCoursesSignature,
+        rows,
+      };
       setStudentResultRows(rows);
       return rows;
     } catch (error) {
       const normalizedError = error instanceof Error ? error : new Error("Не удалось загрузить результаты");
       if (normalizedError.name !== "AbortError") {
+        console.error("[student-results] organization report failed", {
+          organizationId,
+          courseIds: resultCourses.map((course) => course.id),
+          error: normalizedError,
+        });
         setStudentResultRows([]);
         setStudentResultsError(normalizedError);
       }
@@ -280,7 +303,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         setIsLoadingStudentResults(false);
       }
     }
-  }, [organizationId]);
+  }, [organizationId, resultCourses, resultCoursesSignature]);
 
   const handleExportStudentResults = useCallback(async () => {
     setIsExportingStudentResults(true);
@@ -308,6 +331,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       toast.success(`Экспортировано строк: ${workbookRows.length}`);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
+      console.error("[student-results] export failed", error);
       toast.error("Не удалось экспортировать результаты. Частичный файл не создан.");
     } finally {
       setIsExportingStudentResults(false);

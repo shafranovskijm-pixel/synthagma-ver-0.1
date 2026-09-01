@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { CourseStudentPageRow, FetchCourseStudentsPageInput } from "@/api/courseStudents";
 import { fetchOrganizationStudentResults } from "@/api/organizationStudentResults";
 
-function makePageRow(userId: string): CourseStudentPageRow {
+function makePageRow(
+  userId: string,
+  overrides: Partial<CourseStudentPageRow> = {},
+): CourseStudentPageRow {
   return {
     id: `profile-${userId}`,
     user_id: userId,
@@ -28,6 +31,7 @@ function makePageRow(userId: string): CourseStudentPageRow {
     last_attempt_at: null,
     result_status: "not_started",
     test_details: [],
+    ...overrides,
   };
 }
 
@@ -51,17 +55,10 @@ describe("fetchOrganizationStudentResults", () => {
       return { rows: [makePageRow("201")], totalFiltered: 1, nextOffset: null };
     });
     const progress = vi.fn();
-    const loadCourseTests = vi.fn().mockResolvedValue([{
-      id: "test-1",
-      title: "Итоговый тест",
-      passingScore: 60,
-      orderIndex: 0,
-    }]);
-
     const rows = await fetchOrganizationStudentResults({
       organizationId: "org-goreltech",
       onProgress: progress,
-    }, { loadCourses, loadCourseTests, loadCoursePage });
+    }, { loadCourses, loadCoursePage });
 
     expect(loadCourses).toHaveBeenCalledWith("org-goreltech", undefined);
     expect(loadCoursePage.mock.calls.map(([input]) => [input.courseId, input.offset, input.limit])).toEqual([
@@ -73,8 +70,79 @@ describe("fetchOrganizationStudentResults", () => {
     expect(rows[0]).toMatchObject({ user_id: "1", course_id: "course-1", course_title: "Курс 1" });
     expect(rows[100]).toMatchObject({ user_id: "101", course_id: "course-1", course_title: "Курс 1" });
     expect(rows[101]).toMatchObject({ user_id: "201", course_id: "course-2", course_title: "Курс 2" });
-    expect(rows.every((row) => row.course_tests[0]?.id === "test-1")).toBe(true);
+    expect(rows.every((row) => row.course_tests.length === 0)).toBe(true);
     expect(progress).toHaveBeenLastCalledWith({ completedCourses: 2, totalCourses: 2 });
+  });
+
+  it("uses workspace courses and preserves factual attempt metadata without extra course or lesson queries", async () => {
+    const loadCourses = vi.fn().mockRejectedValue(new Error("must not be called"));
+    const attemptedRow = makePageRow("1", {
+      tests_total: 1,
+      tests_attempted: 1,
+      tests_passed: 1,
+      latest_score: 8,
+      latest_max_score: 10,
+      latest_percent: 80,
+      attempts_used: 1,
+      result_status: "passed",
+      test_details: [{
+        lesson_id: "test-1",
+        lesson_title: "Итоговый тест",
+        score: 8,
+        max_score: 10,
+        percent: 80,
+        passing_score: 70,
+        passed: true,
+        attempts_used: 1,
+        max_attempts: 3,
+        completed_at: "2026-08-31T10:00:00.000Z",
+      }],
+    });
+
+    const rows = await fetchOrganizationStudentResults({
+      organizationId: "org-goreltech",
+      courses: [{ id: "course-1", title: "Пожарная безопасность" }],
+    }, {
+      loadCourses,
+      loadCoursePage: async () => ({ rows: [attemptedRow], totalFiltered: 1, nextOffset: null }),
+    });
+
+    expect(loadCourses).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({
+      course_id: "course-1",
+      course_title: "Пожарная безопасность",
+      tests_attempted: 1,
+      course_tests: [{ id: "test-1", title: "Итоговый тест", passingScore: 70 }],
+    });
+  });
+
+  it("keeps an enrolled student who has not started a test", async () => {
+    const rows = await fetchOrganizationStudentResults({
+      organizationId: "org-goreltech",
+      courses: [{ id: "course-1", title: "Пожарная безопасность" }],
+    }, {
+      loadCoursePage: async () => ({
+        rows: [makePageRow("1", {
+          tests_total: 4,
+          tests_attempted: 0,
+          result_status: "not_started",
+          test_details: [],
+        })],
+        totalFiltered: 1,
+        nextOffset: null,
+      }),
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      enrollment_id: "enrollment-1",
+      user_id: "1",
+      course_id: "course-1",
+      tests_total: 4,
+      tests_attempted: 0,
+      result_status: "not_started",
+      course_tests: [],
+    });
   });
 
   it("rejects the entire report when one course page fails", async () => {
@@ -90,12 +158,6 @@ describe("fetchOrganizationStudentResults", () => {
         { id: "course-1", title: "Курс 1" },
         { id: "course-2", title: "Курс 2" },
       ],
-      loadCourseTests: async () => [{
-        id: "test-1",
-        title: "Тест",
-        passingScore: 60,
-        orderIndex: 0,
-      }],
       loadCoursePage,
     })).rejects.toThrow("database unavailable");
   });
@@ -107,26 +169,19 @@ describe("fetchOrganizationStudentResults", () => {
 
     await expect(fetchOrganizationStudentResults({ organizationId: "org-goreltech" }, {
       loadCourses: async () => [{ id: "course-1", title: "Курс 1" }],
-      loadCourseTests: async () => [{
-        id: "test-1",
-        title: "Тест",
-        passingScore: 60,
-        orderIndex: 0,
-      }],
       loadCoursePage: async () => ({ rows: [], totalFiltered: 2, nextOffset: 0 }),
     })).rejects.toThrow("Некорректная следующая страница");
   });
 
-  it("fails instead of publishing a partial report when the course test list is incomplete", async () => {
+  it("fails instead of publishing a partial report when attempt details are incomplete", async () => {
     await expect(fetchOrganizationStudentResults({ organizationId: "org-goreltech" }, {
       loadCourses: async () => [{ id: "course-1", title: "Курс 1" }],
-      loadCourseTests: async () => [],
       loadCoursePage: async () => ({
-        rows: [makePageRow("1")],
+        rows: [makePageRow("1", { tests_attempted: 1, test_details: [] })],
         totalFiltered: 1,
         nextOffset: null,
       }),
-    })).rejects.toThrow("полный список тестов курса");
+    })).rejects.toThrow("полноту результатов курса");
   });
 
   it("forwards cancellation to the course page loader and rejects after an in-flight page", async () => {
@@ -142,12 +197,6 @@ describe("fetchOrganizationStudentResults", () => {
       signal: controller.signal,
     }, {
       loadCourses: async () => [{ id: "course-1", title: "Курс 1" }],
-      loadCourseTests: async () => [{
-        id: "test-1",
-        title: "Тест",
-        passingScore: 60,
-        orderIndex: 0,
-      }],
       loadCoursePage,
     })).rejects.toMatchObject({ name: "AbortError" });
   });
@@ -155,12 +204,6 @@ describe("fetchOrganizationStudentResults", () => {
   it("fails when course enrollment pages repeat the same enrollment", async () => {
     await expect(fetchOrganizationStudentResults({ organizationId: "org-goreltech" }, {
       loadCourses: async () => [{ id: "course-1", title: "Курс 1" }],
-      loadCourseTests: async () => [{
-        id: "test-1",
-        title: "Тест",
-        passingScore: 60,
-        orderIndex: 0,
-      }],
       loadCoursePage: async ({ offset }) => ({
         rows: [makePageRow("1")],
         totalFiltered: 2,

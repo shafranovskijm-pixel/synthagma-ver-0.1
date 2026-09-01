@@ -174,6 +174,9 @@ export function StudentTestResultsDialog({
             <p className="text-sm text-muted-foreground max-w-lg">
               Данные не показаны: загрузка должна завершиться полностью. Повторите попытку.
             </p>
+            <p className="max-w-lg break-words rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+              Причина: {error.message || "неизвестная ошибка сервера"}
+            </p>
             <Button variant="outline" className="rounded-xl" onClick={() => void onLoad(true).catch(() => undefined)}>
               Повторить
             </Button>

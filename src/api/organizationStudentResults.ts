@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const EXPORT_PAGE_SIZE = 100;
 const COURSE_PAGE_SIZE = 100;
-const TEST_PAGE_SIZE = 100;
 
 export interface OrganizationResultCourse {
   id: string;
@@ -34,6 +33,14 @@ export interface StudentResultsProgress {
 
 export interface FetchOrganizationStudentResultsInput {
   organizationId: string;
+  /**
+   * Courses already loaded for the active organization workspace.
+   *
+   * Passing this list avoids a second, independently RLS-scoped course query.
+   * That is important for admin "view as organization" and delegated staff:
+   * the workspace can be available while an extra direct table query is empty.
+   */
+  courses?: OrganizationResultCourse[];
   signal?: AbortSignal;
   onProgress?: (progress: StudentResultsProgress) => void;
 }
@@ -43,10 +50,6 @@ export interface FetchOrganizationStudentResultsDeps {
     organizationId: string,
     signal?: AbortSignal,
   ) => Promise<OrganizationResultCourse[]>;
-  loadCourseTests?: (
-    courseId: string,
-    signal?: AbortSignal,
-  ) => Promise<OrganizationCourseTest[]>;
   loadCoursePage?: (
     input: FetchCourseStudentsPageInput,
   ) => Promise<{
@@ -114,76 +117,6 @@ async function loadOrganizationCourses(
   return courses;
 }
 
-async function loadCourseTests(
-  courseId: string,
-  signal?: AbortSignal,
-): Promise<OrganizationCourseTest[]> {
-  const tests: OrganizationCourseTest[] = [];
-  const seenTestIds = new Set<string>();
-  let offset = 0;
-  let expectedTotal: number | null = null;
-
-  while (expectedTotal === null || tests.length < expectedTotal) {
-    if (signal?.aborted) throw abortError();
-
-    const request = supabase
-      .from("lessons")
-      .select("id, title, test_passing_score, order_index", { count: "exact" })
-      .eq("course_id", courseId)
-      .eq("type", "test")
-      .order("order_index", { ascending: true })
-      .order("id", { ascending: true })
-      .range(offset, offset + TEST_PAGE_SIZE - 1);
-    const { data, error, count } = await (signal ? request.abortSignal(signal) : request);
-
-    if (signal?.aborted) throw abortError();
-    if (error) throw error;
-    if (count === null) throw new Error("Не удалось проверить полноту списка тестов");
-    if (expectedTotal !== null && count !== expectedTotal) {
-      throw new Error("Список тестов изменился во время формирования отчёта");
-    }
-    expectedTotal ??= count;
-
-    const page = (data ?? []).map((test) => {
-      const passingScore = Number(test.test_passing_score ?? 70);
-      if (!Number.isFinite(passingScore)) {
-        throw new Error("В настройках теста указан некорректный проходной балл");
-      }
-      return {
-        id: test.id,
-        title: test.title || "Тест",
-        passingScore,
-        orderIndex: Number(test.order_index ?? 0),
-      };
-    });
-    for (const test of page) {
-      if (seenTestIds.has(test.id)) {
-        throw new Error("Получены повторяющиеся тесты при формировании отчёта");
-      }
-      seenTestIds.add(test.id);
-    }
-    tests.push(...page);
-
-    if (tests.length > expectedTotal) throw new Error("Получен неполный список тестов курса");
-    if (tests.length === expectedTotal) break;
-    if (page.length === 0) throw new Error("Не удалось загрузить полный список тестов курса");
-    offset += page.length;
-  }
-
-  if (tests.length !== expectedTotal) throw new Error("Не удалось загрузить полный список тестов курса");
-
-  return tests;
-}
-
-function courseTestSignature(tests: OrganizationCourseTest[]): string {
-  return JSON.stringify(tests.map((test) => [
-    test.id,
-    test.title,
-    test.passingScore,
-    test.orderIndex,
-  ]));
-}
-
 /**
  * Loads the complete, tenant-scoped student test report for an organization.
  *
@@ -203,9 +136,8 @@ export async function fetchOrganizationStudentResults(
   }
 
   const loadCourses = deps.loadCourses ?? loadOrganizationCourses;
-  const loadTests = deps.loadCourseTests ?? loadCourseTests;
   const loadCoursePage = deps.loadCoursePage ?? fetchCourseStudentsPage;
-  const rawCourses = await loadCourses(organizationId, input.signal);
+  const rawCourses = input.courses ?? await loadCourses(organizationId, input.signal);
   if (input.signal?.aborted) throw abortError();
   const uniqueCourseIds = new Set<string>();
   for (const course of rawCourses) {
@@ -223,9 +155,6 @@ export async function fetchOrganizationStudentResults(
     if (input.signal?.aborted) throw abortError();
 
     const course = courses[courseIndex];
-    const courseTests = await loadTests(course.id, input.signal);
-    if (input.signal?.aborted) throw abortError();
-    const courseTestIds = new Set(courseTests.map((test) => test.id));
     let offset = 0;
     const seenOffsets = new Set<number>();
     const seenEnrollmentIds = new Set<string>();
@@ -250,21 +179,30 @@ export async function fetchOrganizationStudentResults(
       }
       expectedEnrollmentTotal ??= page.totalFiltered;
 
-      const inconsistentRow = page.rows.find((row) => row.tests_total !== courseTests.length);
-      if (inconsistentRow) {
-        throw new Error(`Не удалось получить полный список тестов курса «${course.title}»`);
-      }
-      const unknownAttempt = page.rows.some((row) => (
-        row.test_details.some((detail) => !courseTestIds.has(detail.lesson_id))
-      ));
-      if (unknownAttempt) {
-        throw new Error(`Список тестов курса «${course.title}» изменился во время формирования отчёта`);
-      }
       for (const row of page.rows) {
         if (!row.enrollment_id || seenEnrollmentIds.has(row.enrollment_id)) {
           throw new Error(`Получены повторяющиеся зачисления курса «${course.title}»`);
         }
         seenEnrollmentIds.add(row.enrollment_id);
+
+        const details = Array.isArray(row.test_details) ? row.test_details : [];
+        const seenLessonIds = new Set<string>();
+        for (const detail of details) {
+          if (!detail.lesson_id || seenLessonIds.has(detail.lesson_id)) {
+            throw new Error(`Получены некорректные результаты тестов курса «${course.title}»`);
+          }
+          seenLessonIds.add(detail.lesson_id);
+        }
+        if (
+          !Number.isInteger(row.tests_total)
+          || !Number.isInteger(row.tests_attempted)
+          || row.tests_total < 0
+          || row.tests_attempted < 0
+          || row.tests_attempted > row.tests_total
+          || details.length !== row.tests_attempted
+        ) {
+          throw new Error(`Не удалось проверить полноту результатов курса «${course.title}»`);
+        }
       }
 
       result.push(
@@ -272,7 +210,15 @@ export async function fetchOrganizationStudentResults(
           ...row,
           course_id: course.id,
           course_title: course.title,
-          course_tests: courseTests,
+          // The tenant-scoped RPC is the single authority for attempts. Build
+          // the display metadata from the same payload so an extra lessons
+          // query cannot turn factual attempts into an empty dialog.
+          course_tests: row.test_details.map((detail, index) => ({
+            id: detail.lesson_id,
+            title: detail.lesson_title || "Тест",
+            passingScore: Number(detail.passing_score ?? 70),
+            orderIndex: index,
+          })),
         })),
       );
 
@@ -285,12 +231,6 @@ export async function fetchOrganizationStudentResults(
 
     if (seenEnrollmentIds.size !== expectedEnrollmentTotal) {
       throw new Error(`Не удалось загрузить полный список учеников курса «${course.title}»`);
-    }
-
-    const finalCourseTests = await loadTests(course.id, input.signal);
-    if (input.signal?.aborted) throw abortError();
-    if (courseTestSignature(finalCourseTests) !== courseTestSignature(courseTests)) {
-      throw new Error(`Список тестов курса «${course.title}» изменился во время формирования отчёта`);
     }
 
     input.onProgress?.({
