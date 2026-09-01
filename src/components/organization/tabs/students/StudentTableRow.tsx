@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Trash2, CheckCircle2, XCircle, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
+import { BarChart3, Copy, Trash2, CheckCircle2, XCircle, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
 import type { Student, StudentFRDOStatus } from "@/types";
 import { studentDetailsPath } from "@/lib/groups/groupContext";
 
@@ -27,6 +27,7 @@ interface StudentTableRowProps {
   studentGroups: Array<{ id: string; name: string; color: string }>;
   studentGroupMap: Map<string, string | null>;
   onAssignGroup: (userId: string, groupId: string | null) => void;
+  onViewTestResults?: (userId: string) => void;
   isArchiveView?: boolean;
   onArchive?: (userId: string) => void;
   onUnarchive?: (userId: string) => void;
@@ -37,7 +38,7 @@ interface StudentTableRowProps {
 export const StudentTableRow = React.memo(function StudentTableRow({
   student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials,
   onRemoveStudent, studentDocsByUser, frdoStatus, studentGroups, studentGroupMap, onAssignGroup,
-  isArchiveView = false, onArchive, onUnarchive, onRequestCredentials,
+  isArchiveView = false, onArchive, onUnarchive, onRequestCredentials, onViewTestResults,
 }: StudentTableRowProps) {
   const [loadingPw, setLoadingPw] = React.useState(false);
   const enrollmentsCount = student.enrollments?.length || 0;
@@ -155,6 +156,21 @@ export const StudentTableRow = React.memo(function StudentTableRow({
             {enrollmentsCount > 2 && <span className="text-xs text-muted-foreground">+{enrollmentsCount - 2} ещё</span>}
           </div>
         )}
+      </td>
+      <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-lg gap-1.5 whitespace-nowrap"
+          onClick={() => onViewTestResults?.(student.user_id)}
+          disabled={!onViewTestResults || enrollmentsCount === 0}
+          aria-label={`Результаты тестирования: ${student.name}`}
+          title={enrollmentsCount === 0 ? "Ученик не зачислен на курс" : "Открыть результаты тестирования"}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span className="hidden xl:inline">Открыть</span>
+        </Button>
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">

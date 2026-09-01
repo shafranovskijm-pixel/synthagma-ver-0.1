@@ -73,6 +73,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const [showTestResults, setShowTestResults] = useState(false);
+  const [testResultsStudentId, setTestResultsStudentId] = useState<string | null>(null);
   const [studentResultRows, setStudentResultRows] = useState<OrganizationStudentCourseResult[]>([]);
   const [isLoadingStudentResults, setIsLoadingStudentResults] = useState(false);
   const [isExportingStudentResults, setIsExportingStudentResults] = useState(false);
@@ -518,7 +519,10 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     variant="outline"
                     size="sm"
                     className="flex-1 rounded-xl gap-2 text-xs sm:flex-none lg:text-sm"
-                    onClick={() => setShowTestResults(true)}
+                    onClick={() => {
+                      setTestResultsStudentId(null);
+                      setShowTestResults(true);
+                    }}
                     disabled={courses.length === 0}
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -703,7 +707,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             <>
               <div className="lg:hidden divide-y divide-border">
                 {paginatedStudents.map(student => (
-                  <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} studentDocsByUser={studentDocsByUser} />
+                  <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onViewTestResults={(userId) => { setTestResultsStudentId(userId); setShowTestResults(true); }} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} studentDocsByUser={studentDocsByUser} />
                 ))}
               </div>
               <div className="hidden lg:block overflow-x-auto">
@@ -716,13 +720,14 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
                     <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
                     <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курсы</th>
+                    <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">Результаты</th>
                     <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
                     <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
                     <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
                   </tr></thead>
                   <tbody>
                     {paginatedStudents.map(student => (
-                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
+                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onViewTestResults={(userId) => { setTestResultsStudentId(userId); setShowTestResults(true); }} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
                     ))}
                   </tbody>
                 </table>
@@ -789,6 +794,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         onOpenChange={setShowTestResults}
         courses={courses}
         initialCourseId={courseFilter}
+        initialStudentId={testResultsStudentId}
         rows={studentResultRows}
         isLoading={isLoadingStudentResults}
         error={studentResultsError}

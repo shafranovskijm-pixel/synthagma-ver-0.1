@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Copy, CheckCircle2, XCircle, ChevronRight, Loader2 } from "lucide-react";
+import { BarChart3, Copy, CheckCircle2, XCircle, ChevronRight, Loader2 } from "lucide-react";
 import type { Student } from "@/types";
 import { studentDetailsPath } from "@/lib/groups/groupContext";
 
@@ -10,11 +10,12 @@ interface StudentMobileCardProps {
   onViewStudent: () => void;
   onCopyCredentials: (login: string, password: string) => void;
   onRequestCredentials?: (userId: string) => Promise<string | null>;
+  onViewTestResults?: (userId: string) => void;
   studentDocsByUser?: Map<string, string[]>;
 }
 
 export const StudentMobileCard = React.memo(function StudentMobileCard({
-  student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, onRequestCredentials, studentDocsByUser,
+  student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, onRequestCredentials, onViewTestResults, studentDocsByUser,
 }: StudentMobileCardProps) {
   const userDocs = studentDocsByUser?.get(student.user_id) || [];
   const hasPassport = student.has_passport ?? userDocs.some(t => t === "passport" || t === "birth_certificate");
@@ -87,6 +88,20 @@ export const StudentMobileCard = React.memo(function StudentMobileCard({
               </div>
             ))}
           </div>
+          {enrollmentsCount > 0 && onViewTestResults && (
+            <button
+              type="button"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewTestResults(student.user_id);
+              }}
+              aria-label={`Результаты тестирования: ${student.name}`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Результаты тестирования
+            </button>
+          )}
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
       </div>

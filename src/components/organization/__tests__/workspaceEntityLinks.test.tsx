@@ -27,6 +27,21 @@ const student = {
   status: "active",
 } as unknown as Student;
 
+const enrolledStudent = {
+  ...student,
+  course: "Курс 1",
+  course_id: "course-1",
+  enrollments: [{
+    id: "enrollment-1",
+    course_id: "course-1",
+    course_title: "Курс 1",
+    progress: 50,
+    status: "active",
+    started_at: "2026-08-01T00:00:00.000Z",
+    time_spent: 0,
+  }],
+} as Student;
+
 function preventJsdomNavigation(link: HTMLElement) {
   link.addEventListener("click", (event) => event.preventDefault());
 }
@@ -122,5 +137,50 @@ describe("organization entity workspace links", () => {
     expect(onViewStudent).not.toHaveBeenCalled();
     fireEvent.click(link);
     expect(onViewStudent).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the selected student's test results from the desktop row without opening the profile", () => {
+    const onViewStudent = vi.fn();
+    const onViewTestResults = vi.fn();
+    render(
+      <table><tbody><StudentTableRow
+        student={enrolledStudent}
+        isSelected={false}
+        onToggleSelection={vi.fn()}
+        onViewStudent={onViewStudent}
+        onViewTestResults={onViewTestResults}
+        onCopyCredentials={vi.fn()}
+        onRemoveStudent={vi.fn()}
+        frdoStatus={new Map()}
+        studentGroups={[]}
+        studentGroupMap={new Map()}
+        onAssignGroup={vi.fn()}
+      /></tbody></table>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Результаты тестирования: Ученик 1" }));
+
+    expect(onViewTestResults).toHaveBeenCalledWith("student-1");
+    expect(onViewStudent).not.toHaveBeenCalled();
+  });
+
+  it("opens the selected student's test results from the mobile card without opening the profile", () => {
+    const onViewStudent = vi.fn();
+    const onViewTestResults = vi.fn();
+    render(
+      <StudentMobileCard
+        student={enrolledStudent}
+        isSelected={false}
+        onToggleSelection={vi.fn()}
+        onViewStudent={onViewStudent}
+        onViewTestResults={onViewTestResults}
+        onCopyCredentials={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Результаты тестирования: Ученик 1" }));
+
+    expect(onViewTestResults).toHaveBeenCalledWith("student-1");
+    expect(onViewStudent).not.toHaveBeenCalled();
   });
 });

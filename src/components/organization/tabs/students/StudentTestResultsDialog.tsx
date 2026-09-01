@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, RefreshCw, Search } from "lucide-react";
+import { BarChart3, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +29,7 @@ interface StudentTestResultsDialogProps {
   onOpenChange: (open: boolean) => void;
   courses: Course[];
   initialCourseId: string;
+  initialStudentId: string | null;
   rows: OrganizationStudentCourseResult[];
   isLoading: boolean;
   error: Error | null;
@@ -51,6 +52,7 @@ export function StudentTestResultsDialog({
   onOpenChange,
   courses,
   initialCourseId,
+  initialStudentId,
   rows,
   isLoading,
   error,
@@ -58,6 +60,7 @@ export function StudentTestResultsDialog({
   onLoad,
 }: StudentTestResultsDialogProps) {
   const [selectedCourseId, setSelectedCourseId] = useState("all");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -67,19 +70,26 @@ export function StudentTestResultsDialog({
         ? initialCourseId
         : "all",
     );
+    setSelectedStudentId(initialStudentId);
     void onLoad(false).catch(() => undefined);
-  }, [open, initialCourseId, courses, onLoad]);
+  }, [open, initialCourseId, initialStudentId, courses, onLoad]);
 
   const records = useMemo(() => flattenStudentTestResults(rows), [rows]);
   const filteredRecords = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase("ru");
     return records.filter((record) => {
+      if (selectedStudentId && record.userId !== selectedStudentId) return false;
       if (selectedCourseId !== "all" && record.courseId !== selectedCourseId) return false;
       if (!normalizedSearch) return true;
       return [record.fullName, record.email, record.courseTitle, record.testTitle]
         .some((value) => value.toLocaleLowerCase("ru").includes(normalizedSearch));
     });
-  }, [records, search, selectedCourseId]);
+  }, [records, search, selectedCourseId, selectedStudentId]);
+
+  const selectedStudentName = useMemo(
+    () => records.find((record) => record.userId === selectedStudentId)?.fullName ?? null,
+    [records, selectedStudentId],
+  );
 
   const uniqueStudents = useMemo(
     () => new Set(filteredRecords.map((record) => record.userId)).size,
@@ -131,6 +141,23 @@ export function StudentTestResultsDialog({
             Обновить
           </Button>
         </div>
+
+        {selectedStudentId && (
+          <div className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Показаны результаты ученика:</span>
+            <strong>{selectedStudentName ?? "выбранный ученик"}</strong>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-8 rounded-lg gap-1"
+              onClick={() => setSelectedStudentId(null)}
+            >
+              <X className="w-3.5 h-3.5" />
+              Показать всех
+            </Button>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex-1 min-h-56 flex flex-col items-center justify-center gap-3 text-muted-foreground">
