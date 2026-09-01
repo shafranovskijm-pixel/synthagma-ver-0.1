@@ -40,6 +40,7 @@ interface StudentData {
   email: string;
   login?: string | null;
   company_name?: string | null;
+  company_id?: string | null;
   generated_password?: string | null;
   last_visit_at?: string | null;
 }
@@ -150,6 +151,7 @@ export function StudentDetailsTab() {
         email: profile.email || "",
         login: profile.login,
         company_name: (profile as any).companies?.name || null,
+        company_id: profile.company_id,
         generated_password: decryptedPw,
         last_visit_at: profile.last_visit_at,
       });
@@ -403,7 +405,23 @@ export function StudentDetailsTab() {
                   <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />
                 )
               )}
-              {h.activeTab === "documents" && <DocumentsTab h={h} />}
+              {h.activeTab === "documents" && (
+                <DocumentsTab
+                  h={h}
+                  orgPlan={orgPlan}
+                  laborSafetyXml={{
+                    organizationId,
+                    student: {
+                      userId: student.user_id,
+                      fullName: student.name,
+                      companyId: student.company_id,
+                    },
+                    enrollments,
+                    enrollmentsLoading,
+                    enrollmentsError,
+                  }}
+                />
+              )}
               {h.activeTab === "activity" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />}
               {h.activeTab === "testing" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} defaultSubTab="tests" onlySubTab />}
               {h.activeTab === "chat" && user && <ChatTab studentUserId={student.user_id} organizationId={organizationId} currentUserId={user.id} studentName={student.name} />}

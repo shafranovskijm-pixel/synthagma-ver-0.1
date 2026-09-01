@@ -9,10 +9,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import type { StudentEnrollment } from "@/types/student";
+import { StudentLaborSafetyXmlCard } from "@/components/organization/student-detail/StudentLaborSafetyXmlCard";
 
 interface DocumentsTabProps {
   h: any;
   orgPlan?: string;
+  laborSafetyXml?: {
+    organizationId: string;
+    student: {
+      userId: string;
+      fullName: string;
+      companyId?: string | null;
+    };
+    enrollments: StudentEnrollment[];
+    enrollmentsLoading?: boolean;
+    enrollmentsError?: string | null;
+  };
 }
 
 const DOC_TYPES = [
@@ -22,7 +35,7 @@ const DOC_TYPES = [
   { type: "birth_certificate", label: "Свидетельство о рождении" },
 ];
 
-export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
+export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) {
   const [snilsValue, setSnilsValue] = useState(h.frdoData?.snils || "");
   const [lastName, setLastName] = useState(h.frdoData?.last_name || "");
   const [firstName, setFirstName] = useState(h.frdoData?.first_name || "");
@@ -136,6 +149,14 @@ export function DocumentsTab({ h, orgPlan }: DocumentsTabProps) {
 
   return (
     <div className="space-y-6">
+      {laborSafetyXml && (
+        <StudentLaborSafetyXmlCard
+          {...laborSafetyXml}
+          snils={h.frdoData?.snils ?? null}
+          position={h.jobPosition ?? null}
+        />
+      )}
+
       {/* Upload documents section */}
       <div className="bg-card rounded-2xl border border-border p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2">
