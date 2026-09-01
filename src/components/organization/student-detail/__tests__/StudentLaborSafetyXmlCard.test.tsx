@@ -60,7 +60,7 @@ describe("StudentLaborSafetyXmlCard", () => {
     expect(state.fetchContext).not.toHaveBeenCalled();
   });
 
-  it("shows the Beta/XSD warning and disables export while required fields are missing", async () => {
+  it("shows the Beta/XSD warning and allows only a clearly labelled draft while fields are missing", async () => {
     state.fetchContext.mockResolvedValue({
       company: { name: "ООО «Современные горные технологии»", inn: "1234567890" },
       courses: [{
@@ -80,7 +80,8 @@ describe("StudentLaborSafetyXmlCard", () => {
     expect(screen.getByText("Beta")).toBeInTheDocument();
     expect(screen.getByText(/Совместимость с актуальной XSD Минтруда пока не подтверждена/)).toBeInTheDocument();
     expect(screen.getByText(/Не заполнено: Номер протокола/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeDisabled();
+    expect(screen.getByText(/Черновик можно скачать для демонстрации/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Открыть ЛКОТ" })).toHaveAttribute(
       "href",
       "https://lkot.mintrud.gov.ru/",
@@ -92,7 +93,7 @@ describe("StudentLaborSafetyXmlCard", () => {
     })));
   });
 
-  it("enables export only when every required field exists", async () => {
+  it("marks a complete draft as ready for XSD validation", async () => {
     state.fetchContext.mockResolvedValue({
       company: { name: "ООО «Современные горные технологии»", inn: "1234567890" },
       courses: [{
@@ -109,6 +110,7 @@ describe("StudentLaborSafetyXmlCard", () => {
     render(<StudentLaborSafetyXmlCard {...props} />);
 
     expect(await screen.findByText("Все поля внутреннего XML заполнены.")).toBeInTheDocument();
+    expect(screen.getByText(/Записей с заполненными данными: 1/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
   });
 });

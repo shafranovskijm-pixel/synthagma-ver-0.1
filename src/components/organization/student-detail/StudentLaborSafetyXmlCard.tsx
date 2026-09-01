@@ -85,15 +85,15 @@ function StudentLaborSafetyXmlCardContent({
     !context && !loadError && !enrollmentsLoading && !enrollmentsError
   );
   const missingCount = records.reduce((sum, result) => sum + result.missingFields.length, 0);
-  const canExport = records.length > 0
-    && missingCount === 0
+  const canDownloadDraft = records.length > 0
     && !isLoadingContext
     && !enrollmentsLoading
     && !loadError
     && !enrollmentsError;
+  const isReadyForValidation = canDownloadDraft && missingCount === 0;
 
   const handleDownload = () => {
-    if (!canExport) return;
+    if (!canDownloadDraft) return;
     const exportDate = new Date().toISOString().slice(0, 10);
     const xml = serializeLaborSafetyRecordsXml({
       groupName: `Личное дело: ${student.fullName}`,
@@ -107,7 +107,11 @@ function StudentLaborSafetyXmlCardContent({
     anchor.download = buildLaborSafetyXmlFilename({ exportDate, subject: student.fullName });
     anchor.click();
     URL.revokeObjectURL(url);
-    toast.success(`XML сформирован: ${records.length} записей`);
+    if (missingCount > 0) {
+      toast.warning(`Черновик XML сформирован: ${records.length} записей, незаполненных полей — ${missingCount}`);
+    } else {
+      toast.success(`Черновик XML сформирован: ${records.length} записей`);
+    }
   };
 
   return (
@@ -130,7 +134,7 @@ function StudentLaborSafetyXmlCardContent({
               Открыть ЛКОТ
             </a>
           </Button>
-          <Button className="gap-2 rounded-xl" onClick={handleDownload} disabled={!canExport}>
+          <Button className="gap-2 rounded-xl" onClick={handleDownload} disabled={!canDownloadDraft}>
             {isLoadingContext || enrollmentsLoading ? <SigmaSpinner size="sm" /> : <Download className="h-4 w-4" />}
             Скачать черновик XML
           </Button>
@@ -163,6 +167,18 @@ function StudentLaborSafetyXmlCardContent({
         </p>
       ) : (
         <div className="mt-4 space-y-3">
+          <div
+            className={`rounded-xl border p-3 text-sm ${
+              isReadyForValidation
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/20"
+                : "border-amber-300 bg-background/80 text-amber-900 dark:text-amber-200"
+            }`}
+            role="status"
+          >
+            {isReadyForValidation
+              ? `Записей с заполненными данными: ${records.length}. Перед отправкой всё равно требуется проверка по актуальной XSD Минтруда.`
+              : `Черновик можно скачать для демонстрации. Для рабочего экспорта заполните недостающие поля (${missingCount}); затем проверьте файл по актуальной XSD Минтруда.`}
+          </div>
           {records.map(result => (
             <div key={result.enrollmentId} className="rounded-xl border border-border bg-background/80 p-3">
               <div className="flex items-start gap-2">
