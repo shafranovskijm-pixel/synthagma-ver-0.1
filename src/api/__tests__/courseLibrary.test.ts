@@ -3,6 +3,8 @@ import {
   archiveCourseLibraryResource,
   createCourseLibraryResource,
   createLibrarySignedUrl,
+  fetchCourseLibrary,
+  fetchCourseLibraryShell,
   updateCourseLibraryResource,
   type CourseLibraryResource,
   type CourseLibraryResourceInput,
@@ -15,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   createSignedUrl: vi.fn(),
   getUser: vi.fn(),
+  rpc: vi.fn(),
   documentInsert: vi.fn(),
   documentInsertSelect: vi.fn(),
   documentInsertSingle: vi.fn(),
@@ -29,6 +32,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: mocks.from,
     auth: { getUser: mocks.getUser },
+    rpc: mocks.rpc,
     storage: { from: mocks.storageFrom },
   },
 }));
@@ -97,6 +101,18 @@ describe("course library API contracts", () => {
     vi.clearAllMocks();
 
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
+    mocks.rpc.mockResolvedValue({
+      data: {
+        course_id: "course-1",
+        title: "Библиотека курса",
+        library_only: true,
+        modules: [
+          { id: "module-2", title: "Модуль 2", order_index: 2 },
+          { id: "module-1", title: "Модуль 1", order_index: 1 },
+        ],
+      },
+      error: null,
+    });
     mocks.upload.mockResolvedValue({ data: { path: "ignored" }, error: null });
     mocks.remove.mockResolvedValue({ data: [], error: null });
     mocks.createSignedUrl.mockResolvedValue({
@@ -133,6 +149,60 @@ describe("course library API contracts", () => {
       }
       throw new Error(`Unexpected table: ${table}`);
     });
+  });
+
+  it("loads only the column-limited electronic-library shell through the RPC", async () => {
+    await expect(fetchCourseLibraryShell("course-1")).resolves.toEqual({
+      courseId: "course-1",
+      title: "Библиотека курса",
+      libraryOnly: true,
+      modules: [
+        { id: "module-2", title: "Модуль 2", orderIndex: 2 },
+        { id: "module-1", title: "Модуль 1", orderIndex: 1 },
+      ],
+    });
+
+    expect(mocks.rpc).toHaveBeenCalledWith("get_course_electronic_library_shell", {
+      p_course_id: "course-1",
+    });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed electronic-library shell instead of trusting extra table data", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        course_id: "course-1",
+        title: "Библиотека курса",
+        library_only: "yes",
+        description: "must not be consumed",
+      },
+      error: null,
+    });
+
+    await expect(fetchCourseLibraryShell("course-1"))
+      .rejects.toThrow("некорректную оболочку");
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("authorizes the shell before querying visible library resources", async () => {
+    const order = vi.fn().mockResolvedValue({ data: [], error: null });
+    const not = vi.fn().mockReturnValue({ order });
+    const eq = vi.fn().mockReturnValue({ not });
+    const select = vi.fn().mockReturnValue({ eq });
+    mocks.from.mockReturnValue({ select });
+
+    await expect(fetchCourseLibrary("course-1")).resolves.toEqual({
+      resources: [],
+      modules: [
+        { id: "module-2", title: "Модуль 2", orderIndex: 2 },
+        { id: "module-1", title: "Модуль 1", orderIndex: 1 },
+      ],
+    });
+
+    expect(mocks.rpc.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.from.mock.invocationCallOrder[0]);
+    expect(mocks.from).toHaveBeenCalledTimes(1);
+    expect(mocks.from).toHaveBeenCalledWith("course_documents");
   });
 
   it("creates one canonical external document and preserves course assignment metadata", async () => {

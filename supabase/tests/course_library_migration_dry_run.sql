@@ -56,6 +56,7 @@ BEGIN
      OR to_regclass('public.library_documents') IS NULL
      OR to_regclass('public.library_folders') IS NULL
      OR to_regclass('public.enrollments') IS NULL
+     OR to_regclass('public.profiles') IS NULL
      OR to_regclass('storage.buckets') IS NULL
      OR to_regclass('storage.objects') IS NULL
   THEN
@@ -308,6 +309,8 @@ BEGIN
   END IF;
 
   IF to_regprocedure('public.can_access_course_as_learner(uuid)') IS NULL
+     OR to_regprocedure('public.get_course_electronic_library_shell(uuid)') IS NULL
+     OR to_regprocedure('public.get_student_dashboard_snapshot(uuid)') IS NULL
      OR to_regprocedure('public.can_read_electronic_library_document(uuid)') IS NULL
      OR to_regprocedure('public.can_read_library_file_object(text)') IS NULL
      OR to_regprocedure('public.can_manage_library_file_object(text)') IS NULL
@@ -728,6 +731,8 @@ BEGIN
       'library_folders_insert',
       'library_folders_update',
       'library_folders_delete',
+      'course_library_unpublished_course_guard',
+      'course_library_unpublished_module_guard',
       'course_documents_select',
       'course_documents_insert',
       'course_documents_update',
@@ -741,6 +746,34 @@ BEGIN
     )
   ) THEN
     RAISE EXCEPTION 'One or more table RLS policies are missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies policy
+    WHERE policy.schemaname = 'public'
+      AND policy.tablename = 'courses'
+      AND policy.policyname = 'course_library_unpublished_course_guard'
+      AND policy.cmd = 'SELECT'
+      AND policy.permissive = 'RESTRICTIVE'
+      AND 'authenticated' = ANY(policy.roles)
+  ) THEN
+    RAISE EXCEPTION
+      'Unpublished electronic-library course guard is missing or misclassified';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies policy
+    WHERE policy.schemaname = 'public'
+      AND policy.tablename = 'course_modules'
+      AND policy.policyname = 'course_library_unpublished_module_guard'
+      AND policy.cmd = 'SELECT'
+      AND policy.permissive = 'RESTRICTIVE'
+      AND 'authenticated' = ANY(policy.roles)
+  ) THEN
+    RAISE EXCEPTION
+      'Unpublished electronic-library module guard is missing or misclassified';
   END IF;
 
   IF EXISTS (

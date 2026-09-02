@@ -42,6 +42,9 @@
 - серверную проверку course-local feature flag: ресурс нельзя привязать к курсу,
   где `landing_content.electronic_library.enabled` не равен boolean `true`, а
   преподаватель или слушатель не может обойти скрытый интерфейс прямым REST-запросом;
+- узкий доступ зачисленного слушателя к оболочке и названиям модулей нового
+  неопубликованного курса только при собственном актуальном enrollment и
+  совпадении tenant; уроки и тесты чернового курса эта миграция не открывает;
 - архивирование карточек вместо клиентского `DELETE`; удалить из Storage можно только незакреплённый файл при компенсации неудачного создания карточки.
 
 Миграция требует уже существующий `library-files` и намеренно не создаёт новый bucket.
@@ -67,9 +70,22 @@
 - генератор кандидатного манифеста: `scripts/build-csz-course-library-candidate.mjs`;
 - транзакционный dry-run миграции для отдельного staging-клона: `supabase/tests/course_library_migration_dry_run.sql`;
 - fail-closed PowerShell-запуск dry-run: `scripts/run-course-library-migration-dry-run.ps1`;
+- zero-I/O планировщик импорта утверждённого манифеста:
+  `src/lib/courseLibraryImportDryRun.ts`; он не содержит apply/commit-функции,
+  жёстко фиксирует tenant ЦСЗ, 178 часов, denylist старого курса и требует
+  отдельно переданный `approvedTargetCourseId`, который не читается из
+  манифеста. Без него результат только `BLOCKED`; при совпадении возможен
+  статус `MANIFEST_VALID` и `DRY_RUN_ONLY`-план, но не `READY` к импорту;
 - тестовые файлы для API-контракта, моделей, манифеста, reader, sidebar и security-контракта миграции.
 
 Эти пункты означают наличие локального кода, а не подтверждённую готовность staging или production.
+
+Zero-I/O проверка не может подтвердить существование курса в базе, его tenant,
+178 часов, unpublished-состояние, feature flag, принадлежность module ID курсу
+или отсутствие уже импортированных ресурсов. Эти факты перечисляются в
+`unverifiedDatabaseFacts` и должны быть повторно проверены внутри одной
+транзакции на отдельном staging. До такой проверки импорт и production
+остаются **NO-GO**.
 
 ## Локальные скриншоты
 
@@ -87,10 +103,11 @@
 
 | Проверка | Статус | Честное ограничение |
 |---|---|---|
-| Статический просмотр SQL-контракта и ожидаемых полей | Выполнен; усиленный migration security-контракт 8/8 | Реальный PostgreSQL/Supabase parser не запускался |
-| Целевые автоматические тесты | Последний объединённый прогон по библиотеке, курсам, XML и документам ГОРЭЛТЕХ: 30 файлов, 280/280, exit 0; отдельный библиотечный прогон: 7 файлов, 58/58 | Это unit/component/API/security-contract тесты, не DB-backed E2E; в старых hook-тестах остаются известные React `act` warnings |
+| Статический просмотр SQL-контракта и ожидаемых полей | Выполнен; усиленный migration security-контракт 12/12 | Реальный PostgreSQL/Supabase parser не запускался |
+| Целевые автоматические тесты | Последний библиотечный/API/RLS/importer прогон: 9 файлов, 87/87, exit 0; предыдущий объединённый прогон по библиотеке, курсам, XML и документам ГОРЭЛТЕХ: 30 файлов, 280/280 | Это unit/component/API/security-contract тесты, не DB-backed E2E; в старых hook-тестах остаются известные React `act` и неполные Supabase mock warnings |
+| Полный Vitest-прогон | 212 файлов и 1 608 тестов прошли; 4 теста в одном файле упали | Все 4 падения находятся в неизменённом относительно `origin/main` `groupJournalsListSafety.test.tsx`: test harness вызывает `useSearchParams` без Router. Это не считается полным зелёным прогоном и требует отдельного исправления в основной ветке |
 | TypeScript | `tsc --noEmit`, exit 0 | Типы не заменяют runtime-проверку ролей и Storage |
-| ESLint нового API и его тестов | exit 0, 0 ошибок, 2 предупреждения | Оба предупреждения — существующие `any` в адаптере Supabase |
+| ESLint изменённых TypeScript/TSX-файлов | exit 0, 0 ошибок, 48 предупреждений | Предупреждения — существующие `any` и зависимости React hooks; они не скрываются и не считаются чистым lint-прогоном |
 | Production build | Vite: 6 458 модулей, exit 0 | Есть неблокирующие предупреждения Browserslist, PDF.js `eval` и mixed dynamic/static import |
 | Локальный mock-harness | Скриншоты получены | Это mock-данные, не DB-backed E2E |
 | Применение миграции на staging | Не выполнялось | Нужен отдельный контролируемый прогон |
@@ -130,6 +147,7 @@ HTTP 200 не означает правовое разрешение на коп
 6. Миграция не проверена реальным PostgreSQL/Supabase parser и не применялась на staging.
 7. Не выполнен DB-backed E2E tenant isolation, permission/RLS, private Storage и signed URL.
 8. Не доказано отсутствие регрессии существующих `library_documents`, `course_documents` и потребителей `library-files` после ужесточения доступа.
+9. Подготовлен только zero-I/O import plan; транзакционного DB-executor намеренно нет до утверждения манифеста и staging-проверок.
 
 В текущем checkout нет отдельного staging Supabase: `.env`, `supabase/config.toml` и Lovable указывают на единственный remote ref. Supabase CLI, Docker/Podman, `psql`, DB URL и тестовые учётные записи отсутствуют. Поэтому DB-backed E2E намеренно не запускался против текущего `.env`.
 
