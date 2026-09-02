@@ -14,6 +14,18 @@ const stagingWrapper = readFileSync(resolve(
   process.cwd(),
   "scripts/run-course-library-migration-dry-run.ps1",
 ), "utf8");
+const localWrapper = readFileSync(resolve(
+  process.cwd(),
+  "scripts/run-course-library-local-postgres.ps1",
+), "utf8");
+const localBaseFixture = readFileSync(resolve(
+  process.cwd(),
+  "supabase/tests/fixtures/course_library_local_base.sql",
+), "utf8");
+const localRlsContract = readFileSync(resolve(
+  process.cwd(),
+  "supabase/tests/course_library_local_rls_contract.sql",
+), "utf8");
 
 function stripSqlCommentsAndQuotedContent(sql: string): string {
   return sql
@@ -167,5 +179,38 @@ describe("electronic library migration dry-run contract", () => {
       expect(block).not.toContain(":'protected_course_id'");
       expect(block).not.toContain(":'staging_guard_token'");
     }
+  });
+
+  it("keeps the reproducible local harness isolated on D: and loopback", () => {
+    expect(localWrapper).toContain("GetPathRoot($fullPath) -ne 'D:\\'");
+    expect(localWrapper).toContain("[Net.IPAddress]::Loopback");
+    expect(localWrapper).toContain("-h 127.0.0.1 -p $Port");
+    expect(localWrapper).toContain("PostgreSQL\\) 17\\.");
+    expect(localWrapper).toContain("$ServerStarted = $false");
+    expect(localWrapper).toContain("} finally {");
+    expect(localWrapper).toContain("'pg_ctl stop'");
+    expect(localWrapper).toContain("--no-psqlrc");
+    expect(localWrapper).toContain("--no-password");
+    expect(localWrapper).not.toContain("SINTAGMA_STAGING_DATABASE_URL");
+    expect(localWrapper).not.toContain("atxwvjxbqjgkbjlhsdch");
+    expect(localWrapper).not.toMatch(/postgres(?:ql)?:\/\//i);
+  });
+
+  it("runs the catalog rollback before disposable migration and RLS checks", () => {
+    const baseIndex = localWrapper.indexOf("'base fixture'");
+    const dryRunIndex = localWrapper.indexOf("'migration catalog dry-run'");
+    const migrationIndex = localWrapper.indexOf("'apply migration to disposable database'");
+    const rlsIndex = localWrapper.indexOf("'local RLS contract'");
+
+    expect(baseIndex).toBeGreaterThan(-1);
+    expect(dryRunIndex).toBeGreaterThan(baseIndex);
+    expect(migrationIndex).toBeGreaterThan(dryRunIndex);
+    expect(rlsIndex).toBeGreaterThan(migrationIndex);
+    expect(localBaseFixture).toContain("local-isolated-course-library");
+    expect(localBaseFixture).toContain("'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'");
+    expect(localRlsContract).toContain(
+      "PASS - local PostgreSQL parser, catalog and RLS contract verified",
+    );
+    expect(localRlsContract.match(/ROLLBACK;/g)?.length).toBeGreaterThanOrEqual(4);
   });
 });

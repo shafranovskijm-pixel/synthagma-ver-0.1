@@ -67,6 +67,12 @@
 - подключение менеджера в карточку курса организации;
 - подключение библиотеки в `CourseLearning` и боковое меню слушателя;
 - локальный mock-harness `/dev/course-library-harness`;
+- воспроизводимый D:-only PostgreSQL 17 harness
+  `scripts/run-course-library-local-postgres.ps1` с отдельными фикстурами
+  `supabase/tests/fixtures/course_library_local_base.sql` и
+  `supabase/tests/course_library_local_rls_contract.sql`; он создаёт новый
+  одноразовый кластер только на `127.0.0.1`, сохраняет хеши и PASS-маркеры и
+  после подтверждённого запуска останавливает сервер в `finally`;
 - генератор кандидатного манифеста: `scripts/build-csz-course-library-candidate.mjs`;
 - транзакционный dry-run миграции для отдельного staging-клона: `supabase/tests/course_library_migration_dry_run.sql`;
 - fail-closed PowerShell-запуск dry-run: `scripts/run-course-library-migration-dry-run.ps1`;
@@ -103,7 +109,7 @@ Zero-I/O проверка не может подтвердить существ�
 
 | Проверка | Статус | Честное ограничение |
 |---|---|---|
-| Локальный PostgreSQL dry-run миграции и RLS | PASS на PostgreSQL 17.11 (`127.0.0.1:55439`): SQL разобран реальным parser, проверены catalog-объекты и RLS-сценарии для зачисленного слушателя, незачисленного пользователя того же tenant, пользователя другого tenant и разрешённого сотрудника; транзакции откатились | Это изолированный vanilla PostgreSQL со стендовыми ролями/функциями, а не Supabase staging. Артефакты: `D:\CodexTmp\course-library-pg-proof-20260903`; JWT Supabase, Storage API и signed URL не проверены |
+| Локальный PostgreSQL dry-run миграции и RLS | PASS на PostgreSQL 17.11 (`127.0.0.1:55439`) воспроизводимым runner: dry-run миграции завершился обязательным `ROLLBACK`, затем миграция была применена только к одноразовой локальной БД и проверены catalog-объекты и четыре RLS-сценария; `result.json` содержит оба PASS-маркера и SHA-256 входных SQL | Это изолированный vanilla PostgreSQL со стендовыми ролями/функциями, а не Supabase staging. Последнее доказательство: `D:\CodexTmp\course-library-local-acceptance\20260903-073924-d4deba54`; listener после прогона остановлен; JWT Supabase, PostgREST, Storage API и signed URL не проверены |
 | Целевые автоматические тесты | Повторный прогон манифеста и zero-I/O importer: 2 файла, 18/18, exit 0; более широкий библиотечный/API/RLS/importer прогон: 9 файлов, 87/87, exit 0; предыдущий объединённый прогон по библиотеке, курсам, XML и документам ГОРЭЛТЕХ: 30 файлов, 280/280 | Это unit/component/API/security-contract тесты, не DB-backed E2E; в старых hook-тестах остаются известные React `act` и неполные Supabase mock warnings |
 | Полный Vitest-прогон | 212 файлов и 1 608 тестов прошли; 4 теста в одном файле упали | Все 4 падения находятся в неизменённом относительно `origin/main` `groupJournalsListSafety.test.tsx`: test harness вызывает `useSearchParams` без Router. Это не считается полным зелёным прогоном и требует отдельного исправления в основной ветке |
 | TypeScript | `tsc --noEmit`, exit 0 | Типы не заменяют runtime-проверку ролей и Storage |
@@ -150,7 +156,7 @@ HTTP 200 не означает правовое разрешение на коп
 8. Не доказано отсутствие регрессии существующих `library_documents`, `course_documents` и потребителей `library-files` после ужесточения доступа.
 9. Подготовлен только zero-I/O import plan; транзакционного DB-executor намеренно нет до утверждения манифеста и staging-проверок.
 
-В текущем checkout нет отдельного staging Supabase: `.env`, `supabase/config.toml` и Lovable указывают на единственный remote ref. Для локальной проверки найден переносимый PostgreSQL 17.11 и выполнен изолированный прогон на `127.0.0.1:55439`; сервер после проверки остановлен, а доказательства сохранены в `D:\CodexTmp\course-library-pg-proof-20260903`. URL/учётные данные отдельного Supabase staging и тестовые JWT отсутствуют, поэтому Supabase DB/RLS/Storage E2E намеренно не запускался против текущего `.env` и production не затрагивался.
+В текущем checkout нет отдельного staging Supabase: `.env`, `supabase/config.toml` и Lovable указывают на единственный remote ref. Для локальной проверки найден переносимый PostgreSQL 17.11 и выполнен воспроизводимый изолированный прогон на `127.0.0.1:55439`; сервер после проверки остановлен, а машинное доказательство сохранено в `D:\CodexTmp\course-library-local-acceptance\20260903-073924-d4deba54\result.json`. URL/учётные данные отдельного Supabase staging и тестовые JWT отсутствуют, поэтому Supabase DB/RLS/Storage E2E намеренно не запускался против текущего `.env` и production не затрагивался.
 
 ## Безопасный порядок staging
 
