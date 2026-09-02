@@ -180,7 +180,7 @@ export function CourseLibraryResourceDialog({
             {sourceKind === "external" ? (
               <>
                 <Label htmlFor="library-url">HTTPS-ссылка *</Label>
-                <Input id="library-url" type="url" value={externalUrl} onChange={(event) => setExternalUrl(event.target.value)} placeholder="https://..." />
+                <Input key="external-url" id="library-url" type="url" value={externalUrl} onChange={(event) => setExternalUrl(event.target.value)} placeholder="https://..." />
                 {externalUrl && !isValidHttpsUrl(externalUrl.trim()) && <p className="text-xs text-destructive">Разрешены только корректные HTTPS-ссылки.</p>}
               </>
             ) : (
@@ -189,7 +189,7 @@ export function CourseLibraryResourceDialog({
                 {fileAlreadyStored ? (
                   <p className="rounded-lg border bg-muted/40 px-3 py-2 text-sm">{resource?.originalFilename || "Файл уже загружен"}</p>
                 ) : (
-                  <Input id="library-file" type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+                  <Input key="internal-file" id="library-file" type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
                 )}
               </>
             )}

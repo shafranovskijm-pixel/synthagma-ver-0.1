@@ -196,7 +196,18 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT auth.uid() = 'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid
+  SELECT
+    organization_id = '11111111-1111-1111-1111-111111111111'::uuid
+    AND (
+      (
+        auth.uid() = 'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid
+        AND permission_name IN ('library.read', 'library.write')
+      )
+      OR (
+        auth.uid() = '77777777-7777-7777-7777-777777777777'::uuid
+        AND permission_name = 'library.read'
+      )
+    )
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_access_course(
@@ -209,7 +220,23 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT auth.uid() = 'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.courses fixture_course
+    WHERE fixture_course.id = course_id
+      AND fixture_course.organization_id =
+        '11111111-1111-1111-1111-111111111111'::uuid
+      AND (
+        (
+          auth.uid() = 'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid
+          AND permission_name IN ('courses.read', 'courses.write')
+        )
+        OR (
+          auth.uid() = '77777777-7777-7777-7777-777777777777'::uuid
+          AND permission_name = 'courses.read'
+        )
+      )
+  )
 $$;
 
 CREATE OR REPLACE FUNCTION public.has_role(
@@ -371,6 +398,12 @@ INSERT INTO public.profiles (id, user_id, organization_id, full_name) VALUES
   'ffffffff-ffff-ffff-ffff-ffffffffffff',
   '11111111-1111-1111-1111-111111111111',
   'Authorized staff'
+),
+(
+  '29292929-2929-2929-2929-292929292929',
+  '77777777-7777-7777-7777-777777777777',
+  '11111111-1111-1111-1111-111111111111',
+  'Read-only teacher'
 );
 
 INSERT INTO public.enrollments (
