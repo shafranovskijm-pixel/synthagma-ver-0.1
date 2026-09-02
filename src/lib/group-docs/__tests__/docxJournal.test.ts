@@ -4,12 +4,30 @@ import { generateClassJournalDocx } from "../docxJournal";
 import { generatePackage } from "../generate";
 import { SAMPLE_CONTEXT } from "../sampleContext";
 
+const supabaseInvokeMock = vi.hoisted(() => vi.fn());
+
 vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { functions: { invoke: supabaseInvokeMock } },
+}));
 
 const invokeMock = vi.mocked(safeInvoke);
 
 describe("generateClassJournalDocx", () => {
-  beforeEach(() => invokeMock.mockReset());
+  beforeEach(() => {
+    invokeMock.mockReset();
+    supabaseInvokeMock.mockReset();
+    supabaseInvokeMock.mockResolvedValue({
+      data: null,
+      error: {
+        context: {
+          headers: new Headers({
+            "X-Sintagma-Compiler-Revision": "goreltech-group-package-dry-run-v14",
+          }),
+        },
+      },
+    });
+  });
 
   it("возвращает данные атомарной партии", async () => {
     invokeMock.mockResolvedValue({
@@ -28,12 +46,124 @@ describe("generateClassJournalDocx", () => {
       fillMode: "data",
       otherDocuments: [],
     })).resolves.toEqual({
+      dryRun: false,
+      writesPerformed: true,
       batchId: "batch-1",
       version: 3,
       insertedCount: 9,
       filePath: "journals/group-1.docx",
       warnings: [],
+      documents: [],
     });
+  });
+
+  it("проверяет полный пакет на сервере без Storage/DB-записи", async () => {
+    const hash = "A".repeat(64);
+    invokeMock.mockResolvedValue({
+      data: {
+        dryRun: true,
+        writesPerformed: false,
+        documentCount: 2,
+        documents: [
+          { doc_type: "enrollment_order", name: "Приказ", docx_sha256: hash },
+          { doc_type: "class_journal", name: "Журнал", docx_sha256: hash },
+        ],
+        warnings: ["Черновик"],
+      },
+      error: null,
+    });
+
+    const result = await generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [{
+        id: "doc-1",
+        status: "draft",
+        created_at: "2026-08-15T00:00:00.000Z",
+        layout_format: "legacy_html",
+        doc_type: "enrollment_order",
+        name: "Приказ",
+        document_number: null,
+        document_date: "2026-08-15",
+        variables: {},
+        html: "<html></html>",
+        doc_status: "draft",
+        fill_mode: "blank",
+        source_note: "",
+      }],
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      body: expect.objectContaining({ dryRun: true }),
+      headers: {
+        "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-dry-run-v14",
+      },
+    });
+    expect(supabaseInvokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      body: { capabilityProbe: true },
+    });
+    expect(result).toEqual(expect.objectContaining({
+      dryRun: true,
+      writesPerformed: false,
+      insertedCount: 2,
+      filePath: "",
+      documents: [
+        { docType: "enrollment_order", name: "Приказ", docxSha256: hash },
+        { docType: "class_journal", name: "Журнал", docxSha256: hash },
+      ],
+    }));
+  });
+
+  it("не отправляет данные группы в старый Edge до подтверждения v14", async () => {
+    supabaseInvokeMock.mockResolvedValue({
+      data: null,
+      error: {
+        context: {
+          headers: new Headers({
+            "X-Sintagma-Compiler-Revision": "goreltech-group-package-fail-closed-v13",
+          }),
+        },
+      },
+    });
+
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [],
+    })).rejects.toThrow("Безопасная серверная проверка ещё не развёрнута");
+
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it("отклоняет dry-run, если сервер не доказал отсутствие записи", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        dryRun: true,
+        writesPerformed: true,
+        documentCount: 1,
+        documents: [{
+          doc_type: "class_journal",
+          name: "Журнал",
+          docx_sha256: "A".repeat(64),
+        }],
+      },
+      error: null,
+    });
+
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [],
+    })).rejects.toThrow("Сервер не подтвердил безопасную проверку Word-пакета без сохранения");
   });
 
   it("передаёт выбранного подписанта журнала без подмены должности", async () => {
