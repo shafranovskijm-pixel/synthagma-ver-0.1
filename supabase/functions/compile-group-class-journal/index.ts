@@ -37,7 +37,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-fail-closed-v13";
+export const COMPILER_REVISION = "goreltech-group-package-dry-run-v14";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -80,6 +80,12 @@ const BodySchema = z.object({
   documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   journalDocumentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   fillMode: z.enum(["blank", "data"]).default("blank"),
+  /**
+   * Полная серверная проверка и сборка девяти DOCX в памяти без загрузки в
+   * Storage и без вызова RPC сохранения. Требует той же авторизации и тех же
+   * tenant/roster-проверок, что и обычная пересборка.
+   */
+  dryRun: z.boolean().default(false),
   includeJournal: z.boolean().default(true),
   journalSignatory: SignatorySchema.optional(),
   otherDocuments: z.array(LegacyDocumentSchema).max(20).default([]),
@@ -149,6 +155,8 @@ Deno.serve(async (req) => {
   const requestId = crypto.randomUUID();
   const responseHeaders = {
     ...corsHeaders,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-sintagma-required-compiler-revision",
     "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
     "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
     "X-Sintagma-Request-Id": requestId,
@@ -192,6 +200,15 @@ Deno.serve(async (req) => {
         }),
       })),
     };
+    if (
+      body.dryRun
+      && req.headers.get("X-Sintagma-Required-Compiler-Revision") !== COMPILER_REVISION
+    ) {
+      return json({
+        error: "Клиент не подтвердил точную ревизию безопасной серверной проверки",
+        writesPerformed: false,
+      }, 409);
+    }
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -449,15 +466,18 @@ Deno.serve(async (req) => {
     zip.file("word/document.xml", compiledXml);
     const outputBytes: Uint8Array = await zip.generateAsync({ type: "uint8array" });
     const outputHash = await sha256Hex(outputBytes);
-    const documentId = crypto.randomUUID();
-    const journalPath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${documentId}.docx`;
-    stage = "docx-upload";
-    const uploadResult = await admin.storage.from(BUCKET).upload(journalPath, outputBytes, {
-      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      upsert: false,
-    });
-    if (uploadResult.error) throw uploadResult.error;
-    uploadedPaths.push(journalPath);
+    let journalPath: string | null = null;
+    if (!body.dryRun) {
+      const documentId = crypto.randomUUID();
+      journalPath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${documentId}.docx`;
+      stage = "docx-upload";
+      const uploadResult = await admin.storage.from(BUCKET).upload(journalPath, outputBytes, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: false,
+      });
+      if (uploadResult.error) throw uploadResult.error;
+      uploadedPaths.push(journalPath);
+    }
 
     const journalDocumentDate = resolveLegacyDocumentDate({
       documentDate: body.journalDocumentDate,
@@ -569,14 +589,17 @@ Deno.serve(async (req) => {
       packageZip.file("word/document.xml", packageXml);
       const packageBytes: Uint8Array = await packageZip.generateAsync({ type: "uint8array" });
       const packageHash = await sha256Hex(packageBytes);
-      const packagePath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${crypto.randomUUID()}.docx`;
-      stage = `package-upload-${document.doc_type}`;
-      const packageUpload = await admin.storage.from(BUCKET).upload(packagePath, packageBytes, {
-        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        upsert: false,
-      });
-      if (packageUpload.error) throw packageUpload.error;
-      uploadedPaths.push(packagePath);
+      let packagePath: string | null = null;
+      if (!body.dryRun) {
+        packagePath = `organizations/${body.organizationId}/group-documents/${body.groupId}/${crypto.randomUUID()}.docx`;
+        stage = `package-upload-${document.doc_type}`;
+        const packageUpload = await admin.storage.from(BUCKET).upload(packagePath, packageBytes, {
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          upsert: false,
+        });
+        if (packageUpload.error) throw packageUpload.error;
+        uploadedPaths.push(packagePath);
+      }
 
       compiledPackageDocuments.push({
         ...document,
@@ -601,6 +624,32 @@ Deno.serve(async (req) => {
         generation_status: "generated",
       });
     }
+
+    if (body.dryRun) {
+      stage = "dry-run-complete";
+      const validatedDocuments = [
+        ...compiledPackageDocuments,
+        ...(journalDocument ? [journalDocument] : []),
+      ].map((document) => ({
+        doc_type: document.doc_type,
+        name: document.name,
+        doc_status: document.doc_status,
+        document_number: document.document_number,
+        document_date: document.document_date,
+        template_registry_key: document.template_registry_key,
+        template_version_label: document.template_version_label,
+        template_sha256: document.template_sha256,
+        docx_sha256: document.docx_sha256,
+      }));
+      return json({
+        dryRun: true,
+        writesPerformed: false,
+        documentCount: validatedDocuments.length,
+        documents: validatedDocuments,
+        warnings: statusWarnings,
+      });
+    }
+
     stage = "batch-persistence";
     const persistedDocuments = [
       ...compiledPackageDocuments,
