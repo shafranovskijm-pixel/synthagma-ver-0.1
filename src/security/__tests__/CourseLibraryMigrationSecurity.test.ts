@@ -41,7 +41,17 @@ describe("electronic library migration security contract", () => {
     expect(body).toContain("can_access_organization(ld.organization_id, 'library.write')");
     expect(body).toContain("ld.library_status = 'active'");
     expect(body).toContain("cd.visible_to_students");
+    expect(body).toContain("JOIN public.courses c ON c.id = cd.course_id");
+    expect(body).toContain("c.landing_content @> '{\"electronic_library\":{\"enabled\":true}}'::jsonb");
     expect(body).toContain("can_access_course(cd.course_id, 'courses.read')");
+  });
+
+  it("rejects library assignments unless the target course explicitly enables the feature", () => {
+    const body = sqlFunctionBody("validate_course_library_assignment_scope");
+
+    expect(body).toContain("v_course_electronic_library_enabled");
+    expect(body).toContain("c.landing_content @> '{\"electronic_library\":{\"enabled\":true}}'::jsonb");
+    expect(body).toContain("electronic library is not explicitly enabled for course %");
   });
 
   it("authorizes files by exact canonical path and never overwrites referenced evidence", () => {

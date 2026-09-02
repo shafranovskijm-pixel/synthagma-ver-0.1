@@ -415,6 +415,7 @@ SET search_path = public
 AS $function$
 DECLARE
   v_course_organization_id uuid;
+  v_course_electronic_library_enabled boolean;
   v_document_organization_id uuid;
   v_module_course_id uuid;
 BEGIN
@@ -429,8 +430,13 @@ BEGIN
       'linked library_document_id and course_id are immutable; hide the assignment instead';
   END IF;
 
-  SELECT c.organization_id
-  INTO v_course_organization_id
+  SELECT
+    c.organization_id,
+    COALESCE(
+      c.landing_content @> '{"electronic_library":{"enabled":true}}'::jsonb,
+      false
+    )
+  INTO v_course_organization_id, v_course_electronic_library_enabled
   FROM public.courses c
   WHERE c.id = NEW.course_id;
 
@@ -439,6 +445,10 @@ BEGIN
   END IF;
 
   IF NEW.library_document_id IS NOT NULL THEN
+    IF NOT v_course_electronic_library_enabled THEN
+      RAISE EXCEPTION 'electronic library is not explicitly enabled for course %', NEW.course_id;
+    END IF;
+
     SELECT ld.organization_id
     INTO v_document_organization_id
     FROM public.library_documents ld
@@ -532,8 +542,13 @@ AS $function$
           AND EXISTS (
             SELECT 1
             FROM public.course_documents cd
+            JOIN public.courses c ON c.id = cd.course_id
             WHERE cd.library_document_id = ld.id
               AND cd.visible_to_students
+              AND COALESCE(
+                c.landing_content @> '{"electronic_library":{"enabled":true}}'::jsonb,
+                false
+              )
               AND (
                 public.can_access_course(cd.course_id, 'courses.read')
                 OR public.can_access_course_as_learner(cd.course_id)

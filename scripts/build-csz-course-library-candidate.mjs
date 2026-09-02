@@ -54,12 +54,15 @@ const resources = sources.map((resource) => {
     source_name: resource.source_name,
     original_url: resource.url,
     proposed_url: check.recommended_url ?? resource.url,
+    recommended_source_page: check.recommended_source_page ?? null,
     module_no: resource.module_no ?? null,
     edition_label: resource.checked_on ? `проверка источника ${resource.checked_on}` : null,
     last_checked_at: verification.checked_at,
     usage_basis: resource.set === "official" ? "official_open_source" : null,
     library_status: "needs_review",
-    availability: check.http,
+    original_availability: check.http,
+    proposed_availability: check.recommended_http ?? check.http,
+    availability: check.recommended_http ?? check.http,
     source_class: check.source_class,
     reuse_signal: check.reuse_signal,
     verification_decision: check.decision,
@@ -81,10 +84,16 @@ const candidate = {
     hours: source.hours?.total ?? 178,
     is_published: null,
     required_state: "unpublished",
+    landing_content: {
+      electronic_library: {
+        enabled: true,
+      },
+    },
   },
   do_not_modify_course_ids: ["e3737d51-c092-4564-b2a6-4c9b86245ff4"],
   source_manifest: resolve(sourcePath),
   verification_register: verificationPath,
+  verification_summary: verification.summary,
   resources,
   known_internal_candidates: [
     {
@@ -113,7 +122,8 @@ const candidate = {
   blockers: [
     "The new 178-hour course does not exist yet, so target_course.id and module ids are absent",
     "The source manifest and internal files are not approved",
-    "Two source URLs return 404, one has a TLS certificate mismatch, and six official URLs were unreachable from the checking network",
+    "Eight candidates remain HOLD: four unavailable official records, two unconfirmed videos, one TLS-unsafe manufacturer file and one retailer-hosted manual",
+    "Four working official replacement URLs are confirmed but still require manifest approval before import",
     "Manufacturer and video rights require link-only decisions or separate confirmation",
     "Own educational materials are not yet mapped to target course module ids"
   ]

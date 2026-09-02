@@ -12,6 +12,11 @@ const readyManifest: CourseLibraryImportManifest = {
     id: "new-course-178",
     organization_id: "csz-organization",
     is_published: false,
+    landing_content: {
+      electronic_library: {
+        enabled: true,
+      },
+    },
   },
   do_not_modify_course_ids: ["old-course-36"],
   resources: [{
@@ -90,5 +95,17 @@ describe("course library import gate", () => {
     expect(blockers).toContain("target_course_is_protected_old_course");
     expect(blockers).toContain("target_course_must_be_confirmed_unpublished");
     expect(blockers).toContain("resource_1:target_module_id_missing");
+  });
+
+  it("fails closed when the target course does not explicitly enable the library", () => {
+    const blockers = validateCourseLibraryImportManifest({
+      ...readyManifest,
+      target_course: {
+        ...readyManifest.target_course,
+        landing_content: {},
+      },
+    });
+
+    expect(blockers).toContain("target_course_electronic_library_not_enabled");
   });
 });

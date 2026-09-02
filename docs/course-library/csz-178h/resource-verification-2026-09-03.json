@@ -1,21 +1,23 @@
 {
   "checked_at": "2026-09-03",
-  "method": "HTTP headers and brief HTML metadata inspection; no PDFs downloaded or stored",
+  "method": "HTTP HEAD with GET fallback, official API/oEmbed and official-site indexing; no PDFs downloaded or stored",
   "overall_decision": "NO_GO",
   "summary": {
     "http_200": 19,
     "http_404": 2,
     "network_timeout": 6,
-    "tls_failure": 1
+    "tls_failure": 1,
+    "confirmed_replacements_http_200": 4,
+    "remaining_holds": 8
   },
   "resources": [
-    { "id": 1, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "pravo.gov.ru was unavailable from the checking network; MChS mirror exists at https://mchs.gov.ru/dokumenty/7404" },
+    { "id": 1, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "REPLACE", "recommended_url": "https://mchs.gov.ru/dokumenty/7404", "recommended_http": "200_HTML", "note": "The official MChS page has the exact Order No. 1156 title and downloadable DOCX/PDF files" },
     { "id": 2, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "pravo.gov.ru was unavailable from the checking network" },
     { "id": 3, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "exact record appears in the official portal search index, but the page did not open" },
     { "id": 4, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "pravo.gov.ru was unavailable from the checking network" },
     { "id": 5, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "pravo.gov.ru was unavailable from the checking network" },
-    { "id": 6, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "exact record appears in the official portal index, but the page did not open" },
-    { "id": 7, "http": "404_HTML", "source_class": "GOV_OFFICIAL", "reuse_signal": "MCHS_CC_BY_4_0", "decision": "REPLACE", "recommended_url": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/svody-pravil", "note": "original MChS path is broken" },
+    { "id": 6, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "REPLACE", "recommended_url": "https://mchs.gov.ru/dokumenty/602", "recommended_http": "200_HTML", "note": "The official MChS page identifies Government Resolution No. 1479; the edition must still be checked separately" },
+    { "id": 7, "http": "404_HTML", "source_class": "GOV_OFFICIAL", "reuse_signal": "MCHS_CC_BY_4_0", "decision": "REPLACE", "recommended_url": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/svody-pravil", "recommended_http": "200_HTML", "note": "original MChS path is broken" },
     { "id": 8, "http": "200_HTML", "source_class": "GOV_OFFICIAL", "reuse_signal": "MCHS_CC_BY_4_0", "decision": "GO_LINK_ONLY" },
     { "id": 9, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
     { "id": 10, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
@@ -32,7 +34,7 @@
     { "id": 21, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED; NO_GENERAL_REUSE_LICENSE", "decision": "LINK_REFERENCE_ONLY" },
     { "id": 22, "http": "200_HTML", "source_class": "THIRD_PARTY_VIDEO", "reuse_signal": "NO_CLEAR_REUSE_BASIS", "decision": "HOLD", "note": "RUTUBE metadata does not confirm official or licensed status" },
     { "id": 23, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED; NO_GENERAL_REUSE_LICENSE", "decision": "LINK_REFERENCE_ONLY" },
-    { "id": 24, "http": "404_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED", "decision": "REPLACE_LINK_ONLY", "recommended_url": "https://doorhan.ru/upload/iblock/4d1/q0h5k5q9qurhknw4y95uuidkymckqlbm/%D0%9F%D1%80%D0%BE%D1%82%D0%B8%D0%B2%D0%BE%D0%BF%D0%BE%D0%B6%D0%B0%D1%80%D0%BD%D1%8B%D0%B5%20%D1%81%D0%B4%D0%B2%D0%B8%D0%B6%D0%BD%D1%8B%D0%B5%20%D0%B2%D0%BE%D1%80%D0%BE%D1%82%D0%B0_11_2024_web.pdf" },
+    { "id": 24, "http": "404_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED", "decision": "REPLACE_LINK_ONLY", "recommended_url": "https://doorhan.ru/upload/iblock/4d1/q0h5k5q9qurhknw4y95uuidkymckqlbm/%D0%9F%D1%80%D0%BE%D1%82%D0%B8%D0%B2%D0%BE%D0%BF%D0%BE%D0%B6%D0%B0%D1%80%D0%BD%D1%8B%D0%B5%20%D1%81%D0%B4%D0%B2%D0%B8%D0%B6%D0%BD%D1%8B%D0%B5%20%D0%B2%D0%BE%D1%80%D0%BE%D1%82%D0%B0_11_2024_web.pdf", "recommended_http": "200_PDF", "recommended_source_page": "https://doorhan.ru/service/new_sert/protivopozharnye-vorota-shtory-i-dveri/otkatnye-protivopozharnye-vorota-s-predelom-ognestoykosti-ei60-ei90/" },
     { "id": 25, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "COPY_OR_USE_PROHIBITED_WITHOUT_PRIOR_CONSENT", "decision": "LINK_REFERENCE_ONLY" },
     { "id": 26, "http": "TLS_FAIL", "source_class": "MFR_NAMED_DOMAIN_UNSAFE", "reuse_signal": "UNKNOWN", "decision": "REMOVE_OR_REPLACE", "note": "certificate is issued for *.jino.ru, not yarpojinvest.ru" },
     { "id": 27, "http": "200_PDF", "source_class": "THIRD_PARTY_RETAILER_CDN", "reuse_signal": "NO_CLEAR_REUSE_BASIS", "decision": "REPLACE_WITH_MFR_SOURCE" },
