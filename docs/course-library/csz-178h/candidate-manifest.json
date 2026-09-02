@@ -27,8 +27,8 @@
     "http_404": 2,
     "network_timeout": 6,
     "tls_failure": 1,
-    "confirmed_replacements_http_200": 4,
-    "remaining_holds": 8
+    "confirmed_replacements_http_200": 3,
+    "remaining_holds": 9
   },
   "resources": [
     {
@@ -49,9 +49,9 @@
       "proposed_availability": "200_HTML",
       "availability": "200_HTML",
       "source_class": "GOV_OFFICIAL",
-      "reuse_signal": "UNASSESSED",
+      "reuse_signal": "MCHS_CC_BY_4_0",
       "verification_decision": "REPLACE",
-      "verification_note": "The official MChS page has the exact Order No. 1156 title and downloadable DOCX/PDF files",
+      "verification_note": "The official MChS page has the exact Order No. 1156 title and downloadable DOCX/PDF files; its footer states CC BY 4.0 for site materials.",
       "import_action": "HOLD"
     },
     {
@@ -153,20 +153,20 @@
       "description": "Правила противопожарного режима",
       "source_name": "Официальный государственный источник",
       "original_url": "https://publication.pravo.gov.ru/Document/View/0001202009250010",
-      "proposed_url": "https://mchs.gov.ru/dokumenty/602",
-      "recommended_source_page": null,
+      "proposed_url": "https://publication.pravo.gov.ru/Document/View/0001202009250010",
+      "recommended_source_page": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/perechen-obyazatelnyh-trebovaniy/federalnyy-gosudarstvennyy-pozharnyy-nadzor",
       "module_no": null,
       "edition_label": null,
       "last_checked_at": "2026-09-03",
       "usage_basis": "official_open_source",
       "library_status": "needs_review",
       "original_availability": "000_TIMEOUT",
-      "proposed_availability": "200_HTML",
-      "availability": "200_HTML",
+      "proposed_availability": "000_TIMEOUT",
+      "availability": "000_TIMEOUT",
       "source_class": "GOV_OFFICIAL",
       "reuse_signal": "UNASSESSED",
-      "verification_decision": "REPLACE",
-      "verification_note": "The official MChS page identifies Government Resolution No. 1479; the edition must still be checked separately",
+      "verification_decision": "HOLD",
+      "verification_note": "Rejected false replacement: https://mchs.gov.ru/dokumenty/602 is Government Resolution No. 390 dated 25.04.2012, not No. 1479 dated 16.09.2020. The MChS mandatory-requirements page confirms No. 1479 and links to official publication 0001202009250010, but the exact record still needs a direct availability check.",
       "import_action": "HOLD"
     },
     {
@@ -680,6 +680,9 @@
     {
       "title": "Методические материалы к практическим работам",
       "path": "D:/Codex/ЗАДАЧИ/outputs/csz_refiling_20260902/01_на_подпись/05_Методические_материалы_к_практическим_работам_ДЛЯ_УТВЕРЖДЕНИЯ.pdf",
+      "file_size": 292227,
+      "sha256": "BA29EDC9BE16A22A2163DBFBF6F0E77CE002BB39E3F99551279FBD1CF8772546",
+      "local_file_verified_at": "2026-09-03",
       "category": "educational_materials",
       "usage_basis": "own_material",
       "library_status": "needs_review",
@@ -688,6 +691,9 @@
     {
       "title": "Фонд оценочных средств",
       "path": "D:/Codex/ЗАДАЧИ/outputs/csz_refiling_20260902/01_на_подпись/04_Фонд_оценочных_средств_ДЛЯ_УТВЕРЖДЕНИЯ.pdf",
+      "file_size": 392265,
+      "sha256": "ACDCD9613E8DF83A577284D796552D539D8D16CFB3CF93E68027786AF0AB10F6",
+      "local_file_verified_at": "2026-09-03",
       "category": "educational_materials",
       "usage_basis": "own_material",
       "library_status": "needs_review",
@@ -765,8 +771,8 @@
   "blockers": [
     "The new 178-hour course does not exist yet, so target_course.id and module ids are absent",
     "The source manifest and internal files are not approved",
-    "Eight candidates remain HOLD: four unavailable official records, two unconfirmed videos, one TLS-unsafe manufacturer file and one retailer-hosted manual",
-    "Four working official replacement URLs are confirmed but still require manifest approval before import",
+    "Nine candidates remain HOLD: five unresolved official records, two unconfirmed videos, one TLS-unsafe manufacturer file and one retailer-hosted manual",
+    "Three working replacement URLs are confirmed but still require manifest approval before import",
     "Manufacturer and video rights require link-only decisions or separate confirmation",
     "Own educational materials are not yet mapped to target course module ids"
   ]

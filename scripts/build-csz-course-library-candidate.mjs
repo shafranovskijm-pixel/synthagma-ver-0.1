@@ -99,6 +99,9 @@ const candidate = {
     {
       title: "Методические материалы к практическим работам",
       path: "D:/Codex/ЗАДАЧИ/outputs/csz_refiling_20260902/01_на_подпись/05_Методические_материалы_к_практическим_работам_ДЛЯ_УТВЕРЖДЕНИЯ.pdf",
+      file_size: 292227,
+      sha256: "BA29EDC9BE16A22A2163DBFBF6F0E77CE002BB39E3F99551279FBD1CF8772546",
+      local_file_verified_at: "2026-09-03",
       category: "educational_materials",
       usage_basis: "own_material",
       library_status: "needs_review",
@@ -107,6 +110,9 @@ const candidate = {
     {
       title: "Фонд оценочных средств",
       path: "D:/Codex/ЗАДАЧИ/outputs/csz_refiling_20260902/01_на_подпись/04_Фонд_оценочных_средств_ДЛЯ_УТВЕРЖДЕНИЯ.pdf",
+      file_size: 392265,
+      sha256: "ACDCD9613E8DF83A577284D796552D539D8D16CFB3CF93E68027786AF0AB10F6",
+      local_file_verified_at: "2026-09-03",
       category: "educational_materials",
       usage_basis: "own_material",
       library_status: "needs_review",
@@ -122,8 +128,8 @@ const candidate = {
   blockers: [
     "The new 178-hour course does not exist yet, so target_course.id and module ids are absent",
     "The source manifest and internal files are not approved",
-    "Eight candidates remain HOLD: four unavailable official records, two unconfirmed videos, one TLS-unsafe manufacturer file and one retailer-hosted manual",
-    "Four working official replacement URLs are confirmed but still require manifest approval before import",
+    "Nine candidates remain HOLD: five unresolved official records, two unconfirmed videos, one TLS-unsafe manufacturer file and one retailer-hosted manual",
+    "Three working replacement URLs are confirmed but still require manifest approval before import",
     "Manufacturer and video rights require link-only decisions or separate confirmation",
     "Own educational materials are not yet mapped to target course module ids"
   ]
