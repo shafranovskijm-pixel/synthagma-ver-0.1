@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-fail-closed-v13");
+    expect(source).toContain("goreltech-group-package-dry-run-v14");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -79,6 +79,34 @@ describe("compile-group-class-journal deployment contract", () => {
     const statusCanonicalization = source.indexOf("serverVerifiedCriticalRequisites: false");
     expect(tenantSourceRead).toBeGreaterThan(-1);
     expect(statusCanonicalization).toBeGreaterThan(tenantSourceRead);
+  });
+
+  it("supports an authenticated no-write validation path before Storage and RPC persistence", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+
+    expect(source).toContain('dryRun: z.boolean().default(false)');
+    expect(source).toContain("X-Sintagma-Required-Compiler-Revision");
+    expect(source).toContain('req.headers.get("X-Sintagma-Required-Compiler-Revision") !== COMPILER_REVISION');
+    expect(source.match(/if \(!body\.dryRun\)/g)).toHaveLength(2);
+    expect(source).toContain('stage = "dry-run-complete"');
+    expect(source).toContain("writesPerformed: false");
+    expect(source).toContain("documentCount: validatedDocuments.length");
+
+    const authGate = source.indexOf('stage = "authentication"');
+    const revisionGate = source.indexOf('req.headers.get("X-Sintagma-Required-Compiler-Revision")');
+    const tenantGate = source.indexOf("const isExactGoreltechOrganization");
+    const dryRunExit = source.indexOf('stage = "dry-run-complete"');
+    const persistence = source.indexOf('stage = "batch-persistence"');
+    expect(authGate).toBeGreaterThan(-1);
+    expect(revisionGate).toBeGreaterThan(-1);
+    expect(authGate).toBeGreaterThan(revisionGate);
+    expect(tenantGate).toBeGreaterThan(authGate);
+    expect(dryRunExit).toBeGreaterThan(tenantGate);
+    expect(persistence).toBeGreaterThan(dryRunExit);
+
+    const dryRunBlock = source.slice(dryRunExit, persistence);
+    expect(dryRunBlock).not.toContain(".storage.");
+    expect(dryRunBlock).not.toContain(".rpc(");
   });
 
   it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {

@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Eye, Download, Trash2, FileType2, User, ChevronDown, AlertTriangle, RotateCcw, UserCheck } from "lucide-react";
+import { FileText, Eye, Download, Trash2, FileType2, User, ChevronDown, AlertTriangle, RotateCcw, ShieldCheck, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -116,7 +116,7 @@ export function GroupDocumentsFolder({
   const [signatoriesOpen, setSignatoriesOpen] = useState(false);
   const [blankSignatoriesConfirmed, setBlankSignatoriesConfirmed] = useState(false);
   const [pendingPackageScenario, setPendingPackageScenario] =
-    useState<"legal" | "individual" | "documents" | null>(null);
+    useState<"legal" | "individual" | "documents" | "validation" | null>(null);
   const documentClientProfile = useMemo(
     () => ctx ? resolveGroupDocumentClientProfile(ctx.organization) : null,
     [ctx],
@@ -243,6 +243,19 @@ export function GroupDocumentsFolder({
     void run(PACKAGE_DOC_TYPES, packageDataBlockers);
   };
 
+  const requestDocumentsValidation = () => {
+    if (packageDataBlockers.length > 0) {
+      toast.error("Заполните обязательные данные группы", { description: packageDataBlockers.join(", ") });
+      return;
+    }
+    if (blankSignatoryBlocker.length > 0) {
+      setPendingPackageScenario("validation");
+      setSignatoriesOpen(true);
+      return;
+    }
+    void run(PACKAGE_DOC_TYPES, packageDataBlockers, undefined, true);
+  };
+
   /** Готовность данных по документам пакета — чтобы честно предупредить менеджера. */
   const readiness = useMemo(
     () =>
@@ -253,7 +266,12 @@ export function GroupDocumentsFolder({
     [factual, students.length],
   );
 
-  const run = async (types: DocType[], docBlockers?: string[], contractBasis?: string) => {
+  const run = async (
+    types: DocType[],
+    docBlockers?: string[],
+    contractBasis?: string,
+    dryRun = false,
+  ) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
     const gate = docBlockers ?? Array.from(new Set([
       ...packageBlockers,
@@ -340,13 +358,20 @@ export function GroupDocumentsFolder({
             organizationId,
             groupId,
             studentUserIds: ctx.students.map((student) => student.user_id),
-            journalDocumentDate: journalDraftDate,
-            fillMode: mode,
-            includeJournal,
+             journalDocumentDate: journalDraftDate,
+             fillMode: mode,
+             dryRun,
+             includeJournal,
             journalSignatory: documentSignatories.class_journal,
             otherDocuments: docs,
           }).then(async result => {
-            await refreshDocuments();
+            if (result.dryRun) {
+              toast.success("Проверка пройдена: 9 Word-документов собраны без сохранения", {
+                description: "Storage и база данных не изменялись. Контрольные SHA-256 рассчитаны на сервере.",
+              });
+              return result;
+            }
+             await refreshDocuments();
             const warnings = result.warnings || [];
             toast.warning("Документы ГОРЭЛТЕХ сохранены как черновики", {
               description: warnings.length
@@ -355,8 +380,9 @@ export function GroupDocumentsFolder({
             });
             return result;
           })
-        : await saveGenerated(docs);
+       : await saveGenerated(docs);
       const ok = !!res;
+      if (ok && exactGoreltechDocuments && "dryRun" in res && res.dryRun) return true;
       if (ok) onDataChanged?.();
       if (ok && types.length === 1) {
         toast.success(`Документ сформирован (версия ${res!.version ?? "—"})`);
@@ -568,20 +594,32 @@ export function GroupDocumentsFolder({
           Beta
         </Badge>
         {exactGoreltechDocuments ? (
-          <Button
-            variant="outline"
-            className="gap-1.5 rounded-xl"
-            disabled={busy || !ctx || !!retryPackage}
-            onClick={requestDocumentsRebuild}
-            title={blankSignatoryBlocker.length > 0
-              ? "Сначала откроется проверка подписантов, затем будут пересобраны все девять Word-документов"
-              : "Клиентский комплект пересобирается целиком, чтобы все девять файлов имели один снимок данных"}
-          >
-            <RotateCcw className="w-4 h-4" />
-            {blankSignatoryBlocker.length > 0
-              ? "Проверить подписантов и пересобрать 9 Word-документов"
-              : "Пересобрать 9 Word-документов"}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              className="gap-1.5 rounded-xl"
+              disabled={busy || !ctx || !!retryPackage}
+              onClick={requestDocumentsValidation}
+              title="Сервер соберёт и проверит все девять Word-документов в памяти, не меняя Storage и базу данных"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Проверить 9 Word-документов без сохранения
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-1.5 rounded-xl"
+              disabled={busy || !ctx || !!retryPackage}
+              onClick={requestDocumentsRebuild}
+              title={blankSignatoryBlocker.length > 0
+                ? "Сначала откроется проверка подписантов, затем будут пересобраны все девять Word-документов"
+                : "Клиентский комплект пересобирается целиком, чтобы все девять файлов имели один снимок данных"}
+            >
+              <RotateCcw className="w-4 h-4" />
+              {blankSignatoryBlocker.length > 0
+                ? "Проверить подписантов и пересобрать 9 Word-документов"
+                : "Пересобрать 9 Word-документов"}
+            </Button>
+          </>
         ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -833,6 +871,9 @@ export function GroupDocumentsFolder({
             if (pendingPackageScenario === "legal") setCompanyPackageOpen(true);
             if (pendingPackageScenario === "individual") setIndividualPackageOpen(true);
             if (pendingPackageScenario === "documents") void run(PACKAGE_DOC_TYPES, packageDataBlockers);
+            if (pendingPackageScenario === "validation") {
+              void run(PACKAGE_DOC_TYPES, packageDataBlockers, undefined, true);
+            }
             setPendingPackageScenario(null);
           }}
         />

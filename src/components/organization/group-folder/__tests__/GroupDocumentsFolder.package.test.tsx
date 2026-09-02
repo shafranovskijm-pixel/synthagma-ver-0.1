@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   individualSave: vi.fn(),
   legalSave: vi.fn(),
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
   downloadPrivateFile: vi.fn(),
   remove: vi.fn(),
   dialogState: {
@@ -54,7 +55,7 @@ vi.mock("@/lib/group-docs/docxJournal", () => ({
 vi.mock("sonner", () => ({
   toast: {
     error: mocks.toastError,
-    success: vi.fn(),
+    success: mocks.toastSuccess,
     warning: vi.fn(),
     info: vi.fn(),
   },
@@ -173,6 +174,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     mocks.dialogState.individualProps = null;
     mocks.dialogState.legalProps = null;
     mocks.toastError.mockReset();
+    mocks.toastSuccess.mockReset();
     mocks.downloadPrivateFile.mockReset();
     mocks.downloadPrivateFile.mockResolvedValue(true);
     mocks.remove.mockReset();
@@ -609,6 +611,36 @@ describe("GroupDocumentsFolder package contract routing", () => {
       expect.any(Object),
     );
     expect(screen.getByRole("button", { name: "Пересобрать 9 Word-документов" })).toBeEnabled();
+  });
+
+  it("проверяет 9 Word-документов без сохранения и не обновляет рабочие данные", async () => {
+    mocks.generateClassJournalDocx.mockResolvedValue({
+      dryRun: true,
+      writesPerformed: false,
+      insertedCount: 9,
+      documents: [],
+      warnings: [],
+    });
+    renderFolder();
+    await confirmSourceSignatories();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "Проверить 9 Word-документов без сохранения",
+    }));
+
+    await waitFor(() => {
+      expect(mocks.generateClassJournalDocx).toHaveBeenCalledWith(
+        expect.objectContaining({ dryRun: true }),
+      );
+    });
+    expect(mocks.refreshDocuments).not.toHaveBeenCalled();
+    expect(mocks.onDataChanged).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "Проверка пройдена: 9 Word-документов собраны без сохранения",
+      expect.objectContaining({
+        description: expect.stringContaining("Storage и база данных не изменялись"),
+      }),
+    );
   });
 
   it("повторно проверяет обязательные данные после открытия диалога подписантов", async () => {
