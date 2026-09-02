@@ -56,7 +56,9 @@ const resources = sources.map((resource) => {
     proposed_url: check.recommended_url ?? resource.url,
     recommended_source_page: check.recommended_source_page ?? null,
     module_no: resource.module_no ?? null,
-    edition_label: resource.checked_on ? `проверка источника ${resource.checked_on}` : null,
+    edition_label:
+      check.edition_label ??
+      (resource.checked_on ? `проверка источника ${resource.checked_on}` : null),
     last_checked_at: verification.checked_at,
     usage_basis: resource.set === "official" ? "official_open_source" : null,
     library_status: "needs_review",
@@ -128,8 +130,8 @@ const candidate = {
   blockers: [
     "The new 178-hour course does not exist yet, so target_course.id and module ids are absent",
     "The source manifest and internal files are not approved",
-    "Nine candidates remain HOLD: five unresolved official records, two unconfirmed videos, one TLS-unsafe manufacturer file and one retailer-hosted manual",
-    "Three working replacement URLs are confirmed but still require manifest approval before import",
+    `${verification.summary.remaining_holds} source or playback candidates remain unresolved; every external row remains import_action=HOLD until approval`,
+    `${verification.summary.confirmed_replacements_http_200} working replacement URLs are confirmed but still require manifest approval before import`,
     "Manufacturer and video rights require link-only decisions or separate confirmation",
     "Own educational materials are not yet mapped to target course module ids"
   ]
