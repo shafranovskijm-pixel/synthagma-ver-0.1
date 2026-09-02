@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,14 +18,19 @@ type LoadState = "loading" | "success" | "not_found" | "error";
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const courseId = d.tabNavigation.selectedCourseId;
   const organizationId = d.organizationId;
+  const courseSection = searchParams.get("courseSection");
+  const setDashboardActiveTab = d.tabNavigation.setActiveTab;
+  const setSelectedCourseId = d.tabNavigation.setSelectedCourseId;
+  const refreshDashboardData = d.refreshData;
 
   const [course, setCourse] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
     | "students" | "materials" | "history" | "tests" | "landing" | "settings"
     | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview"
-  >("editor");
+  >(courseSection === "library" ? "materials" : "editor");
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isPublicationChanging, setIsPublicationChanging] = useState(false);
@@ -32,7 +38,10 @@ export function CourseDetailsTab() {
   const publicationSequenceRef = useRef(0);
 
   useEffect(() => {
-    setActiveTab("editor");
+    setActiveTab(courseSection === "library" ? "materials" : "editor");
+  }, [courseId, courseSection]);
+
+  useEffect(() => {
     // A pending mutation belongs to the course URL from which it started.
     // Reset the control for a newly opened course and prevent an older
     // request's finally block from changing its loading state.
@@ -40,9 +49,17 @@ export function CourseDetailsTab() {
     setIsPublicationChanging(false);
   }, [courseId]);
 
+  const handleTabChange = useCallback((nextTab: typeof activeTab) => {
+    setActiveTab(nextTab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === "materials") nextParams.set("courseSection", "library");
+    else nextParams.delete("courseSection");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
-    if (!courseId) d.tabNavigation.setActiveTab("courses");
-  }, [courseId]);
+    if (!courseId) setDashboardActiveTab("courses");
+  }, [courseId, setDashboardActiveTab]);
 
   const loadCourse = useCallback(async (withSpinner = true) => {
     if (!courseId || !organizationId) return;
@@ -113,18 +130,18 @@ export function CourseDetailsTab() {
     };
   }, [loadCourse]);
 
-  const handleBack = () => {
-    d.tabNavigation.setSelectedCourseId(null);
-    d.tabNavigation.setActiveTab("courses");
-  };
+  const handleBack = useCallback(() => {
+    setSelectedCourseId(null);
+    setDashboardActiveTab("courses");
+  }, [setDashboardActiveTab, setSelectedCourseId]);
 
   // Deleting a course affects the base course list, dashboard summary,
   // course overview, and enrollment-derived rows simultaneously — refresh
   // everything before we navigate back.
   const handleCourseDeleted = useCallback(() => {
-    d.refreshData();
+    refreshDashboardData();
     handleBack();
-  }, [d]);
+  }, [handleBack, refreshDashboardData]);
 
   const handlePublicationChange = useCallback(async () => {
     if (!course || isPublicationChanging) return;
@@ -235,7 +252,7 @@ export function CourseDetailsTab() {
         courseStudents={[]}
         organizationId={organizationId}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onEnrollStudent={() => {}}
         onCourseDeleted={handleCourseDeleted}
         onCourseUpdated={() => loadCourse(false)}
