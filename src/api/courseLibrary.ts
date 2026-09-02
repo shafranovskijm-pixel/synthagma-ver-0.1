@@ -4,6 +4,7 @@ import type {
   CourseLibraryStatus,
   CourseLibraryUsageBasis,
 } from "@/lib/courseLibrary";
+import { isValidHttpsUrl } from "@/lib/courseLibrary";
 
 const libraryDb = supabase as any;
 
@@ -89,6 +90,70 @@ function storageSafeFilename(name: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(-120);
   return cleaned || "material";
+}
+
+type ValidatedCreateLocation =
+  | { kind: "external"; externalUrl: string; file: null }
+  | { kind: "internal"; externalUrl: null; file: File };
+
+function normalizedOptionalString(value: string | null | undefined): string | null {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+/**
+ * Validate the resource location before storage or database I/O. The database
+ * repeats these invariants, but the API must fail closed so a caller outside
+ * the dialog cannot create an ambiguous or insecure resource.
+ */
+function validateCreateLocation(
+  input: Pick<CourseLibraryResourceInput, "externalUrl" | "file">,
+): ValidatedCreateLocation {
+  const externalUrl = normalizedOptionalString(input.externalUrl);
+  const file = input.file ?? null;
+
+  if ((externalUrl === null) === (file === null)) {
+    throw new Error("Укажите ровно один источник: корректную HTTPS-ссылку или внутренний файл.");
+  }
+
+  if (file !== null) {
+    if (typeof File === "undefined" || !(file instanceof File)) {
+      throw new Error("Для внутреннего ресурса требуется файл.");
+    }
+    return { kind: "internal", externalUrl: null, file };
+  }
+
+  if (!isValidHttpsUrl(externalUrl)) {
+    throw new Error("Внешний ресурс должен иметь корректную абсолютную HTTPS-ссылку без логина и пароля.");
+  }
+
+  return { kind: "external", externalUrl, file: null };
+}
+
+function validateUpdateLocation(
+  resource: Pick<CourseLibraryResource, "externalUrl" | "storagePath">,
+  externalUrlInput: string | null | undefined,
+): string | null {
+  const storedExternalUrl = normalizedOptionalString(resource.externalUrl);
+  const storagePath = normalizedOptionalString(resource.storagePath);
+  const externalUrl = normalizedOptionalString(externalUrlInput);
+
+  if (storedExternalUrl !== null && storagePath !== null) {
+    throw new Error("У ресурса обнаружено несколько источников. Архивируйте карточку и создайте новую.");
+  }
+
+  if (storagePath !== null) {
+    if (externalUrl !== null) {
+      throw new Error("Для внутреннего файла нельзя одновременно указывать внешнюю ссылку.");
+    }
+    return null;
+  }
+
+  if (externalUrl === null || !isValidHttpsUrl(externalUrl)) {
+    throw new Error("Внешний ресурс должен иметь корректную абсолютную HTTPS-ссылку без логина и пароля.");
+  }
+
+  return externalUrl;
 }
 
 function mapResource(
@@ -201,12 +266,13 @@ async function uploadLibraryFile(
 export async function createCourseLibraryResource(
   input: CourseLibraryResourceInput,
 ): Promise<void> {
+  const location = validateCreateLocation(input);
   let uploadedPath: string | null = null;
   let documentId: string | null = null;
 
   try {
-    const uploaded = input.file
-      ? await uploadLibraryFile(input.organizationId, input.file)
+    const uploaded = location.kind === "internal"
+      ? await uploadLibraryFile(input.organizationId, location.file)
       : null;
     uploadedPath = uploaded?.storagePath ?? null;
 
@@ -220,7 +286,7 @@ export async function createCourseLibraryResource(
         file_url: null,
         file_size: uploaded?.fileSize ?? null,
         source_name: input.sourceName.trim(),
-        external_url: uploaded ? null : input.externalUrl?.trim() || null,
+        external_url: location.externalUrl,
         storage_path: uploaded?.storagePath ?? null,
         mime_type: uploaded?.mimeType ?? null,
         original_filename: uploaded?.originalFilename ?? null,
@@ -266,13 +332,14 @@ export async function updateCourseLibraryResource(
   resource: CourseLibraryResource,
   input: Omit<CourseLibraryResourceInput, "courseId" | "organizationId" | "file">,
 ): Promise<void> {
+  const externalUrl = validateUpdateLocation(resource, input.externalUrl);
   const { error: documentError } = await libraryDb
     .from("library_documents")
     .update({
       name: input.title.trim(),
       description: input.description?.trim() || null,
       source_name: input.sourceName.trim(),
-      external_url: resource.storagePath ? null : input.externalUrl?.trim() || null,
+      external_url: externalUrl,
       edition_label: input.editionLabel?.trim() || null,
       last_checked_at: input.lastCheckedAt || null,
       usage_basis: input.usageBasis,

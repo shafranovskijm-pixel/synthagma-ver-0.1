@@ -57,6 +57,7 @@
 ## Что присутствует в локальном рабочем дереве
 
 - API чтения, создания, обновления, архивирования и получения signed URL: `src/api/courseLibrary.ts`;
+- fail-closed проверка источника до первого Storage/DB-запроса: внешний ресурс принимает только абсолютный HTTPS URL без credentials, внутренний — только настоящий `File`, смешивание двух источников запрещено;
 - менеджер библиотеки организации: `src/components/course-library/CourseLibraryManager.tsx`;
 - диалог карточки ресурса: `src/components/course-library/CourseLibraryResourceDialog.tsx`;
 - интерфейс слушателя: `src/components/course-library/CourseLibraryReader.tsx`;
@@ -66,7 +67,7 @@
 - генератор кандидатного манифеста: `scripts/build-csz-course-library-candidate.mjs`;
 - транзакционный dry-run миграции для отдельного staging-клона: `supabase/tests/course_library_migration_dry_run.sql`;
 - fail-closed PowerShell-запуск dry-run: `scripts/run-course-library-migration-dry-run.ps1`;
-- тестовые файлы для моделей, манифеста, reader, sidebar и security-контракта миграции.
+- тестовые файлы для API-контракта, моделей, манифеста, reader, sidebar и security-контракта миграции.
 
 Эти пункты означают наличие локального кода, а не подтверждённую готовность staging или production.
 
@@ -87,9 +88,9 @@
 | Проверка | Статус | Честное ограничение |
 |---|---|---|
 | Статический просмотр SQL-контракта и ожидаемых полей | Выполнен; усиленный migration security-контракт 8/8 | Реальный PostgreSQL/Supabase parser не запускался |
-| Целевые автоматические тесты | Последний объединённый прогон: 11 файлов, 76/76, exit 0 | Это unit/component/security-contract тесты, не DB-backed E2E |
+| Целевые автоматические тесты | Последний объединённый прогон по библиотеке, курсам, XML и документам ГОРЭЛТЕХ: 30 файлов, 280/280, exit 0; отдельный библиотечный прогон: 7 файлов, 58/58 | Это unit/component/API/security-contract тесты, не DB-backed E2E; в старых hook-тестах остаются известные React `act` warnings |
 | TypeScript | `tsc --noEmit`, exit 0 | Типы не заменяют runtime-проверку ролей и Storage |
-| ESLint изменённых TS/TSX-файлов | exit 0, 0 ошибок, 40 предупреждений | Предупреждения относятся преимущественно к существующим `any` и hook dependencies |
+| ESLint нового API и его тестов | exit 0, 0 ошибок, 2 предупреждения | Оба предупреждения — существующие `any` в адаптере Supabase |
 | Production build | Vite: 6 458 модулей, exit 0 | Есть неблокирующие предупреждения Browserslist, PDF.js `eval` и mixed dynamic/static import |
 | Локальный mock-harness | Скриншоты получены | Это mock-данные, не DB-backed E2E |
 | Применение миграции на staging | Не выполнялось | Нужен отдельный контролируемый прогон |
