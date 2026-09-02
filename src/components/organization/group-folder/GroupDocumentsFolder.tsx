@@ -268,7 +268,13 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
-      const requestedStatus = mode === "data" ? ("final" as const) : ("draft" as const);
+      // Точные DOCX ГОРЭЛТЕХ пока содержат legacy browser-transport строк.
+      // Не резервируем официальные номера до полной серверной сверки полей.
+      const requestedStatus = exactGoreltechDocuments
+        ? ("draft" as const)
+        : mode === "data"
+          ? ("final" as const)
+          : ("draft" as const);
       const eligibility = {
         mode,
         requestedStatus,
@@ -329,13 +335,19 @@ export function GroupDocumentsFolder({
             organizationId,
             groupId,
             studentUserIds: ctx.students.map((student) => student.user_id),
-            documentDate: docs[0]?.document_date || localDateIso(),
+            journalDocumentDate: localDateIso(),
             fillMode: mode,
             includeJournal,
             journalSignatory: documentSignatories.class_journal,
             otherDocuments: docs,
           }).then(async result => {
             await refreshDocuments();
+            const warnings = result.warnings || [];
+            toast.warning("Документы ГОРЭЛТЕХ сохранены как черновики", {
+              description: warnings.length
+                ? warnings.join(" ")
+                : "Итоговый статус станет доступен после серверной сверки всех критических полей.",
+            });
             return result;
           })
         : await saveGenerated(docs);
@@ -493,7 +505,7 @@ export function GroupDocumentsFolder({
         </div>
         {exactGoreltechDocuments && (
           <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            Перед формированием проверьте «Подписанты документов»: Синтагма не подменяет выбранную должность на «Генеральный директор».
+            По умолчанию указана должность «Генеральный директор». Перед формированием проверьте подписанта каждого документа.
           </div>
         )}
         {mode === "data" && (

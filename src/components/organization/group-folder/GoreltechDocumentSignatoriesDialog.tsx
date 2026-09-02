@@ -79,7 +79,7 @@ export function GoreltechDocumentSignatoriesDialog({
                       value={signatory.position}
                       maxLength={200}
                       onChange={(event) => update(type, "position", event.target.value)}
-                      placeholder="Например: Руководитель учебного центра"
+                      placeholder="Генеральный директор"
                     />
                   </div>
                   <div className="space-y-1.5">

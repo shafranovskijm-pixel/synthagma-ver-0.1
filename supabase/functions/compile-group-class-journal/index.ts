@@ -21,6 +21,7 @@ import {
   compileGroupDocumentXml,
   firstPositiveFiniteNumber,
   parseGeneratedHtmlRows,
+  resolveLegacyDocumentDate,
   resolveDocumentSignatory,
   validateStudentRowsAgainstRoster,
   validateGroupDocumentPrerequisites,
@@ -36,7 +37,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-reconcile-v11";
+export const COMPILER_REVISION = "goreltech-group-package-fail-closed-v12";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -75,7 +76,9 @@ const BodySchema = z.object({
   organizationId: z.string().uuid(),
   groupId: z.string().uuid(),
   studentUserIds: z.array(z.string().uuid()).max(5000),
-  documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** @deprecated Общая дата старого клиента, только для fallback черновика. */
+  documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  journalDocumentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   fillMode: z.enum(["blank", "data"]).default("blank"),
   includeJournal: z.boolean().default(true),
   journalSignatory: SignatorySchema.optional(),
@@ -144,6 +147,7 @@ Deno.serve(async (req) => {
     });
 
   const uploadedPaths: string[] = [];
+  const statusWarnings: string[] = [];
   let storageAdmin: any = null;
   let stage = "request-validation";
   try {
@@ -157,21 +161,18 @@ Deno.serve(async (req) => {
     }
     const body = {
       ...parsed.data,
-      otherDocuments: parsed.data.otherDocuments.map((document) => {
-        const metadata = canonicalizeLegacyDocumentMetadata({
-          docType: document.doc_type,
-          fillMode: document.fill_mode,
+      otherDocuments: parsed.data.otherDocuments.map((document) => ({
+        ...document,
+        // Весь пакет имеет один подтверждённый режим. Отдельный fill_mode из
+        // browser payload не может повысить статус одного файла.
+        fill_mode: parsed.data.fillMode,
+        document_date: resolveLegacyDocumentDate({
+          documentDate: document.document_date,
+          legacySharedDraftDate: parsed.data.documentDate,
+          fillMode: parsed.data.fillMode,
           docStatus: document.doc_status,
-          documentNumber: document.document_number,
-          documentDate: parsed.data.documentDate,
-        });
-        return {
-          ...document,
-          document_date: parsed.data.documentDate,
-          doc_status: metadata.docStatus,
-          document_number: metadata.documentNumber,
-        };
-      }),
+        }),
+      })),
     };
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -348,6 +349,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Все восемь документов приходят из legacy HTML transport. Сервер
+    // перечитал tenant-scoped организацию, группу, курс и состав, но пока не
+    // сверяет с БД каждое фактическое значение строк (оценки, паспорт, ФРДО,
+    // расписание и основание приказа). Поэтому browser-supplied `final` не
+    // принимается: безопасный результат — draft с явным предупреждением.
+    body.otherDocuments = body.otherDocuments.map((document) => {
+      const metadata = canonicalizeLegacyDocumentMetadata({
+        docType: document.doc_type,
+        fillMode: document.fill_mode,
+        docStatus: document.doc_status,
+        documentNumber: document.document_number,
+        documentDate: document.document_date,
+        serverVerifiedCriticalRequisites: false,
+        serverVerificationMessage:
+          "сервер подтвердил организацию, группу и состав, но ещё не сверил все фактические поля документа с БД",
+      });
+      if (metadata.statusWarning) {
+        statusWarnings.push(`${document.name}: ${metadata.statusWarning}`);
+      }
+      return {
+        ...document,
+        doc_status: metadata.docStatus,
+        document_number: metadata.documentNumber,
+        source_note: [document.source_note, metadata.statusWarning].filter(Boolean).join(" "),
+      };
+    });
+
     let journalDocument: Record<string, unknown> | null = null;
     if (body.includeJournal) {
     stage = "template-validation";
@@ -413,12 +441,17 @@ Deno.serve(async (req) => {
     if (uploadResult.error) throw uploadResult.error;
     uploadedPaths.push(journalPath);
 
-    const today = body.documentDate;
+    const journalDocumentDate = resolveLegacyDocumentDate({
+      documentDate: body.journalDocumentDate,
+      legacySharedDraftDate: body.documentDate,
+      fillMode: body.fillMode,
+      docStatus: "draft",
+    });
     journalDocument = {
       doc_type: "class_journal",
       name: `Журнал учета занятий — ${group.name}`,
       document_number: null,
-      document_date: today,
+      document_date: journalDocumentDate,
       variables: snapshot.scalars,
       html: null,
       file_path: journalPath,
@@ -532,8 +565,10 @@ Deno.serve(async (req) => {
         html: null,
         file_path: packagePath,
         layout_format: "docx_ooxml",
-        source_note:
+        source_note: [
           "Оригинальный Word-бланк из архива клиента «для сайта (1).zip» с согласованными правками из Телемоста от 12.08.2026.",
+          document.source_note,
+        ].filter(Boolean).join(" "),
         template_registry_key: packageManifest.template_id,
         template_version_label: packageManifest.template_version,
         template_sha256: packageManifest.template_sha256,
@@ -549,7 +584,8 @@ Deno.serve(async (req) => {
       });
     }
     stage = "batch-persistence";
-    const batchResult = await userClient.rpc("create_group_document_batch", {
+    const batchResult = await admin.rpc("create_goreltech_group_document_batch", {
+      p_actor_id: userId,
       p_organization_id: body.organizationId,
       p_group_id: body.groupId,
       p_docs: [
@@ -609,6 +645,7 @@ Deno.serve(async (req) => {
           }
         : null,
       batch,
+      warnings: statusWarnings,
     });
   } catch (error) {
     if (uploadedPaths.length && storageAdmin) {

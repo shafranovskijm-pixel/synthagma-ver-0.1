@@ -6,8 +6,10 @@ export interface GenerateClassJournalParams {
   groupId: string;
   /** Снимок активного состава группы, использованный для всех документов пакета. */
   studentUserIds: string[];
-  /** Одна локальная дата документа для всех девяти файлов пакета. */
-  documentDate: string;
+  /** Отдельная дата журнала; даты остальных документов передаются в самих документах. */
+  journalDocumentDate?: string;
+  /** @deprecated Общая дата старого клиента: только fallback для черновика. */
+  documentDate?: string;
   fillMode: "blank" | "data";
   includeJournal?: boolean;
   otherDocuments: GeneratedDocument[];
@@ -22,6 +24,7 @@ export interface GenerateClassJournalResult {
   version: number | null;
   insertedCount: number;
   filePath: string;
+  warnings: string[];
 }
 
 const legacyPayload = (document: GeneratedDocument) => ({
@@ -50,7 +53,8 @@ export async function generateClassJournalDocx(
       organizationId: params.organizationId,
       groupId: params.groupId,
       studentUserIds: params.studentUserIds,
-      documentDate: params.documentDate,
+      journalDocumentDate: params.journalDocumentDate,
+      ...(params.documentDate ? { documentDate: params.documentDate } : {}),
       fillMode: params.fillMode,
       includeJournal: params.includeJournal ?? true,
       journalSignatory: params.journalSignatory,
@@ -68,5 +72,8 @@ export async function generateClassJournalDocx(
       Number(batch.inserted_count)
       || params.otherDocuments.length + (params.includeJournal === false ? 0 : 1),
     filePath: String(payload?.document?.file_path || ""),
+    warnings: Array.isArray(payload?.warnings)
+      ? payload.warnings.map((warning: unknown) => String(warning)).filter(Boolean)
+      : [],
   };
 }

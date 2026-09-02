@@ -215,7 +215,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
       expect.objectContaining({
         extras: expect.objectContaining({
           contract_basis: "Договор № 2026-001",
-          signatory_position_enrollment_order: "Руководитель учебного центра",
+          signatory_position_enrollment_order: "Генеральный директор",
           signatory_name_enrollment_order: "",
         }),
       }),
@@ -225,7 +225,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(mocks.generateClassJournalDocx).toHaveBeenCalledWith(
       expect.objectContaining({
         journalSignatory: {
-          position: "Руководитель учебного центра",
+          position: "Генеральный директор",
           name: SAMPLE_CONTEXT.organization.director_name,
         },
       }),
@@ -542,7 +542,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     });
   });
 
-  it("берёт должность подписанта ГОРЭЛТЕХ из оригинального Word-шаблона", async () => {
+  it("использует согласованную должность подписанта ГОРЭЛТЕХ по умолчанию", async () => {
     renderFolder();
 
     fireEvent.click(screen.getByRole("button", { name: "Подписанты документов" }));
@@ -554,9 +554,9 @@ describe("GroupDocumentsFolder package contract routing", () => {
     const passPosition = dialog.querySelector<HTMLInputElement>("#signatory-position-pass");
     const passName = dialog.querySelector<HTMLInputElement>("#signatory-name-pass");
 
-    expect(orderPosition).toHaveValue("Руководитель учебного центра");
+    expect(orderPosition).toHaveValue("Генеральный директор");
     expect(orderName).toHaveValue("");
-    expect(journalPosition).toHaveValue("Руководитель учебного центра");
+    expect(journalPosition).toHaveValue("Генеральный директор");
     expect(journalName).toHaveValue("Дроздов Дмитрий Викторович");
     expect(passPosition).toHaveValue("");
     expect(passName).toHaveValue("");

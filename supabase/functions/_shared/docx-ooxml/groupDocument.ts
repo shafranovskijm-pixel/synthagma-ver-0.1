@@ -56,28 +56,76 @@ export interface LegacyDocumentMetadataInput {
   docStatus: "draft" | "final";
   documentNumber?: string | null;
   documentDate?: string | null;
+  /** true только после tenant-scoped перечитывания критичных данных сервером. */
+  serverVerifiedCriticalRequisites?: boolean;
+  serverVerificationMessage?: string | null;
+}
+
+export interface CanonicalLegacyDocumentMetadata {
+  docStatus: "draft" | "final";
+  documentNumber: string | null;
+  statusWarning: string | null;
+}
+
+export function resolveLegacyDocumentDate(input: {
+  documentDate?: string | null;
+  legacySharedDraftDate?: string | null;
+  fillMode: "blank" | "data";
+  docStatus: "draft" | "final";
+}): string | null {
+  const ownDate = String(input.documentDate || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ownDate)) return ownDate;
+
+  // Старые клиенты отправляли одну дату пакета. Она допустима только для
+  // рабочего бланка/черновика и никогда не подтверждает итоговый документ.
+  const legacyDraftDate = String(input.legacySharedDraftDate || "").trim();
+  if (
+    input.fillMode === "blank"
+    && input.docStatus === "draft"
+    && /^\d{4}-\d{2}-\d{2}$/.test(legacyDraftDate)
+  ) {
+    return legacyDraftDate;
+  }
+  return null;
 }
 
 /**
  * Server-side integrity gate for metadata received from the legacy HTML
- * generator. A blank or downgraded draft can never carry final status or an
- * official number. Data-mode final metadata is retained; this function never
- * promotes a client draft to final.
+ * generator. Browser-supplied `final` is only retained after the Edge function
+ * has independently confirmed critical requisites from tenant-scoped DB rows.
+ * The function never promotes a client draft to final.
  */
 export function canonicalizeLegacyDocumentMetadata(
   input: LegacyDocumentMetadataInput,
-): { docStatus: "draft" | "final"; documentNumber: string | null } {
+): CanonicalLegacyDocumentMetadata {
   const requiresFinalOrderRequisites =
     input.docType === "enrollment_order" || input.docType === "expulsion_order";
-  const hasFinalOrderRequisites =
-    String(input.documentNumber || "").trim() !== ""
-    && /^\d{4}-\d{2}-\d{2}$/.test(String(input.documentDate || "").trim());
+  const hasFinalDate = /^\d{4}-\d{2}-\d{2}$/.test(String(input.documentDate || "").trim());
+  const hasFinalOrderNumber = !requiresFinalOrderRequisites
+    || String(input.documentNumber || "").trim() !== "";
+  const requestedFinal = input.fillMode === "data" && input.docStatus === "final";
   const isFinalData = input.fillMode === "data"
     && input.docStatus === "final"
-    && (!requiresFinalOrderRequisites || hasFinalOrderRequisites);
+    && input.serverVerifiedCriticalRequisites === true
+    && hasFinalDate
+    && hasFinalOrderNumber;
+
+  const downgradeReasons: string[] = [];
+  if (requestedFinal && input.serverVerifiedCriticalRequisites !== true) {
+    downgradeReasons.push(
+      input.serverVerificationMessage?.trim()
+      || "сервер не подтвердил критические реквизиты по данным организации",
+    );
+  }
+  if (requestedFinal && !hasFinalDate) downgradeReasons.push("не указана отдельная дата документа");
+  if (requestedFinal && !hasFinalOrderNumber) downgradeReasons.push("не подтверждён номер приказа");
+
   return {
     docStatus: isFinalData ? "final" : "draft",
     documentNumber: isFinalData ? String(input.documentNumber || "").trim() || null : null,
+    statusWarning: requestedFinal && !isFinalData
+      ? `Итоговый статус не подтверждён: ${downgradeReasons.join("; ")}. Документ сохранён как черновик.`
+      : null,
   };
 }
 

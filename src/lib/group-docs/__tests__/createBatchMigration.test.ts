@@ -97,3 +97,44 @@ describe("create_group_document_batch migration", () => {
     expect(sql).toContain("is_current IS TRUE");
   });
 });
+
+describe("GORELTECH final-status migration", () => {
+  const sql = fs.readFileSync(
+    path.join(MIGRATIONS_DIR, "20260902130000_goreltech_group_documents_fail_closed.sql"),
+    "utf8",
+  );
+
+  it("закрывает старый browser RPC до первой мутации", () => {
+    const guard = sql.indexOf("GORELTECH package requires trusted compiler");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(sql.indexOf("UPDATE public.group_documents gd"));
+    expect(guard).toBeLessThan(sql.indexOf("INSERT INTO public.group_documents"));
+  });
+
+  it("доверяет новый batch RPC только service_role и реальному actor", () => {
+    expect(sql).toContain("create_goreltech_group_document_batch");
+    expect(sql).toContain("v_jwt_role IS DISTINCT FROM 'service_role'");
+    expect(sql).toContain("public.has_org_staff_permission(p_actor_id");
+    expect(sql).toContain("public.is_org_owner(p_actor_id");
+    expect(sql).toContain("true, p_actor_id");
+    expect(sql).toContain("FROM PUBLIC, anon, authenticated");
+    expect(sql).toContain("TO service_role");
+  });
+
+  it("принимает только полный tenant-scoped DOCX draft без номера", () => {
+    expect(sql).toContain("GORELTECH package must contain exactly 9 documents");
+    expect(sql).toContain("GORELTECH package document types are invalid");
+    expect(sql).toContain("position(v_path_prefix IN (d->>'file_path')) <> 1");
+    expect(sql).toContain("COALESCE(NULLIF(d->>'doc_status', ''), 'draft') <> 'draft'");
+    expect(sql).toContain("NULLIF(btrim(d->>'document_number'), '') IS NOT NULL");
+    expect(sql).toContain("COALESCE(NULLIF(d->>'layout_format', ''), '') <> 'docx_ooxml'");
+  });
+
+  it("отзывает прямые INSERT/UPDATE и оставляет серверный draft guard", () => {
+    expect(sql).toContain("REVOKE INSERT, UPDATE ON TABLE public.group_documents FROM authenticated");
+    expect(sql).toContain('DROP POLICY IF EXISTS "Org staff can insert group documents"');
+    expect(sql).toContain('DROP POLICY IF EXISTS "Org staff can update group documents"');
+    expect(sql).toContain("NEW.doc_status := 'draft'");
+    expect(sql).toContain("NEW.document_number := NULL");
+  });
+});

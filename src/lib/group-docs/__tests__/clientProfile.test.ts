@@ -44,7 +44,7 @@ describe("профиль документов клиента", () => {
       inn: "7806541216",
     });
     expect(goreltech.key).toBe("goreltech");
-    expect(goreltech.groupDocumentManagerPosition).toBe("Руководитель учебного центра");
+    expect(goreltech.groupDocumentManagerPosition).toBe("Генеральный директор");
     expect(goreltech.responsiblePersonFallback).toBe("Ляпко Дарья Константиновна");
 
     const generic = resolveGroupDocumentClientProfile({

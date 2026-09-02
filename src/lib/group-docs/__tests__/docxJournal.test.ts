@@ -22,7 +22,7 @@ describe("generateClassJournalDocx", () => {
       organizationId: "org-1",
       groupId: "group-1",
       studentUserIds: ["student-1"],
-      documentDate: "2026-08-25",
+      journalDocumentDate: "2026-08-25",
       fillMode: "data",
       otherDocuments: [],
     })).resolves.toEqual({
@@ -30,6 +30,7 @@ describe("generateClassJournalDocx", () => {
       version: 3,
       insertedCount: 9,
       filePath: "journals/group-1.docx",
+      warnings: [],
     });
   });
 
@@ -46,7 +47,7 @@ describe("generateClassJournalDocx", () => {
       organizationId: "org-1",
       groupId: "group-1",
       studentUserIds: ["student-1"],
-      documentDate: "2026-08-25",
+      journalDocumentDate: "2026-08-25",
       fillMode: "blank",
       journalSignatory: {
         position: "Руководитель учебного центра",
@@ -58,7 +59,7 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
       body: expect.objectContaining({
         studentUserIds: ["student-1"],
-        documentDate: "2026-08-25",
+        journalDocumentDate: "2026-08-25",
         journalSignatory: {
           position: "Руководитель учебного центра",
           name: "Ляпко Дарья Константиновна",
@@ -74,7 +75,7 @@ describe("generateClassJournalDocx", () => {
       organizationId: "org-1",
       groupId: "group-1",
       studentUserIds: ["student-1"],
-      documentDate: "2026-08-25",
+      journalDocumentDate: "2026-08-25",
       fillMode: "data",
       otherDocuments: [],
     })).rejects.toThrow("Шаблон журнала не найден");
@@ -93,7 +94,7 @@ describe("generateClassJournalDocx", () => {
       organizationId: "org-1",
       groupId: "group-1",
       studentUserIds: ["student-1"],
-      documentDate: "2026-08-25",
+      journalDocumentDate: "2026-08-25",
       fillMode: "blank",
       includeJournal: false,
       otherDocuments: [{
@@ -119,7 +120,9 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
       body: expect.objectContaining({
         includeJournal: false,
+        journalDocumentDate: "2026-08-25",
         otherDocuments: [expect.objectContaining({
+          document_date: "2026-08-15",
           signatory: {
             position: "Руководитель учебного центра",
             name: "Ляпко Дарья Константиновна",

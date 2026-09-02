@@ -10,6 +10,7 @@ import {
   compileGroupDocumentXml,
   firstPositiveFiniteNumber,
   parseGeneratedHtmlRows,
+  resolveLegacyDocumentDate,
   resolveDocumentSignatory,
   validateGroupDocumentPrerequisites,
   validateStudentRowsAgainstRoster,
@@ -154,38 +155,80 @@ describe("групповые DOCX Beta", () => {
       fillMode: "blank",
       docStatus: "final",
       documentNumber: "УЦ-999/2026",
-    })).toEqual({ docStatus: "draft", documentNumber: null });
+    })).toEqual({ docStatus: "draft", documentNumber: null, statusWarning: null });
     expect(canonicalizeLegacyDocumentMetadata({
       fillMode: "data",
       docStatus: "draft",
       documentNumber: "УЦ-999/2026",
-    })).toEqual({ docStatus: "draft", documentNumber: null });
+    })).toEqual({ docStatus: "draft", documentNumber: null, statusWarning: null });
     expect(canonicalizeLegacyDocumentMetadata({
       fillMode: "data",
       docStatus: "final",
       documentNumber: " УЦ-5/2026 ",
-    })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026" });
+      documentDate: "2026-08-24",
+      serverVerifiedCriticalRequisites: true,
+    })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026", statusWarning: null });
     expect(canonicalizeLegacyDocumentMetadata({
       docType: "enrollment_order",
       fillMode: "data",
       docStatus: "final",
       documentNumber: null,
       documentDate: "2026-08-24",
-    })).toEqual({ docStatus: "draft", documentNumber: null });
+      serverVerifiedCriticalRequisites: true,
+    })).toMatchObject({ docStatus: "draft", documentNumber: null });
     expect(canonicalizeLegacyDocumentMetadata({
       docType: "expulsion_order",
       fillMode: "data",
       docStatus: "final",
       documentNumber: "УЦ-5/2026",
       documentDate: null,
-    })).toEqual({ docStatus: "draft", documentNumber: null });
+      serverVerifiedCriticalRequisites: true,
+    })).toMatchObject({ docStatus: "draft", documentNumber: null });
     expect(canonicalizeLegacyDocumentMetadata({
       docType: "enrollment_order",
       fillMode: "data",
       docStatus: "final",
       documentNumber: "УЦ-5/2026",
       documentDate: "2026-08-24",
-    })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026" });
+      serverVerifiedCriticalRequisites: true,
+    })).toEqual({ docStatus: "final", documentNumber: "УЦ-5/2026", statusWarning: null });
+  });
+
+  it("fail-closed понижает browser-supplied final без серверного подтверждения", () => {
+    const metadata = canonicalizeLegacyDocumentMetadata({
+      docType: "enrollment_order",
+      fillMode: "data",
+      docStatus: "final",
+      documentNumber: "УЦ-5/2026",
+      documentDate: "2026-08-24",
+      serverVerifiedCriticalRequisites: false,
+      serverVerificationMessage: "фактические строки не сверены с БД",
+    });
+
+    expect(metadata).toMatchObject({ docStatus: "draft", documentNumber: null });
+    expect(metadata.statusWarning).toContain("фактические строки не сверены с БД");
+    expect(metadata.statusWarning).toContain("сохранён как черновик");
+  });
+
+  it("не размножает общую дату пакета и допускает её только как draft fallback", () => {
+    expect(resolveLegacyDocumentDate({
+      documentDate: "2026-08-21",
+      legacySharedDraftDate: "2026-08-25",
+      fillMode: "data",
+      docStatus: "final",
+    })).toBe("2026-08-21");
+    expect(resolveLegacyDocumentDate({
+      documentDate: null,
+      legacySharedDraftDate: "2026-08-25",
+      fillMode: "data",
+      docStatus: "final",
+    })).toBeNull();
+    expect(resolveLegacyDocumentDate({
+      documentDate: null,
+      legacySharedDraftDate: "2026-08-25",
+      fillMode: "blank",
+      docStatus: "draft",
+    })).toBe("2026-08-25");
   });
 
   it("выбирает только конечный положительный объём программы", () => {
@@ -202,6 +245,7 @@ describe("групповые DOCX Beta", () => {
       docStatus: "final",
       documentNumber: "УЦ-5/2026",
       documentDate: "2026-08-24",
+      serverVerifiedCriticalRequisites: true,
     });
     const scalars = buildGroupDocumentScalars({
       order_number: "УЦ-999/2026",

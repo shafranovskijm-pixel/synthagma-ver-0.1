@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-reconcile-v11");
+    expect(source).toContain("goreltech-group-package-fail-closed-v12");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -47,7 +47,11 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("canonicalizeLegacyDocumentMetadata");
     expect(source).toContain("buildCanonicalDocumentMetadataScalars");
     expect(source).toContain("validateStudentRowsAgainstRoster");
-    expect(source).toContain("const today = body.documentDate");
+    expect(source).toContain("journalDocumentDate: z.string()");
+    expect(source).toContain("resolveLegacyDocumentDate({");
+    expect(source).toContain("documentDate: document.document_date");
+    expect(source).toContain("legacySharedDraftDate: parsed.data.documentDate");
+    expect(source).not.toContain("const today = body.documentDate");
     expect(source).toContain('from("group_documents")');
     expect(source).toContain("committedPaths");
     expect(source).toContain("unreferencedPaths");
@@ -56,10 +60,20 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("doc_status: metadata.docStatus");
     expect(source).toContain("document_number: metadata.documentNumber");
     expect(source).toContain("documentNumber: document.document_number");
-    expect(source).toContain("documentDate: parsed.data.documentDate");
-    expect(source).toContain("document_date: parsed.data.documentDate");
+    expect(source).toContain("serverVerifiedCriticalRequisites: false");
+    expect(source).toContain("statusWarnings.push");
+    expect(source).toContain("warnings: statusWarnings");
+    expect(source).not.toContain("document_date: parsed.data.documentDate");
+    expect(source).toContain('admin.rpc("create_goreltech_group_document_batch"');
+    expect(source).toContain("p_actor_id: userId");
+    expect(source).not.toContain('userClient.rpc("create_group_document_batch"');
     expect(source).toContain('PROGRAM_HOURS: programHours > 0 ? String(programHours) : ""');
     expect(source).not.toContain('|| "Генеральный директор"');
+
+    const tenantSourceRead = source.indexOf('stage = "source-data"');
+    const statusCanonicalization = source.indexOf("serverVerifiedCriticalRequisites: false");
+    expect(tenantSourceRead).toBeGreaterThan(-1);
+    expect(statusCanonicalization).toBeGreaterThan(tenantSourceRead);
   });
 
   it("не выдаёт фирменные шаблоны организации с теми же названием и ИНН, но другим UUID", () => {
