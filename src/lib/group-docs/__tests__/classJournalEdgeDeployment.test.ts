@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-fail-closed-v12");
+    expect(source).toContain("goreltech-group-package-fail-closed-v13");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -66,7 +66,12 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).not.toContain("document_date: parsed.data.documentDate");
     expect(source).toContain('admin.rpc("create_goreltech_group_document_batch"');
     expect(source).toContain("p_actor_id: userId");
-    expect(source).not.toContain('userClient.rpc("create_group_document_batch"');
+    expect(source).toContain("isMissingRpcError(");
+    expect(source).toContain('code === "PGRST202"');
+    expect(source).toContain('userClient.rpc("create_group_document_batch"');
+    expect(source).toContain("safeLegacyDraftDocuments");
+    expect(source).toContain('doc_status: "draft"');
+    expect(source).toContain("document_number: null");
     expect(source).toContain('PROGRAM_HOURS: programHours > 0 ? String(programHours) : ""');
     expect(source).not.toContain('|| "Генеральный директор"');
 
@@ -74,6 +79,23 @@ describe("compile-group-class-journal deployment contract", () => {
     const statusCanonicalization = source.indexOf("serverVerifiedCriticalRequisites: false");
     expect(tenantSourceRead).toBeGreaterThan(-1);
     expect(statusCanonicalization).toBeGreaterThan(tenantSourceRead);
+  });
+
+  it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+
+    const trustedCall = source.indexOf('admin.rpc("create_goreltech_group_document_batch"');
+    const missingRpcGate = source.indexOf("isMissingRpcError(", trustedCall);
+    const legacyCall = source.indexOf('userClient.rpc("create_group_document_batch"', missingRpcGate);
+    expect(trustedCall).toBeGreaterThan(-1);
+    expect(missingRpcGate).toBeGreaterThan(trustedCall);
+    expect(legacyCall).toBeGreaterThan(missingRpcGate);
+    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_actor_id: userId");
+    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_organization_id: body.organizationId");
+    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_group_id: body.groupId");
+    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_organization_id: body.organizationId");
+    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_group_id: body.groupId");
+    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_docs: safeLegacyDraftDocuments");
   });
 
   it("не выдаёт фирменные шаблоны организации с теми же названием и ИНН, но другим UUID", () => {

@@ -37,7 +37,7 @@ import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/g
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-fail-closed-v12";
+export const COMPILER_REVISION = "goreltech-group-package-fail-closed-v13";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -101,6 +101,24 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
 
 function decodeBase64Bytes(value: string): Uint8Array {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+function isMissingRpcError(error: unknown, functionName: string): boolean {
+  const value = error && typeof error === "object"
+    ? error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown }
+    : {};
+  const code = String(value.code || "");
+  const text = [value.message, value.details, value.hint]
+    .map((part) => String(part || ""))
+    .join(" ")
+    .toLowerCase();
+  const normalizedName = functionName.toLowerCase();
+  return code === "PGRST202"
+    || (text.includes(normalizedName) && (
+      text.includes("could not find the function")
+      || text.includes("schema cache")
+      || text.includes("does not exist")
+    ));
 }
 
 function shortInstructorNames(value: unknown): string {
@@ -584,15 +602,35 @@ Deno.serve(async (req) => {
       });
     }
     stage = "batch-persistence";
-    const batchResult = await admin.rpc("create_goreltech_group_document_batch", {
+    const persistedDocuments = [
+      ...compiledPackageDocuments,
+      ...(journalDocument ? [journalDocument] : []),
+    ];
+    let batchResult = await admin.rpc("create_goreltech_group_document_batch", {
       p_actor_id: userId,
       p_organization_id: body.organizationId,
       p_group_id: body.groupId,
-      p_docs: [
-        ...compiledPackageDocuments,
-        ...(journalDocument ? [journalDocument] : []),
-      ],
+      p_docs: persistedDocuments,
     });
+    if (batchResult.error && isMissingRpcError(
+      batchResult.error,
+      "create_goreltech_group_document_batch",
+    )) {
+      const rolloutWarning = "База данных ещё использует совместимый режим выкладки: пакет сохранён только как черновик без официальных номеров.";
+      statusWarnings.push(rolloutWarning);
+      const safeLegacyDraftDocuments = persistedDocuments.map((document) => ({
+        ...document,
+        doc_status: "draft",
+        document_number: null,
+        generation_status: "draft",
+        source_note: [document.source_note, rolloutWarning].filter(Boolean).join(" "),
+      }));
+      batchResult = await userClient.rpc("create_group_document_batch", {
+        p_organization_id: body.organizationId,
+        p_group_id: body.groupId,
+        p_docs: safeLegacyDraftDocuments,
+      });
+    }
     let batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
     if (batchResult.error) {
       // The RPC transaction may have committed even if its HTTP response was

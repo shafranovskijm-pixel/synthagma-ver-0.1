@@ -16,6 +16,9 @@ export interface GenerateOptions {
   documentNumber?: string;
   /** Карта зарезервированных номеров по типу документа (для пакета). */
   numbers?: Record<string, string>;
+  /** Явные даты отдельных документов; приоритетнее семантики дат группы. */
+  documentDates?: Partial<Record<DocType, string>>;
+  /** Дата одиночного документа. Не использовать как общую дату пакета. */
   documentDate?: string;
   primaryStudentIndex?: number;
   totalPrice?: number;
@@ -27,6 +30,39 @@ export interface GenerateOptions {
   requestedStatus?: "draft" | "final";
   packageBatchId?: string | null;
   packageVersion?: number | null;
+}
+
+const ENROLLMENT_DATE_TYPES = new Set<DocType>([
+  "enrollment_order",
+]);
+
+const COMPLETION_DATE_TYPES = new Set<DocType>([
+  "expulsion_order",
+]);
+
+const isIsoDate = (value: unknown): value is string =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+/**
+ * Юридическая семантика дат пакета:
+ * - приказ о зачислении датируется началом обучения;
+ * - приказ о завершении/отчислении датируется окончанием обучения;
+ * - у даты оформления журнала отдельного источника в группе нет, поэтому она
+ *   должна передаваться явно либо оставаться fallback только для черновика.
+ * Для остальных документов отдельной подтверждённой даты-источника в модели
+ * пока нет — не приписываем им смысл даты приказа.
+ */
+export function groupDocumentDate(
+  ctx: GenerationContext,
+  docType: DocType,
+): string | null {
+  if (ENROLLMENT_DATE_TYPES.has(docType) && isIsoDate(ctx.group.start_date)) {
+    return ctx.group.start_date;
+  }
+  if (COMPLETION_DATE_TYPES.has(docType) && isIsoDate(ctx.group.end_date)) {
+    return ctx.group.end_date;
+  }
+  return null;
 }
 
 export function generateDocument(
@@ -60,7 +96,17 @@ export function generateDocument(
   // Черновик номерного документа не носит официальный номер, даже если он передан.
   const documentNumber =
     docStatus === "draft" && requiresDocumentNumber(docType) ? "" : reservedNumber;
-  const documentDate = opts.documentDate || localDateIso();
+  const explicitDocumentDate = opts.documentDates?.[docType] || opts.documentDate;
+  const semanticDocumentDate = groupDocumentDate(ctx, docType);
+  const requiresSemanticDate = ENROLLMENT_DATE_TYPES.has(docType)
+    || COMPLETION_DATE_TYPES.has(docType);
+  const documentDate = isIsoDate(explicitDocumentDate)
+    ? explicitDocumentDate
+    : semanticDocumentDate
+      || (docStatus === "draft" || !requiresSemanticDate ? localDateIso() : "");
+  if (!documentDate) {
+    throw new Error(`Не определена дата итогового документа (${docType})`);
+  }
 
   const variables = buildVariables(ctx, {
     documentNumber,
@@ -114,7 +160,12 @@ export function generatePackage(
   types: DocType[],
   opts: GenerateOptions = {}
 ): GeneratedDocument[] {
-  return types.map((t) => generateDocument(ctx, t, opts));
+  // `documentDate` относится только к одиночному документу. Старые вызовы не
+  // должны размножать одну дату на весь пакет; пакет использует documentDates
+  // либо семантические даты начала/окончания группы.
+  const packageOptions = { ...opts };
+  delete packageOptions.documentDate;
+  return types.map((t) => generateDocument(ctx, t, packageOptions));
 }
 
 export function downloadHtml(doc: GeneratedDocument): void {

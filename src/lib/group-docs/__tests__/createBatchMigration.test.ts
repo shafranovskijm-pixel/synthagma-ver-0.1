@@ -104,15 +104,21 @@ describe("GORELTECH final-status migration", () => {
     "utf8",
   );
 
-  it("закрывает старый browser RPC до первой мутации", () => {
-    const guard = sql.indexOf("GORELTECH package requires trusted compiler");
-    expect(guard).toBeGreaterThan(-1);
-    expect(guard).toBeLessThan(sql.indexOf("UPDATE public.group_documents gd"));
-    expect(guard).toBeLessThan(sql.indexOf("INSERT INTO public.group_documents"));
+  it("оставляет legacy RPC совместимым, но принудительно сохраняет ГОРЭЛТЕХ как draft", () => {
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.create_group_document_batch(");
+    expect(sql).toContain("v_force_goreltech_draft boolean");
+    expect(sql).toContain("CASE WHEN v_force_goreltech_draft THEN NULL");
+    expect(sql).toContain("WHEN v_force_goreltech_draft THEN 'draft'");
+    expect(sql).toContain("Пакет ГОРЭЛТЕХ сохранён как черновик без официального номера.");
+    expect(sql).not.toContain("GORELTECH package requires trusted compiler");
   });
 
   it("доверяет новый batch RPC только service_role и реальному actor", () => {
-    expect(sql).toContain("create_goreltech_group_document_batch");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.create_goreltech_group_document_batch(");
+    expect(sql).toContain("p_actor_id uuid");
+    expect(sql).toContain("p_organization_id uuid");
+    expect(sql).toContain("p_group_id uuid");
+    expect(sql).toContain("p_docs jsonb");
     expect(sql).toContain("v_jwt_role IS DISTINCT FROM 'service_role'");
     expect(sql).toContain("public.has_org_staff_permission(p_actor_id");
     expect(sql).toContain("public.is_org_owner(p_actor_id");

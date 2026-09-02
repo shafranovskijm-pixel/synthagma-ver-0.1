@@ -20,6 +20,8 @@ DECLARE
   v_count integer := 0;
   v_docs_count integer;
   v_uid uuid := auth.uid();
+  v_force_goreltech_draft boolean :=
+    p_organization_id = '7237f9d4-3670-4a19-8946-a43c68fd3473'::uuid;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
   IF p_docs IS NULL OR jsonb_typeof(p_docs) <> 'array' THEN
@@ -40,12 +42,6 @@ BEGIN
     GROUP BY btrim(d->>'doc_type') HAVING count(*) > 1
   ) THEN
     RAISE EXCEPTION 'p_docs must contain unique doc_type values';
-  END IF;
-
-  -- Exact GORELTECH is compiled only through the service-role Edge path below.
-  -- This guard is before the advisory lock and every UPDATE/INSERT.
-  IF p_organization_id = '7237f9d4-3670-4a19-8946-a43c68fd3473'::uuid THEN
-    RAISE EXCEPTION 'GORELTECH package requires trusted compiler' USING ERRCODE = '42501';
   END IF;
 
   IF NOT (
@@ -86,17 +82,32 @@ BEGIN
   )
   SELECT
     p_organization_id, p_group_id, btrim(d->>'doc_type'), d->>'name',
-    NULLIF(d->>'document_number', ''), NULLIF(d->>'document_date', '')::date,
+    CASE WHEN v_force_goreltech_draft THEN NULL ELSE NULLIF(d->>'document_number', '') END,
+    NULLIF(d->>'document_date', '')::date,
     COALESCE(d->'variables', '{}'::jsonb), d->>'html', NULLIF(d->>'file_path', ''),
-    'active', COALESCE(NULLIF(d->>'doc_status', ''), 'draft'),
+    'active', CASE
+      WHEN v_force_goreltech_draft THEN 'draft'
+      ELSE COALESCE(NULLIF(d->>'doc_status', ''), 'draft')
+    END,
     COALESCE(NULLIF(d->>'fill_mode', ''), 'blank'),
-    COALESCE(NULLIF(d->>'layout_format', ''), 'legacy_html'), NULLIF(d->>'source_note', ''),
+    COALESCE(NULLIF(d->>'layout_format', ''), 'legacy_html'),
+    CASE
+      WHEN v_force_goreltech_draft THEN concat_ws(
+        ' ',
+        NULLIF(d->>'source_note', ''),
+        'Пакет ГОРЭЛТЕХ сохранён как черновик без официального номера.'
+      )
+      ELSE NULLIF(d->>'source_note', '')
+    END,
     NULLIF(d->>'student_user_id', '')::uuid, NULLIF(d->>'company_id', '')::uuid,
     v_batch, v_version, true, v_uid,
     NULLIF(d->>'template_registry_key', ''), NULLIF(d->>'template_version_label', ''),
     NULLIF(d->>'template_sha256', ''), d->'variables_snapshot',
     NULLIF(d->>'docx_sha256', ''), COALESCE(NULLIF(d->>'pdf_status', ''), 'unavailable'),
-    COALESCE(NULLIF(d->>'generation_status', ''), 'draft')
+    CASE
+      WHEN v_force_goreltech_draft THEN 'draft'
+      ELSE COALESCE(NULLIF(d->>'generation_status', ''), 'draft')
+    END
   FROM jsonb_array_elements(p_docs) AS d;
 
   SELECT count(*)::int INTO v_count

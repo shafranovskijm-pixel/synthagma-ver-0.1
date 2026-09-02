@@ -43,6 +43,7 @@ vi.mock("@/hooks/useGroupFactualData", () => ({
 vi.mock("@/lib/group-docs/generate", () => ({
   generateDocument: mocks.generateDocument,
   generatePackage: mocks.generatePackage,
+  groupDocumentDate: vi.fn(() => "2026-01-16"),
   downloadHtml: vi.fn(),
 }));
 
@@ -230,6 +231,14 @@ describe("GroupDocumentsFolder package contract routing", () => {
         },
       }),
     );
+  });
+
+  it("заранее показывает, что пакет ГОРЭЛТЕХ останется черновиком без номера", () => {
+    renderFolder();
+
+    expect(screen.getByText(
+      "Комплект будет сохранён как черновик без официальных номеров до полной серверной сверки реквизитов.",
+    )).toBeInTheDocument();
   });
 
   it("не считает два юрлица-договора успешным пакетом компании", async () => {

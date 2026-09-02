@@ -313,12 +313,17 @@ export function GroupDocumentsFolder({
           ...(contractBasis ? { contract_basis: contractBasis } : {}),
         },
       };
+      // Отдельного подтверждённого поля даты оформления журнала в БД пока нет.
+      // Для текущего принудительного draft фиксируем дату сборки отдельно и не
+      // подменяем ею даты приказов о зачислении/завершении.
+      const journalDraftDate = localDateIso();
       const genOpts = {
         totalPrice: price,
         mode,
         numbers,
         factual: mode === "data" ? factual : null,
         requestedStatus,
+        documentDates: { class_journal: journalDraftDate },
       };
 
       const includeJournal = types.includes("class_journal");
@@ -335,7 +340,7 @@ export function GroupDocumentsFolder({
             organizationId,
             groupId,
             studentUserIds: ctx.students.map((student) => student.user_id),
-            journalDocumentDate: localDateIso(),
+            journalDocumentDate: journalDraftDate,
             fillMode: mode,
             includeJournal,
             journalSignatory: documentSignatories.class_journal,
@@ -504,8 +509,9 @@ export function GroupDocumentsFolder({
             : "Используется нейтральный общий макет Синтагмы с реквизитами вашей организации."}
         </div>
         {exactGoreltechDocuments && (
-          <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            По умолчанию указана должность «Генеральный директор». Перед формированием проверьте подписанта каждого документа.
+          <div className="text-xs text-amber-700 dark:text-amber-300 mt-1 space-y-1">
+            <div>По умолчанию указана должность «Генеральный директор». Перед формированием проверьте подписанта каждого документа.</div>
+            <div className="font-medium">Комплект будет сохранён как черновик без официальных номеров до полной серверной сверки реквизитов.</div>
           </div>
         )}
         {mode === "data" && (
@@ -518,8 +524,12 @@ export function GroupDocumentsFolder({
               <div key={r.type} className="rounded-xl border border-border p-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">{typeTitle.get(r.type) || r.type}</span>
-                  <Badge variant={r.info.finalBlocked ? "secondary" : "default"} className="rounded-full text-[10px]">
-                    {r.info.finalBlocked ? "Черновик" : "Готово к итоговому"}
+                  <Badge variant={exactGoreltechDocuments || r.info.finalBlocked ? "secondary" : "default"} className="rounded-full text-[10px]">
+                    {exactGoreltechDocuments
+                      ? "Черновик без официального номера"
+                      : r.info.finalBlocked
+                        ? "Черновик"
+                        : "Готово к итоговому"}
                   </Badge>
                   <span className="text-muted-foreground">
                     записей: {r.info.recordCount} · охват: {r.info.coverage}

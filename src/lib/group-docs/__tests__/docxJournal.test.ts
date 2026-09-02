@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { generateClassJournalDocx } from "../docxJournal";
+import { generatePackage } from "../generate";
+import { SAMPLE_CONTEXT } from "../sampleContext";
 
 vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: vi.fn() }));
 
@@ -130,5 +132,59 @@ describe("generateClassJournalDocx", () => {
         })],
       }),
     });
+  });
+
+  it("сохраняет разные даты зачисления и завершения до compile payload", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        batch: { batch_id: "batch-dates", batch_version: 1, inserted_count: 3 },
+        document: { file_path: "journals/group-dates.docx" },
+      },
+      error: null,
+    });
+    const documents = generatePackage(
+      SAMPLE_CONTEXT,
+      ["enrollment_order", "expulsion_order"],
+      {
+        mode: "blank",
+        requestedStatus: "draft",
+        // Старый общий параметр пакета не должен подменять отдельные даты.
+        documentDate: "2026-08-25",
+      },
+    );
+
+    expect(documents[0].document_date).toBe(SAMPLE_CONTEXT.group.start_date);
+    expect(documents[1].document_date).toBe(SAMPLE_CONTEXT.group.end_date);
+    expect(documents[0].document_date).not.toBe(documents[1].document_date);
+
+    const journalDraftDate = "2026-08-25";
+    await generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      journalDocumentDate: journalDraftDate,
+      fillMode: "blank",
+      otherDocuments: documents,
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      body: expect.objectContaining({
+        journalDocumentDate: journalDraftDate,
+        otherDocuments: [
+          expect.objectContaining({
+            doc_type: "enrollment_order",
+            document_date: SAMPLE_CONTEXT.group.start_date,
+          }),
+          expect.objectContaining({
+            doc_type: "expulsion_order",
+            document_date: SAMPLE_CONTEXT.group.end_date,
+          }),
+        ],
+      }),
+    });
+    const compileBody = invokeMock.mock.calls.at(-1)?.[1]?.body as Record<string, any>;
+    expect(compileBody).not.toHaveProperty("documentDate");
+    expect(compileBody.journalDocumentDate).not.toBe(documents[0].document_date);
+    expect(compileBody.journalDocumentDate).not.toBe(documents[1].document_date);
   });
 });
