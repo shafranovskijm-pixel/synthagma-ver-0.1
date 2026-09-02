@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CreditCard, ClipboardCheck } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 
 // T-Bank SDK loader
 let tbankSdkPromise: Promise<void> | null = null;
@@ -339,8 +340,22 @@ export default function StudentDashboard() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
 
-  const handleCourseClick = (courseId: string, isEnrolled: boolean) => {
+  const handleCourseClick = async (courseId: string, isEnrolled: boolean) => {
     if (isEnrolled) {
+      // An enrolled reviewer may receive an unpublished, library-only course.
+      // Resolve that narrow route through the column-limited RPC before any
+      // normal course access or video-identification checks. A rejection is
+      // expected for ordinary courses whose library feature is disabled.
+      try {
+        const shell = await fetchCourseLibraryShell(courseId);
+        if (shell.libraryOnly) {
+          navigate(`/course/${courseId}/learn?view=library`);
+          return;
+        }
+      } catch {
+        // Continue through the established published-course flow.
+      }
+
       const course = courses.find(c => c.id === courseId);
       const needsVerification = course?.skip_video_identification === false && !isVideoIdentified;
       // Admin/manager preview bypasses the video-identification gate.
@@ -375,7 +390,7 @@ export default function StudentDashboard() {
           <Button variant="secondary" size="sm" onClick={() => {
             const raw = localStorage.getItem('adminViewAsStudent');
             let returnPath = '/admin';
-            try { const d = JSON.parse(raw || '{}'); if (d.orgReturn) returnPath = d.orgReturn; } catch {}
+            try { const d = JSON.parse(raw || '{}'); if (d.orgReturn) returnPath = d.orgReturn; } catch { /* Ignore malformed preview state. */ }
             localStorage.removeItem('adminViewAsStudent');
             navigate(returnPath);
           }} className="gap-1">

@@ -14,6 +14,13 @@ export interface CourseLibraryModule {
   orderIndex: number;
 }
 
+export interface CourseLibraryShell {
+  courseId: string;
+  title: string;
+  libraryOnly: boolean;
+  modules: CourseLibraryModule[];
+}
+
 export interface CourseLibraryResource {
   assignmentId: string;
   libraryDocumentId: string;
@@ -188,14 +195,61 @@ function mapResource(
   };
 }
 
+export async function fetchCourseLibraryShell(courseId: string): Promise<CourseLibraryShell> {
+  const normalizedCourseId = courseId.trim();
+  if (!normalizedCourseId) throw new Error("Не указан курс электронной библиотеки.");
+
+  const { data, error } = await libraryDb.rpc("get_course_electronic_library_shell", {
+    p_course_id: normalizedCourseId,
+  });
+  if (error) throw error;
+
+  const shell = data && typeof data === "object" && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : null;
+  if (
+    !shell
+    || shell.course_id !== normalizedCourseId
+    || typeof shell.title !== "string"
+    || typeof shell.library_only !== "boolean"
+  ) {
+    throw new Error("Сервер вернул некорректную оболочку электронной библиотеки.");
+  }
+
+  const modulesInput = Array.isArray(shell.modules) ? shell.modules : [];
+  const modules: CourseLibraryModule[] = modulesInput.map((value) => {
+    const module = value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : null;
+    if (!module || typeof module.id !== "string" || typeof module.title !== "string") {
+      throw new Error("Сервер вернул некорректный список модулей электронной библиотеки.");
+    }
+    return {
+      id: module.id,
+      title: module.title,
+      orderIndex: typeof module.order_index === "number" ? module.order_index : 0,
+    };
+  });
+
+  return {
+    courseId: normalizedCourseId,
+    title: shell.title,
+    libraryOnly: shell.library_only,
+    modules,
+  };
+}
+
 export async function fetchCourseLibrary(courseId: string): Promise<{
   resources: CourseLibraryResource[];
   modules: CourseLibraryModule[];
 }> {
-  const [resourcesResult, modulesResult] = await Promise.all([
-    libraryDb
-      .from("course_documents")
-      .select(`
+  // Authorize and resolve the minimal course/module shell before querying
+  // resource rows. This prevents a denied deep link from issuing any library
+  // table request and keeps draft course/module rows out of the REST surface.
+  const shell = await fetchCourseLibraryShell(courseId);
+  const resourcesResult = await libraryDb
+    .from("course_documents")
+    .select(`
         id,
         course_id,
         module_id,
@@ -220,24 +274,13 @@ export async function fetchCourseLibrary(courseId: string): Promise<{
           updated_at
         )
       `)
-      .eq("course_id", courseId)
-      .not("library_document_id", "is", null)
-      .order("sort_order", { ascending: true }),
-    libraryDb
-      .from("course_modules")
-      .select("id, title, order_index")
-      .eq("course_id", courseId)
-      .order("order_index", { ascending: true }),
-  ]);
+    .eq("course_id", courseId)
+    .not("library_document_id", "is", null)
+    .order("sort_order", { ascending: true });
 
   if (resourcesResult.error) throw resourcesResult.error;
-  if (modulesResult.error) throw modulesResult.error;
 
-  const modules: CourseLibraryModule[] = (modulesResult.data ?? []).map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    orderIndex: row.order_index ?? 0,
-  }));
+  const modules = shell.modules;
   const moduleTitles = new Map(modules.map((module) => [module.id, module.title]));
   const resources = (resourcesResult.data ?? [])
     .map((row: RawLibraryAssignment) => mapResource(row, moduleTitles))
