@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface Deferred<T> {
@@ -123,6 +124,10 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import { CourseDetailsTab } from "@/components/organization/tabs/CourseDetailsTab";
 
+function renderCourseDetailsTab() {
+  return render(<CourseDetailsTab />, { wrapper: MemoryRouter });
+}
+
 describe("CourseDetailsTab URL request ordering", () => {
   beforeEach(() => {
     testState.selectedCourseId = "course-a";
@@ -142,7 +147,7 @@ describe("CourseDetailsTab URL request ordering", () => {
     testState.courseResponses.set("course-a", courseA.promise);
     testState.courseResponses.set("course-b", courseB.promise);
 
-    const view = render(<CourseDetailsTab />);
+    const view = renderCourseDetailsTab();
     await waitFor(() => expect(testState.courseLookups).toContainEqual({
       id: "course-a",
       organization_id: "org-1",
@@ -178,7 +183,7 @@ describe("CourseDetailsTab URL request ordering", () => {
     const courseB = deferred<{ data: any; error: null }>();
     testState.courseResponses.set("course-b", courseB.promise);
 
-    const view = render(<CourseDetailsTab />);
+    const view = renderCourseDetailsTab();
     expect(await screen.findByText("Course A")).toBeInTheDocument();
 
     testState.selectedCourseId = "course-b";
@@ -202,7 +207,7 @@ describe("CourseDetailsTab URL request ordering", () => {
       Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
     );
 
-    render(<CourseDetailsTab />);
+    renderCourseDetailsTab();
     expect(await screen.findByText("Course A")).toBeInTheDocument();
     expect(screen.getByTestId("publication-state")).toHaveTextContent("Черновик");
 
@@ -232,7 +237,7 @@ describe("CourseDetailsTab URL request ordering", () => {
       Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
     );
 
-    render(<CourseDetailsTab />);
+    renderCourseDetailsTab();
     expect(await screen.findByText("Course A")).toBeInTheDocument();
     expect(screen.getByTestId("publication-state")).toHaveTextContent("Черновик");
 
@@ -252,7 +257,7 @@ describe("CourseDetailsTab URL request ordering", () => {
       Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
     );
 
-    render(<CourseDetailsTab />);
+    renderCourseDetailsTab();
     expect(await screen.findByText("Course A")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Опубликовать курс" })).not.toBeInTheDocument();
   });
@@ -263,7 +268,7 @@ describe("CourseDetailsTab URL request ordering", () => {
       Promise.resolve({ data: { id: "course-a", title: "Course A", is_published: false }, error: null }),
     );
 
-    render(<CourseDetailsTab />);
+    renderCourseDetailsTab();
     expect(await screen.findByText("Course A")).toBeInTheDocument();
 
     const staleReload = deferred<{ data: any; error: null }>();

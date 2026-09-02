@@ -12,12 +12,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
+import { CourseLibraryManager } from "@/components/course-library/CourseLibraryManager";
+import { RequirePerm } from "@/hooks/useStaffPermissions";
 // EnrollmentHistory pulls in recharts (~200KB) — load it only when the history tab is opened
 const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, BookOpen, Eye, Edit, TrendingUp, CheckCircle2, FileText, History, CheckSquare, Plus, Trash2, Settings, RotateCcw, Search, UserPlus, ClipboardCheck, Bell, Globe, ExternalLink, Trophy, ArrowLeft } from "lucide-react";
+import { Users, BookOpen, Eye, Edit, TrendingUp, CheckCircle2, History, CheckSquare, Plus, Trash2, Settings, RotateCcw, Search, UserPlus, ClipboardCheck, Bell, Globe, ExternalLink, Trophy, ArrowLeft } from "lucide-react";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
@@ -58,11 +60,12 @@ interface Student { id: string; user_id: string; enrollment_id: string | null; n
 
 type CourseTabKey = "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview";
 
-type GroupKey = "editor" | "students" | "page" | "settings";
+type GroupKey = "editor" | "students" | "library" | "page" | "settings";
 
 const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[]; beta?: boolean }[] = [
   { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },
   { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "tests", "achievements", "reminders"] },
+  { key: "library",  label: "Электронная библиотека", icon: BookOpen, subTabs: ["materials"] },
   { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing"], beta: true },
   { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings"] },
 ];
@@ -77,7 +80,7 @@ const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description
   reminders:    { label: "Напоминания",   icon: Bell,           description: "Автоматические письма о сроках переаттестации" },
   landing:      { label: "Страница курса",icon: Globe },
   preview:      { label: "Просмотр",      icon: Eye },
-  materials:    { label: "Материалы",     icon: FileText },
+  materials:    { label: "Электронная библиотека", icon: BookOpen, description: "Проверенные материалы образовательной программы" },
   settings:     { label: "Настройки",     icon: Settings },
   tests:        { label: "Результаты тестов", icon: CheckSquare, description: "Отчёт по результатам тестирования учеников" },
 };
@@ -411,7 +414,18 @@ export function CourseDetailsContent({
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
           {activeTab === "students" && <StudentsSection h={h} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
-        {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
+        {activeTab === "materials" && organizationId && (
+          <div className="space-y-6">
+            <CourseLibraryManager courseId={course.id} courseName={course.title} organizationId={organizationId} />
+            <RequirePerm perm="courses.write">
+              <details className="rounded-2xl border bg-muted/20 p-4">
+                <summary className="cursor-pointer text-sm font-medium">Прочие файлы курса — прежний раздел</summary>
+                <p className="mb-4 mt-2 text-xs text-muted-foreground">Старые материалы сохранены для совместимости. Новые ресурсы образовательной программы добавляйте выше.</p>
+                <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />
+              </details>
+            </RequirePerm>
+          </div>
+        )}
         {activeTab === "history" && (
           <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
             <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />

@@ -6,7 +6,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, CheckCircle2, Circle, Lock, Clock, Trophy, RotateCcw } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, Circle, Lock, Clock, Trophy, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Lesson {
@@ -29,12 +29,14 @@ interface CourseSidebarProps {
   resetCourseProgress: () => void;
   onNavigateBack: () => void;
   onNavigate?: () => void;
+  isLibraryOpen?: boolean;
+  onOpenLibrary?: () => void;
 }
 
 export function CourseSidebarContent({
   courseTitle, lessons, currentLessonIndex, completedCount, progressPercent,
   getLessonIcon, isLessonCompleted, isLessonAccessible, goToLesson,
-  resetCourseProgress, onNavigateBack, onNavigate,
+  resetCourseProgress, onNavigateBack, onNavigate, isLibraryOpen = false, onOpenLibrary,
 }: CourseSidebarProps) {
   return (
     <>
@@ -50,12 +52,23 @@ export function CourseSidebarContent({
           </div>
           <Progress value={progressPercent} className="h-2" />
         </div>
+        {onOpenLibrary && (
+          <Button
+            type="button"
+            variant={isLibraryOpen ? "default" : "outline"}
+            className="mt-4 w-full justify-start"
+            onClick={() => { onOpenLibrary(); onNavigate?.(); }}
+            aria-current={isLibraryOpen ? "page" : undefined}
+          >
+            <BookOpen className="mr-2 h-4 w-4" />Электронная библиотека
+          </Button>
+        )}
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
           {lessons.map((lesson, index) => {
             const completed = isLessonCompleted(lesson.id);
-            const isCurrent = index === currentLessonIndex;
+            const isCurrent = !isLibraryOpen && index === currentLessonIndex;
             const isAccessible = isLessonAccessible(index);
             return (
               <button key={lesson.id} onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}

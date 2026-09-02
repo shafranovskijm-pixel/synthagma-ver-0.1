@@ -100,6 +100,7 @@ const ORG_COURSE_EDITOR: Permission[] = [
 
 const ORG_TEACHER: Permission[] = [
   'courses.read', 'students.read',
+  'library.read',
   'chats.read', 'chats.write',
   'homework.read', 'homework.write',
   'documents.read', 'journals.read',
