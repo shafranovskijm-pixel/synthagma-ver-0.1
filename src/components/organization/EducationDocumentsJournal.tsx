@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isEducationDocumentRecordForFocus } from "@/lib/organization/documentWorkspaceNavigation";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -33,6 +35,8 @@ interface EducationDocumentsJournalProps {
   documentTypeFilter?: "certificate" | "diploma" | "qualification";
   onOpenFrdoTab?: () => void;
   groupContext?: GroupJournalContext | null;
+  focusRecordId?: string | null;
+  focusEnrollmentId?: string | null;
 }
 
 export function EducationDocumentsJournal({
@@ -40,22 +44,61 @@ export function EducationDocumentsJournal({
   onClose,
   documentTypeFilter,
   onOpenFrdoTab,
-  groupContext }: EducationDocumentsJournalProps) {
+  groupContext,
+  focusRecordId = null,
+  focusEnrollmentId = null }: EducationDocumentsJournalProps) {
+  const handledFocusRef = useRef<string | null>(null);
   const {
-    loading, saving, searchQuery, setSearchQuery,
+    loading, saving, records, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
     dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
     editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
-    loadingStudents, selectedStudents,
+    completedStudents, loadingStudents, selectedStudents,
     studentSearchQuery, setStudentSearchQuery,
     formData, setFormData,
     filteredRecords, stats, filteredStudents, newGraduatesCount,
     journalTitle, journalSubtitle, manualAddGuard,
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
-    handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
+    handleOpenSelectStudents, handleOpenEnrollment, handleAutoAddAllGraduates, handleCreateFromStudents,
     toggleStudentSelection, selectAllStudents,
     handleSave, handleDelete, exportToExcel } = useEducationDocumentsJournal({ organizationId, documentTypeFilter, groupContext });
+
+  useEffect(() => {
+    const focusKey = focusEnrollmentId
+      ? `${focusEnrollmentId}:${focusRecordId ?? "new"}`
+      : null;
+    if (!focusKey) {
+      handledFocusRef.current = null;
+      return;
+    }
+    if (loading || handledFocusRef.current === focusKey) return;
+
+    const record = focusRecordId
+      ? records.find((item) => isEducationDocumentRecordForFocus(item, {
+        enrollmentId: focusEnrollmentId,
+        recordId: focusRecordId,
+      }))
+      : null;
+    if (record) {
+      handledFocusRef.current = focusKey;
+      handleOpenEdit(record);
+      return;
+    }
+
+    if (completedStudents.some((item) => item.enrollment_id === focusEnrollmentId)) {
+      handledFocusRef.current = focusKey;
+      void handleOpenEnrollment(focusEnrollmentId);
+    }
+  }, [
+    completedStudents,
+    focusEnrollmentId,
+    focusRecordId,
+    handleOpenEdit,
+    handleOpenEnrollment,
+    loading,
+    records,
+  ]);
 
   if (loading) {
     return (

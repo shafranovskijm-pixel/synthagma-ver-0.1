@@ -31,8 +31,10 @@ import { TestInboxButton } from "@/components/organization/documents/TestInboxBu
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { canAccessDocumentSubTab } from "@/lib/organization/documentNavigationPermissions";
 import {
+  clearEducationDocumentsJournalFocusParams,
   readCounterpartyView,
   readDocumentView,
+  readEducationDocumentsJournalFocus,
   setDocumentViewParams,
 } from "@/lib/organization/documentWorkspaceNavigation";
 import type { CounterpartySubTab } from "@/hooks/useDocumentsTab";
@@ -127,6 +129,7 @@ function DocumentsTabContent({
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedDocumentView = readDocumentView(searchParams);
   const requestedCounterpartyView = readCounterpartyView(searchParams);
+  const requestedEducationDocumentFocus = readEducationDocumentsJournalFocus(searchParams);
 
   const canOpenDocumentView = useCallback((tab: DocumentSubTab) => {
     if (tab === "orders") return isOrdersEnabled;
@@ -176,8 +179,20 @@ function DocumentsTabContent({
       && Boolean(rawCounterpartyView)
       && rawCounterpartyView !== requestedCounterpartyView;
     const staleCounterpartyView = documentView !== "counterparties" && Boolean(rawCounterpartyView);
+    const hasEducationDocumentFocusParams = [
+      "journal",
+      "educationRecordId",
+      "educationEnrollmentId",
+    ].some((key) => searchParams.has(key));
+    const invalidOrStaleEducationDocumentFocus = hasEducationDocumentFocusParams
+      && (documentView !== "journals" || !requestedEducationDocumentFocus);
 
-    if (!invalidOrForbiddenDocumentView && !invalidCounterpartyView && !staleCounterpartyView) return;
+    if (
+      !invalidOrForbiddenDocumentView
+      && !invalidCounterpartyView
+      && !staleCounterpartyView
+      && !invalidOrStaleEducationDocumentFocus
+    ) return;
 
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -185,9 +200,17 @@ function DocumentsTabContent({
       if (invalidOrForbiddenDocumentView || invalidCounterpartyView || staleCounterpartyView) {
         next.delete("counterpartyView");
       }
-      return next;
+      return invalidOrStaleEducationDocumentFocus
+        ? clearEducationDocumentsJournalFocusParams(next)
+        : next;
     }, { replace: true });
-  }, [documentView, requestedCounterpartyView, searchParams, setSearchParams]);
+  }, [
+    documentView,
+    requestedCounterpartyView,
+    requestedEducationDocumentFocus,
+    searchParams,
+    setSearchParams,
+  ]);
 
   // Legacy commercial-document markers now stay inside the Documents
   // workspace. The unfinished Sales workspace is not exposed to organizations.
@@ -280,7 +303,7 @@ function DocumentsTabContent({
         next.set("tab", "students");
         next.delete("documentView");
         next.delete("counterpartyView");
-        return next;
+        return clearEducationDocumentsJournalFocusParams(next);
       });
       return;
     }

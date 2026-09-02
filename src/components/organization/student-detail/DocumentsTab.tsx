@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FileText, Eye, Trash2, Upload, Save, User, Calendar, ScanLine, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,13 @@ interface DocumentsTabProps {
     enrollments: StudentEnrollment[];
     enrollmentsLoading?: boolean;
     enrollmentsError?: string | null;
+    onOpenProfile?: () => void;
+    onOpenCompany?: () => void;
+    onOpenCourse?: (courseId: string) => void;
+    onOpenEducationDocument?: (target: {
+      enrollmentId: string;
+      recordId: string | null;
+    }) => void;
   };
 }
 
@@ -36,6 +43,7 @@ const DOC_TYPES = [
 ];
 
 export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) {
+  const snilsInputRef = useRef<HTMLInputElement>(null);
   const [snilsValue, setSnilsValue] = useState(h.frdoData?.snils || "");
   const [lastName, setLastName] = useState(h.frdoData?.last_name || "");
   const [firstName, setFirstName] = useState(h.frdoData?.first_name || "");
@@ -70,6 +78,11 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
 
   const handleSnilsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSnilsValue(formatSnils(e.target.value));
+  };
+
+  const focusSnils = () => {
+    snilsInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    snilsInputRef.current?.focus({ preventScroll: true });
   };
 
   const handleRecognize = async (doc: any) => {
@@ -154,6 +167,7 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
           {...laborSafetyXml}
           snils={h.frdoData?.snils ?? null}
           position={h.jobPosition ?? null}
+          onOpenSnils={focusSnils}
         />
       )}
 
@@ -242,7 +256,16 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
           <div className="space-y-2 col-span-2">
             <Label>СНИЛС</Label>
             <div className="flex gap-2">
-              <Input value={snilsValue} onChange={handleSnilsChange} placeholder="XXX-XXX-XXX XX" maxLength={14} className="max-w-xs" />
+              <Input
+                ref={snilsInputRef}
+                id="student-frdo-snils"
+                data-testid="student-frdo-snils-input"
+                value={snilsValue}
+                onChange={handleSnilsChange}
+                placeholder="XXX-XXX-XXX XX"
+                maxLength={14}
+                className="max-w-xs"
+              />
               <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "snils" || (snilsValue && !isValidSnils(snilsValue))} onClick={() => h.saveFrdoField("snils", snilsValue)}>
                 {h.savingFrdoField === "snils" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>

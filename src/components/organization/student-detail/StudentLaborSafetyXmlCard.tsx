@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, ExternalLink, FileCode2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, FileCode2, Pencil, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -27,6 +27,14 @@ interface StudentLaborSafetyXmlCardProps {
   enrollmentsError?: string | null;
   snils?: string | null;
   position?: string | null;
+  onOpenProfile?: () => void;
+  onOpenSnils?: () => void;
+  onOpenCompany?: () => void;
+  onOpenCourse?: (courseId: string) => void;
+  onOpenEducationDocument?: (target: {
+    enrollmentId: string;
+    recordId: string | null;
+  }) => void;
 }
 
 function StudentLaborSafetyXmlCardContent({
@@ -37,6 +45,11 @@ function StudentLaborSafetyXmlCardContent({
   enrollmentsError = null,
   snils = null,
   position = null,
+  onOpenProfile,
+  onOpenSnils,
+  onOpenCompany,
+  onOpenCourse,
+  onOpenEducationDocument,
 }: StudentLaborSafetyXmlCardProps) {
   const [context, setContext] = useState<StudentLaborSafetyXmlContext | null>(null);
   const [loading, setLoading] = useState(false);
@@ -114,6 +127,27 @@ function StudentLaborSafetyXmlCardContent({
     }
   };
 
+  const missingFieldAction = (
+    field: string,
+    result: (typeof records)[number],
+  ): (() => void) | null => {
+    if (field === "ФИО" || field === "Должность") return onOpenProfile ?? null;
+    if (field === "СНИЛС") return onOpenSnils ?? null;
+    if (field === "ИНН организации" || field === "Наименование организации") {
+      return onOpenCompany ?? null;
+    }
+    if (field === "Номер протокола" && onOpenEducationDocument) {
+      return () => onOpenEducationDocument({
+        enrollmentId: result.enrollmentId,
+        recordId: result.educationDocumentRecordId,
+      });
+    }
+    if ((field === "Программа обучения" || field === "Дата экзамена") && onOpenCourse) {
+      return () => onOpenCourse(result.courseId);
+    }
+    return null;
+  };
+
   return (
     <div className="rounded-2xl border border-amber-300/70 bg-amber-50/50 p-6 dark:bg-amber-950/10" data-testid="student-labor-safety-xml-card">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -188,9 +222,36 @@ function StudentLaborSafetyXmlCardContent({
                   {result.missingFields.length === 0 ? (
                     <p className="mt-1 text-xs text-emerald-700">Все поля внутреннего XML заполнены.</p>
                   ) : (
-                    <p className="mt-1 text-xs text-destructive">
-                      Не заполнено: {result.missingFields.join(", ")}. Заполните данные — до этого экспорт отключён.
-                    </p>
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs text-destructive">
+                        Не заполнено. Выберите поле, чтобы перейти к месту заполнения:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {result.missingFields.map((field) => {
+                          const action = missingFieldAction(field, result);
+                          return action ? (
+                            <Button
+                              key={field}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 rounded-lg border-destructive/30 px-2 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
+                              aria-label={`Заполнить: ${field}`}
+                              onClick={action}
+                            >
+                              <Pencil className="h-3 w-3" /> {field}
+                            </Button>
+                          ) : (
+                            <span
+                              key={field}
+                              className="inline-flex h-7 items-center rounded-lg border border-destructive/20 px-2 text-xs text-destructive"
+                            >
+                              {field}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -209,6 +270,16 @@ function StudentLaborSafetyXmlCardContent({
 export function StudentLaborSafetyXmlCard(props: StudentLaborSafetyXmlCardProps) {
   const { can, loading } = useStaffPermissions();
   if (loading || !can("labor_safety.read")) return null;
+  const actionableProps: StudentLaborSafetyXmlCardProps = {
+    ...props,
+    onOpenProfile: can("students.write") ? props.onOpenProfile : undefined,
+    onOpenSnils: can("students.write") ? props.onOpenSnils : undefined,
+    onOpenCompany: can("companies.write") ? props.onOpenCompany : undefined,
+    onOpenCourse: can("courses.write") ? props.onOpenCourse : undefined,
+    onOpenEducationDocument: can("journals.read") && can("journals.write")
+      ? props.onOpenEducationDocument
+      : undefined,
+  };
   const identityKey = [
     props.organizationId,
     props.student.userId,
@@ -220,5 +291,5 @@ export function StudentLaborSafetyXmlCard(props: StudentLaborSafetyXmlCardProps)
       enrollment.completed_at ?? "",
     ].join(":")),
   ].join("|");
-  return <StudentLaborSafetyXmlCardContent key={identityKey} {...props} />;
+  return <StudentLaborSafetyXmlCardContent key={identityKey} {...actionableProps} />;
 }

@@ -1,15 +1,15 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  canRead: true,
+  permissions: new Set<string>(),
   permissionsLoading: false,
   fetchContext: vi.fn(),
 }));
 
 vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({
-    can: (permission: string) => permission === "labor_safety.read" && state.canRead,
+    can: (permission: string) => state.permissions.has(permission),
     loading: state.permissionsLoading,
   }),
 }));
@@ -47,13 +47,21 @@ const props = {
 
 describe("StudentLaborSafetyXmlCard", () => {
   beforeEach(() => {
-    state.canRead = true;
+    state.permissions = new Set([
+      "labor_safety.read",
+      "students.write",
+      "companies.write",
+      "courses.write",
+      "documents.write",
+      "journals.read",
+      "journals.write",
+    ]);
     state.permissionsLoading = false;
     state.fetchContext.mockReset();
   });
 
   it("does not render or request data without labor_safety.read", () => {
-    state.canRead = false;
+    state.permissions.delete("labor_safety.read");
     render(<StudentLaborSafetyXmlCard {...props} />);
 
     expect(screen.queryByTestId("student-labor-safety-xml-card")).not.toBeInTheDocument();
@@ -65,6 +73,7 @@ describe("StudentLaborSafetyXmlCard", () => {
       company: { name: "ООО «Современные горные технологии»", inn: "1234567890" },
       courses: [{
         enrollmentId: "enr-1",
+        educationDocumentRecordId: "record-1",
         courseId: "course-1",
         courseTitle: "Общие вопросы охраны труда",
         categoryName: "Охрана труда",
@@ -74,12 +83,17 @@ describe("StudentLaborSafetyXmlCard", () => {
       }],
     });
 
-    render(<StudentLaborSafetyXmlCard {...props} />);
+    render(
+      <StudentLaborSafetyXmlCard
+        {...props}
+        onOpenEducationDocument={vi.fn()}
+      />,
+    );
 
     expect(await screen.findByText("XML по охране труда")).toBeInTheDocument();
     expect(screen.getByText("Beta")).toBeInTheDocument();
     expect(screen.getByText(/Совместимость с актуальной XSD Минтруда пока не подтверждена/)).toBeInTheDocument();
-    expect(screen.getByText(/Не заполнено: Номер протокола/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Заполнить: Номер протокола" })).toBeInTheDocument();
     expect(screen.getByText(/Черновик можно скачать для демонстрации/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Открыть ЛКОТ" })).toHaveAttribute(
@@ -98,6 +112,7 @@ describe("StudentLaborSafetyXmlCard", () => {
       company: { name: "ООО «Современные горные технологии»", inn: "1234567890" },
       courses: [{
         enrollmentId: "enr-1",
+        educationDocumentRecordId: "record-1",
         courseId: "course-1",
         courseTitle: "Общие вопросы охраны труда",
         categoryName: "Охрана труда",
@@ -112,5 +127,96 @@ describe("StudentLaborSafetyXmlCard", () => {
     expect(await screen.findByText("Все поля внутреннего XML заполнены.")).toBeInTheDocument();
     expect(screen.getByText(/Записей с заполненными данными: 1/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
+  });
+
+  it("routes each missing editable field to its exact source", async () => {
+    const onOpenProfile = vi.fn();
+    const onOpenSnils = vi.fn();
+    const onOpenCompany = vi.fn();
+    const onOpenEducationDocument = vi.fn();
+    state.fetchContext.mockResolvedValue({
+      company: null,
+      courses: [{
+        enrollmentId: "enr-1",
+        educationDocumentRecordId: "record-1",
+        courseId: "course-1",
+        courseTitle: "Общие вопросы охраны труда",
+        categoryName: "Охрана труда",
+        status: "completed",
+        completedAt: "2026-08-30T00:00:00Z",
+        protocolNumber: null,
+      }],
+    });
+
+    render(
+      <StudentLaborSafetyXmlCard
+        {...props}
+        snils={null}
+        position={null}
+        onOpenProfile={onOpenProfile}
+        onOpenSnils={onOpenSnils}
+        onOpenCompany={onOpenCompany}
+        onOpenEducationDocument={onOpenEducationDocument}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Заполнить: СНИЛС" }));
+    fireEvent.click(screen.getByRole("button", { name: "Заполнить: Должность" }));
+    fireEvent.click(screen.getByRole("button", { name: "Заполнить: ИНН организации" }));
+    fireEvent.click(screen.getByRole("button", { name: "Заполнить: Номер протокола" }));
+
+    expect(onOpenSnils).toHaveBeenCalledOnce();
+    expect(onOpenProfile).toHaveBeenCalledOnce();
+    expect(onOpenCompany).toHaveBeenCalledOnce();
+    expect(onOpenEducationDocument).toHaveBeenCalledWith({
+      enrollmentId: "enr-1",
+      recordId: "record-1",
+    });
+  });
+
+  it("requires journal write permission for the protocol edit action", async () => {
+    const onOpenEducationDocument = vi.fn();
+    const context = {
+      company: { name: "ООО Тест", inn: "1234567890" },
+      courses: [{
+        enrollmentId: "enr-1",
+        educationDocumentRecordId: "record-1",
+        courseId: "course-1",
+        courseTitle: "Общие вопросы охраны труда",
+        categoryName: "Охрана труда",
+        status: "completed",
+        completedAt: "2026-08-30T00:00:00Z",
+        protocolNumber: null,
+      }],
+    };
+    state.fetchContext.mockResolvedValue(context);
+    state.permissions = new Set([
+      "labor_safety.read",
+      "documents.write",
+      "journals.read",
+    ]);
+
+    const readOnly = render(
+      <StudentLaborSafetyXmlCard
+        {...props}
+        onOpenEducationDocument={onOpenEducationDocument}
+      />,
+    );
+    await screen.findByText("XML по охране труда");
+    expect(screen.queryByRole("button", { name: "Заполнить: Номер протокола" })).not.toBeInTheDocument();
+    readOnly.unmount();
+
+    state.permissions = new Set([
+      "labor_safety.read",
+      "journals.read",
+      "journals.write",
+    ]);
+    render(
+      <StudentLaborSafetyXmlCard
+        {...props}
+        onOpenEducationDocument={onOpenEducationDocument}
+      />,
+    );
+    expect(await screen.findByRole("button", { name: "Заполнить: Номер протокола" })).toBeInTheDocument();
   });
 });

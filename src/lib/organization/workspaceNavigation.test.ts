@@ -57,13 +57,17 @@ describe("organization multi-window navigation", () => {
   });
 
   it("cleans window-specific params when the sidebar changes workspace", () => {
-    const start = "tab=organizations&companyId=c1&studentsView=archive&studentId=s1&groupSettings=1";
+    const start = "tab=organizations&companyId=c1&studentsView=archive&studentId=s1&groupSettings=1&documentView=journals&journal=education_documents&educationRecordId=r1&educationEnrollmentId=e1";
     const next = resolveTabParams(start, "library");
     expect(next.get("tab")).toBe("library");
     expect(next.get("companyId")).toBeNull();
     expect(next.get("studentsView")).toBeNull();
     expect(next.get("studentId")).toBeNull();
     expect(next.get("groupSettings")).toBeNull();
+    expect(next.get("documentView")).toBeNull();
+    expect(next.get("journal")).toBeNull();
+    expect(next.get("educationRecordId")).toBeNull();
+    expect(next.get("educationEnrollmentId")).toBeNull();
   });
 
   it("preserves an explicit company deep link when resolving its workspace", () => {

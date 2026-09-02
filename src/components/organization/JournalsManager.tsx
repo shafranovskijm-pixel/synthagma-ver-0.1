@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -24,6 +25,10 @@ import {
   resolveCustomJournalGuard,
   resolveManualJournalEditorGuard,
 } from "@/lib/journals/groupJournalContext";
+import {
+  clearEducationDocumentsJournalFocusParams,
+  readEducationDocumentsJournalFocus,
+} from "@/lib/organization/documentWorkspaceNavigation";
 
 
 // ── Types & Constants ──
@@ -74,10 +79,17 @@ interface JournalsManagerProps {
 }
 
 export function JournalsManager({ organizationId, groupId, courseId, returnToGroupId }: JournalsManagerProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const educationDocumentFocus = readEducationDocumentsJournalFocus(searchParams);
+  const focusedEducationEnrollmentId = educationDocumentFocus?.enrollmentId ?? null;
+  const focusedEducationRecordId = educationDocumentFocus?.recordId ?? null;
+  const hasEducationDocumentFocus = Boolean(focusedEducationEnrollmentId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [activeJournal, setActiveJournal] = useState<{ type: string; title: string } | null>(null);
-  const [activeAutoJournal, setActiveAutoJournal] = useState<string | null>(null);
+  const [activeAutoJournal, setActiveAutoJournal] = useState<string | null>(
+    hasEducationDocumentFocus ? "education_documents" : null,
+  );
   const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
   const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
@@ -86,6 +98,24 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
   const [groupStatus, setGroupStatus] = useState<"loading" | "ready" | "error">("loading");
   const [groupError, setGroupError] = useState<string | null>(null);
+
+  const clearEducationDocumentFocus = useCallback(() => {
+    setSearchParams(
+      (current) => clearEducationDocumentsJournalFocusParams(current),
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  const openAutoJournal = useCallback((journalId: string) => {
+    if (journalId !== "education_documents" && hasEducationDocumentFocus) {
+      clearEducationDocumentFocus();
+    }
+    setActiveAutoJournal(journalId);
+  }, [clearEducationDocumentFocus, hasEducationDocumentFocus]);
+
+  useEffect(() => {
+    if (hasEducationDocumentFocus) setActiveAutoJournal("education_documents");
+  }, [focusedEducationEnrollmentId, focusedEducationRecordId, hasEducationDocumentFocus]);
 
   // Фактические участники группы (не по совпадению курса): нужны для фильтрации авто-журналов.
   // Важно: loading и «нет контекста» — разные состояния, иначе журнал успеет показать всю организацию.
@@ -181,13 +211,24 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
         {node}
       </GroupJournalGate>
     );
-    const closeAuto = () => setActiveAutoJournal(null);
+    const closeAuto = () => {
+      setActiveAutoJournal(null);
+      if (hasEducationDocumentFocus) clearEducationDocumentFocus();
+    };
     if (activeAutoJournal === "attendance") return gate("attendance", <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "current_control") return gate("current_control", <AutoGradesJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "final_attestation") return gate("final_attestation", <AutoFinalAttestationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "document_registration") return gate("document_registration", <AutoDocumentRegistrationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "copies_duplicates") return gate("copies_duplicates", <CopiesDuplicatesJournal organizationId={organizationId} onClose={closeAuto} />, closeAuto);
-    if (activeAutoJournal === "education_documents") return gate("education_documents", <EducationDocumentsJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
+    if (activeAutoJournal === "education_documents") return gate("education_documents", (
+      <EducationDocumentsJournal
+        organizationId={organizationId}
+        groupContext={groupContext}
+        onClose={closeAuto}
+        focusRecordId={focusedEducationRecordId}
+        focusEnrollmentId={focusedEducationEnrollmentId}
+      />
+    ), closeAuto);
     if (activeAutoJournal === "identification") return gate("identification", <IdentificationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeJournal) {
       const close = () => setActiveJournal(null);
@@ -220,7 +261,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
               <div><h2 className="text-xl font-bold">Полная система учёта для организаций ДПО</h2><p className="text-sm text-muted-foreground mt-1">Электронные журналы с автоматическим заполнением, экспортом и шаблонами</p></div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Button variant="outline" onClick={() => setActiveAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
+              <Button variant="outline" onClick={() => openAutoJournal("identification")} className="rounded-xl"><Camera className="w-4 h-4 mr-2" />Видеоидентификация</Button>
               {!inGroupContext && (
                 <Button onClick={openCreateWizard} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Создать журнал</Button>
               )}
@@ -280,7 +321,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
                 <CollapsibleContent>
                   <div className="border-t border-border">
                     {category.journals.map((journal) => (
-                      <JournalRow key={journal.id} journal={journal} onAutoClick={() => setActiveAutoJournal(journal.id)} onManualClick={() => openManualJournal(journal.id, journal.title)} onDeleteClick={() => setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required })} hasAutoMode={!!AUTO_JOURNALS[journal.id]} isSpecial={SPECIAL_JOURNALS.has(journal.id)} inGroupContext={inGroupContext} />
+                      <JournalRow key={journal.id} journal={journal} onAutoClick={() => openAutoJournal(journal.id)} onManualClick={() => openManualJournal(journal.id, journal.title)} onDeleteClick={() => setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required })} hasAutoMode={!!AUTO_JOURNALS[journal.id]} isSpecial={SPECIAL_JOURNALS.has(journal.id)} inGroupContext={inGroupContext} />
                     ))}
                   </div>
                 </CollapsibleContent>

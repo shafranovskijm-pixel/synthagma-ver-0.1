@@ -88,20 +88,26 @@ export async function fetchStudentLaborSafetyXmlContext(
     return isOccupationalSafetyCategory(categoriesById.get(course.category_id));
   });
 
-  const protocolsByEnrollmentId = new Map<string, string>();
+  const documentsByEnrollmentId = new Map<string, {
+    recordId: string;
+    protocolNumber: string | null;
+  }>();
   if (eligibleEnrollments.length > 0) {
     const enrollmentIds = eligibleEnrollments.map(enrollment => enrollment.id);
     const { data: protocolRows, error: protocolsError } = await client
       .from("education_document_records")
-      .select("enrollment_id, protocol_number, created_at")
+      .select("id, enrollment_id, protocol_number, created_at")
       .eq("organization_id", input.organizationId)
       .is("deleted_at", null)
       .in("enrollment_id", enrollmentIds)
       .order("created_at", { ascending: false });
     if (protocolsError) throw protocolsError;
     for (const row of protocolRows ?? []) {
-      if (row.enrollment_id && row.protocol_number?.trim() && !protocolsByEnrollmentId.has(row.enrollment_id)) {
-        protocolsByEnrollmentId.set(row.enrollment_id, row.protocol_number.trim());
+      if (row.id && row.enrollment_id && !documentsByEnrollmentId.has(row.enrollment_id)) {
+        documentsByEnrollmentId.set(row.enrollment_id, {
+          recordId: row.id,
+          protocolNumber: row.protocol_number?.trim() || null,
+        });
       }
     }
   }
@@ -110,14 +116,16 @@ export async function fetchStudentLaborSafetyXmlContext(
     company,
     courses: eligibleEnrollments.map(enrollment => {
       const course = coursesById.get(enrollment.course_id)!;
+      const educationDocument = documentsByEnrollmentId.get(enrollment.id);
       return {
         enrollmentId: enrollment.id,
+        educationDocumentRecordId: educationDocument?.recordId ?? null,
         courseId: course.id,
         courseTitle: course.title,
         categoryName: course.category_id ? categoriesById.get(course.category_id) ?? null : null,
         status: enrollment.status,
         completedAt: enrollment.completed_at ?? null,
-        protocolNumber: protocolsByEnrollmentId.get(enrollment.id) ?? null,
+        protocolNumber: educationDocument?.protocolNumber ?? null,
       };
     }),
   };

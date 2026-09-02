@@ -12,6 +12,7 @@ export interface LaborSafetyXmlRecord {
 
 export interface StudentLaborSafetyCourse {
   enrollmentId: string;
+  educationDocumentRecordId: string | null;
   courseId: string;
   courseTitle: string;
   categoryName: string | null;
@@ -31,6 +32,7 @@ export interface StudentLaborSafetyRecordInput {
 
 export interface StudentLaborSafetyRecordResult {
   enrollmentId: string;
+  educationDocumentRecordId: string | null;
   courseId: string;
   courseTitle: string;
   record: LaborSafetyXmlRecord;
@@ -104,6 +106,7 @@ export function buildStudentLaborSafetyRecords(
 
       return {
         enrollmentId: course.enrollmentId,
+        educationDocumentRecordId: course.educationDocumentRecordId,
         courseId: course.courseId,
         courseTitle: course.courseTitle,
         record,

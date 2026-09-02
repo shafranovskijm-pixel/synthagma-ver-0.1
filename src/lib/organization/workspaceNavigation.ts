@@ -81,5 +81,10 @@ export function resolveStudentsViewParams(
   next.delete("folder");
   next.delete("returnToGroupId");
   next.delete("groupSettings");
+  next.delete("documentView");
+  next.delete("counterpartyView");
+  next.delete("journal");
+  next.delete("educationRecordId");
+  next.delete("educationEnrollmentId");
   return next;
 }

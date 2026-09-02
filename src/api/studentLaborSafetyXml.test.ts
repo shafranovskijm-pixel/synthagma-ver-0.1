@@ -52,7 +52,7 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
       courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
       course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
       education_document_records: {
-        data: [{ enrollment_id: "enr-1", protocol_number: "П-7", created_at: "2026-08-31" }],
+        data: [{ id: "record-1", enrollment_id: "enr-1", protocol_number: "П-7", created_at: "2026-08-31" }],
         error: null,
       },
     });
@@ -74,6 +74,7 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
     ]);
     expect(result.courses).toEqual([expect.objectContaining({
       enrollmentId: "enr-1",
+      educationDocumentRecordId: "record-1",
       courseTitle: "Курс ОТ",
       categoryName: "Охрана труда",
       protocolNumber: "П-7",
@@ -94,5 +95,30 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
 
     expect(result.courses).toEqual([]);
     expect(client.logs.some(log => log.table === "education_document_records")).toBe(false);
+  });
+
+  it("returns the newest education-document record even before its protocol number is filled", async () => {
+    const client = createClient({
+      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
+      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
+      education_document_records: {
+        data: [
+          { id: "record-new", enrollment_id: "enr-1", protocol_number: null, created_at: "2026-09-01" },
+          { id: "record-old", enrollment_id: "enr-1", protocol_number: "П-1", created_at: "2026-08-31" },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await fetchStudentLaborSafetyXmlContext({
+      organizationId: "org-1",
+      userId: "student-1",
+      enrollments: [enrollment()],
+    }, client as never);
+
+    expect(result.courses[0]).toEqual(expect.objectContaining({
+      educationDocumentRecordId: "record-new",
+      protocolNumber: null,
+    }));
   });
 });

@@ -45,6 +45,7 @@ describe("laborSafetyXml", () => {
       courses: [
         {
           enrollmentId: "enr-1",
+          educationDocumentRecordId: "record-1",
           courseId: "course-1",
           courseTitle: "Общие вопросы охраны труда",
           categoryName: "Охрана труда",
@@ -54,6 +55,7 @@ describe("laborSafetyXml", () => {
         },
         {
           enrollmentId: "enr-2",
+          educationDocumentRecordId: "record-2",
           courseId: "course-2",
           courseTitle: "Первая помощь",
           categoryName: "Дополнительная охрана труда",
@@ -63,6 +65,7 @@ describe("laborSafetyXml", () => {
         },
         {
           enrollmentId: "enr-3",
+          educationDocumentRecordId: "record-3",
           courseId: "course-3",
           courseTitle: "Охрана труда в названии не является категорией",
           categoryName: "Пожарная безопасность",
@@ -72,6 +75,7 @@ describe("laborSafetyXml", () => {
         },
         {
           enrollmentId: "enr-4",
+          educationDocumentRecordId: null,
           courseId: "course-4",
           courseTitle: "Незавершённый курс",
           categoryName: "Охрана труда",

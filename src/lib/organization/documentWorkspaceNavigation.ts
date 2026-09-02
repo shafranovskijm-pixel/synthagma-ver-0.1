@@ -26,6 +26,60 @@ const COUNTERPARTY_VIEWS: ReadonlySet<CounterpartySubTab> = new Set([
   "history",
 ]);
 
+const EDUCATION_DOCUMENT_JOURNAL = "education_documents";
+const EDUCATION_DOCUMENT_FOCUS_PARAMS = [
+  "journal",
+  "educationRecordId",
+  "educationEnrollmentId",
+] as const;
+
+export interface EducationDocumentsJournalFocus {
+  enrollmentId: string;
+  recordId: string | null;
+}
+
+export function isEducationDocumentRecordForFocus(
+  record: { id: string; enrollment_id?: string | null },
+  focus: EducationDocumentsJournalFocus,
+): boolean {
+  return Boolean(focus.recordId)
+    && record.id === focus.recordId
+    && record.enrollment_id === focus.enrollmentId;
+}
+
+export function clearEducationDocumentsJournalFocusParams(
+  params: URLSearchParams,
+): URLSearchParams {
+  const next = new URLSearchParams(params);
+  EDUCATION_DOCUMENT_FOCUS_PARAMS.forEach((key) => next.delete(key));
+  return next;
+}
+
+export function readEducationDocumentsJournalFocus(
+  params: URLSearchParams,
+): EducationDocumentsJournalFocus | null {
+  if (params.get("journal") !== EDUCATION_DOCUMENT_JOURNAL) return null;
+  const enrollmentId = params.get("educationEnrollmentId")?.trim();
+  if (!enrollmentId) return null;
+  return {
+    enrollmentId,
+    recordId: params.get("educationRecordId")?.trim() || null,
+  };
+}
+
+export function educationDocumentsJournalPath(input: {
+  enrollmentId: string;
+  recordId?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  params.set("tab", "documents");
+  params.set("documentView", "journals");
+  params.set("journal", EDUCATION_DOCUMENT_JOURNAL);
+  params.set("educationEnrollmentId", input.enrollmentId);
+  if (input.recordId) params.set("educationRecordId", input.recordId);
+  return `/organization?${params.toString()}`;
+}
+
 export function readDocumentView(params: URLSearchParams): DocumentSubTab | null {
   const value = params.get("documentView") as DocumentSubTab | null;
   return value && DOCUMENT_VIEWS.has(value) ? value : null;
@@ -47,7 +101,7 @@ export function setDocumentViewParams(
   if (!documentView) {
     next.delete("documentView");
     next.delete("counterpartyView");
-    return next;
+    return clearEducationDocumentsJournalFocusParams(next);
   }
 
   next.set("documentView", documentView);
@@ -60,5 +114,7 @@ export function setDocumentViewParams(
   } else {
     next.delete("counterpartyView");
   }
-  return next;
+  return documentView === "journals"
+    ? next
+    : clearEducationDocumentsJournalFocusParams(next);
 }

@@ -406,6 +406,19 @@ export function useEducationDocumentsJournal({
     await loadCompletedStudents();
   };
 
+  /**
+   * Opens one exact enrollment for operator review. Selection alone never
+   * writes a journal row; creation still requires the explicit submit action
+   * in SelectStudentsDialog.
+   */
+  const handleOpenEnrollment = async (enrollmentId: string) => {
+    const student = scopedCompletedStudents.find((item) => item.enrollment_id === enrollmentId);
+    setSelectedStudents(new Set([enrollmentId]));
+    setStudentSearchQuery(student?.full_name ?? "");
+    setShowSelectStudentsDialog(true);
+    await loadCompletedStudents();
+  };
+
   /** Общая транзакционная выдача: номера только с сервера, всё или ничего. */
   const issueForStudents = async (list: CompletedStudent[], successLabel: string) => {
     setSaving(true);
@@ -584,6 +597,7 @@ export function useEducationDocumentsJournal({
     journalTitle, journalSubtitle, manualAddGuard,
     // Actions
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
+    handleOpenEnrollment,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
     toggleStudentSelection, selectAllStudents,
     handleSave, handleDelete, exportToExcel,

@@ -108,6 +108,13 @@ export function resolveTabParams(
     next.delete("groupSettings");
     next.delete("addStudents");
   }
+  if (tab !== "documents") {
+    next.delete("documentView");
+    next.delete("counterpartyView");
+    next.delete("journal");
+    next.delete("educationRecordId");
+    next.delete("educationEnrollmentId");
+  }
 
   const keepGroupContext = isGroupContextTab(tab) && !!next.get("returnToGroupId") && !!next.get("groupId");
 

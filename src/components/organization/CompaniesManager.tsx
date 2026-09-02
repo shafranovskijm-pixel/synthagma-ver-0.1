@@ -413,7 +413,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         companyEmail={cm.editCompanyEmail} setCompanyEmail={cm.setEditCompanyEmail}
         docFields={cm.editDocFields} setDocField={cm.setEditDocField}
         isSaving={cm.isSaving} isSearchingDadata={cm.isSearchingDadataEdit}
-        dadataCompanyInfo={cm.dadataEditCompanyInfo} onSearchByInn={(inn) => cm.searchDadata(inn)}
+        dadataCompanyInfo={cm.dadataEditCompanyInfo} onSearchByInn={cm.searchDadataEdit}
         onSave={cm.saveCompany} onClose={() => cm.setDadataEditCompanyInfo(null)}
       />
 

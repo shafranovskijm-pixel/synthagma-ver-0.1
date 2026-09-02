@@ -103,6 +103,23 @@ interface DadataCompanyInfo {
   opf: string | null;
 }
 
+interface DadataCompanyLookupResult {
+  success?: boolean;
+  company?: {
+    name: string;
+    fullName?: string;
+    shortName?: string;
+    inn: string;
+    kpp?: string | null;
+    ogrn?: string | null;
+    address?: string | null;
+    management?: string | null;
+    status?: string | null;
+    type?: string | null;
+    opf?: string | null;
+  };
+}
+
 interface GlobalDocStats {
   contracts: number;
   invoices: number;
@@ -270,6 +287,59 @@ export function useCompaniesManager(organizationId: string) {
       console.error("Error searching dadata:", error);
     } finally {
       setIsSearchingDadata(false);
+    }
+  };
+
+  const searchDadataEdit = async (inn: string) => {
+    if (inn.length < 10) return;
+
+    setIsSearchingDadataEdit(true);
+    try {
+      const { data, error } = await safeInvoke<DadataCompanyLookupResult>("dadata-company", {
+        body: { inn },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.company) {
+        const c = data.company;
+        const companyInfo: DadataCompanyInfo = {
+          name: c.name,
+          fullName: c.fullName || c.name,
+          shortName: c.shortName || c.name,
+          inn: c.inn,
+          kpp: c.kpp || null,
+          ogrn: c.ogrn || null,
+          address: c.address || null,
+          management: c.management || null,
+          status: c.status || null,
+          type: c.type || null,
+          opf: c.opf || null,
+        };
+
+        setDadataEditCompanyInfo(companyInfo);
+        setEditCompanyName(companyInfo.shortName);
+        setEditCompanyInn(companyInfo.inn);
+        const openedInn = (editingCompany?.inn ?? "").replace(/\D/g, "");
+        const foundInn = companyInfo.inn.replace(/\D/g, "");
+        const isSameLegalEntity = Boolean(openedInn) && openedInn === foundInn;
+        setEditDocFields((prev) => ({
+          ...prev,
+          kpp: isSameLegalEntity ? prev.kpp || companyInfo.kpp || "" : companyInfo.kpp || "",
+          ogrn: isSameLegalEntity ? prev.ogrn || companyInfo.ogrn || "" : companyInfo.ogrn || "",
+          address: isSameLegalEntity ? prev.address || companyInfo.address || "" : companyInfo.address || "",
+          director: isSameLegalEntity ? prev.director || companyInfo.management || "" : companyInfo.management || "",
+        }));
+      } else {
+        setDadataEditCompanyInfo(null);
+        if (!data?.success) {
+          toast.info("Компания не найдена по ИНН");
+        }
+      }
+    } catch (error) {
+      console.error("Error searching dadata for edit:", error);
+    } finally {
+      setIsSearchingDadataEdit(false);
     }
   };
 
@@ -441,6 +511,7 @@ export function useCompaniesManager(organizationId: string) {
     setIsSearchingDadataEdit,
     dadataEditCompanyInfo,
     setDadataEditCompanyInfo,
+    searchDadataEdit,
     openEditDialog,
     saveCompany,
 
