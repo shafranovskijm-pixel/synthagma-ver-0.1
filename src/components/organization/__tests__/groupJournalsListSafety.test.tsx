@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 function makeChain(): any {
   const result = { data: [], error: null, count: 0 };
@@ -67,7 +68,11 @@ describe("JournalsManager without group context", () => {
       "custom_journals_org-1",
       JSON.stringify([{ id: "custom_1", title: "Мой журнал", description: "d", fields: ["a"], createdAt: "2026-01-01" }]),
     );
-    render(<JournalsManager organizationId="org-1" />);
+    render(
+      <MemoryRouter>
+        <JournalsManager organizationId="org-1" />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(screen.getByText("Создать журнал")).toBeInTheDocument());
     expect(screen.getByText("Мой журнал")).toBeInTheDocument();
     expect(screen.getAllByText("Пользовательские журналы").length).toBeGreaterThan(0);
@@ -86,7 +91,11 @@ describe("JournalsManager in group context", () => {
   });
 
   it("hides the global wizard, custom journals and unsupported journal types", async () => {
-    render(<JournalsManager organizationId="org-1" groupId="g1" courseId="c1" returnToGroupId="g1" />);
+    render(
+      <MemoryRouter>
+        <JournalsManager organizationId="org-1" groupId="g1" courseId="c1" returnToGroupId="g1" />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     expect(screen.queryByText("Создать журнал")).not.toBeInTheDocument();
     expect(screen.queryByText("Мой журнал")).not.toBeInTheDocument();
@@ -100,7 +109,11 @@ describe("JournalsManager in group context", () => {
   });
 
   it("hides group context only when neither groupId nor returnToGroupId is present", async () => {
-    render(<JournalsManager organizationId="org-1" returnToGroupId="g1" />);
+    render(
+      <MemoryRouter>
+        <JournalsManager organizationId="org-1" returnToGroupId="g1" />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     expect(screen.queryByText("Создать журнал")).not.toBeInTheDocument();
   });
@@ -117,7 +130,11 @@ describe("direct handler invocation in group context", () => {
 
   it("does not write custom journals to storage when wizard completion is forced", async () => {
     localStorage.clear();
-    render(<JournalsManager organizationId="org-1" groupId="g1" returnToGroupId="g1" />);
+    render(
+      <MemoryRouter>
+        <JournalsManager organizationId="org-1" groupId="g1" returnToGroupId="g1" />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     // no wizard is mounted, so no completion path exists; storage must stay empty
     expect(localStorage.getItem("custom_journals_org-1")).toBeNull();

@@ -147,9 +147,11 @@ describe("create_group_document_batch сериализует параллель�
     const dir = path.join(process.cwd(), "supabase", "migrations");
     const file = fs
       .readdirSync(dir)
-      .filter((f) => fs.readFileSync(path.join(dir, f), "utf8").includes("create_group_document_batch"))
+      .filter((f) => f.endsWith(".sql"))
       .sort()
-      .pop()!;
+      .reverse()
+      .find((f) => fs.readFileSync(path.join(dir, f), "utf8").includes("create_group_document_batch"))!;
+    expect(file).toBeTruthy();
     const sql = fs.readFileSync(path.join(dir, file), "utf8");
     const lock = sql.indexOf("pg_advisory_xact_lock");
     const max = sql.indexOf("MAX(gd.package_version)");

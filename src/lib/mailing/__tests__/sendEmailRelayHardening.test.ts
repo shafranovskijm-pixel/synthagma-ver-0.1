@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import {
   authorizeSendEmail,
@@ -312,12 +313,33 @@ describe("configured sender policy and deployment contract", () => {
   });
 });
 
-function filesBelow(path: string): string[] {
-  return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
-    const full = resolve(path, entry.name);
-    if (entry.isDirectory()) return filesBelow(full);
-    return /\.(?:ts|tsx|js|mjs|sql|json|toml)$/i.test(entry.name) ? [full] : [];
-  });
+function findRetiredDomainLines(): string[] {
+  const result = spawnSync(
+    "git",
+    [
+      "grep",
+      "--untracked",
+      "-n",
+      "-I",
+      "-i",
+      "-E",
+      "-e",
+      "yi\\.mannni\\.com",
+      "--",
+      "supabase/functions",
+      "supabase/migrations",
+      "src/components/admin",
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  );
+
+  if (result.error) throw result.error;
+  if (result.status === 1) return [];
+  if (result.status !== 0) {
+    throw new Error(`git grep failed (${result.status}): ${result.stderr}`);
+  }
+
+  return result.stdout.split(/\r?\n/).filter(Boolean);
 }
 
 describe("retired SMTP account cleanup", () => {
@@ -342,16 +364,8 @@ describe("retired SMTP account cleanup", () => {
     expect(retiredSeed).not.toMatch(/app_password|UPDATE\s+public\.email_sender_pool/i);
     expect(retiredSeed).not.toMatch(/yi\.mannni\.com/i);
 
-    const scannedFiles = [
-      ...filesBelow(resolve(ROOT, "supabase/functions")),
-      ...filesBelow(resolve(ROOT, "supabase/migrations")),
-      ...filesBelow(resolve(ROOT, "src/components/admin")),
-    ];
-    const riskyDomainSecretLines = scannedFiles.flatMap((file) =>
-      readFileSync(file, "utf8").split(/\r?\n/).filter((line) =>
-        /yi\.mannni\.com/i.test(line) &&
-        /(app_password|password_encrypted|smtp_pass|password\s*=)/i.test(line)
-      ),
+    const riskyDomainSecretLines = findRetiredDomainLines().filter(
+      (line) => /(app_password|password_encrypted|smtp_pass|password\s*=)/i.test(line),
     );
     expect(riskyDomainSecretLines).toEqual([]);
   }, 15_000);
