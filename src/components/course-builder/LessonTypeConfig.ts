@@ -48,6 +48,7 @@ export interface Lesson {
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];
   module_id?: string | null;
+  metadata?: Record<string, unknown>;
   /**
    * Lazy-load flag. `true` means lesson content is fully loaded into memory
    * (used by `useCourseBuilder` to avoid pulling huge slider-base64 content

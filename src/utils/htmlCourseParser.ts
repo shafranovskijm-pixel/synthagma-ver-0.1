@@ -48,8 +48,14 @@ export function parseHtmlCourse(html: string): ParsedCourse {
   articles.forEach((article) => {
     const articleId = article.getAttribute("id") || "";
     
-    // Skip final test — handle separately
-    if (articleId === "final-test" || articleId === "mini-tests") return;
+    // Resource catalogues are imported into course_documents by the
+    // structured importer and must never become ordinary lessons.
+    if (
+      articleId === "final-test"
+      || articleId === "mini-tests"
+      || articleId === "materials"
+      || articleId === "manufacturer-materials"
+    ) return;
 
     const h2 = article.querySelector("h2");
     if (!h2) return;
@@ -170,7 +176,12 @@ export function parseHtmlCourse(html: string): ParsedCourse {
   // 5. Also extract inline quizzes from text sections
   articles.forEach((article) => {
     const articleId = article.getAttribute("id") || "";
-    if (articleId === "final-test" || articleId === "mini-tests" || articleId === "materials") return;
+    if (
+      articleId === "final-test"
+      || articleId === "mini-tests"
+      || articleId === "materials"
+      || articleId === "manufacturer-materials"
+    ) return;
     
     const quizForms = article.querySelectorAll("form[id]");
     if (quizForms.length === 0) return;
@@ -198,7 +209,7 @@ export function parseHtmlCourse(html: string): ParsedCourse {
   return { title: courseTitle, description, lessons };
 }
 
-function extractQuestionsFromForm(form: Element, doc: Document): TestQuestionLocal[] {
+export function extractQuestionsFromForm(form: Element, doc: Document): TestQuestionLocal[] {
   const questions: TestQuestionLocal[] = [];
   const formId = form.getAttribute("id") || "";
   
@@ -257,7 +268,7 @@ function extractQuestionsFromForm(form: Element, doc: Document): TestQuestionLoc
   return questions;
 }
 
-function extractFinalTestQuestions(form: Element, correctAnswers: Record<string, string>): TestQuestionLocal[] {
+export function extractFinalTestQuestions(form: Element, correctAnswers: Record<string, string>): TestQuestionLocal[] {
   const questions: TestQuestionLocal[] = [];
   const listItems = form.querySelectorAll("ol > li");
 
@@ -300,7 +311,7 @@ function extractFinalTestQuestions(form: Element, correctAnswers: Record<string,
   return questions;
 }
 
-function extractCorrectAnswersFromScript(doc: Document): Record<string, string> {
+export function extractCorrectAnswersFromScript(doc: Document): Record<string, string> {
   const scripts = doc.querySelectorAll("script");
   const answers: Record<string, string> = {};
 
