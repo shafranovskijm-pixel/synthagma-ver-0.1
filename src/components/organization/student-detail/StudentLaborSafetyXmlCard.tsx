@@ -14,6 +14,7 @@ import {
   fetchStudentLaborSafetyXmlContext,
   type StudentLaborSafetyXmlContext,
 } from "@/api/studentLaborSafetyXml";
+import { StudentLaborSafetyCompanyDialog } from "@/components/organization/student-detail/StudentLaborSafetyCompanyDialog";
 
 interface StudentLaborSafetyXmlCardProps {
   organizationId: string;
@@ -29,12 +30,14 @@ interface StudentLaborSafetyXmlCardProps {
   position?: string | null;
   onOpenProfile?: () => void;
   onOpenSnils?: () => void;
-  onOpenCompany?: () => void;
   onOpenCourse?: (courseId: string) => void;
   onOpenEducationDocument?: (target: {
     enrollmentId: string;
     recordId: string | null;
   }) => void;
+  onCompanyChanged?: () => void | Promise<void>;
+  canEditCompanies?: boolean;
+  canAssignCompany?: boolean;
 }
 
 function StudentLaborSafetyXmlCardContent({
@@ -47,13 +50,16 @@ function StudentLaborSafetyXmlCardContent({
   position = null,
   onOpenProfile,
   onOpenSnils,
-  onOpenCompany,
   onOpenCourse,
   onOpenEducationDocument,
+  onCompanyChanged,
+  canEditCompanies = false,
+  canAssignCompany = false,
 }: StudentLaborSafetyXmlCardProps) {
   const [context, setContext] = useState<StudentLaborSafetyXmlContext | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -98,12 +104,14 @@ function StudentLaborSafetyXmlCardContent({
     !context && !loadError && !enrollmentsLoading && !enrollmentsError
   );
   const missingCount = records.reduce((sum, result) => sum + result.missingFields.length, 0);
+  const invalidCount = records.reduce((sum, result) => sum + result.invalidFields.length, 0);
+  const issueCount = missingCount + invalidCount;
   const canDownloadDraft = records.length > 0
     && !isLoadingContext
     && !enrollmentsLoading
     && !loadError
     && !enrollmentsError;
-  const isReadyForValidation = canDownloadDraft && missingCount === 0;
+  const isReadyForValidation = canDownloadDraft && issueCount === 0;
 
   const handleDownload = () => {
     if (!canDownloadDraft) return;
@@ -120,10 +128,10 @@ function StudentLaborSafetyXmlCardContent({
     anchor.download = buildLaborSafetyXmlFilename({ exportDate, subject: student.fullName });
     anchor.click();
     URL.revokeObjectURL(url);
-    if (missingCount > 0) {
-      toast.warning(`Черновик XML сформирован: ${records.length} записей, незаполненных полей — ${missingCount}`);
+    if (issueCount > 0) {
+      toast.warning(`Внутренний XML-черновик сформирован: ${records.length} записей, полей для проверки — ${issueCount}`);
     } else {
-      toast.success(`Черновик XML сформирован: ${records.length} записей`);
+      toast.success(`Внутренний XML-черновик сформирован: ${records.length} записей`);
     }
   };
 
@@ -134,7 +142,8 @@ function StudentLaborSafetyXmlCardContent({
     if (field === "ФИО" || field === "Должность") return onOpenProfile ?? null;
     if (field === "СНИЛС") return onOpenSnils ?? null;
     if (field === "ИНН организации" || field === "Наименование организации") {
-      return onOpenCompany ?? null;
+      const mayManageCompany = canEditCompanies && (Boolean(student.companyId) || canAssignCompany);
+      return mayManageCompany ? () => setCompanyDialogOpen(true) : null;
     }
     if (field === "Номер протокола" && onOpenEducationDocument) {
       return () => onOpenEducationDocument({
@@ -149,7 +158,8 @@ function StudentLaborSafetyXmlCardContent({
   };
 
   return (
-    <div className="rounded-2xl border border-amber-300/70 bg-amber-50/50 p-6 dark:bg-amber-950/10" data-testid="student-labor-safety-xml-card">
+    <>
+      <div className="rounded-2xl border border-amber-300/70 bg-amber-50/50 p-6 dark:bg-amber-950/10" data-testid="student-labor-safety-xml-card">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -179,7 +189,7 @@ function StudentLaborSafetyXmlCardContent({
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
         <p>
           Это внутренний XML-формат СИНТАГМЫ. Совместимость с актуальной XSD Минтруда пока не подтверждена.
-          Не отправляйте файл в Минтруд без отдельной проверки схемы и тестового импорта.
+          Не импортируйте файл в ЛКОТ без отдельной проверки схемы и тестового импорта.
         </p>
       </div>
 
@@ -210,8 +220,8 @@ function StudentLaborSafetyXmlCardContent({
             role="status"
           >
             {isReadyForValidation
-              ? `Записей с заполненными данными: ${records.length}. Перед отправкой всё равно требуется проверка по актуальной XSD Минтруда.`
-              : `Черновик можно скачать для демонстрации. Для рабочего экспорта заполните недостающие поля (${missingCount}); затем проверьте файл по актуальной XSD Минтруда.`}
+              ? `Записей без найденных синтаксических ошибок: ${records.length}. Совместимость всё равно требуется проверить по актуальной XSD Минтруда.`
+              : `Черновик можно скачать для демонстрации. Для последующей XSD-проверки заполните пропуски (${missingCount}) и исправьте некорректные значения (${invalidCount}).`}
           </div>
           {records.map(result => (
             <div key={result.enrollmentId} className="rounded-xl border border-border bg-background/80 p-3">
@@ -219,16 +229,17 @@ function StudentLaborSafetyXmlCardContent({
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{result.courseTitle}</p>
-                  {result.missingFields.length === 0 ? (
-                    <p className="mt-1 text-xs text-emerald-700">Все поля внутреннего XML заполнены.</p>
+                  {result.missingFields.length === 0 && result.invalidFields.length === 0 ? (
+                    <p className="mt-1 text-xs text-emerald-700">Поля внутреннего XML-черновика заполнены и прошли синтаксическую проверку.</p>
                   ) : (
                     <div className="mt-2 space-y-2">
                       <p className="text-xs text-destructive">
-                        Не заполнено. Выберите поле, чтобы перейти к месту заполнения:
+                        Заполните или исправьте данные перед XSD-проверкой:
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {result.missingFields.map((field) => {
+                        {[...result.missingFields, ...result.invalidFields.filter(field => !result.missingFields.includes(field))].map((field) => {
                           const action = missingFieldAction(field, result);
+                          const isInvalid = result.invalidFields.includes(field);
                           return action ? (
                             <Button
                               key={field}
@@ -236,7 +247,7 @@ function StudentLaborSafetyXmlCardContent({
                               variant="outline"
                               size="sm"
                               className="h-7 gap-1 rounded-lg border-destructive/30 px-2 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
-                              aria-label={`Заполнить: ${field}`}
+                              aria-label={`${isInvalid ? "Исправить" : "Заполнить"}: ${field}`}
                               onClick={action}
                             >
                               <Pencil className="h-3 w-3" /> {field}
@@ -259,7 +270,26 @@ function StudentLaborSafetyXmlCardContent({
           ))}
         </div>
       )}
-    </div>
+      </div>
+
+      <StudentLaborSafetyCompanyDialog
+        open={companyDialogOpen}
+        onOpenChange={setCompanyDialogOpen}
+        organizationId={organizationId}
+        userId={student.userId}
+        currentCompanyId={student.companyId}
+        currentCompany={context?.company ?? null}
+        canEditCompanies={canEditCompanies}
+        canAssignCompany={canAssignCompany}
+        onSaved={async (company) => {
+          setContext(current => current ? {
+            ...current,
+            company: { name: company.name, inn: company.inn },
+          } : current);
+          await onCompanyChanged?.();
+        }}
+      />
+    </>
   );
 }
 
@@ -274,11 +304,12 @@ export function StudentLaborSafetyXmlCard(props: StudentLaborSafetyXmlCardProps)
     ...props,
     onOpenProfile: can("students.write") ? props.onOpenProfile : undefined,
     onOpenSnils: can("students.write") ? props.onOpenSnils : undefined,
-    onOpenCompany: can("companies.write") ? props.onOpenCompany : undefined,
     onOpenCourse: can("courses.write") ? props.onOpenCourse : undefined,
     onOpenEducationDocument: can("journals.read") && can("journals.write")
       ? props.onOpenEducationDocument
       : undefined,
+    canEditCompanies: can("companies.write"),
+    canAssignCompany: can("students.write"),
   };
   const identityKey = [
     props.organizationId,

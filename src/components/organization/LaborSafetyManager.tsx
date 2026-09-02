@@ -24,7 +24,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Plus, Download, Trash2, Edit, Users, Search, CheckCircle, FileText, X,
   GraduationCap, ArrowLeft, MoreHorizontal, SortAsc, SortDesc, FolderOpen, Calendar,
-  Shield, ChevronRight, User, Key, RefreshCw, ClipboardCheck, BarChart3, BookOpen } from "lucide-react";
+  Shield, ChevronRight, User, Key, RefreshCw, ClipboardCheck, BarChart3, BookOpen,
+  AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
 import { useLaborSafetyManager } from "@/hooks/useLaborSafetyManager";
@@ -266,6 +267,14 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
         </CardContent>
       </Card>
 
+      <div className="flex gap-2 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-sm" role="note">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+        <p>
+          XML здесь формируется только как внутренний черновик СИНТАГМЫ (Beta).
+          Формат для импорта в ЛКОТ не подтверждён актуальной XSD Минтруда.
+        </p>
+      </div>
+
       {/* Bulk actions */}
       {h.selectedRecordIds.size > 0 && (
         <Card className="border-primary/50 bg-primary/5">
@@ -273,7 +282,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Выбрано: {h.selectedRecordIds.size}</Badge>
               <Separator orientation="vertical" className="h-6" />
-              <Button variant="outline" size="sm" onClick={h.exportSelectedToXML} disabled={h.isBulkUpdating}><Download className="h-4 w-4 mr-2" />Экспорт XML</Button>
+              <Button variant="outline" size="sm" onClick={h.exportSelectedToXML} disabled={h.isBulkUpdating}><Download className="h-4 w-4 mr-2" />Черновик XML (Beta)</Button>
               <Button variant="outline" size="sm" onClick={h.markSelectedAsPassed} disabled={h.isBulkUpdating}><CheckCircle className="h-4 w-4 mr-2" />Сдал</Button>
               <Button variant="outline" size="sm" onClick={h.generateProtocolForSelected}><FileText className="h-4 w-4 mr-2" />Протокол (HTML)</Button>
               <Button variant="outline" size="sm" onClick={h.handleGenerateProtokol} disabled={h.isGenerating}><FileText className="h-4 w-4 mr-2" />Протокол (Word)</Button>

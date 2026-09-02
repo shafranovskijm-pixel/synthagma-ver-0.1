@@ -2,16 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   buildLaborSafetyXmlFilename,
   buildStudentLaborSafetyRecords,
+  getLaborSafetyInvalidFields,
   getLaborSafetyMissingFields,
+  isValidInnChecksum,
+  isValidIsoDate,
   serializeLaborSafetyRecordsXml,
   type LaborSafetyXmlRecord,
 } from "@/lib/laborSafetyXml";
 
 const completeRecord: LaborSafetyXmlRecord = {
   full_name: "Попова Елизавета Олеговна",
-  snils: "123-456-789 00",
+  snils: "112-233-445 95",
   position: "Инженер",
-  inn: "1234567890",
+  inn: "7707083893",
   organization_name: "ООО «Современные горные технологии»",
   protocol_number: "ОТ-15",
   program_name: "Общие вопросы охраны труда",
@@ -105,5 +108,44 @@ describe("laborSafetyXml", () => {
       exportDate: "2026-09-01",
       subject: "Попова Елизавета Олеговна",
     })).toBe("labor_safety_попова_елизавета_олеговна_2026-09-01.xml");
+  });
+
+  it("rejects invalid INN and SNILS checksums and impossible ISO dates", () => {
+    expect(isValidInnChecksum("7707083893")).toBe(true);
+    expect(isValidInnChecksum("500100732259")).toBe(true);
+    expect(isValidInnChecksum("1234567890")).toBe(false);
+    expect(isValidInnChecksum("123")).toBe(false);
+    expect(isValidIsoDate("2026-02-28")).toBe(true);
+    expect(isValidIsoDate("2026-02-31")).toBe(false);
+
+    expect(getLaborSafetyInvalidFields({
+      ...completeRecord,
+      snils: "123-456-789 00",
+      inn: "1234567890",
+      exam_date: "2026-02-31",
+    })).toEqual(["СНИЛС", "ИНН организации", "Дата экзамена"]);
+  });
+
+  it("keeps invalid required values separate from missing values", () => {
+    const [result] = buildStudentLaborSafetyRecords({
+      fullName: completeRecord.full_name,
+      snils: "123-456-789 00",
+      position: completeRecord.position,
+      companyInn: "1234567890",
+      companyName: completeRecord.organization_name,
+      courses: [{
+        enrollmentId: "enr-1",
+        educationDocumentRecordId: "record-1",
+        courseId: "course-1",
+        courseTitle: completeRecord.program_name!,
+        categoryName: "Охрана труда",
+        status: "completed",
+        completedAt: "2026-09-01T00:00:00Z",
+        protocolNumber: completeRecord.protocol_number,
+      }],
+    });
+
+    expect(result.missingFields).toEqual([]);
+    expect(result.invalidFields).toEqual(["СНИЛС", "ИНН организации"]);
   });
 });

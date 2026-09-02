@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { companiesPath, courseDetailsPathForGroup, groupFolderPath } from "@/lib/groups/groupContext";
+import { courseDetailsPathForGroup, groupFolderPath } from "@/lib/groups/groupContext";
 import { educationDocumentsJournalPath } from "@/lib/organization/documentWorkspaceNavigation";
 import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck, AlertTriangle, RefreshCw } from "lucide-react";
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
@@ -421,11 +421,11 @@ export function StudentDetailsTab() {
                     enrollmentsLoading,
                     enrollmentsError,
                     onOpenProfile: () => h.setActiveTab("profile"),
-                    onOpenCompany: () => navigate(companiesPath(student.company_id)),
                     onOpenCourse: (courseId) => navigate(courseDetailsPathForGroup(courseId)),
                     onOpenEducationDocument: ({ enrollmentId, recordId }) => navigate(
                       educationDocumentsJournalPath({ enrollmentId, recordId }),
                     ),
+                    onCompanyChanged: () => loadStudent(false),
                   }}
                 />
               )}

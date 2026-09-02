@@ -26,12 +26,12 @@ interface DocumentsTabProps {
     enrollmentsLoading?: boolean;
     enrollmentsError?: string | null;
     onOpenProfile?: () => void;
-    onOpenCompany?: () => void;
     onOpenCourse?: (courseId: string) => void;
     onOpenEducationDocument?: (target: {
       enrollmentId: string;
       recordId: string | null;
     }) => void;
+    onCompanyChanged?: () => void | Promise<void>;
   };
 }
 

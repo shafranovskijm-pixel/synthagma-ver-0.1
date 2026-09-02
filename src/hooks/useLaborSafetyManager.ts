@@ -4,6 +4,12 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 import { insertEnrollmentsVerified } from "@/api/enrollments";
+import {
+  buildLaborSafetyXmlFilename,
+  getLaborSafetyInvalidFields,
+  getLaborSafetyMissingFields,
+  serializeLaborSafetyRecordsXml,
+} from "@/lib/laborSafetyXml";
 
 export interface LaborSafetyCourse {
   id: string;
@@ -301,20 +307,26 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
   const exportSelectedToXML = () => {
     const recs = selectedRecordIds.size > 0 ? records.filter(r => selectedRecordIds.has(r.id)) : filteredRecords;
     if (recs.length === 0) { toast.error("Нет данных для экспорта"); return; }
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += `<LaborSafetyRecords group="${escapeXml(selectedGroup?.name || "Группа")}" exportDate="${format(new Date(), 'yyyy-MM-dd')}">\n`;
-    recs.forEach((record, index) => {
-      xml += `  <Record number="${index + 1}">\n`;
-      xml += `    <FullName>${escapeXml(record.full_name)}</FullName>\n    <SNILS>${escapeXml(record.snils || "")}</SNILS>\n    <Position>${escapeXml(record.position || "")}</Position>\n    <INN>${escapeXml(record.inn || "")}</INN>\n    <OrganizationName>${escapeXml(record.organization_name || "")}</OrganizationName>\n    <ProtocolNumber>${escapeXml(record.protocol_number || "")}</ProtocolNumber>\n    <ProgramName>${escapeXml(record.program_name || "")}</ProgramName>\n    <ExamDate>${record.exam_date || ""}</ExamDate>\n    <IsPassed>${record.is_passed ? "Да" : "Нет"}</IsPassed>\n`;
-      xml += `  </Record>\n`;
+    const exportDate = format(new Date(), 'yyyy-MM-dd');
+    const xml = serializeLaborSafetyRecordsXml({
+      groupName: selectedGroup?.name || "Группа",
+      exportDate,
+      records: recs,
     });
-    xml += '</LaborSafetyRecords>';
     const blob = new Blob([xml], { type: 'application/xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `labor_safety_${format(new Date(), 'yyyy-MM-dd')}.xml`;
+    a.href = url;
+    a.download = buildLaborSafetyXmlFilename({ exportDate, subject: selectedGroup?.name || "Группа" });
     a.click(); URL.revokeObjectURL(url);
-    toast.success(`Экспортировано ${recs.length} записей`);
+    const issueCount = recs.reduce((total, record) => (
+      total + getLaborSafetyMissingFields(record).length + getLaborSafetyInvalidFields(record).length
+    ), 0);
+    if (issueCount > 0) {
+      toast.warning(`Скачан внутренний XML-черновик: ${recs.length} записей, полей для проверки — ${issueCount}`);
+    } else {
+      toast.success(`Скачан внутренний XML-черновик: ${recs.length} записей`);
+    }
   };
 
   const markSelectedAsPassed = async () => {
