@@ -209,8 +209,34 @@ describe("electronic library migration dry-run contract", () => {
     expect(localBaseFixture).toContain("local-isolated-course-library");
     expect(localBaseFixture).toContain("'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'");
     expect(localRlsContract).toContain(
-      "PASS - local PostgreSQL parser, catalog and RLS contract verified",
+      "PASS - local PostgreSQL admin/teacher/learner, tenant, linkage and course-state contract verified",
     );
     expect(localRlsContract.match(/ROLLBACK;/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("executes the mandatory local DML and RLS acceptance roles", () => {
+    for (const acceptanceMarker of [
+      "$assignment_scope_rejections$",
+      "$administrator_crud_archive$",
+      "$teacher_read_only$",
+      "$enrolled_learner$",
+      "$unenrolled_user$",
+      "$cross_tenant_enrollment$",
+      "$course_state_invariants$",
+      "cross-tenant course/resource assignment was accepted",
+      "cross-course module assignment was accepted",
+      "authenticated administrator bypassed archive-only retention",
+      "teacher deleted a canonical resource",
+      "teacher inserted a canonical resource",
+      "teacher inserted a course assignment",
+      "authorized learner can read an archived resource or assignment",
+      "new 178-hour library course is missing or became published",
+    ]) {
+      expect(localRlsContract).toContain(acceptanceMarker);
+    }
+
+    expect(localBaseFixture).toContain("Read-only teacher");
+    expect(localBaseFixture).toContain("permission_name = 'courses.read'");
+    expect(localBaseFixture).toContain("permission_name = 'library.read'");
   });
 });
