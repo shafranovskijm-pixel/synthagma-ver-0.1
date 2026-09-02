@@ -48,6 +48,53 @@ export const LIBRARY_USAGE_BASIS_LABELS: Record<CourseLibraryUsageBasis, string>
   rights_holder_permission: "разрешение правообладателя",
 };
 
+/**
+ * Course-local feature gate for the electronic library. Existing courses do
+ * not have this setting, so the strict `=== true` check keeps their learner
+ * and organization interfaces unchanged by default.
+ */
+export function isCourseElectronicLibraryEnabled(landingContent: unknown): boolean {
+  if (
+    landingContent === null
+    || typeof landingContent !== "object"
+    || Array.isArray(landingContent)
+  ) {
+    return false;
+  }
+
+  const electronicLibrary = (landingContent as Record<string, unknown>).electronic_library;
+  if (
+    electronicLibrary === null
+    || typeof electronicLibrary !== "object"
+    || Array.isArray(electronicLibrary)
+  ) {
+    return false;
+  }
+
+  return (electronicLibrary as Record<string, unknown>).enabled === true;
+}
+
+export interface CourseElectronicLibraryViewState {
+  enabled: boolean;
+  requested: boolean;
+  open: boolean;
+  shouldClearRequestedView: boolean;
+}
+
+export function resolveCourseElectronicLibraryView(
+  landingContent: unknown,
+  requestedView: string | null,
+): CourseElectronicLibraryViewState {
+  const enabled = isCourseElectronicLibraryEnabled(landingContent);
+  const requested = requestedView === "library";
+  return {
+    enabled,
+    requested,
+    open: enabled && requested,
+    shouldClearRequestedView: requested && !enabled,
+  };
+}
+
 export interface CourseLibraryResourceInput {
   id: string;
   courseId: string;

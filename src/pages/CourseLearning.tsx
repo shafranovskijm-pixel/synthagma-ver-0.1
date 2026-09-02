@@ -34,6 +34,7 @@ import { AiChatPanel } from "@/components/course-learning/AiChatPanel";
 import { LessonAIAvatar } from "@/components/course-learning/LessonAIAvatar";
 import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 import { CourseLibraryReader } from "@/components/course-library/CourseLibraryReader";
+import { resolveCourseElectronicLibraryView } from "@/lib/courseLibrary";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -64,9 +65,21 @@ const CourseLearning = () => {
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
   const [chatBtnVisible, setChatBtnVisible] = useReactState(true);
-  const libraryOpen = searchParams.get("view") === "library";
+  const libraryView = resolveCourseElectronicLibraryView(
+    course?.landing_content,
+    searchParams.get("view"),
+  );
+  const libraryOpen = libraryView.open;
+
+  useEffect(() => {
+    if (loading || !course || !libraryView.shouldClearRequestedView) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    setSearchParams(next, { replace: true });
+  }, [course, libraryView.shouldClearRequestedView, loading, searchParams, setSearchParams]);
 
   const openLibrary = () => {
+    if (!libraryView.enabled) return;
     const next = new URLSearchParams(searchParams);
     next.set("view", "library");
     setSearchParams(next, { replace: false });
@@ -142,7 +155,8 @@ const CourseLearning = () => {
     lessons, currentLessonIndex, completedCount, progressPercent,
     getLessonIcon, isLessonCompleted, isLessonAccessible, goToLesson: selectLesson,
     resetCourseProgress, onNavigateBack: () => navigate('/student'),
-    isLibraryOpen: libraryOpen, onOpenLibrary: openLibrary,
+    isLibraryOpen: libraryOpen,
+    onOpenLibrary: libraryView.enabled ? openLibrary : undefined,
   };
 
   const testPassed = testScore ? (testScore.score / testScore.max) * 100 >= testPassingScore : false;

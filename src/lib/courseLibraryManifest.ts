@@ -32,6 +32,11 @@ export interface CourseLibraryImportManifest {
     id: string | null;
     organization_id: string | null;
     is_published: boolean | null;
+    landing_content?: {
+      electronic_library?: {
+        enabled?: boolean;
+      };
+    } | null;
   };
   do_not_modify_course_ids: string[];
   resources: CourseLibraryImportResource[];
@@ -46,6 +51,9 @@ export function validateCourseLibraryImportManifest(
   if (!manifest.target_course?.id) blockers.push("target_course_id_missing");
   if (!manifest.target_course?.organization_id) blockers.push("target_organization_id_missing");
   if (manifest.target_course?.is_published !== false) blockers.push("target_course_must_be_confirmed_unpublished");
+  if (manifest.target_course?.landing_content?.electronic_library?.enabled !== true) {
+    blockers.push("target_course_electronic_library_not_enabled");
+  }
   if (
     manifest.target_course?.id
     && manifest.do_not_modify_course_ids.includes(manifest.target_course.id)

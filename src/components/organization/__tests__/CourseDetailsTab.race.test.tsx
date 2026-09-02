@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface Deferred<T> {
@@ -72,13 +73,16 @@ vi.mock("@/hooks/useStaffPermissions", () => ({
 vi.mock("@/components/organization/CourseDetailsContent", () => ({
   CourseDetailsContent: ({
     course,
+    activeTab,
     onCourseUpdated,
   }: {
     course: { title: string; is_published?: boolean };
+    activeTab: string;
     onCourseUpdated: () => void;
   }) => (
     <div data-testid="course-details">
       <span>{course.title}</span>
+      <span data-testid="active-course-tab">{activeTab}</span>
       <span data-testid="publication-state">{course.is_published ? "Опубликован" : "Черновик"}</span>
       <button type="button" onClick={onCourseUpdated}>Обновить сведения курса</button>
     </div>
@@ -124,8 +128,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import { CourseDetailsTab } from "@/components/organization/tabs/CourseDetailsTab";
 
-function renderCourseDetailsTab() {
-  return render(<CourseDetailsTab />, { wrapper: MemoryRouter });
+function renderCourseDetailsTab(initialEntry = "/") {
+  const RouterWrapper = ({ children }: { children: ReactNode }) => (
+    <MemoryRouter initialEntries={[initialEntry]}>{children}</MemoryRouter>
+  );
+  return render(<CourseDetailsTab />, { wrapper: RouterWrapper });
 }
 
 describe("CourseDetailsTab URL request ordering", () => {
@@ -197,6 +204,40 @@ describe("CourseDetailsTab URL request ordering", () => {
       await courseB.promise;
     });
     expect(await screen.findByText("Course B")).toBeInTheDocument();
+  });
+
+  it("rejects a direct library URL for an existing course without the explicit gate", async () => {
+    testState.courseResponses.set(
+      "course-a",
+      Promise.resolve({
+        data: { id: "course-a", title: "Existing course", landing_content: {} },
+        error: null,
+      }),
+    );
+
+    renderCourseDetailsTab("/?courseSection=library");
+
+    expect(await screen.findByText("Existing course")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("active-course-tab")).toHaveTextContent("editor"));
+  });
+
+  it("accepts a direct library URL only for the explicitly enabled course", async () => {
+    testState.courseResponses.set(
+      "course-a",
+      Promise.resolve({
+        data: {
+          id: "course-a",
+          title: "New 178-hour course",
+          landing_content: { electronic_library: { enabled: true } },
+        },
+        error: null,
+      }),
+    );
+
+    renderCourseDetailsTab("/?courseSection=library");
+
+    expect(await screen.findByText("New 178-hour course")).toBeInTheDocument();
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("materials");
   });
 
   it("publishes a draft only after the server confirms the persisted state", async () => {

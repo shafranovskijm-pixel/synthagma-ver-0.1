@@ -12,6 +12,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { RequirePerm } from "@/hooks/useStaffPermissions";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
 import { invalidateOrganizationCourseOverview } from "@/lib/invalidateOrganizationQueries";
+import { isCourseElectronicLibraryEnabled } from "@/lib/courseLibrary";
 
 type LoadState = "loading" | "success" | "not_found" | "error";
 
@@ -36,10 +37,19 @@ export function CourseDetailsTab() {
   const [isPublicationChanging, setIsPublicationChanging] = useState(false);
   const loadSequenceRef = useRef(0);
   const publicationSequenceRef = useRef(0);
+  const electronicLibraryEnabled = isCourseElectronicLibraryEnabled(course?.landing_content);
 
   useEffect(() => {
     setActiveTab(courseSection === "library" ? "materials" : "editor");
   }, [courseId, courseSection]);
+
+  useEffect(() => {
+    if (!course || courseSection !== "library" || electronicLibraryEnabled) return;
+    setActiveTab("editor");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("courseSection");
+    setSearchParams(nextParams, { replace: true });
+  }, [course, courseSection, electronicLibraryEnabled, searchParams, setSearchParams]);
 
   useEffect(() => {
     // A pending mutation belongs to the course URL from which it started.
@@ -50,12 +60,17 @@ export function CourseDetailsTab() {
   }, [courseId]);
 
   const handleTabChange = useCallback((nextTab: typeof activeTab) => {
-    setActiveTab(nextTab);
     const nextParams = new URLSearchParams(searchParams);
-    if (nextTab === "materials") nextParams.set("courseSection", "library");
-    else nextParams.delete("courseSection");
+    if (nextTab === "materials" && !electronicLibraryEnabled) {
+      setActiveTab("editor");
+      nextParams.delete("courseSection");
+    } else {
+      setActiveTab(nextTab);
+      if (nextTab === "materials") nextParams.set("courseSection", "library");
+      else nextParams.delete("courseSection");
+    }
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [electronicLibraryEnabled, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!courseId) setDashboardActiveTab("courses");
