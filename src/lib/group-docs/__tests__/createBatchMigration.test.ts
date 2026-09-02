@@ -100,7 +100,7 @@ describe("create_group_document_batch migration", () => {
 
 describe("GORELTECH final-status migration", () => {
   const sql = fs.readFileSync(
-    path.join(MIGRATIONS_DIR, "20260902130000_goreltech_group_documents_fail_closed.sql"),
+    path.join(MIGRATIONS_DIR, "20260902141149_f6ca4d7b-d95c-4a00-ad7c-b29e85b40e46.sql"),
     "utf8",
   );
 
