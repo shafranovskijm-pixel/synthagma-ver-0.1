@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, ExternalLink, FileCode2, Pencil, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, FileCode2, Info, Pencil, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -192,6 +192,48 @@ function StudentLaborSafetyXmlCardContent({
           Не импортируйте файл в ЛКОТ без отдельной проверки схемы и тестового импорта.
         </p>
       </div>
+
+      <details
+        className="mt-3 rounded-xl border border-border bg-background/80 p-3 text-sm"
+        data-testid="labor-safety-legal-help"
+      >
+        <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-foreground">
+          <Info className="h-4 w-4 shrink-0 text-primary" />
+          Правовая справка по заполнению
+        </summary>
+        <div className="mt-3 space-y-2 text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">Для записи в реестр:</span>{" "}
+            ФИО, СНИЛС, должность, наименование и ИНН направившей организации,
+            программа, результат, дата проверки знаний и номер протокола.
+          </p>
+          <p>
+            <span className="font-medium text-foreground">В этот XML не входят:</span>{" "}
+            паспорт, дата рождения, образование, специальность, удостоверение и приказы
+            о зачислении или отчислении. Они не должны блокировать скачивание черновика.
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Основной итоговый документ — протокол.</span>{" "}
+            Удостоверение по общему правилу оформляется дополнительно либо когда его требует
+            специальный нормативный акт. Если удостоверение не выдаётся, не создавайте его
+            фиктивно только ради XML.
+          </p>
+          <p>
+            Дата и номер приказа о создании комиссии относятся к протоколу и настройкам
+            организации, а не к карточке ученика. Эта справка — подсказка в интерфейсе,
+            а не новый документ для выдачи.
+          </p>
+          <a
+            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            href="https://publication.pravo.gov.ru/document/0001202112290004"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Правила обучения по охране труда № 2464
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      </details>
 
       {enrollmentsLoading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground" role="status">

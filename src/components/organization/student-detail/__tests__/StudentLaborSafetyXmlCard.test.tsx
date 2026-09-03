@@ -109,6 +109,13 @@ describe("StudentLaborSafetyXmlCard", () => {
     expect(await screen.findByText("XML по охране труда")).toBeInTheDocument();
     expect(screen.getByText("Beta")).toBeInTheDocument();
     expect(screen.getByText(/Совместимость с актуальной XSD Минтруда пока не подтверждена/)).toBeInTheDocument();
+    expect(screen.getByText("Правовая справка по заполнению")).toBeInTheDocument();
+    expect(screen.getByText(/удостоверение и приказы/)).toBeInTheDocument();
+    expect(screen.getByText(/не создавайте его фиктивно только ради XML/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Правила обучения по охране труда № 2464/ })).toHaveAttribute(
+      "href",
+      "https://publication.pravo.gov.ru/document/0001202112290004",
+    );
     expect(screen.getByRole("button", { name: "Заполнить: Номер протокола" })).toBeInTheDocument();
     expect(screen.getByText(/Черновик можно скачать для демонстрации/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
