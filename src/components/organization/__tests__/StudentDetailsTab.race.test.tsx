@@ -20,6 +20,7 @@ const testState = vi.hoisted(() => ({
   decryptCalls: [] as string[],
   activeTab: "profile",
   studentDataLoadError: null as string | null,
+  studentDataLoading: false,
   retryStudentData: vi.fn(),
   studentPageError: null as Error | null,
   studentPageCalls: [] as Array<Record<string, unknown>>,
@@ -56,7 +57,7 @@ vi.mock("@/hooks/useStudentDetailCard", () => ({
   useStudentDetailCardLogic: () => ({
     activeTab: testState.activeTab,
     setActiveTab: vi.fn(),
-    isLoading: false,
+    isLoading: testState.studentDataLoading,
     dataLoadError: testState.studentDataLoadError,
     retryLoadStudentData: testState.retryStudentData,
     previewDoc: null,
@@ -81,7 +82,11 @@ vi.mock("@/components/organization/student-detail/IdentificationTab", () => ({ I
 vi.mock("@/components/organization/student-detail/CoursesTab", () => ({
   CoursesTab: ({ enrollments }: { enrollments: unknown[] }) => <div>Курсы ({enrollments.length})</div>,
 }));
-vi.mock("@/components/organization/student-detail/DocumentsTab", () => ({ DocumentsTab: () => null }));
+vi.mock("@/components/organization/student-detail/DocumentsTab", () => ({
+  DocumentsTab: ({ laborSafetyXml }: { laborSafetyXml?: { organizationId: string; student: { userId: string } } }) => (
+    <div data-testid="documents-local-boundary">XML: {laborSafetyXml?.organizationId}/{laborSafetyXml?.student.userId}</div>
+  ),
+}));
 vi.mock("@/components/organization/student-detail/ActivityTab", () => ({ ActivityTab: () => null }));
 vi.mock("@/components/organization/student-detail/ChatTab", () => ({ ChatTab: () => null }));
 vi.mock("@/components/organization/student-detail/SendDocumentToStudentDialog", () => ({
@@ -186,6 +191,7 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.decryptCalls.length = 0;
     testState.activeTab = "profile";
     testState.studentDataLoadError = null;
+    testState.studentDataLoading = false;
     testState.retryStudentData.mockClear();
     testState.studentPageError = null;
     testState.studentPageCalls.length = 0;
@@ -320,5 +326,17 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     expect(screen.queryByText("Не удалось загрузить личное дело")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Отправить на подпись" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Войти как ученик" })).toBeEnabled();
+  });
+
+  it.each(["loading", "error"])("delegates the documents %s boundary locally so XML stays mounted", async (mode) => {
+    testState.activeTab = "documents";
+    testState.studentDataLoading = mode === "loading";
+    testState.studentDataLoadError = mode === "error" ? "Ошибка согласий" : null;
+    testState.profileResponses.set("student-a", Promise.resolve({ data: profile("student-a", "Student A"), error: null }));
+
+    renderDetails();
+
+    expect(await screen.findByTestId("documents-local-boundary")).toHaveTextContent("XML: org-1/student-a");
+    expect(screen.queryByText("Не удалось загрузить личное дело")).not.toBeInTheDocument();
   });
 });

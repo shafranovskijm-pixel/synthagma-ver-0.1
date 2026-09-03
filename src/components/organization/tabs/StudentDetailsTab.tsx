@@ -213,7 +213,7 @@ export function StudentDetailsTab() {
       invalidateOrganizationDocumentData(qc, organizationId);
     },
   });
-  const activeTabNeedsStudentData = ["profile", "identification", "documents"].includes(h.activeTab);
+  const activeTabNeedsStudentData = ["profile", "identification"].includes(h.activeTab);
 
   const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
 

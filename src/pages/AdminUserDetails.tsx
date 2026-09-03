@@ -153,7 +153,7 @@ export default function AdminUserDetails() {
     organizationId: organizationId || "",
     enrollments,
     onStudentUpdated: () => window.location.reload() });
-  const activeTabNeedsStudentData = ["profile", "identification", "documents"].includes(h.activeTab);
+  const activeTabNeedsStudentData = ["profile", "identification"].includes(h.activeTab);
 
   const handleSaveCredentials = async () => {
     if (!student) return;
