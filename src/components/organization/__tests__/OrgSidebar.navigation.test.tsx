@@ -224,6 +224,74 @@ describe("OrgSidebar navigation", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("keeps every icon-only control on one 44px rail", () => {
+    localStorage.setItem("org-sidebar-mode", "icons");
+    renderSidebar();
+
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+    const controls = [
+      within(sidebar).getByRole("link", { name: "Главная" }),
+      within(sidebar).getByRole("button", { name: "Курсы" }),
+      within(sidebar).getByRole("button", { name: "Ученики" }),
+      within(sidebar).getByRole("link", { name: "Компании" }),
+      within(sidebar).getByRole("button", { name: "Коммуникации" }),
+      within(sidebar).getByRole("button", { name: "Документы" }),
+      within(sidebar).getByRole("link", { name: "Отчёты" }),
+      within(sidebar).getByRole("button", { name: "Настройки" }),
+      within(sidebar).getByRole("link", { name: "Помощь" }),
+      within(sidebar).getByRole("button", { name: /Переключить режим меню/ }),
+      within(sidebar).getByRole("button", { name: "Выйти" }),
+    ];
+
+    controls.forEach((control) => expect(control).toHaveClass("mx-auto", "h-11", "w-11"));
+
+    const betaDot = within(within(sidebar).getByRole("link", { name: "Отчёты" }))
+      .getByLabelText("Бета-версия");
+    expect(betaDot).toHaveClass("-bottom-1", "-right-1", "h-2", "w-2");
+    expect(betaDot).toHaveTextContent("Beta");
+  });
+
+  it("keeps compact controls on one centered 68px rail", () => {
+    localStorage.setItem("org-sidebar-mode", "compact");
+    renderSidebar();
+
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+    const controls = [
+      within(sidebar).getByRole("link", { name: "Главная" }),
+      within(sidebar).getByRole("button", { name: "Курсы" }),
+      within(sidebar).getByRole("button", { name: "Ученики" }),
+      within(sidebar).getByRole("link", { name: "Компании" }),
+      within(sidebar).getByRole("button", { name: "Коммуникации" }),
+      within(sidebar).getByRole("button", { name: "Документы" }),
+      within(sidebar).getByRole("link", { name: "Отчёты" }),
+      within(sidebar).getByRole("button", { name: "Настройки" }),
+      within(sidebar).getByRole("link", { name: "Помощь" }),
+      within(sidebar).getByRole("button", { name: /Переключить режим меню/ }),
+      within(sidebar).getByRole("button", { name: "Выйти" }),
+    ];
+
+    controls.forEach((control) => expect(control).toHaveClass("mx-auto", "h-14", "w-[68px]"));
+    expect(within(sidebar).getByRole("button", { name: "Настройки" }).parentElement).toHaveClass("items-center");
+    expect(within(sidebar).getByRole("button", { name: "Выйти" })).toHaveTextContent("Выйти");
+
+    const betaDot = within(within(sidebar).getByRole("link", { name: "Отчёты" }))
+      .getByLabelText("Бета-версия");
+    expect(betaDot).toHaveClass("-bottom-1", "-right-1", "h-2", "w-2");
+  });
+
+  it("opens a full-width tablet drawer without overwriting the saved desktop mode", () => {
+    localStorage.setItem("org-sidebar-mode", "compact");
+    isMobile = false;
+    isMobileSidebarOpen = true;
+
+    renderSidebar();
+
+    const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
+    expect(sidebar).toHaveStyle({ width: "220px" });
+    expect(within(sidebar).getByText("Учебный центр")).toBeInTheDocument();
+    expect(localStorage.getItem("org-sidebar-mode")).toBe("compact");
+  });
+
   it.each([
     ["compact", 88],
     ["icons", 64],

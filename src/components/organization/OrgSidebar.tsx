@@ -154,6 +154,9 @@ const MODE_KEY = "org-sidebar-mode";
 
 type SidebarMode = "expanded" | "compact" | "icons";
 const MODE_WIDTH: Record<SidebarMode, number> = { expanded: 220, compact: 88, icons: 64 };
+const ICON_RAIL_CONTROL = "mx-auto flex h-11 w-11 items-center justify-center p-0";
+const COMPACT_RAIL_CONTROL =
+  "mx-auto flex h-14 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5";
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -217,7 +220,7 @@ export function OrgSidebar() {
   // The mobile sidebar is already a modal drawer. Let it use the same fixed
   // expanded width as desktop so grouped destinations remain reachable after
   // a tap; forcing it back to compact would hide the children completely.
-  const effectiveMode: SidebarMode = isMobile ? "expanded" : mode;
+  const effectiveMode: SidebarMode = isMobile || isMobileSidebarOpen ? "expanded" : mode;
   const effectiveExpanded = effectiveMode === "expanded";
   const showLabels = effectiveMode === "compact";
   const width = MODE_WIDTH[effectiveMode];
@@ -443,7 +446,7 @@ export function OrgSidebar() {
   }));
   if (menuSettings.showFrdo !== false && canShowTab("frdo")) documentItems.push(makeTabItem("frdo", {
     id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО",
-    description: "Подготовка и выгрузка сведений в ФРДО", category: "frdo", statusBadge: "Beta",
+    description: "Подготовка XLSX для последующей загрузки в ФИС ФРДО", category: "frdo", statusBadge: "Beta",
   }));
 
   const navGroups: NavGroup[] = [];
@@ -550,10 +553,9 @@ export function OrgSidebar() {
           "relative rounded-lg transition-colors duration-150 animate-fade-in",
           itemExpanded
             ? cn("flex items-center gap-3 h-10 w-full text-left", nested ? "pl-7 pr-2" : "px-2.5")
-            : cn(
-                "flex flex-col items-center justify-center px-1 py-1.5",
-                itemShowLabels ? "w-[68px] gap-0.5" : "w-10 h-10"
-              ),
+            : itemShowLabels
+              ? COMPACT_RAIL_CONTROL
+              : ICON_RAIL_CONTROL,
           locked && "opacity-50",
           isActive
             ? "text-primary-foreground shadow-sm"
@@ -582,6 +584,17 @@ export function OrgSidebar() {
               aria-label="Есть новое"
             />
           )}
+          {item.statusBadge && !itemExpanded && (
+            <span
+              className={cn(
+                "absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-background",
+                isActive && "bg-primary-foreground ring-primary",
+              )}
+              aria-label="Бета-версия"
+            >
+              <span className="sr-only">{item.statusBadge}</span>
+            </span>
+          )}
         </span>
         {itemExpanded ? (
           <span
@@ -602,13 +615,10 @@ export function OrgSidebar() {
             {item.label}
           </span>
         ) : null}
-        {item.statusBadge && (
+        {item.statusBadge && itemExpanded && (
           <span
             className={cn(
-              "rounded-full border font-semibold uppercase tracking-wide",
-              itemExpanded
-                ? "border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8px] text-primary"
-                : "absolute right-0 top-0 border-primary/30 bg-card px-1 py-px text-[7px] text-primary",
+              "rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-primary",
               isActive && "border-primary-foreground/40 bg-primary-foreground/15 text-primary-foreground",
             )}
             aria-label="Бета-версия"
@@ -633,7 +643,7 @@ export function OrgSidebar() {
                 sideOffset={12}
                 className="z-[100]"
               >
-                {item.label}
+                {item.statusBadge ? `${item.label} · Beta` : item.label}
               </TooltipContent>
             )}
           </Tooltip>
@@ -685,7 +695,9 @@ export function OrgSidebar() {
           "relative rounded-lg transition-colors duration-150",
           effectiveExpanded
             ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
-            : cn("flex flex-col items-center justify-center px-1 py-1.5", showLabels ? "w-[68px] gap-0.5" : "h-10 w-10"),
+            : showLabels
+              ? COMPACT_RAIL_CONTROL
+              : ICON_RAIL_CONTROL,
           active
             ? "bg-primary/10 text-primary"
             : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
@@ -756,8 +768,8 @@ export function OrgSidebar() {
           effectiveExpanded
             ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
             : showLabels
-              ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
-              : "flex h-9 w-9 items-center justify-center",
+              ? COMPACT_RAIL_CONTROL
+              : ICON_RAIL_CONTROL,
           active
             ? "bg-primary/15 text-primary"
             : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
@@ -859,8 +871,8 @@ export function OrgSidebar() {
         </div>
 
         {/* Seven semantic roots; details appear only inside the selected root. */}
-        <div className={cn("flex flex-1 flex-col justify-start overflow-y-auto py-2 scrollbar-hide", effectiveExpanded ? "gap-0.5 px-2" : "items-center gap-0.5 px-2")}>
-          <nav aria-label="Основные разделы" className={cn("flex w-full flex-col gap-0.5", !effectiveExpanded && "items-center")}>
+        <div className={cn("flex flex-1 flex-col justify-start overflow-y-auto py-2 scrollbar-hide", effectiveExpanded ? "gap-0.5 px-2" : "items-center gap-1 px-2")}>
+          <nav aria-label="Основные разделы" className={cn("flex w-full flex-col", effectiveExpanded ? "gap-0.5" : "items-center gap-1")}>
             {mainItems.filter((item) => item.id === "home").map((item) => renderNavItem(item))}
             {navGroups.find((group) => group.id === "courses") && renderNavGroup(navGroups.find((group) => group.id === "courses")!)}
             {navGroups.find((group) => group.id === "students") && renderNavGroup(navGroups.find((group) => group.id === "students")!)}
@@ -872,10 +884,10 @@ export function OrgSidebar() {
         </div>
 
         {/* Footer: stable help/settings actions, display mode and logout */}
-        <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
+        <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1")}>
 
           {settingsItems.length > 0 && (
-            <div className="flex w-full flex-col">
+            <div className={cn("flex w-full flex-col", !effectiveExpanded && "items-center")}>
               <button
                 type="button"
                 aria-expanded={effectiveExpanded && settingsExpanded}
@@ -893,8 +905,8 @@ export function OrgSidebar() {
                   effectiveExpanded
                     ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
                     : showLabels
-                      ? "flex min-h-11 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5"
-                      : "mx-auto flex h-9 w-9 items-center justify-center",
+                      ? COMPACT_RAIL_CONTROL
+                      : ICON_RAIL_CONTROL,
                   settingsItems.some(isItemActive)
                     ? "bg-primary/15 text-primary"
                     : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
@@ -959,13 +971,15 @@ export function OrgSidebar() {
                   <button
                     onClick={handleCycleMode}
                     className={cn(
-                      "hidden lg:flex items-center justify-center gap-1 h-8 rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors",
-                      showLabels ? "w-[68px]" : "w-9"
+                      "hidden lg:flex items-center justify-center rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors",
+                      showLabels
+                        ? COMPACT_RAIL_CONTROL
+                        : ICON_RAIL_CONTROL
                     )}
                     aria-label={`Переключить режим меню: ${nextLabel}`}
                   >
-                    <Icon className="h-4 w-4" />
-                    {showLabels && <span className="text-[10px] font-medium">{nextLabel}</span>}
+                    <Icon className="h-[18px] w-[18px]" />
+                    {showLabels && <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">{nextLabel}</span>}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="z-[100] max-w-[220px]">
@@ -986,12 +1000,20 @@ export function OrgSidebar() {
                 onClick={onLogout}
                 className={cn(
                   "rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-1",
-                  effectiveExpanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                  effectiveExpanded
+                    ? "flex items-center gap-3 px-2.5 h-9 w-full text-left"
+                    : showLabels
+                      ? COMPACT_RAIL_CONTROL
+                      : ICON_RAIL_CONTROL
                 )}
                 aria-label="Выйти"
               >
                 <LogOut className="h-[18px] w-[18px] shrink-0" />
-                {effectiveExpanded && <span className="text-[13px] font-medium">Выйти</span>}
+                {effectiveExpanded ? (
+                  <span className="text-[13px] font-medium">Выйти</span>
+                ) : showLabels ? (
+                  <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Выйти</span>
+                ) : null}
               </button>
             </TooltipTrigger>
             {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>}
