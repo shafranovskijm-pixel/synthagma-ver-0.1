@@ -4,10 +4,17 @@ import {
   isOccupationalSafetyCategory,
   type StudentLaborSafetyCourse,
 } from "@/lib/laborSafetyXml";
+import {
+  fetchStudentLaborSafetyProtocols,
+  isLaborSafetyProtocolStorageUnavailable,
+} from "@/api/studentLaborSafetyProtocol";
+import type { LaborSafetyEnrollmentProtocol } from "@/types/laborSafetyProtocol";
 
 export interface StudentLaborSafetyXmlContext {
   company: { name: string; inn: string | null } | null;
   courses: StudentLaborSafetyCourse[];
+  protocolStorageAvailable: boolean;
+  legacyProtocolLookupFailed: boolean;
 }
 
 interface FetchStudentLaborSafetyXmlContextInput {
@@ -48,7 +55,9 @@ export async function fetchStudentLaborSafetyXmlContext(
     company = data ? { name: data.name, inn: data.inn ?? null } : null;
   }
 
-  if (completedEnrollments.length === 0) return { company, courses: [] };
+  if (completedEnrollments.length === 0) {
+    return { company, courses: [], protocolStorageAvailable: true, legacyProtocolLookupFailed: false };
+  }
 
   const courseIds = Array.from(new Set(completedEnrollments.map(enrollment => enrollment.course_id)));
   const { data: courseRows, error: coursesError } = await client
@@ -92,28 +101,56 @@ export async function fetchStudentLaborSafetyXmlContext(
     recordId: string;
     protocolNumber: string | null;
   }>();
+  let protocolStorageAvailable = true;
+  let legacyProtocolLookupFailed = false;
+  const protocolsByEnrollmentId = new Map<string, LaborSafetyEnrollmentProtocol>();
   if (eligibleEnrollments.length > 0) {
     const enrollmentIds = eligibleEnrollments.map(enrollment => enrollment.id);
-    const { data: protocolRows, error: protocolsError } = await client
-      .from("education_document_records")
-      .select("id, enrollment_id, protocol_number, created_at")
-      .eq("organization_id", input.organizationId)
-      .is("deleted_at", null)
-      .in("enrollment_id", enrollmentIds)
-      .order("created_at", { ascending: false });
-    if (protocolsError) throw protocolsError;
-    for (const row of protocolRows ?? []) {
-      if (row.id && row.enrollment_id && !documentsByEnrollmentId.has(row.enrollment_id)) {
-        documentsByEnrollmentId.set(row.enrollment_id, {
-          recordId: row.id,
-          protocolNumber: row.protocol_number?.trim() || null,
-        });
+    try {
+      const protocols = await fetchStudentLaborSafetyProtocols({
+        organizationId: input.organizationId,
+        enrollmentIds,
+      }, client);
+      for (const protocol of protocols) {
+        const enrollment = eligibleEnrollments.find(item => item.id === protocol.source_enrollment_id);
+        if (protocol.source_user_id !== input.userId || protocol.source_course_id !== enrollment?.course_id) {
+          throw new Error("Источник протокола не совпал с учеником и курсом. Требуется проверка данных");
+        }
+        protocolsByEnrollmentId.set(protocol.source_enrollment_id, protocol);
+      }
+    } catch (error) {
+      if (!isLaborSafetyProtocolStorageUnavailable(error)) throw error;
+      // Deploy order is backend first. An older database still supports a
+      // clearly incomplete draft; it must never pretend that saving succeeded.
+      protocolStorageAvailable = false;
+    }
+    const legacyEnrollmentIds = enrollmentIds.filter(id => !protocolsByEnrollmentId.has(id));
+    if (legacyEnrollmentIds.length > 0) {
+      const { data: protocolRows, error: protocolsError } = await client
+        .from("education_document_records")
+        .select("id, enrollment_id, protocol_number, created_at")
+        .eq("organization_id", input.organizationId)
+        .is("deleted_at", null)
+        .in("enrollment_id", legacyEnrollmentIds)
+        .order("created_at", { ascending: false });
+      // A legacy education journal is not a prerequisite for the new protocol.
+      // Keep an explicit warning instead of requiring journals.read to use OT.
+      legacyProtocolLookupFailed = Boolean(protocolsError);
+      for (const row of protocolsError ? [] : protocolRows ?? []) {
+        if (row.id && row.enrollment_id && !documentsByEnrollmentId.has(row.enrollment_id)) {
+          documentsByEnrollmentId.set(row.enrollment_id, {
+            recordId: row.id,
+            protocolNumber: row.protocol_number?.trim() || null,
+          });
+        }
       }
     }
   }
 
   return {
     company,
+    protocolStorageAvailable,
+    legacyProtocolLookupFailed,
     courses: eligibleEnrollments.map(enrollment => {
       const course = coursesById.get(enrollment.course_id)!;
       const educationDocument = documentsByEnrollmentId.get(enrollment.id);
@@ -126,6 +163,7 @@ export async function fetchStudentLaborSafetyXmlContext(
         status: enrollment.status,
         completedAt: enrollment.completed_at ?? null,
         protocolNumber: educationDocument?.protocolNumber ?? null,
+        protocolRecord: protocolsByEnrollmentId.get(enrollment.id) ?? null,
       };
     }),
   };

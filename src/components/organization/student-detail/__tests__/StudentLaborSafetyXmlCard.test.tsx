@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   permissions: new Set<string>(),
@@ -9,6 +9,13 @@ const state = vi.hoisted(() => ({
   assignCompany: vi.fn(),
   createCompany: vi.fn(),
   updateCompany: vi.fn(),
+  fetchProtocol: vi.fn(),
+  saveProtocol: vi.fn(),
+  toastSuccess: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: (...args: unknown[]) => state.toastSuccess(...args), warning: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock("@/hooks/useStaffPermissions", () => ({
@@ -29,11 +36,23 @@ vi.mock("@/api/studentLaborSafetyCompany", () => ({
   updateStudentLaborSafetyCompany: (...args: unknown[]) => state.updateCompany(...args),
 }));
 
+vi.mock("@/api/studentLaborSafetyProtocol", () => ({
+  fetchStudentLaborSafetyProtocol: (...args: unknown[]) => state.fetchProtocol(...args),
+  saveStudentLaborSafetyProtocol: (...args: unknown[]) => state.saveProtocol(...args),
+}));
+
 vi.mock("@/components/ui/SigmaSpinner", () => ({
   SigmaSpinner: () => <span data-testid="spinner" />,
 }));
 
 import { StudentLaborSafetyXmlCard } from "@/components/organization/student-detail/StudentLaborSafetyXmlCard";
+import { StudentLaborSafetyProtocolDialog } from "@/components/organization/student-detail/StudentLaborSafetyProtocolDialog";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(fulfill => { resolve = fulfill; });
+  return { promise, resolve };
+}
 
 const props = {
   organizationId: "org-1",
@@ -56,10 +75,31 @@ const props = {
   position: "Инженер",
 };
 
+const protocol = {
+  id: "protocol-1", organization_id: "org-1", enrollment_id: "enr-1",
+  source_enrollment_id: "enr-1", source_user_id: "student-1", source_course_id: "course-1",
+  learner_name_snapshot: "Тестовый ученик", course_title_snapshot: "Программа А",
+  protocol_number: "ОТ-15", knowledge_check_date: "2026-08-30", is_passed: true,
+  version: 1, created_by: "operator-1", updated_by: "operator-1",
+  created_at: "2026-09-04T00:00:00Z", updated_at: "2026-09-04T00:00:00Z",
+};
+
+const emptyProtocolContext = {
+  company: { name: "ООО Тест", inn: "7707083893" },
+  protocolStorageAvailable: true,
+  legacyProtocolLookupFailed: false,
+  courses: [{
+    enrollmentId: "enr-1", educationDocumentRecordId: null, courseId: "course-1",
+    courseTitle: "Программа А", categoryName: "Охрана труда", status: "completed",
+    completedAt: "2026-08-30T00:00:00Z", protocolNumber: null,
+  }],
+};
+
 describe("StudentLaborSafetyXmlCard", () => {
   beforeEach(() => {
     state.permissions = new Set([
       "labor_safety.read",
+      "labor_safety.write",
       "students.write",
       "companies.write",
       "courses.write",
@@ -73,8 +113,15 @@ describe("StudentLaborSafetyXmlCard", () => {
     state.assignCompany.mockReset();
     state.createCompany.mockReset();
     state.updateCompany.mockReset();
+    state.fetchProtocol.mockReset();
+    state.saveProtocol.mockReset();
+    state.toastSuccess.mockReset();
     state.fetchCompanies.mockResolvedValue([]);
+    state.fetchProtocol.mockResolvedValue(null);
+    state.saveProtocol.mockResolvedValue(protocol);
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it("does not render or request data without labor_safety.read", () => {
     state.permissions.delete("labor_safety.read");
@@ -82,6 +129,97 @@ describe("StudentLaborSafetyXmlCard", () => {
 
     expect(screen.queryByTestId("student-labor-safety-xml-card")).not.toBeInTheDocument();
     expect(state.fetchContext).not.toHaveBeenCalled();
+  });
+
+  it("retries a failed metadata request exactly once with the same parent enrollments", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const retry = deferred<typeof emptyProtocolContext>();
+    state.fetchContext.mockRejectedValueOnce(new Error("Temporary network failure")).mockReturnValueOnce(retry.promise);
+    render(<StudentLaborSafetyXmlCard {...props} />);
+
+    const button = await screen.findByRole("button", { name: "Повторить загрузку" });
+    expect(state.fetchContext).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeDisabled();
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(await screen.findByText("Загружаем данные повторно…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Повторить загрузку" })).not.toBeInTheDocument();
+    expect(state.fetchContext).toHaveBeenCalledTimes(2);
+    const originalInput = state.fetchContext.mock.calls[0][0];
+    expect(state.fetchContext.mock.calls[1][0]).toEqual(originalInput);
+    expect(state.fetchContext.mock.calls[1][0].enrollments).toBe(props.enrollments);
+
+    await act(async () => { retry.resolve(emptyProtocolContext); await retry.promise; });
+    expect(await screen.findByRole("button", { name: "Заполнить протокол: Программа А" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
+    expect(state.fetchContext).toHaveBeenCalledTimes(2);
+    expect(props.enrollments).toHaveLength(1);
+  });
+
+  it("does not retry after the labor-safety read permission is removed", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    state.fetchContext.mockRejectedValueOnce(new Error("Temporary network failure"));
+    const view = render(<StudentLaborSafetyXmlCard {...props} />);
+    const oldButton = await screen.findByRole("button", { name: "Повторить загрузку" });
+    state.permissions.delete("labor_safety.read");
+    view.rerender(<StudentLaborSafetyXmlCard {...props} />);
+    fireEvent.click(oldButton);
+    expect(screen.queryByTestId("student-labor-safety-xml-card")).not.toBeInTheDocument();
+    expect(state.fetchContext).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not deliver a late protocol save to callbacks after the scoped dialog is replaced", async () => {
+    const pendingSave = deferred<typeof protocol>();
+    state.fetchProtocol.mockResolvedValue(protocol);
+    state.saveProtocol.mockReturnValueOnce(pendingSave.promise);
+    const oldEvents = { onSaved: vi.fn(), onClose: vi.fn() };
+    const newEvents = { onSaved: vi.fn(), onClose: vi.fn() };
+    const view = render(<StudentLaborSafetyProtocolDialog key="org-1:enr-1" organizationId="org-1"
+      enrollmentId="enr-1" courseTitle="Старый курс" canEdit {...oldEvents} />);
+    await screen.findByLabelText("Номер протокола *");
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить протокол" }));
+    expect(state.saveProtocol).toHaveBeenCalledTimes(1);
+    state.fetchProtocol.mockResolvedValue(null);
+    view.rerender(<StudentLaborSafetyProtocolDialog key="org-1:enr-2" organizationId="org-1"
+      enrollmentId="enr-2" courseTitle="Новый курс" canEdit {...newEvents} />);
+    expect(await screen.findByLabelText("Номер протокола *")).toHaveValue("");
+    await act(async () => { pendingSave.resolve(protocol); await pendingSave.promise; });
+
+    expect(oldEvents.onSaved).not.toHaveBeenCalled();
+    expect(oldEvents.onClose).not.toHaveBeenCalled();
+    expect(newEvents.onSaved).not.toHaveBeenCalled();
+    expect(newEvents.onClose).not.toHaveBeenCalled();
+    expect(state.toastSuccess).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Номер протокола *")).toHaveValue("");
+  });
+
+  it("keeps the new student's card and open dialog unchanged when the old student's save resolves", async () => {
+    const pendingSave = deferred<typeof protocol>();
+    state.fetchContext.mockResolvedValue(emptyProtocolContext);
+    state.fetchProtocol.mockResolvedValue(protocol);
+    state.saveProtocol.mockReturnValueOnce(pendingSave.promise);
+    const view = render(<StudentLaborSafetyXmlCard {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Заполнить протокол: Программа А" }));
+    await screen.findByLabelText("Номер протокола *");
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить протокол" }));
+    expect(state.saveProtocol).toHaveBeenCalledTimes(1);
+
+    state.fetchContext.mockResolvedValue({ ...emptyProtocolContext,
+      courses: [{ ...emptyProtocolContext.courses[0], enrollmentId: "enr-2", courseTitle: "Курс нового ученика" }],
+    });
+    state.fetchProtocol.mockResolvedValue(null);
+    view.rerender(<StudentLaborSafetyXmlCard {...props}
+      student={{ ...props.student, userId: "student-2", fullName: "Новый ученик" }}
+      enrollments={[{ ...props.enrollments[0], id: "enr-2" }]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Заполнить протокол: Курс нового ученика" }));
+    expect(await screen.findByLabelText("Номер протокола *")).toHaveValue("");
+    await act(async () => { pendingSave.resolve(protocol); await pendingSave.promise; });
+
+    expect(state.toastSuccess).not.toHaveBeenCalled();
+    expect(screen.getByTestId("labor-safety-protocol-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Номер протокола *")).toHaveValue("");
+    expect(screen.getByTestId("protocol-source-enr-2")).toHaveTextContent("ещё не заполнен");
+    expect(screen.queryByTestId("protocol-source-enr-1")).not.toBeInTheDocument();
   });
 
   it("shows the Beta/XSD warning and allows only a clearly labelled draft while fields are missing", async () => {
@@ -142,6 +280,7 @@ describe("StudentLaborSafetyXmlCard", () => {
         status: "completed",
         completedAt: "2026-08-30T00:00:00Z",
         protocolNumber: "ОТ-15",
+        protocolRecord: protocol,
       }],
     });
 
@@ -192,13 +331,12 @@ describe("StudentLaborSafetyXmlCard", () => {
 
     expect(onOpenSnils).toHaveBeenCalledOnce();
     expect(onOpenProfile).toHaveBeenCalledOnce();
-    expect(onOpenEducationDocument).toHaveBeenCalledWith({
-      enrollmentId: "enr-1",
-      recordId: "record-1",
-    });
+    expect(await screen.findByTestId("labor-safety-protocol-dialog")).toBeInTheDocument();
+    expect(state.fetchProtocol).toHaveBeenCalledWith({ organizationId: "org-1", enrollmentId: "enr-1" });
+    expect(onOpenEducationDocument).not.toHaveBeenCalled();
   });
 
-  it("requires journal write permission for the protocol edit action", async () => {
+  it("requires labor_safety.write, not journal permissions, for the protocol edit action", async () => {
     const onOpenEducationDocument = vi.fn();
     const context = {
       company: { name: "ООО Тест", inn: "7707083893" },
@@ -232,8 +370,7 @@ describe("StudentLaborSafetyXmlCard", () => {
 
     state.permissions = new Set([
       "labor_safety.read",
-      "journals.read",
-      "journals.write",
+      "labor_safety.write",
     ]);
     render(
       <StudentLaborSafetyXmlCard
@@ -242,6 +379,66 @@ describe("StudentLaborSafetyXmlCard", () => {
       />,
     );
     expect(await screen.findByRole("button", { name: "Заполнить: Номер протокола" })).toBeInTheDocument();
+  });
+
+  it("opens the independent protocol form without routing to document issuance", async () => {
+    const onOpenEducationDocument = vi.fn();
+    state.fetchContext.mockResolvedValue({
+      company: { name: "ООО Тест", inn: "7707083893" },
+      courses: [{
+        enrollmentId: "enr-1",
+        educationDocumentRecordId: null,
+        courseId: "course-1",
+        courseTitle: "Общие вопросы охраны труда",
+        categoryName: "Охрана труда",
+        status: "completed",
+        completedAt: "2026-08-30T00:00:00Z",
+        protocolNumber: null,
+      }],
+    });
+
+    render(
+      <StudentLaborSafetyXmlCard
+        {...props}
+        onOpenEducationDocument={onOpenEducationDocument}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Заполнить: Номер протокола" }));
+    expect(await screen.findByTestId("labor-safety-protocol-dialog")).toBeInTheDocument();
+    expect(onOpenEducationDocument).not.toHaveBeenCalled();
+  });
+
+  it("shows an unavailable save state before the protocol migration is installed", async () => {
+    state.fetchContext.mockResolvedValue({
+      company: { name: "ООО Тест", inn: "7707083893" },
+      protocolStorageAvailable: false,
+      courses: [{ enrollmentId: "enr-1", educationDocumentRecordId: null, courseId: "course-1",
+        courseTitle: "Программа А", categoryName: "Охрана труда", status: "completed",
+        completedAt: "2026-08-30T00:00:00Z", protocolNumber: null }],
+    });
+    render(<StudentLaborSafetyXmlCard {...props} />);
+    expect(await screen.findByText(/обновление базы ещё не установлено/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Заполнить протокол: Программа А" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Скачать черновик XML" })).toBeEnabled();
+  });
+
+  it("updates the card only with a protocol returned after verified persistence", async () => {
+    state.fetchContext.mockResolvedValue({
+      company: { name: "ООО Тест", inn: "7707083893" },
+      protocolStorageAvailable: true,
+      courses: [{ enrollmentId: "enr-1", educationDocumentRecordId: null, courseId: "course-1",
+        courseTitle: "Программа А", categoryName: "Охрана труда", status: "completed",
+        completedAt: "2026-08-30T00:00:00Z", protocolNumber: null }],
+    });
+    render(<StudentLaborSafetyXmlCard {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Заполнить протокол: Программа А" }));
+    fireEvent.change(await screen.findByLabelText("Номер протокола *"), { target: { value: "ОТ-15" } });
+    fireEvent.change(screen.getByLabelText("Дата проверки знаний по протоколу *"), { target: { value: "2026-08-30" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Сдал" }));
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить протокол" }));
+    expect(await screen.findByText(/Протокол сохранён оператором: № ОТ-15/)).toBeInTheDocument();
+    expect(screen.getByText(/Поля внутреннего XML-черновика заполнены/)).toBeInTheDocument();
   });
 
   it("creates a company and assigns it to a student without leaving the documents card", async () => {

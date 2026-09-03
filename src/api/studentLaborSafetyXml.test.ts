@@ -64,7 +64,7 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
       enrollments: [enrollment()],
     }, client as never);
 
-    for (const table of ["companies", "courses", "course_categories", "education_document_records"]) {
+    for (const table of ["companies", "courses", "course_categories", "labor_safety_enrollment_protocols", "education_document_records"]) {
       expect(client.logs.find(log => log.table === table)?.eq).toContainEqual(["organization_id", "org-1"]);
     }
     expect(client.logs.find(log => log.table === "companies")?.eq).toContainEqual(["id", "company-1"]);
@@ -95,6 +95,7 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
 
     expect(result.courses).toEqual([]);
     expect(client.logs.some(log => log.table === "education_document_records")).toBe(false);
+    expect(client.logs.some(log => log.table === "labor_safety_enrollment_protocols")).toBe(false);
   });
 
   it("returns the newest education-document record even before its protocol number is filled", async () => {
@@ -120,5 +121,69 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
       educationDocumentRecordId: "record-new",
       protocolNumber: null,
     }));
+  });
+
+  it("prefers the separately saved protocol and does not require the certificate journal", async () => {
+    const protocol = {
+      id: "protocol-1", organization_id: "org-1", enrollment_id: "enr-1",
+      source_enrollment_id: "enr-1", source_user_id: "student-1", source_course_id: "course-1",
+      learner_name_snapshot: "Тестовый ученик", course_title_snapshot: "Программа А",
+      protocol_number: "ОТ-7", knowledge_check_date: "2026-09-01", is_passed: false, version: 1,
+    };
+    const client = createClient({
+      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
+      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
+      labor_safety_enrollment_protocols: { data: [protocol], error: null },
+      education_document_records: { data: null, error: { message: "No journal permission" } },
+    });
+    const result = await fetchStudentLaborSafetyXmlContext({
+      organizationId: "org-1", userId: "student-1", enrollments: [enrollment()],
+    }, client as never);
+    expect(result.protocolStorageAvailable).toBe(true);
+    expect(result.courses[0].protocolRecord).toEqual(protocol);
+    expect(result.courses[0].educationDocumentRecordId).toBeNull();
+    expect(client.logs.some(log => log.table === "education_document_records")).toBe(false);
+  });
+
+  it("keeps a clearly unavailable storage state when the additive migration is absent", async () => {
+    const client = createClient({
+      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
+      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
+      labor_safety_enrollment_protocols: { data: null, error: { code: "PGRST205" } },
+      education_document_records: { data: [{ id: "old", enrollment_id: "enr-1", protocol_number: "П-1" }], error: null },
+    });
+    const result = await fetchStudentLaborSafetyXmlContext({
+      organizationId: "org-1", userId: "student-1", enrollments: [enrollment()],
+    }, client as never);
+    expect(result.protocolStorageAvailable).toBe(false);
+    expect(result.courses[0].protocolRecord).toBeNull();
+    expect(result.courses[0].protocolNumber).toBe("П-1");
+  });
+
+  it("does not pretend a transient protocol read failure is an empty record", async () => {
+    const client = createClient({
+      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
+      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
+      labor_safety_enrollment_protocols: { data: null, error: { message: "Network unavailable" } },
+    });
+    await expect(fetchStudentLaborSafetyXmlContext({
+      organizationId: "org-1", userId: "student-1", enrollments: [enrollment()],
+    }, client as never)).rejects.toThrow("Network unavailable");
+    expect(client.logs.some(log => log.table === "education_document_records")).toBe(false);
+  });
+
+  it("marks optional legacy-journal failure explicitly without blocking the new form", async () => {
+    const client = createClient({
+      courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
+      course_categories: { data: [{ id: "cat-1", name: "Охрана труда" }], error: null },
+      education_document_records: { data: null, error: { message: "No journal permission" } },
+    });
+    const result = await fetchStudentLaborSafetyXmlContext({
+      organizationId: "org-1", userId: "student-1", enrollments: [enrollment()],
+    }, client as never);
+    expect(result.protocolStorageAvailable).toBe(true);
+    expect(result.legacyProtocolLookupFailed).toBe(true);
+    expect(result.courses[0].protocolRecord).toBeNull();
+    expect(result.courses[0].protocolNumber).toBeNull();
   });
 });

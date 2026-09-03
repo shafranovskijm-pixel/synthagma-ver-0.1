@@ -4654,6 +4654,78 @@ export type Database = {
         }
         Relationships: []
       }
+      labor_safety_enrollment_protocols: {
+        Row: {
+          id: string
+          organization_id: string
+          enrollment_id: string | null
+          source_enrollment_id: string
+          source_user_id: string
+          source_course_id: string
+          learner_name_snapshot: string | null
+          course_title_snapshot: string
+          protocol_number: string
+          knowledge_check_date: string
+          is_passed: boolean
+          version: number
+          created_by: string
+          updated_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          enrollment_id?: string | null
+          source_enrollment_id: string
+          source_user_id: string
+          source_course_id: string
+          learner_name_snapshot?: string | null
+          course_title_snapshot: string
+          protocol_number: string
+          knowledge_check_date: string
+          is_passed: boolean
+          version?: number
+          created_by: string
+          updated_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          enrollment_id?: string | null
+          source_enrollment_id?: string
+          source_user_id?: string
+          source_course_id?: string
+          learner_name_snapshot?: string | null
+          course_title_snapshot?: string
+          protocol_number?: string
+          knowledge_check_date?: string
+          is_passed?: boolean
+          version?: number
+          created_by?: string
+          updated_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_safety_enrollment_protocols_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labor_safety_enrollment_protocols_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_safety_groups: {
         Row: {
           created_at: string
@@ -13181,6 +13253,34 @@ export type Database = {
       revoke_signature: {
         Args: { p_reason?: string; p_signature_id: string }
         Returns: Json
+      }
+      save_labor_safety_enrollment_protocol: {
+        Args: {
+          p_organization_id: string
+          p_enrollment_id: string
+          p_protocol_number: string
+          p_knowledge_check_date: string
+          p_is_passed: boolean
+          p_expected_version?: number | null
+        }
+        Returns: {
+          id: string
+          organization_id: string
+          enrollment_id: string | null
+          source_enrollment_id: string
+          source_user_id: string
+          source_course_id: string
+          learner_name_snapshot: string | null
+          course_title_snapshot: string
+          protocol_number: string
+          knowledge_check_date: string
+          is_passed: boolean
+          version: number
+          created_by: string
+          updated_by: string
+          created_at: string
+          updated_at: string
+        }[]
       }
       save_student_frdo_data: {
         Args: { p_data: Json; p_organization_id: string; p_user_id: string }

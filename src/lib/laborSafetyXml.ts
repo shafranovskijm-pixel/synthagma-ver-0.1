@@ -1,4 +1,5 @@
 import { isValidSnilsChecksum } from "@/utils/formatSnils";
+import type { LaborSafetyEnrollmentProtocol } from "@/types/laborSafetyProtocol";
 
 export interface LaborSafetyXmlRecord {
   full_name: string;
@@ -9,7 +10,8 @@ export interface LaborSafetyXmlRecord {
   protocol_number: string | null;
   program_name: string | null;
   exam_date: string | null;
-  is_passed: boolean;
+  is_passed: boolean | null;
+  protocol_source?: "operator_saved" | "legacy_unconfirmed" | "missing";
 }
 
 export interface StudentLaborSafetyCourse {
@@ -21,6 +23,7 @@ export interface StudentLaborSafetyCourse {
   status: string;
   completedAt: string | null;
   protocolNumber: string | null;
+  protocolRecord?: LaborSafetyEnrollmentProtocol | null;
 }
 
 export interface StudentLaborSafetyRecordInput {
@@ -40,10 +43,11 @@ export interface StudentLaborSafetyRecordResult {
   record: LaborSafetyXmlRecord;
   missingFields: string[];
   invalidFields: string[];
+  protocolRecord: LaborSafetyEnrollmentProtocol | null;
 }
 
 const REQUIRED_FIELDS: Array<{
-  key: keyof Omit<LaborSafetyXmlRecord, "is_passed">;
+  key: keyof Omit<LaborSafetyXmlRecord, "is_passed" | "protocol_source">;
   label: string;
 }> = [
   { key: "full_name", label: "ФИО" },
@@ -53,7 +57,7 @@ const REQUIRED_FIELDS: Array<{
   { key: "organization_name", label: "Наименование организации" },
   { key: "protocol_number", label: "Номер протокола" },
   { key: "program_name", label: "Программа обучения" },
-  { key: "exam_date", label: "Дата экзамена" },
+  { key: "exam_date", label: "Дата проверки знаний" },
 ];
 
 const normalize = (value: string | null | undefined): string | null => {
@@ -101,9 +105,11 @@ export function isOccupationalSafetyCategory(categoryName: string | null | undef
 }
 
 export function getLaborSafetyMissingFields(record: LaborSafetyXmlRecord): string[] {
-  return REQUIRED_FIELDS
+  const missing = REQUIRED_FIELDS
     .filter(({ key }) => !normalize(record[key] as string | null))
     .map(({ label }) => label);
+  if (typeof record.is_passed !== "boolean") missing.push("Результат проверки знаний");
+  return missing;
 }
 
 /**
@@ -115,7 +121,7 @@ export function getLaborSafetyInvalidFields(record: LaborSafetyXmlRecord): strin
   const snils = normalize(record.snils);
   if (snils && !isValidSnilsChecksum(snils)) invalid.push("СНИЛС");
   if (normalize(record.inn) && !isValidInnChecksum(record.inn)) invalid.push("ИНН организации");
-  if (normalize(record.exam_date) && !isValidIsoDate(record.exam_date)) invalid.push("Дата экзамена");
+  if (normalize(record.exam_date) && !isValidIsoDate(record.exam_date)) invalid.push("Дата проверки знаний");
   return invalid;
 }
 
@@ -134,16 +140,18 @@ export function buildStudentLaborSafetyRecords(
       && isOccupationalSafetyCategory(course.categoryName)
     ))
     .map(course => {
+      const protocol = course.protocolRecord ?? null;
       const record: LaborSafetyXmlRecord = {
         full_name: normalize(input.fullName) ?? "",
         snils: normalize(input.snils),
         position: normalize(input.position),
         inn: normalize(input.companyInn),
         organization_name: normalize(input.companyName),
-        protocol_number: normalize(course.protocolNumber),
+        protocol_number: protocol?.protocol_number ?? normalize(course.protocolNumber),
         program_name: normalize(course.courseTitle),
-        exam_date: normalize(course.completedAt)?.slice(0, 10) ?? null,
-        is_passed: true,
+        exam_date: protocol?.knowledge_check_date ?? null,
+        is_passed: protocol?.is_passed ?? null,
+        protocol_source: protocol ? "operator_saved" : normalize(course.protocolNumber) ? "legacy_unconfirmed" : "missing",
       };
 
       return {
@@ -154,6 +162,7 @@ export function buildStudentLaborSafetyRecords(
         record,
         missingFields: getLaborSafetyMissingFields(record),
         invalidFields: getLaborSafetyInvalidFields(record),
+        protocolRecord: protocol,
       };
     });
 }
@@ -179,7 +188,8 @@ export function serializeLaborSafetyRecordsXml(input: {
       `    <ProtocolNumber>${escapeXml(record.protocol_number ?? "")}</ProtocolNumber>`,
       `    <ProgramName>${escapeXml(record.program_name ?? "")}</ProgramName>`,
       `    <ExamDate>${escapeXml(record.exam_date ?? "")}</ExamDate>`,
-      `    <IsPassed>${record.is_passed ? "Да" : "Нет"}</IsPassed>`,
+      `    <IsPassed>${typeof record.is_passed !== "boolean" ? "" : record.is_passed ? "Да" : "Нет"}</IsPassed>`,
+      ...(record.protocol_source ? [`    <ProtocolSource>${record.protocol_source}</ProtocolSource>`] : []),
       "  </Record>",
     );
   });

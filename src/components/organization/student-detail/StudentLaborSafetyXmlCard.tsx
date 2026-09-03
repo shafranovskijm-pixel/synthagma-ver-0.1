@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, ExternalLink, FileCode2, Info, Pencil, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, Download, ExternalLink, FileCode2, Info, Pencil, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -15,6 +15,7 @@ import {
   type StudentLaborSafetyXmlContext,
 } from "@/api/studentLaborSafetyXml";
 import { StudentLaborSafetyCompanyDialog } from "@/components/organization/student-detail/StudentLaborSafetyCompanyDialog";
+import { StudentLaborSafetyProtocolDialog } from "@/components/organization/student-detail/StudentLaborSafetyProtocolDialog";
 
 interface StudentLaborSafetyXmlCardProps {
   organizationId: string;
@@ -38,6 +39,7 @@ interface StudentLaborSafetyXmlCardProps {
   onCompanyChanged?: () => void | Promise<void>;
   canEditCompanies?: boolean;
   canAssignCompany?: boolean;
+  canEditProtocol?: boolean;
 }
 
 function StudentLaborSafetyXmlCardContent({
@@ -51,25 +53,30 @@ function StudentLaborSafetyXmlCardContent({
   onOpenProfile,
   onOpenSnils,
   onOpenCourse,
-  onOpenEducationDocument,
   onCompanyChanged,
   canEditCompanies = false,
   canAssignCompany = false,
+  canEditProtocol = false,
 }: StudentLaborSafetyXmlCardProps) {
   const [context, setContext] = useState<StudentLaborSafetyXmlContext | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const requestPendingRef = useRef(false);
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
+  const [protocolEnrollmentId, setProtocolEnrollmentId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     if (enrollmentsLoading || enrollmentsError) {
+      requestPendingRef.current = false;
       setContext(null);
       setLoadError(null);
       setLoading(false);
       return () => { active = false; };
     }
 
+    requestPendingRef.current = true;
     setLoading(true);
     setLoadError(null);
     void fetchStudentLaborSafetyXmlContext({
@@ -83,13 +90,25 @@ function StudentLaborSafetyXmlCardContent({
       if (!active) return;
       console.error("[StudentLaborSafetyXmlCard] load failed:", error);
       setContext(null);
-      setLoadError("Не удалось подтвердить данные для XML. Повторите загрузку позже.");
+      setLoadError("Не удалось подтвердить данные для XML. Повторите загрузку.");
     }).finally(() => {
-      if (active) setLoading(false);
+      if (active) {
+        requestPendingRef.current = false;
+        setLoading(false);
+      }
     });
 
     return () => { active = false; };
-  }, [organizationId, student.userId, student.companyId, enrollments, enrollmentsLoading, enrollmentsError]);
+  }, [organizationId, student.userId, student.companyId, enrollments, enrollmentsLoading, enrollmentsError, loadAttempt]);
+
+  const handleRetryContext = () => {
+    if (requestPendingRef.current || loading || enrollmentsLoading || enrollmentsError || !loadError) return;
+    // Only retry this card's metadata; the parent owns the confirmed enrollments.
+    // Lock synchronously so rapid clicks cannot enqueue duplicate requests.
+    requestPendingRef.current = true;
+    setLoading(true);
+    setLoadAttempt(attempt => attempt + 1);
+  };
 
   const records = useMemo(() => buildStudentLaborSafetyRecords({
     fullName: student.fullName,
@@ -112,6 +131,8 @@ function StudentLaborSafetyXmlCardContent({
     && !loadError
     && !enrollmentsError;
   const isReadyForValidation = canDownloadDraft && issueCount === 0;
+  const protocolStorageAvailable = context?.protocolStorageAvailable !== false;
+  const protocolTarget = records.find(result => result.enrollmentId === protocolEnrollmentId) ?? null;
 
   const handleDownload = () => {
     if (!canDownloadDraft) return;
@@ -145,13 +166,12 @@ function StudentLaborSafetyXmlCardContent({
       const mayManageCompany = canEditCompanies && (Boolean(student.companyId) || canAssignCompany);
       return mayManageCompany ? () => setCompanyDialogOpen(true) : null;
     }
-    if (field === "Номер протокола" && onOpenEducationDocument) {
-      return () => onOpenEducationDocument({
-        enrollmentId: result.enrollmentId,
-        recordId: result.educationDocumentRecordId,
-      });
+    if (["Номер протокола", "Дата проверки знаний", "Результат проверки знаний"].includes(field)) {
+      return canEditProtocol && protocolStorageAvailable
+        ? () => setProtocolEnrollmentId(result.enrollmentId)
+        : null;
     }
-    if ((field === "Программа обучения" || field === "Дата экзамена") && onOpenCourse) {
+    if (field === "Программа обучения" && onOpenCourse) {
       return () => onOpenCourse(result.courseId);
     }
     return null;
@@ -235,6 +255,18 @@ function StudentLaborSafetyXmlCardContent({
         </div>
       </details>
 
+      {!protocolStorageAvailable && (
+        <p className="mt-3 rounded-xl border border-amber-300/80 bg-background/80 p-3 text-sm" role="alert">
+          Сохранение протоколов пока недоступно: обновление базы ещё не установлено.
+          Черновик остаётся доступен, но дату и результат нельзя считать подтверждёнными по старому журналу.
+        </p>
+      )}
+      {context?.legacyProtocolLookupFailed && (
+        <p className="mt-3 text-sm text-muted-foreground" role="note">
+          Старые номера из журнала документов загрузить не удалось. Это не мешает заполнить отдельный протокол охраны труда.
+        </p>
+      )}
+
       {enrollmentsLoading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground" role="status">
           <SigmaSpinner size="sm" /> Проверяем завершённые курсы…
@@ -243,10 +275,16 @@ function StudentLaborSafetyXmlCardContent({
         <p className="mt-4 text-sm text-destructive" role="alert">{enrollmentsError}</p>
       ) : isLoadingContext ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground" role="status">
-          <SigmaSpinner size="sm" /> Проверяем категорию и реквизиты…
+          <SigmaSpinner size="sm" /> {loadAttempt > 0 ? "Загружаем данные повторно…" : "Проверяем категорию и реквизиты…"}
         </div>
       ) : loadError ? (
-        <p className="mt-4 text-sm text-destructive" role="alert">{loadError}</p>
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-destructive" role="alert">{loadError}</p>
+          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-xl"
+            onClick={handleRetryContext} disabled={loading || enrollmentsLoading || Boolean(enrollmentsError)}>
+            <RefreshCw className="h-4 w-4" /> Повторить загрузку
+          </Button>
+        </div>
       ) : records.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
           Нет завершённых курсов, отнесённых к категории «Охрана труда». Название курса само по себе не используется как признак.
@@ -271,6 +309,21 @@ function StudentLaborSafetyXmlCardContent({
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{result.courseTitle}</p>
+                  <p className="mt-1 text-xs text-muted-foreground" data-testid={`protocol-source-${result.enrollmentId}`}>
+                    {result.protocolRecord
+                      ? `Протокол сохранён оператором: № ${result.protocolRecord.protocol_number}, ${result.protocolRecord.knowledge_check_date.split("-").reverse().join(".")} — ${result.protocolRecord.is_passed ? "Сдал" : "Не сдал"}. Это не подтверждение регистрации в Минтруде.`
+                      : result.record.protocol_source === "legacy_unconfirmed"
+                        ? `Номер из старого журнала: ${result.record.protocol_number}. Дата и результат проверки знаний не подтверждены.`
+                        : "Протокол проверки знаний ещё не заполнен."}
+                  </p>
+                  {canEditProtocol && (
+                    <Button type="button" variant="outline" size="sm" className="mt-2 gap-1 rounded-lg"
+                      disabled={!protocolStorageAvailable}
+                      aria-label={`${result.protocolRecord ? "Изменить" : "Заполнить"} протокол: ${result.courseTitle}`}
+                      onClick={() => setProtocolEnrollmentId(result.enrollmentId)}>
+                      <Pencil className="h-3 w-3" /> {result.protocolRecord ? "Изменить протокол" : "Заполнить протокол"}
+                    </Button>
+                  )}
                   {result.missingFields.length === 0 && result.invalidFields.length === 0 ? (
                     <p className="mt-1 text-xs text-emerald-700">Поля внутреннего XML-черновика заполнены и прошли синтаксическую проверку.</p>
                   ) : (
@@ -314,6 +367,25 @@ function StudentLaborSafetyXmlCardContent({
       )}
       </div>
 
+      {protocolTarget && (
+        <StudentLaborSafetyProtocolDialog
+          key={`${organizationId}:${protocolTarget.enrollmentId}`}
+          organizationId={organizationId}
+          enrollmentId={protocolTarget.enrollmentId}
+          courseTitle={protocolTarget.courseTitle}
+          legacyProtocolNumber={context?.courses.find(course => course.enrollmentId === protocolTarget.enrollmentId)?.protocolNumber}
+          canEdit={canEditProtocol}
+          onClose={() => setProtocolEnrollmentId(null)}
+          onSaved={protocol => setContext(current => current ? {
+            ...current,
+            protocolStorageAvailable: true,
+            courses: current.courses.map(course => course.enrollmentId === protocol.source_enrollment_id
+              ? { ...course, protocolRecord: protocol }
+              : course),
+          } : current)}
+        />
+      )}
+
       <StudentLaborSafetyCompanyDialog
         open={companyDialogOpen}
         onOpenChange={setCompanyDialogOpen}
@@ -352,6 +424,7 @@ export function StudentLaborSafetyXmlCard(props: StudentLaborSafetyXmlCardProps)
       : undefined,
     canEditCompanies: can("companies.write"),
     canAssignCompany: can("students.write"),
+    canEditProtocol: can("labor_safety.write"),
   };
   const identityKey = [
     props.organizationId,
