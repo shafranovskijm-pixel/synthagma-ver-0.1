@@ -78,6 +78,7 @@ export default function CourseImport() {
   const [step, setStep] = useState<ImportStep>('upload');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedAnswerKeyFile, setSelectedAnswerKeyFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [courseTitle, setCourseTitle] = useState('');
@@ -127,10 +128,11 @@ export default function CourseImport() {
     e.preventDefault();
     setIsDragging(false);
     
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      validateAndSetFile(file);
-    }
+    const files = Array.from(e.dataTransfer.files);
+    const answerKeyFile = files.find((file) => file.name.toLowerCase().endsWith(".json"));
+    const courseFile = files.find((file) => !file.name.toLowerCase().endsWith(".json"));
+    if (courseFile) validateAndSetFile(courseFile);
+    if (answerKeyFile) validateAndSetAnswerKeyFile(answerKeyFile);
   }, []);
 
   const validateAndSetFile = (file: File) => {
@@ -173,6 +175,23 @@ export default function CourseImport() {
     }
   };
 
+  const validateAndSetAnswerKeyFile = (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      toast.error("Закрытый банк вопросов должен быть файлом JSON");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Максимальный размер закрытого банка вопросов — 2 МБ");
+      return;
+    }
+    setSelectedAnswerKeyFile(file);
+  };
+
+  const handleAnswerKeyFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndSetAnswerKeyFile(file);
+  };
+
   const processFile = async () => {
     if (!selectedFile || scopeState.status !== "ready") return;
     
@@ -185,7 +204,11 @@ export default function CourseImport() {
       if (isHtml) {
         const html = await selectedFile.text();
         if (isCszStructuredCourseHtml(html)) {
-          const parsed = parseCszStructuredCourseHtml(html);
+          if (!selectedAnswerKeyFile) {
+            throw new Error("Для курса ЦСЗ выберите отдельный закрытый JSON с ключами тестов");
+          }
+          const closedQuestionBankJson = await selectedAnswerKeyFile.text();
+          const parsed = parseCszStructuredCourseHtml(html, closedQuestionBankJson);
           setProgress(100);
           setStructuredPayload(parsed);
           setImportResult({
@@ -198,14 +221,22 @@ export default function CourseImport() {
               content: lesson.content,
               order_index: lesson.order_index,
             })),
-            filesCount: 1,
+            filesCount: 2,
             sectionsCount: parsed.lessons.length,
-            analysis: [{
-              fileName: selectedFile.name,
-              title: parsed.title,
-              wordCount: html.trim().split(/\s+/).length,
-              contentType: "structured-csz-course",
-            }],
+            analysis: [
+              {
+                fileName: selectedFile.name,
+                title: parsed.title,
+                wordCount: html.trim().split(/\s+/).length,
+                contentType: "structured-csz-course-v2",
+              },
+              {
+                fileName: selectedAnswerKeyFile.name,
+                title: "Закрытый банк вопросов",
+                wordCount: 0,
+                contentType: "closed-question-bank",
+              },
+            ],
           });
           setCourseTitle(parsed.title);
           setStep("preview");
@@ -330,6 +361,7 @@ export default function CourseImport() {
   const resetImport = () => {
     setStep('upload');
     setSelectedFile(null);
+    setSelectedAnswerKeyFile(null);
     setProgress(0);
     setImportResult(null);
     setCourseTitle('');
@@ -393,11 +425,17 @@ export default function CourseImport() {
           <UploadStep
             isDragging={isDragging}
             selectedFile={selectedFile}
+            selectedAnswerKeyFile={selectedAnswerKeyFile}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onFileSelect={handleFileSelect}
-            onClearFile={() => setSelectedFile(null)}
+            onAnswerKeyFileSelect={handleAnswerKeyFileSelect}
+            onClearFile={() => {
+              setSelectedFile(null);
+              setSelectedAnswerKeyFile(null);
+            }}
+            onClearAnswerKeyFile={() => setSelectedAnswerKeyFile(null)}
             onProcess={processFile}
           />
         )}

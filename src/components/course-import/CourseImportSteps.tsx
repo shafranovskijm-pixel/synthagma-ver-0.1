@@ -35,15 +35,30 @@ interface ImportResult {
 interface UploadStepProps {
   isDragging: boolean;
   selectedFile: File | null;
+  selectedAnswerKeyFile: File | null;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onAnswerKeyFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClearFile: () => void;
+  onClearAnswerKeyFile: () => void;
   onProcess: () => void;
 }
 
-export function UploadStep({ isDragging, selectedFile, onDragOver, onDragLeave, onDrop, onFileSelect, onClearFile, onProcess }: UploadStepProps) {
+export function UploadStep({
+  isDragging,
+  selectedFile,
+  selectedAnswerKeyFile,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onFileSelect,
+  onAnswerKeyFileSelect,
+  onClearFile,
+  onClearAnswerKeyFile,
+  onProcess,
+}: UploadStepProps) {
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -84,6 +99,35 @@ export function UploadStep({ isDragging, selectedFile, onDragOver, onDragLeave, 
               <p className="text-sm text-muted-foreground mt-1">PPTX, DOCX, TXT, HTML; старый DOC — Beta (до 50 МБ)</p>
             </div>
           </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <div>
+          <p className="font-medium">Закрытый JSON с ключами тестов</p>
+          <p className="text-sm text-muted-foreground">
+            Обязателен только для структурированного курса ЦСЗ. Ключи не добавляются в HTML уроков.
+          </p>
+        </div>
+        <input
+          id="answer-key-input"
+          type="file"
+          accept=".json,application/json"
+          onChange={onAnswerKeyFileSelect}
+          className="hidden"
+        />
+        {selectedAnswerKeyFile ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{selectedAnswerKeyFile.name}</p>
+              <p className="text-xs text-muted-foreground">{(selectedAnswerKeyFile.size / 1024).toFixed(1)} КБ</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={onClearAnswerKeyFile}>Удалить</Button>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full" onClick={() => document.getElementById("answer-key-input")?.click()}>
+            <FileText className="mr-2 h-4 w-4" />Выбрать закрытый JSON
+          </Button>
         )}
       </div>
 

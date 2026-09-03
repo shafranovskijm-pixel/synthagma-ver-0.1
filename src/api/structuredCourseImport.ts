@@ -10,7 +10,7 @@ export interface StructuredCourseImportResult {
   course_id: string;
   is_published: false;
   module_count: 11;
-  lesson_count: 46;
+  lesson_count: 35;
   question_count: 67;
   document_count: number;
 }
@@ -43,7 +43,7 @@ export async function createStructuredCourseDraft({
   };
   validateCszStructuredCoursePayload(normalizedPayload);
 
-  const { data, error } = await supabase.rpc("import_csz_course_draft_v1", {
+  const { data, error } = await supabase.rpc("import_csz_course_draft_v2", {
     p_organization_id: normalizedOrganizationId,
     p_payload: normalizedPayload as unknown as Json,
   });
@@ -55,7 +55,7 @@ export async function createStructuredCourseDraft({
     || typeof result.course_id !== "string"
     || result.is_published !== false
     || result.module_count !== 11
-    || result.lesson_count !== 46
+    || result.lesson_count !== 35
     || result.question_count !== 67
     || result.document_count !== normalizedPayload.documents.length
   ) {

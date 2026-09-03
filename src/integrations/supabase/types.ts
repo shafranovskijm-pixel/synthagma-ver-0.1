@@ -12276,6 +12276,13 @@ export type Database = {
         }
         Returns: Json
       }
+      import_csz_course_draft_v2: {
+        Args: {
+          p_organization_id: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
         Returns: Json
