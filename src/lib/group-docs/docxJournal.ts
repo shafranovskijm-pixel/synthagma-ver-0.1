@@ -2,7 +2,7 @@ import type { GeneratedDocument } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 
-export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-dry-run-v14";
+export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v15";
 
 async function readCompilerRevision(error: unknown): Promise<string> {
   if (!error || typeof error !== "object" || !("context" in error)) return "";
@@ -17,7 +17,7 @@ async function readCompilerRevision(error: unknown): Promise<string> {
 
   // Старый Nginx production физически передаёт revision, но не открывает
   // custom response header браузерному CORS. Edge дублирует revision в JSON.
-  // Читаем только копию error-response и по-прежнему принимаем ровно v14.
+  // Читаем только копию error-response и по-прежнему принимаем ровно v15.
   const response = context as Partial<Response>;
   if (typeof response.clone !== "function") return "";
   try {

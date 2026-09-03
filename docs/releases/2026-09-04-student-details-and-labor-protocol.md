@@ -90,6 +90,16 @@ JS с текстом «Раздел XML по охране труда досту�
 Следовательно, публикация `45c8529af` на production пока НЕ подтверждена.
 Повторный деплой вслепую не запускался; дальнейшие опросы остановлены.
 
+Последующая отдельная проверка 4 сентября подтвердила доставку P2-исправления:
+свежий HTML с cachebust ведёт по цепочке
+`index-P0e8z6eY.js → App-Cu1yJv_T.js → OrganizationDashboard-DyweD8ZB.js → FRDOExportDialog-D7vtENtv.js`.
+Все четыре ресурса отвечают HTTP 200 с типом JavaScript. В последнем чанке
+присутствует уникальный текст «Раздел XML по охране труда доступен отдельно».
+Таким образом, доставка поведения P2 подтверждена публичным артефактом;
+точный SHA production-сборки независимо через manifest не доказан.
+Это последующее наблюдение не отменяет три предыдущие проверки старой сборки
+и не заменяет авторизованный runtime/E2E или проверку БД.
+
 Nginx preflight для `/sb-functions/compile-group-class-journal`:
 HTTP 204, разрешён Origin `https://xn--80aaiswd0ak.xn--p1ai`, разрешён
 `x-sintagma-required-compiler-revision`, открыт `x-sintagma-compiler-revision`.

@@ -31,7 +31,7 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-dry-run-v14");
+    expect(source).toContain("goreltech-group-package-server-facts-v15");
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -107,6 +107,42 @@ describe("compile-group-class-journal deployment contract", () => {
     const dryRunBlock = source.slice(dryRunExit, persistence);
     expect(dryRunBlock).not.toContain(".storage.");
     expect(dryRunBlock).not.toContain(".rpc(");
+  });
+
+  it("loads tenant-scoped database facts before compiling the three factual documents", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const tenantGate = source.indexOf("if (!isExactGoreltechOrganization)");
+    const loadFacts = source.indexOf("const facts = await loadGroupDocumentFacts({");
+    const buildFacts = source.indexOf("const factRows = buildGroupDocumentFactRows({");
+    const compile = source.indexOf("const packageXml = compileGroupDocumentXml({");
+    expect(tenantGate).toBeGreaterThan(-1);
+    expect(loadFacts).toBeGreaterThan(tenantGate);
+    expect(buildFacts).toBeGreaterThan(loadFacts);
+    expect(compile).toBeGreaterThan(buildFacts);
+    expect(source).toContain('const FACT_ROW_TYPES = ["enrollment_order", "expulsion_order", "student_list"] as const');
+    expect(source).toContain('.select("user_id, full_name, email, organization_id, student_group_id, archived_at")');
+    expect(source).toContain('.is("archived_at", null)');
+
+    const adapters = source.slice(loadFacts, buildFacts);
+    expect(adapters).toContain("studentUserIds: activeStudentIds");
+    const enrollmentAdapter = adapters.slice(adapters.indexOf("enrollments: async"), adapters.indexOf("studentFrdoData: async"));
+    expect(enrollmentAdapter).toContain('.from("enrollments")');
+    expect(enrollmentAdapter).toContain('.eq("course_id", courseId!)');
+    expect(enrollmentAdapter).toContain('.in("user_id", studentUserIds)');
+    const frdoAdapter = adapters.slice(adapters.indexOf("studentFrdoData: async"));
+    expect(frdoAdapter).toContain('.from("student_frdo_data")');
+    expect(frdoAdapter).toContain('.eq("organization_id", organizationId)');
+    expect(frdoAdapter).toContain('.in("user_id", studentUserIds)');
+
+    const beforeCompile = source.slice(buildFacts, compile);
+    expect(beforeCompile).toContain("serverDocumentFacts.set(docType, factRows)");
+    expect(beforeCompile).toContain("const factRows = serverDocumentFacts.get(document.doc_type)");
+    expect(beforeCompile).toContain("Object.assign(packageScalars, factRows.scalars)");
+    expect(beforeCompile).toContain("const packageRows = factRows?.rows ??");
+    expect(source.slice(compile)).toContain("snapshot: { scalars: packageScalars, rows: packageRows }");
+    const persistedSnapshot = source.slice(source.indexOf("variables_snapshot:", compile));
+    expect(persistedSnapshot).toContain('row_source: "server_database_ids"');
+    expect(persistedSnapshot).toContain("row_sources: factRows.rowSources");
   });
 
   it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {

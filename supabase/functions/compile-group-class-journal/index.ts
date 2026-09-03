@@ -32,16 +32,22 @@ import {
   CLASS_JOURNAL_TEMPLATE_BASE64,
 } from "../_shared/group-doc-templates/goreltech/class-journal/v1/embedded.ts";
 import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../_shared/group-doc-templates/goreltech/group-package/v1/embedded.ts";
+import {
+  buildGroupDocumentFactRows,
+  type GroupDocumentFactsResult,
+} from "../_shared/docx-ooxml/groupDocumentFacts.ts";
+import { loadGroupDocumentFacts } from "../_shared/docx-ooxml/groupDocumentFactsSource.ts";
 
 /**
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-dry-run-v14";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v15";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
 const BUCKET = "billing-documents";
+const FACT_ROW_TYPES = ["enrollment_order", "expulsion_order", "student_list"] as const;
 const LEGACY_TYPES = [
   "enrollment_order",
   "expulsion_order",
@@ -258,7 +264,7 @@ Deno.serve(async (req) => {
         .maybeSingle(),
       admin
         .from("profiles")
-        .select("user_id, full_name, organization_id, student_group_id")
+        .select("user_id, full_name, email, organization_id, student_group_id, archived_at")
         .eq("organization_id", body.organizationId)
         .eq("student_group_id", body.groupId)
         .is("archived_at", null)
@@ -318,6 +324,53 @@ Deno.serve(async (req) => {
       course = courseResult.data;
     }
 
+    // IDs come exclusively from the tenant-checked database roster, never from
+    // names/HTML. Enrollments have no organization_id: scope them to the checked
+    // course AND the checked roster. FRDO rows require their own tenant filter.
+    stage = "document-facts";
+    const facts = await loadGroupDocumentFacts({
+      organizationId: body.organizationId,
+      courseId: course?.id || null,
+      studentUserIds: activeStudentIds,
+    }, {
+      enrollments: async ({ courseId, studentUserIds, from, to }) => await admin
+        .from("enrollments")
+        .select("id, user_id, course_id, status, progress, completed_at", { count: "exact" })
+        .eq("course_id", courseId!)
+        .in("user_id", studentUserIds)
+        .order("id")
+        .range(from, to),
+      studentFrdoData: async ({ organizationId, studentUserIds, from, to }) => await admin
+        .from("student_frdo_data")
+        .select("id, user_id, organization_id, passport_series, passport_number, education_level", { count: "exact" })
+        .eq("organization_id", organizationId)
+        .in("user_id", studentUserIds)
+        .order("id")
+        .range(from, to),
+    });
+    const serverDocumentFacts = new Map<string, GroupDocumentFactsResult>();
+    for (const docType of FACT_ROW_TYPES) {
+      const factRows = buildGroupDocumentFactRows({
+        docType,
+        snapshot: {
+          organization,
+          group,
+          course,
+          profiles: profilesResult.data || [],
+          enrollments: facts.enrollments,
+          studentFrdoData: facts.studentFrdoData,
+        },
+      });
+      serverDocumentFacts.set(docType, factRows);
+      const documentName = body.otherDocuments.find((document) => document.doc_type === docType)?.name || docType;
+      for (const issue of factRows.issues) statusWarnings.push(`${documentName}: ${issue.message}`);
+      for (const issue of facts.sourceIssues) {
+        if ((docType === "student_list") === (issue.source === "student_frdo_data")) {
+          statusWarnings.push(`${documentName}: ${issue.message}`);
+        }
+      }
+    }
+
     const instructorSlots = instructorShortSlots(group.instructor_name);
     const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
     const programTitle = String(group.program_title || course?.title || "").trim();
@@ -370,9 +423,9 @@ Deno.serve(async (req) => {
         return json({ error: `Нет Word-шаблона для ${document.doc_type}`, stage }, 422);
       }
       const manifest = JSON.parse(templateEntry.manifestJson) as GroupDocumentManifest;
-      const rows = manifest.row_source_key
+      const rows = serverDocumentFacts.get(document.doc_type)?.rows ?? (manifest.row_source_key
         ? parseGeneratedHtmlRows(document.variables?.[manifest.row_source_key], manifest.row_tokens)
-        : [];
+        : []);
       const rosterIssue = validateStudentRowsAgainstRoster({
         docType: document.doc_type,
         fillMode: document.fill_mode,
@@ -384,11 +437,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Все восемь документов приходят из legacy HTML transport. Сервер
-    // перечитал tenant-scoped организацию, группу, курс и состав, но пока не
-    // сверяет с БД каждое фактическое значение строк (оценки, паспорт, ФРДО,
-    // расписание и основание приказа). Поэтому browser-supplied `final` не
-    // принимается: безопасный результат — draft с явным предупреждением.
+    // Приказы и список уже используют серверные строки по IDs. Остальные
+    // строки, отдельные даты/подписанты и атомарная финализация ещё не
+    // подтверждены. Поэтому не повышаем ни один документ до final.
     body.otherDocuments = body.otherDocuments.map((document) => {
       const metadata = canonicalizeLegacyDocumentMetadata({
         docType: document.doc_type,
@@ -516,8 +567,8 @@ Deno.serve(async (req) => {
     };
     }
 
-    // Остальные документы собираются из точных клиентских DOCX. HTML здесь
-    // используется исключительно как машинный транспорт данных строк таблиц.
+    // Точные клиентские DOCX сохраняются. Для трёх типов browser HTML больше
+    // не является источником фактов; прочие типы ещё используют legacy transport.
     const compiledPackageDocuments = [];
     for (const document of body.otherDocuments) {
       stage = `package-template-${document.doc_type}`;
@@ -538,7 +589,12 @@ Deno.serve(async (req) => {
         throw new Error(`Повреждённый Word-шаблон ${document.doc_type}`);
       }
       const documentSignatory = resolveDocumentSignatory(document.signatory, organization);
-      const packageScalars = buildGroupDocumentScalars(document.variables || {});
+      const factRows = serverDocumentFacts.get(document.doc_type);
+      // These three templates use only the server fields below plus explicit
+      // draft metadata/signatory. Do not retain hidden browser HTML in scalars.
+      const packageScalars: Record<string, string> = factRows
+        ? {}
+        : buildGroupDocumentScalars(document.variables || {});
       Object.assign(packageScalars, {
         ...buildCanonicalDocumentMetadataScalars({
           documentNumber: document.document_number,
@@ -575,12 +631,13 @@ Deno.serve(async (req) => {
         EXPULSION_OUTCOME: "без выдачи удостоверений о повышении квалификации",
         STUDENTS_COUNT: String(((profilesResult.data as any[]) || []).length),
       });
-      const packageRows = packageManifest.row_source_key
+      if (factRows) Object.assign(packageScalars, factRows.scalars);
+      const packageRows = factRows?.rows ?? (packageManifest.row_source_key
         ? parseGeneratedHtmlRows(
             document.variables?.[packageManifest.row_source_key],
             packageManifest.row_tokens,
           )
-        : [];
+        : []);
       const packageXml = compileGroupDocumentXml({
         documentXml: await packageDocumentFile.async("string"),
         manifest: packageManifest,
@@ -603,12 +660,18 @@ Deno.serve(async (req) => {
 
       compiledPackageDocuments.push({
         ...document,
+        variables: factRows ? packageScalars : document.variables,
         html: null,
         file_path: packagePath,
         layout_format: "docx_ooxml",
         source_note: [
           "Оригинальный Word-бланк из архива клиента «для сайта (1).zip» с согласованными правками из Телемоста от 12.08.2026.",
           document.source_note,
+          factRows ? "Строки получены сервером из состава группы, зачислений и личных данных своей организации; совпадение ФИО не используется как связь." : null,
+          ...(factRows?.issues.map((issue) => issue.message) || []),
+          ...facts.sourceIssues.filter((issue) => factRows
+            && ((document.doc_type === "student_list") === (issue.source === "student_frdo_data")))
+            .map((issue) => issue.message),
         ].filter(Boolean).join(" "),
         template_registry_key: packageManifest.template_id,
         template_version_label: packageManifest.template_version,
@@ -618,6 +681,13 @@ Deno.serve(async (req) => {
           rows: packageRows,
           signatory_source: documentSignatory.source,
           fidelity_status: packageManifest.fidelity_status,
+          ...(factRows ? {
+            row_source: "server_database_ids",
+            row_sources: factRows.rowSources,
+            fact_issues: factRows.issues,
+            source_issues: facts.sourceIssues.filter((issue) =>
+              (document.doc_type === "student_list") === (issue.source === "student_frdo_data")),
+          } : {}),
         },
         docx_sha256: packageHash,
         pdf_status: "unavailable",

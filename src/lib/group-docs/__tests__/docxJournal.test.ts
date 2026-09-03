@@ -22,7 +22,7 @@ describe("generateClassJournalDocx", () => {
       error: {
         context: {
           headers: new Headers({
-            "X-Sintagma-Compiler-Revision": "goreltech-group-package-dry-run-v14",
+            "X-Sintagma-Compiler-Revision": "goreltech-group-package-server-facts-v15",
           }),
         },
       },
@@ -99,7 +99,7 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
       body: expect.objectContaining({ dryRun: true }),
       headers: {
-        "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-dry-run-v14",
+        "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v15",
       },
     });
     expect(supabaseInvokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
@@ -117,7 +117,7 @@ describe("generateClassJournalDocx", () => {
     }));
   });
 
-  it("не отправляет данные группы в старый Edge до подтверждения v14", async () => {
+  it("не отправляет данные группы в старый Edge до подтверждения v15", async () => {
     supabaseInvokeMock.mockResolvedValue({
       data: null,
       error: {
@@ -141,10 +141,10 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).not.toHaveBeenCalled();
   });
 
-  it("подтверждает v14 по JSON, когда Nginx не exposes response header", async () => {
+  it("подтверждает v15 по JSON, когда Nginx не exposes response header", async () => {
     const probeResponse = new Response(JSON.stringify({
       error: "Некорректные данные",
-      compilerRevision: "goreltech-group-package-dry-run-v14",
+      compilerRevision: "goreltech-group-package-server-facts-v15",
     }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -232,7 +232,7 @@ describe("generateClassJournalDocx", () => {
       },
     }],
     ["с неожиданно успешным probe", {
-      data: { compilerRevision: "goreltech-group-package-dry-run-v14" },
+      data: { compilerRevision: "goreltech-group-package-server-facts-v15" },
       error: null,
     }],
   ])("не отправляет данные группы при capability probe %s", async (_caseName, probeResult) => {
@@ -255,7 +255,7 @@ describe("generateClassJournalDocx", () => {
       data: null,
       error: {
         context: new Response(JSON.stringify({
-          compilerRevision: "goreltech-group-package-dry-run-v14",
+          compilerRevision: "goreltech-group-package-server-facts-v15",
         }), {
           status: 400,
           headers: {

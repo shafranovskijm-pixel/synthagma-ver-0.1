@@ -89,6 +89,39 @@ interface Props {
 /** В отдельном меню — только документы папки «docs». Договоры живут в папке «Договоры». */
 const DOC_TYPES = GROUP_DOCUMENT_TYPES.filter(t => t.folder === "docs" && t.key !== "contract");
 
+function savedIssueMessages(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((issue) => {
+    if (!issue || typeof issue !== "object" || !("message" in issue)) return [];
+    return typeof issue.message === "string" && issue.message.trim() ? [issue.message.trim()] : [];
+  });
+}
+
+function DocumentFactIssues({ row }: { row: GroupDocumentRow }) {
+  const sourceIssues = savedIssueMessages(row.variables_snapshot?.source_issues);
+  const messages = [...new Set([
+    ...sourceIssues,
+    ...savedIssueMessages(row.variables_snapshot?.fact_issues),
+  ])];
+  if (!messages.length) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+      <Badge variant="outline" className="border-amber-500/40 text-amber-800 dark:text-amber-200">
+        Требует проверки
+      </Badge>
+      {sourceIssues.length > 0 && (
+        <p className="mt-1">Источник данных не подтверждён. Пустые поля могут быть следствием ошибки загрузки.</p>
+      )}
+      <details className="mt-1">
+        <summary className="cursor-pointer font-medium">Причины ({messages.length})</summary>
+        <ul className="mt-2 list-disc space-y-1 pl-4">
+          {messages.map((message) => <li key={message} className="break-words">{message}</li>)}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
 export function GroupDocumentsFolder({
   organizationId,
   groupId,
@@ -366,9 +399,16 @@ export function GroupDocumentsFolder({
             otherDocuments: docs,
           }).then(async result => {
             if (result.dryRun) {
-              toast.success("Проверка пройдена: 9 Word-документов собраны без сохранения", {
-                description: "Storage и база данных не изменялись. Контрольные SHA-256 рассчитаны на сервере.",
-              });
+              const warnings = result.warnings || [];
+              if (warnings.length) {
+                toast.warning("Проверка завершена с замечаниями", {
+                  description: `Файлы не сохранены. ${warnings.join(" ")}`,
+                });
+              } else {
+                toast.success("Проверка пройдена: 9 Word-документов собраны без сохранения", {
+                  description: "Storage и база данных не изменялись. Контрольные SHA-256 рассчитаны на сервере.",
+                });
+              }
               return result;
             }
              await refreshDocuments();
@@ -765,6 +805,7 @@ export function GroupDocumentsFolder({
                       </Badge>
                     )}
                   </div>
+                  <DocumentFactIssues row={row} />
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {row.layout_format === "docx_ooxml" ? (

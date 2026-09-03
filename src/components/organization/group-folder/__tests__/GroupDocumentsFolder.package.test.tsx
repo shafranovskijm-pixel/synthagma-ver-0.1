@@ -5,6 +5,7 @@ import { SAMPLE_CONTEXT } from "@/lib/group-docs/sampleContext";
 import { emptyFactualData } from "@/lib/group-docs/factualData";
 import { PACKAGE_DOC_TYPES } from "@/lib/group-docs/packageTypes";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
+import type { GroupDocumentRow } from "@/hooks/useGroupDocuments";
 
 const mocks = vi.hoisted(() => ({
   useGroupDocuments: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   legalSave: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
+  toastWarning: vi.fn(),
   downloadPrivateFile: vi.fn(),
   remove: vi.fn(),
   dialogState: {
@@ -56,7 +58,7 @@ vi.mock("sonner", () => ({
   toast: {
     error: mocks.toastError,
     success: mocks.toastSuccess,
-    warning: vi.fn(),
+    warning: mocks.toastWarning,
     info: vi.fn(),
   },
 }));
@@ -132,7 +134,7 @@ const docxRow = {
   is_current: true,
 };
 
-function mockDocuments(documents: Array<typeof docxRow>) {
+function mockDocuments(documents: GroupDocumentRow[]) {
   mocks.useGroupDocuments.mockReturnValue({
     documents,
     loading: false,
@@ -671,6 +673,70 @@ describe("GroupDocumentsFolder package contract routing", () => {
     ));
     expect(mocks.generatePackage).not.toHaveBeenCalled();
     expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+  });
+
+  it("не выдаёт безусловный успех проверки при ошибках источников серверных данных", async () => {
+    const warning = "Список обучающихся: не удалось подтвердить паспортные данные в базе.";
+    mocks.generateClassJournalDocx.mockResolvedValue({
+      dryRun: true, writesPerformed: false, insertedCount: 9, documents: [], warnings: [warning],
+    });
+    renderFolder();
+    await confirmSourceSignatories();
+    fireEvent.click(screen.getByRole("button", { name: "Проверить 9 Word-документов без сохранения" }));
+
+    await waitFor(() => expect(mocks.toastWarning).toHaveBeenCalledWith(
+      "Проверка завершена с замечаниями", { description: `Файлы не сохранены. ${warning}` },
+    ));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.refreshDocuments).not.toHaveBeenCalled();
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();
+    expect(mocks.onDataChanged).not.toHaveBeenCalled();
+  });
+
+  it("после повторного открытия показывает причины неполных данных сохранённого Word, не блокируя скачивание", async () => {
+    const sourceMessage = "Не удалось полностью подтвердить паспортные данные в базе.";
+    const fieldMessage = "Образование: поле списка оставлено пустым.";
+    const row: GroupDocumentRow = {
+      ...docxRow,
+      doc_type: "student_list", name: "Список обучающихся", doc_status: "draft", fill_mode: "data",
+      variables_snapshot: {
+        source_issues: [{ code: "read_failed", message: sourceMessage }],
+        fact_issues: [{ message: fieldMessage }, { message: fieldMessage }],
+      },
+    };
+    mockDocuments([row]);
+    const firstView = renderFolder();
+    expect(screen.getByText("Требует проверки")).toBeInTheDocument();
+    firstView.unmount();
+
+    renderFolder();
+    expect(screen.getByText("Требует проверки")).toBeInTheDocument();
+    expect(screen.getByText(/Источник данных не подтверждён/)).toBeInTheDocument();
+    const reasons = screen.getByText("Причины (2)");
+    fireEvent.click(reasons);
+    expect(reasons.closest("details")).toHaveAttribute("open");
+    expect(screen.getByText(sourceMessage)).toBeVisible();
+    expect(screen.getByText(fieldMessage)).toBeVisible();
+    expect(screen.getByText("Черновик")).toBeInTheDocument();
+    expect(screen.getByText("По данным Синтагмы")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Скачать Word Список обучающихся" }));
+    await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
+      "billing-documents", row.file_path, "Список обучающихся.docx",
+    ));
+  });
+
+  it("не помечает файл без сохранённых замечаний и не превращает текст причины в HTML", () => {
+    mockDocuments([docxRow]);
+    const view = renderFolder();
+    expect(screen.queryByText("Требует проверки")).not.toBeInTheDocument();
+    view.unmount();
+
+    const reason = "<b>Проверьте образование</b>";
+    mockDocuments([{ ...docxRow, variables_snapshot: { fact_issues: [{ message: reason }] } }]);
+    renderFolder();
+    const text = screen.getByText(reason);
+    expect(text.querySelector("b")).toBeNull();
+    expect(screen.queryByText(/Источник данных не подтверждён/)).not.toBeInTheDocument();
   });
 
   it("удаляет документ только после явного подтверждения", async () => {
