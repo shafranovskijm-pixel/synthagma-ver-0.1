@@ -54,7 +54,19 @@
   ZIP-частей кроме `word/document.xml`. Критерий завершения для замечания в
   приказе об отчислении совпадает с UI: completed + progress >= 100 + completed_at;
   это не присваивает результат итоговой аттестации.
-- Полный locked gate точного кандидата и production-проверка v15 пока впереди.
+- Полный locked gate `f913bc71856a2c014ed24a0b80c3f4b6c849e8eb`:
+  app TypeScript exit 0; 216 файлов / 1679 тестов passed (196.37 с);
+  production build exit 0 (46.96 с), `build-info.json` содержит exact SHA
+  и `trackedDirty: false`. После восстановления MCP рабочее дерево чистое.
+- После review добавлен переход FRDO на caller RLS:
+  `3d7a13771bad538baceae4be2b4b91cd743fdb57`. Его Deno check и 10 deployment
+  contract-тестов прошли. Отдельный полный locked gate: app TypeScript exit 0;
+  216 файлов / 1679 тестов passed (195.96 с, +62 к baseline 1617);
+  production build exit 0 (46.91 с, 6453 modules, PWA 283).
+  `build-info.json`: exact SHA 3d7, `trackedDirty: false`,
+  `gitStateCapturedAt: before-build`, `builtAt: 2026-09-03T22:25:05.394Z`.
+  MCP-изменение восстановлено, проверочный worktree/index чистые.
+  Production-проверка v15 ещё не выполнена.
 
 ## Независимый frontend-релиз
 
@@ -67,6 +79,20 @@ production build exit 0 (6451 modules). Проверочный worktree очищ
 
 Commit отправлен в `main`; `git ls-remote` подтвердил exact SHA. Публикация
 этого tenant-фильтра проверяется отдельно по его точному запросу в публичном JS.
+
+Первое последующее публичное наблюдение: HTML → `index-P0e8z6eY.js` →
+`App-Cu1yJv_T.js` → `OrganizationDashboard-DyweD8ZB.js`, HTTP 200,
+JavaScript. Единственный запрос с полным FRDO-select всё ещё имел только
+`.in("user_id", ...)`, без `.eq("organization_id", ...)`. Значит, в этом
+наблюдении публикация tenant-исправления не подтверждена; деплой не перезапускался.
+
+Последующая однократная проверка 04.09.2026 08:23:53 (Asia/Vladivostok):
+HTML → `index-CcSD6sgD.js` → `App-DYVt7Lm0.js` →
+`OrganizationDashboard-CWwfRnE1.js`; все JS имеют HTTP 200 и `text/javascript`.
+Единственное точное совпадение нужного FRDO-select теперь заканчивается
+`.eq("organization_id",s).in("user_id",$e)`.
+Доставка именно этого исправления подтверждена публичным артефактом.
+Это не доказательство exact production SHA и не авторизованный E2E.
 
 ## Порядок релиза
 
