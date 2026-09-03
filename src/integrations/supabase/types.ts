@@ -12269,13 +12269,6 @@ export type Database = {
         }
         Returns: string
       }
-      import_csz_course_draft_v1: {
-        Args: {
-          p_organization_id: string
-          p_payload: Json
-        }
-        Returns: Json
-      }
       import_csz_course_draft_v2: {
         Args: {
           p_organization_id: string

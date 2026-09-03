@@ -145,13 +145,28 @@ describe("CSZ v2 migration guard", () => {
       "supabase/migrations/20260903110000_import_csz_course_draft_v2.sql",
       "utf8",
     );
-    expect(migration).toMatch(
-      /REVOKE ALL ON FUNCTION public\.import_csz_course_draft_v1\(uuid, jsonb\) FROM authenticated;/,
+    expect(migration).toContain(
+      "to_regprocedure('public.import_csz_course_draft_v1(uuid,jsonb)')",
     );
+    expect(migration).toMatch(
+      /EXECUTE 'REVOKE ALL ON FUNCTION public\.import_csz_course_draft_v1\(uuid, jsonb\) FROM authenticated'/,
+    );
+    expect(migration).toMatch(/ADD COLUMN IF NOT EXISTS metadata jsonb/);
+    expect(migration).toContain("lessons_metadata_is_object");
+    expect(migration).toContain("idx_lessons_final_assessment");
     expect(migration).toMatch(/v_actual_lessons <> 35/);
     expect(migration).toMatch(/v_actual_questions <> 67/);
     expect(migration).toMatch(/test_passing_score[^]*?70/);
     expect(migration).toContain(CSZ_COURSE_TITLE);
+  });
+
+  it("does not expose the obsolete v1 RPC in generated application types", () => {
+    const generatedTypes = readFileSync(
+      "src/integrations/supabase/types.ts",
+      "utf8",
+    );
+    expect(generatedTypes).not.toContain("import_csz_course_draft_v1:");
+    expect(generatedTypes).toContain("import_csz_course_draft_v2:");
   });
 });
 

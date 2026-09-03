@@ -5,12 +5,43 @@
 -- official HTTPS references are created as needs_review library cards and are
 -- hidden from learners until an administrator verifies and activates them.
 
--- Disable the obsolete 46-lesson entrypoint as soon as v2 is installed. The
--- function is retained for migration history/audit but cannot be called by a
--- public, anonymous or authenticated client.
-REVOKE ALL ON FUNCTION public.import_csz_course_draft_v1(uuid, jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.import_csz_course_draft_v1(uuid, jsonb) FROM anon;
-REVOKE ALL ON FUNCTION public.import_csz_course_draft_v1(uuid, jsonb) FROM authenticated;
+-- Keep the v2 migration self-contained. The reviewed v1 draft migration is not
+-- part of the release candidate, but it originally introduced these lesson
+-- metadata prerequisites.
+ALTER TABLE public.lessons
+  ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+DO $constraint$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.lessons'::regclass
+      AND conname = 'lessons_metadata_is_object'
+  ) THEN
+    ALTER TABLE public.lessons
+      ADD CONSTRAINT lessons_metadata_is_object
+      CHECK (jsonb_typeof(metadata) = 'object');
+  END IF;
+END
+$constraint$;
+
+CREATE INDEX IF NOT EXISTS idx_lessons_final_assessment
+  ON public.lessons (course_id, order_index)
+  WHERE metadata @> '{"final_assessment": true}'::jsonb;
+
+-- Disable the obsolete 46-lesson entrypoint when it already exists in the
+-- target database. Dynamic SQL prevents a missing historical v1 function from
+-- making this release migration fail on a clean current-main history.
+DO $disable_v1$
+BEGIN
+  IF to_regprocedure('public.import_csz_course_draft_v1(uuid,jsonb)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.import_csz_course_draft_v1(uuid, jsonb) FROM PUBLIC';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.import_csz_course_draft_v1(uuid, jsonb) FROM anon';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.import_csz_course_draft_v1(uuid, jsonb) FROM authenticated';
+  END IF;
+END
+$disable_v1$;
 
 CREATE OR REPLACE FUNCTION public.import_csz_course_draft_v2(
   p_organization_id uuid,

@@ -116,12 +116,12 @@ Zero-I/O проверка не может подтвердить существ�
 
 | Проверка | Статус | Честное ограничение |
 |---|---|---|
-| Локальный PostgreSQL dry-run миграции и RLS | PASS на PostgreSQL 17.11 (`127.0.0.1:55439`) воспроизводимым runner: dry-run миграции завершился обязательным `ROLLBACK`, затем миграция была применена только к одноразовой локальной БД и проверены catalog-объекты и четыре RLS-сценария; `result.json` содержит оба PASS-маркера и SHA-256 входных SQL | Это изолированный vanilla PostgreSQL со стендовыми ролями/функциями, а не Supabase staging. Последнее доказательство: `D:\CodexTmp\course-library-local-acceptance\20260903-073924-d4deba54`; listener после прогона остановлен; JWT Supabase, PostgREST, Storage API и signed URL не проверены |
-| Целевые автоматические тесты | Повторный прогон манифеста и zero-I/O importer: 2 файла, 18/18, exit 0; более широкий библиотечный/API/RLS/importer прогон: 9 файлов, 87/87, exit 0; предыдущий объединённый прогон по библиотеке, курсам, XML и документам ГОРЭЛТЕХ: 30 файлов, 280/280 | Это unit/component/API/security-contract тесты, не DB-backed E2E; в старых hook-тестах остаются известные React `act` и неполные Supabase mock warnings |
-| Полный Vitest-прогон | 212 файлов и 1 608 тестов прошли; 4 теста в одном файле упали | Все 4 падения находятся в неизменённом относительно `origin/main` `groupJournalsListSafety.test.tsx`: test harness вызывает `useSearchParams` без Router. Это не считается полным зелёным прогоном и требует отдельного исправления в основной ветке |
-| TypeScript | `tsc --noEmit`, exit 0 | Типы не заменяют runtime-проверку ролей и Storage |
-| ESLint изменённых TypeScript/TSX-файлов | exit 0, 0 ошибок, 48 предупреждений | Предупреждения — существующие `any` и зависимости React hooks; они не скрываются и не считаются чистым lint-прогоном |
-| Production build | Vite: 6 458 модулей, exit 0 | Есть неблокирующие предупреждения Browserslist, PDF.js `eval` и mixed dynamic/static import |
+| Локальный PostgreSQL dry-run миграции и RLS | Предыдущее доказательство библиотеки: PASS на PostgreSQL 17.11 (`127.0.0.1:55439`) воспроизводимым runner с обязательным `ROLLBACK` и четырьмя RLS-сценариями | Этот PostgreSQL-прогон не повторялся после переноса на актуальный `main` и автономизации v2; он не заменяет новый linked dry-run обеих release-миграций |
+| Целевые автоматические тесты | На integration candidate: 12 файлов, 105/105, exit 0; подготовленные HTML и закрытые ключи переданы через точные `CSZ_COURSE_HTML`/`CSZ_COURSE_KEYS` | Это unit/component/API/security-contract тесты, не DB-backed E2E |
+| Полный Vitest-прогон | На integration candidate не выполнялся | Целевой зелёный прогон нельзя выдавать за полный регрессионный прогон |
+| TypeScript | `tsc --noEmit`, exit 0 на Node.js 20.20.2 | Типы не заменяют runtime-проверку ролей и Storage |
+| ESLint изменённых TypeScript/TSX-файлов | На integration candidate не выполнялся | Нужен отдельно, если будет включён в release policy |
+| Production build | Vite: 6 460 модулей, exit 0 на Node.js 20.20.2 | Есть неблокирующие предупреждения Browserslist, PDF.js `eval` и mixed dynamic/static import |
 | Локальный mock-harness | Скриншоты получены | Это mock-данные, не DB-backed E2E |
 | Применение миграции на staging | Не выполнялось | Нужен отдельный контролируемый прогон |
 | RLS-проверка локального стенда | Администратор создаёт, читает, изменяет и архивирует ресурс без физического удаления; преподаватель и зачисленный слушатель видят активный материал, преподаватель не может изменять данные; архив, незачисленный и cross-tenant доступ скрыты; неверные tenant/module связи отклонены | Не заменяет Supabase JWT/RLS/Storage E2E на отдельном staging |

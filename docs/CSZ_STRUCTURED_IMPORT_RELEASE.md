@@ -16,6 +16,10 @@ course is a separate, explicitly authorized action.
 - Current documented live frontend: `https://synthagma-bloom.lovable.app`
 - Library prerequisite: `supabase/migrations/20260903100000_csz_electronic_library_schema.sql`
 - Import migration: `supabase/migrations/20260903110000_import_csz_course_draft_v2.sql`
+- Excluded draft: `20260902090000_import_csz_course_draft_v1.sql` is not part
+  of this candidate and must not be applied. Its lesson-metadata prerequisites
+  are included idempotently in the v2 migration; v1 privilege revocation is
+  conditional so v2 is safe whether or not an older target already has v1.
 - Authenticated application route: `/course-import`
 - Exact course title: `Деятельность по монтажу, техническому обслуживанию и ремонту средств обеспечения пожарной безопасности зданий и сооружений`
 
@@ -41,7 +45,7 @@ From an authenticated workstation with the Supabase CLI installed, record the
 CLI version and inspect the linked target:
 
 ```powershell
-Set-Location -LiteralPath 'D:\Codex\ЗАДАЧИ\synthagma-ver-0.1-true-lead-goal'
+Set-Location -LiteralPath 'D:\Codex\ЗАДАЧИ\work\csz_main_integration_candidate_20260903'
 supabase --version
 supabase link --project-ref atxwvjxbqjgkbjlhsdch
 supabase migration list --linked
@@ -51,7 +55,8 @@ supabase db push --dry-run
 `supabase link` changes local linkage and the other linked commands contact the
 remote project; run them only with release authorization. Stop if the output
 contains any migration other than the reviewed reconciliation entries and
-the reviewed library/import pair. Do not use `--include-all`, run the old data-transfer SQL
+the exact `20260903100000`/`20260903110000` library/import pair. In particular,
+stop if `20260902090000` appears as pending. Do not use `--include-all`, run the old data-transfer SQL
 again, edit remote migration history, or use `migration repair` without a
 separately reviewed reconciliation decision.
 
@@ -92,10 +97,13 @@ select
     'public.import_csz_course_draft_v2(uuid,jsonb)',
     'EXECUTE'
   ) as anon_can_execute,
-  has_function_privilege(
-    'authenticated',
-    'public.import_csz_course_draft_v1(uuid,jsonb)',
-    'EXECUTE'
+  coalesce(
+    has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.import_csz_course_draft_v1(uuid,jsonb)'),
+      'EXECUTE'
+    ),
+    false
   ) as obsolete_v1_authenticated_can_execute;
 ```
 
