@@ -304,6 +304,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           (supabase as any)
             .from("student_frdo_data")
             .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, citizenship_code, education_level, passport_series, passport_number")
+            .eq("organization_id", organizationId)
             .in("user_id", userIds),
         ]);
 
