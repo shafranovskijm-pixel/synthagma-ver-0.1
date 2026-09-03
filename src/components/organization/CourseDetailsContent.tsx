@@ -19,7 +19,7 @@ const EnrollmentHistory = lazy(() => import("@/components/organization/Enrollmen
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, BookOpen, Eye, Edit, TrendingUp, CheckCircle2, FileText, History, CheckSquare, Plus, Trash2, Settings, RotateCcw, Search, UserPlus, ClipboardCheck, Bell, Globe, ExternalLink, Trophy, ArrowLeft } from "lucide-react";
+import { Users, BookOpen, Eye, Edit, TrendingUp, CheckCircle2, FileText, History, CheckSquare, Plus, Trash2, Settings, RotateCcw, Search, UserPlus, ClipboardCheck, Bell, Globe, ExternalLink, Trophy, ArrowLeft, type LucideIcon } from "lucide-react";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
@@ -63,7 +63,7 @@ interface Student { id: string; user_id: string; enrollment_id: string | null; n
 type CourseTabKey = "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview";
 
 type GroupKey = "editor" | "students" | "library" | "page" | "settings";
-type TabGroup = { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[]; beta?: boolean };
+type TabGroup = { key: GroupKey; label: string; icon: LucideIcon; subTabs: CourseTabKey[]; beta?: boolean };
 
 const BASE_TAB_GROUPS: TabGroup[] = [
   { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },

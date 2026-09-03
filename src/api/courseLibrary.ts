@@ -5,8 +5,9 @@ import type {
   CourseLibraryUsageBasis,
 } from "@/lib/courseLibrary";
 import { isValidHttpsUrl } from "@/lib/courseLibrary";
+import type { LibrarySupabaseClient } from "@/integrations/supabase/libraryDatabase";
 
-const libraryDb = supabase as any;
+const libraryDb = supabase as unknown as LibrarySupabaseClient;
 
 export interface CourseLibraryModule {
   id: string;

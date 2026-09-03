@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { LibrarySupabaseClient } from "@/integrations/supabase/libraryDatabase";
 import { toast } from "sonner";
 
 interface LibraryDocument {
@@ -26,7 +27,7 @@ interface LibraryFolder {
 }
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
-const libraryDb = supabase as any;
+const libraryDb = supabase as unknown as LibrarySupabaseClient;
 
 export function useLibraryManager(organizationId: string) {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);

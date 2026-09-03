@@ -76,6 +76,7 @@ export function normalizeLessonsFromDB(
         }
       }
     }
+    const lessonMetadata: unknown = l.metadata;
     return {
       id: l.id, type: l.type as LessonType, title: l.title,
       content: hasContentColumn ? (l.content || "") : "",
@@ -87,8 +88,8 @@ export function normalizeLessonsFromDB(
       questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
       attachments: attachmentsMap[l.id] || [],
       module_id: (l as any).module_id ?? null,
-      metadata: ((l as any).metadata && typeof (l as any).metadata === "object")
-        ? (l as any).metadata as Record<string, unknown>
+      metadata: (lessonMetadata !== null && typeof lessonMetadata === "object")
+        ? lessonMetadata as Record<string, unknown>
         : {},
       __contentLoaded: hasContentColumn,
     };
