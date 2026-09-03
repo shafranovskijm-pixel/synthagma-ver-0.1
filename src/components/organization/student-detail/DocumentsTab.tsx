@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { FileText, Eye, Trash2, Upload, Save, User, Calendar, ScanLine, Lock } from "lucide-react";
+import { useRef, useState, type RefObject } from "react";
+import { AlertTriangle, FileText, Eye, Trash2, Upload, Save, User, Calendar, ScanLine, Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,52 @@ const DOC_TYPES = [
 
 export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) {
   const snilsInputRef = useRef<HTMLInputElement>(null);
+  const personalDocumentsBoundaryRef = useRef<HTMLDivElement>(null);
+  const personalDocumentsUnavailable = h.isLoading || Boolean(h.dataLoadError);
+  const focusSnils = () => {
+    const target = snilsInputRef.current ?? personalDocumentsBoundaryRef.current;
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    target?.focus({ preventScroll: true });
+  };
+
+  return (
+    <div className="space-y-6">
+      {laborSafetyXml && (
+        <StudentLaborSafetyXmlCard
+          {...laborSafetyXml}
+          snils={personalDocumentsUnavailable ? null : h.frdoData?.snils ?? null}
+          position={personalDocumentsUnavailable ? null : h.jobPosition ?? null}
+          onOpenSnils={focusSnils}
+        />
+      )}
+
+      {h.isLoading ? (
+        <div ref={personalDocumentsBoundaryRef} tabIndex={-1} role="status" className="rounded-2xl border border-border p-6 text-center">
+          <SigmaSpinner />
+          <p className="mt-3 text-sm text-muted-foreground">Загрузка личных документов…</p>
+        </div>
+      ) : h.dataLoadError ? (
+        <div ref={personalDocumentsBoundaryRef} tabIndex={-1} role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+          <h3 className="font-semibold">Не удалось загрузить личные документы</h3>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{h.dataLoadError}</p>
+          {laborSafetyXml && (
+            <p className="mt-2 text-sm text-muted-foreground">Раздел XML по охране труда доступен отдельно. Личные данные можно проверить после повторной загрузки.</p>
+          )}
+          <Button variant="outline" className="mt-4 gap-2 rounded-xl" onClick={() => void h.retryLoadStudentData()}>
+            <RefreshCw className="h-4 w-4" /> Повторить
+          </Button>
+        </div>
+      ) : (
+        <PersonalDocumentsContent h={h} orgPlan={orgPlan} snilsInputRef={snilsInputRef} />
+      )}
+    </div>
+  );
+}
+
+function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsTabProps, "h" | "orgPlan"> & {
+  snilsInputRef: RefObject<HTMLInputElement>;
+}) {
   const [snilsValue, setSnilsValue] = useState(h.frdoData?.snils || "");
   const [lastName, setLastName] = useState(h.frdoData?.last_name || "");
   const [firstName, setFirstName] = useState(h.frdoData?.first_name || "");
@@ -78,11 +124,6 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
 
   const handleSnilsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSnilsValue(formatSnils(e.target.value));
-  };
-
-  const focusSnils = () => {
-    snilsInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    snilsInputRef.current?.focus({ preventScroll: true });
   };
 
   const handleRecognize = async (doc: any) => {
@@ -162,15 +203,6 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
 
   return (
     <div className="space-y-6">
-      {laborSafetyXml && (
-        <StudentLaborSafetyXmlCard
-          {...laborSafetyXml}
-          snils={h.frdoData?.snils ?? null}
-          position={h.jobPosition ?? null}
-          onOpenSnils={focusSnils}
-        />
-      )}
-
       {/* Upload documents section */}
       <div className="bg-card rounded-2xl border border-border p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2">
