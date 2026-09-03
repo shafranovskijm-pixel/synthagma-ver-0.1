@@ -130,6 +130,8 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(enrollmentAdapter).toContain('.eq("course_id", courseId!)');
     expect(enrollmentAdapter).toContain('.in("user_id", studentUserIds)');
     const frdoAdapter = adapters.slice(adapters.indexOf("studentFrdoData: async"));
+    expect(frdoAdapter).toContain("=> await userClient");
+    expect(frdoAdapter).not.toContain("=> await admin");
     expect(frdoAdapter).toContain('.from("student_frdo_data")');
     expect(frdoAdapter).toContain('.eq("organization_id", organizationId)');
     expect(frdoAdapter).toContain('.in("user_id", studentUserIds)');
@@ -137,6 +139,7 @@ describe("compile-group-class-journal deployment contract", () => {
     const beforeCompile = source.slice(buildFacts, compile);
     expect(beforeCompile).toContain("serverDocumentFacts.set(docType, factRows)");
     expect(beforeCompile).toContain("const factRows = serverDocumentFacts.get(document.doc_type)");
+    expect(beforeCompile).toMatch(/const packageScalars: Record<string, string> = factRows\s*\? \{\}/);
     expect(beforeCompile).toContain("Object.assign(packageScalars, factRows.scalars)");
     expect(beforeCompile).toContain("const packageRows = factRows?.rows ??");
     expect(source.slice(compile)).toContain("snapshot: { scalars: packageScalars, rows: packageRows }");

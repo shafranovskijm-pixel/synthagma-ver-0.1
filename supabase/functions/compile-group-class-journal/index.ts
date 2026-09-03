@@ -340,7 +340,9 @@ Deno.serve(async (req) => {
         .in("user_id", studentUserIds)
         .order("id")
         .range(from, to),
-      studentFrdoData: async ({ organizationId, studentUserIds, from, to }) => await admin
+      // Passport/education access must also satisfy the caller's existing RLS.
+      // documents.manage alone must not widen personal-data access via service role.
+      studentFrdoData: async ({ organizationId, studentUserIds, from, to }) => await userClient
         .from("student_frdo_data")
         .select("id, user_id, organization_id, passport_series, passport_number, education_level", { count: "exact" })
         .eq("organization_id", organizationId)
