@@ -141,6 +141,143 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).not.toHaveBeenCalled();
   });
 
+  it("подтверждает v14 по JSON, когда Nginx не exposes response header", async () => {
+    const probeResponse = new Response(JSON.stringify({
+      error: "Некорректные данные",
+      compilerRevision: "goreltech-group-package-dry-run-v14",
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+    supabaseInvokeMock.mockResolvedValue({
+      data: null,
+      error: {
+        context: probeResponse,
+      },
+    });
+    invokeMock.mockResolvedValue({
+      data: {
+        dryRun: true,
+        writesPerformed: false,
+        documentCount: 1,
+        documents: [{
+          doc_type: "class_journal",
+          name: "Журнал",
+          docx_sha256: "A".repeat(64),
+        }],
+      },
+      error: null,
+    });
+
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [],
+    })).resolves.toEqual(expect.objectContaining({
+      dryRun: true,
+      writesPerformed: false,
+      insertedCount: 1,
+    }));
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(probeResponse.bodyUsed).toBe(false);
+  });
+
+  it("не доверяет JSON capability probe со старой revision", async () => {
+    supabaseInvokeMock.mockResolvedValue({
+      data: null,
+      error: {
+        context: new Response(JSON.stringify({
+          compilerRevision: "goreltech-group-package-fail-closed-v13",
+        }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      },
+    });
+
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [],
+    })).rejects.toThrow("Безопасная серверная проверка ещё не развёрнута");
+
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["без error context", { data: null, error: {} }],
+    ["с некорректным JSON", {
+      data: null,
+      error: {
+        context: new Response("{", {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      },
+    }],
+    ["с нестроковой revision", {
+      data: null,
+      error: {
+        context: new Response(JSON.stringify({ compilerRevision: null }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      },
+    }],
+    ["с неожиданно успешным probe", {
+      data: { compilerRevision: "goreltech-group-package-dry-run-v14" },
+      error: null,
+    }],
+  ])("не отправляет данные группы при capability probe %s", async (_caseName, probeResult) => {
+    supabaseInvokeMock.mockResolvedValue(probeResult);
+
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [],
+    })).rejects.toThrow("Безопасная серверная проверка ещё не развёрнута");
+
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it("не подменяет явно старый response header новым значением из JSON", async () => {
+    supabaseInvokeMock.mockResolvedValue({
+      data: null,
+      error: {
+        context: new Response(JSON.stringify({
+          compilerRevision: "goreltech-group-package-dry-run-v14",
+        }), {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Sintagma-Compiler-Revision": "goreltech-group-package-fail-closed-v13",
+          },
+        }),
+      },
+    });
+
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1",
+      groupId: "group-1",
+      studentUserIds: ["student-1"],
+      fillMode: "blank",
+      dryRun: true,
+      otherDocuments: [],
+    })).rejects.toThrow("Безопасная серверная проверка ещё не развёрнута");
+
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
   it("отклоняет dry-run, если сервер не доказал отсутствие записи", async () => {
     invokeMock.mockResolvedValue({
       data: {

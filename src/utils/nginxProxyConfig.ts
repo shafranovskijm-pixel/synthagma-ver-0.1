@@ -104,13 +104,14 @@ server {
             add_header Vary "Origin" always;
             add_header Access-Control-Allow-Credentials "true" always;
             add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
-            add_header Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version" always;
+            add_header Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-sintagma-required-compiler-revision" always;
             add_header Access-Control-Max-Age 3600 always;
             return 204;
         }
         add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Vary "Origin" always;
         add_header Access-Control-Allow-Credentials "true" always;
+        add_header Access-Control-Expose-Headers "content-range, content-length, x-supabase-api-version, x-sintagma-compiler-revision, x-sintagma-request-id" always;
         proxy_pass https://$sb_host/functions/v1/;
     }
 

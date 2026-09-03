@@ -4,6 +4,30 @@ import { safeInvoke } from "@/utils/safeInvoke";
 
 export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-dry-run-v14";
 
+async function readCompilerRevision(error: unknown): Promise<string> {
+  if (!error || typeof error !== "object" || !("context" in error)) return "";
+  const context = (error as { context?: unknown }).context;
+  if (!context || typeof context !== "object") return "";
+
+  const headers = "headers" in context
+    ? (context as { headers?: { get?: (name: string) => string | null } }).headers
+    : undefined;
+  const headerRevision = headers?.get?.("X-Sintagma-Compiler-Revision") || "";
+  if (headerRevision) return headerRevision;
+
+  // Старый Nginx production физически передаёт revision, но не открывает
+  // custom response header браузерному CORS. Edge дублирует revision в JSON.
+  // Читаем только копию error-response и по-прежнему принимаем ровно v14.
+  const response = context as Partial<Response>;
+  if (typeof response.clone !== "function") return "";
+  try {
+    const payload = await response.clone().json() as { compilerRevision?: unknown };
+    return typeof payload?.compilerRevision === "string" ? payload.compilerRevision : "";
+  } catch {
+    return "";
+  }
+}
+
 async function assertDryRunCompilerCapability(): Promise<void> {
   const { error } = await supabase.functions.invoke("compile-group-class-journal", {
     // Намеренно невалидный обезличенный payload: обе версии завершают запрос до
@@ -11,10 +35,7 @@ async function assertDryRunCompilerCapability(): Promise<void> {
     // развёрнутую ревизию до отправки настоящего состава группы.
     body: { capabilityProbe: true },
   });
-  const context = error && typeof error === "object" && "context" in error
-    ? (error as { context?: Response }).context
-    : undefined;
-  const revision = context?.headers?.get("X-Sintagma-Compiler-Revision") || "";
+  const revision = await readCompilerRevision(error);
   if (revision !== GORELTECH_DRY_RUN_COMPILER_REVISION) {
     throw new Error(
       "Безопасная серверная проверка ещё не развёрнута. Документы не отправлены и не сохранены",
