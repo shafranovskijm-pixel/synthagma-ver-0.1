@@ -145,11 +145,16 @@ describe("нумерация документов группы", () => {
 describe("create_group_document_batch сериализует параллельные пакеты", () => {
   it("advisory lock берётся ДО чтения MAX(package_version)", () => {
     const dir = path.join(process.cwd(), "supabase", "migrations");
+    const definition = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?create_group_document_batch\s*\(/i;
+    // Search newest first and stop at the current definition. Reading every
+    // historical migration caused I/O timeouts in the full Windows test run.
     const file = fs
       .readdirSync(dir)
-      .filter((f) => fs.readFileSync(path.join(dir, f), "utf8").includes("create_group_document_batch"))
+      .filter((f) => f.endsWith(".sql"))
       .sort()
-      .pop()!;
+      .reverse()
+      .find((f) => definition.test(fs.readFileSync(path.join(dir, f), "utf8")));
+    expect(file, "current create_group_document_batch definition").toBeDefined();
     const sql = fs.readFileSync(path.join(dir, file), "utf8");
     const lock = sql.indexOf("pg_advisory_xact_lock");
     const max = sql.indexOf("MAX(gd.package_version)");

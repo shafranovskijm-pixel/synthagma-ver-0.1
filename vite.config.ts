@@ -5,6 +5,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
+import { buildInfoPlugin } from "./scripts/viteBuildInfo";
 
 const pwaCacheVersion = "sintagma-1.0.81";
 
@@ -17,6 +18,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    buildInfoPlugin(),
     mcpPlugin(),
     mode === "development" && componentTagger(),
     VitePWA({
