@@ -275,7 +275,7 @@ export function useStudentDetailCardLogic({
       ]);
 
       if (!isCurrentRequest()) return;
-      const failedQueries = [
+      const requiredQueryResults: Array<readonly [string, { error: unknown }]> = [
         ["согласия", consentsRes],
         ["сформированные согласия", generatedConsentsRes],
         ["идентификация", verificationsRes],
@@ -284,7 +284,8 @@ export function useStudentDetailCardLogic({
         ["данные ФИС ФРДО", frdoRes],
         ["соглашения ПЭП", pepRes],
         ["профиль", profileRes],
-      ].filter(([, result]) => result.error);
+      ];
+      const failedQueries = requiredQueryResults.filter(([, result]) => result.error);
       if (failedQueries.length > 0) {
         console.error(
           "[useStudentDetailCard] required queries failed:",
