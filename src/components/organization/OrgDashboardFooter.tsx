@@ -37,7 +37,7 @@ export function OrgDashboardFooter() {
             <h4 className="text-sm font-semibold">Документы</h4>
             <ul className="space-y-1.5 text-xs text-muted-foreground">
               <li><a href="/privacy" className="hover:text-foreground transition-colors">Политика конфиденциальности</a></li>
-              <li><a href="/terms" className="hover:text-foreground transition-colors">Пользовательское соглашение</a></li>
+              <li><a href="/documents/user-agreement" className="hover:text-foreground transition-colors">Пользовательское соглашение</a></li>
             </ul>
           </div>
         </div>

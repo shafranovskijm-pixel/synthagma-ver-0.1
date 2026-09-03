@@ -298,7 +298,7 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
                     )}
                     {e.status === "completed" && (
                       <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => { h.setSelectedEnrollmentForFRDO(e); h.setIsFRDODialogOpen(true); }}>
-                        <FileSpreadsheet className="w-4 h-4" />Экспорт ФРДО
+                        <FileSpreadsheet className="w-4 h-4" />Подготовить XLSX для ФРДО
                       </Button>
                     )}
                   </div>

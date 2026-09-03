@@ -86,8 +86,8 @@ function FrdoReadinessBannerContent({ organizationId, onOpenFrdo }: FrdoReadines
           <div className="space-y-1">
             <p className="font-semibold text-sm">
               {isReady
-                ? "Все документы готовы к выгрузке в ФИС ФРДО"
-                : `Готовность к выгрузке ФРДО: ${readinessPercent}%`}
+                ? "Поля, обязательные для текущего XLSX-шаблона, заполнены"
+                : `Заполнение полей для XLSX: ${readinessPercent}%`}
             </p>
             <p className="text-xs text-muted-foreground">
               {stats.ready_for_export} из {stats.total_documents} записей содержат полный набор данных

@@ -602,7 +602,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                       <FileText className="w-4 h-4 mr-2" />Сгенерировать протокол
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => props.onShowBulkFRDOExport?.(Array.from(selectedStudentIds))}>
-                      <FileSpreadsheet className="w-4 h-4 mr-2" />Экспорт в ФРДО
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />Подготовить файл для ФРДО
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExportStudents}>
                       <FileSpreadsheet className="w-4 h-4 mr-2" />Выгрузить в Excel

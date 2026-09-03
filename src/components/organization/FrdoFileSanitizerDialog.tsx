@@ -83,7 +83,7 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
       // Записываем данные в оригинальный шаблон-донор Рособрнадзора —
       // ФИС ФРДО принимает только файлы с её собственной структурой.
       await injectIntoFrdoTemplate(rows, result.type, suffix);
-      toast.success("Файл сохранён в эталонный шаблон ФИС ФРДО");
+      toast.success("XLSX сформирован для проверки");
     } catch (e: any) {
       toast.error(e?.message || "Ошибка экспорта");
     }
@@ -150,7 +150,7 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
             Устранение ошибок файлов ФРДО
           </DialogTitle>
           <DialogDescription>
-            Загрузите файл, который не принимает ФИС ФРДО — мы исправим формат, перенесём данные в эталонный шаблон Рособрнадзора и вернём готовый <strong>.xlsx</strong> с валидациями и словарями.
+            Система перенесёт распознанные данные во встроенный XLSX-шаблон. Перед загрузкой проверьте содержимое файла и актуальные требования ФИС ФРДО.
           </DialogDescription>
         </DialogHeader>
 
@@ -236,16 +236,16 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
                   </div>
                   <div>
                     <div className="text-lg font-display font-semibold text-emerald-700 dark:text-emerald-400">
-                      Файл готов к загрузке в ФИС ФРДО
+                      Файл сформирован для проверки
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      Все обязательные поля заполнены. Данные перенесены в эталонный шаблон Рособрнадзора с сохранением валидаций и словарей.
+                      Поля, обязательные для текущего шаблона, заполнены. Это не гарантирует принятие файла ФИС ФРДО.
                     </div>
                   </div>
                   {result && (
                     <div className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      Оригинальный шаблон ФИС ФРДО {result.type === "po" ? "ПО" : "ДПО"} (со всеми валидациями и словарями Рособрнадзора)
+                      Встроенный шаблон СИНТАГМЫ: {result.type === "po" ? "ПО" : "ДПО"}
                     </div>
                   )}
                   <Button onClick={handleDownload} size="lg" className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">

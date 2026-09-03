@@ -83,7 +83,7 @@ export function CourseSettingsTab(props: CourseSettingsTabProps) {
       {props.isFrdoEnabled && (
         <div className="space-y-4 mt-6">
           <div className="flex items-center gap-2"><FileSpreadsheet className="w-5 h-5 text-primary" /><h3 className="font-semibold">Настройки ФИС ФРДО</h3></div>
-          <p className="text-sm text-muted-foreground">Эти настройки будут автоматически применяться при экспорте данных курса в ФИС ФРДО</p>
+          <p className="text-sm text-muted-foreground">Эти настройки будут применяться при подготовке XLSX-файла для ФИС ФРДО</p>
           <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
             <div className="space-y-2">
               <Label>Форма обучения</Label>

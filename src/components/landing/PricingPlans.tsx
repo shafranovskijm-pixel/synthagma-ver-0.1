@@ -15,8 +15,6 @@ const featureDescriptions: Record<string, { description: string; minPlan: string
   "Брендирование": { description: "Логотип и цвета организации в кабинете и на доступных публичных страницах.", minPlan: "Бесплатный" },
   "Компании": { description: "Управление корпоративными клиентами, договорами и массовым зачислением сотрудников.", minPlan: "Бесплатный" },
   "Журналы": { description: "Автогенерация журналов посещаемости и оценок для лицензированных организаций.", minPlan: "Бесплатный" },
-  "Email-рассылки": { description: "SMTP, шаблоны, drip-цепочки, A/B-тесты тем, click-tracking, RFC 8058 unsubscribe и проверка SPF/DKIM/DMARC.", minPlan: "Старт" },
-  "CRM и Продажи": { description: "Канбан сделок, КП с PDF и публичной ссылкой, договоры с ПЭП, счета с автонапоминаниями, лидерборд менеджеров.", minPlan: "Стандарт" },
   "Документы для ЛОО": { description: "Автоматическая генерация приказов, протоколов, журналов и договоров для лицензированных образовательных организаций.", minPlan: "Бесплатный" },
   "Охрана труда": { description: "Модуль для организации обучения по охране труда с журналами и протоколами.", minPlan: "Бесплатный" },
   "ФИС ФРДО": { description: "Подготовка и выгрузка файлов XLSX по шаблонам ДПО и ПО на 41/35 столбцов с проверкой данных.", minPlan: "Бесплатный" },
@@ -43,8 +41,6 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   { label: "Брендирование", link: "/feature/branding", getValue: () => true },
   { label: "Компании", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('companies') },
   { label: "Журналы", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('journals') },
-  { label: "Email-рассылки", link: "/feature/email-campaigns", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.emailCampaignsEnabled },
-  { label: "CRM и Продажи", link: "/feature/sales-crm", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.salesCrmEnabled },
   { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('documents') },
   { label: "Охрана труда", link: "/feature/labor-safety", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('labor_safety') },
   { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p) => {

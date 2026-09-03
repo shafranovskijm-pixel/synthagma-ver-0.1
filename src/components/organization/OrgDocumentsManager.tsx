@@ -139,7 +139,7 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
             </div>
             <div>
               <h3 className="text-lg font-semibold">Комплектность документов</h3>
-              <p className="text-sm text-muted-foreground">Обязательные документы для ДПО и ПО по 273-ФЗ</p>
+              <p className="text-sm text-muted-foreground">Базовый набор документов для ДПО и ПО</p>
             </div>
           </div>
           <div className="text-right">
@@ -211,7 +211,7 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {uploadedCount} из {categoryDocs.length} загружено
-                        {requiredCount > 0 && <span className="ml-2">(обязательных: {uploadedRequiredCount}/{requiredCount})</span>}
+                        {requiredCount > 0 && <span className="ml-2">(базовых: {uploadedRequiredCount}/{requiredCount})</span>}
                       </p>
                     </div>
                   </div>
@@ -273,7 +273,7 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium truncate">{docItem.label}</span>
-            {docItem.required && <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">Обязательный</span>}
+            {docItem.required && <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">Базовый</span>}
             {isAnnual && <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 flex-shrink-0">Ежегодный</span>}
             {expBadge}
           </div>
@@ -407,7 +407,7 @@ function OrderDocumentsDialog({ h }: { h: ReturnType<typeof useOrgDocumentsManag
                           </div>
                           <span className="text-sm flex-1">{doc.label}</span>
                           {isUploaded && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">Загружен</span>}
-                          {doc.required && !isUploaded && <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Обязательный</span>}
+                          {doc.required && !isUploaded && <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Базовый</span>}
                         </div>
                       );
                     })}

@@ -39,61 +39,6 @@ const categoryIcons: Record<string, React.ReactNode> = {
   "Методология": <TrendingUp className="h-4 w-4" />,
   "Новости": <BookOpen className="h-4 w-4" /> };
 
-const defaultPosts: BlogPost[] = [
-  {
-    id: "1",
-    title: "Как организовать эффективное дистанционное обучение в 2026 году",
-    slug: "effective-distance-learning-2026",
-    excerpt: "Рассказываем о ключевых трендах и лучших практиках организации онлайн-обучения для корпоративных клиентов и образовательных учреждений.",
-    content: null,
-    category: "Тренды",
-    author: "Команда СИНТАГМА",
-    image_url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop",
-    is_featured: true,
-    read_time: "7 мин",
-    created_at: "2026-01-10T10:00:00Z",
-    published_at: "2026-01-10T10:00:00Z" },
-  {
-    id: "2",
-    title: "Автоматизация документооборота: от заявки до диплома",
-    slug: "document-automation-guide",
-    excerpt: "Полный гайд по настройке автоматического формирования документов — договоры, акты, удостоверения и выгрузка в ФРДО.",
-    content: null,
-    category: "Гайды",
-    author: "Команда СИНТАГМА",
-    image_url: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=400&fit=crop",
-    is_featured: true,
-    read_time: "12 мин",
-    created_at: "2026-01-08T10:00:00Z",
-    published_at: "2026-01-08T10:00:00Z" },
-  {
-    id: "3",
-    title: "Безопасность данных слушателей: чек-лист для образовательных организаций",
-    slug: "student-data-security-checklist",
-    excerpt: "Проверьте, соответствует ли ваша система требованиям 152-ФЗ и защищены ли персональные данные ваших учеников.",
-    content: null,
-    category: "Безопасность",
-    author: "Команда СИНТАГМА",
-    image_url: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&h=400&fit=crop",
-    is_featured: false,
-    read_time: "5 мин",
-    created_at: "2026-01-05T10:00:00Z",
-    published_at: "2026-01-05T10:00:00Z" },
-  {
-    id: "4",
-    title: "ИИ-помощник в обучении: возможности и ограничения",
-    slug: "ai-assistant-in-learning",
-    excerpt: "Как использовать искусственный интеллект для генерации курсов, проверки тестов и персонализации обучения.",
-    content: null,
-    category: "Технологии",
-    author: "Команда СИНТАГМА",
-    image_url: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
-    is_featured: false,
-    read_time: "8 мин",
-    created_at: "2026-01-02T10:00:00Z",
-    published_at: "2026-01-02T10:00:00Z" },
-];
-
 const categories = ["Все", "Тренды", "Гайды", "Безопасность", "Технологии", "Интеграции", "Методология", "Новости"];
 
 const Blog = () => {
@@ -117,11 +62,10 @@ const Blog = () => {
 
       if (error) throw error;
       
-      // Use database posts if available, otherwise use default posts
-      setPosts(data && data.length > 0 ? data : defaultPosts);
+      setPosts(data ?? []);
     } catch (error) {
       console.error("Error fetching posts:", error);
-      setPosts(defaultPosts);
+      setPosts([]);
     } finally {
       setIsLoading(false);
     }
@@ -280,11 +224,18 @@ const Blog = () => {
                     className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl transition-all duration-300 cursor-pointer"
                   >
                     <div className="aspect-[2/1] overflow-hidden">
-                      <img
-                        src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
-                        alt={post.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      {post.image_url ? (
+                        <img
+                          src={post.image_url}
+                          alt={post.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+                          <BookOpen className="h-10 w-10" aria-hidden="true" />
+                          <span className="sr-only">Изображение не добавлено</span>
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -338,11 +289,18 @@ const Blog = () => {
                     className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer h-full"
                   >
                     <div className="aspect-[16/9] overflow-hidden">
-                      <img
-                        src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
-                        alt={post.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      {post.image_url ? (
+                        <img
+                          src={post.image_url}
+                          alt={post.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+                          <BookOpen className="h-9 w-9" aria-hidden="true" />
+                          <span className="sr-only">Изображение не добавлено</span>
+                        </div>
+                      )}
                     </div>
                     <div className="p-5">
                       <div className="flex items-center gap-2 mb-3">
@@ -385,7 +343,10 @@ const Blog = () => {
       {filteredPosts.length === 0 && (
         <section className="py-16">
           <div className="container mx-auto px-4 text-center">
-            <p className="text-muted-foreground">Нет статей в этой категории</p>
+            <p className="font-medium">Пока нет опубликованных статей</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Здесь появятся только проверенные материалы, опубликованные редакцией СИНТАГМЫ.
+            </p>
           </div>
         </section>
       )}

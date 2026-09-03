@@ -26,7 +26,7 @@ const DEFAULT_HTML = `
   <h2>Тестовый документ</h2>
   <p>Это тестовый документ для проверки inbox'а в личном кабинете ученика.</p>
   <p>Если вы видите его в разделе «Документы → Требуют действия» — значит цикл работает корректно.</p>
-  <p style="color:#666;font-size:13px">Можно подписать или отклонить — это не повлияет на реальные данные.</p>
+  <p style="color:#666;font-size:13px">Тест создаёт реальную запись в журнале подписаний и предназначен только для внутренней проверки.</p>
 `;
 
 export function TestInboxButton({ organizationId }: TestInboxButtonProps) {
@@ -115,7 +115,7 @@ export function TestInboxButton({ organizationId }: TestInboxButtonProps) {
       }
 
       toast.success("Тестовый документ отправлен", {
-        description: "Проверьте кабинет ученика — должен прилететь realtime.",
+        description: "Тестовая запись создана. Отображение в кабинете зависит от ролей текущего аккаунта.",
         action: {
           label: "Открыть мой кабинет",
           onClick: () => window.open("/student?tab=documents", "_blank"),
@@ -151,8 +151,8 @@ export function TestInboxButton({ organizationId }: TestInboxButtonProps) {
               Тестовый документ
             </DialogTitle>
             <DialogDescription>
-              Документ будет отправлен на ваш собственный аккаунт ({user?.email || "—"}) и появится в разделе «Документы»
-              вашего личного кабинета. Письмо при этом не отправляется.
+              Будет создана реальная тестовая запись в журнале подписаний для вашего аккаунта ({user?.email || "—"}).
+              Письмо при этом не отправляется; видимость записи зависит от ролей текущего аккаунта.
             </DialogDescription>
           </DialogHeader>
 

@@ -241,7 +241,7 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
             <FileSpreadsheet className="w-4 h-4 shrink-0" />
-            Эти настройки будут автоматически применяться при экспорте данных курса в ФИС ФРДО.
+            Эти настройки будут применяться при подготовке XLSX-файла для ФИС ФРДО.
           </div>
           <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
             <div className="space-y-2">

@@ -51,7 +51,7 @@ export function FRDOManager({
         <GroupContextBanner groupId={groupId} returnToGroupId={returnToGroupId} />
       )}
       <div className="flex items-center justify-between">
-        <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Управление данными</p></div>
+        <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Подготовка файлов и проверка данных</p></div>
         <div className="flex items-center gap-2 flex-wrap">
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept=".xlsx,.xls,.pdf,.zip" />
           <Button variant="outline" onClick={() => setShowSanitizer(true)} className="rounded-xl gap-2">
@@ -61,7 +61,7 @@ export function FRDOManager({
             {isUploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}Загрузить подписанный
           </Button>
           <Button variant="outline" onClick={handleSendToAdmin} className="rounded-xl gap-2">
-            <Send className="w-4 h-4" />Отправить в ФРДО
+            <Send className="w-4 h-4" />Отправить администратору СИНТАГМЫ
           </Button>
           <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ДПО</Button>
           {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ПО</Button>}
@@ -104,18 +104,18 @@ export function FRDOManager({
               <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-6 mb-4">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <Shield className="w-6 h-6 text-primary" />
-                  Автоматизируйте отчётность в ФИС ФРДО
+                  Подготовьте данные для ФИС ФРДО
                 </h3>
-                <p className="text-muted-foreground text-sm mt-1">Зачислите студентов на курсы — данные для выгрузки появятся автоматически</p>
+                <p className="text-muted-foreground text-sm mt-1">Зачислите студентов на курсы — данные для подготовки XLSX появятся в этом разделе</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
-                  { icon: FileSpreadsheet, title: "Шаблоны ДПО и ПО", desc: "Готовые Excel-шаблоны на 35 и 41 колонку по стандарту ФИС ФРДО" },
+                  { icon: FileSpreadsheet, title: "Шаблоны ДПО и ПО", desc: "Excel-шаблоны текущей версии для последующей ручной проверки" },
                   { icon: BarChart3, title: "Статусы заполнения", desc: "Мгновенный контроль: «Заполнено», «Частично», «Не заполнено»" },
                   { icon: Upload, title: "Автозаполнение данных", desc: "ФИО, паспортные данные и СНИЛС подтягиваются из профиля автоматически" },
                   { icon: ClipboardCheck, title: "Контроль недостающих полей", desc: "Система покажет, каких именно данных не хватает у каждого студента" },
                   { icon: BookOpen, title: "Привязка к курсам", desc: "Данные группируются по курсам для удобной пакетной выгрузки" },
-                  { icon: Download, title: "Пакетный экспорт", desc: "Выгрузка всех студентов разом в формате, готовом для загрузки в ФРДО" },
+                  { icon: Download, title: "Пакетный экспорт", desc: "Формирование файла для последующей проверки и загрузки оператором в ФИС ФРДО" },
                 ].map((f, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

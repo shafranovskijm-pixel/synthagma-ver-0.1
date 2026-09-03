@@ -11,8 +11,6 @@ import {
   Video,
   HardHat,
   Smartphone,
-  Mail,
-  TrendingUp,
   ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -81,20 +79,6 @@ const features = [
     gradient: "from-fuchsia-500/25 via-purple-500/10 to-transparent",
   },
   {
-    icon: Mail,
-    title: "Email-рассылки",
-    description: "Свой SMTP, шаблоны, drip-цепочки, A/B-тесты тем и трекинг открытий.",
-    link: "/feature/email-campaigns",
-    gradient: "from-sky-500/25 via-blue-500/10 to-transparent",
-  },
-  {
-    icon: TrendingUp,
-    title: "CRM и Продажи",
-    description: "Канбан сделок, КП с PDF, договоры с ПЭП, счета и лидерборд менеджеров.",
-    link: "/feature/sales-crm",
-    gradient: "from-lime-500/25 via-emerald-500/10 to-transparent",
-  },
-  {
     icon: Users,
     title: "Слушатели",
     description: "Массовый импорт, рассылка логинов, сбор документов.",
@@ -117,12 +101,12 @@ export function Features() {
             Платформа
           </span>
           <h2 className="font-display text-2xl md:text-4xl font-medium mb-4 tracking-tight leading-tight">
-            Все инструменты учебного центра в одной платформе
+            Основные процессы учебного центра в одной платформе
           </h2>
           <div className="divider mb-4" />
           <p className="text-sm md:text-base text-muted-foreground">
-            Дистанционное обучение, документооборот, видеоидентификация, ФИС ФРДО и контроль
-            прохождения — без разрозненных сервисов.
+            Курсы, ученики, прогресс, документы и подготовка XLSX для ФИС ФРДО — в одном
+            кабинете. Дополнительные модули доступны после отдельной проверки и помечаются Beta.
           </p>
         </div>
       </div>

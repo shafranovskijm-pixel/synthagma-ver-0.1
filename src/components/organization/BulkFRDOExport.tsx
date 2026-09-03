@@ -361,7 +361,7 @@ export function BulkFRDOExport({
               <FileSpreadsheet className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <div className="text-xl">Массовый экспорт в ФИС ФРДО</div>
+              <div className="text-xl">Подготовка XLSX для ФИС ФРДО</div>
               <div className="text-sm font-normal text-muted-foreground">Выбрано студентов: {selectedStudents.length}</div>
             </div>
           </DialogTitle>
@@ -456,7 +456,7 @@ export function BulkFRDOExport({
               <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Отмена</Button>
               <Button className="rounded-xl gap-2" onClick={() => handleExport(false)} disabled={isExporting || selectedStudents.length === 0}>
                 {isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}
-                Экспортировать ({selectedStudents.length})
+                Скачать XLSX ({selectedStudents.length})
               </Button>
             </div>
 
@@ -500,7 +500,7 @@ export function BulkFRDOExport({
                     Отменить
                   </Button>
                   <Button size="sm" variant="outline" className="rounded-lg" onClick={() => handleExport(true)} disabled={isExporting}>
-                    Игнорировать и экспортировать
+                    Игнорировать замечания и скачать XLSX
                   </Button>
                 </div>
               </div>

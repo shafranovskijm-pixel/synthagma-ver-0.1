@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import type { ComponentProps } from "react";
 
 function makeChain(): any {
   const result = { data: [], error: null, count: 0 };
@@ -39,6 +41,13 @@ import {
   resolveManualJournalEditorGuard,
 } from "@/lib/journals/groupJournalContext";
 
+const renderManager = (props: ComponentProps<typeof JournalsManager>) =>
+  render(
+    <MemoryRouter>
+      <JournalsManager {...props} />
+    </MemoryRouter>,
+  );
+
 describe("group journal list guards (pure)", () => {
   it("detects group context from groupId or returnToGroupId", () => {
     expect(isGroupJournalContextActive({ groupId: "g1" })).toBe(true);
@@ -67,7 +76,7 @@ describe("JournalsManager without group context", () => {
       "custom_journals_org-1",
       JSON.stringify([{ id: "custom_1", title: "Мой журнал", description: "d", fields: ["a"], createdAt: "2026-01-01" }]),
     );
-    render(<JournalsManager organizationId="org-1" />);
+    renderManager({ organizationId: "org-1" });
     await waitFor(() => expect(screen.getByText("Создать журнал")).toBeInTheDocument());
     expect(screen.getByText("Мой журнал")).toBeInTheDocument();
     expect(screen.getAllByText("Пользовательские журналы").length).toBeGreaterThan(0);
@@ -86,7 +95,7 @@ describe("JournalsManager in group context", () => {
   });
 
   it("hides the global wizard, custom journals and unsupported journal types", async () => {
-    render(<JournalsManager organizationId="org-1" groupId="g1" courseId="c1" returnToGroupId="g1" />);
+    renderManager({ organizationId: "org-1", groupId: "g1", courseId: "c1", returnToGroupId: "g1" });
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     expect(screen.queryByText("Создать журнал")).not.toBeInTheDocument();
     expect(screen.queryByText("Мой журнал")).not.toBeInTheDocument();
@@ -94,13 +103,13 @@ describe("JournalsManager in group context", () => {
     expect(screen.getByTestId("group-banner")).toBeInTheDocument();
     // unsupported journal categories/types are omitted from the list entirely
     expect(screen.queryByText("Часто требуемые журналы")).not.toBeInTheDocument();
-    expect(screen.getByText("Обязательные журналы", { selector: "h3" })).toBeInTheDocument();
+    expect(screen.getByText("Базовые журналы", { selector: "h3" })).toBeInTheDocument();
     // 6 required journals minus the unsupported "бланки строгой отчётности"
     expect(screen.getByText(/^5 журналов/)).toBeInTheDocument();
   });
 
   it("hides group context only when neither groupId nor returnToGroupId is present", async () => {
-    render(<JournalsManager organizationId="org-1" returnToGroupId="g1" />);
+    renderManager({ organizationId: "org-1", returnToGroupId: "g1" });
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     expect(screen.queryByText("Создать журнал")).not.toBeInTheDocument();
   });
@@ -117,7 +126,7 @@ describe("direct handler invocation in group context", () => {
 
   it("does not write custom journals to storage when wizard completion is forced", async () => {
     localStorage.clear();
-    render(<JournalsManager organizationId="org-1" groupId="g1" returnToGroupId="g1" />);
+    renderManager({ organizationId: "org-1", groupId: "g1", returnToGroupId: "g1" });
     await waitFor(() => expect(screen.getByTestId("group-journals-scope-notice")).toBeInTheDocument());
     // no wizard is mounted, so no completion path exists; storage must stay empty
     expect(localStorage.getItem("custom_journals_org-1")).toBeNull();

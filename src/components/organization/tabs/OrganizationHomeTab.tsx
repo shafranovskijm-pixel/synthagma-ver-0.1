@@ -205,7 +205,7 @@ export function OrganizationHomeTab() {
                   : "Чаты, email-рассылки, база контактов, шаблоны и отчёты."
               }
               actionLabel={isMailingLocked ? "Открыть чаты" : "Открыть коммуникации"}
-              badge={isMailingLocked ? "Рассылки — от Старт" : undefined}
+              badge={isMailingLocked ? "Рассылки — от Старт" : "Рассылки — Beta"}
               locked={isMailingLocked}
               icon={MessageCircle}
               onOpen={() => {

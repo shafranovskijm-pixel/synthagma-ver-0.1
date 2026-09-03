@@ -153,6 +153,39 @@ describe("truthful landing copy", () => {
     expect(platformPresentation).not.toContain("screenshot-teacher.png");
   });
 
+  it("keeps pilot CRM and mailing modules out of the confirmed product core", () => {
+    const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
+    const features = read("src/components/landing/Features.tsx");
+    const pricing = read("src/components/landing/PricingPlans.tsx");
+    const crm = read("src/pages/FeatureSalesCRM.tsx");
+    const email = read("src/pages/FeatureEmailCampaigns.tsx");
+    const demonstration = read("src/pages/DemonstrationPage.tsx");
+
+    expect(features).not.toContain('title: "Email-рассылки"');
+    expect(features).not.toContain('title: "CRM и Продажи"');
+    expect(pricing).not.toContain('{ label: "Email-рассылки"');
+    expect(pricing).not.toContain('{ label: "CRM и Продажи"');
+    expect(crm).toContain("пилотный модуль");
+    expect(crm).toContain("Банковские интеграции");
+    expect(crm).not.toMatch(/T-Bank|Тинькофф|Робокасса|ЮKassa/);
+    expect(email).toContain("пилотный модуль");
+    expect(email).toContain("не обещаются до");
+    expect(email).not.toMatch(/drip|RFC 8058|click-tracking/);
+    expect(demonstration).toContain("загрузку выполняет ответственный сотрудник организации");
+    expect(demonstration).toContain("CRM и продажи (Beta)");
+    expect(demonstration).not.toMatch(/ФРДО\+|выгружаем за вас|сдачи ФИС ФРДО/);
+  });
+
+  it("shows only published blog records and no fabricated fallback articles", () => {
+    const blog = readFileSync(resolve(process.cwd(), "src/pages/Blog.tsx"), "utf8");
+
+    expect(blog).not.toContain("defaultPosts");
+    expect(blog).not.toContain("images.unsplash.com");
+    expect(blog).toContain("Пока нет опубликованных статей");
+    expect(blog).toContain("setPosts(data ?? [])");
+    expect(blog).toContain("setPosts([])");
+  });
+
   it("qualifies identity, documents, FRDO, editor and commercial claims", () => {
     const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
     const features = read("src/components/landing/Features.tsx");
