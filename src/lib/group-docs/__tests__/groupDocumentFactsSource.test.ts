@@ -9,7 +9,8 @@ import {
 
 const scope = { organizationId: "org-a", courseId: "course-a", studentUserIds: ["u1"] };
 const enrollment = (id = "e1", user = "u1"): EnrollmentFactRow => ({
-  id, user_id: user, course_id: "course-a", status: "active", progress: 0, completed_at: null,
+  id, user_id: user, course_id: "course-a", status: "active", progress: 0,
+  started_at: "2026-09-01T00:00:00Z", completed_at: null,
 });
 const frdo = (id = "f1", user = "u1"): StudentFrdoFactRow => ({
   id, user_id: user, organization_id: "org-a", passport_series: null,

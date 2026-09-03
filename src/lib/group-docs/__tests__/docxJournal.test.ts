@@ -22,7 +22,7 @@ describe("generateClassJournalDocx", () => {
       error: {
         context: {
           headers: new Headers({
-            "X-Sintagma-Compiler-Revision": "goreltech-group-package-server-facts-v15",
+            "X-Sintagma-Compiler-Revision": "goreltech-group-package-server-facts-v16",
           }),
         },
       },
@@ -32,6 +32,7 @@ describe("generateClassJournalDocx", () => {
   it("возвращает данные атомарной партии", async () => {
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         batch: { batch_id: "batch-1", batch_version: 3, inserted_count: 9 },
         document: { file_path: "journals/group-1.docx" },
       },
@@ -55,12 +56,22 @@ describe("generateClassJournalDocx", () => {
       warnings: [],
       documents: [],
     });
+    expect(supabaseInvokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      body: { capabilityProbe: true },
+    });
+    expect(supabaseInvokeMock.mock.invocationCallOrder[0]).toBeLessThan(invokeMock.mock.invocationCallOrder[0]);
+    expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      retry: false,
+      body: expect.objectContaining({ dryRun: false }),
+      headers: { "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v16" },
+    });
   });
 
   it("проверяет полный пакет на сервере без Storage/DB-записи", async () => {
     const hash = "A".repeat(64);
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         dryRun: true,
         writesPerformed: false,
         documentCount: 2,
@@ -97,9 +108,10 @@ describe("generateClassJournalDocx", () => {
     });
 
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      retry: true,
       body: expect.objectContaining({ dryRun: true }),
       headers: {
-        "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v15",
+        "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v16",
       },
     });
     expect(supabaseInvokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
@@ -117,13 +129,18 @@ describe("generateClassJournalDocx", () => {
     }));
   });
 
-  it("не отправляет данные группы в старый Edge до подтверждения v15", async () => {
+  it.each([
+    "goreltech-group-package-fail-closed-v13",
+    "goreltech-group-package-dry-run-v14",
+    "goreltech-group-package-server-facts-v15",
+    "goreltech-group-package-server-facts-v17",
+  ])("не отправляет данные группы при неподтверждённой для v16 ревизии %s", async (revision) => {
     supabaseInvokeMock.mockResolvedValue({
       data: null,
       error: {
         context: {
           headers: new Headers({
-            "X-Sintagma-Compiler-Revision": "goreltech-group-package-fail-closed-v13",
+            "X-Sintagma-Compiler-Revision": revision,
           }),
         },
       },
@@ -141,10 +158,10 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).not.toHaveBeenCalled();
   });
 
-  it("подтверждает v15 по JSON, когда Nginx не exposes response header", async () => {
+  it("подтверждает v16 по JSON, когда Nginx не exposes response header", async () => {
     const probeResponse = new Response(JSON.stringify({
       error: "Некорректные данные",
-      compilerRevision: "goreltech-group-package-server-facts-v15",
+      compilerRevision: "goreltech-group-package-server-facts-v16",
     }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -157,6 +174,7 @@ describe("generateClassJournalDocx", () => {
     });
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         dryRun: true,
         writesPerformed: false,
         documentCount: 1,
@@ -186,12 +204,15 @@ describe("generateClassJournalDocx", () => {
     expect(probeResponse.bodyUsed).toBe(false);
   });
 
-  it("не доверяет JSON capability probe со старой revision", async () => {
+  it.each([
+    "goreltech-group-package-fail-closed-v13",
+    "goreltech-group-package-server-facts-v15",
+  ])("не доверяет JSON capability probe со старой revision %s", async (revision) => {
     supabaseInvokeMock.mockResolvedValue({
       data: null,
       error: {
         context: new Response(JSON.stringify({
-          compilerRevision: "goreltech-group-package-fail-closed-v13",
+          compilerRevision: revision,
         }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -232,7 +253,7 @@ describe("generateClassJournalDocx", () => {
       },
     }],
     ["с неожиданно успешным probe", {
-      data: { compilerRevision: "goreltech-group-package-server-facts-v15" },
+      data: { compilerRevision: "goreltech-group-package-server-facts-v16" },
       error: null,
     }],
   ])("не отправляет данные группы при capability probe %s", async (_caseName, probeResult) => {
@@ -255,12 +276,12 @@ describe("generateClassJournalDocx", () => {
       data: null,
       error: {
         context: new Response(JSON.stringify({
-          compilerRevision: "goreltech-group-package-server-facts-v15",
+          compilerRevision: "goreltech-group-package-server-facts-v16",
         }), {
           status: 400,
           headers: {
             "Content-Type": "application/json",
-            "X-Sintagma-Compiler-Revision": "goreltech-group-package-fail-closed-v13",
+            "X-Sintagma-Compiler-Revision": "goreltech-group-package-server-facts-v15",
           },
         }),
       },
@@ -278,9 +299,60 @@ describe("generateClassJournalDocx", () => {
     expect(invokeMock).not.toHaveBeenCalled();
   });
 
+  it.each(["blank", "data"] as const)("не передаёт реальный payload обычного сохранения %s старому Edge", async (fillMode) => {
+    supabaseInvokeMock.mockResolvedValue({
+      data: null,
+      error: { context: { headers: new Headers({
+        "X-Sintagma-Compiler-Revision": "goreltech-group-package-server-facts-v15",
+      }) } },
+    });
+    await expect(generateClassJournalDocx({
+      organizationId: "private-org", groupId: "private-group", studentUserIds: ["private-user"],
+      fillMode, dryRun: false, otherDocuments: [],
+    })).rejects.toThrow("Документы не отправлены и не сохранены");
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(supabaseInvokeMock).toHaveBeenCalledTimes(1);
+    expect(supabaseInvokeMock).toHaveBeenCalledWith("compile-group-class-journal", { body: { capabilityProbe: true } });
+  });
+
+  it.each([undefined, null, 16, "goreltech-group-package-server-facts-v15", "goreltech-group-package-server-facts-v17"])(
+    "не объявляет успех/отсутствие записи при неподтверждённой версии ответа сохранения %s", async (compilerRevision) => {
+      invokeMock.mockResolvedValue({
+        data: {
+          compilerRevision,
+          batch: { batch_id: "possibly-saved", batch_version: 1, inserted_count: 9 },
+          document: { file_path: "possibly-saved.docx" },
+        }, error: null,
+      });
+      await expect(generateClassJournalDocx({
+        organizationId: "org-1", groupId: "group-1", studentUserIds: ["student-1"],
+        fillMode: "data", dryRun: false, otherDocuments: [],
+      })).rejects.toThrow("Версия ответа сервера не подтверждена. Сохранение могло произойти; обновите список документов перед повторной попыткой");
+      // No retry that could produce a second package after an uncertain write.
+      expect(invokeMock).toHaveBeenCalledTimes(1);
+      expect(supabaseInvokeMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("не принимает dry-run от другой версии после успешного v16 preflight", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        compilerRevision: "goreltech-group-package-server-facts-v15",
+        dryRun: true, writesPerformed: false, documentCount: 1,
+        documents: [{ doc_type: "class_journal", name: "Журнал", docx_sha256: "A".repeat(64) }],
+      }, error: null,
+    });
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1", groupId: "group-1", studentUserIds: ["student-1"],
+      fillMode: "blank", dryRun: true, otherDocuments: [],
+    })).rejects.toThrow("Сервер не подтвердил точную версию безопасной проверки Word-пакета");
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+  });
+
   it("отклоняет dry-run, если сервер не доказал отсутствие записи", async () => {
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         dryRun: true,
         writesPerformed: true,
         documentCount: 1,
@@ -306,6 +378,7 @@ describe("generateClassJournalDocx", () => {
   it("передаёт выбранного подписанта журнала без подмены должности", async () => {
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         batch: { batch_id: "batch-1", batch_version: 1, inserted_count: 1 },
         document: { file_path: "journals/group-1.docx" },
       },
@@ -326,6 +399,8 @@ describe("generateClassJournalDocx", () => {
     });
 
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      retry: false,
+      headers: { "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v16" },
       body: expect.objectContaining({
         studentUserIds: ["student-1"],
         journalDocumentDate: "2026-08-25",
@@ -350,9 +425,31 @@ describe("generateClassJournalDocx", () => {
     })).rejects.toThrow("Шаблон журнала не найден");
   });
 
-  it("умеет собрать отдельный точный документ без лишнего журнала", async () => {
+  it.each(["returned", "thrown", "payload"] as const)("показывает неопределённость сохранения и не повторяет запрос при %s error", async (kind) => {
+    if (kind === "returned") invokeMock.mockResolvedValue({ data: null, error: new TypeError("Failed to fetch") });
+    else if (kind === "thrown") invokeMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    else invokeMock.mockResolvedValue({ data: { error: "Ответ RPC потерян" }, error: null });
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1", groupId: "group-1", studentUserIds: ["student-1"],
+      fillMode: "data", otherDocuments: [],
+    })).rejects.toThrow("Сохранение могло произойти; перед повтором проверьте список документов");
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock.mock.calls[0][1]).toMatchObject({ retry: false });
+  });
+
+  it("оставляет retry разрешённым только для dry-run и не сообщает о возможном сохранении", async () => {
+    invokeMock.mockResolvedValue({ data: null, error: new TypeError("Failed to fetch") });
+    await expect(generateClassJournalDocx({
+      organizationId: "org-1", groupId: "group-1", studentUserIds: ["student-1"],
+      fillMode: "blank", dryRun: true, otherDocuments: [],
+    })).rejects.toThrow(/^Failed to fetch$/);
+    expect(invokeMock.mock.calls[0][1]).toMatchObject({ retry: true });
+  });
+
+  it("передаёт параметры отдельного документа без локальной потери полей (не проверка допуска Edge)", async () => {
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         batch: { batch_id: "batch-2", batch_version: 4, inserted_count: 1 },
         document: null,
       },
@@ -387,6 +484,8 @@ describe("generateClassJournalDocx", () => {
     });
 
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      retry: false,
+      headers: { "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v16" },
       body: expect.objectContaining({
         includeJournal: false,
         journalDocumentDate: "2026-08-25",
@@ -404,6 +503,7 @@ describe("generateClassJournalDocx", () => {
   it("сохраняет разные даты зачисления и завершения до compile payload", async () => {
     invokeMock.mockResolvedValue({
       data: {
+        compilerRevision: "goreltech-group-package-server-facts-v16",
         batch: { batch_id: "batch-dates", batch_version: 1, inserted_count: 3 },
         document: { file_path: "journals/group-dates.docx" },
       },
@@ -435,6 +535,8 @@ describe("generateClassJournalDocx", () => {
     });
 
     expect(invokeMock).toHaveBeenCalledWith("compile-group-class-journal", {
+      retry: false,
+      headers: { "X-Sintagma-Required-Compiler-Revision": "goreltech-group-package-server-facts-v16" },
       body: expect.objectContaining({
         journalDocumentDate: journalDraftDate,
         otherDocuments: [

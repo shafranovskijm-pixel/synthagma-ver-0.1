@@ -2,7 +2,7 @@ import type { GeneratedDocument } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 
-export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v15";
+export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v16";
 
 async function readCompilerRevision(error: unknown): Promise<string> {
   if (!error || typeof error !== "object" || !("context" in error)) return "";
@@ -17,7 +17,8 @@ async function readCompilerRevision(error: unknown): Promise<string> {
 
   // Старый Nginx production физически передаёт revision, но не открывает
   // custom response header браузерному CORS. Edge дублирует revision в JSON.
-  // Читаем только копию error-response и по-прежнему принимаем ровно v15.
+  // Читаем только копию error-response и принимаем ровно v16: пять видов
+  // документов используют серверные источники, а не табличный HTML клиента.
   const response = context as Partial<Response>;
   if (typeof response.clone !== "function") return "";
   try {
@@ -28,7 +29,7 @@ async function readCompilerRevision(error: unknown): Promise<string> {
   }
 }
 
-async function assertDryRunCompilerCapability(): Promise<void> {
+async function assertCompilerCapability(): Promise<void> {
   const { error } = await supabase.functions.invoke("compile-group-class-journal", {
     // Намеренно невалидный обезличенный payload: обе версии завершают запрос до
     // чтения tenant-данных, а заголовок ответа позволяет fail-closed проверить
@@ -99,8 +100,13 @@ const legacyPayload = (document: GeneratedDocument) => ({
 export async function generateClassJournalDocx(
   params: GenerateClassJournalParams,
 ): Promise<GenerateClassJournalResult> {
-  if (params.dryRun) await assertDryRunCompilerCapability();
+  // Both preview and save must negotiate the server-only facts revision before
+  // any real roster/document payload is sent (including a rolling deployment).
+  await assertCompilerCapability();
   const { data, error } = await safeInvoke<any>("compile-group-class-journal", {
+    // A lost save response does not prove the RPC rolled back. Retrying could
+    // create another complete package; only the read-only dry-run may retry.
+    retry: params.dryRun === true,
     body: {
       organizationId: params.organizationId,
       groupId: params.groupId,
@@ -113,17 +119,24 @@ export async function generateClassJournalDocx(
       journalSignatory: params.journalSignatory,
       otherDocuments: params.otherDocuments.map(legacyPayload),
     },
-    ...(params.dryRun
-      ? {
-          headers: {
-            "X-Sintagma-Required-Compiler-Revision": GORELTECH_DRY_RUN_COMPILER_REVISION,
-          },
-        }
-      : {}),
-  });
-  if (error) throw new Error(error.message || "Не удалось сформировать журнал Word");
+    headers: {
+      "X-Sintagma-Required-Compiler-Revision": GORELTECH_DRY_RUN_COMPILER_REVISION,
+    },
+  }).catch((error: unknown) => ({
+    data: null,
+    error: error instanceof Error ? error : new Error(String(error)),
+  }));
+  const failureMessage = (message: string) => params.dryRun
+    ? message
+    : `${message}. Сохранение могло произойти; перед повтором проверьте список документов.`;
+  if (error) throw new Error(failureMessage(error.message || "Не удалось сформировать журнал Word"));
   const payload = data;
-  if (payload?.error) throw new Error(payload.error);
+  if (payload?.error) throw new Error(failureMessage(String(payload.error)));
+  if (payload?.compilerRevision !== GORELTECH_DRY_RUN_COMPILER_REVISION) {
+    throw new Error(params.dryRun
+      ? "Сервер не подтвердил точную версию безопасной проверки Word-пакета"
+      : "Версия ответа сервера не подтверждена. Сохранение могло произойти; обновите список документов перед повторной попыткой");
+  }
   const batch = payload?.batch || {};
   const documents = Array.isArray(payload?.documents)
     ? payload.documents.map((document: Record<string, unknown>) => ({

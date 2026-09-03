@@ -18,6 +18,15 @@ const CONTRACT_FUNCTION_SOURCE = path.resolve(
   "../../../../supabase/functions/compile-docx-contract/index.ts",
 );
 
+function sourceSection(source: string, start: string, end: string): string {
+  const startIndex = source.indexOf(start);
+  const endIndex = source.indexOf(end, startIndex + start.length);
+  expect(startIndex, `Missing source section: ${start}`).toBeGreaterThan(-1);
+  expect(endIndex, `Missing source boundary: ${end}`).toBeGreaterThan(startIndex);
+  return source.slice(startIndex, endIndex);
+}
+
+// These assertions verify the Edge wiring; they are not a live database/RLS execution test.
 describe("compile-group-class-journal deployment contract", () => {
   it("keeps the DOCX inside the deployable TypeScript graph", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
@@ -31,7 +40,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v15");
+    expect(source).toContain("goreltech-group-package-server-facts-v16");
+    const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v16"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -86,7 +97,10 @@ describe("compile-group-class-journal deployment contract", () => {
 
     expect(source).toContain('dryRun: z.boolean().default(false)');
     expect(source).toContain("X-Sintagma-Required-Compiler-Revision");
-    expect(source).toContain('req.headers.get("X-Sintagma-Required-Compiler-Revision") !== COMPILER_REVISION');
+    expect(source).toContain('const requiredRevision = req.headers.get("X-Sintagma-Required-Compiler-Revision")');
+    // Explicit revision is enforced for saves too. Headerless old saves may
+    // continue safely on the new server during rollout; dry-run always requires it.
+    expect(source).toContain('if ((body.dryRun || requiredRevision !== null) && requiredRevision !== COMPILER_REVISION)');
     expect(source.match(/if \(!body\.dryRun\)/g)).toHaveLength(2);
     expect(source).toContain('stage = "dry-run-complete"');
     expect(source).toContain("writesPerformed: false");
@@ -129,7 +143,7 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(enrollmentAdapter).toContain('.from("enrollments")');
     expect(enrollmentAdapter).toContain('.eq("course_id", courseId!)');
     expect(enrollmentAdapter).toContain('.in("user_id", studentUserIds)');
-    const frdoAdapter = adapters.slice(adapters.indexOf("studentFrdoData: async"));
+    const frdoAdapter = sourceSection(adapters, "studentFrdoData: async", "const completionFacts");
     expect(frdoAdapter).toContain("=> await userClient");
     expect(frdoAdapter).not.toContain("=> await admin");
     expect(frdoAdapter).toContain('.from("student_frdo_data")');
@@ -146,6 +160,108 @@ describe("compile-group-class-journal deployment contract", () => {
     const persistedSnapshot = source.slice(source.indexOf("variables_snapshot:", compile));
     expect(persistedSnapshot).toContain('row_source: "server_database_ids"');
     expect(persistedSnapshot).toContain("row_sources: factRows.rowSources");
+  });
+
+  it("wires completion readers after tenant/course/roster checks and preserves caller RLS for sensitive facts", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const completionRead = source.indexOf("const completionFacts = await loadGroupCompletionFacts({");
+    const tenantGate = source.indexOf("if (!isExactGoreltechOrganization)");
+    const rosterGate = source.indexOf("requestedStudentIds.some");
+    const courseScope = source.indexOf('.eq("organization_id", body.organizationId)', source.indexOf("let course:"));
+    for (const gate of [tenantGate, rosterGate, courseScope]) {
+      expect(gate).toBeGreaterThan(-1);
+      expect(completionRead).toBeGreaterThan(gate);
+    }
+    expect(source).toContain('const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } } })');
+
+    const readers = sourceSection(source, "const completionFacts = await loadGroupCompletionFacts({", "const factSnapshot =");
+    expect(readers).toContain("organizationId: body.organizationId");
+    expect(readers).toContain("courseId: course?.id || null");
+    expect(readers).toContain("studentUserIds: activeStudentIds");
+    expect(readers).toContain("enrollments: facts.enrollments");
+    const lessons = sourceSection(readers, "lessons: async", "attempts: async");
+    expect(lessons).toContain('.from("lessons")');
+    expect(lessons).toContain('test_passing_score, updated_at');
+    expect(lessons).toContain('.eq("course_id", courseId)');
+    expect(lessons).toContain('.eq("type", "test")');
+    expect(lessons).toContain('.range(from, to)');
+
+    const attempts = sourceSection(readers, "attempts: async", "records: async");
+    expect(attempts).toContain("=> await userClient");
+    expect(attempts).not.toContain("=> await admin");
+    expect(attempts).toContain('.from("test_attempts")');
+    expect(attempts).toContain('.eq("lesson_id", lessonId)');
+    expect(attempts).toContain('.in("user_id", studentUserIds)');
+    expect(attempts).toContain('.gte("completed_at", completedSince)');
+    expect(attempts).toContain('{ count: "exact" }');
+    expect(attempts).toContain('.order("id")');
+    expect(attempts).toContain('.range(from, to)');
+
+    const records = readers.slice(readers.indexOf("records: async"));
+    expect(records).toContain("=> await userClient");
+    expect(records).not.toContain("=> await admin");
+    expect(records).toContain('.from("education_document_records")');
+    expect(records).toContain('.select(REGISTRATION_RECORD_SELECT, { count: "exact" })');
+    expect(records).toContain('.eq("organization_id", organizationId)');
+    expect(records).toContain('.in("enrollment_id", enrollmentIds)');
+    expect(records).toContain('.is("deleted_at", null)');
+    expect(records).toContain('.in("document_status", [...REGISTRATION_RECORD_STATUSES])');
+    expect(records).toContain('.order("id")');
+    expect(records).toContain('.range(from, to)');
+  });
+
+  it("registers five canonical document types without accepting attempts/record sources or policy from the browser", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const baseTypes = source.match(/const FACT_ROW_TYPES = \[([^\]]+)\] as const/)?.[1] || "";
+    const names = [...baseTypes.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+    names.push(...[...source.matchAll(/serverDocumentFacts\.set\("([^"]+)"/g)].map((match) => match[1]));
+    expect(names.sort()).toEqual(["attestation_sheet", "enrollment_order", "expulsion_order", "registration_book", "student_list"]);
+    const builders = sourceSection(source, "const factSnapshot =", "const sourceDependencies:");
+    expect(builders).toContain("snapshot: factSnapshot");
+    expect(builders).toContain("lessons: completionFacts.lessons, testAttempts: completionFacts.testAttempts");
+    expect(builders).toContain("educationDocumentRecords: completionFacts.educationDocumentRecords");
+    expect(builders).toContain('document.doc_type === "attestation_sheet")!.fill_mode');
+    expect(builders).toContain('document.doc_type === "registration_book")!.fill_mode');
+    expect(builders).not.toContain("document.variables");
+    expect(builders).not.toContain("attemptPolicy:");
+    const requestSchema = sourceSection(source, "const BodySchema", "async function sha256Hex");
+    expect(requestSchema).not.toMatch(/testAttempts|educationDocumentRecords|attemptPolicy|passingScore/);
+  });
+
+  it("does not fall back to browser HTML for canonical rows, including empty results, and persists server provenance", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const rosterCheck = sourceSection(source, "const activeStudentNames =", "body.otherDocuments = body.otherDocuments.map");
+    expect(rosterCheck).toContain("const canonicalFacts = serverDocumentFacts.get(document.doc_type)");
+    expect(rosterCheck.indexOf("if (canonicalFacts) continue")).toBeLessThan(rosterCheck.indexOf("parseGeneratedHtmlRows("));
+
+    const compile = sourceSection(source, "const compiledPackageDocuments =", "stage = \"dry-run-complete\"");
+    expect(compile).toMatch(/const packageScalars: Record<string, string> = factRows\s*\? \{\}\s*:\s*buildGroupDocumentScalars/);
+    expect(compile).toContain('if (factRows && "scalars" in factRows) Object.assign(packageScalars, factRows.scalars)');
+    expect(compile).toContain("const packageRows = factRows?.rows ??");
+    expect(compile).not.toMatch(/factRows\??\.rows\??\.length\s*\?/);
+    expect(compile).toContain("snapshot: { scalars: packageScalars, rows: packageRows }");
+    expect(compile).toContain("variables: factRows ? packageScalars : document.variables");
+    expect(compile).toContain("html: null");
+    expect(compile).toContain('row_source: "server_database_ids"');
+    expect(compile).toContain("row_sources: factRows.rowSources");
+    expect(compile).toContain("fact_issues: factRows.issues");
+    expect(compile).toContain("source_issues: documentSourceIssues(document.doc_type)");
+  });
+
+  it("keeps source failures document-scoped and does not promote verified rows into final documents", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const dependencies = sourceSection(source, "const sourceDependencies:", "const instructorSlots =");
+    expect(dependencies).toContain('attestation_sheet: ["enrollments", "lessons", "test_attempts"]');
+    expect(dependencies).toContain('registration_book: ["enrollments", "education_document_records", "student_frdo_data"]');
+    expect(dependencies).toContain("const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues]");
+    expect(dependencies).toContain("sourceDependencies[docType]?.includes(issue.source)");
+    expect(dependencies).toContain("for (const issue of documentSourceIssues(docType)) statusWarnings.push");
+    const metadata = sourceSection(source, "body.otherDocuments = body.otherDocuments.map", "let journalDocument:");
+    expect(metadata).toContain("serverVerifiedCriticalRequisites: false");
+    expect(metadata).toContain("doc_status: metadata.docStatus");
+    expect(metadata).toContain("document_number: metadata.documentNumber");
+    expect(source).not.toContain("serverVerifiedCriticalRequisites: true");
+    expect(source).not.toMatch(/doc_status:\s*"final"/);
   });
 
   it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {

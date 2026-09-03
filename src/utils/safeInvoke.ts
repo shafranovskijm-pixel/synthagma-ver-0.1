@@ -18,9 +18,11 @@ import {
 const RETRY_DELAYS = [0, 2000, 5000]; // immediate, 2 s, 5 s
 const MAX_RETRIES = 3;
 
-interface SafeInvokeOptions {
+export interface SafeInvokeOptions {
   body?: unknown;
   headers?: Record<string, string>;
+  /** Defaults to true. Disable for non-idempotent writes with an uncertain response. */
+  retry?: boolean;
 }
 
 interface SafeInvokeResult<T = unknown> {
@@ -33,8 +35,9 @@ export async function safeInvoke<T = unknown>(
   options?: SafeInvokeOptions,
 ): Promise<SafeInvokeResult<T>> {
   let lastError: Error | null = null;
+  const maxAttempts = options?.retry === false ? 1 : MAX_RETRIES;
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Wait before retry (skip for first attempt)
     if (attempt > 0) {
       const delay = RETRY_DELAYS[attempt] ?? 5000;
@@ -85,7 +88,7 @@ export async function safeInvoke<T = unknown>(
     }
   }
 
-  // All retries exhausted — show persistent warning
+  // All allowed attempts exhausted — show persistent warning.
   if (!wasBlockAlreadyShown()) {
     markBlockDetected();
     toast.error(

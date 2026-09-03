@@ -37,12 +37,23 @@ import {
   type GroupDocumentFactsResult,
 } from "../_shared/docx-ooxml/groupDocumentFacts.ts";
 import { loadGroupDocumentFacts } from "../_shared/docx-ooxml/groupDocumentFactsSource.ts";
+import { loadGroupCompletionFacts } from "../_shared/docx-ooxml/groupCompletionFactsSource.ts";
+import {
+  buildGroupAttestationFacts,
+  type GroupAttestationFactsResult,
+} from "../_shared/docx-ooxml/groupAttestationFacts.ts";
+import {
+  buildGroupRegistrationFactRows,
+  REGISTRATION_RECORD_SELECT,
+  REGISTRATION_RECORD_STATUSES,
+  type GroupRegistrationFactsResult,
+} from "../_shared/docx-ooxml/groupRegistrationFacts.ts";
 
 /**
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v15";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v16";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -206,10 +217,11 @@ Deno.serve(async (req) => {
         }),
       })),
     };
-    if (
-      body.dryRun
-      && req.headers.get("X-Sintagma-Required-Compiler-Revision") !== COMPILER_REVISION
-    ) {
+    const requiredRevision = req.headers.get("X-Sintagma-Required-Compiler-Revision");
+    // Old open tabs may still save drafts without this header during rollout.
+    // Every explicit revision (including normal saves) is enforced; dry-run
+    // always requires it. Legacy requests still use the new server-only facts.
+    if ((body.dryRun || requiredRevision !== null) && requiredRevision !== COMPILER_REVISION) {
       return json({
         error: "Клиент не подтвердил точную ревизию безопасной серверной проверки",
         writesPerformed: false,
@@ -335,7 +347,7 @@ Deno.serve(async (req) => {
     }, {
       enrollments: async ({ courseId, studentUserIds, from, to }) => await admin
         .from("enrollments")
-        .select("id, user_id, course_id, status, progress, completed_at", { count: "exact" })
+        .select("id, user_id, course_id, status, progress, started_at, completed_at", { count: "exact" })
         .eq("course_id", courseId!)
         .in("user_id", studentUserIds)
         .order("id")
@@ -344,33 +356,88 @@ Deno.serve(async (req) => {
       // documents.manage alone must not widen personal-data access via service role.
       studentFrdoData: async ({ organizationId, studentUserIds, from, to }) => await userClient
         .from("student_frdo_data")
-        .select("id, user_id, organization_id, passport_series, passport_number, education_level", { count: "exact" })
+        .select("id, user_id, organization_id, passport_series, passport_number, education_level, last_name, first_name, middle_name, birth_date, gender, citizenship_code", { count: "exact" })
         .eq("organization_id", organizationId)
         .in("user_id", studentUserIds)
         .order("id")
         .range(from, to),
     });
-    const serverDocumentFacts = new Map<string, GroupDocumentFactsResult>();
+    const completionFacts = await loadGroupCompletionFacts({
+      scope: {
+        organizationId: body.organizationId,
+        courseId: course?.id || null,
+        studentUserIds: activeStudentIds,
+      },
+      enrollments: facts.enrollments,
+      fillMode: body.otherDocuments.some((document) =>
+        (document.doc_type === "attestation_sheet" || document.doc_type === "registration_book")
+        && document.fill_mode === "data") ? "data" : "blank",
+    }, {
+      lessons: async ({ courseId, from, to }) => await admin
+        .from("lessons")
+        .select("id, course_id, type, order_index, test_passing_score, updated_at", { count: "exact" })
+        .eq("course_id", courseId)
+        .eq("type", "test")
+        .order("id")
+        .range(from, to),
+      // Outcomes and document registers are limited by the caller's existing RLS.
+      // Do not turn documents.manage into broader grade/personal-data access.
+      attempts: async ({ lessonId, studentUserIds, completedSince, from, to }) => await userClient
+        .from("test_attempts")
+        .select("id, user_id, lesson_id, score, max_score, completed_at", { count: "exact" })
+        .eq("lesson_id", lessonId)
+        .in("user_id", studentUserIds)
+        .gte("completed_at", completedSince)
+        .order("id")
+        .range(from, to),
+      records: async ({ organizationId, enrollmentIds, from, to }) => await userClient
+        .from("education_document_records")
+        .select(REGISTRATION_RECORD_SELECT, { count: "exact" })
+        .eq("organization_id", organizationId)
+        .in("enrollment_id", enrollmentIds)
+        .is("deleted_at", null)
+        .in("document_status", [...REGISTRATION_RECORD_STATUSES])
+        .order("id")
+        .range(from, to),
+    });
+    const factSnapshot = {
+      organization, group, course,
+      profiles: profilesResult.data || [],
+      enrollments: facts.enrollments,
+      studentFrdoData: facts.studentFrdoData,
+    };
+    type ServerDocumentFacts = GroupDocumentFactsResult | GroupAttestationFactsResult | GroupRegistrationFactsResult;
+    const serverDocumentFacts = new Map<string, ServerDocumentFacts>();
     for (const docType of FACT_ROW_TYPES) {
       const factRows = buildGroupDocumentFactRows({
         docType,
-        snapshot: {
-          organization,
-          group,
-          course,
-          profiles: profilesResult.data || [],
-          enrollments: facts.enrollments,
-          studentFrdoData: facts.studentFrdoData,
-        },
+        snapshot: factSnapshot,
       });
       serverDocumentFacts.set(docType, factRows);
+    }
+    serverDocumentFacts.set("attestation_sheet", buildGroupAttestationFacts({
+      snapshot: { ...factSnapshot, lessons: completionFacts.lessons, testAttempts: completionFacts.testAttempts },
+      fillMode: body.otherDocuments.find((document) => document.doc_type === "attestation_sheet")!.fill_mode,
+      // No inferred latest/best or 2–5 policy: unresolved choices stay visible in draft warnings.
+    }));
+    serverDocumentFacts.set("registration_book", buildGroupRegistrationFactRows({
+      snapshot: { ...factSnapshot, educationDocumentRecords: completionFacts.educationDocumentRecords },
+      fillMode: body.otherDocuments.find((document) => document.doc_type === "registration_book")!.fill_mode,
+    }));
+    const sourceDependencies: Record<string, readonly string[]> = {
+      enrollment_order: ["enrollments"],
+      expulsion_order: ["enrollments"],
+      student_list: ["student_frdo_data"],
+      attestation_sheet: ["enrollments", "lessons", "test_attempts"],
+      registration_book: ["enrollments", "education_document_records", "student_frdo_data"],
+    };
+    const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues];
+    const documentSourceIssues = (docType: string) => allSourceIssues.filter((issue) =>
+      sourceDependencies[docType]?.includes(issue.source));
+    for (const [docType, factRows] of serverDocumentFacts) {
       const documentName = body.otherDocuments.find((document) => document.doc_type === docType)?.name || docType;
       for (const issue of factRows.issues) statusWarnings.push(`${documentName}: ${issue.message}`);
-      for (const issue of facts.sourceIssues) {
-        if ((docType === "student_list") === (issue.source === "student_frdo_data")) {
-          statusWarnings.push(`${documentName}: ${issue.message}`);
-        }
-      }
+      for (const issue of documentSourceIssues(docType)) statusWarnings.push(`${documentName}: ${issue.message}`);
     }
 
     const instructorSlots = instructorShortSlots(group.instructor_name);
@@ -425,9 +492,14 @@ Deno.serve(async (req) => {
         return json({ error: `Нет Word-шаблона для ${document.doc_type}`, stage }, 422);
       }
       const manifest = JSON.parse(templateEntry.manifestJson) as GroupDocumentManifest;
-      const rows = serverDocumentFacts.get(document.doc_type)?.rows ?? (manifest.row_source_key
+      const canonicalFacts = serverDocumentFacts.get(document.doc_type);
+      // Identity and scope were validated by IDs in the server builders. A
+      // historical document's name may differ from the current profile; a name
+      // comparison must not discard that real record or join it to another user.
+      if (canonicalFacts) continue;
+      const rows = manifest.row_source_key
         ? parseGeneratedHtmlRows(document.variables?.[manifest.row_source_key], manifest.row_tokens)
-        : []);
+        : [];
       const rosterIssue = validateStudentRowsAgainstRoster({
         docType: document.doc_type,
         fillMode: document.fill_mode,
@@ -439,7 +511,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Приказы и список уже используют серверные строки по IDs. Остальные
+    // Приказы, список, ведомость и книга используют серверные строки по IDs. Остальные
     // строки, отдельные даты/подписанты и атомарная финализация ещё не
     // подтверждены. Поэтому не повышаем ни один документ до final.
     body.otherDocuments = body.otherDocuments.map((document) => {
@@ -592,7 +664,7 @@ Deno.serve(async (req) => {
       }
       const documentSignatory = resolveDocumentSignatory(document.signatory, organization);
       const factRows = serverDocumentFacts.get(document.doc_type);
-      // These three templates use only the server fields below plus explicit
+      // Canonical templates use only the server fields below plus explicit
       // draft metadata/signatory. Do not retain hidden browser HTML in scalars.
       const packageScalars: Record<string, string> = factRows
         ? {}
@@ -633,7 +705,7 @@ Deno.serve(async (req) => {
         EXPULSION_OUTCOME: "без выдачи удостоверений о повышении квалификации",
         STUDENTS_COUNT: String(((profilesResult.data as any[]) || []).length),
       });
-      if (factRows) Object.assign(packageScalars, factRows.scalars);
+      if (factRows && "scalars" in factRows) Object.assign(packageScalars, factRows.scalars);
       const packageRows = factRows?.rows ?? (packageManifest.row_source_key
         ? parseGeneratedHtmlRows(
             document.variables?.[packageManifest.row_source_key],
@@ -669,11 +741,10 @@ Deno.serve(async (req) => {
         source_note: [
           "Оригинальный Word-бланк из архива клиента «для сайта (1).zip» с согласованными правками из Телемоста от 12.08.2026.",
           document.source_note,
-          factRows ? "Строки получены сервером из состава группы, зачислений и личных данных своей организации; совпадение ФИО не используется как связь." : null,
+          factRows ? "Строки получены сервером по ID состава группы, зачислений и доступных записей своей организации; совпадение ФИО не используется как связь." : null,
+          document.doc_type === "registration_book" ? "Запись реестра не подтверждает физическое вручение документа; подписи и отметки о вручении автоматически не проставляются." : null,
           ...(factRows?.issues.map((issue) => issue.message) || []),
-          ...facts.sourceIssues.filter((issue) => factRows
-            && ((document.doc_type === "student_list") === (issue.source === "student_frdo_data")))
-            .map((issue) => issue.message),
+          ...documentSourceIssues(document.doc_type).map((issue) => issue.message),
         ].filter(Boolean).join(" "),
         template_registry_key: packageManifest.template_id,
         template_version_label: packageManifest.template_version,
@@ -687,8 +758,7 @@ Deno.serve(async (req) => {
             row_source: "server_database_ids",
             row_sources: factRows.rowSources,
             fact_issues: factRows.issues,
-            source_issues: facts.sourceIssues.filter((issue) =>
-              (document.doc_type === "student_list") === (issue.source === "student_frdo_data")),
+            source_issues: documentSourceIssues(document.doc_type),
           } : {}),
         },
         docx_sha256: packageHash,
