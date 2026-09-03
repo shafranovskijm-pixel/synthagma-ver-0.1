@@ -23,11 +23,11 @@
   "source_manifest": "D:\\Codex\\ЗАДАЧИ\\outputs\\csz_refiling_20260902\\02_для_ЭИОС\\03_Манифест_курса_178ч.json",
   "verification_register": "D:\\Codex\\SINTAGMA\\labor-xml-p0-20260902\\docs\\course-library\\csz-178h\\resource-verification-2026-09-03.json",
   "verification_summary": {
-    "http_200": 19,
-    "http_404": 2,
-    "network_timeout": 6,
+    "http_200": 21,
+    "http_404": 1,
+    "network_timeout": 5,
     "tls_failure": 1,
-    "confirmed_replacements_http_200": 7,
+    "confirmed_replacements_http_200": 5,
     "remaining_holds": 5
   },
   "resources": [
@@ -37,7 +37,7 @@
       "category": "legal_acts",
       "description": "вводится в каталог курса как официальный источник структуры и содержания",
       "source_name": "Официальный государственный источник",
-      "original_url": "https://publication.pravo.gov.ru/document/0001202211280011",
+      "original_url": "https://mchs.gov.ru/dokumenty/7404",
       "proposed_url": "https://mchs.gov.ru/dokumenty/7404",
       "recommended_source_page": "https://minjust.consultant.ru/documents/33502",
       "module_no": null,
@@ -45,13 +45,13 @@
       "last_checked_at": "2026-09-03",
       "usage_basis": "official_open_source",
       "library_status": "needs_review",
-      "original_availability": "000_TIMEOUT",
+      "original_availability": "200_HTML",
       "proposed_availability": "200_HTML",
       "availability": "200_HTML",
       "source_class": "GOV_OFFICIAL",
       "reuse_signal": "MCHS_CC_BY_4_0",
-      "verification_decision": "REPLACE",
-      "verification_note": "The official MChS page has the exact Order No. 1156 title and downloadable DOCX/PDF files. The official Minjust record for Order No. 468 confirms the current amendment; its footer states CC BY 4.0 for site materials.",
+      "verification_decision": "GO_LINK_ONLY",
+      "verification_note": "The source URL was corrected to the official MChS page with the exact Order No. 1156 title and downloadable DOCX/PDF files. The official Minjust record for Order No. 468 confirms the current amendment; the MChS footer states CC BY 4.0 for site materials.",
       "import_action": "HOLD"
     },
     {
@@ -175,7 +175,7 @@
       "category": "legal_acts",
       "description": "каталог актуальных редакций; конкретная редакция проверяется на дату занятия",
       "source_name": "Официальный государственный источник",
-      "original_url": "https://mchs.gov.ru/dokumenty/svody-pravil",
+      "original_url": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/svody-pravil",
       "proposed_url": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/svody-pravil",
       "recommended_source_page": null,
       "module_no": null,
@@ -183,13 +183,13 @@
       "last_checked_at": "2026-09-03",
       "usage_basis": "official_open_source",
       "library_status": "needs_review",
-      "original_availability": "404_HTML",
+      "original_availability": "200_HTML",
       "proposed_availability": "200_HTML",
       "availability": "200_HTML",
       "source_class": "GOV_OFFICIAL",
       "reuse_signal": "MCHS_CC_BY_4_0",
-      "verification_decision": "REPLACE",
-      "verification_note": "original MChS path is broken",
+      "verification_decision": "GO_LINK_ONLY",
+      "verification_note": "The source URL was corrected to the verified official MChS collection page.",
       "import_action": "HOLD"
     },
     {
@@ -772,7 +772,7 @@
     "The new 178-hour course does not exist yet, so target_course.id and module ids are absent",
     "The source manifest and internal files are not approved",
     "5 source or playback candidates remain unresolved; every external row remains import_action=HOLD until approval",
-    "7 working replacement URLs are confirmed but still require manifest approval before import",
+    "5 working replacement URLs are confirmed but still require manifest approval before import",
     "Manufacturer and video rights require link-only decisions or separate confirmation",
     "Own educational materials are not yet mapped to target course module ids"
   ]
