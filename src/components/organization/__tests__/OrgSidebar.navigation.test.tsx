@@ -243,7 +243,10 @@ describe("OrgSidebar navigation", () => {
       within(sidebar).getByRole("button", { name: "Выйти" }),
     ];
 
-    controls.forEach((control) => expect(control).toHaveClass("mx-auto", "h-11", "w-11"));
+    controls.forEach((control) => {
+      expect(control).toHaveClass("mx-auto", "h-11", "w-11");
+      expect(control).not.toHaveClass("mt-1");
+    });
 
     const betaDot = within(within(sidebar).getByRole("link", { name: "Отчёты" }))
       .getByLabelText("Бета-версия");
@@ -270,9 +273,25 @@ describe("OrgSidebar navigation", () => {
       within(sidebar).getByRole("button", { name: "Выйти" }),
     ];
 
-    controls.forEach((control) => expect(control).toHaveClass("mx-auto", "h-14", "w-[68px]"));
+    controls.forEach((control) => {
+      expect(control).toHaveClass(
+        "mx-auto",
+        "grid",
+        "h-14",
+        "w-[68px]",
+        "grid-rows-[18px_20px]",
+        "content-center",
+        "justify-items-center",
+      );
+      expect(control).not.toHaveClass("mt-1");
+    });
     expect(within(sidebar).getByRole("button", { name: "Настройки" }).parentElement).toHaveClass("items-center");
     expect(within(sidebar).getByRole("button", { name: "Выйти" })).toHaveTextContent("Выйти");
+
+    controls.forEach((control) => {
+      const label = control.querySelector("span.line-clamp-2");
+      expect(label).toHaveClass("h-5", "w-[64px]", "leading-[10px]");
+    });
 
     const betaDot = within(within(sidebar).getByRole("link", { name: "Отчёты" }))
       .getByLabelText("Бета-версия");
