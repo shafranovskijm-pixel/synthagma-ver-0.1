@@ -172,6 +172,7 @@ export function useStudentDetailCardLogic({
   } | null>(null);
   const [isLoginLinkBusy, setIsLoginLinkBusy] = useState(false);
   const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
+  const [studentDataLoadError, setStudentDataLoadError] = useState<string | null>(null);
 
   const decryptedPassword = decryptedPasswordResult?.identityKey === identityKey
     ? decryptedPasswordResult.value
@@ -198,6 +199,7 @@ export function useStudentDetailCardLogic({
 
   const resetLoadedStudentData = useCallback(() => {
     setLoadedIdentityKey(null);
+    setStudentDataLoadError(null);
     setConsents([]);
     setPepAgreements([]);
     setGeneratedConsents([]);
@@ -273,6 +275,23 @@ export function useStudentDetailCardLogic({
       ]);
 
       if (!isCurrentRequest()) return;
+      const failedQueries = [
+        ["согласия", consentsRes],
+        ["сформированные согласия", generatedConsentsRes],
+        ["идентификация", verificationsRes],
+        ["документы обучения", documentsRes],
+        ["личные документы", identityDocsRes],
+        ["данные ФИС ФРДО", frdoRes],
+        ["соглашения ПЭП", pepRes],
+        ["профиль", profileRes],
+      ].filter(([, result]) => result.error);
+      if (failedQueries.length > 0) {
+        console.error(
+          "[useStudentDetailCard] required queries failed:",
+          failedQueries.map(([name, result]) => ({ name, error: result.error })),
+        );
+        throw new Error("Не удалось подтвердить данные личного дела ученика");
+      }
       setConsents((consentsRes.data || []) as ConsentRecord[]);
       setGeneratedConsents((generatedConsentsRes.data || []) as GeneratedConsentRecord[]);
       setVerifications((verificationsRes.data || []) as VerificationRecord[]);
@@ -289,8 +308,12 @@ export function useStudentDetailCardLogic({
     } catch (error) {
       if (isCurrentRequest()) {
         console.error("Error loading student data:", error);
-        setLoadedIdentityKey(requestIdentityKey);
+        setStudentDataLoadError(
+          "Не удалось подтвердить данные личного дела. Мы не показываем пустые документы вместо ошибки.",
+        );
+        setIsLoadingPassword(false);
       }
+      return;
     } finally {
       if (isCurrentRequest()) setIsLoading(false);
     }
@@ -616,7 +639,9 @@ export function useStudentDetailCardLogic({
   const formatDate = (dateStr: string) => format(new Date(dateStr), "d MMMM yyyy, HH:mm", { locale: ru });
   const formatDuration = (seconds: number) => { const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); return h > 0 ? `${h} ч ${m} мин` : `${m} мин`; };
 
-  const hasCurrentIdentityData = !!identityKey && loadedIdentityKey === identityKey;
+  const hasCurrentIdentityData = !!identityKey
+    && loadedIdentityKey === identityKey
+    && !studentDataLoadError;
   const currentConsents = hasCurrentIdentityData ? consents : [];
   const currentPepAgreements = hasCurrentIdentityData ? pepAgreements : [];
   const currentGeneratedConsents = hasCurrentIdentityData ? generatedConsents : [];
@@ -630,6 +655,7 @@ export function useStudentDetailCardLogic({
   const getIdentityDocByType = (type: string) => currentIdentityDocs.find(d => d.type === type);
 
   const getMissingDocuments = () => {
+    if (!hasCurrentIdentityData) return [];
     const req = [{ type: "passport", label: "Паспорт или свидетельство о рождении" }, { type: "snils", label: "СНИЛС" }, { type: "education_document", label: "Документ об образовании" }];
     return req.filter(doc => {
       if (doc.type === "passport") return !currentIdentityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
@@ -640,6 +666,10 @@ export function useStudentDetailCardLogic({
 
   const handleSendDocumentsReminder = async () => {
     if (!student) return;
+    if (!hasCurrentIdentityData) {
+      toast.error("Сначала повторите загрузку личного дела ученика");
+      return;
+    }
     const missingDocs = getMissingDocuments();
     if (missingDocs.length === 0) { toast.info("Все документы загружены"); return; }
     setIsSendingReminder(true);
@@ -707,7 +737,9 @@ export function useStudentDetailCardLogic({
 
   return {
     activeTab, setActiveTab,
-    isLoading: !!identityKey && (isLoading || !hasCurrentIdentityData),
+    isLoading: !!identityKey && !studentDataLoadError && (isLoading || !hasCurrentIdentityData),
+    dataLoadError: identityKey ? studentDataLoadError : null,
+    retryLoadStudentData: loadStudentData,
     consents: currentConsents,
     pepAgreements: currentPepAgreements,
     latestPepAgreement,
@@ -740,7 +772,8 @@ export function useStudentDetailCardLogic({
     phone: hasCurrentIdentityData ? phone : "", savePhone, savingPhone,
     region: hasCurrentIdentityData ? region : "", saveRegion, savingRegion,
     jobPosition: hasCurrentIdentityData ? jobPosition : "", saveJobPosition, savingJobPosition,
-    autoLoginToken, isLoginLinkBusy,
+    autoLoginToken: hasCurrentIdentityData ? autoLoginToken : null,
+    isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
     blockedAt: hasCurrentIdentityData ? blockedAt : null,
     blockedReason: hasCurrentIdentityData ? blockedReason : null,

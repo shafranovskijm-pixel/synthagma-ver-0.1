@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, LogIn } from "lucide-react";
+import { AlertTriangle, ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
@@ -202,6 +202,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
       // Refetch only the student data — no full page reload (avoids auth 504 / logout)
       loadStudent(false);
     } });
+  const activeTabNeedsStudentData = ["profile", "identification", "documents"].includes(h.activeTab);
 
   const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
 
@@ -413,8 +414,17 @@ function StudentPageInner({ studentId }: { studentId: string }) {
 
             {/* Tab content */}
             <div className="flex-1 min-w-0">
-              {h.isLoading ? (
+              {activeTabNeedsStudentData && h.isLoading ? (
                 <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
+              ) : activeTabNeedsStudentData && h.dataLoadError ? (
+                <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+                  <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+                  <p className="font-semibold text-foreground">Не удалось загрузить личное дело</p>
+                  <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{h.dataLoadError}</p>
+                  <Button variant="outline" className="mt-4 gap-2 rounded-xl" onClick={() => void h.retryLoadStudentData()}>
+                    <RefreshCw className="h-4 w-4" /> Повторить
+                  </Button>
+                </div>
               ) : (
                 <>
                   {h.activeTab === "profile" && (

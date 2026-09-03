@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import { useStudentDetailCardLogic } from "@/hooks/useStudentDetailCard";
 
 interface Deferred<T> {
@@ -118,6 +119,52 @@ describe("useStudentDetailCardLogic identity races", () => {
     queryState.tokenResponses.clear();
     queryState.filters.length = 0;
     queryState.rpcCalls.length = 0;
+    vi.mocked(toast.error).mockClear();
+  });
+
+  it("fails closed on a required query error and recovers only after retry", async () => {
+    queryState.coreResponses.set(
+      "student-a",
+      Promise.resolve({ data: null, error: { message: "database unavailable" } }),
+    );
+
+    const { result } = renderHook(() => useStudentDetailCardLogic({
+      isOpen: true,
+      student: student("student-a") as any,
+      organizationId: "org-1",
+      enrollments: [],
+    }));
+
+    await waitFor(() => {
+      expect(result.current.dataLoadError).toMatch(/не удалось подтвердить/i);
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.consents).toEqual([]);
+    expect(result.current.documents).toEqual([]);
+    expect(result.current.getMissingDocuments()).toEqual([]);
+    expect(result.current.decryptedPassword).toBeNull();
+    expect(queryState.rpcCalls).toEqual([]);
+
+    await act(async () => {
+      await result.current.handleSendDocumentsReminder();
+    });
+    expect(toast.error).toHaveBeenCalledWith("Сначала повторите загрузку личного дела ученика");
+
+    queryState.coreResponses.set(
+      "student-a",
+      Promise.resolve({ data: [{ id: "consent-student-a" }], error: null }),
+    );
+    await act(async () => {
+      await result.current.retryLoadStudentData();
+    });
+
+    await waitFor(() => {
+      expect(result.current.dataLoadError).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.consents.map((item: any) => item.id)).toEqual(["consent-student-a"]);
+      expect(result.current.identityDocs.map((item: any) => item.id)).toEqual(["identity-student-a"]);
+      expect(result.current.decryptedPassword).toBe("password-student-a");
+    });
   });
 
   it("never exposes student A data, password or token after switching to B", async () => {

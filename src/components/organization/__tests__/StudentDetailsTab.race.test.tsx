@@ -19,6 +19,8 @@ const testState = vi.hoisted(() => ({
   profileLookups: [] as Array<Record<string, string>>,
   decryptCalls: [] as string[],
   activeTab: "profile",
+  studentDataLoadError: null as string | null,
+  retryStudentData: vi.fn(),
   studentPageError: null as Error | null,
   studentPageCalls: [] as Array<Record<string, unknown>>,
 }));
@@ -55,6 +57,8 @@ vi.mock("@/hooks/useStudentDetailCard", () => ({
     activeTab: testState.activeTab,
     setActiveTab: vi.fn(),
     isLoading: false,
+    dataLoadError: testState.studentDataLoadError,
+    retryLoadStudentData: testState.retryStudentData,
     previewDoc: null,
     setPreviewDoc: vi.fn(),
     viewConsentDialog: null,
@@ -181,6 +185,8 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.profileLookups.length = 0;
     testState.decryptCalls.length = 0;
     testState.activeTab = "profile";
+    testState.studentDataLoadError = null;
+    testState.retryStudentData.mockClear();
     testState.studentPageError = null;
     testState.studentPageCalls.length = 0;
   });
@@ -282,5 +288,37 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
       p_limit: 100,
       p_offset: 0,
     }));
+  });
+
+  it("shows a fail-closed retry state on personal-data tabs", async () => {
+    testState.activeTab = "profile";
+    testState.studentDataLoadError = "Не удалось подтвердить личное дело";
+    testState.profileResponses.set(
+      "student-a",
+      Promise.resolve({ data: profile("student-a", "Student A"), error: null }),
+    );
+
+    renderDetails();
+
+    expect(await screen.findByText("Не удалось загрузить личное дело")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+    expect(testState.retryStudentData).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Личное дело доступно")).not.toBeInTheDocument();
+  });
+
+  it("keeps independent course and header actions available when personal-data loading fails", async () => {
+    testState.activeTab = "courses";
+    testState.studentDataLoadError = "Не удалось подтвердить личное дело";
+    testState.profileResponses.set(
+      "student-a",
+      Promise.resolve({ data: profile("student-a", "Student A"), error: null }),
+    );
+
+    renderDetails();
+
+    expect(await screen.findByText("Курсы (0)")).toBeInTheDocument();
+    expect(screen.queryByText("Не удалось загрузить личное дело")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Отправить на подпись" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Войти как ученик" })).toBeEnabled();
   });
 });

@@ -213,6 +213,7 @@ export function StudentDetailsTab() {
       invalidateOrganizationDocumentData(qc, organizationId);
     },
   });
+  const activeTabNeedsStudentData = ["profile", "identification", "documents"].includes(h.activeTab);
 
   const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
 
@@ -377,8 +378,17 @@ export function StudentDetailsTab() {
 
         {/* Tab content */}
         <div className="flex-1 min-w-0">
-          {h.isLoading ? (
+          {activeTabNeedsStudentData && h.isLoading ? (
             <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
+          ) : activeTabNeedsStudentData && h.dataLoadError ? (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+              <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+              <p className="font-semibold text-foreground">Не удалось загрузить личное дело</p>
+              <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">{h.dataLoadError}</p>
+              <Button variant="outline" className="mt-4 gap-2 rounded-xl" onClick={() => void h.retryLoadStudentData()}>
+                <RefreshCw className="h-4 w-4" /> Повторить
+              </Button>
+            </div>
           ) : (
             <>
               {h.activeTab === "profile" && (
