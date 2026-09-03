@@ -156,7 +156,9 @@ type SidebarMode = "expanded" | "compact" | "icons";
 const MODE_WIDTH: Record<SidebarMode, number> = { expanded: 220, compact: 88, icons: 64 };
 const ICON_RAIL_CONTROL = "mx-auto flex h-11 w-11 items-center justify-center p-0";
 const COMPACT_RAIL_CONTROL =
-  "mx-auto flex h-14 w-[68px] flex-col items-center justify-center gap-0.5 px-1 py-1.5";
+  "mx-auto grid h-14 w-[68px] grid-rows-[18px_20px] content-center justify-items-center gap-0.5 px-1 py-1.5";
+const COMPACT_RAIL_LABEL =
+  "h-5 w-[64px] overflow-hidden text-center text-[9px] font-medium leading-[10px] line-clamp-2";
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -608,7 +610,7 @@ export function OrgSidebar() {
         ) : itemShowLabels ? (
           <span
             className={cn(
-              "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
+              COMPACT_RAIL_LABEL,
               isActive ? "text-primary-foreground/95" : "text-foreground/70"
             )}
           >
@@ -679,6 +681,7 @@ export function OrgSidebar() {
         aria-expanded={effectiveExpanded && open}
         aria-controls={`org-nav-${group.id}`}
         aria-label={group.label}
+        data-onboarding={group.id === "documents" ? "documents" : undefined}
         title={!effectiveExpanded ? `${group.label}: ${group.description}` : undefined}
         // Windows-like behaviour: compact rails never open a floating card
         // over the workspace. Selecting a grouped section expands the fixed
@@ -720,7 +723,7 @@ export function OrgSidebar() {
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
           </>
         ) : showLabels ? (
-          <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">{group.label}</span>
+          <span className={COMPACT_RAIL_LABEL}>{group.label}</span>
         ) : null}
       </button>
     );
@@ -766,7 +769,7 @@ export function OrgSidebar() {
         className={cn(
           "rounded-lg transition-colors",
           effectiveExpanded
-            ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
+            ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
             : showLabels
               ? COMPACT_RAIL_CONTROL
               : ICON_RAIL_CONTROL,
@@ -781,7 +784,7 @@ export function OrgSidebar() {
         {effectiveExpanded ? (
           <span className="text-[13px] font-medium">{label}</span>
         ) : showLabels ? (
-          <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">
+          <span className={COMPACT_RAIL_LABEL}>
             {label}
           </span>
         ) : null}
@@ -903,7 +906,7 @@ export function OrgSidebar() {
                 className={cn(
                   "rounded-lg transition-colors",
                   effectiveExpanded
-                    ? "flex h-9 w-full items-center gap-3 px-2.5 text-left"
+                    ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
                     : showLabels
                       ? COMPACT_RAIL_CONTROL
                       : ICON_RAIL_CONTROL,
@@ -921,7 +924,7 @@ export function OrgSidebar() {
                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", settingsExpanded && "rotate-180")} />
                   </>
                 ) : showLabels ? (
-                  <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Настройки</span>
+                  <span className={COMPACT_RAIL_LABEL}>Настройки</span>
                 ) : null}
               </button>
               {effectiveExpanded && settingsExpanded && (
@@ -956,7 +959,7 @@ export function OrgSidebar() {
               return (
                 <button
                   onClick={handleCycleMode}
-                  className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors text-[12px] font-medium"
+                  className="hidden h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-transparent text-[12px] font-medium text-primary transition-colors hover:border-primary/50 hover:bg-primary/10 lg:flex"
                   aria-label={`Переключить режим меню: ${nextLabel}`}
                   title={`Сейчас: ${currentLabel}. Далее: ${nextLabel}`}
                 >
@@ -979,7 +982,7 @@ export function OrgSidebar() {
                     aria-label={`Переключить режим меню: ${nextLabel}`}
                   >
                     <Icon className="h-[18px] w-[18px]" />
-                    {showLabels && <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">{nextLabel}</span>}
+                    {showLabels && <span className={COMPACT_RAIL_LABEL}>{nextLabel}</span>}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="z-[100] max-w-[220px]">
@@ -999,9 +1002,9 @@ export function OrgSidebar() {
               <button
                 onClick={onLogout}
                 className={cn(
-                  "rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-1",
+                  "rounded-lg text-destructive transition-colors hover:bg-destructive/10",
                   effectiveExpanded
-                    ? "flex items-center gap-3 px-2.5 h-9 w-full text-left"
+                    ? "flex h-10 w-full items-center gap-3 px-2.5 text-left"
                     : showLabels
                       ? COMPACT_RAIL_CONTROL
                       : ICON_RAIL_CONTROL
@@ -1012,7 +1015,7 @@ export function OrgSidebar() {
                 {effectiveExpanded ? (
                   <span className="text-[13px] font-medium">Выйти</span>
                 ) : showLabels ? (
-                  <span className="max-w-[64px] text-center text-[9px] font-medium leading-tight">Выйти</span>
+                  <span className={COMPACT_RAIL_LABEL}>Выйти</span>
                 ) : null}
               </button>
             </TooltipTrigger>
