@@ -38,6 +38,9 @@ import {
 } from "../_shared/docx-ooxml/groupDocumentFacts.ts";
 import { loadGroupDocumentFacts } from "../_shared/docx-ooxml/groupDocumentFactsSource.ts";
 import { loadGroupCompletionFacts } from "../_shared/docx-ooxml/groupCompletionFactsSource.ts";
+import { loadGroupPassFacts } from "../_shared/docx-ooxml/groupPassFactsSource.ts";
+import { buildGroupPassFactRows, type GroupPassFactsResult } from "../_shared/docx-ooxml/groupPassFacts.ts";
+import { buildGroupTitleFacts, type GroupTitleFactsResult } from "../_shared/docx-ooxml/groupTitleFacts.ts";
 import {
   buildGroupAttestationFacts,
   type GroupAttestationFactsResult,
@@ -53,7 +56,7 @@ import {
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v16";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v17";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -400,13 +403,35 @@ Deno.serve(async (req) => {
         .order("id")
         .range(from, to),
     });
+    const passFacts = await loadGroupPassFacts({
+      organizationId: body.organizationId, groupId: body.groupId, studentUserIds: activeStudentIds,
+    }, {
+      // New personal/contact fields must satisfy the caller's existing RLS too.
+      contacts: async ({ organizationId, groupId, studentUserIds, from, to }) => await userClient
+        .from("profiles")
+        .select("id, user_id, organization_id, student_group_id, archived_at, phone, company_id", { count: "exact" })
+        .eq("organization_id", organizationId)
+        .eq("student_group_id", groupId)
+        .in("user_id", studentUserIds)
+        .is("archived_at", null)
+        .order("id")
+        .range(from, to),
+      companies: async ({ organizationId, companyIds, from, to }) => await userClient
+        .from("companies")
+        .select("id, organization_id, name", { count: "exact" })
+        .eq("organization_id", organizationId)
+        .in("id", companyIds)
+        .order("id")
+        .range(from, to),
+    });
     const factSnapshot = {
       organization, group, course,
       profiles: profilesResult.data || [],
       enrollments: facts.enrollments,
       studentFrdoData: facts.studentFrdoData,
     };
-    type ServerDocumentFacts = GroupDocumentFactsResult | GroupAttestationFactsResult | GroupRegistrationFactsResult;
+    type ServerDocumentFacts = GroupDocumentFactsResult | GroupAttestationFactsResult
+      | GroupRegistrationFactsResult | GroupPassFactsResult | GroupTitleFactsResult;
     const serverDocumentFacts = new Map<string, ServerDocumentFacts>();
     for (const docType of FACT_ROW_TYPES) {
       const factRows = buildGroupDocumentFactRows({
@@ -424,14 +449,42 @@ Deno.serve(async (req) => {
       snapshot: { ...factSnapshot, educationDocumentRecords: completionFacts.educationDocumentRecords },
       fillMode: body.otherDocuments.find((document) => document.doc_type === "registration_book")!.fill_mode,
     }));
+    const passContactsByUser = new Map(passFacts.contacts.map((row) => [row.user_id, row]));
+    const passDocumentFacts = buildGroupPassFactRows({
+      snapshot: {
+        organization,
+        group,
+        profiles: factSnapshot.profiles.map((profile) => ({
+          ...profile,
+          phone: passContactsByUser.get(profile.user_id)?.phone ?? null,
+          company_id: passContactsByUser.get(profile.user_id)?.company_id ?? null,
+        })),
+        companies: passFacts.companies,
+      },
+      fillMode: body.fillMode,
+    });
+    for (const profile of factSnapshot.profiles) {
+      if (!passContactsByUser.has(profile.user_id)) passDocumentFacts.issues.push({
+        docType: "pass", code: "contact_not_available", field: "profiles",
+        userId: profile.user_id, severity: "warning",
+        message: "Телефон и связь с компанией участника не подтверждены доступными записями. Пустые поля не означают отсутствия данных в базе.",
+      });
+    }
+    serverDocumentFacts.set("pass", passDocumentFacts);
+    serverDocumentFacts.set("title_page", buildGroupTitleFacts({
+      snapshot: { organization, group },
+      documentDate: body.otherDocuments.find((document) => document.doc_type === "title_page")!.document_date,
+    }));
     const sourceDependencies: Record<string, readonly string[]> = {
       enrollment_order: ["enrollments"],
       expulsion_order: ["enrollments"],
       student_list: ["student_frdo_data"],
       attestation_sheet: ["enrollments", "lessons", "test_attempts"],
       registration_book: ["enrollments", "education_document_records", "student_frdo_data"],
+      pass: ["pass_contacts", "companies"],
+      title_page: [],
     };
-    const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues];
+    const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues, ...passFacts.sourceIssues];
     const documentSourceIssues = (docType: string) => allSourceIssues.filter((issue) =>
       sourceDependencies[docType]?.includes(issue.source));
     for (const [docType, factRows] of serverDocumentFacts) {
@@ -511,7 +564,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Приказы, список, ведомость и книга используют серверные строки по IDs. Остальные
+    // Приказы, список, ведомость, книга, пропуск и титул используют серверные данные. Остальные
     // строки, отдельные даты/подписанты и атомарная финализация ещё не
     // подтверждены. Поэтому не повышаем ни один документ до final.
     body.otherDocuments = body.otherDocuments.map((document) => {
@@ -741,7 +794,8 @@ Deno.serve(async (req) => {
         source_note: [
           "Оригинальный Word-бланк из архива клиента «для сайта (1).zip» с согласованными правками из Телемоста от 12.08.2026.",
           document.source_note,
-          factRows ? "Строки получены сервером по ID состава группы, зачислений и доступных записей своей организации; совпадение ФИО не используется как связь." : null,
+          factRows ? "Данные получены сервером из сохранённой группы и доступных записей своей организации; совпадение ФИО не используется как связь." : null,
+          document.doc_type === "title_page" ? "Год титула — год выбранной даты оформления, а не автоматически текущий год." : null,
           document.doc_type === "registration_book" ? "Запись реестра не подтверждает физическое вручение документа; подписи и отметки о вручении автоматически не проставляются." : null,
           ...(factRows?.issues.map((issue) => issue.message) || []),
           ...documentSourceIssues(document.doc_type).map((issue) => issue.message),

@@ -8,6 +8,7 @@ import type { StudentEnrollment } from "@/types/student";
 import {
   buildLaborSafetyXmlFilename,
   buildStudentLaborSafetyRecords,
+  LaborSafetyXmlValidationError,
   serializeLaborSafetyRecordsXml,
 } from "@/lib/laborSafetyXml";
 import {
@@ -137,11 +138,19 @@ function StudentLaborSafetyXmlCardContent({
   const handleDownload = () => {
     if (!canDownloadDraft) return;
     const exportDate = new Date().toISOString().slice(0, 10);
-    const xml = serializeLaborSafetyRecordsXml({
-      groupName: `Личное дело: ${student.fullName}`,
-      exportDate,
-      records: records.map(result => result.record),
-    });
+    let xml: string;
+    try {
+      xml = serializeLaborSafetyRecordsXml({
+        groupName: `Личное дело: ${student.fullName}`,
+        exportDate,
+        records: records.map(result => result.record),
+      });
+    } catch (error) {
+      toast.error(error instanceof LaborSafetyXmlValidationError
+        ? error.message
+        : "Не удалось сформировать XML. Файл не скачан.");
+      return;
+    }
     const blob = new Blob([xml], { type: "application/xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");

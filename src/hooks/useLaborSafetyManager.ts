@@ -8,6 +8,7 @@ import {
   buildLaborSafetyXmlFilename,
   getLaborSafetyInvalidFields,
   getLaborSafetyMissingFields,
+  LaborSafetyXmlValidationError,
   serializeLaborSafetyRecordsXml,
 } from "@/lib/laborSafetyXml";
 
@@ -308,11 +309,19 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
     const recs = selectedRecordIds.size > 0 ? records.filter(r => selectedRecordIds.has(r.id)) : filteredRecords;
     if (recs.length === 0) { toast.error("Нет данных для экспорта"); return; }
     const exportDate = format(new Date(), 'yyyy-MM-dd');
-    const xml = serializeLaborSafetyRecordsXml({
-      groupName: selectedGroup?.name || "Группа",
-      exportDate,
-      records: recs,
-    });
+    let xml: string;
+    try {
+      xml = serializeLaborSafetyRecordsXml({
+        groupName: selectedGroup?.name || "Группа",
+        exportDate,
+        records: recs,
+      });
+    } catch (error) {
+      toast.error(error instanceof LaborSafetyXmlValidationError
+        ? error.message
+        : "Не удалось сформировать XML. Файл не скачан.");
+      return;
+    }
     const blob = new Blob([xml], { type: 'application/xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

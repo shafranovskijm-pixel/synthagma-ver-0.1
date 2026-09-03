@@ -12,10 +12,12 @@ const state = vi.hoisted(() => ({
   fetchProtocol: vi.fn(),
   saveProtocol: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastWarning: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: (...args: unknown[]) => state.toastSuccess(...args), warning: vi.fn(), error: vi.fn() },
+  toast: { success: (...args: unknown[]) => state.toastSuccess(...args), warning: (...args: unknown[]) => state.toastWarning(...args), error: (...args: unknown[]) => state.toastError(...args) },
 }));
 
 vi.mock("@/hooks/useStaffPermissions", () => ({
@@ -116,12 +118,42 @@ describe("StudentLaborSafetyXmlCard", () => {
     state.fetchProtocol.mockReset();
     state.saveProtocol.mockReset();
     state.toastSuccess.mockReset();
+    state.toastError.mockReset();
+    state.toastWarning.mockReset();
     state.fetchCompanies.mockResolvedValue([]);
     state.fetchProtocol.mockResolvedValue(null);
     state.saveProtocol.mockResolvedValue(protocol);
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  it.each(["\u000b", "\ud800"])("blocks an invalid XML download without losing the source or reporting success: %j", async bad => {
+    state.fetchContext.mockResolvedValue({ ...emptyProtocolContext, courses: [{ ...emptyProtocolContext.courses[0], protocolRecord: protocol }] });
+    const createObjectURL = vi.fn(() => "blob:xml-test");
+    vi.stubGlobal("URL", class extends URL { static createObjectURL = createObjectURL; static revokeObjectURL = vi.fn(); });
+    const blob = vi.spyOn(globalThis, "Blob");
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const onOpenProfile = vi.fn();
+    const view = render(<StudentLaborSafetyXmlCard {...props} onOpenProfile={onOpenProfile} student={{ ...props.student, fullName: `${bad}${props.student.fullName}` }} />);
+    expect(await screen.findByRole("button", { name: "Исправить: ФИО" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Скачать черновик XML" }));
+    expect(state.toastError).toHaveBeenCalledWith(expect.stringContaining("Запись 1, поле «ФИО»"));
+    expect(state.toastError.mock.calls[0][0]).not.toContain(props.student.fullName);
+    expect(blob).not.toHaveBeenCalled();
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(click).not.toHaveBeenCalled();
+    expect(state.toastSuccess).not.toHaveBeenCalled();
+    expect(state.toastWarning).not.toHaveBeenCalled();
+
+    view.rerender(<StudentLaborSafetyXmlCard {...props} onOpenProfile={onOpenProfile} />);
+    await screen.findByText(/Поля внутреннего XML-черновика заполнены/);
+    fireEvent.click(screen.getByRole("button", { name: "Скачать черновик XML" }));
+    expect(blob).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(state.toastSuccess).toHaveBeenCalledTimes(1);
+    expect(state.fetchContext).toHaveBeenCalledTimes(1);
+  });
 
   it("does not render or request data without labor_safety.read", () => {
     state.permissions.delete("labor_safety.read");

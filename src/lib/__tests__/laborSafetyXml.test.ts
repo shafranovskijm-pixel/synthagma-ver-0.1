@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildLaborSafetyXmlFilename,
   buildStudentLaborSafetyRecords,
+  escapeXml,
   getLaborSafetyInvalidFields,
   getLaborSafetyMissingFields,
   isValidInnChecksum,
   isValidIsoDate,
+  LaborSafetyXmlValidationError,
   serializeLaborSafetyRecordsXml,
   type LaborSafetyXmlRecord,
 } from "@/lib/laborSafetyXml";
@@ -34,6 +36,79 @@ const completeRecord: LaborSafetyXmlRecord = {
 };
 
 describe("laborSafetyXml", () => {
+  it.each([
+    ...Array.from({ length: 32 }, (_, code) => code).filter(code => ![9, 10, 13].includes(code)),
+    0xd800, 0xdbff, 0xdc00, 0xdfff, 0xfffe, 0xffff,
+  ])("rejects forbidden XML 1.0 code point %i without repairing data", code => {
+    const value = `Закрытые данные${String.fromCharCode(code)}конец`;
+    const input = { groupName: "Группа", exportDate: "2026-09-04", records: [{ ...completeRecord, full_name: value }] };
+    expect(() => serializeLaborSafetyRecordsXml(input)).toThrow(LaborSafetyXmlValidationError);
+    try { serializeLaborSafetyRecordsXml(input); } catch (error) {
+      expect((error as Error).message).toContain("Запись 1, поле «ФИО»");
+      expect((error as Error).message).toContain(`U+${code.toString(16).toUpperCase().padStart(4, "0")}`);
+      expect((error as Error).message).not.toContain("Закрытые данные");
+      expect((error as Error).message).not.toContain(String.fromCharCode(code));
+    }
+    expect(input.records[0].full_name).toBe(value);
+    expect(getLaborSafetyInvalidFields(input.records[0])).toEqual(["ФИО"]);
+    expect(() => escapeXml(value)).toThrow(LaborSafetyXmlValidationError);
+  });
+
+  it.each([
+    ["full_name", "ФИО"], ["snils", "СНИЛС"], ["position", "Должность"],
+    ["inn", "ИНН организации"], ["organization_name", "Наименование организации"],
+    ["protocol_number", "Номер протокола"], ["program_name", "Программа обучения"],
+    ["exam_date", "Дата проверки знаний"], ["protocol_source", "Источник протокола"],
+  ])("identifies %s and the record number even after valid records", (key, label) => {
+    const record = { ...completeRecord, [key]: "x\u0000y" };
+    expect(() => serializeLaborSafetyRecordsXml({ groupName: "Группа", exportDate: "2026-09-04", records: [completeRecord, record] }))
+      .toThrow(`Запись 2, поле «${label}»: недопустимый для XML 1.0 символ U+0000 (позиция 2)`);
+    expect(getLaborSafetyInvalidFields(record)).toContain(label);
+  });
+
+  it.each([["groupName", "Название группы"], ["exportDate", "Дата экспорта"]])(
+    "checks XML attribute %s separately from record completeness", (key, label) => {
+      expect(() => serializeLaborSafetyRecordsXml({ groupName: "Группа", exportDate: "2026-09-04", records: [], [key]: "x\ud800" }))
+        .toThrow(`Поле «${label}»: недопустимый для XML 1.0 символ U+D800 (позиция 2)`);
+    },
+  );
+
+  it("preserves legal Unicode, paired surrogates, combining characters and XML escapes", () => {
+    const value = "Елизавета — е\u0301 中文 😀 \uD7FF\uE000\uFFFD\u{10000}\u{10FFFF} & < > \" '";
+    const xml = serializeLaborSafetyRecordsXml({ groupName: value, exportDate: "2026-09-04", records: [{ ...completeRecord, full_name: value, program_name: "Программа\tА\nПродолжение\rстроки" }] });
+    const parsed = new DOMParser().parseFromString(xml, "application/xml");
+    expect(parsed.querySelector("parsererror")).toBeNull();
+    expect(parsed.documentElement.getAttribute("group")).toBe(value);
+    expect(parsed.querySelector("FullName")?.textContent).toBe(value);
+    expect(xml).toContain("<ProgramName>Программа\tА\nПродолжение\rстроки</ProgramName>");
+    expect(getLaborSafetyInvalidFields({ ...completeRecord, full_name: value })).toEqual([]);
+  });
+
+  it("escapes runtime protocol-source text as well as typed personal data", () => {
+    const xml = serializeLaborSafetyRecordsXml({ groupName: "Группа", exportDate: "2026-09-04", records: [{
+      ...completeRecord, protocol_source: '<Injected /> & "x"' as LaborSafetyXmlRecord["protocol_source"],
+    }] });
+    const parsed = new DOMParser().parseFromString(xml, "application/xml");
+    expect(parsed.querySelector("parsererror")).toBeNull();
+    expect(parsed.querySelector("Injected")).toBeNull();
+    expect(parsed.querySelector("ProtocolSource")?.textContent).toBe('<Injected /> & "x"');
+  });
+
+  it.each(["\u000b", "\u000c", "\ud800"])("does not hide invalid edge characters during normalization: %j", bad => {
+    const [result] = buildStudentLaborSafetyRecords({
+      fullName: `${bad}${completeRecord.full_name}${bad}`, snils: `${completeRecord.snils}${bad}`,
+      position: completeRecord.position, companyInn: `${bad}${completeRecord.inn}`,
+      companyName: `${bad}${completeRecord.organization_name}`, courses: [{
+        enrollmentId: "enr-1", educationDocumentRecordId: null, courseId: "course-1",
+        courseTitle: `${bad}Программа А`, categoryName: "Охрана труда", status: "completed",
+        completedAt: "2026-09-01T00:00:00Z", protocolNumber: `${bad}ОТ-1`,
+      }],
+    });
+    expect(result.record.full_name).toBe(`${bad}${completeRecord.full_name}${bad}`);
+    expect(result.invalidFields).toEqual(expect.arrayContaining(["ФИО", "СНИЛС", "ИНН организации", "Наименование организации", "Программа обучения", "Номер протокола"]));
+    expect(() => serializeLaborSafetyRecordsXml({ groupName: "Группа", exportDate: "2026-09-04", records: [result.record] })).toThrow("поле «ФИО»");
+  });
+
   it("escapes XML text and attributes", () => {
     const xml = serializeLaborSafetyRecordsXml({
       groupName: `Группа & <1> "А" 'Б'`,

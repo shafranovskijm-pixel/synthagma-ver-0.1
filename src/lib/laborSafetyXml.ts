@@ -60,7 +60,39 @@ const REQUIRED_FIELDS: Array<{
   { key: "exam_date", label: "Дата проверки знаний" },
 ];
 
+/** XML 1.0 Char production; for...of keeps valid UTF-16 pairs together. */
+function findInvalidXmlCharacter(value: string): { codePoint: number; position: number } | null {
+  let position = 0;
+  for (const character of value) {
+    position += 1;
+    const codePoint = character.codePointAt(0)!;
+    if (!(codePoint === 0x09 || codePoint === 0x0a || codePoint === 0x0d
+      || (codePoint >= 0x20 && codePoint <= 0xd7ff)
+      || (codePoint >= 0xe000 && codePoint <= 0xfffd)
+      || (codePoint >= 0x10000 && codePoint <= 0x10ffff))) {
+      return { codePoint, position };
+    }
+  }
+  return null;
+}
+
+export class LaborSafetyXmlValidationError extends Error {
+  constructor(field: string, invalid: { codePoint: number; position: number }, recordNumber?: number) {
+    const code = invalid.codePoint.toString(16).toUpperCase().padStart(4, "0");
+    super(`${recordNumber ? `Запись ${recordNumber}, поле` : "Поле"} «${field}»: недопустимый для XML 1.0 символ U+${code} (позиция ${invalid.position}). Исправьте значение; экспорт отменён.`);
+    this.name = "LaborSafetyXmlValidationError";
+  }
+}
+
+function assertXmlCharacters(value: string, field: string, recordNumber?: number): void {
+  const invalid = findInvalidXmlCharacter(value);
+  if (invalid) throw new LaborSafetyXmlValidationError(field, invalid, recordNumber);
+}
+
 const normalize = (value: string | null | undefined): string | null => {
+  // trim() removes e.g. U+000B/U+000C: preserve invalid input so it is reported,
+  // not silently repaired into different personal data before export validation.
+  if (value && findInvalidXmlCharacter(value)) return value;
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 };
@@ -92,6 +124,7 @@ export function isValidIsoDate(value: string | null | undefined): boolean {
 }
 
 export function escapeXml(value: string): string {
+  assertXmlCharacters(value, "Значение XML");
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -122,6 +155,10 @@ export function getLaborSafetyInvalidFields(record: LaborSafetyXmlRecord): strin
   if (snils && !isValidSnilsChecksum(snils)) invalid.push("СНИЛС");
   if (normalize(record.inn) && !isValidInnChecksum(record.inn)) invalid.push("ИНН организации");
   if (normalize(record.exam_date) && !isValidIsoDate(record.exam_date)) invalid.push("Дата проверки знаний");
+  for (const { key, label } of REQUIRED_FIELDS) {
+    if (findInvalidXmlCharacter(record[key] ?? "") && !invalid.includes(label)) invalid.push(label);
+  }
+  if (record.protocol_source && findInvalidXmlCharacter(record.protocol_source)) invalid.push("Источник протокола");
   return invalid;
 }
 
@@ -172,6 +209,14 @@ export function serializeLaborSafetyRecordsXml(input: {
   exportDate: string;
   records: LaborSafetyXmlRecord[];
 }): string {
+  // Validate the whole batch before generating output. This is XML syntax only,
+  // not an official XSD/registry contract or a completeness gate for drafts.
+  input.records.forEach((record, index) => {
+    for (const { key, label } of REQUIRED_FIELDS) assertXmlCharacters(record[key] ?? "", label, index + 1);
+    if (record.protocol_source) assertXmlCharacters(record.protocol_source, "Источник протокола", index + 1);
+  });
+  assertXmlCharacters(input.groupName, "Название группы");
+  assertXmlCharacters(input.exportDate, "Дата экспорта");
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<LaborSafetyRecords group="${escapeXml(input.groupName)}" exportDate="${escapeXml(input.exportDate)}">`,
@@ -189,7 +234,7 @@ export function serializeLaborSafetyRecordsXml(input: {
       `    <ProgramName>${escapeXml(record.program_name ?? "")}</ProgramName>`,
       `    <ExamDate>${escapeXml(record.exam_date ?? "")}</ExamDate>`,
       `    <IsPassed>${typeof record.is_passed !== "boolean" ? "" : record.is_passed ? "Да" : "Нет"}</IsPassed>`,
-      ...(record.protocol_source ? [`    <ProtocolSource>${record.protocol_source}</ProtocolSource>`] : []),
+      ...(record.protocol_source ? [`    <ProtocolSource>${escapeXml(record.protocol_source)}</ProtocolSource>`] : []),
       "  </Record>",
     );
   });
