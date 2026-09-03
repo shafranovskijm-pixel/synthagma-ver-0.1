@@ -19,27 +19,58 @@ interface Course {
   is_published: boolean;
 }
 
+interface StudentGroup {
+  id: string;
+  name: string;
+}
+
+export interface AddStudentInput {
+  name: string;
+  email: string;
+  courseIds: string[];
+  companyId: string;
+  groupId: string;
+  login: string;
+  password: string;
+}
+
 interface AddStudentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   courses: Course[];
   companies: Company[];
-  onSubmit: (name: string, email: string, courseIds: string[], companyId: string, login: string, password: string) => void;
+  groups: StudentGroup[];
+  groupsLoading?: boolean;
+  groupsError?: boolean;
+  onSubmit: (input: AddStudentInput) => void;
   isCreating: boolean;
 }
 
-export function AddStudentDialog({ open, onOpenChange, courses, companies, onSubmit, isCreating }: AddStudentDialogProps) {
+const NO_GROUP_VALUE = "__no_group__";
+
+export function AddStudentDialog({
+  open,
+  onOpenChange,
+  courses,
+  companies,
+  groups,
+  groupsLoading = false,
+  groupsError = false,
+  onSubmit,
+  isCreating,
+}: AddStudentDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [courseIds, setCourseIds] = useState<string[]>([]);
   const [companyId, setCompanyId] = useState("");
+  const [groupId, setGroupId] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [courseSearch, setCourseSearch] = useState("");
 
   useEffect(() => {
     if (open) {
-      setName(""); setEmail(""); setCourseIds([]); setCompanyId("");
+      setName(""); setEmail(""); setCourseIds([]); setCompanyId(""); setGroupId("");
       setLogin(""); setPassword(""); setCourseSearch("");
     }
   }, [open]);
@@ -74,13 +105,13 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
       alert("Пароль должен быть не короче 6 символов");
       return;
     }
-    onSubmit(name, email, courseIds, companyId, login, password);
+    onSubmit({ name, email, courseIds, companyId, groupId, login, password });
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
       if (!v) {
-        setName(""); setEmail(""); setCourseIds([]); setCompanyId("");
+        setName(""); setEmail(""); setCourseIds([]); setCompanyId(""); setGroupId("");
         setLogin(""); setPassword(""); setCourseSearch("");
       }
       onOpenChange(v);
@@ -89,7 +120,7 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
         <DialogHeader>
           <DialogTitle className="font-display">Добавить ученика</DialogTitle>
           <DialogDescription>
-            Создайте нового ученика или добавьте существующего на курс
+            Создайте нового ученика, при необходимости сразу добавьте его в группу и назначьте курсы
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -136,6 +167,40 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
               </Select>
             </div>
           )}
+          <div className="space-y-2">
+            <Label>Группа (необязательно)</Label>
+            {groupsLoading ? (
+              <div className="flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm text-muted-foreground">
+                <SigmaSpinner size="sm" /> Загружаем группы…
+              </div>
+            ) : groupsError ? (
+              <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                Не удалось загрузить группы. Ученика всё равно можно создать без группы.
+              </p>
+            ) : groups.length > 0 ? (
+              <Select
+                value={groupId || NO_GROUP_VALUE}
+                onValueChange={(value) => setGroupId(value === NO_GROUP_VALUE ? "" : value)}
+              >
+                <SelectTrigger className="rounded-xl" aria-label="Группа ученика">
+                  <SelectValue placeholder="Выберите группу" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_GROUP_VALUE}>Без группы</SelectItem>
+                  {groups.map(group => (
+                    <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                Групп пока нет. Ученик будет создан без группы — добавить его можно будет позже.
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Группа помогает вести поток и документы. Зачисление на курсы настраивается отдельно ниже.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label>Курсы (необязательно) {courseIds.length > 0 && <span className="text-primary ml-1">({courseIds.length})</span>}</Label>
             {publishedCourses.length > 5 && (

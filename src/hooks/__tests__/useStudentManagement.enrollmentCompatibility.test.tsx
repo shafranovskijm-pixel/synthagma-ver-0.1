@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   safeInvoke: vi.fn(),
   maybeSingle: vi.fn(),
+  profileMaybeSingle: vi.fn(),
   remainingResult: {
     data: [] as Array<{
       id: string;
@@ -42,6 +43,15 @@ vi.mock("@/api/enrollments", async (importOriginal) => {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => {
+      if (table === "profiles") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: mocks.profileMaybeSingle }),
+            }),
+          }),
+        };
+      }
       if (table !== "enrollments") throw new Error(`Unexpected table: ${table}`);
       return {
         select: () => ({
@@ -81,6 +91,14 @@ describe("useStudentManagement enrollment release compatibility", () => {
       data: activeCourse("course-1"),
       error: null,
     });
+    mocks.profileMaybeSingle.mockResolvedValue({
+      data: {
+        user_id: "student-1",
+        organization_id: "org-1",
+        student_group_id: "group-1",
+      },
+      error: null,
+    });
     mocks.remainingResult = { data: [], error: null };
     mocks.ensureEnrollmentVerified.mockResolvedValue(activeCourse("course-2"));
   });
@@ -112,6 +130,68 @@ describe("useStudentManagement enrollment release compatibility", () => {
     );
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Ученик зачислен на курс");
     expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the selected group and proves membership before reporting success", async () => {
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh,
+    }));
+
+    let created = false;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Иванов Иван Иванович",
+        groupId: "group-1",
+      });
+    });
+
+    expect(created).toBe(true);
+    expect(mocks.safeInvoke).toHaveBeenCalledWith(
+      "register-student",
+      expect.objectContaining({
+        body: expect.objectContaining({ student_group_id: "group-1" }),
+      }),
+    );
+    expect(mocks.profileMaybeSingle).toHaveBeenCalledTimes(1);
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      expect.stringContaining("Группа назначена"),
+    );
+    expect(mocks.toastWarning).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report success when the selected group was not persisted", async () => {
+    mocks.profileMaybeSingle.mockResolvedValueOnce({
+      data: {
+        user_id: "student-1",
+        organization_id: "org-1",
+        student_group_id: null,
+      },
+      error: null,
+    });
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1",
+      onRefresh,
+    }));
+
+    let created = true;
+    await act(async () => {
+      created = await result.current.createStudent({
+        name: "Иванов Иван Иванович",
+        groupId: "group-1",
+      });
+    });
+
+    expect(created).toBe(false);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastWarning).toHaveBeenCalledWith(
+      expect.stringContaining("база не подтвердила добавление в выбранную группу"),
+      { duration: 30000 },
+    );
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 

@@ -18,6 +18,13 @@ interface UseStudentManagementProps {
   checkStudentLimit?: () => { allowed: boolean; message: string };
 }
 
+class StudentGroupPersistenceError extends Error {
+  constructor() {
+    super("База не подтвердила добавление ученика в выбранную группу");
+    this.name = "StudentGroupPersistenceError";
+  }
+}
+
 /**
  * Phase 4B.1.c.1 — minimal student management hook.
  *
@@ -46,6 +53,7 @@ export function useStudentManagement({
     email?: string;
     courseIds?: string[];
     companyId?: string;
+    groupId?: string;
     login?: string;
     password?: string;
   }) => {
@@ -63,6 +71,7 @@ export function useStudentManagement({
       new Set((overrides?.courseIds ?? []).filter(Boolean)),
     );
     const effectiveCompanyId = overrides?.companyId ?? "";
+    const effectiveGroupId = overrides?.groupId ?? "";
     const customLogin = overrides?.login || undefined;
     const customPassword = overrides?.password || undefined;
 
@@ -92,6 +101,7 @@ export function useStudentManagement({
           organization_id: organizationId,
           course_id: firstCourseId,
           company_id: effectiveCompanyId || null,
+          student_group_id: effectiveGroupId || null,
           custom_login: customLogin || null,
           custom_password: customPassword || null,
           enrollment_request_source: "organization_add_student",
@@ -112,6 +122,26 @@ export function useStudentManagement({
       }
       if (data?.error) throw new Error(data.error);
       registeredStudent = data;
+
+      if (effectiveGroupId) {
+        const registeredUserId = data?.user_id;
+        if (!registeredUserId) {
+          throw new StudentGroupPersistenceError();
+        }
+        const { data: confirmedProfile, error: profileConfirmationError } = await supabase
+          .from("profiles")
+          .select("user_id, organization_id, student_group_id")
+          .eq("user_id", registeredUserId)
+          .eq("organization_id", organizationId)
+          .maybeSingle();
+        if (profileConfirmationError) throw profileConfirmationError;
+        if (
+          !confirmedProfile?.user_id
+          || confirmedProfile.student_group_id !== effectiveGroupId
+        ) {
+          throw new StudentGroupPersistenceError();
+        }
+      }
 
       if (firstCourseId) {
         const registeredUserId = data?.user_id;
@@ -185,11 +215,14 @@ export function useStudentManagement({
 
       const displayPassword = data.password || password;
       const displayLogin = data.login || customLogin;
+      const groupConfirmation = effectiveGroupId ? " Группа назначена." : "";
 
       if (data.is_existing) {
-        toast.success(data.message || "Ученик зачислен на курс");
+        toast.success(`${data.message || "Ученик добавлен"}${groupConfirmation}`);
       } else {
-        toast.success(`Ученик создан. Логин: ${displayLogin}, Пароль: ${displayPassword}`);
+        toast.success(
+          `Ученик создан${effectiveGroupId ? " и добавлен в группу" : ""}. Логин: ${displayLogin}, Пароль: ${displayPassword}`,
+        );
       }
 
       // Auto-send credentials by email when a new account was created.
@@ -231,6 +264,8 @@ export function useStudentManagement({
           : "";
         const partialReason = error instanceof EnrollmentPersistenceError
           ? "база не подтвердила зачисление на все выбранные курсы"
+          : error instanceof StudentGroupPersistenceError
+            ? "база не подтвердила добавление в выбранную группу"
           : (error?.message || "не удалось завершить зачисление на все выбранные курсы");
 
         onRefresh();

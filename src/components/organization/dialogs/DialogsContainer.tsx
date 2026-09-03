@@ -17,9 +17,27 @@ import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/queryKeys";
 
 export function DialogsContainer() {
   const d = useOrgDashboard();
+  const studentGroupsQuery = useQuery({
+    queryKey: qk.org.studentGroups(d.organizationId ?? "none"),
+    queryFn: async () => {
+      if (!d.organizationId) return [];
+      const { data, error } = await supabase
+        .from("student_groups")
+        .select("id, name, color, organization_id, created_at, start_date, end_date")
+        .eq("organization_id", d.organizationId)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: Boolean(d.organizationId && d.studentManagement.showAddStudentDialog),
+    staleTime: 60_000,
+  });
 
   return (
     <>
@@ -44,8 +62,11 @@ export function DialogsContainer() {
         onOpenChange={d.studentManagement.setShowAddStudentDialog}
         courses={d.courses}
         companies={d.companies}
-        onSubmit={async (name, email, courseIds, companyId, login, password) => {
-          await d.studentManagement.createStudent({ name, email, courseIds, companyId, login, password });
+        groups={studentGroupsQuery.data ?? []}
+        groupsLoading={studentGroupsQuery.isLoading}
+        groupsError={studentGroupsQuery.isError}
+        onSubmit={async (input) => {
+          await d.studentManagement.createStudent(input);
         }}
         isCreating={d.studentManagement.isCreatingStudent}
       />
