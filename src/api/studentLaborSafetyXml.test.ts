@@ -46,6 +46,17 @@ const enrollment = (overrides: Partial<StudentEnrollment> = {}): StudentEnrollme
 });
 
 describe("fetchStudentLaborSafetyXmlContext", () => {
+  it.each(["courses", "course_categories"])("rejects a substituted %s ID even when the row count matches", async (table) => {
+    const client = createClient({
+      courses: { data: [{ id: table === "courses" ? "course-other" : "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },
+      course_categories: { data: [{ id: table === "course_categories" ? "cat-other" : "cat-1", name: "Охрана труда" }], error: null },
+    });
+    await expect(fetchStudentLaborSafetyXmlContext({
+      organizationId: "org-1", userId: "student-1", enrollments: [enrollment()],
+    }, client as never)).rejects.toThrow("Не удалось подтвердить");
+    expect(client.logs.some(log => log.table === "labor_safety_enrollment_protocols")).toBe(false);
+  });
+
   it("scopes company, courses, categories and protocols to the active organization", async () => {
     const client = createClient({
       companies: { data: { id: "company-1", name: "Компания", inn: "123" }, error: null },
@@ -129,6 +140,8 @@ describe("fetchStudentLaborSafetyXmlContext", () => {
       source_enrollment_id: "enr-1", source_user_id: "student-1", source_course_id: "course-1",
       learner_name_snapshot: "Тестовый ученик", course_title_snapshot: "Программа А",
       protocol_number: "ОТ-7", knowledge_check_date: "2026-09-01", is_passed: false, version: 1,
+      created_by: "operator-1", updated_by: "operator-1",
+      created_at: "2026-09-04T00:00:00Z", updated_at: "2026-09-04T00:00:00Z",
     };
     const client = createClient({
       courses: { data: [{ id: "course-1", title: "Курс ОТ", category_id: "cat-1" }], error: null },

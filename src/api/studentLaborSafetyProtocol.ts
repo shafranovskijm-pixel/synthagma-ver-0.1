@@ -2,8 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { isValidIsoDate } from "@/lib/laborSafetyXml";
 import type { LaborSafetyEnrollmentProtocol } from "@/types/laborSafetyProtocol";
 
-type ProtocolReadClient = Pick<typeof supabase, "from">;
-type ProtocolClient = Pick<typeof supabase, "from" | "rpc">;
+import { pendingProtocolClient, type PendingProtocolReadClient, type PendingProtocolClient } from "./pendingLaborSafetyProtocolContract";
+const defaultProtocolClient = pendingProtocolClient(supabase);
 const TABLE = "labor_safety_enrollment_protocols";
 const COLUMNS = "id, organization_id, enrollment_id, source_enrollment_id, source_user_id, source_course_id, learner_name_snapshot, course_title_snapshot, protocol_number, knowledge_check_date, is_passed, version, created_by, updated_by, created_at, updated_at";
 
@@ -35,25 +35,30 @@ function validateContext(organizationId: string, enrollmentId: string) {
 }
 
 function requireProtocol(
-  row: LaborSafetyEnrollmentProtocol,
+  value: unknown,
   organizationId: string,
   enrollmentIds: ReadonlySet<string>,
 ): LaborSafetyEnrollmentProtocol {
-  if (!row?.id
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("База вернула неподтверждённые данные протокола");
+  const row = value as Record<string, unknown>;
+  const requiredStrings = ["id", "organization_id", "enrollment_id", "source_enrollment_id", "source_user_id", "source_course_id", "course_title_snapshot", "protocol_number", "knowledge_check_date", "created_by", "updated_by", "created_at", "updated_at"] as const;
+  if (requiredStrings.some(key => typeof row[key] !== "string" || !(row[key] as string).trim())
+    || !(row.learner_name_snapshot === null || typeof row.learner_name_snapshot === "string")
+    || !row.id
     || row.organization_id !== organizationId
-    || !row.enrollment_id || !enrollmentIds.has(row.enrollment_id)
+    || typeof row.enrollment_id !== "string" || !enrollmentIds.has(row.enrollment_id)
     || row.source_enrollment_id !== row.enrollment_id
-    || !row.protocol_number?.trim()
-    || !isValidIsoDate(row.knowledge_check_date)
+    || typeof row.knowledge_check_date !== "string" || !isValidIsoDate(row.knowledge_check_date)
+    || !Number.isFinite(Date.parse(String(row.created_at))) || !Number.isFinite(Date.parse(String(row.updated_at)))
     || typeof row.is_passed !== "boolean"
-    || !Number.isInteger(row.version) || row.version < 1
+    || typeof row.version !== "number" || !Number.isSafeInteger(row.version) || row.version < 1
   ) throw new Error("База вернула неподтверждённые данные протокола");
-  return row;
+  return row as unknown as LaborSafetyEnrollmentProtocol;
 }
 
 export async function fetchStudentLaborSafetyProtocols(
   input: { organizationId: string; enrollmentIds: string[] },
-  client: ProtocolReadClient = supabase,
+  client: PendingProtocolReadClient = defaultProtocolClient,
 ): Promise<LaborSafetyEnrollmentProtocol[]> {
   if (!input.organizationId) throw new Error("Не указана организация");
   const enrollmentIds = new Set(input.enrollmentIds);
@@ -63,7 +68,8 @@ export async function fetchStudentLaborSafetyProtocols(
     .in("enrollment_id", [...enrollmentIds]);
   if (error) throwProtocolError(error);
   const seen = new Set<string>();
-  return (data ?? []).map(row => {
+  if (!Array.isArray(data)) throw new Error("База вернула неподтверждённый список протоколов");
+  return data.map(row => {
     const protocol = requireProtocol(row, input.organizationId, enrollmentIds);
     if (seen.has(protocol.source_enrollment_id)) throw new Error("Для зачисления найдено несколько протоколов");
     seen.add(protocol.source_enrollment_id);
@@ -73,7 +79,7 @@ export async function fetchStudentLaborSafetyProtocols(
 
 export async function fetchStudentLaborSafetyProtocol(
   input: { organizationId: string; enrollmentId: string },
-  client: ProtocolReadClient = supabase,
+  client: PendingProtocolReadClient = defaultProtocolClient,
 ): Promise<LaborSafetyEnrollmentProtocol | null> {
   validateContext(input.organizationId, input.enrollmentId);
   const { data, error } = await client.from(TABLE).select(COLUMNS)
@@ -81,7 +87,7 @@ export async function fetchStudentLaborSafetyProtocol(
     .eq("enrollment_id", input.enrollmentId)
     .maybeSingle();
   if (error) throwProtocolError(error);
-  return data ? requireProtocol(data, input.organizationId, new Set([input.enrollmentId])) : null;
+  return data === null ? null : requireProtocol(data, input.organizationId, new Set([input.enrollmentId]));
 }
 
 export async function saveStudentLaborSafetyProtocol(
@@ -93,7 +99,7 @@ export async function saveStudentLaborSafetyProtocol(
     isPassed: boolean;
     expectedVersion: number | null;
   },
-  client: ProtocolClient = supabase,
+  client: PendingProtocolClient = defaultProtocolClient,
 ): Promise<LaborSafetyEnrollmentProtocol> {
   validateContext(input.organizationId, input.enrollmentId);
   const protocolNumber = input.protocolNumber.trim();
@@ -113,7 +119,7 @@ export async function saveStudentLaborSafetyProtocol(
     p_expected_version: input.expectedVersion,
   });
   if (error) throwProtocolError(error);
-  if (!data || data.length !== 1) throw new Error("База не подтвердила сохранение протокола. Обновите данные перед повтором");
+  if (!Array.isArray(data) || data.length !== 1) throw new Error("База не подтвердила сохранение протокола. Обновите данные перед повтором");
   const saved = requireProtocol(data[0], input.organizationId, new Set([input.enrollmentId]));
   const expectedVersion = (input.expectedVersion ?? 0) + 1;
   if (saved.version !== expectedVersion || saved.protocol_number !== protocolNumber
@@ -124,6 +130,8 @@ export async function saveStudentLaborSafetyProtocol(
   // A successful RPC alone is not enough: confirm the exact persisted row.
   const confirmed = await fetchStudentLaborSafetyProtocol(input, client);
   if (!confirmed || confirmed.id !== saved.id || confirmed.version !== saved.version
+    || confirmed.source_user_id !== saved.source_user_id
+    || confirmed.source_course_id !== saved.source_course_id
     || confirmed.protocol_number !== saved.protocol_number
     || confirmed.knowledge_check_date !== saved.knowledge_check_date
     || confirmed.is_passed !== saved.is_passed) {

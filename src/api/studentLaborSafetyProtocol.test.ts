@@ -33,6 +33,21 @@ function client(readData: unknown = protocol, readError: unknown = null, rpcData
 }
 
 describe("student labor-safety protocol persistence", () => {
+  it.each(["source_user_id", "source_course_id"] as const)("rejects changed %s in final readback", async field => {
+    const db = client({ ...protocol, [field]: "different-source" }, null, [protocol]);
+    await expect(saveStudentLaborSafetyProtocol(input, db)).rejects.toThrow("Повторное чтение не подтвердило");
+    expect(db.rpc).toHaveBeenCalledOnce();
+  });
+  it.each([true, false, 0, "", [], { ...protocol, source_user_id: null }, { ...protocol, version: "1" }, { ...protocol, updated_at: "invalid" }].map(value => ({ value })))("rejects malformed single response %#", async ({ value }) => {
+    await expect(fetchStudentLaborSafetyProtocol(input, client(value))).rejects.toThrow();
+  });
+  it.each([true, {}, null, ""].map(value => ({ value })))("rejects malformed list response %#", async ({ value }) => {
+    const malformed = client(value);
+    await expect(fetchStudentLaborSafetyProtocols({ organizationId: "org-1", enrollmentIds: ["enr-1"] }, malformed)).rejects.toThrow();
+  });
+  it.each([true, {}, null, [true], [{ ...protocol, is_passed: "true" }]].map(value => ({ value })))("rejects malformed RPC response %#", async ({ value }) => {
+    await expect(saveStudentLaborSafetyProtocol(input, client(protocol, null, value))).rejects.toThrow();
+  });
   it("scopes a read to the exact organization and enrollment", async () => {
     const db = client();
     expect(await fetchStudentLaborSafetyProtocol(input, db as never)).toEqual(protocol);

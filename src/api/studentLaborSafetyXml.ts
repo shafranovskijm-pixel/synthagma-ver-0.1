@@ -9,6 +9,7 @@ import {
   isLaborSafetyProtocolStorageUnavailable,
 } from "@/api/studentLaborSafetyProtocol";
 import type { LaborSafetyEnrollmentProtocol } from "@/types/laborSafetyProtocol";
+import { pendingProtocolReadClient } from "./pendingLaborSafetyProtocolContract";
 
 export interface StudentLaborSafetyXmlContext {
   company: { name: string; inn: string | null } | null;
@@ -70,7 +71,7 @@ export async function fetchStudentLaborSafetyXmlContext(
   const coursesById = new Map<string, { id: string; title: string; category_id: string | null }>(
     (courseRows ?? []).map(row => [row.id, row]),
   );
-  if (coursesById.size !== courseIds.length) {
+  if (coursesById.size !== courseIds.length || courseIds.some(id => !coursesById.has(id))) {
     throw new Error("Не удалось подтвердить категории всех завершённых курсов ученика");
   }
 
@@ -86,7 +87,7 @@ export async function fetchStudentLaborSafetyXmlContext(
       .in("id", categoryIds);
     if (categoriesError) throw categoriesError;
     for (const category of categoryRows ?? []) categoriesById.set(category.id, category.name);
-    if (categoriesById.size !== categoryIds.length) {
+    if (categoriesById.size !== categoryIds.length || categoryIds.some(id => !categoriesById.has(id))) {
       throw new Error("Не удалось подтвердить названия всех категорий завершённых курсов");
     }
   }
@@ -110,7 +111,7 @@ export async function fetchStudentLaborSafetyXmlContext(
       const protocols = await fetchStudentLaborSafetyProtocols({
         organizationId: input.organizationId,
         enrollmentIds,
-      }, client);
+      }, pendingProtocolReadClient(client));
       for (const protocol of protocols) {
         const enrollment = eligibleEnrollments.find(item => item.id === protocol.source_enrollment_id);
         if (protocol.source_user_id !== input.userId || protocol.source_course_id !== enrollment?.course_id) {
