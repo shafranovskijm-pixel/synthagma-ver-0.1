@@ -40,9 +40,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v18");
+    expect(source).toContain("goreltech-group-package-server-facts-v19");
     const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
-    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v18"');
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v19"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -208,6 +208,38 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(records).toContain('.in("document_status", [...REGISTRATION_RECORD_STATUSES])');
     expect(records).toContain('.order("id")');
     expect(records).toContain('.range(from, to)');
+  });
+
+  it("reads journal marks through caller RLS and persists exact cell provenance without promoting draft", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const adapter = sourceSection(source, "const journalMarksSource = await loadGroupClassJournalMarks({", "const factSnapshot =");
+    expect(source.indexOf(adapter)).toBeGreaterThan(source.indexOf("if (!isExactGoreltechOrganization)"));
+    expect(source.indexOf(adapter)).toBeGreaterThan(source.indexOf("requestedStudentIds.some"));
+    expect(adapter).toContain("fillMode: body.fillMode");
+    expect(adapter).toContain("=> await userClient");
+    expect(adapter).not.toContain("admin");
+    expect(adapter).toContain('.from("group_class_journal_marks")');
+    expect(adapter).toContain('.select(GROUP_CLASS_JOURNAL_MARKS_SELECT, { count: "exact" })');
+    expect(adapter).toContain('.eq("organization_id", organizationId)');
+    expect(adapter).toContain('.eq("group_id", groupId)');
+    expect(adapter).toContain('.order("id")');
+    expect(adapter).toContain('.range(from, to)');
+    const journal = sourceSection(source, "const journalSignatory =", "// Все восемь клиентских шаблонов");
+    expect(journal).toContain("buildGroupClassJournalMarks({");
+    expect(journal).toContain("profiles: profilesResult.data || [], source: journalMarksSource");
+    expect(journal).toContain("students: journalMarks.students");
+    expect(journal).toContain("user_id: journalMarks.studentSources[index].user_id");
+    expect(journal).toContain("attendance_source: journalMarks.attendanceSource");
+    expect(journal).toContain("mark_sources: journalMarks.markSources");
+    expect(journal).toContain("attendance_issues: journalMarks.issues");
+    expect(journal).toContain("describeGroupClassJournalMarks(journalMarks.attendanceSource)");
+    expect(journal).toContain('doc_status: "draft"');
+    expect(journal).not.toContain('doc_status: "final"');
+    expect(journal).not.toContain("parseGeneratedHtmlRows");
+    expect(journal).not.toContain("document.variables");
+    for (const slot of [1, 2, 3, 4]) expect(journal).toContain(`DATE_${slot}: formatJournalDate(dates[${slot - 1}] || "")`);
+    const schema = sourceSection(source, "const BodySchema", "async function sha256Hex");
+    expect(schema).not.toMatch(/journalMarks|markSources|attendanceSource/);
   });
 
   it("registers eight canonical document types without accepting attempts/record sources or policy from the browser", () => {

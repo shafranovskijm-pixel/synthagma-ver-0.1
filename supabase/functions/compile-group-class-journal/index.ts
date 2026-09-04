@@ -44,6 +44,12 @@ import { buildGroupTitleFacts, type GroupTitleFactsResult } from "../_shared/doc
 import { buildGroupScheduleFacts, type GroupScheduleFactsResult } from "../_shared/docx-ooxml/groupScheduleFacts.ts";
 import { loadGroupScheduleFacts, GROUP_SCHEDULE_FACTS_SELECT } from "../_shared/docx-ooxml/groupScheduleFactsSource.ts";
 import {
+  buildGroupClassJournalMarks,
+  describeGroupClassJournalMarks,
+  loadGroupClassJournalMarks,
+  GROUP_CLASS_JOURNAL_MARKS_SELECT,
+} from "../_shared/docx-ooxml/groupClassJournalMarks.ts";
+import {
   buildGroupAttestationFacts,
   type GroupAttestationFactsResult,
 } from "../_shared/docx-ooxml/groupAttestationFacts.ts";
@@ -58,7 +64,7 @@ import {
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v18";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v19";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -436,6 +442,18 @@ Deno.serve(async (req) => {
         .eq("group_id", groupId)
         .maybeSingle(),
     });
+    const journalMarksSource = await loadGroupClassJournalMarks({
+      organizationId: body.organizationId, groupId: body.groupId,
+      fillMode: body.fillMode,
+    }, {
+      marks: async ({ organizationId, groupId, from, to }) => await userClient
+        .from("group_class_journal_marks")
+        .select(GROUP_CLASS_JOURNAL_MARKS_SELECT, { count: "exact" })
+        .eq("organization_id", organizationId)
+        .eq("group_id", groupId)
+        .order("id")
+        .range(from, to),
+    });
     const factSnapshot = {
       organization, group, course,
       profiles: profilesResult.data || [],
@@ -620,6 +638,11 @@ Deno.serve(async (req) => {
     }
 
     const journalSignatory = resolveDocumentSignatory(body.journalSignatory, organization);
+    const journalMarks = buildGroupClassJournalMarks({
+      snapshot: { organization, group, profiles: profilesResult.data || [], source: journalMarksSource },
+      fillMode: body.fillMode,
+    });
+    for (const issue of journalMarks.issues) statusWarnings.push(`Журнал учета занятий: ${issue.message}`);
     const snapshot = {
       scalars: {
         GROUP_NUMBER: String(group.group_number || "").trim(),
@@ -633,14 +656,8 @@ Deno.serve(async (req) => {
         DATE_3: formatJournalDate(dates[2] || ""),
         DATE_4: formatJournalDate(dates[3] || ""),
       },
-      // Источника фактической посещаемости в СИНТАГМЕ пока нет: отметки пустые.
-      students: ((profilesResult.data as any[]) || []).map((profile) => ({
-        STUDENT_NAME: String(profile.full_name || "").trim(),
-        MARK_1: "",
-        MARK_2: "",
-        MARK_3: "",
-        MARK_4: "",
-      })),
+      // Only current, explicitly saved group cells; never browser HTML or course progress.
+      students: journalMarks.students,
     };
 
     stage = "docx-compilation";
@@ -692,7 +709,8 @@ Deno.serve(async (req) => {
       fill_mode: body.fillMode,
       layout_format: "docx_ooxml",
       source_note:
-        "Оригинальный Word-бланк клиента с согласованными правками. Состав группы, программа, преподаватели и даты синхронизированы с СИНТАГМОЙ; отметки посещаемости оставлены пустыми для ручного внесения.",
+        "Оригинальный Word-бланк клиента с согласованными правками. Состав группы, программа, преподаватели и даты синхронизированы с СИНТАГМОЙ. "
+        + describeGroupClassJournalMarks(journalMarks.attendanceSource),
       template_registry_key: manifest.template_id,
       template_version_label: manifest.template_version,
       template_sha256: manifest.template_sha256,
@@ -700,10 +718,13 @@ Deno.serve(async (req) => {
         scalars: snapshot.scalars,
         students: snapshot.students.map((student, index) => ({
           row_number: index + 1,
+          user_id: journalMarks.studentSources[index].user_id,
           full_name: student.STUDENT_NAME,
         })),
         signatory_source: journalSignatory.source,
-        attendance_source: "unavailable_blank",
+        attendance_source: journalMarks.attendanceSource,
+        mark_sources: journalMarks.markSources,
+        attendance_issues: journalMarks.issues,
       },
       docx_sha256: outputHash,
       pdf_status: "unavailable",

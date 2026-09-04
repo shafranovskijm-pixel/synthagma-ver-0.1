@@ -4,12 +4,25 @@ import {
   courseDetailsPathForGroup,
   groupFolderPath,
   groupContextPath,
+  groupAttendancePath,
   filterByGroupMembers,
   courseCompletedNotificationPath,
   resolveTabParams,
 } from "@/lib/groups/groupContext";
 
 describe("groupContext", () => {
+  it("builds a shareable group attendance link and keeps it only in that workspace", () => {
+    const path = groupAttendancePath("g-1");
+    const params = new URLSearchParams(path.split("?")[1]);
+    expect(params.get("tab")).toBe("journals");
+    expect(params.get("groupId")).toBe("g-1");
+    expect(params.get("returnToGroupId")).toBe("g-1");
+    expect(params.get("journal")).toBe("group-attendance");
+    expect(resolveTabParams(params, "journals").get("journal")).toBe("group-attendance");
+    expect(resolveTabParams(params, "students").has("journal")).toBe(false);
+    expect(resolveTabParams("journal=group-attendance", "journals").has("journal")).toBe(false);
+    expect(resolveTabParams("groupId=g-1&journal=education_documents", "journals").has("journal")).toBe(false);
+  });
   it("builds student and course paths", () => {
     expect(studentDetailsPath("u-1")).toBe("/organization?tab=student-details&studentId=u-1");
     expect(courseDetailsPathForGroup("c-1")).toBe("/organization?tab=course-details&courseId=c-1");

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 function makeChain(): any {
@@ -31,6 +31,10 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...a: any[]) => to
 
 vi.mock("@/components/organization/GroupContextBanner", () => ({
   GroupContextBanner: () => <div data-testid="group-banner" />,
+}));
+
+vi.mock("@/components/organization/GroupClassJournalMarksEditor", () => ({
+  GroupClassJournalMarksEditor: ({ organizationId, groupId, onClose }: { organizationId: string; groupId: string; onClose: () => void }) => <section aria-label="Групповой редактор"><p>{organizationId}/{groupId}</p><button onClick={onClose}>К списку журналов</button></section>,
 }));
 
 import { JournalsManager } from "@/components/organization/JournalsManager";
@@ -81,6 +85,20 @@ describe("JournalsManager without group context", () => {
 });
 
 describe("JournalsManager in group context", () => {
+  it("opens a distinct scoped manual editor through its real link and returns to the group list", async () => {
+    render(<MemoryRouter initialEntries={["/organization?tab=journals&groupId=g1&returnToGroupId=g1"]}><JournalsManager organizationId="org-1" groupId="g1" /></MemoryRouter>);
+    const link = await screen.findByRole("link", { name: "Посещаемость очных занятий" });
+    expect(link.getAttribute("href")).toBe("/organization?tab=journals&groupId=g1&returnToGroupId=g1&journal=group-attendance");
+    fireEvent.click(link);
+    expect(await screen.findByRole("region", { name: "Групповой редактор" })).toHaveTextContent("org-1/g1");
+    fireEvent.click(screen.getByRole("button", { name: "К списку журналов" }));
+    expect(await screen.findByRole("link", { name: "Посещаемость очных занятий" })).toBeInTheDocument();
+  });
+
+  it("restores manual group attendance directly from the URL", async () => {
+    await act(async () => { render(<MemoryRouter initialEntries={["/organization?tab=journals&groupId=g2&journal=group-attendance"]}><JournalsManager organizationId="org-1" groupId="g2" /></MemoryRouter>); });
+    expect(screen.getByRole("region", { name: "Групповой редактор" })).toHaveTextContent("org-1/g2");
+  });
   beforeEach(() => {
     toastError.mockClear();
     localStorage.clear();

@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -8,6 +8,8 @@ import { ClipboardList, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Se
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { JournalEditor } from "./JournalEditor";
+import { GroupClassJournalMarksEditor } from "./GroupClassJournalMarksEditor";
+import { groupAttendancePath } from "@/lib/groups/groupContext";
 import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
@@ -237,6 +239,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     return null;
   })();
 
+  if (groupId && searchParams.get("journal") === "group-attendance") {
+    return <div className="space-y-6">
+      <GroupContextBanner groupId={groupId} returnToGroupId={returnToGroupId} />
+      <GroupClassJournalMarksEditor organizationId={organizationId} groupId={groupId} onClose={() => setSearchParams(current => {
+        const next = new URLSearchParams(current); next.delete("journal"); return next;
+      })} />
+    </div>;
+  }
+
   if (activeView) {
     return (
       <div className="space-y-6">
@@ -276,9 +287,15 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
               <p className="text-xs text-muted-foreground">
                 Открыты журналы этой группы. Показаны только журналы, которые ограничиваются составом группы и её курсом.
                 Пользовательские и ручные журналы организации здесь недоступны — откройте раздел «Журналы» без контекста группы.
+                Для очных занятий используйте отдельный журнал этой группы ниже.
               </p>
             </div>
           )}
+          {groupId && <div className="mb-4 rounded-xl border p-4">
+            <h3 className="font-semibold">Очные занятия и Word-журнал <span className="text-xs text-amber-700">Бета</span></h3>
+            <p className="mb-3 text-sm text-muted-foreground">Ручные отметки только этой группы, с проверкой сохранения. Автоматический прогресс курса не изменяется.</p>
+            <Button asChild variant="outline"><Link to={groupAttendancePath(groupId)}>Посещаемость очных занятий</Link></Button>
+          </div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { icon: ClipboardCheck, title: "Обязательные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов" },

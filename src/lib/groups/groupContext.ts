@@ -69,6 +69,11 @@ export function groupContextPath(tab: "journals" | "frdo", ctx: GroupContextPara
   return `/organization?${params.toString()}`;
 }
 
+/** Separate, group-scoped manual attendance; never opens the organization-wide journal. */
+export function groupAttendancePath(groupId: string): string {
+  return `${groupContextPath("journals", { groupId })}&journal=group-attendance`;
+}
+
 /** Вкладки организации, которые умеют работать в контексте группы. */
 export const GROUP_CONTEXT_TABS = ["journals", "frdo"] as const;
 export type GroupContextTab = (typeof GROUP_CONTEXT_TABS)[number];
@@ -111,7 +116,7 @@ export function resolveTabParams(
   if (tab !== "documents") {
     next.delete("documentView");
     next.delete("counterpartyView");
-    next.delete("journal");
+    if (!(tab === "journals" && next.get("journal") === "group-attendance" && next.get("groupId"))) next.delete("journal");
     next.delete("educationRecordId");
     next.delete("educationEnrollmentId");
   }
