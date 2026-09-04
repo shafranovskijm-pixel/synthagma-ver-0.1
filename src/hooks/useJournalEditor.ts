@@ -17,6 +17,7 @@ export function useJournalEditor({ organizationId, journalType, journalTitle, on
   const [writeBlocked, setWriteBlocked] = useState(true);
   const writeBlockedRef = useRef(true);
   const directoryRefreshRequiredRef = useRef(false);
+  const directoryReadRevisionRef = useRef(0);
   const preferredJournalRef = useRef("");
   const [directoryRevision, setDirectoryRevision] = useState(0);
   const [journalRevision, setJournalRevision] = useState(0);
@@ -63,6 +64,7 @@ export function useJournalEditor({ organizationId, journalType, journalTitle, on
       : contextRef.current === writeContext;
     if (contextRevisionRef.current !== revision && sameScope) {
       contextRevisionRef.current += 1;
+      if (refreshDirectory) directoryReadRevisionRef.current += 1;
       blockWrites("Во время сохранения выбранный журнал изменился. Перезагрузите журнал, чтобы проверить сохранённые данные перед следующими изменениями.", refreshDirectory);
       setLoading(false);
     }
@@ -91,6 +93,7 @@ export function useJournalEditor({ organizationId, journalType, journalTitle, on
 
   useEffect(() => {
     let cancelled = false;
+    const readRevision = ++directoryReadRevisionRef.current;
     writeBlockedRef.current = true;
     directoryRefreshRequiredRef.current = true;
     setWriteBlocked(true);
@@ -107,7 +110,7 @@ export function useJournalEditor({ organizationId, journalType, journalTitle, on
         ]);
         if (coursesRes.error) throw coursesRes.error;
         if (journalsRes.error) throw journalsRes.error;
-        if (cancelled) return;
+        if (cancelled || directoryReadRevisionRef.current !== readRevision) return;
         setCourses(coursesRes.data || []);
         const loadedJournals = (journalsRes.data || []) as JournalInstance[];
         setExistingJournals(loadedJournals);
@@ -117,8 +120,8 @@ export function useJournalEditor({ organizationId, journalType, journalTitle, on
         setSelectedJournalId(selectedId);
         if (selectedId) setJournalRevision(version => version + 1);
         else allowWrites();
-      } catch (error) { if (!cancelled) { console.error("Error:", error); blockWrites("Не удалось загрузить журналы. Перезагрузите журнал перед внесением изменений.", true); toast.error("Не удалось загрузить журналы"); } }
-      finally { if (!cancelled) setLoading(false); }
+      } catch (error) { if (!cancelled && directoryReadRevisionRef.current === readRevision) { console.error("Error:", error); blockWrites("Не удалось загрузить журналы. Перезагрузите журнал перед внесением изменений.", true); toast.error("Не удалось загрузить журналы"); } }
+      finally { if (!cancelled && directoryReadRevisionRef.current === readRevision) setLoading(false); }
     };
     fetchData();
     return () => { cancelled = true; };

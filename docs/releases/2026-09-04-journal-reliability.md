@@ -21,8 +21,8 @@
 
 ## Подтверждённая локальная проверка
 
-- 5 файлов, **74 теста прошли**: hook defaults/persistence, фактические popover-кнопки посещаемости/оценок, безопасность списка журналов и контекст группы.
-- JSON: `D:/CodexTmp/sintagma-journal-final-targeted-20260904.json`.
+- 5 файлов, **76 тестов прошли**: hook defaults/persistence, фактические popover-кнопки посещаемости/оценок, безопасность списка журналов и контекст группы. Включены поздние ответы каталога при возврате организации/типа журнала во время создания или удаления.
+- JSON: `D:/CodexTmp/sintagma-journal-directory-guard-targeted-20260904.json`.
 - ESLint для пяти изменённых исходных/test-файлов: exit 0.
 - TypeScript приложения (`tsc -p tsconfig.app.json --noEmit`): exit 0.
 - Production build — отдельный gate; его терминальный результат и SHA фиксируются в continuation checkpoint после завершения.

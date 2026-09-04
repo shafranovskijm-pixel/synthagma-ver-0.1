@@ -41,6 +41,31 @@ const hook = () => renderHook(() => useJournalEditor({ organizationId: "org", jo
 async function ready(h: ReturnType<typeof hook>) { await waitFor(() => expect(h.result.current.journalInstance?.id).toBe("j1")); }
 beforeEach(() => { vi.clearAllMocks(); initialEntries = []; saved = {}; override = () => undefined; mock.run.mockImplementation(normal); });
 describe("manual journal persistence", () => {
+  it.each(["insert", "delete"])("ignores stale directory response after %s organization ABA", async operation => {
+    const mutation = deferred(); const oldDirectory = deferred(); let directoryReads = 0;
+    override = c => {
+      if (c.table === "journal_instances" && c.op === operation) return mutation.promise;
+      if (c.table === "journal_instances" && c.op === "read" && !c.single) {
+        if (c.filters.organization_id === "other") return ok([]);
+        directoryReads += 1;
+        if (directoryReads === 2) return oldDirectory.promise;
+      }
+      return undefined;
+    };
+    const h = renderHook(({ organizationId }) => useJournalEditor({ organizationId, journalType: "entry_control", journalTitle: "Журнал", onClose: vi.fn() }), { initialProps: { organizationId: "org" } });
+    await waitFor(() => expect(h.result.current.journalInstance?.id).toBe("j1"));
+    let write!: Promise<void>;
+    act(() => { write = operation === "insert" ? h.result.current.createJournal() : h.result.current.deleteJournal(); });
+    h.rerender({ organizationId: "other" }); await waitFor(() => expect(h.result.current.loading).toBe(false));
+    h.rerender({ organizationId: "org" }); await waitFor(() => expect(directoryReads).toBe(2));
+    await act(async () => { mutation.resolve(ok(operation === "insert" ? journal("created") : [{ id: "j1" }])); await write; });
+    expect(h.result.current.writeBlocked).toBe(true);
+    await act(async () => { oldDirectory.resolve(ok([])); });
+    expect(h.result.current.writeBlocked).toBe(true);
+    override = () => undefined;
+    act(() => h.result.current.reloadJournal());
+    await waitFor(() => { expect(h.result.current.writeBlocked).toBe(false); expect(h.result.current.existingJournals).toHaveLength(2); });
+  });
   it.each(["success", "error"])("requires a fresh reload after pending save A→B→A and readback %s", async outcome => {
     const pending = deferred();
     override = c => {
