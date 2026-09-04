@@ -628,7 +628,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -639,7 +638,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -650,7 +648,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -2007,34 +2004,52 @@ export type Database = {
       }
       course_documents: {
         Row: {
+          allow_download: boolean
           course_id: string
           created_at: string
           description: string | null
           file_url: string | null
           id: string
+          library_category: string | null
+          library_document_id: string | null
+          module_id: string | null
           name: string
+          sort_order: number
           type: string
           updated_at: string
+          visible_to_students: boolean
         }
         Insert: {
+          allow_download?: boolean
           course_id: string
           created_at?: string
           description?: string | null
           file_url?: string | null
           id?: string
+          library_category?: string | null
+          library_document_id?: string | null
+          module_id?: string | null
           name: string
+          sort_order?: number
           type?: string
           updated_at?: string
+          visible_to_students?: boolean
         }
         Update: {
+          allow_download?: boolean
           course_id?: string
           created_at?: string
           description?: string | null
           file_url?: string | null
           id?: string
+          library_category?: string | null
+          library_document_id?: string | null
+          module_id?: string | null
           name?: string
+          sort_order?: number
           type?: string
           updated_at?: string
+          visible_to_students?: boolean
         }
         Relationships: [
           {
@@ -2042,6 +2057,20 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_documents_library_document_id_fkey"
+            columns: ["library_document_id"]
+            isOneToOne: false
+            referencedRelation: "library_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_documents_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
             referencedColumns: ["id"]
           },
         ]
@@ -5087,40 +5116,76 @@ export type Database = {
       }
       library_documents: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string
+          created_by: string | null
           description: string | null
+          edition_label: string | null
+          external_url: string | null
           file_size: number | null
           file_url: string | null
           folder_id: string | null
           id: string
+          last_checked_at: string | null
+          library_status: string | null
+          mime_type: string | null
           name: string
           organization_id: string
+          original_filename: string | null
+          source_name: string | null
+          storage_path: string | null
           type: string
           updated_at: string
+          usage_basis: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
+          edition_label?: string | null
+          external_url?: string | null
           file_size?: number | null
           file_url?: string | null
           folder_id?: string | null
           id?: string
+          last_checked_at?: string | null
+          library_status?: string | null
+          mime_type?: string | null
           name: string
           organization_id: string
+          original_filename?: string | null
+          source_name?: string | null
+          storage_path?: string | null
           type?: string
           updated_at?: string
+          usage_basis?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
+          edition_label?: string | null
+          external_url?: string | null
           file_size?: number | null
           file_url?: string | null
           folder_id?: string | null
           id?: string
+          last_checked_at?: string | null
+          library_status?: string | null
+          mime_type?: string | null
           name?: string
           organization_id?: string
+          original_filename?: string | null
+          source_name?: string | null
+          storage_path?: string | null
           type?: string
           updated_at?: string
+          usage_basis?: string | null
         }
         Relationships: [
           {
@@ -12022,16 +12087,6 @@ export type Database = {
         Returns: undefined
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
-      apply_tbank_balance_credit: {
-        Args: {
-          p_amount: number
-          p_description: string
-          p_idempotency_key: string
-          p_organization_id: string
-          p_transaction_type: string
-        }
-        Returns: Json
-      }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
         Returns: undefined
@@ -12055,6 +12110,10 @@ export type Database = {
         Args: { _course_id: string; _permission?: string }
         Returns: boolean
       }
+      can_access_course_as_learner: {
+        Args: { _course_id: string }
+        Returns: boolean
+      }
       can_access_lesson: {
         Args: { _lesson_id: string; _permission?: string }
         Returns: boolean
@@ -12067,12 +12126,20 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_delete_orphan_library_file_object: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
       can_manage_course_file_object: {
         Args: { _object_name: string }
         Returns: boolean
       }
       can_manage_course_files_org: {
         Args: { _organization_id: string; _permission?: string }
+        Returns: boolean
+      }
+      can_manage_library_file_object: {
+        Args: { _object_name: string }
         Returns: boolean
       }
       can_manage_webinar_recording_org: {
@@ -12083,8 +12150,16 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_read_electronic_library_document: {
+        Args: { _library_document_id: string }
+        Returns: boolean
+      }
       can_read_lesson_attachment: {
         Args: { _lesson_id: string }
+        Returns: boolean
+      }
+      can_read_library_file_object: {
+        Args: { _object_name: string }
         Returns: boolean
       }
       can_read_webinar_recording_object: {
@@ -12269,13 +12344,6 @@ export type Database = {
         }
         Returns: string
       }
-      import_csz_course_draft_v2: {
-        Args: {
-          p_organization_id: string
-          p_payload: Json
-        }
-        Returns: Json
-      }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
         Returns: Json
@@ -12376,6 +12444,10 @@ export type Database = {
           p_scope: string
           p_source: string
         }
+        Returns: Json
+      }
+      get_course_electronic_library_shell: {
+        Args: { p_course_id: string }
         Returns: Json
       }
       get_course_student_test_results_page: {
@@ -12846,6 +12918,10 @@ export type Database = {
       hide_signature_for_viewer: {
         Args: { p_signature_id: string }
         Returns: undefined
+      }
+      import_csz_course_draft_v2: {
+        Args: { p_organization_id: string; p_payload: Json }
+        Returns: Json
       }
       import_mailing_contacts: {
         Args: { p_organization_id: string; p_rows: Json }
