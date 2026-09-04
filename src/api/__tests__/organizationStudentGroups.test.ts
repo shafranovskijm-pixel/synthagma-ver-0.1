@@ -6,7 +6,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from 
 import { fetchOrganizationStudentGroups } from "@/api/organizationStudentGroups";
 import { qk } from "@/lib/queryKeys";
 
-const rows = [{ id: "group-1", name: "Первая группа", organization_id: "org-1", color: "blue", created_at: "2026-09-04", start_date: null, end_date: null }];
+const rows = [{ id: "group-1", name: "Первая группа", organization_id: "org-1", color: "blue", created_at: "2026-09-04", start_date: null, end_date: null, course_id: "course-1" }];
 let queryClient: QueryClient;
 const read = (organizationId = "org-1") => queryClient.fetchQuery({
   queryKey: qk.org.studentGroups(organizationId),
@@ -30,7 +30,7 @@ describe("shared organization student group directory", () => {
     expect(mocks.from).toHaveBeenCalledWith("student_groups");
     expect(mocks.eq).toHaveBeenCalledWith("organization_id", "org-1");
     expect(mocks.order).toHaveBeenCalledWith("name");
-    expect(mocks.select).toHaveBeenCalledWith("id, name, color, organization_id, created_at, start_date, end_date");
+    expect(mocks.select).toHaveBeenCalledWith("id, name, color, organization_id, created_at, start_date, end_date, course_id");
   });
 
   it.each([null, undefined, ""])("does not read without organization scope: %s", async org => {

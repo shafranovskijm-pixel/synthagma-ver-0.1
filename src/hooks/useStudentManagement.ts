@@ -150,6 +150,7 @@ export function useStudentManagement({
       }
       registrationUnconfirmed = false;
       registeredStudent = data;
+      let groupCourseId: string | null = null;
 
       if (effectiveGroupId) {
         const registeredUserId = data?.user_id;
@@ -164,14 +165,43 @@ export function useStudentManagement({
           .maybeSingle();
         if (profileConfirmationError) throw profileConfirmationError;
         if (
-          !confirmedProfile?.user_id
+          confirmedProfile?.user_id !== registeredUserId
+          || confirmedProfile.organization_id !== organizationId
           || confirmedProfile.student_group_id !== effectiveGroupId
         ) {
           throw new StudentGroupPersistenceError();
         }
+
+        // Check the current persisted group, not stale dialog metadata or an
+        // optional flag from an older Edge revision. Its course is implicit.
+        const { data: confirmedGroup, error: groupConfirmationError } = await supabase
+          .from("student_groups")
+          .select("id, organization_id, course_id")
+          .eq("id", effectiveGroupId)
+          .eq("organization_id", organizationId)
+          .maybeSingle();
+        if (groupConfirmationError) throw groupConfirmationError;
+        if (confirmedGroup?.id !== effectiveGroupId || confirmedGroup.organization_id !== organizationId
+          || (confirmedGroup.course_id !== null && (typeof confirmedGroup.course_id !== "string" || !confirmedGroup.course_id.trim()))) {
+          throw new Error("База не подтвердила настройки курса выбранной группы");
+        }
+        groupCourseId = confirmedGroup.course_id;
+        if (groupCourseId) {
+          const { data: groupCourse, error: groupCourseError } = await supabase
+            .from("courses")
+            .select("id, organization_id")
+            .eq("id", groupCourseId)
+            .eq("organization_id", organizationId)
+            .maybeSingle();
+          if (groupCourseError) throw groupCourseError;
+          if (groupCourse?.id !== groupCourseId || groupCourse.organization_id !== organizationId) {
+            throw new Error("База не подтвердила принадлежность курса группы организации");
+          }
+        }
       }
 
-      if (firstCourseId) {
+      const immediateCourseIds = Array.from(new Set([firstCourseId, groupCourseId].filter((id): id is string => Boolean(id))));
+      for (const courseId of immediateCourseIds) {
         const registeredUserId = data?.user_id;
         if (!registeredUserId) {
           throw new Error("Сервер не вернул идентификатор ученика для проверки зачисления");
@@ -183,13 +213,13 @@ export function useStudentManagement({
           .from("enrollments")
           .select("id, user_id, course_id, status, expires_at")
           .eq("user_id", registeredUserId)
-          .eq("course_id", firstCourseId)
+          .eq("course_id", courseId)
           .maybeSingle();
         if (confirmationError) throw confirmationError;
         if (
           !confirmedEnrollment?.id
           || confirmedEnrollment.user_id !== registeredUserId
-          || confirmedEnrollment.course_id !== firstCourseId
+          || confirmedEnrollment.course_id !== courseId
         ) {
           const returnedUserIds = (
             data?.enrollment_created === true || data?.already_enrolled === true
@@ -202,12 +232,12 @@ export function useStudentManagement({
         }
 
         if (isEnrollmentAccessExpired(confirmedEnrollment as EnrollmentAccessRow)) {
-          throw new EnrollmentAccessExpiredError([firstCourseId]);
+          throw new EnrollmentAccessExpiredError([courseId]);
         }
       }
 
       // Enroll in remaining courses
-      const remainingCourseIds = effectiveCourseIds.slice(1);
+      const remainingCourseIds = effectiveCourseIds.slice(1).filter(id => !immediateCourseIds.includes(id));
       if (remainingCourseIds.length > 0 && data.user_id) {
         const { data: existingRemaining, error: existingRemainingError } = await supabase
           .from("enrollments")

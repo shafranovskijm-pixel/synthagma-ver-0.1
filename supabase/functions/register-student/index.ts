@@ -14,7 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
 import { preflightRegistrationStudentGroup } from "../_shared/registration-student-group.ts";
 
-const REGISTER_STUDENT_REVISION = "enrollment-persistence-v4";
+const REGISTER_STUDENT_REVISION = "enrollment-persistence-v5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -596,8 +596,16 @@ serve(async (req) => {
 
     isExisting = !!claim.is_existing;
 
+    let enrollmentCreated = false;
+    let alreadyEnrolled = false;
+    let enrollmentConfirmed = false;
+    let profilePersisted: boolean | null = effectiveStudentGroupId ? null : true;
+    let groupConfirmed: boolean | null = effectiveStudentGroupId ? false : null;
+    let groupCourseId: string | null = null;
+    let groupEnrollmentConfirmed: boolean | null = effectiveStudentGroupId ? false : null;
+
     const enrollmentFailureResponse = (code: string, message: string, status: number) => {
-      if (!createdAuthUserThisAttempt) {
+      if (!createdAuthUserThisAttempt && !effectiveStudentGroupId) {
         return j({ error: message, code }, status);
       }
       // The student profile is already committed and must remain usable. Return
@@ -606,14 +614,17 @@ serve(async (req) => {
       return j({
         success: false,
         partial_success: true,
-        student_created: true,
-        profile_persisted: true,
-        enrollment_confirmed: false,
-        created_auth_user: true,
+        student_created: createdAuthUserThisAttempt,
+        profile_persisted: profilePersisted,
+        enrollment_confirmed: enrollmentConfirmed,
+        group_confirmed: groupConfirmed,
+        group_course_id: groupCourseId,
+        group_enrollment_confirmed: groupEnrollmentConfirmed,
+        created_auth_user: createdAuthUserThisAttempt,
         user_id: userId,
         is_existing: isExisting,
-        enrollment_created: false,
-        already_enrolled: false,
+        enrollment_created: enrollmentCreated,
+        already_enrolled: alreadyEnrolled,
         login: generatedLogin || undefined,
         password: publicRegistration ? undefined : (generatedPassword || undefined),
         code,
@@ -621,6 +632,64 @@ serve(async (req) => {
         message,
       });
     };
+
+    if (effectiveStudentGroupId) {
+      // A successful RPC (including a reconciled lost response) is not proof
+      // that the requested group was saved, or that its course is unchanged.
+      try {
+        const { data: savedProfile, error: profileReadError } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, organization_id, student_group_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!profileReadError) {
+          profilePersisted = savedProfile?.user_id === userId
+            && savedProfile.organization_id === effectiveOrgId;
+        }
+        if (profileReadError || !profilePersisted
+          || typeof savedProfile?.student_group_id !== "string"
+          || savedProfile.student_group_id.toLowerCase() !== String(effectiveStudentGroupId).toLowerCase()) {
+          return enrollmentFailureResponse(
+            "STUDENT_GROUP_NOT_CONFIRMED",
+            profilePersisted
+              ? "Профиль ученика сохранён, но выбранная группа не подтверждена. Проверьте карточку ученика; не создавайте его повторно."
+              : "Не удалось подтвердить профиль ученика и выбранную группу после регистрации. Проверьте учётную запись; не создавайте ученика повторно.",
+            409,
+          );
+        }
+
+        let savedGroupCourseId: string | null = null;
+        const savedGroupRejection = await preflightRegistrationStudentGroup(
+          async (table, id) => {
+            const { data, error } = await supabaseAdmin.from(table)
+              .select(table === "student_groups" ? "id, organization_id, course_id" : "id, organization_id")
+              .eq("id", id).maybeSingle();
+            if (table === "student_groups") {
+              // The guard validates these unknown facts before we use them.
+              const groupFacts = data as unknown as { course_id: string | null } | null;
+              savedGroupCourseId = groupFacts?.course_id ?? null;
+            }
+            return { data: data as unknown, error };
+          },
+          effectiveOrgId, savedProfile.student_group_id,
+        );
+        if (savedGroupRejection) {
+          return enrollmentFailureResponse(savedGroupRejection.code, savedGroupRejection.error, savedGroupRejection.status);
+        }
+        groupConfirmed = true;
+        groupCourseId = savedGroupCourseId;
+        groupEnrollmentConfirmed = groupCourseId ? false : null;
+      } catch (groupReadError) {
+        console.error("[register-student] saved group verification failed:", groupReadError);
+        return enrollmentFailureResponse(
+          "STUDENT_GROUP_NOT_CONFIRMED",
+          profilePersisted
+            ? "Профиль ученика сохранён, но не удалось проверить его группу. Проверьте карточку ученика; не создавайте его повторно."
+            : "Не удалось прочитать профиль ученика и проверить его группу после регистрации. Проверьте учётную запись; не создавайте ученика повторно.",
+          500,
+        );
+      }
+    }
 
     // Best-effort FRDO stub (non-fatal)
     if (!isExisting) {
@@ -651,144 +720,183 @@ serve(async (req) => {
     }
 
     // ── Enrollment (idempotent) ──
-    let enrollmentCreated = false;
-    let alreadyEnrolled = false;
-
-    if (effectiveCourseId) {
-      const { data: existingEnrollment, error: existingEnrollmentError } =
-        await supabaseAdmin
-          .from("enrollments")
-          .select("id, status, expires_at")
-          .eq("user_id", userId)
-          .eq("course_id", effectiveCourseId)
-          .maybeSingle();
-
-      if (existingEnrollmentError) {
-        console.error(
-          "[register-student] enrollment preflight failed:",
-          existingEnrollmentError,
-        );
-        return enrollmentFailureResponse(
-          "ENROLLMENT_PREFLIGHT_FAILED",
-          createdAuthUserThisAttempt
-            ? "Ученик сохранён, но база не подтвердила зачисление на курс. Откройте его карточку и повторите зачисление."
-            : "Ученик найден, но не удалось проверить его зачисление. Повторите операцию.",
-          500,
-        );
-      } else if (
-        existingEnrollment
-        && enrollment_request_source === "organization_add_student"
-        && !publicRegistration
-        && isEnrollmentAccessExpired(existingEnrollment)
-      ) {
-        return enrollmentFailureResponse(
-          "ENROLLMENT_ACCESS_EXPIRED",
-          "Ученик уже был зачислен на этот курс, но срок доступа истёк. Измените срок доступа в карточке ученика.",
-          409,
-        );
-      } else if (existingEnrollment) {
-        alreadyEnrolled = true;
-      } else {
-        const { data: insertedEnrollment, error: enrollError } =
+    const primaryCourseId = effectiveCourseId || groupCourseId;
+    const requiredCourseIds = [...new Set([groupCourseId, effectiveCourseId].filter(Boolean))] as string[];
+    for (const requiredCourseId of requiredCourseIds) {
+      const isGroupCourse = requiredCourseId === groupCourseId;
+      const requiresCurrentAccess = !!effectiveStudentGroupId || (
+        enrollment_request_source === "organization_add_student" && !publicRegistration
+      );
+      let courseEnrollmentCreated = false;
+      let courseAlreadyEnrolled = false;
+      try {
+        const { data: existingEnrollment, error: existingEnrollmentError } =
           await supabaseAdmin
             .from("enrollments")
-            .insert({
-              user_id: userId,
-              course_id: effectiveCourseId,
-              status: "active",
-              progress: 0,
-            })
-            .select("id, user_id, course_id")
+            .select("id, user_id, course_id, status, expires_at")
+            .eq("user_id", userId)
+            .eq("course_id", requiredCourseId)
             .maybeSingle();
 
-        if (enrollError?.code === "23505") {
-          // A concurrent request may have won the unique(user_id, course_id)
-          // race. Treat it as idempotent only after an exact read-back.
-          const { data: concurrentEnrollment, error: concurrentReadError } =
+        if (existingEnrollmentError) {
+          console.error(
+            "[register-student] enrollment preflight failed:",
+            existingEnrollmentError,
+          );
+          return enrollmentFailureResponse(
+            "ENROLLMENT_PREFLIGHT_FAILED",
+            createdAuthUserThisAttempt
+              ? "Ученик сохранён, но база не подтвердила зачисление на курс. Откройте его карточку и повторите зачисление."
+              : "Ученик найден, но не удалось проверить его зачисление. Повторите операцию.",
+            500,
+          );
+        } else if (existingEnrollment && (
+          !existingEnrollment.id || existingEnrollment.user_id !== userId
+          || existingEnrollment.course_id !== requiredCourseId
+        )) {
+          return enrollmentFailureResponse(
+            "ENROLLMENT_NOT_CONFIRMED",
+            "Профиль ученика сохранён, но база не подтвердила зачисление на нужный курс. Проверьте карточку ученика.",
+            409,
+          );
+        } else if (
+          existingEnrollment
+          && requiresCurrentAccess
+          && isEnrollmentAccessExpired(existingEnrollment)
+        ) {
+          return enrollmentFailureResponse(
+            "ENROLLMENT_ACCESS_EXPIRED",
+            "Ученик уже был зачислен на этот курс, но срок доступа истёк. Измените срок доступа в карточке ученика.",
+            409,
+          );
+        } else if (existingEnrollment) {
+          courseAlreadyEnrolled = true;
+        } else {
+          const { data: insertedEnrollment, error: enrollError } =
             await supabaseAdmin
               .from("enrollments")
-              .select("id, user_id, course_id, status, expires_at")
-              .eq("user_id", userId)
-              .eq("course_id", effectiveCourseId)
+              .insert({
+                user_id: userId,
+                course_id: requiredCourseId,
+                status: "active",
+                progress: 0,
+              })
+              .select("id, user_id, course_id")
               .maybeSingle();
 
-          if (
-            concurrentReadError
-            || !concurrentEnrollment?.id
-            || concurrentEnrollment.user_id !== userId
-            || concurrentEnrollment.course_id !== effectiveCourseId
-          ) {
-            console.error(
-              "[register-student] duplicate enrollment was not readable:",
-              {
-                enrollError,
-                concurrentReadError,
-                concurrentEnrollment,
-              },
-            );
-            return enrollmentFailureResponse(
-              "ENROLLMENT_NOT_CONFIRMED",
-              "База сообщила о существующем зачислении, но не подтвердила его чтением. Обновите карточку ученика и повторите операцию.",
-              409,
-            );
+          if (enrollError?.code === "23505") {
+            // A concurrent request may have won the unique(user_id, course_id)
+            // race. Treat it as idempotent only after an exact read-back.
+            const { data: concurrentEnrollment, error: concurrentReadError } =
+              await supabaseAdmin
+                .from("enrollments")
+                .select("id, user_id, course_id, status, expires_at")
+                .eq("user_id", userId)
+                .eq("course_id", requiredCourseId)
+                .maybeSingle();
+
+            if (
+              concurrentReadError
+              || !concurrentEnrollment?.id
+              || concurrentEnrollment.user_id !== userId
+              || concurrentEnrollment.course_id !== requiredCourseId
+            ) {
+              console.error(
+                "[register-student] duplicate enrollment was not readable:",
+                {
+                  enrollError,
+                  concurrentReadError,
+                  concurrentEnrollment,
+                },
+              );
+              return enrollmentFailureResponse(
+                "ENROLLMENT_NOT_CONFIRMED",
+                "База сообщила о существующем зачислении, но не подтвердила его чтением. Обновите карточку ученика и повторите операцию.",
+                409,
+              );
+            }
+
+            if (
+              requiresCurrentAccess
+              && isEnrollmentAccessExpired(concurrentEnrollment)
+            ) {
+              return enrollmentFailureResponse(
+                "ENROLLMENT_ACCESS_EXPIRED",
+                "Ученик уже был зачислен на этот курс, но срок доступа истёк. Измените срок доступа в карточке ученика.",
+                409,
+              );
+            }
+
+            courseAlreadyEnrolled = true;
+          } else {
+            let verifiedEnrollment: { id: string; user_id: string; course_id: string; status: string | null; expires_at: string | null } | null = null;
+            let verifyError: any = null;
+
+            if (!enrollError && insertedEnrollment?.id) {
+              const verifyResult = await supabaseAdmin
+                .from("enrollments")
+                .select("id, user_id, course_id, status, expires_at")
+                .eq("id", insertedEnrollment.id)
+                .eq("user_id", userId)
+                .eq("course_id", requiredCourseId)
+                .maybeSingle();
+
+              verifiedEnrollment = verifyResult.data;
+              verifyError = verifyResult.error;
+            }
+
+            if (
+              enrollError
+              || verifyError
+              || !insertedEnrollment?.id
+              || !verifiedEnrollment?.id
+              || verifiedEnrollment.id !== insertedEnrollment.id
+              || verifiedEnrollment.user_id !== userId
+              || verifiedEnrollment.course_id !== requiredCourseId
+            ) {
+              console.error(
+                "[register-student] enrollment was not confirmed:",
+                {
+                  enrollError,
+                  verifyError,
+                  insertedId: insertedEnrollment?.id || null,
+                  verifiedId: verifiedEnrollment?.id || null,
+                },
+              );
+              return enrollmentFailureResponse(
+                "ENROLLMENT_NOT_CONFIRMED",
+                createdAuthUserThisAttempt
+                  ? "Ученик сохранён, но база не подтвердила зачисление на курс. Откройте его карточку и повторите зачисление."
+                  : "Ученик найден, но база не подтвердила зачисление на курс. Повторите операцию.",
+                409,
+              );
+            }
+
+            if (requiresCurrentAccess && isEnrollmentAccessExpired(verifiedEnrollment)) {
+              return enrollmentFailureResponse(
+                "ENROLLMENT_ACCESS_EXPIRED",
+                "Зачисление найдено, но срок доступа к курсу истёк. Измените срок доступа в карточке ученика.",
+                409,
+              );
+            }
+            courseEnrollmentCreated = true;
           }
-
-          if (
-            enrollment_request_source === "organization_add_student"
-            && !publicRegistration
-            && isEnrollmentAccessExpired(concurrentEnrollment)
-          ) {
-            return enrollmentFailureResponse(
-              "ENROLLMENT_ACCESS_EXPIRED",
-              "Ученик уже был зачислен на этот курс, но срок доступа истёк. Измените срок доступа в карточке ученика.",
-              409,
-            );
-          }
-
-          alreadyEnrolled = true;
-        } else {
-          let verifiedEnrollment: { id: string } | null = null;
-          let verifyError: any = null;
-
-          if (!enrollError && insertedEnrollment?.id) {
-            const verifyResult = await supabaseAdmin
-              .from("enrollments")
-              .select("id")
-              .eq("id", insertedEnrollment.id)
-              .eq("user_id", userId)
-              .eq("course_id", effectiveCourseId)
-              .maybeSingle();
-
-            verifiedEnrollment = verifyResult.data;
-            verifyError = verifyResult.error;
-          }
-
-          if (
-            enrollError
-            || verifyError
-            || !insertedEnrollment?.id
-            || !verifiedEnrollment?.id
-          ) {
-            console.error(
-              "[register-student] enrollment was not confirmed:",
-              {
-                enrollError,
-                verifyError,
-                insertedId: insertedEnrollment?.id || null,
-                verifiedId: verifiedEnrollment?.id || null,
-              },
-            );
-            return enrollmentFailureResponse(
-              "ENROLLMENT_NOT_CONFIRMED",
-              createdAuthUserThisAttempt
-                ? "Ученик сохранён, но база не подтвердила зачисление на курс. Откройте его карточку и повторите зачисление."
-                : "Ученик найден, но база не подтвердила зачисление на курс. Повторите операцию.",
-              409,
-            );
-          }
-
-          enrollmentCreated = true;
         }
+      } catch (enrollmentError) {
+        // A thrown/lost write response is uncertain, not permission to insert
+        // again or recreate the student. Keep the committed profile and secret.
+        console.error("[register-student] enrollment confirmation failed:", enrollmentError);
+        return enrollmentFailureResponse(
+          "ENROLLMENT_NOT_CONFIRMED",
+          "Профиль ученика сохранён, но зачисление не подтверждено. Проверьте карточку ученика; не создавайте его повторно.",
+          500,
+        );
+      }
+      if (isGroupCourse) groupEnrollmentConfirmed = true;
+      if (requiredCourseId === primaryCourseId) {
+        enrollmentCreated = courseEnrollmentCreated;
+        alreadyEnrolled = courseAlreadyEnrolled;
+        enrollmentConfirmed = true;
       }
     }
 
@@ -814,7 +922,7 @@ serve(async (req) => {
     let message: string;
     if (isExisting) {
       const nm = existingName || full_name;
-      if (!effectiveCourseId) message = `Ученик ${nm} уже существует в системе`;
+      if (!primaryCourseId) message = `Ученик ${nm} уже существует в системе`;
       else if (enrollmentCreated) message = `Ученик ${nm} зачислен на курс`;
       else if (alreadyEnrolled) message = `Ученик ${nm} уже зачислен на этот курс`;
       else message = `Ученик ${nm} добавлен`;
@@ -831,6 +939,10 @@ serve(async (req) => {
       is_existing: isExisting,
       enrollment_created: enrollmentCreated,
       already_enrolled: alreadyEnrolled,
+      enrollment_confirmed: primaryCourseId ? enrollmentConfirmed : null,
+      group_confirmed: groupConfirmed,
+      group_course_id: groupCourseId,
+      group_enrollment_confirmed: groupEnrollmentConfirmed,
       login: generatedLogin || undefined,
       password: returnPassword,
       message,

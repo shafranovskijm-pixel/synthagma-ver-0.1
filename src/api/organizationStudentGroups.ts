@@ -8,6 +8,7 @@ export interface OrganizationStudentGroup {
   created_at: string;
   start_date: string | null;
   end_date: string | null;
+  course_id: string | null;
 }
 
 /** Shared by the list and creation dialog because both use the same query key. */
@@ -17,7 +18,7 @@ export async function fetchOrganizationStudentGroups(
   if (!organizationId) return [];
   const { data, error } = await supabase
     .from("student_groups")
-    .select("id, name, color, organization_id, created_at, start_date, end_date")
+    .select("id, name, color, organization_id, created_at, start_date, end_date, course_id")
     .eq("organization_id", organizationId)
     .order("name");
   // Never cache a failed read as a successful empty directory.

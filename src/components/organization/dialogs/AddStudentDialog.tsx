@@ -22,6 +22,7 @@ interface Course {
 interface StudentGroup {
   id: string;
   name: string;
+  course_id?: string | null;
 }
 
 export interface AddStudentInput {
@@ -86,6 +87,9 @@ export function AddStudentDialog({
   }, [open, creationWarning]);
 
   const publishedCourses = courses.filter(c => c.is_published);
+  const selectedGroup = groups.find(group => group.id === groupId);
+  const groupCourseId = selectedGroup?.course_id || null;
+  const groupCourseTitle = courses.find(course => course.id === groupCourseId)?.title;
   const filteredCourses = publishedCourses.filter(c => 
     c.title.toLowerCase().includes(courseSearch.toLowerCase())
   );
@@ -219,11 +223,15 @@ export function AddStudentDialog({
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Группа помогает вести поток и документы. Зачисление на курсы настраивается отдельно ниже.
+              {groupCourseId
+                ? `Курс группы${groupCourseTitle ? ` «${groupCourseTitle}»` : ""} будет назначен вместе с группой. Дополнительные курсы можно выбрать ниже.`
+                : groupId && selectedGroup?.course_id === null
+                  ? "К группе пока не привязан курс. Выберите курсы ниже или настройте курс группы позже."
+                  : "Группа помогает вести поток и документы. Связанный с группой курс назначается вместе с ней; дополнительные курсы можно выбрать ниже."}
             </p>
           </div>
           <div className="space-y-2">
-            <Label>Курсы (необязательно) {courseIds.length > 0 && <span className="text-primary ml-1">({courseIds.length})</span>}</Label>
+            <Label>{groupCourseId ? "Дополнительные курсы" : "Курсы"} (необязательно) {courseIds.length > 0 && <span className="text-primary ml-1">({courseIds.length})</span>}</Label>
             {publishedCourses.length > 5 && (
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -235,11 +243,13 @@ export function AddStudentDialog({
                 <p className="text-sm text-muted-foreground text-center py-3">Курсы не найдены</p>
               ) : (
                 filteredCourses.map(course => {
-                  const checked = courseIds.includes(course.id);
+                  const includedByGroup = course.id === groupCourseId;
+                  const checked = includedByGroup || courseIds.includes(course.id);
                   return (
                     <label key={course.id} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${checked ? 'bg-primary/10' : 'hover:bg-secondary/50'}`}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleCourse(course.id)} className="h-4 w-4 rounded border-primary text-primary focus:ring-primary" />
+                      <input type="checkbox" checked={checked} disabled={includedByGroup} onChange={() => toggleCourse(course.id)} className="h-4 w-4 rounded border-primary text-primary focus:ring-primary" />
                       <span className="text-sm">{course.title}</span>
+                      {includedByGroup && <span className="ml-auto text-xs text-muted-foreground">Курс группы</span>}
                     </label>
                   );
                 })

@@ -31,6 +31,41 @@ vi.mock("@/components/ui/select", () => ({
 import { AddStudentDialog } from "@/components/organization/dialogs/AddStudentDialog";
 
 describe("AddStudentDialog group assignment", () => {
+  it("shows the implicit group course and lets the user add another course without duplicating it", () => {
+    const onSubmit = vi.fn();
+    render(<AddStudentDialog open onOpenChange={vi.fn()} companies={[]} isCreating={false} onSubmit={onSubmit}
+      groups={[{ id: "group-1", name: "Группа 1", course_id: "course-1" }]}
+      courses={[{ id: "course-1", title: "Охрана труда", is_published: true }, { id: "course-2", title: "Пожарная безопасность", is_published: true }]} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Группа ученика" }), { target: { value: "group-1" } });
+    expect(screen.getByText(/Курс группы «Охрана труда» будет назначен вместе с группой/)).toBeInTheDocument();
+    const implicit = screen.getByRole("checkbox", { name: /Охрана труда/ });
+    expect(implicit).toBeChecked();
+    expect(implicit).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Пожарная безопасность" }));
+    fireEvent.change(screen.getByPlaceholderText("Иванов Иван Иванович"), { target: { value: "Тестовый Ученик" } });
+    fireEvent.click(screen.getByRole("button", { name: "Добавить ученика" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ groupId: "group-1", courseIds: ["course-2"] }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Группа ученика" }), { target: { value: "__no_group__" } });
+    expect(implicit).not.toBeChecked();
+    expect(implicit).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Пожарная безопасность" })).toBeChecked();
+  });
+
+  it("explains a group without a course without inventing an enrollment", () => {
+    render(<AddStudentDialog open onOpenChange={vi.fn()} companies={[]} courses={[]} isCreating={false} onSubmit={vi.fn()}
+      groups={[{ id: "group-1", name: "Группа 1", course_id: null }]} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Группа ученика" }), { target: { value: "group-1" } });
+    expect(screen.getByText(/К группе пока не привязан курс/)).toBeInTheDocument();
+  });
+
+  it("does not hide the implicit group course when it is outside the published course picker", () => {
+    render(<AddStudentDialog open onOpenChange={vi.fn()} companies={[]} courses={[]} isCreating={false} onSubmit={vi.fn()}
+      groups={[{ id: "group-1", name: "Группа 1", course_id: "course-1" }]} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Группа ученика" }), { target: { value: "group-1" } });
+    expect(screen.getByText(/Курс группы будет назначен вместе с группой/)).toBeInTheDocument();
+    expect(screen.getByText(/Дополнительные курсы \(необязательно\)/)).toBeInTheDocument();
+  });
+
   it("submits the selected group together with the new student", () => {
     const onSubmit = vi.fn();
 

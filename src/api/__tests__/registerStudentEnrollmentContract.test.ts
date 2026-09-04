@@ -18,7 +18,7 @@ describe("register-student enrollment deployment contract", () => {
   it("fails closed unless the first course enrollment is persisted", () => {
     const source = readSource();
 
-    expect(source).toContain('const REGISTER_STUDENT_REVISION = "enrollment-persistence-v4"');
+    expect(source).toContain('const REGISTER_STUDENT_REVISION = "enrollment-persistence-v5"');
     expect(source).toContain('"X-Sintagma-Register-Student-Revision"');
     expect(source).toContain('.select("id, user_id, course_id")');
     expect(source).toContain('.eq("id", insertedEnrollment.id)');
@@ -86,7 +86,8 @@ describe("register-student enrollment deployment contract", () => {
     expect(enrollmentMarker).toBeGreaterThan(-1);
     expect(source.slice(enrollmentMarker)).not.toContain("auth.admin.deleteUser");
     expect(source).toContain("partial_success: true");
-    expect(source).toContain("profile_persisted: true");
+    expect(source).toContain("profile_persisted: profilePersisted");
+    expect(source).toContain("let profilePersisted: boolean | null = effectiveStudentGroupId ? null : true");
     expect(source).toContain("enrollment_confirmed: false");
   });
 
@@ -99,8 +100,8 @@ describe("register-student enrollment deployment contract", () => {
     expect(conflictReadBack).toBeGreaterThan(uniqueConflict);
     const reconciliation = source.slice(conflictReadBack);
     expect(reconciliation).toContain('.eq("user_id", userId)');
-    expect(reconciliation).toContain('.eq("course_id", effectiveCourseId)');
-    expect(reconciliation).toContain("alreadyEnrolled = true");
+    expect(reconciliation).toContain('.eq("course_id", requiredCourseId)');
+    expect(reconciliation).toContain("courseAlreadyEnrolled = true");
   });
 
   it("rejects an expired existing enrollment before reporting already enrolled", () => {
@@ -110,12 +111,8 @@ describe("register-student enrollment deployment contract", () => {
       "utf8",
     );
 
-    const existingRead = source.indexOf(
-      '.select("id, status, expires_at")',
-    );
     const organizationSourceGuard = source.indexOf(
-      '&& enrollment_request_source === "organization_add_student"',
-      existingRead,
+      'enrollment_request_source === "organization_add_student"',
     );
     const authenticatedGuard = source.indexOf(
       "&& !publicRegistration",
@@ -130,7 +127,7 @@ describe("register-student enrollment deployment contract", () => {
       expiryGuard,
     );
     const alreadyEnrolled = source.indexOf(
-      "alreadyEnrolled = true",
+      "courseAlreadyEnrolled = true",
       expiryGuard,
     );
 
@@ -173,8 +170,9 @@ describe("register-student enrollment deployment contract", () => {
       ).not.toContain("enrollment_request_source");
     }
 
-    expect(existingRead).toBeGreaterThan(-1);
-    expect(organizationSourceGuard).toBeGreaterThan(existingRead);
+    expect(source).toContain('const requiresCurrentAccess = !!effectiveStudentGroupId || (');
+    expect(source).toContain('.select("id, user_id, course_id, status, expires_at")');
+    expect(organizationSourceGuard).toBeGreaterThan(-1);
     expect(authenticatedGuard).toBeGreaterThan(organizationSourceGuard);
     expect(expiryGuard).toBeGreaterThan(authenticatedGuard);
     expect(expiredCode).toBeGreaterThan(expiryGuard);
@@ -192,7 +190,7 @@ describe("register-student enrollment deployment contract", () => {
       duplicateRace,
     );
     const exactReadback = source.indexOf(
-      "concurrentEnrollment.course_id !== effectiveCourseId",
+      "concurrentEnrollment.course_id !== requiredCourseId",
       concurrentRead,
     );
     const expiryGuard = source.indexOf(
@@ -204,7 +202,7 @@ describe("register-student enrollment deployment contract", () => {
       expiryGuard,
     );
     const alreadyEnrolled = source.indexOf(
-      "alreadyEnrolled = true",
+      "courseAlreadyEnrolled = true",
       expiryGuard,
     );
 
@@ -214,6 +212,22 @@ describe("register-student enrollment deployment contract", () => {
     expect(expiryGuard).toBeGreaterThan(exactReadback);
     expect(expiredCode).toBeGreaterThan(expiryGuard);
     expect(alreadyEnrolled).toBeGreaterThan(expiredCode);
+  });
+
+  it("confirms the persisted group and its own course separately from the form course", () => {
+    const source = readSource();
+    const successfulClaim = source.indexOf("isExisting = !!claim.is_existing");
+    const savedProfileRead = source.indexOf('.select("user_id, organization_id, student_group_id")', successfulClaim);
+    const savedGroupCheck = source.indexOf("const savedGroupRejection = await preflightRegistrationStudentGroup", savedProfileRead);
+    const requiredCourses = source.indexOf("new Set([groupCourseId, effectiveCourseId].filter(Boolean))", savedGroupCheck);
+    expect(savedProfileRead).toBeGreaterThan(successfulClaim);
+    expect(savedGroupCheck).toBeGreaterThan(savedProfileRead);
+    expect(requiredCourses).toBeGreaterThan(savedGroupCheck);
+    expect(source).toContain("const primaryCourseId = effectiveCourseId || groupCourseId");
+    expect(source).toContain("group_confirmed: groupConfirmed");
+    expect(source).toContain("group_course_id: groupCourseId");
+    expect(source).toContain("group_enrollment_confirmed: groupEnrollmentConfirmed");
+    expect(source).toContain("if (!createdAuthUserThisAttempt && !effectiveStudentGroupId)");
   });
 
 });

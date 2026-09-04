@@ -144,9 +144,11 @@ describe("registration transport safety", () => {
 
   it("does not acquire the guard on validation failure and keeps confirmed group creation working", async () => {
     mocks.invoke.mockResolvedValue({ data: student, error: null });
-    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({
-      data: { user_id: student.user_id, organization_id: "org-1", student_group_id: input.groupId }, error: null,
-    }) }) }) }) });
+    mocks.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({
+      data: table === "profiles"
+        ? { user_id: student.user_id, organization_id: "org-1", student_group_id: input.groupId }
+        : { id: input.groupId, organization_id: "org-1", course_id: null }, error: null,
+    }) }) }) }) }));
     const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
     await act(async () => { expect(await result.current.createStudent({ name: "" })).toBe(false); });
     expect(mocks.invoke).not.toHaveBeenCalled();

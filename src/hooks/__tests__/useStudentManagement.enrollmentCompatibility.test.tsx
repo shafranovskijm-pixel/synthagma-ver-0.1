@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   safeInvoke: vi.fn(),
   maybeSingle: vi.fn(),
   profileMaybeSingle: vi.fn(),
+  groupMaybeSingle: vi.fn(),
+  courseMaybeSingle: vi.fn(),
   remainingResult: {
     data: [] as Array<{
       id: string;
@@ -43,6 +45,15 @@ vi.mock("@/api/enrollments", async (importOriginal) => {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => {
+      if (table === "student_groups" || table === "courses") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: table === "student_groups" ? mocks.groupMaybeSingle : mocks.courseMaybeSingle }),
+            }),
+          }),
+        };
+      }
       if (table === "profiles") {
         return {
           select: () => ({
@@ -99,6 +110,8 @@ describe("useStudentManagement enrollment release compatibility", () => {
       },
       error: null,
     });
+    mocks.groupMaybeSingle.mockResolvedValue({ data: { id: "group-1", organization_id: "org-1", course_id: null }, error: null });
+    mocks.courseMaybeSingle.mockResolvedValue({ data: { id: "course-1", organization_id: "org-1" }, error: null });
     mocks.remainingResult = { data: [], error: null };
     mocks.ensureEnrollmentVerified.mockResolvedValue(activeCourse("course-2"));
   });
@@ -194,6 +207,78 @@ describe("useStudentManagement enrollment release compatibility", () => {
       { duration: 30000 },
     );
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("proves the implicit group-course enrollment even with an older Edge success response", async () => {
+    mocks.groupMaybeSingle.mockResolvedValue({ data: { id: "group-1", organization_id: "org-1", course_id: "course-1" }, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { expect(await result.current.createStudent({ name: "Тестовый Ученик", groupId: "group-1" })).toBe(true); });
+    expect(mocks.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(mocks.courseMaybeSingle).toHaveBeenCalledTimes(1);
+    expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
+    expect(mocks.toastWarning).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["missing", null, null],
+    ["read failure", null, new Error("Связь недоступна")],
+    ["wrong learner", { ...activeCourse("course-1"), user_id: "other-student" }, null],
+    ["wrong course", activeCourse("other-course"), null],
+    ["expired", { ...activeCourse("course-1"), expires_at: "2020-01-01T00:00:00Z" }, null],
+  ])("does not announce group-only enrollment success for %s evidence", async (_label, data, error) => {
+    mocks.groupMaybeSingle.mockResolvedValue({ data: { id: "group-1", organization_id: "org-1", course_id: "course-1" }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data, error });
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh }));
+    await act(async () => { expect(await result.current.createStudent({ name: "Тестовый Ученик", groupId: "group-1" })).toBe(false); });
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastWarning).toHaveBeenCalled();
+    expect(mocks.safeInvoke).toHaveBeenCalledTimes(1);
+    expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a completed group course after its expiry without resetting progress", async () => {
+    mocks.groupMaybeSingle.mockResolvedValue({ data: { id: "group-1", organization_id: "org-1", course_id: "course-1" }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: { ...activeCourse("course-1"), status: "completed", progress: 100, expires_at: "2020-01-01T00:00:00Z" }, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { expect(await result.current.createStudent({ name: "Тестовый Ученик", groupId: "group-1" })).toBe(true); });
+    expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
+  });
+
+  it.each(["course-1", "course-2"])("verifies unique requested courses when group course is %s", async groupCourseId => {
+    mocks.groupMaybeSingle.mockResolvedValue({ data: { id: "group-1", organization_id: "org-1", course_id: groupCourseId }, error: null });
+    mocks.courseMaybeSingle.mockResolvedValue({ data: { id: groupCourseId, organization_id: "org-1" }, error: null });
+    mocks.maybeSingle.mockResolvedValueOnce({ data: activeCourse("course-1"), error: null });
+    if (groupCourseId !== "course-1") mocks.maybeSingle.mockResolvedValueOnce({ data: activeCourse(groupCourseId), error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { expect(await result.current.createStudent({ name: "Тестовый Ученик", groupId: "group-1", courseIds: ["course-1", groupCourseId] })).toBe(true); });
+    expect(mocks.maybeSingle).toHaveBeenCalledTimes(groupCourseId === "course-1" ? 1 : 2);
+    expect(mocks.ensureEnrollmentVerified).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["missing group", null],
+    ["wrong group", { id: "other-group", organization_id: "org-1", course_id: null }],
+    ["foreign group", { id: "group-1", organization_id: "other-org", course_id: null }],
+    ["missing course field", { id: "group-1", organization_id: "org-1" }],
+    ["malformed course field", { id: "group-1", organization_id: "org-1", course_id: 42 }],
+  ])("fails closed for %s after profile persistence", async (_label, group) => {
+    mocks.groupMaybeSingle.mockResolvedValue({ data: group, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { expect(await result.current.createStudent({ name: "Тестовый Ученик", groupId: "group-1" })).toBe(false); });
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastWarning).toHaveBeenCalled();
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
+  });
+
+  it.each([null, { id: "course-1", organization_id: "other-org" }, { id: "other-course", organization_id: "org-1" }])("rejects unconfirmed group course ownership: %j", async course => {
+    mocks.groupMaybeSingle.mockResolvedValue({ data: { id: "group-1", organization_id: "org-1", course_id: "course-1" }, error: null });
+    mocks.courseMaybeSingle.mockResolvedValue({ data: course, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { expect(await result.current.createStudent({ name: "Тестовый Ученик", groupId: "group-1" })).toBe(false); });
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
   });
 
   it("rejects success when the database does not prove enrollment", async () => {
