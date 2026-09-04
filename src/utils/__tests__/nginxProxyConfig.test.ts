@@ -19,4 +19,11 @@ describe("NGINX proxy Edge Functions CORS contract", () => {
     expect(block).toContain("x-sintagma-compiler-revision");
     expect(block).toContain("x-sintagma-request-id");
   });
+
+  it("exposes the registration revision on Edge error responses too", () => {
+    const directive = edgeFunctionsBlock().match(/add_header Access-Control-Expose-Headers "([^"]+)" always;/);
+    expect(directive).not.toBeNull();
+    expect(directive![1].split(",").map(header => header.trim()))
+      .toContain("x-sintagma-register-student-revision");
+  });
 });

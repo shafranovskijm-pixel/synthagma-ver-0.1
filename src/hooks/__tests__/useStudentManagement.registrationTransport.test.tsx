@@ -67,7 +67,47 @@ describe("registration transport safety", () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
-  it.each([408, 500])("does not treat HTTP %i as proof that no write occurred", async status => {
+  it.each(["GROUP_PREFLIGHT_FAILED", "GROUP_COURSE_PREFLIGHT_FAILED"])("shows a confirmed pre-write %s rejection without a possibly-created warning or automatic retry", async code => {
+    const message = "Не удалось проверить выбранную группу.";
+    mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify({ error: message, code }), { status: 500 })) });
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh }));
+    act(() => result.current.setShowAddStudentDialog(true));
+    await act(async () => { expect(await result.current.createStudent(input)).toBe(false); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    expect(mocks.error).toHaveBeenCalledWith(message);
+    expect(mocks.warning).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(result.current.creationWarning).toBeNull();
+    expect(result.current.showAddStudentDialog).toBe(true);
+    expect(result.current.isCreatingStudent).toBe(false);
+    expect(onRefresh).not.toHaveBeenCalled();
+
+    // The user can explicitly retry after the confirmed no-write failure.
+    mocks.invoke.mockResolvedValueOnce({ data: student, error: null });
+    await act(async () => { expect(await result.current.createStudent({ name: input.name })).toBe(true); });
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [500, { error: "GROUP_PREFLIGHT_FAILED" }],
+    [500, { error: "Неизвестная ошибка", code: "UNKNOWN_PREFLIGHT_FAILED" }],
+    [500, { error: "Неизвестная ошибка", code: ["GROUP_PREFLIGHT_FAILED"] }],
+    [500, { error: "Неизвестная ошибка", code: " GROUP_PREFLIGHT_FAILED " }],
+    [408, { error: "Ответ не подтверждён", code: "GROUP_PREFLIGHT_FAILED" }],
+    [502, { error: "Ответ не подтверждён", code: "GROUP_COURSE_PREFLIGHT_FAILED" }],
+  ] as const)("keeps an ambiguous HTTP %i response unknown unless its exact machine code and status prove a pre-write failure: %j", async (status, body) => {
+    mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify(body), { status })) });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { expect(await result.current.createStudent(input)).toBe(false); });
+    expect(result.current.creationWarning).toContain("Результат создания ученика не подтверждён");
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it.each([408, 500, 502, 504])("does not treat HTTP %i as proof that no write occurred", async status => {
     mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify({ error: "Ответ не подтверждён" }), { status })) });
     const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
     await act(async () => { expect(await result.current.createStudent(input)).toBe(false); });

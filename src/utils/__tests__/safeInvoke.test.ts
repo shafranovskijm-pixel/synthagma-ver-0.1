@@ -108,4 +108,40 @@ describe("safeInvoke retry contract", () => {
     const result = await safeInvoke("register-student", { retry: false });
     expect(result).not.toHaveProperty("httpStatus");
   });
+
+  it("preserves the exact machine code only from an actual HTTP JSON response", async () => {
+    mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify({ error: "Проверка группы недоступна", code: "GROUP_PREFLIGHT_FAILED" }), { status: 500 })) });
+    const result = await safeInvoke("register-student", { retry: false });
+    expect(result.httpStatus).toBe(500);
+    expect(result.errorCode).toBe("GROUP_PREFLIGHT_FAILED");
+    expect(result.error?.message).toBe("Проверка группы недоступна");
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([null, 500, {}, ["GROUP_PREFLIGHT_FAILED"], "", "   "])("does not expose an invalid machine code: %j", async code => {
+    mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify({ error: "Проверка недоступна", code }), { status: 500 })) });
+    const result = await safeInvoke("register-student", { retry: false });
+    expect(result.httpStatus).toBe(500);
+    expect(result).not.toHaveProperty("errorCode");
+  });
+
+  it("does not infer a machine code from an HTTP text body", async () => {
+    mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response("GROUP_PREFLIGHT_FAILED", { status: 500 })) });
+    const result = await safeInvoke("register-student", { retry: false });
+    expect(result.httpStatus).toBe(500);
+    expect(result.error?.message).toBe("GROUP_PREFLIGHT_FAILED");
+    expect(result).not.toHaveProperty("errorCode");
+  });
+
+  it.each(["returned", "thrown"] as const)("does not trust HTTP-like fields or code text on a %s non-HTTP error", async delivery => {
+    const error = Object.assign(new Error("HTTP 500 GROUP_PREFLIGHT_FAILED"), {
+      code: "GROUP_PREFLIGHT_FAILED", context: new Response(JSON.stringify({ code: "GROUP_PREFLIGHT_FAILED" }), { status: 500 }),
+    });
+    if (delivery === "returned") mocks.invoke.mockResolvedValue({ data: null, error });
+    else mocks.invoke.mockRejectedValue(error);
+    const result = await safeInvoke("register-student", { retry: false });
+    expect(result).not.toHaveProperty("httpStatus");
+    expect(result).not.toHaveProperty("errorCode");
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  });
 });

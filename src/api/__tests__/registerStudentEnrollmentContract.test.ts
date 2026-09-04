@@ -18,7 +18,7 @@ describe("register-student enrollment deployment contract", () => {
   it("fails closed unless the first course enrollment is persisted", () => {
     const source = readSource();
 
-    expect(source).toContain('const REGISTER_STUDENT_REVISION = "enrollment-persistence-v3"');
+    expect(source).toContain('const REGISTER_STUDENT_REVISION = "enrollment-persistence-v4"');
     expect(source).toContain('"X-Sintagma-Register-Student-Revision"');
     expect(source).toContain('.select("id, user_id, course_id")');
     expect(source).toContain('.eq("id", insertedEnrollment.id)');
@@ -145,16 +145,22 @@ describe("register-student enrollment deployment contract", () => {
       'enrollment_request_source: "organization_add_student"',
     );
     const uiErrorGuard = organizationUiSource.indexOf(
-      "if (error) throw error",
+      "if (error) {",
       requestMarker,
     );
+    const uiPartialBranch = organizationUiSource.indexOf("if (data?.partial_success)", uiErrorGuard);
     const uiSuccessToast = organizationUiSource.indexOf(
       "toast.success",
       uiErrorGuard,
     );
 
     expect(uiErrorGuard).toBeGreaterThan(requestMarker);
+    expect(uiPartialBranch).toBeGreaterThan(uiErrorGuard);
+    // The transport guard now classifies definitive vs uncertain failures,
+    // but every error must still throw before any partial/success handling.
+    expect(organizationUiSource.slice(uiErrorGuard, uiPartialBranch)).toMatch(/\bthrow\s+error\s*;/);
     expect(uiSuccessToast).toBeGreaterThan(uiErrorGuard);
+    expect(uiSuccessToast).toBeGreaterThan(uiPartialBranch);
 
     for (const excludedCaller of [
       "src/components/ImportStudentsForm.tsx",

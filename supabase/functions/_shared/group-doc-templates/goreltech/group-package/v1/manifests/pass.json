@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.pass",
-  "template_version": "1.1.0-client-source",
+  "template_version": "1.2.0-portrait-readability",
   "scenario": "group_pass",
   "source_filename": "pass.source.docx",
   "source_sha256": "4BF9F40565934CB8363DADD796ADE74B088242FFC0AA6DB9E251241A36F83DFD",
@@ -32,17 +32,17 @@
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
     "the original blank-form row capacity is preserved without inventing names or marks",
-    "all runtime values use explicit tokens; no sample person remains"
+    "all runtime values use explicit tokens; no sample person remains",
+    "printing runs in the pass table explicitly use the intended 13 half-point font size; source colours retained",
+    "only four date-header cells use 54-twip side margins; runtime dates split after DD.MM. without dropping YYYY",
+    "portrait orientation, all column widths, header and source wording remain unchanged"
   ],
   "qa": {
     "inspect_all_pages": true,
     "preserve_package_parts_except": [
       "word/document.xml"
     ],
-    "status": "passed_all_filled_pages_word_16_2026-08-24",
-    "renderer": "Microsoft Word 16.0 ExportAsFixedFormat",
-    "rendered_pages": 1,
-    "evidence": "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md"
+    "status": "pending_actual_word_visual_review"
   },
-  "template_sha256": "0819523FBF593D77F3C8D10430F453DDDC2B48022ABD5A0DF4B77396440158D2"
+  "template_sha256": "5E7D95F115609B1C1B0B7DF588C042364D33045FAFEBBE05AF7F1ECE2B4D35FB"
 }

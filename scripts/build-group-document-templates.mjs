@@ -237,7 +237,7 @@ function signatureInheritedTabPositions(source, stylesXml) {
   return [...positions].sort((a, b) => a - b);
 }
 
-function signatureParagraph(source, segments, stops, keepNext = false, stylesXml) {
+function signatureParagraph(source, segments, stops, keepNext = false, stylesXml, wrapName = false) {
   const sourcePr = source.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0] || "";
   const property = (name) => sourcePr.match(new RegExp(`<w:${name}\\b[^>]*(?:\\/>|>[\\s\\S]*?<\\/w:${name}>)`))?.[0] || "";
   const runPr = splitTopLevel(source, ["w:r"])[0]?.xml.match(/<w:rPr\b[\s\S]*?<\/w:rPr>/)?.[0]
@@ -246,9 +246,16 @@ function signatureParagraph(source, segments, stops, keepNext = false, stylesXml
   // client's HTML style sixteen inherited stops otherwise intercept our TABs.
   const tabs = new Map(signatureInheritedTabPositions(source, stylesXml).map((pos) => [pos, "clear"]));
   for (const stop of stops) tabs.set(stop, "center");
+  // Match the reviewed A/B candidate: the first line keeps its left origin,
+  // while name continuation stays at the existing FIO tab, not under caption.
+  // Do not combine hanging with firstLine or firstLineChars on these lines.
+  const nameOrigin = stops.at(-1);
+  const indent = wrapName
+    ? `<w:ind w:left="${nameOrigin}" w:right="0" w:hanging="${nameOrigin}" w:leftChars="0" w:rightChars="0" w:hangingChars="0"/>`
+    : '<w:ind w:left="0" w:right="0" w:firstLine="0" w:hanging="0" w:leftChars="0" w:rightChars="0" w:firstLineChars="0" w:hangingChars="0"/>';
   const pPr = `<w:pPr>${property("pStyle")}${keepNext ? "<w:keepNext/>" : ""}${property("shd")}`
     + `<w:tabs>${[...tabs].sort(([a], [b]) => a - b).map(([pos, value]) => `<w:tab w:val="${value}" w:pos="${pos}"/>`).join("")}</w:tabs>`
-    + `${property("spacing")}<w:ind w:left="0" w:right="0" w:firstLine="0" w:hanging="0" w:leftChars="0" w:rightChars="0" w:firstLineChars="0" w:hangingChars="0"/>`
+    + `${property("spacing")}${indent}`
     + `<w:jc w:val="left"/>${property("rPr")}</w:pPr>`;
   // Copies must not repeat the source paragraph's Word editing identifiers.
   const open = source.match(/^<w:p\b[^>]*>/)?.[0]
@@ -268,7 +275,7 @@ function replaceSignaturePair(elements, index, signatures, stops, underscores, s
   }
   const replacement = signatures.flatMap(({ caption, name }) => [
     ...(separateCaption ? [signatureParagraph(line.xml, [caption], stops, true, stylesXml)] : []),
-    signatureParagraph(line.xml, [separateCaption ? "" : caption, "_".repeat(underscores), name], stops, true, stylesXml),
+    signatureParagraph(line.xml, [separateCaption ? "" : caption, "_".repeat(underscores), name], stops, true, stylesXml, true),
     signatureParagraph(labels.xml, ["", "(подпись)", "(ФИО)"], stops, false, stylesXml),
   ]);
   elements.splice(index, 2, ...replacement);
@@ -763,6 +770,33 @@ function patchPass(parts) {
     "[[DAY_4]]",
   ]);
   table.xml = constrainTable(table.xml, 9300, 13);
+  // Only this portrait table: new token runs must not fall back to the
+  // client's 12pt paragraph style while neighbouring runs are capped at 6.5pt.
+  table.xml = table.xml.replace(/<w:r\b[\s\S]*?<\/w:r>/g, (run) => {
+    if (!/<w:t\b[^>]*>[\s\S]+?<\/w:t>/.test(run)) return run;
+    const sizes = '<w:sz w:val="13"/><w:szCs w:val="13"/>';
+    if (/<w:rPr\b[\s\S]*?<\/w:rPr>/.test(run)) {
+      return run.replace(/<w:rPr\b[\s\S]*?<\/w:rPr>/, (properties) => properties
+        .replace(/<w:sz(?:Cs)?\b[^>]*\/>/g, "")
+        .replace(/<\/w:rPr>/, `${sizes}</w:rPr>`));
+    }
+    return run.replace(/(<w:r\b[^>]*>)/, `$1<w:rPr>${sizes}</w:rPr>`);
+  });
+  // Keep all nine widths, borders and body-cell margins. Only the four date
+  // headers need space for DD.MM. / YYYY on two explicit runtime lines.
+  const rows = splitTopLevel(table.xml, ["w:tr"]);
+  const dateRow = rows[1];
+  const dateCells = splitTopLevel(dateRow.xml, ["w:tc"]);
+  let dateRowXml = dateRow.xml;
+  for (let index = 8; index >= 5; index--) {
+    const cell = dateCells[index];
+    const margins = '<w:tcMar><w:left w:w="54" w:type="dxa"/><w:right w:w="54" w:type="dxa"/></w:tcMar>';
+    if (/<w:tcMar\b/.test(cell.xml)) throw new Error("Pass date header already has explicit margins; review source");
+    const cellXml = cell.xml.replace(/<\/w:tcPr>/, `${margins}</w:tcPr>`);
+    if (cellXml === cell.xml) throw new Error("Pass date header has no cell properties");
+    dateRowXml = dateRowXml.slice(0, cell.start) + cellXml + dateRowXml.slice(cell.end);
+  }
+  table.xml = table.xml.slice(0, dateRow.start) + dateRowXml + table.xml.slice(dateRow.end);
   insertBeforeSection(parts.elements, [
     paragraphXml(
       "[[SIGNATORY_POSITION]] ________________________________ / [[SIGNATORY_SHORT]] /",
@@ -783,7 +817,7 @@ const definitions = {
   expulsion_order: {
     source: "expulsion_order.source.docx",
     orientation: "landscape",
-    version: "1.3.0-signature-layout",
+    version: "1.3.1-signature-wrap",
     signatureLayout: true,
     schema_version: 2,
     row_source_key: null,
@@ -818,7 +852,7 @@ const definitions = {
   attestation_sheet: {
     source: "attestation_sheet.source.docx",
     orientation: "portrait",
-    version: "1.2.0-signature-layout",
+    version: "1.2.1-signature-wrap",
     signatureLayout: true,
     row_source_key: "attestation_rows",
     row_tokens: ["N", "STUDENT_NAME", "PERCENT", "GRADE"],
@@ -864,6 +898,8 @@ const definitions = {
   },
   pass: {
     source: "pass.source.docx",
+    version: "1.2.0-portrait-readability",
+    portraitReadability: true,
     orientation: "portrait",
     row_source_key: "pass_rows",
     row_tokens: ["N", "STUDENT_NAME", "COMPANY", "EMAIL", "PHONE", "DAY_1", "DAY_2", "DAY_3", "DAY_4"],
@@ -913,7 +949,13 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
       ...(definition.repeaters ? ["issuance and non-issuance tables use separate confirmed row sources; empty non-issuance form stays unnumbered"] : []),
       ...(definition.signatureLayout ? ["changed signature lines and their labels share explicit tab stops; configurable signatory caption is a separate paragraph",
         "inherited tab stops are explicitly cleared from each changed signature paragraph; all indent components are reset locally",
+        "only signature-and-name lines use hanging indentation at the FIO tab; complete names wrap within the right-hand area without font reduction or truncation",
         ...(docType === "expulsion_order" ? ["removed the preparation-added 2300-twip gap before the non-issuance heading; original source spacing and keep-next retained"] : []),
+      ] : []),
+      ...(definition.portraitReadability ? [
+        "printing runs in the pass table explicitly use the intended 13 half-point font size; source colours retained",
+        "only four date-header cells use 54-twip side margins; runtime dates split after DD.MM. without dropping YYYY",
+        "portrait orientation, all column widths, header and source wording remain unchanged",
       ] : []),
     ],
     qa: {
@@ -928,7 +970,7 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
             "word/media/image1.jpeg",
           ]
         : ["word/document.xml"],
-      ...(definition.repeaters || definition.signatureLayout ? { status: "pending_actual_word_visual_review" } : {
+      ...(definition.repeaters || definition.signatureLayout || definition.portraitReadability ? { status: "pending_actual_word_visual_review" } : {
         status: "passed_all_filled_pages_word_16_2026-08-24",
         renderer: "Microsoft Word 16.0 ExportAsFixedFormat",
         rendered_pages: docType === "expulsion_order" ? 2 : 1,

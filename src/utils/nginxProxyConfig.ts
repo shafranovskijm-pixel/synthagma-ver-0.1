@@ -111,7 +111,7 @@ server {
         add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Vary "Origin" always;
         add_header Access-Control-Allow-Credentials "true" always;
-        add_header Access-Control-Expose-Headers "content-range, content-length, x-supabase-api-version, x-sintagma-compiler-revision, x-sintagma-request-id" always;
+        add_header Access-Control-Expose-Headers "content-range, content-length, x-supabase-api-version, x-sintagma-compiler-revision, x-sintagma-request-id, x-sintagma-register-student-revision" always;
         proxy_pass https://$sb_host/functions/v1/;
     }
 

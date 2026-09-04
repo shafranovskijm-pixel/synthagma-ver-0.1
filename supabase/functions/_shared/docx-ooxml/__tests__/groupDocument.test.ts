@@ -18,6 +18,7 @@ import {
   type GroupDocumentManifest,
 } from "../groupDocument";
 import { findUnresolvedTokens, splitTopLevel } from "../xml";
+import { shortNameRu } from "../money";
 import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../../group-doc-templates/goreltech/group-package/v1/embedded";
 import { generateDocument } from "../../../../../src/lib/group-docs/generate";
 import { SAMPLE_CONTEXT } from "../../../../../src/lib/group-docs/sampleContext";
@@ -596,7 +597,7 @@ describe("групповые DOCX Beta", () => {
     it("версионирует только приказ, не меняет исходник и не наследует старую отметку Word QA", async () => {
       const { manifest, template, documentXml } = await loadGroupTemplate("expulsion_order");
       expect(manifest.schema_version).toBe(2);
-      expect(manifest.template_version).toBe("1.3.0-signature-layout");
+      expect(manifest.template_version).toBe("1.3.1-signature-wrap");
       expect(manifest.repeater).toBeNull();
       expect(manifest.row_source_key).toBeNull();
       expect(manifest.row_tokens).toEqual([]);
@@ -617,14 +618,14 @@ describe("групповые DOCX Beta", () => {
     });
   });
 
-  it("сохраняет байты остальных семи шаблонов и manifest/embedded при исправлении двух подписных блоков", async () => {
+  it("сохраняет байты остальных семи шаблонов, включая исправленный пропуск, при переносе длинных подписей", async () => {
     const unchanged = {
       enrollment_order: ["1A5E190569CE7CB152B39C644B3C7200DB88053F5BC9FD4E1F8D9FDE08BAB54C", "5686177DC3FA58DDEE1F1996935C847C9C54554346778054A157D1177B41FD87"],
       student_list: ["1D4FD144831545AEF7EDEAFBA1650386AD925B54ADE7CC9ABD65B04F26BD4AC3", "B9AD5FB7C0B0BD59575E48E7DF9A7133A6D470B278D4A2373A23296703692784"],
       schedule: ["6CC810BE349D63F62B89BEA60CB0FC0C64DA52F8B85697C85247E01087527ACF", "A755E1EBB11A29EC173A7F83F5D57263D11A4DA609D6D18D36B3F61E6E092B22"],
       registration_book: ["B221BF20A495B32DDC2ABB5510EA1F7A0C5A12ABCC01E3EEAC0C6388A52D4ED8", "D7E245E7C3DDF3D2272ADBD44A300105A56781A1F602C924A4402F94CD6365C9"],
       title_page: ["41D7D2103B5BD725D8DC3661D90599BFD00413EEE080560B8887D87A9BAD5E69", "2132D9727675AE8F293DE32372F52EDE85635A9A126BD5CEC6FA4EFCED5B767D"],
-      pass: ["0819523FBF593D77F3C8D10430F453DDDC2B48022ABD5A0DF4B77396440158D2", "70A177DA3B9A50A2B76ABBB47D3E8DBFC600E67965B14BC4A7636260E8E2F3C6"],
+      pass: ["5E7D95F115609B1C1B0B7DF588C042364D33045FAFEBBE05AF7F1ECE2B4D35FB", "3E0E6D70D13730AC22E51E5D8541EC8722F5D8C0882EBC0613FB49928BDC6CBC"],
     };
     for (const [docType, hashes] of Object.entries(unchanged)) {
       expect(sha256(fs.readFileSync(path.join(ROOT, "templates", `${docType}.docx`))), docType).toBe(hashes[0]);
@@ -644,15 +645,90 @@ describe("групповые DOCX Beta", () => {
     }
   });
 
+  describe("читаемость пропуска в согласованной книжной ориентации", () => {
+    it("задаёт 13 half-points каждому печатающему run и меняет поля только четырёх ячеек дат", async () => {
+      const { manifest, template, zip, documentXml } = await loadGroupTemplate("pass");
+      expect(manifest.template_version).toBe("1.2.0-portrait-readability");
+      expect(manifest.qa?.status).toBe("pending_actual_word_visual_review");
+      expect(manifest.qa?.renderer).toBeUndefined();
+      expect(sha256(template)).toBe(manifest.template_sha256);
+      const source = fs.readFileSync(path.join(SOURCE_ROOT, manifest.source_filename));
+      expect(sha256(source)).toBe("4BF9F40565934CB8363DADD796ADE74B088242FFC0AA6DB9E251241A36F83DFD");
+      const sourceZip = await JSZip.loadAsync(source);
+      for (const part of Object.keys(sourceZip.files).filter(name => !name.endsWith("/") && name !== "word/document.xml")) {
+        expect(await zipPart(zip, part), part).toEqual(await zipPart(sourceZip, part));
+      }
+      const table = documentXml.match(/<w:tbl\b[\s\S]*?<\/w:tbl>/)![0];
+      expect(Array.from(table.matchAll(/<w:gridCol\b[^>]*w:w="(\d+)"/g)).map(match => Number(match[1])))
+        .toEqual([348, 2434, 1304, 1825, 1391, 503, 522, 521, 452]);
+      const runs = Array.from(table.matchAll(/<w:r\b[\s\S]*?<\/w:r>/g)).map(match => match[0]).filter(run => xmlText(run));
+      expect(runs.length).toBeGreaterThan(15);
+      for (const run of runs) {
+        expect(run.match(/<w:sz\b[^>]*w:val="13"/g), xmlText(run)).toHaveLength(1);
+        expect(run.match(/<w:szCs\b[^>]*w:val="13"/g), xmlText(run)).toHaveLength(1);
+      }
+      const rows = splitTopLevel(table, ["w:tr"]);
+      const withMargins: string[] = [];
+      rows.forEach((row, rowIndex) => splitTopLevel(row.xml, ["w:tc"]).forEach((cell, cellIndex) => {
+        const margins = cell.xml.match(/<w:tcMar\b[\s\S]*?<\/w:tcMar>/)?.[0];
+        if (!margins) return;
+        withMargins.push(`${rowIndex}:${cellIndex}`);
+        expect(margins).toBe('<w:tcMar><w:left w:w="54" w:type="dxa"/><w:right w:w="54" w:type="dxa"/></w:tcMar>');
+      }));
+      expect(withMargins).toEqual(["1:5", "1:6", "1:7", "1:8"]);
+      // Hash of the previously retained pass, stripping only the approved
+      // run sizes (and resulting empty rPr wrappers) and date-cell margins.
+      // All other XML (including red names,
+      // paragraph indents, borders, widths and section properties) must match.
+      const withoutApprovedChanges = documentXml.replace(/<w:r\b[\s\S]*?<\/w:r>/g,
+        run => run.replace(/<w:sz(?:Cs)?\b[^>]*\/>/g, "").replace(/<w:rPr><\/w:rPr>/g, ""))
+        .replace(/<w:tcMar\b[\s\S]*?<\/w:tcMar>/g, "");
+      expect(sha256(Buffer.from(withoutApprovedChanges))).toBe("3F5FAAC78A4783E368712ED89D1926E01556726D9E6ED5C19F540923E9284AD3");
+      expect(sha256(Buffer.from(documentXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, ""))))
+        .toBe("E3E08E78934C4EE018BAA394420E57E132076B34DD616001D7BAFB61C2E13BD2");
+      expect(documentXml).toContain('w:w="11906" w:h="16838"');
+      expect(Buffer.from(GROUP_DOCUMENT_TEMPLATE_BUNDLE.pass.templateBase64, "base64")).toEqual(template);
+      expect(JSON.parse(GROUP_DOCUMENT_TEMPLATE_BUNDLE.pass.manifestJson)).toEqual(manifest);
+    });
+
+    it("печатает даты в две строки, полные ФИО/email и исходные отметки без сжатия или сокращений", async () => {
+      const { manifest, documentXml } = await loadGroupTemplate("pass");
+      const name = "ТЕСТОВЫЙ Однофамилец Примерович";
+      const email = "synthetic.learner1@example.invalid";
+      const compiled = compileGroupDocumentXml({ documentXml, manifest, snapshot: {
+        scalars: scalarValuesFor(documentXml, { DAY1_DATE: "01.09.\n2026", DAY2_DATE: "02.09.\n2026", DAY3_DATE: "03.09.\n2026", DAY4_DATE: "04.09.\n2026" }),
+        rows: [{ N: "1", STUDENT_NAME: name, COMPANY: "ТЕСТ", EMAIL: email, PHONE: "+7 (000) 000-00-01", DAY_1: "ОП", DAY_2: "0", DAY_3: "<&>", DAY_4: "[[X]]" }],
+      } });
+      const table = compiled.match(/<w:tbl\b[\s\S]*?<\/w:tbl>/)![0];
+      const rows = splitTopLevel(table, ["w:tr"]);
+      splitTopLevel(rows[1].xml, ["w:tc"]).slice(-4).forEach((cell, index) => {
+        expect(xmlText(cell.xml)).toBe(`0${index + 1}.09.2026`);
+        expect(cell.xml.match(/<w:br\s*\/>/g)).toHaveLength(1);
+        expect(cell.xml).toContain(`0${index + 1}.09.</w:t><w:br/><w:t xml:space="preserve">2026`);
+      });
+      const cells = splitTopLevel(rows[2].xml, ["w:tc"]);
+      expect(xmlText(cells[1].xml)).toBe(name);
+      expect(xmlText(cells[3].xml)).toBe(email);
+      expect(cells[1].xml).toContain('<w:color w:val="EE0000"/>');
+      expect(cells.slice(-4).map(cell => xmlText(cell.xml).replace(/&#91;/g, "[")))
+        .toEqual(["ОП", "0", "<&>", "[[X]]"]);
+      for (const run of Array.from(table.matchAll(/<w:r\b[\s\S]*?<\/w:r>/g)).map(match => match[0]).filter(run => xmlText(run))) {
+        expect(run, xmlText(run)).toContain('<w:sz w:val="13"/>');
+        expect(run, xmlText(run)).toContain('<w:szCs w:val="13"/>');
+      }
+      expect(findUnresolvedTokens(compiled)).toEqual([]);
+    });
+  });
+
   describe("точечное выравнивание подписей без изменения исходных таблиц", () => {
     const specs = {
       expulsion_order: {
-        version: "1.3.0-signature-layout", stops: [8000, 12800], width: 15167, pairs: 2,
+        version: "1.3.1-signature-wrap", stops: [8000, 12800], width: 15167, pairs: 2,
         sourceHash: "3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99",
         unchangedHash: "BDAEFF4B5F4B367368DB8669EFF317435C7A47D203790770760D47A6AF37C559",
       },
       attestation_sheet: {
-        version: "1.2.0-signature-layout", stops: [4800, 7600], width: 9355, pairs: 3,
+        version: "1.2.1-signature-wrap", stops: [4800, 7600], width: 9355, pairs: 3,
         sourceHash: "1A1DCDD74B904A6EF3265728679FB6022677EB05F1228CB753695331CDC27CA1",
         unchangedHash: "5EFF42378EFE6DC4571AD477D4BD7A284673C3BCF43E79F1D5332C03B92A9333",
       },
@@ -743,11 +819,22 @@ describe("групповые DOCX Beta", () => {
       const newParagraphs = paragraphs(documentXml).filter((paragraph) => paragraph.includes("<w:tabs>")
         && /SIGNATORY|INSTRUCTOR|\(ФИО\)|\(дата\)|^_+$/.test(xmlText(paragraph).trim()));
       expect(newParagraphs.length).toBeGreaterThanOrEqual(6);
+      const nameLines = newParagraphs.filter((paragraph) => /SIGNATORY_SHORT|INSTRUCTOR_\d_SHORT/.test(paragraph));
+      expect(nameLines).toHaveLength(specs[docType].pairs);
       for (const paragraph of newParagraphs) {
         const actual = effectiveParagraphLayout(paragraph, stylesXml);
         expect(actual.tabs).toEqual(specs[docType].stops.map((stop) => [stop, "center"]));
-        expect(actual.ind).toEqual({ left: 0, right: 0, firstLine: 0, hanging: 0,
-          leftChars: 0, rightChars: 0, firstLineChars: 0, hangingChars: 0 });
+        if (nameLines.includes(paragraph)) {
+          const origin = specs[docType].stops[1];
+          expect(actual.ind).toEqual({ left: origin, right: 0, hanging: origin,
+            leftChars: 0, rightChars: 0, hangingChars: 0 });
+          expect(actual.ind.left - actual.ind.hanging).toBe(0);
+          expect(paragraph).not.toMatch(/\bw:firstLine(?:Chars)?=/);
+          expect(paragraph).toContain("<w:keepNext/>");
+        } else {
+          expect(actual.ind).toEqual({ left: 0, right: 0, firstLine: 0, hanging: 0,
+            leftChars: 0, rightChars: 0, firstLineChars: 0, hangingChars: 0 });
+        }
       }
       if (docType === "attestation_sheet") {
         expect(sourceLayout.tabs).toEqual(Array.from({ length: 16 }, (_, index) => [(index + 1) * 916, "left"]));
@@ -763,8 +850,11 @@ describe("групповые DOCX Beta", () => {
       }
     });
 
-    it.each(["empty", "typical", "long"])("сохраняет %s подписи и tab-пары при реальной подстановке DOCX", async (mode) => {
-      const name = mode === "empty" ? "" : mode === "typical" ? "Тестов Т. Т." : "Синтетический-Длиннофамильный Тестовый Проверочный Подписант";
+    it.each(["empty", "typical", "long", "long-shortname"])("сохраняет %s подписи и tab-пары при реальной подстановке DOCX", async (mode) => {
+      const name = mode === "empty" ? "" : mode === "typical" ? "Тестов Т. Т." : mode === "long-shortname"
+        ? shortNameRu("Синтетический-Длиннофамильный Тестовый Проверочный")
+        : "Синтетический-Длиннофамильный Тестовый Проверочный Подписант";
+      if (mode === "long-shortname") expect(name).toBe("Синтетический-Длиннофамильный Т.П.");
       const position = mode === "empty" ? "" : mode === "typical" ? "Руководитель учебного центра" : "Исполняющий обязанности руководителя учебного центра по дополнительному профессиональному образованию";
       for (const docType of Object.keys(specs) as Array<keyof typeof specs>) {
         const { documentXml, manifest, zip } = await loadGroupTemplate(docType);
@@ -792,7 +882,12 @@ describe("групповые DOCX Beta", () => {
           expect(xmlText(signature)).toContain("_".repeat(docType === "expulsion_order" ? 32 : 26));
           expect(signature.match(/<w:tabs>[\s\S]*?<\/w:tabs>/)?.[0])
             .toBe(label.match(/<w:tabs>[\s\S]*?<\/w:tabs>/)?.[0]);
+          const ind = signature.match(/<w:ind\b[^>]*\/>/)![0];
+          expect(ind).toContain(`w:left="${specs[docType].stops[1]}"`);
+          expect(ind).toContain(`w:hanging="${specs[docType].stops[1]}"`);
+          expect(ind).not.toMatch(/\bw:firstLine(?:Chars)?=/);
         }
+        expect(compiled.match(/<w:tbl\b/g)?.length).toBe(docType === "expulsion_order" ? 2 : 1);
         zip.file("word/document.xml", compiled);
         const generated = await JSZip.loadAsync(await zip.generateAsync({ type: "nodebuffer" }));
         expect(await generated.file("word/document.xml")!.async("string")).toBe(compiled);

@@ -99,7 +99,7 @@ export function useStudentManagement({
       const password = customPassword || generateStrongPassword();
       generatedPassword = password;
       registrationUnconfirmed = true;
-      const { data, error, httpStatus } = await safeInvoke<any>("register-student", {
+      const { data, error, httpStatus, errorCode } = await safeInvoke<any>("register-student", {
         // A lost response does not prove rollback. Without email/login, another
         // invocation can create a different account, so never retry this write.
         retry: false,
@@ -121,8 +121,12 @@ export function useStudentManagement({
       if (error) {
         // Current register-student uses these statuses for pre-write rejection
         // or confirmed compensation. Retained/uncertain new accounts instead
-        // return structured partial_success; 5xx/408 remain unconfirmed.
-        if (httpStatus !== undefined && [400, 401, 403, 404, 409].includes(httpStatus)) registrationUnconfirmed = false;
+        // return structured partial_success. Only these exact HTTP 500 codes
+        // prove a group check failed before any write; other 5xx/408 stay unknown.
+        const groupPreflightRejected = httpStatus === 500 && (
+          errorCode === "GROUP_PREFLIGHT_FAILED" || errorCode === "GROUP_COURSE_PREFLIGHT_FAILED"
+        );
+        if (groupPreflightRejected || (httpStatus !== undefined && [400, 401, 403, 404, 409].includes(httpStatus))) registrationUnconfirmed = false;
         throw error;
       }
       if (data?.partial_success) {

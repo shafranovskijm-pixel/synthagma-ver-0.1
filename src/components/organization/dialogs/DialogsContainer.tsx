@@ -18,23 +18,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchOrganizationStudentGroups } from "@/api/organizationStudentGroups";
 import { qk } from "@/lib/queryKeys";
 
 export function DialogsContainer() {
   const d = useOrgDashboard();
   const studentGroupsQuery = useQuery({
     queryKey: qk.org.studentGroups(d.organizationId ?? "none"),
-    queryFn: async () => {
-      if (!d.organizationId) return [];
-      const { data, error } = await supabase
-        .from("student_groups")
-        .select("id, name, color, organization_id, created_at, start_date, end_date")
-        .eq("organization_id", d.organizationId)
-        .order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchOrganizationStudentGroups(d.organizationId),
     enabled: Boolean(d.organizationId && d.studentManagement.showAddStudentDialog),
     staleTime: 60_000,
   });

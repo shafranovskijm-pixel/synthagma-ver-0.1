@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.attestation_sheet",
-  "template_version": "1.2.0-signature-layout",
+  "template_version": "1.2.1-signature-wrap",
   "scenario": "group_attestation_sheet",
   "source_filename": "attestation_sheet.source.docx",
   "source_sha256": "1A1DCDD74B904A6EF3265728679FB6022677EB05F1228CB753695331CDC27CA1",
@@ -29,7 +29,8 @@
     "the original blank-form row capacity is preserved without inventing names or marks",
     "all runtime values use explicit tokens; no sample person remains",
     "changed signature lines and their labels share explicit tab stops; configurable signatory caption is a separate paragraph",
-    "inherited tab stops are explicitly cleared from each changed signature paragraph; all indent components are reset locally"
+    "inherited tab stops are explicitly cleared from each changed signature paragraph; all indent components are reset locally",
+    "only signature-and-name lines use hanging indentation at the FIO tab; complete names wrap within the right-hand area without font reduction or truncation"
   ],
   "qa": {
     "inspect_all_pages": true,
@@ -38,5 +39,5 @@
     ],
     "status": "pending_actual_word_visual_review"
   },
-  "template_sha256": "BD9238384F6260CBAFF3D872FF637BFA5DB295AFAD46EF26B8E31D2BE205E69F"
+  "template_sha256": "826CDE9DE837BD8F39EAB4982A9FFB2DC301CFF7D156F00E1946BF919BCDBA55"
 }

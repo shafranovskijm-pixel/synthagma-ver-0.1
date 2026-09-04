@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "template_id": "goreltech.group.expulsion_order",
-  "template_version": "1.3.0-signature-layout",
+  "template_version": "1.3.1-signature-wrap",
   "scenario": "group_expulsion_order",
   "source_filename": "expulsion_order.source.docx",
   "source_sha256": "3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99",
@@ -57,6 +57,7 @@
     "issuance and non-issuance tables use separate confirmed row sources; empty non-issuance form stays unnumbered",
     "changed signature lines and their labels share explicit tab stops; configurable signatory caption is a separate paragraph",
     "inherited tab stops are explicitly cleared from each changed signature paragraph; all indent components are reset locally",
+    "only signature-and-name lines use hanging indentation at the FIO tab; complete names wrap within the right-hand area without font reduction or truncation",
     "removed the preparation-added 2300-twip gap before the non-issuance heading; original source spacing and keep-next retained"
   ],
   "qa": {
@@ -66,5 +67,5 @@
     ],
     "status": "pending_actual_word_visual_review"
   },
-  "template_sha256": "140FFF172F975D186005DDF8B124E3DFA452E42B673FFE7FAF795CB0835C49C6"
+  "template_sha256": "6CD62B4531FD4D8ED5CBDD6D55142E265CD749C1840A6148926D7FAD8283803C"
 }

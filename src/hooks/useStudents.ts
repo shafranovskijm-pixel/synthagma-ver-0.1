@@ -21,22 +21,13 @@ import {
 } from "@/api/students";
 import { toast } from "sonner";
 import { qk } from "@/lib/queryKeys";
+import { fetchOrganizationStudentGroups, type OrganizationStudentGroup as StudentGroup } from "@/api/organizationStudentGroups";
 import {
   invalidateOrganizationStudentRows,
   invalidateOrganizationStudentCounters,
   invalidateOrganizationEnrollmentData,
   invalidateOrganizationStudentPopulation,
 } from "@/lib/invalidateOrganizationQueries";
-
-interface StudentGroup {
-  id: string;
-  name: string;
-  color: string;
-  organization_id: string;
-  created_at: string;
-  start_date: string | null;
-  end_date: string | null;
-}
 
 const PAGE_SIZE = 10;
 
@@ -252,15 +243,7 @@ export function useStudents(
   // ---- Student groups directory ----
   const groupsQuery = useQuery({
     queryKey: qk.org.studentGroups(organizationId ?? "none"),
-    queryFn: async () => {
-      if (!organizationId) return [] as StudentGroup[];
-      const { data } = await supabase
-        .from("student_groups")
-        .select("id, name, color, organization_id, created_at, start_date, end_date")
-        .eq("organization_id", organizationId)
-        .order("name");
-      return (data as StudentGroup[]) || [];
-    },
+    queryFn: () => fetchOrganizationStudentGroups(organizationId),
     enabled: !!organizationId,
     staleTime: 60_000,
     gcTime: 5 * 60_000,

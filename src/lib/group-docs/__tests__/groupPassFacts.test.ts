@@ -33,8 +33,8 @@ describe("pass server facts", () => {
     expect(result.rows.map(r => r.EMAIL)).toEqual(["a@example.invalid", "b@example.invalid"]);
     expect(result.rowSources).toEqual([{ userId: "a", companyId: "a" }, { userId: "b", companyId: "b" }]);
     expect(Object.keys(result.rows[0])).toEqual(JSON.parse(GROUP_DOCUMENT_TEMPLATE_BUNDLE.pass.manifestJson).row_tokens);
-    expect(result.scalars.DAY1_DATE).toBe("05.09.2026");
-    expect(result.scalars.DAY2_DATE).toBe("06.09.2026");
+    expect(result.scalars.DAY1_DATE).toBe("05.09.\n2026");
+    expect(result.scalars.DAY2_DATE).toBe("06.09.\n2026");
     expect(result.scalars.DAY3_DATE).toBe("");
     expect(result.scalars.CONTRACT_BASIS_LINE).toBe("");
     expect(result.scalars).not.toHaveProperty("SIGNATORY_SHORT");
@@ -62,7 +62,7 @@ describe("pass server facts", () => {
   it("retains actual saved dates with an explicit warning if the period is incomplete", () => {
     const s = fixture(); s.group.start_date = null;
     const r = build(s);
-    expect(r.scalars.DAY1_DATE).toBe("05.09.2026");
+    expect(r.scalars.DAY1_DATE).toBe("05.09.\n2026");
     expect(r.issues).toContainEqual(expect.objectContaining({ code: "group_period_incomplete" }));
   });
   it.each(["2026-02-30", "2026-10-01"])("does not use a corrupt/reversed group period %s", start => {
@@ -237,6 +237,13 @@ describe("pass uses the original group journal's saved manual marks", () => {
     const rows = Array.from(table.getElementsByTagName("w:tr"));
     const values = (index: number) => Array.from(rows[index].getElementsByTagName("w:tc"))
       .map(cell => Array.from(cell.getElementsByTagName("w:t")).map(t => t.textContent).join(""));
+    const dateHeaders = Array.from(rows[1].getElementsByTagName("w:tc")).slice(-4);
+    expect(values(1).slice(-4)).toEqual(["05.09.2026", "06.09.2026", "07.09.2026", "08.09.2026"]);
+    for (const [index, cell] of dateHeaders.entries()) {
+      expect(cell.getElementsByTagName("w:br")).toHaveLength(1);
+      expect(Array.from(cell.getElementsByTagName("w:t")).map(t => t.textContent).filter(Boolean))
+        .toEqual([`0${index + 5}.09.`, "2026"]);
+    }
     expect(values(2).slice(5, 9)).toEqual(mode === "data" ? ["V", "Н", "2", ""] : ["", "", "", ""]);
     expect(values(3).slice(5, 9)).toEqual(mode === "data" ? ["ОП", "0", "<&>", "[[X]]"] : ["", "", "", ""]);
     for (const row of rows.slice(4)) expect(Array.from(row.getElementsByTagName("w:tc")).slice(5, 9)

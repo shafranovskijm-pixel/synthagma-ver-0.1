@@ -12,8 +12,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
+import { preflightRegistrationStudentGroup } from "../_shared/registration-student-group.ts";
 
-const REGISTER_STUDENT_REVISION = "enrollment-persistence-v3";
+const REGISTER_STUDENT_REVISION = "enrollment-persistence-v4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -219,6 +220,19 @@ serve(async (req) => {
 
     if (!effectiveOrgId) {
       return j({ error: "Не удалось определить организацию для ученика" }, 400);
+    }
+
+    const groupRejection = await preflightRegistrationStudentGroup(
+      async (table, id) => {
+        const { data, error } = await supabaseAdmin.from(table)
+          .select(table === "student_groups" ? "id, organization_id, course_id" : "id, organization_id")
+          .eq("id", id).maybeSingle();
+        return { data: data as unknown, error };
+      },
+      effectiveOrgId, effectiveStudentGroupId,
+    );
+    if (groupRejection) {
+      return j({ error: groupRejection.error, code: groupRejection.code }, groupRejection.status);
     }
 
     if (effectiveCourseId) {

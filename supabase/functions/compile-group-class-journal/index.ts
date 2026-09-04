@@ -66,7 +66,7 @@ import { readGroupDocumentOperation, persistGroupDocumentOperation } from "../_s
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v22";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v23";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 

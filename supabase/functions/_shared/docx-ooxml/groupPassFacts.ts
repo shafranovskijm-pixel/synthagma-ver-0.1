@@ -63,7 +63,12 @@ export function buildGroupPassFactRows(input: { snapshot: GroupPassFactsSnapshot
   } else {
     if (!start || !end) issue("group_period_incomplete", "group.start_date/end_date", "Период группы заполнен не полностью. Сохранённые даты занятий показаны, но их соответствие всему периоду не подтверждено.");
     confirmedTrainingDates = dates as string[];
-    dates.forEach((date, i) => { result.scalars[`DAY${i + 1}_DATE`] = date.split("-").reverse().join("."); });
+    dates.forEach((date, i) => {
+      const [year, month, day] = date.split("-");
+      // Explicit text newline, not raw XML: the compiler emits a safe w:br.
+      // The narrow portrait columns retain every digit of the confirmed date.
+      result.scalars[`DAY${i + 1}_DATE`] = `${day}.${month}.\n${year}`;
+    });
   }
   const userCounts = new Map<string, number>();
   profiles.forEach(p => userCounts.set(p.user_id, (userCounts.get(p.user_id) || 0) + 1));
