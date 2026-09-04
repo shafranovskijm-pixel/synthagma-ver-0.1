@@ -27,6 +27,17 @@ function sqlFunctionBody(functionName: string): string {
 }
 
 describe("electronic library migration security contract", () => {
+  it("fails closed unless managed Storage RLS is already enabled without altering its table", () => {
+    const guard = migration.match(/DO \$csz_storage_rls_guard\$([\s\S]*?)\$csz_storage_rls_guard\$;/)?.[1];
+
+    expect(guard).toBeDefined();
+    expect(guard).toContain("to_regclass('storage.objects') IS NULL");
+    expect(guard).toMatch(/OR NOT EXISTS\s*\(\s*SELECT 1\s+FROM pg_class\s+WHERE oid = to_regclass\('storage\.objects'\)\s+AND relrowsecurity IS TRUE\s*\)/);
+    expect(guard).toContain("RAISE EXCEPTION 'Managed storage.objects must already have row level security enabled'");
+    expect(guard).not.toMatch(/EXCEPTION WHEN|SET ROLE|GRANT|OWNER TO/i);
+    expect(migration).not.toMatch(/ALTER TABLE\s+storage\.objects\s+(?:ENABLE|DISABLE|FORCE|NO FORCE)\s+ROW LEVEL SECURITY/i);
+  });
+
   it("keeps the existing bucket private without losing resolvable legacy paths", () => {
     expect(migration).toContain("/storage/v1/object/(?:public|sign)/library-files/([^?]+)");
     expect(migration).toContain("Some legacy library-files URLs could not be converted");

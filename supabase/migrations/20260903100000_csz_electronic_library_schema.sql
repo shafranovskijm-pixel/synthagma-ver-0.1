@@ -1351,4 +1351,19 @@ USING (
 ALTER TABLE public.library_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.library_folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.course_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- Managed Storage already enables RLS; verify it without altering its table.
+DO $csz_storage_rls_guard$
+BEGIN
+  IF to_regclass('storage.objects') IS NULL
+     OR NOT EXISTS (
+       SELECT 1
+       FROM pg_class
+       WHERE oid = to_regclass('storage.objects')
+         AND relrowsecurity IS TRUE
+     )
+  THEN
+    RAISE EXCEPTION 'Managed storage.objects must already have row level security enabled';
+  END IF;
+END
+$csz_storage_rls_guard$;
