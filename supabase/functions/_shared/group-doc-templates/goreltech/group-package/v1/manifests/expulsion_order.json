@@ -1,46 +1,67 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "template_id": "goreltech.group.expulsion_order",
-  "template_version": "1.1.0-client-source",
+  "template_version": "1.2.0-expulsion-decisions",
   "scenario": "group_expulsion_order",
   "source_filename": "expulsion_order.source.docx",
   "source_sha256": "3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99",
   "fidelity_status": "client_source_with_telemost_corrections",
   "source_evidence": "Client archive «для сайта (1).zip» received 2026-08-15; corrections from Telemost chat dated 2026-08-12",
   "orientation": "landscape",
-  "row_source_key": "students_list_rows",
-  "row_tokens": [
-    "N",
-    "STUDENT_NAME",
-    "STUDENT_PROGRAM",
-    "STUDENT_HOURS",
-    "STUDENT_PERIOD",
-    "STUDENT_BASIS"
+  "row_source_key": null,
+  "row_tokens": [],
+  "repeater": null,
+  "repeaters": [
+    {
+      "row_source_key": "expulsion_with_issuance",
+      "row_tokens": [
+        "N",
+        "STUDENT_NAME",
+        "STUDENT_PROGRAM",
+        "STUDENT_HOURS",
+        "STUDENT_PERIOD",
+        "STUDENT_BASIS"
+      ],
+      "table_index": 0,
+      "header_rows": 2,
+      "prototype_row": 2,
+      "continuation_row": 3,
+      "minimum_rows": 6,
+      "number_blank_rows": true,
+      "strategy": "clone_prototype_preserve_minimum_rows"
+    },
+    {
+      "row_source_key": "expulsion_without_issuance",
+      "row_tokens": [
+        "N",
+        "STUDENT_NAME",
+        "STUDENT_PROGRAM",
+        "STUDENT_HOURS",
+        "STUDENT_PERIOD",
+        "STUDENT_BASIS"
+      ],
+      "table_index": 1,
+      "header_rows": 2,
+      "prototype_row": 2,
+      "minimum_rows": 1,
+      "number_blank_rows": false,
+      "strategy": "clone_prototype_preserve_minimum_rows"
+    }
   ],
-  "repeater": {
-    "table_index": 0,
-    "header_rows": 2,
-    "prototype_row": 2,
-    "continuation_row": 3,
-    "minimum_rows": 6,
-    "strategy": "clone_prototype_preserve_minimum_rows"
-  },
   "changes_applied": [
     "full GORELTECH header retained from the client source",
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
     "the original blank-form row capacity is preserved without inventing names or marks",
-    "all runtime values use explicit tokens; no sample person remains"
+    "all runtime values use explicit tokens; no sample person remains",
+    "issuance and non-issuance tables use separate confirmed row sources; empty non-issuance form stays unnumbered"
   ],
   "qa": {
     "inspect_all_pages": true,
     "preserve_package_parts_except": [
       "word/document.xml"
     ],
-    "status": "passed_all_filled_pages_word_16_2026-08-24",
-    "renderer": "Microsoft Word 16.0 ExportAsFixedFormat",
-    "rendered_pages": 2,
-    "evidence": "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md"
+    "status": "pending_actual_word_visual_review"
   },
-  "template_sha256": "FFC621DAC8FC2CAB9337B419490ECCC7BABD0C996A9572911643E5CE58E05F7C"
+  "template_sha256": "532DD6DA7C91CF3B2E00AB197006C4B6696433EF6E7FB5144940C9D5AF9D6799"
 }

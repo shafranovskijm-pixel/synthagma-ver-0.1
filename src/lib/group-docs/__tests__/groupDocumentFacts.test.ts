@@ -333,7 +333,7 @@ describe("server factual rows for the original GORELTECH documents", () => {
       const remainingScalars = Object.fromEntries(findUnresolvedTokens(sourceXml)
         .map((token) => [token.slice(2, -2), ""]));
       const compiled = compileGroupDocumentXml({ documentXml: sourceXml, manifest,
-        snapshot: { rows: facts.rows, scalars: { ...remainingScalars, EXPULSION_OUTCOME: outcome, ...facts.scalars } },
+        snapshot: { rows: facts.rows, rowsBySource: { expulsion_with_issuance: [], expulsion_without_issuance: [] }, scalars: { ...remainingScalars, EXPULSION_OUTCOME: outcome, ...facts.scalars } },
       });
       expect(findUnresolvedTokens(compiled)).toEqual([]);
       expect(compiled).not.toMatch(/Иванов Иван Иванович|user-1|enrollment-1|FORGED_BROWSER_NAME/);
@@ -342,7 +342,10 @@ describe("server factual rows for the original GORELTECH documents", () => {
       expect(generated.getElementsByTagName("parsererror")).toHaveLength(0);
       const tables = generated.getElementsByTagName("w:tbl");
       expect(tables).toHaveLength(2);
-      expect(tables[1].outerHTML).toBe(original.getElementsByTagName("w:tbl")[1].outerHTML);
+      const sourceSecondTable = original.getElementsByTagName("w:tbl")[1];
+      expect(tables[1].getElementsByTagName("w:tblPr")[0].outerHTML).toBe(sourceSecondTable.getElementsByTagName("w:tblPr")[0].outerHTML);
+      const emptyBody = tables[1].getElementsByTagName("w:tr")[2];
+      expect(Array.from(emptyBody.getElementsByTagName("w:t")).map(node => node.textContent).join("")).toBe("");
       const renderedText = Array.from(generated.getElementsByTagName("w:t")).map((node) => node.textContent).join("");
       expect(renderedText).toContain("отчислить с выдачей удостоверений установленного образца");
       expect(renderedText).toContain("Отчислить без выдачи удостоверений");
@@ -383,6 +386,7 @@ describe("server factual rows for the original GORELTECH documents", () => {
       manifest,
       snapshot: {
         rows: facts.rows,
+        ...(docType === "expulsion_order" ? { rowsBySource: { expulsion_with_issuance: [], expulsion_without_issuance: [] } } : {}),
         scalars: {
           ...remainingScalars,
           STUDENT_NAME: "BROWSER_INJECTED", PASSPORT_NUMBER: "BROWSER_INJECTED",
@@ -429,8 +433,9 @@ describe("server factual rows for the original GORELTECH documents", () => {
       expect(renderedParagraphs.some((paragraph) => paragraph.endsWith(`с «${expectedDay}» сентября 2026 г.`)))
         .toBe(true);
       expect(renderedParagraphs.join("\n")).not.toContain("г..");
-      const table = xmlDocument.getElementsByTagName("w:tbl")[manifest.repeater!.table_index];
-      const firstRow = table.getElementsByTagName("w:tr")[manifest.repeater!.header_rows];
+      const repeater = manifest.repeater || manifest.repeaters![0];
+      const table = xmlDocument.getElementsByTagName("w:tbl")[repeater.table_index];
+      const firstRow = table.getElementsByTagName("w:tr")[repeater.header_rows];
       const cells = Array.from(firstRow.getElementsByTagName("w:tc"));
       const basisText = Array.from(cells.at(-1)!.getElementsByTagName("w:t"))
         .map((node) => node.textContent).join("");

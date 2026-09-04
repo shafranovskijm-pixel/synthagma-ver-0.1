@@ -8,6 +8,8 @@ export interface GroupDocumentFactsEnrollment {
   status: string;
   progress: number;
   completed_at: string | null;
+  started_at?: string | null;
+  document_facts_revision?: string;
 }
 
 export interface GroupDocumentFactsFrdo {
@@ -178,10 +180,9 @@ export function buildGroupDocumentFactRows(input: {
   }
   const period = start && end && !reversedPeriod ? `${start.short}–${end.short}` : "";
 
-  // The retained expulsion template's only repeater is under "with certificates".
-  // Course completion is not an authoritative per-enrollment issuance decision.
-  // Until such a source exists, preserve the original manual form and shared
-  // requisites without classifying anyone into either of its two sections.
+  // General roster facts cannot decide issuance. The separate confirmed-decision
+  // builder addresses the two versioned original tables only after scoped SQL
+  // verification; callers without that source receive a manual blank.
   if (docType === "expulsion_order") {
     issue("expulsion_classification_not_confirmed", "expulsion_decisions",
       "Нет подтверждённого решения по выдаче документов каждому участнику. Приказ об отчислении сформирован как бланк для ручного оформления: списки «с выдачей» и «без выдачи» не заполнены автоматически.");

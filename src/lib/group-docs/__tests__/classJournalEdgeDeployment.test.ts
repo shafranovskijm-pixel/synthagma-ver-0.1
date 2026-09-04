@@ -40,9 +40,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v20");
+    expect(source).toContain("goreltech-group-package-server-facts-v21");
     const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
-    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v20"');
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v21"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -165,7 +165,7 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(beforeCompile).toMatch(/const packageScalars: Record<string, string> = factRows\s*\? \{\}/);
     expect(beforeCompile).toContain("Object.assign(packageScalars, factRows.scalars)");
     expect(beforeCompile).toContain("const packageRows = factRows?.rows ??");
-    expect(source.slice(compile)).toContain("snapshot: { scalars: packageScalars, rows: packageRows }");
+    expect(source.slice(compile)).toContain("snapshot: { scalars: packageScalars, rows: packageRows,");
     const persistedSnapshot = source.slice(source.indexOf("variables_snapshot:", compile));
     expect(persistedSnapshot).toContain('row_source: "server_database_ids"');
     expect(persistedSnapshot).toContain("row_sources: factRows.rowSources");
@@ -256,7 +256,7 @@ describe("compile-group-class-journal deployment contract", () => {
     const baseTypes = source.match(/const FACT_ROW_TYPES = \[([^\]]+)\] as const/)?.[1] || "";
     const names = [...baseTypes.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
     names.push(...[...source.matchAll(/serverDocumentFacts\.set\("([^"]+)"/g)].map((match) => match[1]));
-    expect(names.sort()).toEqual(["attestation_sheet", "enrollment_order", "expulsion_order", "pass", "registration_book", "schedule", "student_list", "title_page"]);
+    expect([...new Set(names)].sort()).toEqual(["attestation_sheet", "enrollment_order", "expulsion_order", "pass", "registration_book", "schedule", "student_list", "title_page"]);
     const builders = sourceSection(source, "const factSnapshot =", "const sourceDependencies:");
     expect(builders).toContain("snapshot: factSnapshot");
     expect(builders).toContain("lessons: completionFacts.lessons, testAttempts: completionFacts.testAttempts");
@@ -265,8 +265,11 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(builders).toContain('document.doc_type === "registration_book")!.fill_mode');
     expect(builders).not.toContain("document.variables");
     expect(builders).not.toContain("attemptPolicy:");
+    expect(builders).toContain('await userClient.rpc("read_group_completion_decisions"');
+    expect(builders).toContain("applyGroupCompletionDecisions({");
+    expect(builders).toContain('serverDocumentFacts.set("expulsion_order", confirmedDecisionFacts.expulsion)');
     const requestSchema = sourceSection(source, "const BodySchema", "async function sha256Hex");
-    expect(requestSchema).not.toMatch(/testAttempts|educationDocumentRecords|attemptPolicy|passingScore/);
+    expect(requestSchema).not.toMatch(/testAttempts|educationDocumentRecords|attemptPolicy|passingScore|decisionContext|issuance_decision|grade_text/);
   });
 
   it("does not fall back to browser HTML for canonical rows, including empty results, and persists server provenance", () => {
@@ -280,7 +283,7 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(compile).toContain('if (factRows && "scalars" in factRows) Object.assign(packageScalars, factRows.scalars)');
     expect(compile).toContain("const packageRows = factRows?.rows ??");
     expect(compile).not.toMatch(/factRows\??\.rows\??\.length\s*\?/);
-    expect(compile).toContain("snapshot: { scalars: packageScalars, rows: packageRows }");
+    expect(compile).toContain("snapshot: { scalars: packageScalars, rows: packageRows,");
     expect(compile).toContain("variables: factRows ? packageScalars : document.variables");
     expect(compile).toContain("html: null");
     expect(compile).toContain('row_source: "server_database_ids"');

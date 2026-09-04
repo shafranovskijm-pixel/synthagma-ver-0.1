@@ -56,6 +56,8 @@ import {
 } from "@/lib/group-docs/signatories";
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
 import { GoreltechEnrollmentOrderCard } from "./GoreltechEnrollmentOrderCard";
+import { GroupCompletionDecisionsCard } from "./GroupCompletionDecisionsCard";
+import { inspectExpulsionDecisionSnapshot } from "../../../../supabase/functions/_shared/docx-ooxml/groupCompletionDecisions";
 import { localDateIso } from "@/lib/date/localDate";
 import { reconcileGroupDocumentPackage, type ReconciledGroupDocuments } from "@/lib/group-docs/packageReconciliation";
 import { useGroupDocumentPackageGate, type GroupDocumentPackageGate } from "@/hooks/useGroupDocumentPackageGate";
@@ -101,7 +103,7 @@ function savedIssueMessages(value: unknown): string[] {
   });
 }
 
-function expulsionClassificationState(row: GroupDocumentRow, exactGoreltech: boolean): "blank" | "review" | null {
+function expulsionClassificationState(row: GroupDocumentRow, exactGoreltech: boolean): "blank" | "review" | "decisions" | null {
   if (!exactGoreltech || row.layout_format !== "docx_ooxml" || row.doc_type !== "expulsion_order") return null;
   const snapshot = row.variables_snapshot;
   const hasBlankMarker = Array.isArray(snapshot?.fact_issues) && snapshot.fact_issues.some((issue: unknown) => (
@@ -112,19 +114,25 @@ function expulsionClassificationState(row: GroupDocumentRow, exactGoreltech: boo
     && "severity" in issue && issue.severity === "warning"
     && "message" in issue && typeof issue.message === "string" && issue.message.trim().length > 0
   ));
-  return hasBlankMarker && Array.isArray(snapshot?.rows) && snapshot.rows.length === 0 ? "blank" : "review";
+  const partitions = snapshot?.rows_by_source;
+  const hasPartitions = partitions && typeof partitions === "object"
+    && Array.isArray(partitions.expulsion_with_issuance) && Array.isArray(partitions.expulsion_without_issuance);
+  if (!hasBlankMarker && inspectExpulsionDecisionSnapshot(snapshot)) return "decisions";
+  const partitionsEmpty = !partitions || hasPartitions && partitions.expulsion_with_issuance.length === 0 && partitions.expulsion_without_issuance.length === 0;
+  return hasBlankMarker && Array.isArray(snapshot?.rows) && snapshot.rows.length === 0 && partitionsEmpty ? "blank" : "review";
 }
 
-function ExpulsionClassificationNotice({ state }: { state: "blank" | "review" }) {
+function ExpulsionClassificationNotice({ state }: { state: "blank" | "review" | "decisions" }) {
   return (
     <div role="note" aria-label="Распределение в приказе об отчислении" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
       <p className="flex items-center gap-1 font-medium">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        {state === "blank" ? "Бланк для ручного распределения" : "Распределение учеников не проверено"}
+        {state === "blank" ? "Бланк для ручного распределения" : state === "decisions" ? "Распределение по сохранённым решениям" : "Распределение учеников не проверено"}
       </p>
       <p className="mt-1">
         {state === "blank"
-          ? "Решения о выдаче документов не подтверждены. Списки учеников с выдачей и без выдачи оставлены пустыми. Заполните их вручную после проверки решений по каждому ученику."
+          ? "Решения о выдаче документов не подтверждены. Списки учеников с выдачей и без выдачи оставлены пустыми. Заполните итоговые решения группы или оформите бланк вручную."
+          : state === "decisions" ? "Включены только ученики с подтверждённым решением для текущего зачисления. Проверьте замечания о пропусках. Это черновик: подпись и выдача документов не подтверждаются автоматически."
           : "В прежней версии списки с выдачей и без выдачи документов могли заполняться автоматически. Сформируйте новый бланк и проверьте распределение вручную. Исторический файл остаётся доступен для проверки."}
       </p>
     </div>
@@ -707,6 +715,7 @@ function GroupDocumentsFolderContent({
       )}
 
       {exactGoreltechDocuments && <GoreltechEnrollmentOrderCard organizationId={organizationId} groupId={groupId} />}
+      {exactGoreltechDocuments && <GroupCompletionDecisionsCard organizationId={organizationId} groupId={groupId} />}
 
       {/* Режим документа */}
       <Card className="p-4 rounded-2xl border-border">
@@ -955,7 +964,7 @@ function GroupDocumentsFolderContent({
                   {batch.rows.map(row => {
                     const expulsionState = expulsionClassificationState(row, exactGoreltechDocuments);
                     const wordDownloadLabel = expulsionState === "blank" ? "Скачать бланк Word"
-                      : expulsionState === "review" ? "Скачать для проверки" : "Скачать Word";
+                      : expulsionState === "review" ? "Скачать для проверки" : expulsionState === "decisions" ? "Скачать черновик Word" : "Скачать Word";
                     return (
               <div key={row.id} className="flex items-center gap-3 p-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1002,6 +1011,8 @@ function GroupDocumentsFolderContent({
                     )}
                   </div>
                   {expulsionState && <ExpulsionClassificationNotice state={expulsionState} />}
+                  {expulsionState === "decisions" && <p className="mt-1 text-xs font-medium">Включено {inspectExpulsionDecisionSnapshot(row.variables_snapshot)?.confirmed} из {inspectExpulsionDecisionSnapshot(row.variables_snapshot)?.total} участников.</p>}
+                  {expulsionState === "decisions" && row.variables_snapshot?.decision_coverage?.omitted.length > 0 && <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">Не включены: {row.variables_snapshot.decision_coverage.omitted.map(item => item.fullName.trim() || item.userId).join(", ")}.</p>}
                   <DocumentFactIssues row={row} />
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

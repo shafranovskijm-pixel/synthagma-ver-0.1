@@ -7,6 +7,7 @@ import { PACKAGE_DOC_TYPES } from "@/lib/group-docs/packageTypes";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
 import type { GroupDocumentRow } from "@/hooks/useGroupDocuments";
 import { groupAttendancePath } from "@/lib/groups/groupContext";
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "00000000-0000-4000-8000-000000000001" } }) }));
 
 const mocks = vi.hoisted(() => ({
   useGroupDocuments: vi.fn(),
@@ -805,6 +806,34 @@ describe("GroupDocumentsFolder package contract routing", () => {
       "billing-documents", row.file_path, `${row.name}.docx`,
     ));
     expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("показывает подтверждённое распределение только с полноценным снимком; malformed=%s", async malformed => {
+    const userId = "00000000-0000-4000-8000-000000000001";
+    const enrollmentId = "00000000-0000-4000-8000-000000000002";
+    const omitted = "00000000-0000-4000-8000-000000000003";
+    const row = { ...docxRow, doc_type: "expulsion_order", name: "Приказ по решениям", doc_status: "draft", variables_snapshot: {
+      rows: [], decision_source: "operator_confirmed_sql_snapshot_v1",
+      rows_by_source: { expulsion_with_issuance: [malformed ? null : { N: "1", STUDENT_NAME: "Тестовый Ученик", STUDENT_PROGRAM: "Учебная программа", STUDENT_HOURS: "40", STUDENT_PERIOD: "01.09.2026–30.09.2026", STUDENT_BASIS: "" }], expulsion_without_issuance: [] },
+      row_sources: [{ userId, enrollmentId }],
+      decision_sources: [{ userId, enrollmentId, decisionId: "00000000-0000-4000-8000-000000000004", decisionRevision: 2,
+        enrollmentFactsRevision: "23", confirmedBy: userId, confirmedAt: "2026-09-04T00:00:00Z", issuanceDecision: "with_document" }],
+      decision_coverage: { total: 2, confirmed: 1, omitted: [{ userId: omitted, fullName: "Пропущенный Ученик" }] },
+      fact_issues: [{ message: "Пропущенный Ученик: решение не подтверждено." }],
+    } };
+    mockDocuments([row]); renderFolder();
+    expect(screen.getByRole("button", { name: "Заполнить итоговые решения" })).toBeVisible();
+    if (malformed) {
+      expect(screen.getByText("Распределение учеников не проверено")).toBeVisible();
+      expect(screen.queryByText(/Включено 1 из 2/)).not.toBeInTheDocument();
+    } else {
+      expect(screen.getByText("Распределение по сохранённым решениям")).toBeVisible();
+      expect(screen.getByText(/Включено 1 из 2/)).toBeVisible();
+      expect(screen.getByText("Не включены: Пропущенный Ученик.")).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Скачать черновик Word Приказ по решениям" }));
+      await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith("billing-documents", row.file_path, "Приказ по решениям.docx"));
+    }
     expect(mocks.saveGenerated).not.toHaveBeenCalled();
   });
 

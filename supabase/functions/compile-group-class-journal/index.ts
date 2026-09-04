@@ -38,6 +38,7 @@ import {
 } from "../_shared/docx-ooxml/groupDocumentFacts.ts";
 import { loadGroupDocumentFacts } from "../_shared/docx-ooxml/groupDocumentFactsSource.ts";
 import { loadGroupCompletionFacts } from "../_shared/docx-ooxml/groupCompletionFactsSource.ts";
+import { applyGroupCompletionDecisions, type ConfirmedExpulsionFacts, type ConfirmedAttestationFacts } from "../_shared/docx-ooxml/groupCompletionDecisionFacts.ts";
 import { loadGroupPassFacts } from "../_shared/docx-ooxml/groupPassFactsSource.ts";
 import { buildGroupPassFactRows, type GroupPassFactsResult } from "../_shared/docx-ooxml/groupPassFacts.ts";
 import { buildGroupTitleFacts, type GroupTitleFactsResult } from "../_shared/docx-ooxml/groupTitleFacts.ts";
@@ -65,7 +66,7 @@ import { readGroupDocumentOperation, persistGroupDocumentOperation } from "../_s
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v20";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v21";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -379,13 +380,20 @@ Deno.serve(async (req) => {
       courseId: course?.id || null,
       studentUserIds: activeStudentIds,
     }, {
-      enrollments: async ({ courseId, studentUserIds, from, to }) => await admin
+      enrollments: async ({ courseId, studentUserIds, from, to }) => {
+        const reply = await admin
         .from("enrollments")
-        .select("id, user_id, course_id, status, progress, started_at, completed_at", { count: "exact" })
+        .select("id, user_id, course_id, status, progress, started_at, completed_at, document_facts_revision", { count: "exact" })
         .eq("course_id", courseId!)
         .in("user_id", studentUserIds)
         .order("id")
-        .range(from, to),
+        .range(from, to);
+        // Never compare a rounded unsafe bigint number with the SQL string token.
+        return { ...reply, data: reply.data?.map(row => ({ ...row,
+          document_facts_revision: typeof row.document_facts_revision === "string" ? row.document_facts_revision
+            : Number.isSafeInteger(row.document_facts_revision) ? String(row.document_facts_revision) : undefined,
+        })) ?? null };
+      },
       // Passport/education access must also satisfy the caller's existing RLS.
       // documents.manage alone must not widen personal-data access via service role.
       studentFrdoData: async ({ organizationId, studentUserIds, from, to }) => await userClient
@@ -483,7 +491,7 @@ Deno.serve(async (req) => {
       enrollments: facts.enrollments,
       studentFrdoData: facts.studentFrdoData,
     };
-    type ServerDocumentFacts = GroupDocumentFactsResult | GroupAttestationFactsResult
+    type ServerDocumentFacts = GroupDocumentFactsResult | GroupAttestationFactsResult | ConfirmedExpulsionFacts | ConfirmedAttestationFacts
       | GroupRegistrationFactsResult | GroupPassFactsResult | GroupTitleFactsResult | GroupScheduleFactsResult;
     const serverDocumentFacts = new Map<string, ServerDocumentFacts>();
     for (const docType of FACT_ROW_TYPES) {
@@ -498,6 +506,25 @@ Deno.serve(async (req) => {
       fillMode: body.otherDocuments.find((document) => document.doc_type === "attestation_sheet")!.fill_mode,
       // No inferred latest/best or 2–5 policy: unresolved choices stay visible in draft warnings.
     }));
+    // The authenticated caller reads one SQL snapshot. No service-role widening,
+    // browser variables, percentages or automatically-created certificates decide issuance.
+    let decisionContext: unknown = null;
+    if (body.otherDocuments.some(document => ["expulsion_order", "attestation_sheet"].includes(document.doc_type) && document.fill_mode === "data")) {
+      try {
+        const decisionReply = await userClient.rpc("read_group_completion_decisions", {
+          p_organization_id: body.organizationId, p_group_id: body.groupId,
+        });
+        if (!decisionReply.error) decisionContext = decisionReply.data;
+      } catch { /* Missing deployment/network does not invent outcomes or break the other documents. */ }
+    }
+    const confirmedDecisionFacts = applyGroupCompletionDecisions({
+      snapshot: factSnapshot, context: decisionContext,
+      attestation: serverDocumentFacts.get("attestation_sheet") as GroupAttestationFactsResult,
+      expulsionFillMode: body.otherDocuments.find(document => document.doc_type === "expulsion_order")!.fill_mode,
+      attestationFillMode: body.otherDocuments.find(document => document.doc_type === "attestation_sheet")!.fill_mode,
+    });
+    serverDocumentFacts.set("expulsion_order", confirmedDecisionFacts.expulsion);
+    serverDocumentFacts.set("attestation_sheet", confirmedDecisionFacts.attestation);
     serverDocumentFacts.set("registration_book", buildGroupRegistrationFactRows({
       snapshot: { ...factSnapshot, educationDocumentRecords: completionFacts.educationDocumentRecords },
       fillMode: body.otherDocuments.find((document) => document.doc_type === "registration_book")!.fill_mode,
@@ -829,7 +856,9 @@ Deno.serve(async (req) => {
       const packageXml = compileGroupDocumentXml({
         documentXml: await packageDocumentFile.async("string"),
         manifest: packageManifest,
-        snapshot: { scalars: packageScalars, rows: packageRows },
+        snapshot: { scalars: packageScalars, rows: packageRows,
+          ...(factRows && "rowsBySource" in factRows ? { rowsBySource: factRows.rowsBySource } : {}),
+        },
       });
       packageZip.file("word/document.xml", packageXml);
       const packageBytes: Uint8Array = await packageZip.generateAsync({ type: "uint8array" });
@@ -864,6 +893,7 @@ Deno.serve(async (req) => {
           document.doc_type === "title_page" ? "Год титула — год выбранной даты оформления, а не автоматически текущий год." : null,
           document.doc_type === "schedule" ? "Расписание — четыре сохранённых блока из настроек этой группы. Даты журнала и прохождение курса не являются источником расписания." : null,
           document.doc_type === "registration_book" ? "Запись реестра не подтверждает физическое вручение документа; подписи и отметки о вручении автоматически не проставляются." : null,
+          factRows && "decisionSources" in factRows && factRows.decisionSources.length ? "Оценки и распределение по выдаче взяты из явных решений сотрудника по конкретным зачислениям. Это черновик, не подписанный приказ и не подтверждение вручения документов." : null,
           ...(factRows?.issues.map((issue) => issue.message) || []),
           ...documentSourceIssues(document.doc_type).map((issue) => issue.message),
         ].filter(Boolean).join(" "),
@@ -873,6 +903,9 @@ Deno.serve(async (req) => {
         variables_snapshot: {
           scalars: packageScalars,
           rows: packageRows,
+          ...(factRows && "rowsBySource" in factRows ? { rows_by_source: factRows.rowsBySource } : {}),
+          ...(factRows && "decisionSources" in factRows ? { decision_sources: factRows.decisionSources, decision_source: "operator_confirmed_sql_snapshot_v1" } : {}),
+          ...(factRows && "decisionCoverage" in factRows ? { decision_coverage: factRows.decisionCoverage } : {}),
           signatory_source: documentSignatory.source,
           fidelity_status: packageManifest.fidelity_status,
           ...(factRows && "scheduleSource" in factRows ? { schedule_source: factRows.scheduleSource } : {}),

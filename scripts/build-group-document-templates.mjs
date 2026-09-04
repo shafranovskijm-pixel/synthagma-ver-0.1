@@ -422,7 +422,9 @@ function patchExpulsion(parts) {
   tables[0].xml = patchCell(tables[0].xml, 3, 0, "[[N]]");
   tables[0].xml = patchCell(tables[0].xml, 3, 1, "[[STUDENT_NAME]]");
   tables[1].xml = patchCell(tables[1].xml, 0, 2, "Часов");
-  tables[1].xml = patchRow(tables[1].xml, 2, ["", "", "", "", "", ""]);
+  tables[1].xml = patchRow(tables[1].xml, 2, [
+    "[[N]]", "[[STUDENT_NAME]]", "[[STUDENT_PROGRAM]]", "[[STUDENT_HOURS]]", "[[STUDENT_PERIOD]]", "[[STUDENT_BASIS]]",
+  ]);
 }
 
 function patchStudentList(parts) {
@@ -701,9 +703,17 @@ const definitions = {
   expulsion_order: {
     source: "expulsion_order.source.docx",
     orientation: "landscape",
-    row_source_key: "students_list_rows",
-    row_tokens: ["N", "STUDENT_NAME", "STUDENT_PROGRAM", "STUDENT_HOURS", "STUDENT_PERIOD", "STUDENT_BASIS"],
-    repeater: { table_index: 0, header_rows: 2, prototype_row: 2, continuation_row: 3, minimum_rows: 6 },
+    version: "1.2.0-expulsion-decisions",
+    schema_version: 2,
+    row_source_key: null,
+    row_tokens: [],
+    repeater: null,
+    repeaters: [
+      { row_source_key: "expulsion_with_issuance", row_tokens: ["N", "STUDENT_NAME", "STUDENT_PROGRAM", "STUDENT_HOURS", "STUDENT_PERIOD", "STUDENT_BASIS"],
+        table_index: 0, header_rows: 2, prototype_row: 2, continuation_row: 3, minimum_rows: 6, number_blank_rows: true },
+      { row_source_key: "expulsion_without_issuance", row_tokens: ["N", "STUDENT_NAME", "STUDENT_PROGRAM", "STUDENT_HOURS", "STUDENT_PERIOD", "STUDENT_BASIS"],
+        table_index: 1, header_rows: 2, prototype_row: 2, minimum_rows: 1, number_blank_rows: false },
+    ],
     patch: patchExpulsion,
   },
   student_list: {
@@ -783,9 +793,9 @@ const definitions = {
 function manifest(docType, definition, sourceHash, headerSourceHash = null) {
   const repairsHeader = definition.repairHeader === true;
   return {
-    schema_version: 1,
+    schema_version: definition.schema_version || 1,
     template_id: `goreltech.group.${docType}`,
-    template_version: VERSION,
+    template_version: definition.version || VERSION,
     scenario: `group_${docType}`,
     source_filename: definition.source,
     source_sha256: sourceHash,
@@ -806,6 +816,9 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
     repeater: definition.repeater
       ? { ...definition.repeater, strategy: "clone_prototype_preserve_minimum_rows" }
       : null,
+    ...(definition.repeaters ? { repeaters: definition.repeaters.map((repeater) => ({
+      ...repeater, strategy: "clone_prototype_preserve_minimum_rows",
+    })) } : {}),
     changes_applied: [
       repairsHeader
         ? "full GORELTECH header restored from the exact client landscape-order source"
@@ -814,6 +827,7 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
       "portrait/landscape mode follows the Telemost instruction",
       "the original blank-form row capacity is preserved without inventing names or marks",
       "all runtime values use explicit tokens; no sample person remains",
+      ...(definition.repeaters ? ["issuance and non-issuance tables use separate confirmed row sources; empty non-issuance form stays unnumbered"] : []),
     ],
     qa: {
       inspect_all_pages: true,
@@ -827,11 +841,12 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
             "word/media/image1.jpeg",
           ]
         : ["word/document.xml"],
-      status: "passed_all_filled_pages_word_16_2026-08-24",
-      renderer: "Microsoft Word 16.0 ExportAsFixedFormat",
-      rendered_pages: docType === "expulsion_order" ? 2 : 1,
-      evidence:
-        "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md",
+      ...(definition.repeaters ? { status: "pending_actual_word_visual_review" } : {
+        status: "passed_all_filled_pages_word_16_2026-08-24",
+        renderer: "Microsoft Word 16.0 ExportAsFixedFormat",
+        rendered_pages: docType === "expulsion_order" ? 2 : 1,
+        evidence: "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md",
+      }),
     },
   };
 }
@@ -878,11 +893,33 @@ async function buildOne(docType, definition) {
   return { templateBytes, manifest: docManifest };
 }
 
+// A targeted rebuild must retain every unselected asset and embedded entry.
+const args = process.argv.slice(2);
+if (args.length !== 0 && (args.length !== 2 || args[0] !== "--only" || !Object.hasOwn(definitions, args[1]))) {
+  throw new Error("Usage: node scripts/build-group-document-templates.mjs [--only <document-type>]");
+}
+const selected = args.length ? [args[1]] : Object.keys(definitions);
+const embeddedPath = path.join(outputDir, "embedded.ts");
+let bundle = {};
+if (args.length) {
+  const embedded = fs.readFileSync(embeddedPath, "utf8");
+  const match = embedded.match(/export const GROUP_DOCUMENT_TEMPLATE_BUNDLE = (\{.*\}) as const;/s);
+  if (!match) throw new Error("Existing embedded bundle cannot be read safely");
+  bundle = JSON.parse(match[1]);
+  for (const docType of Object.keys(definitions).filter((key) => !selected.includes(key))) {
+    const entry = bundle[docType];
+    if (!entry || !Buffer.from(entry.templateBase64, "base64").equals(fs.readFileSync(path.join(templateDir, `${docType}.docx`)))
+      || JSON.stringify(JSON.parse(entry.manifestJson)) !== JSON.stringify(JSON.parse(fs.readFileSync(path.join(manifestDir, `${docType}.json`), "utf8")))) {
+      throw new Error(`Unselected asset differs from embedded bundle: ${docType}`);
+    }
+  }
+}
+
 fs.mkdirSync(templateDir, { recursive: true });
 fs.mkdirSync(manifestDir, { recursive: true });
-const bundle = {};
 
-for (const [docType, definition] of Object.entries(definitions)) {
+for (const docType of selected) {
+  const definition = definitions[docType];
   const built = await buildOne(docType, definition);
   fs.writeFileSync(path.join(templateDir, `${docType}.docx`), built.templateBytes);
   fs.writeFileSync(
@@ -897,12 +934,12 @@ for (const [docType, definition] of Object.entries(definitions)) {
 }
 
 fs.writeFileSync(
-  path.join(outputDir, "embedded.ts"),
+  embeddedPath,
   "// Generated by scripts/build-group-document-templates.mjs. Do not edit manually.\n" +
     `export const GROUP_DOCUMENT_TEMPLATE_BUNDLE = ${JSON.stringify(bundle)} as const;\n`,
   "utf8",
 );
 
 process.stdout.write(
-  `${JSON.stringify({ templates: Object.keys(definitions), version: VERSION, outputDir }, null, 2)}\n`,
+  `${JSON.stringify({ templates: selected, versions: Object.fromEntries(selected.map((key) => [key, definitions[key].version || VERSION])), outputDir }, null, 2)}\n`,
 );

@@ -18,6 +18,7 @@ import {
   type GroupDocumentManifest,
 } from "../groupDocument";
 import { findUnresolvedTokens, splitTopLevel } from "../xml";
+import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../../group-doc-templates/goreltech/group-package/v1/embedded";
 import { generateDocument } from "../../../../../src/lib/group-docs/generate";
 import { SAMPLE_CONTEXT } from "../../../../../src/lib/group-docs/sampleContext";
 import type { DocType } from "../../../../../src/lib/group-docs/schema";
@@ -65,6 +66,10 @@ function scalarValuesFor(documentXml: string, overrides: Record<string, string> 
     scalars[token[1]] = "";
   }
   return { ...scalars, ...overrides };
+}
+
+function emptyRepeaterSources(manifest: GroupDocumentManifest) {
+  return manifest.repeaters ? Object.fromEntries(manifest.repeaters.map((repeater) => [repeater.row_source_key, []])) : undefined;
 }
 
 describe("групповые DOCX Beta", () => {
@@ -389,7 +394,7 @@ describe("групповые DOCX Beta", () => {
       const compiled = compileGroupDocumentXml({
         documentXml: xml,
         manifest,
-        snapshot: { scalars, rows },
+        snapshot: { scalars, rows, rowsBySource: emptyRepeaterSources(manifest) },
       });
       expect(findUnresolvedTokens(compiled), manifest.template_id).toEqual([]);
       expect(compiled, manifest.template_id).not.toContain("[[");
@@ -408,8 +413,10 @@ describe("групповые DOCX Beta", () => {
 
     for (const [docType, minimumRows] of Object.entries(expectedMinimumRows)) {
       const { manifest, documentXml } = await loadGroupTemplate(docType);
-      expect(manifest.repeater?.minimum_rows, docType).toBe(minimumRows);
-      const actualRow = Object.fromEntries(manifest.row_tokens.map((token) => [token, ""]));
+      const repeater = manifest.repeater || manifest.repeaters![0];
+      const rowTokens = manifest.repeaters?.[0].row_tokens || manifest.row_tokens;
+      expect(repeater.minimum_rows, docType).toBe(minimumRows);
+      const actualRow = Object.fromEntries(rowTokens.map((token) => [token, ""]));
       actualRow.N = "1";
       actualRow.STUDENT_NAME = "Фактический Слушатель";
       const compiled = compileGroupDocumentXml({
@@ -418,22 +425,25 @@ describe("групповые DOCX Beta", () => {
         snapshot: {
           scalars: scalarValuesFor(documentXml),
           rows: [actualRow],
+          rowsBySource: manifest.repeaters ? {
+            ...emptyRepeaterSources(manifest), expulsion_with_issuance: [actualRow],
+          } : undefined,
         },
       });
-      const table = splitTopLevel(compiled, ["w:tbl"])[manifest.repeater!.table_index];
+      const table = splitTopLevel(compiled, ["w:tbl"])[repeater.table_index];
       const rows = splitTopLevel(table.xml, ["w:tr"]);
-      expect(rows, docType).toHaveLength(manifest.repeater!.header_rows + minimumRows);
-      expect(xmlText(rows[manifest.repeater!.header_rows].xml), docType).toContain(
+      expect(rows, docType).toHaveLength(repeater.header_rows + minimumRows);
+      expect(xmlText(rows[repeater.header_rows].xml), docType).toContain(
         "Фактический Слушатель",
       );
       for (let index = 1; index < minimumRows; index += 1) {
-        const reserve = xmlText(rows[manifest.repeater!.header_rows + index].xml);
+        const reserve = xmlText(rows[repeater.header_rows + index].xml);
         expect(reserve, `${docType}: reserve row ${index + 1}`).not.toContain(
           "Фактический Слушатель",
         );
         expect(reserve, `${docType}: reserve row ${index + 1}`).not.toContain("V");
         const firstCell = splitTopLevel(
-          rows[manifest.repeater!.header_rows + index].xml,
+          rows[repeater.header_rows + index].xml,
           ["w:tc"],
         )[0];
         expect(xmlText(firstCell.xml), `${docType}: reserve row number`).toBe(String(index + 1));
@@ -473,6 +483,164 @@ describe("групповые DOCX Beta", () => {
     expect(`${enrollment} ${expulsion}`).not.toMatch(/(^|[\s«(])ДПО(?=$|[\s»),.])/u);
   });
 
+  describe("независимые таблицы приказа об отчислении", () => {
+    const WITH = "expulsion_with_issuance";
+    const WITHOUT = "expulsion_without_issuance";
+    const row = (name: string, index = 1) => ({ N: String(index), STUDENT_NAME: name,
+      STUDENT_PROGRAM: "Тестовая программа & безопасность", STUDENT_HOURS: "40",
+      STUDENT_PERIOD: "01.09.2026–04.09.2026", STUDENT_BASIS: "" });
+
+    async function compileLists(withRows: Array<Record<string, string>>, withoutRows: Array<Record<string, string>>) {
+      const loaded = await loadGroupTemplate("expulsion_order");
+      const xml = compileGroupDocumentXml({
+        documentXml: loaded.documentXml, manifest: loaded.manifest,
+        snapshot: { scalars: scalarValuesFor(loaded.documentXml, { STUDENT_NAME: "SCALAR MUST NOT LEAK" }),
+          rows: [row("COMMON ROSTER MUST NOT LEAK")], rowsBySource: { [WITH]: withRows, [WITHOUT]: withoutRows } },
+      });
+      expect(findUnresolvedTokens(xml)).toEqual([]);
+      expect(xml).not.toContain("MUST NOT LEAK");
+      return { ...loaded, xml, tables: splitTopLevel(xml, ["w:tbl"]) };
+    }
+
+    it.each<[string, Array<Record<string, string>>, Array<Record<string, string>>]>([
+      ["по одному в каждой таблице", [row("Выдача & Первый")], [row("Без выдачи <Второй>")]],
+      ["все с выдачей", [row("Выдача 1"), row("Выдача 2", 2)], []],
+      ["все без выдачи", [], [row("Без выдачи 1"), row("Без выдачи 2", 2)]],
+      ["оба списка пустые", [], []],
+      ["больше исходной ёмкости", Array.from({ length: 9 }, (_, index) => row(`Выдача ${index + 1}`, index + 1)),
+        Array.from({ length: 4 }, (_, index) => row(`Без выдачи ${index + 1}`, index + 1))],
+    ])("не смешивает списки: %s", async (_name, withRows, withoutRows) => {
+      const { tables } = await compileLists(withRows, withoutRows);
+      expect(tables).toHaveLength(2);
+      for (const [index, items, otherItems, minimum] of [
+        [0, withRows, withoutRows, 6], [1, withoutRows, withRows, 1],
+      ] as const) {
+        const table = tables[index].xml;
+        expect(splitTopLevel(table, ["w:tr"])).toHaveLength(2 + Math.max(minimum, items.length));
+        for (const item of items) expect(xmlText(table)).toContain(item.STUDENT_NAME);
+        for (const item of otherItems) expect(xmlText(table)).not.toContain(item.STUDENT_NAME);
+        for (const bodyRow of splitTopLevel(table, ["w:tr"]).slice(2)) {
+          const cells = splitTopLevel(bodyRow.xml, ["w:tc"]);
+          expect(xmlText(cells[5].xml)).toBe("");
+        }
+      }
+      if (!withoutRows.length) {
+        for (const cell of splitTopLevel(splitTopLevel(tables[1].xml, ["w:tr"])[2].xml, ["w:tc"])) {
+          expect(xmlText(cell.xml)).toBe(""); // Empty table1 must not gain a synthetic row number.
+        }
+      }
+      const withBody = splitTopLevel(tables[0].xml, ["w:tr"]).slice(2);
+      expect(withBody[0].xml.match(/<w:vMerge w:val="restart"\/>/g)).toHaveLength(4);
+      for (const continuation of withBody.slice(1)) expect(continuation.xml.match(/<w:vMerge\/>/g)).toHaveLength(4);
+      expect(tables[1].xml).not.toContain("<w:vMerge");
+      const clonedParagraphIds = tables.flatMap((table) => splitTopLevel(table.xml, ["w:tr"]).slice(2)
+        .flatMap((part) => [...part.xml.matchAll(/w14:paraId="([A-Fa-f0-9]+)"/g)].map((match) => match[1])));
+      expect(new Set(clonedParagraphIds).size).toBe(clonedParagraphIds.length);
+    });
+
+    it("сохраняет ZIP-части, оба заголовка, поля, свойства таблиц и текст вне таблиц", async () => {
+      const { zip, xml, documentXml, template, manifest, tables } = await compileLists([row("Ученик с выдачей")], [row("Ученик без выдачи")]);
+      const originalTables = splitTopLevel(documentXml, ["w:tbl"]);
+      for (let index = 0; index < 2; index += 1) {
+        expect(tables[index].xml.match(/<w:tblPr>[\s\S]*?<\/w:tblPr>/)?.[0]).toBe(originalTables[index].xml.match(/<w:tblPr>[\s\S]*?<\/w:tblPr>/)?.[0]);
+        expect(tables[index].xml.match(/<w:tblGrid>[\s\S]*?<\/w:tblGrid>/)?.[0]).toBe(originalTables[index].xml.match(/<w:tblGrid>[\s\S]*?<\/w:tblGrid>/)?.[0]);
+        const beforeRows = splitTopLevel(originalTables[index].xml, ["w:tr"]);
+        const afterRows = splitTopLevel(tables[index].xml, ["w:tr"]);
+        expect(afterRows.slice(0, 2).map((part) => part.xml)).toEqual(beforeRows.slice(0, 2).map((part) => part.xml));
+        expect(afterRows[2].xml.match(/<w:tcPr>[\s\S]*?<\/w:tcPr>/g)).toEqual(beforeRows[2].xml.match(/<w:tcPr>[\s\S]*?<\/w:tcPr>/g));
+      }
+      const blankScalarXml = compileGroupDocumentXml({ documentXml, manifest,
+        snapshot: { scalars: scalarValuesFor(documentXml), rows: [], rowsBySource: { [WITH]: [], [WITHOUT]: [] } } });
+      const withoutTables = (value: string) => value.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, "");
+      expect(withoutTables(xml)).toBe(withoutTables(blankScalarXml));
+      expect(xml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g)).toEqual(documentXml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g));
+      const original = await JSZip.loadAsync(template);
+      zip.file("word/document.xml", xml);
+      const generated = await JSZip.loadAsync(await zip.generateAsync({ type: "uint8array" }));
+      expect(Object.keys(generated.files).sort()).toEqual(Object.keys(original.files).sort());
+      for (const part of Object.keys(original.files).filter((part) => !part.endsWith("/") && part !== "word/document.xml")) {
+        expect(await zipPart(generated, part), part).toEqual(await zipPart(original, part));
+      }
+    });
+
+    it.each(["missing-both", "missing-without", "non-array", "inherited-key", "missing-row-field"]) (
+      "не подставляет общий список или scalars при некорректном источнике: %s", async (mode) => {
+        const { manifest, documentXml } = await loadGroupTemplate("expulsion_order");
+        let sources: unknown = { [WITH]: [], [WITHOUT]: [] };
+        if (mode === "missing-both") sources = undefined;
+        if (mode === "missing-without") sources = { [WITH]: [] };
+        if (mode === "non-array") sources = { [WITH]: [], [WITHOUT]: { length: 0 } };
+        if (mode === "inherited-key") sources = Object.assign(Object.create({ [WITHOUT]: [] }), { [WITH]: [] });
+        if (mode === "missing-row-field") sources = { [WITH]: [], [WITHOUT]: [{ STUDENT_NAME: "Неполный" }] };
+        expect(() => compileGroupDocumentXml({ documentXml, manifest,
+          snapshot: { scalars: scalarValuesFor(documentXml), rows: [row("Общий список")],
+            rowsBySource: sources as Record<string, Array<Record<string, string>>> } })).toThrow(/источник.*строк|поля источника строк/);
+      },
+    );
+
+    it.each(["mixed", "duplicate-table", "duplicate-source", "missing-numbering", "missing-table", "empty-repeaters"]) (
+      "отклоняет некорректный multi manifest: %s", async (mode) => {
+        const { manifest, documentXml } = await loadGroupTemplate("expulsion_order");
+        if (mode === "mixed") manifest.repeater = manifest.repeaters![0];
+        if (mode === "duplicate-table") manifest.repeaters![1].table_index = 0;
+        if (mode === "duplicate-source") manifest.repeaters![1].row_source_key = WITH;
+        if (mode === "missing-numbering") delete (manifest.repeaters![1] as { number_blank_rows?: boolean }).number_blank_rows;
+        if (mode === "missing-table") manifest.repeaters![1].table_index = 10;
+        if (mode === "empty-repeaters") manifest.repeaters = [];
+        expect(() => compileGroupDocumentXml({ documentXml, manifest, snapshot: {
+          scalars: scalarValuesFor(documentXml), rows: [], rowsBySource: { [WITH]: [], [WITHOUT]: [] },
+        } })).toThrow();
+      },
+    );
+
+    it("версионирует только приказ, не меняет исходник и не наследует старую отметку Word QA", async () => {
+      const { manifest, template, documentXml } = await loadGroupTemplate("expulsion_order");
+      expect(manifest.schema_version).toBe(2);
+      expect(manifest.template_version).toBe("1.2.0-expulsion-decisions");
+      expect(manifest.repeater).toBeNull();
+      expect(manifest.row_source_key).toBeNull();
+      expect(manifest.row_tokens).toEqual([]);
+      expect(manifest.qa?.status).toBe("pending_actual_word_visual_review");
+      expect(manifest.qa?.renderer).toBeUndefined();
+      expect(sha256(fs.readFileSync(path.join(SOURCE_ROOT, manifest.source_filename))))
+        .toBe("3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99");
+      // Captured from v1.1 retained template before tokenising table1: all non-text OOXML is identical.
+      expect(sha256(Buffer.from(documentXml.replace(/(<w:t(?:\s[^>]*)?>)[\s\S]*?(<\/w:t>)/g, "$1$2"))))
+        .toBe("DD140FE0B2FB24159F47D4D0AB317CEDE5C9929FDD8F2BD05A6E1AC9554922C5");
+      const entry = GROUP_DOCUMENT_TEMPLATE_BUNDLE.expulsion_order;
+      expect(Buffer.from(entry.templateBase64, "base64")).toEqual(template);
+      expect(JSON.parse(entry.manifestJson)).toEqual(manifest);
+    });
+  });
+
+  it("сохраняет байты остальных восьми шаблонов и содержимое manifest/embedded при добавлении второго списка", async () => {
+    const unchanged = {
+      enrollment_order: ["1A5E190569CE7CB152B39C644B3C7200DB88053F5BC9FD4E1F8D9FDE08BAB54C", "5686177DC3FA58DDEE1F1996935C847C9C54554346778054A157D1177B41FD87"],
+      student_list: ["1D4FD144831545AEF7EDEAFBA1650386AD925B54ADE7CC9ABD65B04F26BD4AC3", "B9AD5FB7C0B0BD59575E48E7DF9A7133A6D470B278D4A2373A23296703692784"],
+      schedule: ["6CC810BE349D63F62B89BEA60CB0FC0C64DA52F8B85697C85247E01087527ACF", "A755E1EBB11A29EC173A7F83F5D57263D11A4DA609D6D18D36B3F61E6E092B22"],
+      attestation_sheet: ["3C311CD00D47C509C563C416BA54B1B3190757127E53F102A6F7E666B388DE7D", "67F77EE9EFD129B347BD3266FEE1C95E206804E2558E82D070A123940304EA8B"],
+      registration_book: ["B221BF20A495B32DDC2ABB5510EA1F7A0C5A12ABCC01E3EEAC0C6388A52D4ED8", "D7E245E7C3DDF3D2272ADBD44A300105A56781A1F602C924A4402F94CD6365C9"],
+      title_page: ["41D7D2103B5BD725D8DC3661D90599BFD00413EEE080560B8887D87A9BAD5E69", "2132D9727675AE8F293DE32372F52EDE85635A9A126BD5CEC6FA4EFCED5B767D"],
+      pass: ["0819523FBF593D77F3C8D10430F453DDDC2B48022ABD5A0DF4B77396440158D2", "70A177DA3B9A50A2B76ABBB47D3E8DBFC600E67965B14BC4A7636260E8E2F3C6"],
+    };
+    for (const [docType, hashes] of Object.entries(unchanged)) {
+      expect(sha256(fs.readFileSync(path.join(ROOT, "templates", `${docType}.docx`))), docType).toBe(hashes[0]);
+      const entry = GROUP_DOCUMENT_TEMPLATE_BUNDLE[docType as keyof typeof GROUP_DOCUMENT_TEMPLATE_BUNDLE];
+      // Git may checkout CRLF on Windows and LF on CI; compare the exact JSON content.
+      expect(JSON.parse(fs.readFileSync(path.join(ROOT, "manifests", `${docType}.json`), "utf8")), docType).toEqual(JSON.parse(entry.manifestJson));
+      expect(sha256(Buffer.from(JSON.stringify(entry))), docType).toBe(hashes[1]);
+    }
+    const journal = path.resolve(ROOT, "../../class-journal/v1");
+    for (const [filename, expected] of [
+      ["template.docx", "D127540999259FEDB167D43CBDBFF2E5F8E67099834FD7EA31E789E62692049D"],
+      ["manifest.json", "A6FE80B9ECAAB289819A7E5EC263C1B3B0848D666FE19A8208A0AAB8A46B45C3"],
+      ["embedded.ts", "25EAF6EC371B7AB908619A247DD576FFAB980C22BE48C72B657D5EEDE0261913"],
+    ]) {
+      const bytes = fs.readFileSync(path.join(journal, filename));
+      expect(sha256(filename.endsWith(".docx") ? bytes : Buffer.from(bytes.toString("utf8").replace(/\r\n/g, "\n"))), filename).toBe(expected);
+    }
+  });
+
   it("не вшивает должность подписанта и допускает явно пустую подпись", async () => {
     for (const docType of [
       "enrollment_order",
@@ -500,6 +668,7 @@ describe("групповые DOCX Beta", () => {
         snapshot: {
           scalars: scalarSnapshot,
           rows,
+          rowsBySource: emptyRepeaterSources(manifest),
         },
       });
       expect(findUnresolvedTokens(compiled), docType).toEqual([]);
@@ -587,6 +756,7 @@ describe("групповые DOCX Beta", () => {
         snapshot: {
           scalars,
           rows,
+          rowsBySource: emptyRepeaterSources(manifest),
         },
       });
 

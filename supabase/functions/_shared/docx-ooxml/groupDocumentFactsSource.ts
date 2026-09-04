@@ -24,6 +24,7 @@ export interface EnrollmentFactRow {
   progress: number;
   started_at: string;
   completed_at: string | null;
+  document_facts_revision?: string;
 }
 
 export interface StudentFrdoFactRow {

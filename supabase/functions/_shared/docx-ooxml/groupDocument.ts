@@ -6,6 +6,22 @@ import {
 import { shortNameRu } from "./money.ts";
 import { findUnresolvedTokens, replaceTokens, splitTopLevel } from "./xml.ts";
 
+export interface GroupDocumentRepeater {
+  table_index: number;
+  header_rows: number;
+  prototype_row: number;
+  continuation_row?: number;
+  minimum_rows?: number;
+  strategy: string;
+}
+
+export interface GroupDocumentSourceRepeater extends GroupDocumentRepeater {
+  row_source_key: string;
+  row_tokens: string[];
+  /** Number reserve rows only when the retained blank form does so. */
+  number_blank_rows: boolean;
+}
+
 export interface GroupDocumentManifest {
   schema_version: number;
   template_id: string;
@@ -22,14 +38,9 @@ export interface GroupDocumentManifest {
   orientation: "portrait" | "landscape";
   row_source_key: string | null;
   row_tokens: string[];
-  repeater: null | {
-    table_index: number;
-    header_rows: number;
-    prototype_row: number;
-    continuation_row?: number;
-    minimum_rows?: number;
-    strategy: string;
-  };
+  repeater: GroupDocumentRepeater | null;
+  /** Schema 2: each table has an independent, explicit server row source. */
+  repeaters?: GroupDocumentSourceRepeater[];
   qa?: {
     inspect_all_pages?: boolean;
     preserve_package_parts_except?: string[];
@@ -43,6 +54,7 @@ export interface GroupDocumentManifest {
 export interface GroupDocumentSnapshot {
   scalars: Record<string, string>;
   rows: Array<Record<string, string>>;
+  rowsBySource?: Record<string, Array<Record<string, string>>>;
 }
 
 export interface DocumentSignatoryInput {
@@ -314,6 +326,7 @@ function preserveMinimumRows(
   rows: Array<Record<string, string>>,
   rowTokens: string[],
   minimumRows = 0,
+  numberBlankRows = true,
 ): Array<Record<string, string>> {
   const result = rows.map((row, index) => ({
     ...row,
@@ -323,7 +336,7 @@ function preserveMinimumRows(
   }));
   while (result.length < minimumRows) {
     const blank = Object.fromEntries(rowTokens.map((token) => [token, ""]));
-    if (rowTokens.includes("N")) blank.N = String(result.length + 1);
+    if (numberBlankRows && rowTokens.includes("N")) blank.N = String(result.length + 1);
     result.push(blank);
   }
   return result;
@@ -486,6 +499,54 @@ export function compileGroupDocumentXml(params: {
   snapshot: GroupDocumentSnapshot;
 }): string {
   const parsed = parseBodyElements(params.documentXml);
+  // Preserve the legacy single-table contract. Multi-table sources are explicit:
+  // a missing array must never fall back to the common roster or scalar tokens.
+  if (params.manifest.repeaters !== undefined) {
+    if (params.manifest.repeater || params.manifest.schema_version !== 2
+      || !Array.isArray(params.manifest.repeaters) || params.manifest.repeaters.length === 0) {
+      throw new Error("Шаблон: недопустимое сочетание single/multi повторителей или версия схемы");
+    }
+    const tableIds = new Set<number>();
+    const sourceKeys = new Set<string>();
+    for (const repeater of params.manifest.repeaters) {
+      if (!repeater || !Number.isInteger(repeater.table_index) || repeater.table_index < 0
+        || !Number.isInteger(repeater.header_rows) || repeater.header_rows < 0
+        || !Number.isInteger(repeater.prototype_row) || repeater.prototype_row < repeater.header_rows
+        || (repeater.continuation_row !== undefined && (!Number.isInteger(repeater.continuation_row)
+          || repeater.continuation_row <= repeater.prototype_row))
+        || (repeater.minimum_rows !== undefined && (!Number.isInteger(repeater.minimum_rows) || repeater.minimum_rows < 0))
+        || repeater.strategy !== "clone_prototype_preserve_minimum_rows"
+        || typeof repeater.number_blank_rows !== "boolean"
+        || typeof repeater.row_source_key !== "string" || !/^[a-z][a-z0-9_]*$/.test(repeater.row_source_key)
+        || !Array.isArray(repeater.row_tokens) || !repeater.row_tokens.length
+        || repeater.row_tokens.some((token) => typeof token !== "string" || !/^[A-Z][A-Z0-9_]*$/.test(token))
+        || new Set(repeater.row_tokens).size !== repeater.row_tokens.length) {
+        throw new Error("Шаблон: некорректное описание независимого повторителя");
+      }
+      if (tableIds.has(repeater.table_index) || sourceKeys.has(repeater.row_source_key)) {
+        throw new Error("Шаблон: повторяются таблица или источник строк");
+      }
+      tableIds.add(repeater.table_index);
+      sourceKeys.add(repeater.row_source_key);
+      const sources = params.snapshot.rowsBySource;
+      if (!sources || !Object.prototype.hasOwnProperty.call(sources, repeater.row_source_key)
+        || !Array.isArray(sources[repeater.row_source_key])) {
+        throw new Error(`Не подтверждён отдельный источник строк: ${repeater.row_source_key}`);
+      }
+      const sourceRows = sources[repeater.row_source_key];
+      if (sourceRows.some((row) => !row || typeof row !== "object" || Array.isArray(row)
+        || repeater.row_tokens.some((token) => !Object.prototype.hasOwnProperty.call(row, token) || typeof row[token] !== "string"))) {
+        throw new Error(`Некорректные поля источника строк: ${repeater.row_source_key}`);
+      }
+      const target = parsed.elements.find((element) => element.tableIndex === repeater.table_index);
+      if (!target) throw new Error(`Шаблон ${params.manifest.template_id}: таблица №${repeater.table_index} не найдена`);
+      const rows = preserveMinimumRows(sourceRows, repeater.row_tokens, repeater.minimum_rows, repeater.number_blank_rows);
+      target.xml = repeater.continuation_row === undefined
+        ? expandRepeaterTable(target.xml, repeater.prototype_row, rows, repeater.header_rows)
+        : expandVerticallyMergedRepeater({ tableXml: target.xml, prototypeRow: repeater.prototype_row,
+          continuationRow: repeater.continuation_row, items: rows, headerRows: repeater.header_rows });
+    }
+  }
   const repeater = params.manifest.repeater;
   if (repeater) {
     const rows = preserveMinimumRows(
