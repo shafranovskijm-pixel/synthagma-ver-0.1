@@ -14,7 +14,6 @@ import {
 } from "../../../../supabase/functions/_shared/docx-ooxml/groupDocument";
 import { findUnresolvedTokens } from "../../../../supabase/functions/_shared/docx-ooxml/xml";
 import { GROUP_DOCUMENT_TEMPLATE_BUNDLE } from "../../../../supabase/functions/_shared/group-doc-templates/goreltech/group-package/v1/embedded";
-import { isCompletedEnrollment } from "../../groups/releaseReadiness";
 
 function fixture(): GroupDocumentFactsSnapshot {
   return {
@@ -48,7 +47,7 @@ const build = (snapshot: GroupDocumentFactsSnapshot, docType: GroupDocumentFacts
   buildGroupDocumentFactRows({ docType, snapshot });
 
 describe("server factual rows for the original GORELTECH documents", () => {
-  it.each(types)("emits exactly %s manifest.row_tokens without padding or invented people", (docType) => {
+  it.each(["enrollment_order", "student_list"] as const)("emits exactly %s manifest.row_tokens without padding or invented people", (docType) => {
     const manifest = JSON.parse(readFileSync(resolve(
       "supabase/functions/_shared/group-doc-templates/goreltech/group-package/v1/manifests",
       `${docType}.json`,
@@ -76,7 +75,7 @@ describe("server factual rows for the original GORELTECH documents", () => {
     expect(result.scalars).toEqual({
       GROUP_NUMBER: "1-ПК-26", PROGRAM_TITLE: "Программа из группы", PROGRAM_HOURS: "40",
       START_DATE: "01.09.2026", END_DATE: "30.09.2026",
-      START_DATE_RU: "«01» сентября 2026 г.", END_DATE_RU: "«30» сентября 2026 г.",
+      START_DATE_RU: "«01» сентября 2026 г", END_DATE_RU: "«30» сентября 2026 г",
     });
     expect(JSON.stringify(result)).not.toContain("Injected");
   });
@@ -101,16 +100,16 @@ describe("server factual rows for the original GORELTECH documents", () => {
     ]);
   });
 
-  it.each(["enrollment_order", "expulsion_order"] as const)("retains every active participant without enrollment in draft %s", (type) => {
+  it("retains every active participant without enrollment in draft enrollment order", () => {
     const snapshot = fixture();
     snapshot.profiles = [...snapshot.profiles, { ...snapshot.profiles[0], user_id: "user-2", full_name: "Второй участник" }];
-    const result = build(snapshot, type);
+    const result = build(snapshot, "enrollment_order");
     expect(result.rows.map((row) => row.STUDENT_NAME)).toEqual(["Второй участник", "Иванов Иван Иванович"]);
     expect(result.rowSources).toEqual([
       { userId: "user-2", enrollmentId: null }, { userId: "user-1", enrollmentId: "enrollment-1" },
     ]);
     expect(result.issues).toContainEqual(expect.objectContaining({
-      code: "missing_enrollment", docType: type, userId: "user-2", severity: "warning",
+      code: "missing_enrollment", docType: "enrollment_order", userId: "user-2", severity: "warning",
     }));
   });
 
@@ -228,7 +227,7 @@ describe("server factual rows for the original GORELTECH documents", () => {
   it("accepts leap date deterministically and does not repair a reversed period", () => {
     const snapshot = fixture();
     snapshot.group.start_date = "2024-02-29";
-    expect(build(snapshot).scalars.START_DATE_RU).toBe("«29» февраля 2024 г.");
+    expect(build(snapshot).scalars.START_DATE_RU).toBe("«29» февраля 2024 г");
     snapshot.group.end_date = "2024-02-01";
     const result = build(snapshot);
     expect(result.scalars).toMatchObject({ START_DATE: "", END_DATE: "", START_DATE_RU: "", END_DATE_RU: "" });
@@ -259,16 +258,20 @@ describe("server factual rows for the original GORELTECH documents", () => {
     expect(result.issues.every((issue) => issue.userId === "user-1" && issue.docType === "student_list")).toBe(true);
   });
 
-  it.each(["active", "completed"])("does not invent attestation results for status=%s or release a final order", (status) => {
+  it.each(["active", "completed"])("keeps expulsion as a manual form regardless of status=%s", (status) => {
     const snapshot = fixture();
     snapshot.enrollments = [{ ...snapshot.enrollments[0], status }];
     const result = build(snapshot, "expulsion_order");
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].STUDENT_BASIS).toBe("");
+    expect(result.rows).toEqual([]);
+    expect(result.rowSources).toEqual([]);
     expect(result).not.toHaveProperty("docStatus");
-    expect(result.rows[0]).not.toHaveProperty("RESULT");
-    expect(JSON.stringify(result.rows)).not.toMatch(/сдал|выдач|удостоверен/i);
-    expect(result.issues.some((issue) => issue.code === "completion_not_confirmed")).toBe(status !== "completed");
+    expect(result.scalars).toMatchObject({ GROUP_NUMBER: "1-ПК-26", PROGRAM_TITLE: "Программа из группы", PROGRAM_HOURS: "40", END_DATE: "30.09.2026" });
+    expect(result.issues).toEqual([expect.objectContaining({
+      docType: "expulsion_order", code: "expulsion_classification_not_confirmed",
+      field: "expulsion_decisions", severity: "warning",
+      message: expect.stringContaining("бланк для ручного оформления"),
+    })]);
+    expect(JSON.stringify(result)).not.toMatch(/user-1|enrollment-1|Иванов Иван Иванович/);
   });
 
   it.each([
@@ -278,14 +281,16 @@ describe("server factual rows for the original GORELTECH documents", () => {
     { status: "completed", progress: 99, completed_at: "2026-09-30T12:00:00Z" },
     { status: "completed", progress: 100, completed_at: "2026-09-30T12:00:00Z" },
     { status: "active", progress: 100, completed_at: "2026-09-30T12:00:00Z" },
-  ])("aligns expulsion completion evidence with release readiness: %j", (evidence) => {
+  ])("does not classify certificate issuance from completion evidence: %j", (evidence) => {
     const snapshot = fixture();
     snapshot.enrollments = [{ ...snapshot.enrollments[0], ...evidence }];
     const expulsion = build(snapshot, "expulsion_order");
-    expect(expulsion.rows).toHaveLength(1);
-    expect(expulsion.issues.some((issue) => issue.code === "completion_not_confirmed"))
-      .toBe(!isCompletedEnrollment(snapshot.enrollments[0]));
-    expect(build(snapshot, "enrollment_order").issues).toEqual([]);
+    expect(expulsion.rows).toEqual([]);
+    expect(expulsion.rowSources).toEqual([]);
+    expect(expulsion.issues[0].code).toBe("expulsion_classification_not_confirmed");
+    const enrollment = build(snapshot, "enrollment_order");
+    expect(enrollment.issues).toEqual([]);
+    expect(enrollment.rows[0].STUDENT_NAME).toBe("Иванов Иван Иванович");
     expect(build(snapshot, "student_list").issues).toEqual([]);
   });
 
@@ -303,6 +308,48 @@ describe("server factual rows for the original GORELTECH documents", () => {
     expect(build(snapshot).rows[0].STUDENT_PROGRAM).toBe("Курс <А> & Б");
     expect(snapshot).toEqual(original);
   });
+
+  it.each(["с выдачей удостоверений", "без выдачи удостоверений"])(
+    "ignores forged browser outcome %s in both retained expulsion tables", async (outcome) => {
+      // Even a completed course and a browser-supplied decision are not an
+      // authoritative issuance decision for this exact enrollment.
+      const snapshot = {
+        ...fixture(),
+        variables: {
+          EXPULSION_OUTCOME: outcome,
+          students_list_rows: "<tr><td>FORGED_BROWSER_NAME</td></tr>",
+        },
+        expulsionDecisions: [{ userId: "user-1", enrollmentId: "enrollment-1", outcome }],
+      };
+      const facts = build(snapshot, "expulsion_order");
+      expect(facts.rows).toEqual([]);
+      expect(facts.rowSources).toEqual([]);
+      const template = GROUP_DOCUMENT_TEMPLATE_BUNDLE.expulsion_order;
+      const manifest = JSON.parse(template.manifestJson) as GroupDocumentManifest;
+      const bytes = Buffer.from(template.templateBase64, "base64");
+      expect(createHash("sha256").update(bytes).digest("hex").toUpperCase()).toBe(manifest.template_sha256);
+      const zip = await JSZip.loadAsync(bytes);
+      const sourceXml = await zip.file("word/document.xml")!.async("string");
+      const remainingScalars = Object.fromEntries(findUnresolvedTokens(sourceXml)
+        .map((token) => [token.slice(2, -2), ""]));
+      const compiled = compileGroupDocumentXml({ documentXml: sourceXml, manifest,
+        snapshot: { rows: facts.rows, scalars: { ...remainingScalars, EXPULSION_OUTCOME: outcome, ...facts.scalars } },
+      });
+      expect(findUnresolvedTokens(compiled)).toEqual([]);
+      expect(compiled).not.toMatch(/Иванов Иван Иванович|user-1|enrollment-1|FORGED_BROWSER_NAME/);
+      const original = new DOMParser().parseFromString(sourceXml, "application/xml");
+      const generated = new DOMParser().parseFromString(compiled, "application/xml");
+      expect(generated.getElementsByTagName("parsererror")).toHaveLength(0);
+      const tables = generated.getElementsByTagName("w:tbl");
+      expect(tables).toHaveLength(2);
+      expect(tables[1].outerHTML).toBe(original.getElementsByTagName("w:tbl")[1].outerHTML);
+      const renderedText = Array.from(generated.getElementsByTagName("w:t")).map((node) => node.textContent).join("");
+      expect(renderedText).toContain("отчислить с выдачей удостоверений установленного образца");
+      expect(renderedText).toContain("Отчислить без выдачи удостоверений");
+      expect(renderedText).toContain("Программа из группы");
+      expect(facts.issues).toContainEqual(expect.objectContaining({ code: "expulsion_classification_not_confirmed" }));
+    }, 15000,
+  );
 
   it.each(types)("integrates facts into retained %s DOCX without changing other package parts", async (docType) => {
     const template = GROUP_DOCUMENT_TEMPLATE_BUNDLE[docType];
@@ -350,7 +397,15 @@ describe("server factual rows for the original GORELTECH documents", () => {
     const writtenXml = await reloaded.file("word/document.xml")!.async("string");
     const xmlDocument = new DOMParser().parseFromString(writtenXml, "application/xml");
     expect(xmlDocument.getElementsByTagName("parsererror")).toHaveLength(0);
-    expect(writtenXml).toContain("Иванов Иван Иванович");
+    if (docType === "expulsion_order") {
+      expect(writtenXml).not.toContain("Иванов Иван Иванович");
+      expect(writtenXml).not.toMatch(/user-1|enrollment-1/);
+      expect(facts.rows).toEqual([]);
+      expect(facts.rowSources).toEqual([]);
+      expect(facts.issues.some((issue) => issue.code === "expulsion_classification_not_confirmed")).toBe(true);
+    } else {
+      expect(writtenXml).toContain("Иванов Иван Иванович");
+    }
     expect(writtenXml).toContain("Серверная программа &lt;А&gt; &amp; Б");
     expect(writtenXml).not.toMatch(/BROWSER_INJECTED|FOREIGN_FRDO/);
     expect(findUnresolvedTokens(writtenXml)).toEqual([]);
@@ -360,6 +415,20 @@ describe("server factual rows for the original GORELTECH documents", () => {
       expect(writtenXml).toContain("000234");
       expect(writtenXml).toContain("Высшее образование");
     } else {
+      // The original enrollment/expulsion sentences already end in a literal dot.
+      // Verify rendered text across Word runs, not just a contiguous XML substring.
+      const paragraphTexts = (document: Document) => Array.from(document.getElementsByTagName("w:p"))
+        .map((paragraph) => Array.from(paragraph.getElementsByTagName("w:t"))
+          .map((node) => node.textContent).join(""));
+      const dateToken = docType === "enrollment_order" ? "START_DATE_RU" : "END_DATE_RU";
+      const expectedDay = docType === "enrollment_order" ? "01" : "30";
+      const originalDocument = new DOMParser().parseFromString(originalXml, "application/xml");
+      expect(paragraphTexts(originalDocument).some((paragraph) => paragraph.endsWith(`с [[${dateToken}]].`)))
+        .toBe(true);
+      const renderedParagraphs = paragraphTexts(xmlDocument);
+      expect(renderedParagraphs.some((paragraph) => paragraph.endsWith(`с «${expectedDay}» сентября 2026 г.`)))
+        .toBe(true);
+      expect(renderedParagraphs.join("\n")).not.toContain("г..");
       const table = xmlDocument.getElementsByTagName("w:tbl")[manifest.repeater!.table_index];
       const firstRow = table.getElementsByTagName("w:tr")[manifest.repeater!.header_rows];
       const cells = Array.from(firstRow.getElementsByTagName("w:tc"));

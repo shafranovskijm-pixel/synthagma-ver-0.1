@@ -117,6 +117,21 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(dryRunBlock).not.toContain(".rpc(");
   });
 
+  it("persists unclassified expulsion as an explicit manual draft without changing other document modes", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const guard = sourceSection(source, "const manualExpulsion =", "compiledPackageDocuments.push({");
+    expect(guard).toContain('document.doc_type === "expulsion_order"');
+    expect(guard).toContain('&& factRows?.issues.some((issue) => issue.code === "expulsion_classification_not_confirmed") === true');
+    const persisted = sourceSection(source, "compiledPackageDocuments.push({", 'if (body.dryRun)');
+    expect(persisted).toContain('fill_mode: manualExpulsion ? "blank" : document.fill_mode');
+    expect(persisted).toContain('doc_status: manualExpulsion ? "draft" : document.doc_status');
+    expect(persisted).toContain('document_number: manualExpulsion ? null : document.document_number');
+    expect(persisted.indexOf("...document,")).toBeLessThan(persisted.indexOf("fill_mode: manualExpulsion"));
+    expect(persisted).toContain('...(factRows?.issues.map((issue) => issue.message) || [])');
+    expect(persisted).toContain("fact_issues: factRows.issues");
+    expect(persisted).toContain("rows: packageRows");
+  });
+
   it("loads tenant-scoped database facts before compiling the three factual documents", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
     const tenantGate = source.indexOf("if (!isExactGoreltechOrganization)");

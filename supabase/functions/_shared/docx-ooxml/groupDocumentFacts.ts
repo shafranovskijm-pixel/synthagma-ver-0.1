@@ -98,7 +98,9 @@ function storedDate(value: string | null): { iso: string; short: string; ru: str
   return {
     iso: match[0],
     short: `${day}.${month}.${year}`,
-    ru: `«${day}» ${MONTHS_RU[Number(month) - 1]} ${year} г.`,
+    // Both retained order templates supply the dot after [[START/END_DATE_RU]].
+    // Keep that original punctuation instead of generating a second dot here.
+    ru: `«${day}» ${MONTHS_RU[Number(month) - 1]} ${year} г`,
   };
 }
 
@@ -176,6 +178,16 @@ export function buildGroupDocumentFactRows(input: {
   }
   const period = start && end && !reversedPeriod ? `${start.short}–${end.short}` : "";
 
+  // The retained expulsion template's only repeater is under "with certificates".
+  // Course completion is not an authoritative per-enrollment issuance decision.
+  // Until such a source exists, preserve the original manual form and shared
+  // requisites without classifying anyone into either of its two sections.
+  if (docType === "expulsion_order") {
+    issue("expulsion_classification_not_confirmed", "expulsion_decisions",
+      "Нет подтверждённого решения по выдаче документов каждому участнику. Приказ об отчислении сформирован как бланк для ручного оформления: списки «с выдачей» и «без выдачи» не заполнены автоматически.");
+    return result;
+  }
+
   const profiles = new Map<string, GroupDocumentFactsProfile[]>();
   for (const profile of snapshot.profiles) {
     if (profile.organization_id !== organization.id || profile.student_group_id !== group.id) {
@@ -231,13 +243,6 @@ export function buildGroupDocumentFactRows(input: {
       const enrollments = enrollmentsByUser.get(userId) || [];
       if (enrollments.length === 1 && text(enrollments[0].id)) {
         enrollment = enrollments[0];
-        // Same evidence gate as src/lib/groups/releaseReadiness.ts; this is not an attestation result.
-        const completed = enrollment.status === "completed"
-          && Number(enrollment.progress) >= 100
-          && Boolean(enrollment.completed_at);
-        if (docType === "expulsion_order" && !completed) {
-          issue("completion_not_confirmed", "enrollments.status", "Завершение обучения участника не подтверждено. Строка сохранена в черновике; результат аттестации не присваивается.", "warning", { userId, enrollmentId: enrollment.id });
-        }
       } else if (enrollments.length > 1) {
         issue("ambiguous_enrollment", "enrollments", "У участника несколько зачислений на курс группы; конкретное зачисление не выбрано.", "error", source);
       } else {

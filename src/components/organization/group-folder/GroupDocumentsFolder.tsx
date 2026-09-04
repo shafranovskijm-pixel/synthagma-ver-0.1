@@ -101,6 +101,36 @@ function savedIssueMessages(value: unknown): string[] {
   });
 }
 
+function expulsionClassificationState(row: GroupDocumentRow, exactGoreltech: boolean): "blank" | "review" | null {
+  if (!exactGoreltech || row.layout_format !== "docx_ooxml" || row.doc_type !== "expulsion_order") return null;
+  const snapshot = row.variables_snapshot;
+  const hasBlankMarker = Array.isArray(snapshot?.fact_issues) && snapshot.fact_issues.some((issue: unknown) => (
+    issue !== null && typeof issue === "object"
+    && "docType" in issue && issue.docType === "expulsion_order"
+    && "code" in issue && issue.code === "expulsion_classification_not_confirmed"
+    && "field" in issue && issue.field === "expulsion_decisions"
+    && "severity" in issue && issue.severity === "warning"
+    && "message" in issue && typeof issue.message === "string" && issue.message.trim().length > 0
+  ));
+  return hasBlankMarker && Array.isArray(snapshot?.rows) && snapshot.rows.length === 0 ? "blank" : "review";
+}
+
+function ExpulsionClassificationNotice({ state }: { state: "blank" | "review" }) {
+  return (
+    <div role="note" aria-label="Распределение в приказе об отчислении" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+      <p className="flex items-center gap-1 font-medium">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {state === "blank" ? "Бланк для ручного распределения" : "Распределение учеников не проверено"}
+      </p>
+      <p className="mt-1">
+        {state === "blank"
+          ? "Решения о выдаче документов не подтверждены. Списки учеников с выдачей и без выдачи оставлены пустыми. Заполните их вручную после проверки решений по каждому ученику."
+          : "В прежней версии списки с выдачей и без выдачи документов могли заполняться автоматически. Сформируйте новый бланк и проверьте распределение вручную. Исторический файл остаётся доступен для проверки."}
+      </p>
+    </div>
+  );
+}
+
 function DocumentFactIssues({ row }: { row: GroupDocumentRow }) {
   const sourceIssues = savedIssueMessages(row.variables_snapshot?.source_issues);
   const messages = [...new Set([
@@ -922,7 +952,11 @@ function GroupDocumentsFolderContent({
                   <span className="text-muted-foreground ml-auto">файлов: {batch.rows.length}</span>
                 </div>
                 <div className="divide-y divide-border">
-                  {batch.rows.map(row => (
+                  {batch.rows.map(row => {
+                    const expulsionState = expulsionClassificationState(row, exactGoreltechDocuments);
+                    const wordDownloadLabel = expulsionState === "blank" ? "Скачать бланк Word"
+                      : expulsionState === "review" ? "Скачать для проверки" : "Скачать Word";
+                    return (
               <div key={row.id} className="flex items-center gap-3 p-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4" />
@@ -967,12 +1001,13 @@ function GroupDocumentsFolderContent({
                       </Badge>
                     )}
                   </div>
+                  {expulsionState && <ExpulsionClassificationNotice state={expulsionState} />}
                   <DocumentFactIssues row={row} />
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {row.layout_format === "docx_ooxml" ? (
-                    <Button size="sm" variant="ghost" className="gap-1" aria-label={`Скачать Word ${row.name}`} title={`Скачать Word ${row.name}`} onClick={() => openDoc(row, true)}>
-                      <Download className="w-3.5 h-3.5" /> Скачать Word
+                    <Button size="sm" variant="ghost" className="gap-1" aria-label={`${wordDownloadLabel} ${row.name}`} title={`${wordDownloadLabel} ${row.name}`} onClick={() => openDoc(row, true)}>
+                      <Download className="w-3.5 h-3.5" /> {wordDownloadLabel}
                     </Button>
                   ) : (
                     <>
@@ -989,7 +1024,8 @@ function GroupDocumentsFolderContent({
                   </Button>
                 </div>
               </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

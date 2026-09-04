@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { GroupDocumentsFolder } from "../GroupDocumentsFolder";
 import { SAMPLE_CONTEXT } from "@/lib/group-docs/sampleContext";
 import { emptyFactualData } from "@/lib/group-docs/factualData";
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   useGroupFactualData: vi.fn(),
   generatePackage: vi.fn(),
   generateDocument: vi.fn(),
+  downloadHtml: vi.fn(),
   generateClassJournalDocx: vi.fn(),
   readClassJournalOperation: vi.fn(),
   refreshDocuments: vi.fn(),
@@ -50,7 +51,7 @@ vi.mock("@/lib/group-docs/generate", () => ({
   generateDocument: mocks.generateDocument,
   generatePackage: mocks.generatePackage,
   groupDocumentDate: vi.fn(() => "2026-01-16"),
-  downloadHtml: vi.fn(),
+  downloadHtml: mocks.downloadHtml,
 }));
 
 vi.mock("@/lib/group-docs/docxJournal", () => ({
@@ -139,6 +140,14 @@ const docxRow = {
   package_batch_id: "batch-1",
   package_version: 1,
   is_current: true,
+};
+
+const expulsionBlankMarker = {
+  docType: "expulsion_order",
+  code: "expulsion_classification_not_confirmed",
+  field: "expulsion_decisions",
+  severity: "warning",
+  message: "Решения о выдаче не подтверждены; списки оставлены пустыми для ручного заполнения.",
 };
 
 function mockDocuments(documents: GroupDocumentRow[]) {
@@ -776,6 +785,101 @@ describe("GroupDocumentsFolder package contract routing", () => {
     await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
       "billing-documents", row.file_path, "Список обучающихся.docx",
     ));
+  });
+
+  it("явно отличает новый пустой приказ об отчислении и сохраняет скачивание его бланка", async () => {
+    const row = {
+      ...docxRow, doc_type: "expulsion_order", name: "Приказ об отчислении", doc_status: "draft",
+      variables_snapshot: { rows: [], fact_issues: [expulsionBlankMarker] },
+    };
+    mockDocuments([row]);
+    renderFolder();
+
+    const notice = screen.getByRole("note", { name: "Распределение в приказе об отчислении" });
+    expect(within(notice).getByText("Бланк для ручного распределения")).toBeVisible();
+    expect(within(notice).getByText(/Списки учеников с выдачей и без выдачи оставлены пустыми/)).toBeVisible();
+    expect(notice.closest("details")).toBeNull();
+    expect(screen.queryByText("Распределение учеников не проверено")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Скачать бланк Word ${row.name}` }));
+    await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
+      "billing-documents", row.file_path, `${row.name}.docx`,
+    ));
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["нет snapshot", undefined],
+    ["нет маркера", { rows: [], fact_issues: [] }],
+    ["маркер без rows", { fact_issues: [expulsionBlankMarker] }],
+    ["непустые rows с маркером", { rows: [{ STUDENT_NAME: "Тестовый ученик" }], fact_issues: [expulsionBlankMarker] }],
+    ["rows не массив", { rows: { length: 0 }, fact_issues: [expulsionBlankMarker] }],
+    ["маркер другого документа", { rows: [], fact_issues: [{ ...expulsionBlankMarker, docType: "student_list" }] }],
+    ["маркер другого поля", { rows: [], fact_issues: [{ ...expulsionBlankMarker, field: "other" }] }],
+    ["неполный маркер", { rows: [], fact_issues: [{ code: expulsionBlankMarker.code }, null] }],
+  ])("не объявляет старый или неподтверждённый приказ пустым: %s", async (_description, variables_snapshot) => {
+    const row = {
+      ...docxRow, doc_type: "expulsion_order", name: "Прежний приказ об отчислении", is_current: false,
+      variables_snapshot,
+    };
+    mockDocuments([row]);
+    renderFolder();
+
+    const notice = screen.getByRole("note", { name: "Распределение в приказе об отчислении" });
+    expect(within(notice).getByText("Распределение учеников не проверено")).toBeVisible();
+    expect(within(notice).getByText(/могли заполняться автоматически/)).toBeVisible();
+    expect(within(notice).getByText(/Сформируйте новый бланк и проверьте распределение вручную/)).toBeVisible();
+    expect(notice.closest("details")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Скачать бланк Word/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Скачать для проверки ${row.name}` }));
+    await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
+      "billing-documents", row.file_path, `${row.name}.docx`,
+    ));
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.saveGenerated).not.toHaveBeenCalled();
+  });
+
+  it("предупреждение приказа не меняет кнопки скачивания остальных восьми Word-документов", async () => {
+    const otherRows = PACKAGE_DOC_TYPES.filter((type) => type !== "expulsion_order").map((type) => ({
+      ...docxRow, id: `doc-${type}`, doc_type: type, name: `Документ ${type}`, file_path: `org-1/group-1/${type}.docx`,
+    }));
+    expect(otherRows).toHaveLength(8);
+    mockDocuments([
+      { ...docxRow, id: "expulsion", doc_type: "expulsion_order", name: "Приказ об отчислении" },
+      ...otherRows,
+    ]);
+    renderFolder();
+
+    expect(screen.getAllByRole("note", { name: "Распределение в приказе об отчислении" })).toHaveLength(1);
+    for (const row of otherRows) {
+      fireEvent.click(screen.getByRole("button", { name: `Скачать Word ${row.name}` }));
+      await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
+        "billing-documents", row.file_path, `${row.name}.docx`,
+      ));
+    }
+    expect(mocks.downloadPrivateFile).toHaveBeenCalledTimes(8);
+  });
+
+  it("не меняет DOCX другой организации и HTML-приказ ГОРЭЛТЕХ", async () => {
+    const row = { ...docxRow, doc_type: "expulsion_order", name: "Приказ об отчислении" };
+    const genericContext = goreltechContext();
+    genericContext.organization.id = "other-org";
+    mockDocuments([row]);
+    const view = renderFolder(genericContext);
+    expect(screen.queryByRole("note", { name: "Распределение в приказе об отчислении" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Скачать Word ${row.name}` }));
+    await waitFor(() => expect(mocks.downloadPrivateFile).toHaveBeenCalledWith(
+      "billing-documents", row.file_path, `${row.name}.docx`,
+    ));
+    view.unmount();
+
+    const htmlRow = { ...row, layout_format: "legacy_html", html: "<p>Сохранённый HTML</p>", file_path: null };
+    mockDocuments([htmlRow]);
+    renderFolder();
+    expect(screen.queryByRole("note", { name: "Распределение в приказе об отчислении" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Открыть ${row.name}` })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: `Скачать ${row.name}` }));
+    expect(mocks.downloadHtml).toHaveBeenCalledWith(expect.objectContaining({ id: row.id, html: htmlRow.html }));
   });
 
   it("не помечает файл без сохранённых замечаний и не превращает текст причины в HTML", () => {

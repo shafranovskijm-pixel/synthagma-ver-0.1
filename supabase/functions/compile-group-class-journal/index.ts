@@ -846,8 +846,13 @@ Deno.serve(async (req) => {
         uploadedPaths.push(packagePath);
       }
 
+      const manualExpulsion = document.doc_type === "expulsion_order"
+        && factRows?.issues.some((issue) => issue.code === "expulsion_classification_not_confirmed") === true;
       compiledPackageDocuments.push({
         ...document,
+        fill_mode: manualExpulsion ? "blank" : document.fill_mode,
+        doc_status: manualExpulsion ? "draft" : document.doc_status,
+        document_number: manualExpulsion ? null : document.document_number,
         variables: factRows ? packageScalars : document.variables,
         html: null,
         file_path: packagePath,
