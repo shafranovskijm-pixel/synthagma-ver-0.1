@@ -40,9 +40,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v21");
+    expect(source).toContain("goreltech-group-package-server-facts-v22");
     const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
-    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v21"');
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v22"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -365,6 +365,22 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).not.toContain("unreferencedPaths");
     expect(source).toContain("storageAdmin && !persistenceStarted");
     expect(source).toContain("body.dryRun || Boolean(body.operationId)");
+  });
+
+  it("passes the same caller-scoped journal source to pass and persists raw mark provenance without a second query", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const pass = sourceSection(source, "const passDocumentFacts = buildGroupPassFactRows({", 'serverDocumentFacts.set("pass", passDocumentFacts)');
+    expect(pass).toContain("journalMarksSource,");
+    expect(pass).toContain("fillMode: body.fillMode");
+    expect(pass).toContain("...profile,");
+    expect(pass).not.toContain("document.variables");
+    expect(source.match(/\.from\("group_class_journal_marks"\)/g)).toHaveLength(1);
+    const compiled = sourceSection(source, "const compiledPackageDocuments =", 'stage = "dry-run-complete"');
+    expect(compiled).toContain('"attendanceSource" in factRows');
+    expect(compiled).toContain("attendance_source: factRows.attendanceSource, mark_sources: factRows.markSources");
+    expect(compiled).toContain("describeGroupClassJournalMarks(factRows.attendanceSource)");
+    const schema = sourceSection(source, "const BodySchema", "async function sha256Hex");
+    expect(schema).not.toMatch(/journalMarks|markSources|attendanceSource/);
   });
 
   it("reads exact operation status with authentication, no compilation, and no writes", () => {

@@ -66,7 +66,7 @@ import { readGroupDocumentOperation, persistGroupDocumentOperation } from "../_s
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v21";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v22";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -540,6 +540,7 @@ Deno.serve(async (req) => {
           company_id: passContactsByUser.get(profile.user_id)?.company_id ?? null,
         })),
         companies: passFacts.companies,
+        journalMarksSource,
       },
       fillMode: body.fillMode,
     });
@@ -893,6 +894,7 @@ Deno.serve(async (req) => {
           document.doc_type === "title_page" ? "Год титула — год выбранной даты оформления, а не автоматически текущий год." : null,
           document.doc_type === "schedule" ? "Расписание — четыре сохранённых блока из настроек этой группы. Даты журнала и прохождение курса не являются источником расписания." : null,
           document.doc_type === "registration_book" ? "Запись реестра не подтверждает физическое вручение документа; подписи и отметки о вручении автоматически не проставляются." : null,
+          factRows && "attendanceSource" in factRows ? "Посещаемость пропуска: " + describeGroupClassJournalMarks(factRows.attendanceSource) : null,
           factRows && "decisionSources" in factRows && factRows.decisionSources.length ? "Оценки и распределение по выдаче взяты из явных решений сотрудника по конкретным зачислениям. Это черновик, не подписанный приказ и не подтверждение вручения документов." : null,
           ...(factRows?.issues.map((issue) => issue.message) || []),
           ...documentSourceIssues(document.doc_type).map((issue) => issue.message),
@@ -909,6 +911,7 @@ Deno.serve(async (req) => {
           signatory_source: documentSignatory.source,
           fidelity_status: packageManifest.fidelity_status,
           ...(factRows && "scheduleSource" in factRows ? { schedule_source: factRows.scheduleSource } : {}),
+          ...(factRows && "attendanceSource" in factRows ? { attendance_source: factRows.attendanceSource, mark_sources: factRows.markSources } : {}),
           ...(factRows ? {
             row_source: "server_database_ids",
             row_sources: factRows.rowSources,

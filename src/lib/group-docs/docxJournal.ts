@@ -2,7 +2,7 @@ import type { GeneratedDocument } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 
-export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v21";
+export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v22";
 const validOperationId = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 /** Read-only receipt lookup. Unknown is not proof that a save did not happen. */

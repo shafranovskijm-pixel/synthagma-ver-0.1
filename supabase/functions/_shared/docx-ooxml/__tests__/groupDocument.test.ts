@@ -596,7 +596,7 @@ describe("групповые DOCX Beta", () => {
     it("версионирует только приказ, не меняет исходник и не наследует старую отметку Word QA", async () => {
       const { manifest, template, documentXml } = await loadGroupTemplate("expulsion_order");
       expect(manifest.schema_version).toBe(2);
-      expect(manifest.template_version).toBe("1.2.0-expulsion-decisions");
+      expect(manifest.template_version).toBe("1.3.0-signature-layout");
       expect(manifest.repeater).toBeNull();
       expect(manifest.row_source_key).toBeNull();
       expect(manifest.row_tokens).toEqual([]);
@@ -604,21 +604,24 @@ describe("групповые DOCX Beta", () => {
       expect(manifest.qa?.renderer).toBeUndefined();
       expect(sha256(fs.readFileSync(path.join(SOURCE_ROOT, manifest.source_filename))))
         .toBe("3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99");
-      // Captured from v1.1 retained template before tokenising table1: all non-text OOXML is identical.
-      expect(sha256(Buffer.from(documentXml.replace(/(<w:t(?:\s[^>]*)?>)[\s\S]*?(<\/w:t>)/g, "$1$2"))))
-        .toBe("DD140FE0B2FB24159F47D4D0AB317CEDE5C9929FDD8F2BD05A6E1AC9554922C5");
+      // The separately approved signature-layout correction does not change
+      // either repeater table, including borders, merge properties and text.
+      expect(Array.from(documentXml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>/g))
+        .map((match) => sha256(Buffer.from(match[0])))).toEqual([
+        "85DD8AF8BA46DA5C941DD5CA196CEF94C705C20662CCBF287E12B9A5B3EB0492",
+        "BA054F5E13F0AA613B1C00A872992A8FB5F7CF4ADD6DA51D1F52DBC976F7D33B",
+      ]);
       const entry = GROUP_DOCUMENT_TEMPLATE_BUNDLE.expulsion_order;
       expect(Buffer.from(entry.templateBase64, "base64")).toEqual(template);
       expect(JSON.parse(entry.manifestJson)).toEqual(manifest);
     });
   });
 
-  it("сохраняет байты остальных восьми шаблонов и содержимое manifest/embedded при добавлении второго списка", async () => {
+  it("сохраняет байты остальных семи шаблонов и manifest/embedded при исправлении двух подписных блоков", async () => {
     const unchanged = {
       enrollment_order: ["1A5E190569CE7CB152B39C644B3C7200DB88053F5BC9FD4E1F8D9FDE08BAB54C", "5686177DC3FA58DDEE1F1996935C847C9C54554346778054A157D1177B41FD87"],
       student_list: ["1D4FD144831545AEF7EDEAFBA1650386AD925B54ADE7CC9ABD65B04F26BD4AC3", "B9AD5FB7C0B0BD59575E48E7DF9A7133A6D470B278D4A2373A23296703692784"],
       schedule: ["6CC810BE349D63F62B89BEA60CB0FC0C64DA52F8B85697C85247E01087527ACF", "A755E1EBB11A29EC173A7F83F5D57263D11A4DA609D6D18D36B3F61E6E092B22"],
-      attestation_sheet: ["3C311CD00D47C509C563C416BA54B1B3190757127E53F102A6F7E666B388DE7D", "67F77EE9EFD129B347BD3266FEE1C95E206804E2558E82D070A123940304EA8B"],
       registration_book: ["B221BF20A495B32DDC2ABB5510EA1F7A0C5A12ABCC01E3EEAC0C6388A52D4ED8", "D7E245E7C3DDF3D2272ADBD44A300105A56781A1F602C924A4402F94CD6365C9"],
       title_page: ["41D7D2103B5BD725D8DC3661D90599BFD00413EEE080560B8887D87A9BAD5E69", "2132D9727675AE8F293DE32372F52EDE85635A9A126BD5CEC6FA4EFCED5B767D"],
       pass: ["0819523FBF593D77F3C8D10430F453DDDC2B48022ABD5A0DF4B77396440158D2", "70A177DA3B9A50A2B76ABBB47D3E8DBFC600E67965B14BC4A7636260E8E2F3C6"],
@@ -639,6 +642,163 @@ describe("групповые DOCX Beta", () => {
       const bytes = fs.readFileSync(path.join(journal, filename));
       expect(sha256(filename.endsWith(".docx") ? bytes : Buffer.from(bytes.toString("utf8").replace(/\r\n/g, "\n"))), filename).toBe(expected);
     }
+  });
+
+  describe("точечное выравнивание подписей без изменения исходных таблиц", () => {
+    const specs = {
+      expulsion_order: {
+        version: "1.3.0-signature-layout", stops: [8000, 12800], width: 15167, pairs: 2,
+        sourceHash: "3041B526683DBB4B5E14FFE266E04A7809076C4CC1CB209C08023E4A45087B99",
+        unchangedHash: "BDAEFF4B5F4B367368DB8669EFF317435C7A47D203790770760D47A6AF37C559",
+      },
+      attestation_sheet: {
+        version: "1.2.0-signature-layout", stops: [4800, 7600], width: 9355, pairs: 3,
+        sourceHash: "1A1DCDD74B904A6EF3265728679FB6022677EB05F1228CB753695331CDC27CA1",
+        unchangedHash: "5EFF42378EFE6DC4571AD477D4BD7A284673C3BCF43E79F1D5332C03B92A9333",
+      },
+    };
+    const paragraphs = (xml: string) => Array.from(xml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)).map((match) => match[0]);
+    const effectiveParagraphLayout = (paragraph: string, stylesXml: string) => {
+      const styleNodes = Array.from(stylesXml.matchAll(/<w:style\b[\s\S]*?<\/w:style>/g)).map((match) => match[0]);
+      const direct = paragraph.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0] || "";
+      const chain: string[] = [];
+      let current = direct.match(/<w:pStyle\b[^>]*\bw:val="([^"]*)"/)?.[1];
+      while (current) {
+        const style = styleNodes.find((node) => node.match(/w:styleId="([^"]*)"/)?.[1] === current)!;
+        expect(style, current).toBeTruthy();
+        chain.unshift(style.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0] || "");
+        current = style.match(/<w:basedOn\b[^>]*\bw:val="([^"]*)"/)?.[1];
+        if (chain.length > 20) throw new Error("Cyclic test style fixture");
+      }
+      const tabs = new Map<number, string>();
+      const ind: Record<string, number> = {};
+      for (const layer of [...chain, direct]) {
+        for (const match of layer.matchAll(/<w:tab\b[^>]*\/>/g)) {
+          const position = Number(match[0].match(/w:pos="(-?\d+)"/)![1]);
+          const alignment = match[0].match(/w:val="([^"]*)"/)![1];
+          if (alignment === "clear") tabs.delete(position);
+          else tabs.set(position, alignment);
+        }
+        const indent = layer.match(/<w:ind\b[^>]*\/>/)?.[0] || "";
+        for (const attribute of indent.matchAll(/w:(\w+)="(-?\d+)"/g)) ind[attribute[1]] = Number(attribute[2]);
+      }
+      return { tabs: [...tabs].sort(([a], [b]) => a - b), ind };
+    };
+    const exceptApprovedSignatureParagraphs = (xml: string) => xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
+      const text = xmlText(paragraph);
+      return /SIGNATORY|INSTRUCTOR|Подпись преподавателя|\(ФИО\)|\(подпись\)|\(дата\)/.test(text)
+        || /^_+$/.test(text.trim()) ? "" : paragraph.replace(/<w:spacing w:before="2300"\/>/g, "");
+    });
+
+    it.each(Object.keys(specs) as Array<keyof typeof specs>)("%s: изменяет только согласованные абзацы и сохраняет шапку/исходник", async (docType) => {
+      const spec = specs[docType];
+      const { documentXml, manifest, template, zip } = await loadGroupTemplate(docType);
+      const source = fs.readFileSync(path.join(SOURCE_ROOT, manifest.source_filename));
+      expect(sha256(source)).toBe(spec.sourceHash);
+      expect(manifest.template_version).toBe(spec.version);
+      expect(manifest.qa?.status).toBe("pending_actual_word_visual_review");
+      expect(manifest.qa?.renderer).toBeUndefined();
+      expect(sha256(Buffer.from(exceptApprovedSignatureParagraphs(documentXml)))).toBe(spec.unchangedHash);
+      const sourceZip = await JSZip.loadAsync(source);
+      for (const part of Object.keys(sourceZip.files).filter((name) => !name.endsWith("/") && name !== "word/document.xml")) {
+        expect(await zipPart(zip, part), part).toEqual(await zipPart(sourceZip, part));
+      }
+      const sourceXml = await sourceZip.file("word/document.xml")!.async("string");
+      expect(documentXml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g)).toEqual(sourceXml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g));
+      const entry = GROUP_DOCUMENT_TEMPLATE_BUNDLE[docType];
+      expect(Buffer.from(entry.templateBase64, "base64")).toEqual(template);
+      expect(JSON.parse(entry.manifestJson)).toEqual(manifest);
+      if (docType === "expulsion_order") {
+        const heading = paragraphs(documentXml).find((p) => xmlText(p).includes("3. Отчислить без выдачи"))!;
+        expect(heading).toContain("<w:keepNext/>");
+        expect(heading).not.toContain('w:before="2300"');
+        expect(paragraphs(documentXml).filter((p) => xmlText(p).includes("(дата)"))).toHaveLength(2);
+      } else {
+        expect(sha256(Buffer.from(documentXml.match(/<w:tbl\b[\s\S]*?<\/w:tbl>/)![0])))
+          .toBe("F79BD082550B380004E55F1FBEB9D95FDC34B16D364E1182C468CBCEE2D56360");
+        expect(documentXml).toContain("[[INSTRUCTOR_1_SHORT]]");
+        expect(documentXml).toContain("[[INSTRUCTOR_2_SHORT]]");
+      }
+      const labels = paragraphs(documentXml).filter((p) => xmlText(p).includes("(ФИО)"));
+      expect(labels).toHaveLength(spec.pairs);
+      for (const label of labels) {
+        expect(xmlText(label)).toBe("(подпись)(ФИО)");
+        expect(label.match(/<w:tab\/>/g)).toHaveLength(2);
+        expect(label).toContain('<w:ind w:left="0" w:right="0" w:firstLine="0" w:hanging="0"');
+        for (const stop of spec.stops) {
+          expect(stop).toBeLessThan(spec.width);
+          expect(label).toContain(`<w:tab w:val="center" w:pos="${stop}"/>`);
+        }
+      }
+    });
+
+    it.each(Object.keys(specs) as Array<keyof typeof specs>)("%s: итоговые табуляторы учитывают реальную цепочку стилей, а не только direct pPr", async (docType) => {
+      const { documentXml, zip, manifest } = await loadGroupTemplate(docType);
+      const stylesXml = await zip.file("word/styles.xml")!.async("string");
+      const sourceZip = await JSZip.loadAsync(fs.readFileSync(path.join(SOURCE_ROOT, manifest.source_filename)));
+      const sourceXml = await sourceZip.file("word/document.xml")!.async("string");
+      expect(await sourceZip.file("word/styles.xml")!.async("string")).toBe(stylesXml);
+      const sourceLabel = paragraphs(sourceXml).find((paragraph) => xmlText(paragraph).includes("(ФИО)"))!;
+      const sourceLayout = effectiveParagraphLayout(sourceLabel, stylesXml);
+      const newParagraphs = paragraphs(documentXml).filter((paragraph) => paragraph.includes("<w:tabs>")
+        && /SIGNATORY|INSTRUCTOR|\(ФИО\)|\(дата\)|^_+$/.test(xmlText(paragraph).trim()));
+      expect(newParagraphs.length).toBeGreaterThanOrEqual(6);
+      for (const paragraph of newParagraphs) {
+        const actual = effectiveParagraphLayout(paragraph, stylesXml);
+        expect(actual.tabs).toEqual(specs[docType].stops.map((stop) => [stop, "center"]));
+        expect(actual.ind).toEqual({ left: 0, right: 0, firstLine: 0, hanging: 0,
+          leftChars: 0, rightChars: 0, firstLineChars: 0, hangingChars: 0 });
+      }
+      if (docType === "attestation_sheet") {
+        expect(sourceLayout.tabs).toEqual(Array.from({ length: 16 }, (_, index) => [(index + 1) * 916, "left"]));
+        expect(sourceLayout.ind.left).toBe(-993);
+        const newLabel = newParagraphs.find((paragraph) => xmlText(paragraph).includes("(ФИО)"))!;
+        const withoutClears = newLabel.replace(/<w:tab w:val="clear"[^>]*\/>/g, "");
+        // Regression proof: adding two direct stops alone leaves HTML's earlier
+        // stops active, making labels and captioned lines use different columns.
+        expect(effectiveParagraphLayout(withoutClears, stylesXml).tabs[0]).toEqual([916, "left"]);
+        expect(effectiveParagraphLayout(withoutClears, stylesXml).tabs).toHaveLength(18);
+      } else {
+        expect(sourceLayout.tabs).toEqual([]);
+      }
+    });
+
+    it.each(["empty", "typical", "long"])("сохраняет %s подписи и tab-пары при реальной подстановке DOCX", async (mode) => {
+      const name = mode === "empty" ? "" : mode === "typical" ? "Тестов Т. Т." : "Синтетический-Длиннофамильный Тестовый Проверочный Подписант";
+      const position = mode === "empty" ? "" : mode === "typical" ? "Руководитель учебного центра" : "Исполняющий обязанности руководителя учебного центра по дополнительному профессиональному образованию";
+      for (const docType of Object.keys(specs) as Array<keyof typeof specs>) {
+        const { documentXml, manifest, zip } = await loadGroupTemplate(docType);
+        const compiled = compileGroupDocumentXml({ documentXml, manifest, snapshot: {
+          scalars: scalarValuesFor(documentXml, { SIGNATORY_POSITION: position, SIGNATORY_SHORT: name,
+            ORG_SHORT_NAME: mode === "long" ? "Синтетическая организация с длинным наименованием — ТОЛЬКО ТЕСТ" : "",
+            INSTRUCTOR_1_SHORT: name, INSTRUCTOR_2_SHORT: name }), rows: [], rowsBySource: emptyRepeaterSources(manifest),
+        } });
+        expect(findUnresolvedTokens(compiled)).toEqual([]);
+        if (name) expect(xmlText(compiled)).toContain(name);
+        if (position) {
+          const caption = paragraphs(compiled).find((p) => xmlText(p).includes(position))!;
+          expect(caption).not.toContain("<w:tab/>");
+          expect(xmlText(caption)).not.toContain("____");
+          expect(caption).toContain("<w:keepNext/>");
+        }
+        const labels = paragraphs(compiled).filter((p) => xmlText(p).includes("(ФИО)"));
+        expect(labels).toHaveLength(specs[docType].pairs);
+        for (const label of labels) expect(xmlText(label)).not.toMatch(/ {2,}/);
+        const allParagraphs = paragraphs(compiled);
+        for (const label of labels) {
+          const signature = allParagraphs[allParagraphs.indexOf(label) - 1];
+          expect(signature).toContain("<w:keepNext/>");
+          expect(signature.match(/<w:tab\/>/g)).toHaveLength(2);
+          expect(xmlText(signature)).toContain("_".repeat(docType === "expulsion_order" ? 32 : 26));
+          expect(signature.match(/<w:tabs>[\s\S]*?<\/w:tabs>/)?.[0])
+            .toBe(label.match(/<w:tabs>[\s\S]*?<\/w:tabs>/)?.[0]);
+        }
+        zip.file("word/document.xml", compiled);
+        const generated = await JSZip.loadAsync(await zip.generateAsync({ type: "nodebuffer" }));
+        expect(await generated.file("word/document.xml")!.async("string")).toBe(compiled);
+      }
+      // Layout structure is proven here; actual Word pagination remains pending.
+    });
   });
 
   it("не вшивает должность подписанта и допускает явно пустую подпись", async () => {

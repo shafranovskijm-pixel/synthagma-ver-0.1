@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "template_id": "goreltech.group.attestation_sheet",
-  "template_version": "1.1.0-client-source",
+  "template_version": "1.2.0-signature-layout",
   "scenario": "group_attestation_sheet",
   "source_filename": "attestation_sheet.source.docx",
   "source_sha256": "1A1DCDD74B904A6EF3265728679FB6022677EB05F1228CB753695331CDC27CA1",
@@ -27,17 +27,16 @@
     "client wording and signature corrections from Telemost applied",
     "portrait/landscape mode follows the Telemost instruction",
     "the original blank-form row capacity is preserved without inventing names or marks",
-    "all runtime values use explicit tokens; no sample person remains"
+    "all runtime values use explicit tokens; no sample person remains",
+    "changed signature lines and their labels share explicit tab stops; configurable signatory caption is a separate paragraph",
+    "inherited tab stops are explicitly cleared from each changed signature paragraph; all indent components are reset locally"
   ],
   "qa": {
     "inspect_all_pages": true,
     "preserve_package_parts_except": [
       "word/document.xml"
     ],
-    "status": "passed_all_filled_pages_word_16_2026-08-24",
-    "renderer": "Microsoft Word 16.0 ExportAsFixedFormat",
-    "rendered_pages": 1,
-    "evidence": "docs/group-documents/client-templates/goreltech-group-package-v1/render-evidence-v1.1.md"
+    "status": "pending_actual_word_visual_review"
   },
-  "template_sha256": "3C311CD00D47C509C563C416BA54B1B3190757127E53F102A6F7E666B388DE7D"
+  "template_sha256": "BD9238384F6260CBAFF3D872FF637BFA5DB295AFAD46EF26B8E31D2BE205E69F"
 }

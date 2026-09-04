@@ -183,14 +183,6 @@ function replaceParagraph(elements, needle, value, occurrence = 0) {
   matches[occurrence].xml = replaceAllTextNodes(matches[occurrence].xml, value);
 }
 
-function replaceAllParagraphs(elements, needle, value) {
-  const matches = elements.filter(
-    (element) => element.tag === "w:p" && elementText(element.xml).includes(needle),
-  );
-  if (!matches.length) throw new Error(`Paragraph not found: ${needle}`);
-  for (const element of matches) element.xml = replaceAllTextNodes(element.xml, value);
-}
-
 function replaceParagraphWithCopies(elements, needle, values, occurrence = 0) {
   const matches = elements
     .map((element, index) => ({ element, index }))
@@ -214,6 +206,110 @@ function replaceParagraphWithCopies(elements, needle, values, occurrence = 0) {
     };
   });
   elements.splice(match.index, 1, ...copies);
+}
+
+/**
+ * Only the signature paragraphs changed by our template preparation use this
+ * layout. Literal-space labels from the source no longer align after inserting
+ * configurable names, so each line/label pair has the same explicit tab stops.
+ * The source package, tables, borders and other paragraphs are not rewritten.
+ */
+function signatureInheritedTabPositions(source, stylesXml) {
+  if (!stylesXml) throw new Error("Signature layout requires the actual source styles.xml");
+  const styles = Array.from(stylesXml.matchAll(/<w:style\b[\s\S]*?<\/w:style>/g)).map((match) => match[0]);
+  const positions = new Set();
+  const collect = (xml) => {
+    for (const match of (xml || "").matchAll(/<w:tab\b[^>]*\bw:pos="(-?\d+)"[^>]*\/>/g)) positions.add(Number(match[1]));
+  };
+  collect(stylesXml.match(/<w:docDefaults\b[\s\S]*?<\/w:docDefaults>/)?.[0]);
+  collect(source.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0]);
+  let styleId = source.match(/<w:pStyle\b[^>]*\bw:val="([^"]*)"/)?.[1]
+    || styles.find((style) => /w:type="paragraph"/.test(style) && /w:default="1"/.test(style))?.match(/w:styleId="([^"]*)"/)?.[1];
+  const visited = new Set();
+  while (styleId) {
+    if (visited.has(styleId)) throw new Error(`Cyclic signature paragraph style: ${styleId}`);
+    visited.add(styleId);
+    const style = styles.find((candidate) => candidate.match(/w:styleId="([^"]*)"/)?.[1] === styleId);
+    if (!style) throw new Error(`Missing signature paragraph style: ${styleId}`);
+    collect(style.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0]);
+    styleId = style.match(/<w:basedOn\b[^>]*\bw:val="([^"]*)"/)?.[1];
+  }
+  return [...positions].sort((a, b) => a - b);
+}
+
+function signatureParagraph(source, segments, stops, keepNext = false, stylesXml) {
+  const sourcePr = source.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0] || "";
+  const property = (name) => sourcePr.match(new RegExp(`<w:${name}\\b[^>]*(?:\\/>|>[\\s\\S]*?<\\/w:${name}>)`))?.[0] || "";
+  const runPr = splitTopLevel(source, ["w:r"])[0]?.xml.match(/<w:rPr\b[\s\S]*?<\/w:rPr>/)?.[0]
+    || property("rPr");
+  // Direct w:tabs merges with the style chain; it does not replace it. In the
+  // client's HTML style sixteen inherited stops otherwise intercept our TABs.
+  const tabs = new Map(signatureInheritedTabPositions(source, stylesXml).map((pos) => [pos, "clear"]));
+  for (const stop of stops) tabs.set(stop, "center");
+  const pPr = `<w:pPr>${property("pStyle")}${keepNext ? "<w:keepNext/>" : ""}${property("shd")}`
+    + `<w:tabs>${[...tabs].sort(([a], [b]) => a - b).map(([pos, value]) => `<w:tab w:val="${value}" w:pos="${pos}"/>`).join("")}</w:tabs>`
+    + `${property("spacing")}<w:ind w:left="0" w:right="0" w:firstLine="0" w:hanging="0" w:leftChars="0" w:rightChars="0" w:firstLineChars="0" w:hangingChars="0"/>`
+    + `<w:jc w:val="left"/>${property("rPr")}</w:pPr>`;
+  // Copies must not repeat the source paragraph's Word editing identifiers.
+  const open = source.match(/^<w:p\b[^>]*>/)?.[0]
+    .replace(/\s+w14:(?:paraId|textId)="[^"]*"/g, "");
+  if (!open) throw new Error("Signature paragraph has no opening w:p");
+  const runs = segments.map((text, index) =>
+    `${index ? `<w:r>${runPr}<w:tab/></w:r>` : ""}<w:r>${runPr}<w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`,
+  ).join("");
+  return { tag: "w:p", xml: `${open}${pPr}${runs}</w:p>`, start: -1, end: -1 };
+}
+
+function replaceSignaturePair(elements, index, signatures, stops, underscores, separateCaption = false, stylesXml) {
+  const line = elements[index];
+  const labels = elements[index + 1];
+  if (line?.tag !== "w:p" || labels?.tag !== "w:p" || !elementText(labels.xml).includes("(подпись)")) {
+    throw new Error("Expected adjacent source signature line and labels");
+  }
+  const replacement = signatures.flatMap(({ caption, name }) => [
+    ...(separateCaption ? [signatureParagraph(line.xml, [caption], stops, true, stylesXml)] : []),
+    signatureParagraph(line.xml, [separateCaption ? "" : caption, "_".repeat(underscores), name], stops, true, stylesXml),
+    signatureParagraph(labels.xml, ["", "(подпись)", "(ФИО)"], stops, false, stylesXml),
+  ]);
+  elements.splice(index, 2, ...replacement);
+}
+
+function patchExpulsionSignatures(elements, stylesXml) {
+  const stops = [8000, 12800]; // Printable landscape width: 15167 twips.
+  const indices = elements.map((element, index) => ({ element, index }))
+    .filter(({ element }) => element.tag === "w:p" && elementText(element.xml).includes("Руководитель учебного центра"))
+    .map(({ index }) => index);
+  if (indices.length !== 2) throw new Error("Expected both expulsion signature blocks");
+  for (const index of indices.reverse()) {
+    // The first source block has one empty paragraph before its date; the
+    // second does not. Retain that difference rather than inventing spacing.
+    const dateIndex = [index + 2, index + 3].find((candidate) =>
+      elements[candidate]?.tag === "w:p" && /^_+$/.test(elementText(elements[candidate].xml).trim()));
+    const dateLine = dateIndex === undefined ? undefined : elements[dateIndex];
+    const dateLabel = dateIndex === undefined ? undefined : elements[dateIndex + 1];
+    if (!/^_+$/.test(elementText(dateLine?.xml || "").trim())
+      || elementText(dateLabel?.xml || "").trim() !== "(дата)") {
+      throw new Error("Expected expulsion source date line and label");
+    }
+    elements[dateIndex] = signatureParagraph(dateLine.xml, ["", "", elementText(dateLine.xml).trim()], stops, true, stylesXml);
+    elements[dateIndex + 1] = signatureParagraph(dateLabel.xml, ["", "", "(дата)"], stops, false, stylesXml);
+    replaceSignaturePair(elements, index, [{
+      caption: "[[SIGNATORY_POSITION]] [[ORG_SHORT_NAME]]", name: "[[SIGNATORY_SHORT]]",
+    }], stops, 32, true, stylesXml);
+  }
+}
+
+function patchAttestationSignatures(elements, stylesXml) {
+  const stops = [4800, 7600]; // Printable portrait width: 9355 twips.
+  const teacher = elements.findIndex((element) => element.tag === "w:p" && elementText(element.xml).includes("Подпись преподавателя"));
+  replaceSignaturePair(elements, teacher, [
+    { caption: "Подпись преподавателя 1", name: "[[INSTRUCTOR_1_SHORT]]" },
+    { caption: "Подпись преподавателя 2", name: "[[INSTRUCTOR_2_SHORT]]" },
+  ], stops, 26, false, stylesXml);
+  const signatory = elements.findIndex((element) => element.tag === "w:p" && elementText(element.xml).includes("Руководитель учебного центра"));
+  replaceSignaturePair(elements, signatory, [{
+    caption: "[[SIGNATORY_POSITION]]", name: "[[SIGNATORY_SHORT]]",
+  }], stops, 26, true, stylesXml);
 }
 
 function patchCell(tableXml, rowIndex, cellIndex, value) {
@@ -402,12 +498,8 @@ function patchExpulsion(parts) {
     "3. Отчислить без выдачи",
     "3. Отчислить без выдачи удостоверений, следующих обучающихся:",
   );
-  keepParagraphWithNext(parts.elements, "3. Отчислить без выдачи", 2300);
-  replaceAllParagraphs(
-    parts.elements,
-    "Руководитель учебного центра",
-    "[[SIGNATORY_POSITION]] [[ORG_SHORT_NAME]] ________________________________ / [[SIGNATORY_SHORT]] /",
-  );
+  keepParagraphWithNext(parts.elements, "3. Отчислить без выдачи");
+  patchExpulsionSignatures(parts.elements, parts.stylesXml);
   const tables = parts.elements.filter((element) => element.tag === "w:tbl");
   if (tables.length !== 2) throw new Error("Expulsion tables not found");
   tables[0].xml = patchCell(tables[0].xml, 0, 2, "Часов");
@@ -501,19 +593,7 @@ function patchAttestation(parts) {
     "Объем программы",
     "Объем программы [[PROGRAM_HOURS]] час. Срок обучения [[START_DATE]] – [[END_DATE]]",
   );
-  replaceParagraphWithCopies(
-    parts.elements,
-    "Подпись преподавателя",
-    [
-      "Подпись преподавателя 1 __________________________ / [[INSTRUCTOR_1_SHORT]] /",
-      "Подпись преподавателя 2 __________________________ / [[INSTRUCTOR_2_SHORT]] /",
-    ],
-  );
-  replaceParagraph(
-    parts.elements,
-    "Руководитель учебного центра",
-    "[[SIGNATORY_POSITION]] __________________________ / [[SIGNATORY_SHORT]] /",
-  );
+  patchAttestationSignatures(parts.elements, parts.stylesXml);
   const table = parts.elements.find((element) => element.tag === "w:tbl");
   if (!table) throw new Error("Attestation table not found");
   table.xml = patchRow(table.xml, 1, ["[[N]]", "[[STUDENT_NAME]]", "[[PERCENT]]", "[[GRADE]]"]);
@@ -703,7 +783,8 @@ const definitions = {
   expulsion_order: {
     source: "expulsion_order.source.docx",
     orientation: "landscape",
-    version: "1.2.0-expulsion-decisions",
+    version: "1.3.0-signature-layout",
+    signatureLayout: true,
     schema_version: 2,
     row_source_key: null,
     row_tokens: [],
@@ -737,6 +818,8 @@ const definitions = {
   attestation_sheet: {
     source: "attestation_sheet.source.docx",
     orientation: "portrait",
+    version: "1.2.0-signature-layout",
+    signatureLayout: true,
     row_source_key: "attestation_rows",
     row_tokens: ["N", "STUDENT_NAME", "PERCENT", "GRADE"],
     repeater: { table_index: 0, header_rows: 1, prototype_row: 1, minimum_rows: 6 },
@@ -828,6 +911,10 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
       "the original blank-form row capacity is preserved without inventing names or marks",
       "all runtime values use explicit tokens; no sample person remains",
       ...(definition.repeaters ? ["issuance and non-issuance tables use separate confirmed row sources; empty non-issuance form stays unnumbered"] : []),
+      ...(definition.signatureLayout ? ["changed signature lines and their labels share explicit tab stops; configurable signatory caption is a separate paragraph",
+        "inherited tab stops are explicitly cleared from each changed signature paragraph; all indent components are reset locally",
+        ...(docType === "expulsion_order" ? ["removed the preparation-added 2300-twip gap before the non-issuance heading; original source spacing and keep-next retained"] : []),
+      ] : []),
     ],
     qa: {
       inspect_all_pages: true,
@@ -841,7 +928,7 @@ function manifest(docType, definition, sourceHash, headerSourceHash = null) {
             "word/media/image1.jpeg",
           ]
         : ["word/document.xml"],
-      ...(definition.repeaters ? { status: "pending_actual_word_visual_review" } : {
+      ...(definition.repeaters || definition.signatureLayout ? { status: "pending_actual_word_visual_review" } : {
         status: "passed_all_filled_pages_word_16_2026-08-24",
         renderer: "Microsoft Word 16.0 ExportAsFixedFormat",
         rendered_pages: docType === "expulsion_order" ? 2 : 1,
@@ -859,6 +946,7 @@ async function buildOne(docType, definition) {
   if (!documentFile) throw new Error(`${definition.source}: no word/document.xml`);
   const documentDate = documentFile.date;
   const parts = bodyParts(await documentFile.async("string"));
+  if (definition.signatureLayout) parts.stylesXml = await zip.file("word/styles.xml")?.async("string");
   definition.patch(parts);
   let documentXml = parts.prefix + parts.elements.map((element) => element.xml).join("") + parts.suffix;
   if (definition.portrait) documentXml = setPortrait(documentXml);
