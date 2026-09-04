@@ -7,6 +7,10 @@ const mocks = vi.hoisted(() => ({
   generate: vi.fn(), receipt: vi.fn(), reconcile: vi.fn(), refresh: vi.fn(), saveGenerated: vi.fn(), remove: vi.fn(),
   success: vi.fn(), warning: vi.fn(), error: vi.fn(), onDataChanged: vi.fn(),
 }));
+// Keep the real completion card mounted; only supply its external auth context.
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({
+  user: { id: "00000000-0000-4000-8000-000000000001" }, loading: false,
+}) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/hooks/useGroupDocuments", () => ({ useGroupDocuments: () => ({
   documents: [], loading: false, refresh: mocks.refresh, saveGenerated: mocks.saveGenerated, remove: mocks.remove,
