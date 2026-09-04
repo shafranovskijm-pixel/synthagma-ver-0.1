@@ -2,7 +2,7 @@ import type { GeneratedDocument } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 
-export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v23";
+export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v24";
 const validOperationId = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 /** Read-only receipt lookup. Unknown is not proof that a save did not happen. */
@@ -43,8 +43,8 @@ async function readCompilerRevision(error: unknown): Promise<string> {
 
   // Старый Nginx production физически передаёт revision, но не открывает
   // custom response header браузерному CORS. Edge дублирует revision в JSON.
-  // Читаем только копию error-response и принимаем ровно v20: восемь видов
-  // документов используют серверные источники, а не табличный HTML клиента.
+  // Читаем только копию error-response и принимаем точную текущую ревизию:
+  // документы и связанный договор используют проверенные серверные источники.
   const response = context as Partial<Response>;
   if (typeof response.clone !== "function") return "";
   try {
@@ -76,6 +76,8 @@ export interface GenerateClassJournalParams {
   groupId: string;
   /** Снимок активного состава группы, использованный для всех документов пакета. */
   studentUserIds: string[];
+  /** IDs of saved contracts selected for this operation; never browser numbers. */
+  contractIds?: readonly string[];
   /** Отдельная дата журнала; даты остальных документов передаются в самих документах. */
   journalDocumentDate?: string;
   /** @deprecated Общая дата старого клиента: только fallback для черновика. */
@@ -129,6 +131,8 @@ export async function generateClassJournalDocx(
   params: GenerateClassJournalParams,
 ): Promise<GenerateClassJournalResult> {
   if (!params.dryRun && !validOperationId(params.operationId)) throw new Error("Нужен корректный идентификатор операции сохранения");
+  const contractIds = [...new Set(params.contractIds ?? [])];
+  if (contractIds.length > 5000 || contractIds.some(id => !validOperationId(id))) throw new Error("Некорректные идентификаторы связанных договоров");
   // Both preview and save must negotiate the server-only facts revision before
   // any real roster/document payload is sent (including a rolling deployment).
   await assertCompilerCapability();
@@ -141,6 +145,7 @@ export async function generateClassJournalDocx(
       ...(!params.dryRun ? { operationId: params.operationId } : {}),
       groupId: params.groupId,
       studentUserIds: params.studentUserIds,
+      contractIds,
       journalDocumentDate: params.journalDocumentDate,
       ...(params.documentDate ? { documentDate: params.documentDate } : {}),
       fillMode: params.fillMode,

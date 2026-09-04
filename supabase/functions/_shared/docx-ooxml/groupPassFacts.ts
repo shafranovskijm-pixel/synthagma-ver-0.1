@@ -1,4 +1,5 @@
 import type { GroupDocumentFactsProfile } from "./groupDocumentFacts.ts";
+import type { loadGroupContractFacts } from "./groupContractFacts.ts";
 import {
   buildGroupClassJournalMarks,
   type GroupClassJournalMarkRow,
@@ -13,6 +14,7 @@ export interface GroupPassFactsSnapshot {
   companies: readonly { id: string; organization_id: string; name: string | null }[];
   /** Same caller-RLS read used by the group's original journal, never browser cells. */
   journalMarksSource?: GroupClassJournalMarksSource;
+  contractFacts?: Awaited<ReturnType<typeof loadGroupContractFacts>>;
 }
 export interface GroupPassFactsResult {
   docType: "pass";
@@ -21,6 +23,8 @@ export interface GroupPassFactsResult {
   scalars: Record<string, string>;
   attendanceSource: GroupClassJournalMarksResult["attendanceSource"];
   markSources: GroupClassJournalMarkRow[];
+  contractSources: Awaited<ReturnType<typeof loadGroupContractFacts>>["sources"];
+  contractCoverage: { coveredStudentUserIds: string[]; missingStudentUserIds: string[] };
   issues: Array<{ docType: "pass"; code: string; field: string; message: string; severity: "error" | "warning"; userId?: string }>;
 }
 const text = (value: string | null | undefined) => typeof value === "string" ? value.trim() : "";
@@ -37,6 +41,7 @@ export function buildGroupPassFactRows(input: { snapshot: GroupPassFactsSnapshot
     docType: "pass", rows: [], rowSources: [],
     scalars: { DAY1_DATE: "", DAY2_DATE: "", DAY3_DATE: "", DAY4_DATE: "", CONTRACT_BASIS_LINE: "", STUDENTS_COUNT: "" },
     attendanceSource: input.fillMode === "blank" ? "blank_mode" : "unavailable_blank", markSources: [], issues: [],
+    contractSources: [], contractCoverage: { coveredStudentUserIds: [], missingStudentUserIds: [] },
   };
   const issue = (code: string, field: string, message: string, severity: "error" | "warning" = "warning", userId?: string) => {
     result.issues.push({ docType: "pass", code, field, message, severity, ...(userId ? { userId } : {}) });
@@ -45,7 +50,16 @@ export function buildGroupPassFactRows(input: { snapshot: GroupPassFactsSnapshot
     issue("group_scope_mismatch", "group", "Группа не подтверждена в организации.", "error");
     return result;
   }
-  issue("contract_source_missing", "CONTRACT_BASIS_LINE", "Связанный договор не подтверждён; основание оставлено пустым.");
+  if (input.fillMode !== "blank") {
+    const contract = input.snapshot.contractFacts;
+    if (!contract) issue("contract_source_missing", "CONTRACT_BASIS_LINE", "Связанный договор не подтверждён; основание оставлено пустым.");
+    else {
+      result.scalars.CONTRACT_BASIS_LINE = contract.line;
+      result.contractSources = contract.sources;
+      result.contractCoverage = { coveredStudentUserIds: contract.coveredStudentUserIds, missingStudentUserIds: contract.missingStudentUserIds };
+      for (const contractIssue of contract.issues) issue(contractIssue.code, contractIssue.field, contractIssue.message, contractIssue.severity);
+    }
+  }
   const dates = group.training_dates;
   let confirmedTrainingDates: string[] | null = null;
   const start = text(group.start_date);

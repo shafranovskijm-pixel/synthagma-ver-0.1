@@ -84,7 +84,8 @@ vi.mock("../GenerateDocxContractDialog", () => ({
             scenario: "legal",
             count: 1,
             contractNumbers: ["2026-001"],
-            contractId: "contract-word-1",
+            contractId: "00000000-0000-4000-8000-000000000011",
+            contractIds: ["00000000-0000-4000-8000-000000000011"],
           });
           props.onClose();
         }}
@@ -110,6 +111,8 @@ vi.mock("../GenerateContractDialog", () => ({
             scenario: legal ? "legal" : "individual",
             count: legal ? 1 : 2,
             contractNumbers: legal ? ["2026-201"] : ["2026-101", "2026-102"],
+            contractIds: legal ? ["00000000-0000-4000-8000-000000000012"]
+              : ["00000000-0000-4000-8000-000000000013", "00000000-0000-4000-8000-000000000014"],
           });
           props.onClose();
         }}
@@ -264,6 +267,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
     );
     expect(mocks.generateClassJournalDocx).toHaveBeenCalledWith(
       expect.objectContaining({
+        contractIds: ["00000000-0000-4000-8000-000000000011"],
         journalSignatory: {
           position: "Генеральный директор",
           name: SAMPLE_CONTEXT.organization.director_name,
@@ -342,6 +346,8 @@ describe("GroupDocumentsFolder package contract routing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Повторить сохранение без дубликата" }));
 
     await waitFor(() => expect(mocks.generateClassJournalDocx).toHaveBeenCalledTimes(2));
+    expect(mocks.generateClassJournalDocx.mock.calls[1][0].contractIds).toEqual(["00000000-0000-4000-8000-000000000011"]);
+    expect(mocks.generateClassJournalDocx.mock.calls[1][0].operationId).toBe(mocks.generateClassJournalDocx.mock.calls[0][0].operationId);
     expect(mocks.docxSave).toHaveBeenCalledTimes(1);
     expect(mocks.individualSave).not.toHaveBeenCalled();
     await waitFor(() => {

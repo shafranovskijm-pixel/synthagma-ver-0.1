@@ -62,7 +62,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   /** Вызывается один раз после сохранения договоров; false означает частично завершённый пакет. */
-  onGenerated: (result?: { scenario: ContractScenario; count: number; contractNumbers: string[] }) =>
+  onGenerated: (result?: { scenario: ContractScenario; count: number; contractNumbers: string[]; contractIds: string[] }) =>
     void | boolean | Promise<void | boolean>;
   /**
    * Быстрая генерация: шаблон по умолчанию, все ученики группы,
@@ -106,6 +106,50 @@ interface PreparedContractBatch {
   scenario: CounterpartyType;
   produced: Array<{ name: string; html: string; number: string }>;
   contractRows: Array<Record<string, unknown>>;
+}
+
+const PERSISTED_CONTRACT_FIELDS = "id, organization_id, student_group_id, student_user_id, company_id, counterparty_type, contract_number, contract_date, file_path, students, variables";
+const contractUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
+
+/** A response is a receipt only when every saved UUID matches one exact prepared job. */
+function confirmedContractIds(expected: Array<Record<string, unknown>>, actual: unknown): string[] | null {
+  if (!expected.length || !Array.isArray(actual) || actual.length !== expected.length) return null;
+  const ids = new Set<string>();
+  const jobs = new Map<string, Record<string, unknown>>();
+  const jobKey = (row: Record<string, unknown>) => {
+    const vars = row.variables;
+    return record(vars) && typeof vars._sintagma_generation_id === "string" && vars._sintagma_generation_id
+      && typeof vars._sintagma_job_key === "string" && vars._sintagma_job_key
+      ? `${vars._sintagma_generation_id}:${vars._sintagma_job_key}` : null;
+  };
+  const studentIds = (value: unknown): string | null => {
+    if (!Array.isArray(value) || !value.length) return null;
+    const values = value.map(student => record(student) ? student.user_id : null);
+    if (!values.every((id): id is string => typeof id === "string" && !!id) || new Set(values).size !== values.length) return null;
+    return JSON.stringify([...values].sort());
+  };
+  for (const row of actual) {
+    if (!record(row) || typeof row.id !== "string" || !contractUuid.test(row.id) || ids.has(row.id.toLowerCase())) return null;
+    const key = jobKey(row);
+    if (!key || jobs.has(key)) return null;
+    ids.add(row.id.toLowerCase());
+    jobs.set(key, row);
+  }
+  const result: string[] = [];
+  for (const row of expected) {
+    const key = jobKey(row);
+    const saved = key ? jobs.get(key) : null;
+    if (!saved || ![
+      "organization_id", "student_group_id", "student_user_id", "company_id", "counterparty_type",
+      "contract_number", "contract_date", "file_path",
+    ].every(field => saved[field] === row[field])) return null;
+    const roster = studentIds(row.students);
+    if (!roster || studentIds(saved.students) !== roster) return null;
+    result.push(saved.id as string);
+    jobs.delete(key!);
+  }
+  return jobs.size === 0 ? result : null;
 }
 
 export function GenerateContractDialog({ organizationId, groupId, groupName, students, open, onClose, onGenerated, quick = false, fixedScenario, groupDefaults }: Props) {
@@ -406,8 +450,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
    */
   const leftoverPlaceholders = useMemo(() => findUnresolvedPlaceholders(previewHtml), [previewHtml]);
   const generateDisabled = !selectedTpl || blockers.length > 0 || missing.length > 0 || leftoverPlaceholders.length > 0;
-  const uncertainRetrySafe = assignedNumbers.current.size > 0
-    && Array.from(assignedNumbers.current.values()).every(Boolean);
+  const uncertainRetrySafe = !!preparedBatch.current;
 
   /** Переменные выбранного шаблона без значений — показываем явно перед генерацией. */
   const variableGaps = useMemo(
@@ -479,8 +522,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   };
 
   const generate = async () => {
-    if (!selectedTpl) { toast.error("Выберите шаблон"); return; }
-    if (blockers.length > 0) {
+    if (!persistenceUncertain && !selectedTpl) { toast.error("Выберите шаблон"); return; }
+    if (!persistenceUncertain && blockers.length > 0) {
       toast.error("Заполните обязательные данные", { description: blockers.map(b => b.label).join(", ") });
       return;
     }
@@ -497,6 +540,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         produced = immutableRetry.produced;
         contractRows = immutableRetry.contractRows;
       } else {
+        if (persistenceUncertain) throw new Error("Исходный снимок сохранения недоступен; новая вставка запрещена.");
+        if (!selectedTpl) throw new Error("Выберите шаблон");
         const jobs = planContractJobs(counterparty, {
           org: orgReq,
           students: scenarioStudents,
@@ -526,7 +571,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
           const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
 
           const safe = `${title} ${counterparty === "individual" ? job.students[0]?.full_name || "" : ""}`.trim();
-          const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.\-]+/g, "_");
+          const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.-]+/g, "_");
           const storagePath = `${organizationId}/contracts/${groupId}/${job.key}/${Date.now()}_${fileName}`;
 
           const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
@@ -567,46 +612,40 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         preparedBatch.current = { scenario: batchScenario, produced, contractRows };
       }
 
-      // Persist every contract in one PostgREST request. PostgreSQL executes a
-      // bulk insert atomically, so a failure cannot leave only the first few
-      // students saved and make a retry duplicate them.
-      const { error: insErr } = await (supabase as any).from("org_contracts").insert(contractRows);
-      if (insErr) {
-        // The request may have committed even when its HTTP response was lost.
-        // Reconcile the exact numbered batch before allowing a retry. The DB
-        // has a unique index on (organization_id, contract_number), and the
-        // same numbers are retained in assignedNumbers for every retry.
-        const expected = contractRows.map((row) => ({
-          contract_number: String(row.contract_number || ""),
-          student_user_id: row.student_user_id ? String(row.student_user_id) : null,
-          company_id: row.company_id ? String(row.company_id) : null,
-          generation_id: String((row.variables as Record<string, unknown>)?._sintagma_generation_id || ""),
-          job_key: String((row.variables as Record<string, unknown>)?._sintagma_job_key || ""),
-        }));
-        const numbers = expected.map((row) => row.contract_number).filter(Boolean);
-        let reconciled = false;
-        if (numbers.length === expected.length) {
-          const { data: existingRows, error: verifyErr } = await (supabase as any)
+      let contractIds: string[] | null = null;
+      let insertError: any = null;
+      let rejectedByDatabase = false;
+      // An uncertain retry is read-only: an empty read cannot prove that an
+      // earlier insert stopped, including contracts without a unique number.
+      if (!immutableRetry) {
+        try {
+          const reply = await (supabase as any).from("org_contracts").insert(contractRows).select(PERSISTED_CONTRACT_FIELDS);
+          insertError = reply.error;
+          // Only explicit statement rejection permits another insert. Connection
+          // errors (08xxx) / completion-unknown (40003) remain ambiguous even
+          // when the transport includes a PostgreSQL-looking error code.
+          rejectedByDatabase = !!insertError && /^(?:22|23|28|42)[0-9A-Z]{3}$/.test(String(insertError.code || ""));
+          if (!insertError) contractIds = confirmedContractIds(contractRows, reply.data);
+        } catch (error) {
+          insertError = error;
+        }
+      }
+      if (!contractIds) {
+        setPersistenceUncertain(true);
+        try {
+          const { data: existingRows, error: verifyError } = await (supabase as any)
             .from("org_contracts")
-            .select("contract_number, student_user_id, company_id, variables")
+            .select(PERSISTED_CONTRACT_FIELDS)
             .eq("organization_id", organizationId)
             .eq("student_group_id", groupId)
-            .in("contract_number", numbers);
-          if (!verifyErr) {
-            reconciled = expected.every((row) => (existingRows || []).some((existing: any) =>
-              existing.contract_number === row.contract_number
-              && (existing.student_user_id || null) === row.student_user_id
-              && (existing.company_id || null) === row.company_id
-              && existing.variables?._sintagma_generation_id === row.generation_id
-              && existing.variables?._sintagma_job_key === row.job_key));
-          }
+            .eq("variables->>_sintagma_generation_id", generationId.current);
+          if (!verifyError) contractIds = confirmedContractIds(contractRows, existingRows);
+        } catch {
+          // Failed reconciliation is not evidence of rollback.
         }
-        if (!reconciled) {
-          // A structured PostgREST error means PostgreSQL definitely rejected
-          // the transaction. A transport error without a code is ambiguous:
-          // keep the wizard open and reuse the exact same numbered batch.
-          setPersistenceUncertain(!String(insErr?.code || "").trim());
-          throw insErr;
+        if (!contractIds) {
+          setPersistenceUncertain(!rejectedByDatabase);
+          throw insertError || new Error("Полный набор сохранённых договоров и их ID пока не подтверждён. Повторная проверка не создаёт новые договоры.");
         }
       }
       setPersistenceUncertain(false);
@@ -630,6 +669,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
           scenario: batchScenario,
           count: produced.length,
           contractNumbers: produced.map((doc) => doc.number).filter(Boolean),
+          contractIds,
         });
       } catch (packageError) {
         // The contracts above are already persisted. Treat a downstream
@@ -716,8 +756,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             <Alert variant="destructive" className="mx-6 mb-3 w-auto">
               <AlertDescription>
                 {uncertainRetrySafe
-                  ? "Ответ сервера потерян, поэтому статус сохранения пока не подтверждён. Не закрывайте мастер: повтор использует неизменный снимок пакета с теми же номерами и сначала сверит уже созданные договоры."
-                  : "Ответ сервера потерян у договора без номера. Безопасный автоматический повтор невозможен: обновите страницу и сначала проверьте папку договоров."}
+                  ? "Статус сохранения пока не подтверждён. Не закрывайте мастер: повторная проверка сверит неизменный состав пакета и реальные ID договоров, не создавая договоры заново. Пустой ответ не подтверждает отмену сохранения."
+                  : "Исходный снимок договоров недоступен. Новое сохранение запрещено до проверки результата операции."}
               </AlertDescription>
             </Alert>
           )}
@@ -1188,10 +1228,11 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   Далее<ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={generate} disabled={busy || generateDisabled || (persistenceUncertain && !uncertainRetrySafe)} className="gap-1.5">
+                <Button onClick={generate} disabled={busy || (persistenceUncertain ? !uncertainRetrySafe : generateDisabled)} className="gap-1.5">
                   <FileSignature className="w-4 h-4" />
                   {busy
                     ? "Генерация…"
+                    : persistenceUncertain ? "Проверить сохранение договоров"
                     : counterparty === "individual" && scenarioStudents.length > 1
                       ? `Сгенерировать ${scenarioStudents.length} договора`
                       : "Сгенерировать и сохранить"}

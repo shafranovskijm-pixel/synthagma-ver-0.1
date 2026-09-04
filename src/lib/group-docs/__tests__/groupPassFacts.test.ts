@@ -1,7 +1,8 @@
 import JSZip from "jszip";
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildGroupPassFactRows, type GroupPassFactsSnapshot } from "../../../../supabase/functions/_shared/docx-ooxml/groupPassFacts";
+import { loadGroupContractFacts, type GroupContractFactRow, type GroupContractFactsReader } from "../../../../supabase/functions/_shared/docx-ooxml/groupContractFacts";
 import type { GroupClassJournalMarkRow } from "../../../../supabase/functions/_shared/docx-ooxml/groupClassJournalMarks";
 import { compileGroupDocumentXml, type GroupDocumentManifest } from "../../../../supabase/functions/_shared/docx-ooxml/groupDocument";
 import { findUnresolvedTokens } from "../../../../supabase/functions/_shared/docx-ooxml/xml";
@@ -210,7 +211,9 @@ describe("pass uses the original group journal's saved manual marks", () => {
     expect(blank.attendanceSource).toBe("blank_mode");
     expect(blank.markSources).toEqual([]);
     expect(markCells(blank)).toEqual([["", "", "", ""], ["", "", "", ""]]);
-    expect(blank.issues.map(issue => issue.code)).toEqual(["contract_source_missing"]);
+    expect(blank.issues).toEqual([]);
+    expect(blank.contractSources).toEqual([]);
+    expect(blank.contractCoverage).toEqual({ coveredStudentUserIds: [], missingStudentUserIds: [] });
     delete snapshot.journalMarksSource;
     expect(JSON.stringify(build(snapshot))).not.toMatch(/FORGED|completed/);
     expect(markCells(build(snapshot))).toEqual([["", "", "", ""], ["", "", "", ""]]);
@@ -252,5 +255,150 @@ describe("pass uses the original group journal's saved manual marks", () => {
     expect(Object.keys(reloaded.files).sort()).toEqual(Object.keys(original.files).sort());
     for (const [name, entry] of Object.entries(original.files)) if (!entry.dir && name !== "word/document.xml")
       expect(await reloaded.file(name)!.async("uint8array"), name).toEqual(await entry.async("uint8array"));
+  });
+});
+
+describe("selected contract facts reach the retained pass DOCX", () => {
+  const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const ORG = uuid(101), GROUP = uuid(102), COURSE = uuid(103), COMPANY = uuid(104);
+  const A = uuid(105), B = uuid(106), CONTRACT_A = uuid(107), CONTRACT_B = uuid(108);
+  const escapedNumber = 'SYNTH-<A&B>-"Q"';
+  const sourceRow = (changes: Partial<GroupContractFactRow> = {}): GroupContractFactRow => ({
+    id: CONTRACT_A, organization_id: ORG, student_group_id: GROUP,
+    student_user_id: null, company_id: COMPANY, counterparty_type: "legal",
+    contract_number: escapedNumber, contract_date: "2026-09-05", status: "draft", generation_status: "generated",
+    students: [{ user_id: A }, { user_id: B }], ...changes,
+  });
+  const snapshotFor = (contractFacts: Awaited<ReturnType<typeof loadGroupContractFacts>>): GroupPassFactsSnapshot => ({
+    organization: { id: ORG },
+    group: { id: GROUP, organization_id: ORG, course_id: COURSE, training_dates: ["2026-09-05", "2026-09-06"],
+      start_date: "2026-09-01", end_date: "2026-09-30" },
+    profiles: [A, B].map((user_id, index) => ({
+      user_id, organization_id: ORG, student_group_id: GROUP, archived_at: null,
+      full_name: `Тестовый участник ${index + 1}`, email: `synthetic-${index + 1}@example.invalid`, phone: null, company_id: COMPANY,
+    })),
+    companies: [{ id: COMPANY, organization_id: ORG, name: "Синтетическая организация" }],
+    contractFacts,
+  });
+  function readerFor(rows: GroupContractFactRow[]): GroupContractFactsReader {
+    return {
+      contracts: vi.fn<GroupContractFactsReader["contracts"]>().mockImplementation(async ({ contractIds, from, to }) => {
+        const selected = rows.filter(row => contractIds.includes(row.id));
+        return { data: selected.slice(from, to + 1), count: selected.length, error: null };
+      }),
+      companies: vi.fn<GroupContractFactsReader["companies"]>().mockImplementation(async ({ companyIds }) => ({
+        data: companyIds.map(id => ({ id, organization_id: ORG })), count: companyIds.length, error: null,
+      })),
+    };
+  }
+  async function loadSelected(rows: GroupContractFactRow[]) {
+    const reader = readerFor(rows);
+    const facts = await loadGroupContractFacts({
+      organizationId: ORG, groupId: GROUP, studentUserIds: [A, B], contractIds: rows.map(row => row.id), fillMode: "data",
+    }, reader);
+    return { facts, reader };
+  }
+  async function compileRetainedPass(result: ReturnType<typeof build>) {
+    const template = GROUP_DOCUMENT_TEMPLATE_BUNDLE.pass;
+    const bytes = Buffer.from(template.templateBase64, "base64");
+    const manifest = JSON.parse(template.manifestJson) as GroupDocumentManifest;
+    expect(createHash("sha256").update(bytes).digest("hex").toUpperCase()).toBe(manifest.template_sha256);
+    const original = await JSZip.loadAsync(bytes), output = await JSZip.loadAsync(bytes);
+    const xml = await original.file("word/document.xml")!.async("string");
+    expect(findUnresolvedTokens(xml)).toContain("[[CONTRACT_BASIS_LINE]]");
+    const emptyScalars = Object.fromEntries(findUnresolvedTokens(xml).map(token => [token.slice(2, -2), ""]));
+    const compiled = compileGroupDocumentXml({
+      documentXml: xml, manifest, snapshot: { rows: result.rows, scalars: { ...emptyScalars, ...result.scalars } },
+    });
+    output.file("word/document.xml", compiled);
+    const reopened = await JSZip.loadAsync(await output.generateAsync({ type: "nodebuffer" }));
+    const savedXml = await reopened.file("word/document.xml")!.async("string");
+    expect(savedXml).toBe(compiled);
+    expect(findUnresolvedTokens(savedXml)).toEqual([]);
+    const document = new DOMParser().parseFromString(savedXml, "application/xml");
+    expect(document.getElementsByTagName("parsererror")).toHaveLength(0);
+    const wordText = (node: Document | Element) => Array.from(node.getElementsByTagName("w:t")).map(text => text.textContent).join("");
+    expect(savedXml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g)).toEqual(xml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/g));
+    expect(Object.keys(reopened.files).sort()).toEqual(Object.keys(original.files).sort());
+    for (const [name, entry] of Object.entries(original.files)) if (!entry.dir && name !== "word/document.xml") {
+      expect(await reopened.file(name)!.async("uint8array"), name).toEqual(await entry.async("uint8array"));
+    }
+    return { xml: savedXml, text: wordText(document), paragraphs: Array.from(document.getElementsByTagName("w:p")).map(wordText) };
+  }
+
+  it("prints the confirmed saved source line as escaped XML text and retains source/coverage snapshot metadata", async () => {
+    const { facts, reader } = await loadSelected([sourceRow()]);
+    const snapshot = snapshotFor(facts), before = structuredClone(snapshot);
+    const result = build(snapshot);
+    expect(reader.contracts).toHaveBeenCalledExactlyOnceWith({
+      organizationId: ORG, groupId: GROUP, contractIds: [CONTRACT_A], from: 0, to: 199,
+    });
+    expect(reader.companies).toHaveBeenCalledExactlyOnceWith({ organizationId: ORG, companyIds: [COMPANY], from: 0, to: 199 });
+    expect(facts.issues).toEqual([]);
+    expect(facts.line).toBe(`Номер договора: № ${escapedNumber}`);
+    expect(result.scalars.CONTRACT_BASIS_LINE).toBe(facts.line);
+    expect(result.contractSources).toEqual([{
+      id: CONTRACT_A, organization_id: ORG, student_group_id: GROUP, contract_number: escapedNumber,
+      contract_date: "2026-09-05", status: "draft", generation_status: "generated", counterparty_type: "legal",
+      company_id: COMPANY, student_user_ids: [A, B],
+    }]);
+    expect(result.contractCoverage).toEqual({ coveredStudentUserIds: [A, B], missingStudentUserIds: [] });
+    expect(JSON.parse(JSON.stringify({ contractSources: result.contractSources, contractCoverage: result.contractCoverage })))
+      .toEqual({ contractSources: facts.sources, contractCoverage: { coveredStudentUserIds: [A, B], missingStudentUserIds: [] } });
+    const docx = await compileRetainedPass(result);
+    expect(docx.paragraphs.filter(text => text.includes(facts.line))).toHaveLength(1);
+    expect(docx.xml).toContain("SYNTH-&lt;A&amp;B&gt;");
+    expect(docx.xml).not.toContain("<A&B>");
+    expect(docx.text).toContain(facts.line);
+    expect(snapshot).toEqual(before);
+  });
+
+  it("prints both selected individual contract numbers with UUID coverage, not a single guessed group contract", async () => {
+    const { facts, reader } = await loadSelected([
+      sourceRow({ id: CONTRACT_B, contract_number: "SYNTH-B", counterparty_type: "individual", company_id: null,
+        student_user_id: B, students: [{ user_id: B }] }),
+      sourceRow({ contract_number: "SYNTH-A", counterparty_type: "individual", company_id: null,
+        student_user_id: A, students: [{ user_id: A }] }),
+    ]);
+    const result = build(snapshotFor(facts));
+    expect(reader.companies).not.toHaveBeenCalled();
+    expect(facts.line).toBe("Номера договоров: № SYNTH-A; № SYNTH-B");
+    expect(result.contractSources.map(source => [source.id, source.student_user_ids])).toEqual([[CONTRACT_A, [A]], [CONTRACT_B, [B]]]);
+    expect(result.contractCoverage).toEqual({ coveredStudentUserIds: [A, B], missingStudentUserIds: [] });
+    expect((await compileRetainedPass(result)).text).toContain(facts.line);
+  });
+
+  it("keeps partial selection provenance and its warning but leaves the DOCX source line blank", async () => {
+    const { facts } = await loadSelected([sourceRow({ students: [{ user_id: A }] })]);
+    expect(facts.sources).toHaveLength(1);
+    const result = build(snapshotFor(facts));
+    expect(result.scalars.CONTRACT_BASIS_LINE).toBe("");
+    expect(result.contractSources).toEqual(facts.sources);
+    expect(result.contractCoverage).toEqual({ coveredStudentUserIds: [A], missingStudentUserIds: [B] });
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      docType: "pass", field: "CONTRACT_BASIS_LINE", code: "contract_coverage_incomplete", severity: "warning",
+    }));
+    expect(result.rows).toHaveLength(2);
+    const docx = await compileRetainedPass(result);
+    expect(docx.text).not.toContain(escapedNumber);
+    expect(docx.text).not.toContain("Номер договора:");
+    expect(docx.text).not.toContain("Номера договоров:");
+  });
+
+  it("blank mode suppresses even supplied confirmed contract facts from both DOCX and provenance", async () => {
+    const { facts } = await loadSelected([sourceRow()]);
+    expect(facts.line).toBe(`Номер договора: № ${escapedNumber}`);
+    expect(facts.sources).toHaveLength(1);
+    const snapshot = snapshotFor(facts), before = structuredClone(snapshot);
+    const result = build(snapshot, "blank");
+    expect(result.scalars.CONTRACT_BASIS_LINE).toBe("");
+    expect(result.contractSources).toEqual([]);
+    expect(result.contractCoverage).toEqual({ coveredStudentUserIds: [], missingStudentUserIds: [] });
+    expect(result.issues).toEqual([]);
+    const docx = await compileRetainedPass(result);
+    expect(docx.text).not.toContain(escapedNumber);
+    expect(docx.text).not.toContain("Номер договора:");
+    expect(docx.text).not.toContain("Номера договоров:");
+    expect(snapshot).toEqual(before);
   });
 });

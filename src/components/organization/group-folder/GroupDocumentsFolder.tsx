@@ -61,12 +61,14 @@ import { inspectExpulsionDecisionSnapshot } from "../../../../supabase/functions
 import { localDateIso } from "@/lib/date/localDate";
 import { reconcileGroupDocumentPackage, type ReconciledGroupDocuments } from "@/lib/group-docs/packageReconciliation";
 import { useGroupDocumentPackageGate, type GroupDocumentPackageGate } from "@/hooks/useGroupDocumentPackageGate";
+import { readPackageOperationContractIds, readPackageOperationFillMode } from "@/lib/group-docs/packageOperationStorage";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
   scenario: "individual" | "legal";
   count: number;
   contractNumbers: string[];
+  contractIds: string[];
   contractId?: string;
 }
 
@@ -195,7 +197,7 @@ function GroupDocumentsFolderContent({
   acknowledgeOperation,
 }: Props & {
   packageGate: GroupDocumentPackageGate; notifyPackageGate: () => void;
-  beginOperation: (retry: boolean) => string; acknowledgeOperation: (operationId: string) => boolean;
+  beginOperation: (retry: boolean, contractIds?: readonly string[], fillMode?: DocumentFillMode) => string; acknowledgeOperation: (operationId: string) => boolean;
 }) {
   const { documents: loadedDocuments, loading, refresh: refreshDocuments, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
   const [reconciled, setReconciled] = useState<ReconciledGroupDocuments | null>(null);
@@ -374,6 +376,7 @@ function GroupDocumentsFolderContent({
     contractBasis?: string,
     dryRun = false,
     retryExisting = false,
+    contractIds: readonly string[] = [],
   ) => {
     if (!active.current || packageGate.busy || (!dryRun && packageGate.requiresReload && !retryExisting)) return false;
     if (retryExisting && (!packageGate.operationId || packageGate.storageError)) return false;
@@ -397,18 +400,27 @@ function GroupDocumentsFolderContent({
     let acknowledged = false;
     notifyPackageGate();
     try {
+      let selectedContractIds = [...contractIds];
+      let operationFillMode = mode;
+      if (exactGoreltechDocuments && retryExisting) {
+        const storedSelection = readPackageOperationContractIds({ organizationId, groupId }, packageGate.operationId!);
+        const storedMode = readPackageOperationFillMode({ organizationId, groupId }, packageGate.operationId!);
+        if (storedSelection === null || storedMode === null) throw new Error("Исходный выбор договоров или режим старой операции неизвестен. Используйте проверку сохранения; новая запись не отправлена.");
+        selectedContractIds = storedSelection;
+        operationFillMode = storedMode;
+      }
       // Сохранённые факты проверяет сервер. Не резервируем официальные номера
       // до завершения проверок реквизитов и политик итоговой аттестации.
       const requestedStatus = exactGoreltechDocuments
         ? ("draft" as const)
-        : mode === "data"
+        : operationFillMode === "data"
           ? ("final" as const)
           : ("draft" as const);
       const eligibility = {
-        mode,
+        mode: operationFillMode,
         requestedStatus,
         finalBlocked: (t: DocType) =>
-          documentDataReadiness(t, mode === "data" ? factual : null, students.length)?.finalBlocked ?? false,
+          documentDataReadiness(t, operationFillMode === "data" ? factual : null, students.length)?.finalBlocked ?? false,
       };
       // Официальные номера резервируются ТОЛЬКО для документов, которые реально
       // станут final. Бланки/черновики остаются без номера — последовательности
@@ -448,9 +460,9 @@ function GroupDocumentsFolderContent({
       const journalDraftDate = localDateIso();
       const genOpts = {
         totalPrice: price,
-        mode,
+        mode: operationFillMode,
         numbers,
-        factual: mode === "data" ? factual : null,
+        factual: operationFillMode === "data" ? factual : null,
         requestedStatus,
         documentDates: { class_journal: journalDraftDate },
       };
@@ -466,7 +478,7 @@ function GroupDocumentsFolderContent({
           : [];
       if (!active.current) return false;
       if (exactGoreltechDocuments && !dryRun) {
-        operationId = beginOperation(retryExisting);
+        operationId = beginOperation(retryExisting, selectedContractIds, operationFillMode);
         mutationStarted = true;
         setReconciled(null);
         setReconciliationError(null);
@@ -478,8 +490,9 @@ function GroupDocumentsFolderContent({
             groupId,
             ...(!dryRun ? { operationId } : {}),
             studentUserIds: ctx.students.map((student) => student.user_id),
+            contractIds: selectedContractIds,
              journalDocumentDate: journalDraftDate,
-             fillMode: mode,
+             fillMode: operationFillMode,
              dryRun,
              includeJournal,
             journalSignatory: documentSignatories.class_journal,
@@ -608,6 +621,12 @@ function GroupDocumentsFolderContent({
       toast.error("Договоры не созданы — остальные документы пакета не сформированы");
       return false;
     }
+    if (exactGoreltechDocuments && (!result?.contractIds || result.contractIds.length !== count
+      || new Set(result.contractIds).size !== count
+      || result.contractIds.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)))) {
+      toast.error("Сохранение договоров не подтверждено идентификаторами. Остальные документы не сформированы — сначала проверьте сохранённые договоры.");
+      return false;
+    }
     try {
       onDataChanged?.();
     } catch (refreshError) {
@@ -621,7 +640,7 @@ function GroupDocumentsFolderContent({
       : numbers.length > 1
         ? `Договоры № ${numbers.join(", ")}`
         : undefined;
-    const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
+    const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis, false, false, result?.contractIds);
     if (!active.current) return false;
     if (ok) {
       setRetryPackage(null);
@@ -640,7 +659,7 @@ function GroupDocumentsFolderContent({
       : numbers.length > 1
         ? `Договоры № ${numbers.join(", ")}`
         : undefined;
-    const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
+    const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis, false, false, retryPackage.contractIds);
     if (!active.current) return;
     if (ok) {
       toast.success(packageResultMessage(retryPackage.scenario, retryPackage.count, PACKAGE_DOC_TYPES.length));

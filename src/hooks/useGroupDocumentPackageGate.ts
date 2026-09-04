@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import {
-  clearAcknowledgedPackageOperation, isStoredPackageOperationAcknowledged, packageOperationStorageKey, persistPackageOperation, readStoredPackageOperation,
+  clearAcknowledgedPackageOperation, isStoredPackageOperationAcknowledged, packageOperationStorageKey, persistPackageOperation, readStoredPackageOperation, readPackageOperationContractIds, readPackageOperationFillMode,
   type PackageOperationScope,
 } from "@/lib/group-docs/packageOperationStorage";
 
@@ -81,7 +81,7 @@ export function useGroupDocumentPackageGate(organizationId: string, groupId: str
     window.addEventListener("storage", changed);
     return () => window.removeEventListener("storage", changed);
   }, [enabled, entry, scope, notify]);
-  const beginOperation = useCallback((retry: boolean): string => {
+  const beginOperation = useCallback((retry: boolean, contractIds: readonly string[] = [], fillMode: "blank" | "data" = "blank"): string => {
     if (!enabled) throw new Error("Этот путь сохранения доступен только для клиентского пакета.");
     syncStoredOperation(entry, scope);
     if (entry.storageError) { notify(); throw new Error(entry.storageError); }
@@ -89,9 +89,13 @@ export function useGroupDocumentPackageGate(organizationId: string, groupId: str
     if (!entry.operationId && retry) throw new Error("Идентификатор повторяемой операции не найден. Новая запись не отправлена.");
     try {
       const operationId = entry.operationId ?? crypto.randomUUID();
+      if (retry && (readPackageOperationContractIds(scope, operationId) === null || readPackageOperationFillMode(scope, operationId) === null)) {
+        throw new Error("Исходный выбор договоров или режим старой операции не сохранён. Можно проверить её завершение, но повторять с другими параметрами нельзя.");
+      }
+      // Persist the immutable selection before making the operation request-ready.
+      persistPackageOperation(scope, operationId, contractIds, fillMode);
       entry.operationId = operationId;
       entry.requiresReload = true;
-      persistPackageOperation(scope, operationId);
       entry.storageError = null;
       notify();
       return operationId;

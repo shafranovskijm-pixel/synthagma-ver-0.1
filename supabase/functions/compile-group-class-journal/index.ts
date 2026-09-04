@@ -40,6 +40,7 @@ import { loadGroupDocumentFacts } from "../_shared/docx-ooxml/groupDocumentFacts
 import { loadGroupCompletionFacts } from "../_shared/docx-ooxml/groupCompletionFactsSource.ts";
 import { applyGroupCompletionDecisions, type ConfirmedExpulsionFacts, type ConfirmedAttestationFacts } from "../_shared/docx-ooxml/groupCompletionDecisionFacts.ts";
 import { loadGroupPassFacts } from "../_shared/docx-ooxml/groupPassFactsSource.ts";
+import { loadGroupContractFacts } from "../_shared/docx-ooxml/groupContractFacts.ts";
 import { buildGroupPassFactRows, type GroupPassFactsResult } from "../_shared/docx-ooxml/groupPassFacts.ts";
 import { buildGroupTitleFacts, type GroupTitleFactsResult } from "../_shared/docx-ooxml/groupTitleFacts.ts";
 import { buildGroupScheduleFacts, type GroupScheduleFactsResult } from "../_shared/docx-ooxml/groupScheduleFacts.ts";
@@ -66,7 +67,7 @@ import { readGroupDocumentOperation, persistGroupDocumentOperation } from "../_s
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v23";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v24";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -107,6 +108,7 @@ const BodySchema = z.object({
   groupId: z.string().uuid(),
   operationId: z.string().uuid().optional(),
   studentUserIds: z.array(z.string().uuid()).max(5000),
+  contractIds: z.array(z.string().uuid()).max(5000).default([]),
   /** @deprecated Общая дата старого клиента, только для fallback черновика. */
   documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   journalDocumentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -529,6 +531,26 @@ Deno.serve(async (req) => {
       snapshot: { ...factSnapshot, educationDocumentRecords: completionFacts.educationDocumentRecords },
       fillMode: body.otherDocuments.find((document) => document.doc_type === "registration_book")!.fill_mode,
     }));
+    const passFillMode = body.otherDocuments.find(document => document.doc_type === "pass")!.fill_mode;
+    const contractFacts = await loadGroupContractFacts({
+      organizationId: body.organizationId, groupId: body.groupId,
+      studentUserIds: activeStudentIds, contractIds: body.contractIds, fillMode: passFillMode,
+    }, {
+      // RLS is necessary but not sufficient: the helper also verifies group,
+      // company and student UUID coverage for exactly the selected contracts.
+      contracts: async ({ organizationId, groupId, contractIds, from, to }) => await userClient
+        .from("org_contracts")
+        .select("id, organization_id, student_group_id, student_user_id, company_id, counterparty_type, contract_number, contract_date, status, generation_status, students", { count: "exact" })
+        .eq("organization_id", organizationId).eq("student_group_id", groupId)
+        .in("id", contractIds).order("id").range(from, to),
+      companies: async ({ organizationId, companyIds, from, to }) => await userClient
+        .from("companies").select("id, organization_id", { count: "exact" })
+        .eq("organization_id", organizationId).in("id", companyIds)
+        .order("id").range(from, to),
+    });
+    if (contractFacts.issues.some(issue => issue.severity === "error")) {
+      return json({ error: "Выбранные договоры не подтверждены. Пакет не сохранён.", issues: contractFacts.issues }, 409);
+    }
     const passContactsByUser = new Map(passFacts.contacts.map((row) => [row.user_id, row]));
     const passDocumentFacts = buildGroupPassFactRows({
       snapshot: {
@@ -541,8 +563,9 @@ Deno.serve(async (req) => {
         })),
         companies: passFacts.companies,
         journalMarksSource,
+        contractFacts,
       },
-      fillMode: body.fillMode,
+      fillMode: passFillMode,
     });
     for (const profile of factSnapshot.profiles) {
       if (!passContactsByUser.has(profile.user_id)) passDocumentFacts.issues.push({
@@ -912,6 +935,10 @@ Deno.serve(async (req) => {
           fidelity_status: packageManifest.fidelity_status,
           ...(factRows && "scheduleSource" in factRows ? { schedule_source: factRows.scheduleSource } : {}),
           ...(factRows && "attendanceSource" in factRows ? { attendance_source: factRows.attendanceSource, mark_sources: factRows.markSources } : {}),
+          ...(factRows && "contractSources" in factRows ? {
+            contract_sources: factRows.contractSources, contract_coverage: factRows.contractCoverage,
+            contract_source: "caller_rls_explicit_saved_ids_v1",
+          } : {}),
           ...(factRows ? {
             row_source: "server_database_ids",
             row_sources: factRows.rowSources,

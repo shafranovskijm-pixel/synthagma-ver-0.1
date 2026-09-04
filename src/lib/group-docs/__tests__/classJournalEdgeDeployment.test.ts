@@ -28,6 +28,20 @@ function sourceSection(source: string, start: string, end: string): string {
 
 // These assertions verify the Edge wiring; they are not a live database/RLS execution test.
 describe("compile-group-class-journal deployment contract", () => {
+  it("reads exact saved contract IDs through caller RLS and snapshots their provenance before persistence", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const contractRead = sourceSection(source, "const contractFacts = await loadGroupContractFacts", "const passContactsByUser");
+    expect(contractRead).toContain("await userClient");
+    expect(contractRead).not.toContain("await admin");
+    expect(contractRead).toContain('.from("org_contracts")');
+    expect(contractRead).toContain('.eq("organization_id", organizationId).eq("student_group_id", groupId)');
+    expect(contractRead).toContain('.in("id", contractIds)');
+    expect(contractRead).toContain('issue.severity === "error"');
+    expect(source.indexOf("if (existingReceipt) return")).toBeLessThan(source.indexOf("const contractFacts ="));
+    expect(source.indexOf("const contractFacts =")).toBeLessThan(source.indexOf('stage = "batch-persistence"'));
+    expect(source).toContain("contract_sources: factRows.contractSources, contract_coverage: factRows.contractCoverage");
+    expect(source).toContain('contract_source: "caller_rls_explicit_saved_ids_v1"');
+  });
   it("keeps the DOCX inside the deployable TypeScript graph", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
@@ -40,9 +54,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v23");
+    expect(source).toContain("goreltech-group-package-server-facts-v24");
     const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
-    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v23"');
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v24"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -371,7 +385,7 @@ describe("compile-group-class-journal deployment contract", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
     const pass = sourceSection(source, "const passDocumentFacts = buildGroupPassFactRows({", 'serverDocumentFacts.set("pass", passDocumentFacts)');
     expect(pass).toContain("journalMarksSource,");
-    expect(pass).toContain("fillMode: body.fillMode");
+    expect(pass).toContain("fillMode: passFillMode");
     expect(pass).toContain("...profile,");
     expect(pass).not.toContain("document.variables");
     expect(source.match(/\.from\("group_class_journal_marks"\)/g)).toHaveLength(1);

@@ -70,6 +70,7 @@ export interface GeneratedDocxContractBatch {
   count: 1;
   contractNumbers: [string];
   contractId: string;
+  contractIds: string[];
 }
 
 const TAX_CLAUSES = [
@@ -336,6 +337,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
           count: 1,
           contractNumbers: [docNo],
           contractId: res.contractId,
+          contractIds: [res.contractId],
         });
       } catch (packageError) {
         // The compiler has already persisted the contract. A downstream package

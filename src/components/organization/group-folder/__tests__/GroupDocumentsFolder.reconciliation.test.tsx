@@ -32,7 +32,7 @@ vi.mock("sonner", () => ({ toast: { success: mocks.success, warning: mocks.warni
 import { GroupDocumentsFolder } from "../GroupDocumentsFolder";
 import { SAMPLE_CONTEXT } from "@/lib/group-docs/sampleContext";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
-import { clearAcknowledgedPackageOperation, packageOperationAcknowledgmentKey, packageOperationStorageKey, readStoredPackageOperation } from "@/lib/group-docs/packageOperationStorage";
+import { clearAcknowledgedPackageOperation, packageOperationAcknowledgmentKey, packageOperationStorageKey, readStoredPackageOperation, persistPackageOperation } from "@/lib/group-docs/packageOperationStorage";
 
 let groupA = "group-a";
 let groupB = "group-b";
@@ -347,6 +347,30 @@ describe("GroupDocumentsFolder unknown package outcome", () => {
     await waitFor(() => expect(reread()).toBeEnabled());
     expect(mocks.receipt).toHaveBeenCalledExactlyOnceWith({ organizationId: GORELTECH_ORGANIZATION_ID, groupId: groupA, operationId });
     expect(localStorage.getItem(storageKey())).toBe(operationId);
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
+
+  it("restores the same contract selection on retry after a full remount", async () => {
+    const operationId = "11111111-1111-4111-8111-111111111121";
+    const contractIds = ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"];
+    persistPackageOperation({ organizationId: GORELTECH_ORGANIZATION_ID, groupId: groupA }, operationId, contractIds, "data");
+    render(folder());
+    await confirmSignatories();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить сохранение без дубликата" }));
+    await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1));
+    expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ operationId, contractIds, fillMode: "data" }));
+  });
+
+  it("allows read-only reconciliation but never retries a legacy operation with an unknown contract selection", async () => {
+    const operationId = "11111111-1111-4111-8111-111111111131";
+    localStorage.setItem(storageKey(), operationId);
+    render(folder());
+    await confirmSignatories();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить сохранение без дубликата" }));
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("Исходный выбор договоров")));
+    expect(mocks.generate).not.toHaveBeenCalled();
+    fireEvent.click(reread());
+    await waitFor(() => expect(mocks.receipt).toHaveBeenCalledWith({ organizationId: GORELTECH_ORGANIZATION_ID, groupId: groupA, operationId }));
     expect(mocks.generate).not.toHaveBeenCalled();
   });
 
