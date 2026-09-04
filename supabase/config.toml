@@ -199,4 +199,8 @@ verify_jwt = false
 [functions.mailing-reply-worker]
 verify_jwt = false
 
+# Validates the signed-in user with auth.getUser; all SQL actions are service-only and scoped.
+[functions.issue-group-enrollment-order]
+verify_jwt = false
+
 

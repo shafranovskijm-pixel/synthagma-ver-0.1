@@ -55,6 +55,7 @@ import {
   type GroupDocumentSignatories,
 } from "@/lib/group-docs/signatories";
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
+import { GoreltechEnrollmentOrderCard } from "./GoreltechEnrollmentOrderCard";
 import { localDateIso } from "@/lib/date/localDate";
 import { reconcileGroupDocumentPackage, type ReconciledGroupDocuments } from "@/lib/group-docs/packageReconciliation";
 import { useGroupDocumentPackageGate, type GroupDocumentPackageGate } from "@/hooks/useGroupDocumentPackageGate";
@@ -674,6 +675,8 @@ function GroupDocumentsFolderContent({
           </div>
         </Card>
       )}
+
+      {exactGoreltechDocuments && <GoreltechEnrollmentOrderCard organizationId={organizationId} groupId={groupId} />}
 
       {/* Режим документа */}
       <Card className="p-4 rounded-2xl border-border">
