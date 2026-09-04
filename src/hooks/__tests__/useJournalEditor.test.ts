@@ -4,25 +4,19 @@ import { renderHook, act } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({ data: [], error: null }),
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-        in: vi.fn().mockResolvedValue({ data: [], error: null }),
-      }),
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { id: "j-1" }, error: null }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-      }),
-      delete: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-      }),
+    from: vi.fn(() => {
+      const query = {
+        select: vi.fn(() => query),
+        eq: vi.fn(() => query),
+        in: vi.fn(() => query),
+        insert: vi.fn(() => query),
+        update: vi.fn(() => query),
+        delete: vi.fn(() => query),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      };
+      return query;
     }),
   },
 }));
