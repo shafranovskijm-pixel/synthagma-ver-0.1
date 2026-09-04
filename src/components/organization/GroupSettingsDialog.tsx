@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { GroupDocumentScheduleEditor } from "@/components/organization/GroupDocumentScheduleEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -9,6 +11,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CalendarDays, HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { GORELTECH_ORGANIZATION_ID, resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import {
   buildGroupSettingsPatch,
   canonicalCourseHours,
@@ -114,6 +117,10 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [scheduleDirty, setScheduleDirty] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [confirmScheduleClose, setConfirmScheduleClose] = useState(false);
+  const [scheduleClientProfile, setScheduleClientProfile] = useState<{ identity: string; enabled: boolean } | null>(null);
   const [settings, setSettings] = useState<GroupSettings | null>(null);
   const [seatLimitEnabled, setSeatLimitEnabled] = useState(false);
   const [courses, setCourses] = useState<CourseOption[]>([]);
@@ -126,6 +133,8 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   // Update during render, before effects run. This closes the short window in
   // which groupId=B is rendered while state loaded for A is still visible.
   activeGroupIdentityRef.current = groupIdentity;
+  const canUseSavedDocumentSchedule = scheduleClientProfile?.identity === groupIdentity
+    && scheduleClientProfile.enabled;
 
   const linkedCourse = useMemo(
     () => courses.find(course => course.id === settings?.course_id) ?? null,
@@ -143,6 +152,10 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
     setSeatLimitEnabled(false);
     setSaving(false);
     setLoadError(null);
+    setScheduleDirty(false);
+    setScheduleSaving(false);
+    setConfirmScheduleClose(false);
+    setScheduleClientProfile(null);
 
     if (!open) {
       setLoading(false);
@@ -205,6 +218,23 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
       setCourses((data || []) as any as CourseOption[]);
     })();
 
+    // Only the exact client compiler consumes these saved schedule facts.
+    // Verify its full existing profile; an ID or similar name alone is insufficient.
+    // Failure hides this optional editor without blocking ordinary group settings.
+    if (organizationId.toLowerCase() === GORELTECH_ORGANIZATION_ID) void (async () => {
+      try {
+        const { data, error } = await supabase.from("organizations")
+          .select("id, name, inn").eq("id", organizationId).maybeSingle();
+        if (!isCurrentRequest() || error || !data || data.id !== organizationId) return;
+        setScheduleClientProfile({
+          identity: requestedIdentity,
+          enabled: resolveGroupDocumentClientProfile(data).key === "goreltech",
+        });
+      } catch {
+        // Do not enable a document feature on an unverified organization identity.
+      }
+    })();
+
     return () => {
       cancelled = true;
       if (loadSequenceRef.current === requestSequence) {
@@ -230,6 +260,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
   };
 
   const handleSave = async () => {
+    if (scheduleDirty || scheduleSaving) return;
     if (!settings) return;
     if (loadedGroupIdentityRef.current !== groupIdentity) {
       toast.error("Дождитесь загрузки настроек выбранной группы");
@@ -324,7 +355,10 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
 
   const handleDelete = async () => {
-    if (!confirm("Удалить группу? Ученики останутся без группы.")) return;
+    if (scheduleSaving) return;
+    const confirmation = "Удалить группу? Ученики останутся без группы."
+      + (scheduleDirty ? " Несохранённые изменения расписания будут потеряны." : "");
+    if (!confirm(confirmation)) return;
     try {
       const { error } = await supabase
         .from("student_groups")
@@ -346,9 +380,14 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
   if (!open) return null;
 
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && (scheduleDirty || scheduleSaving)) { setConfirmScheduleClose(true); return; }
+    onOpenChange(nextOpen);
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden p-0 gap-0">
           <DialogHeader className="shrink-0 border-b border-border p-6 py-4">
             <DialogTitle>Настройки группы</DialogTitle>
@@ -636,6 +675,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                           size="sm"
                           className="rounded-lg gap-2"
                           onClick={handleDelete}
+                          disabled={scheduleSaving}
                         >
                           <Trash2 className="w-4 h-4" />
                           Удалить группу
@@ -643,6 +683,11 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                       </div>
                     </>
                   )}
+
+                  {canUseSavedDocumentSchedule && <div hidden={activeTab !== "general"}>
+                    <GroupDocumentScheduleEditor organizationId={organizationId} groupId={groupId}
+                      onDirtyChange={setScheduleDirty} onSavingChange={setScheduleSaving} />
+                  </div>}
 
                   {activeTab === "learning" && (
                     <>
@@ -713,8 +758,9 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
                   )}
                 </div>
 
-                <div className="flex shrink-0 justify-end border-t border-border bg-background p-4">
-                  <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-background p-4">
+                  {scheduleDirty && <p className="text-xs text-amber-700">Сначала сохраните или отмените изменения расписания.</p>}
+                  <Button onClick={handleSave} disabled={saving || scheduleDirty || scheduleSaving} className="rounded-xl gap-2">
                     {saving && <SigmaSpinner size="sm" />}
                     Сохранить
                   </Button>
@@ -724,6 +770,20 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           )}
         </DialogContent>
       </Dialog>
+      <AlertDialog open={confirmScheduleClose} onOpenChange={setConfirmScheduleClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Есть изменения расписания</AlertDialogTitle>
+            <AlertDialogDescription>{scheduleSaving
+              ? "Сохранение расписания ещё проверяется. Дождитесь результата перед закрытием."
+              : "Расписание сохраняется отдельной кнопкой. Вернитесь к нему или подтвердите закрытие с потерей несохранённых изменений."}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setActiveTab("general")}>Вернуться к расписанию</AlertDialogCancel>
+            <AlertDialogAction disabled={scheduleSaving} onClick={() => { setConfirmScheduleClose(false); onOpenChange(false); }}>Закрыть без несохранённых изменений</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 }

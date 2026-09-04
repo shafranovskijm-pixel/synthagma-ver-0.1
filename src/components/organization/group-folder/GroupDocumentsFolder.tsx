@@ -319,8 +319,8 @@ export function GroupDocumentsFolder({
 
     setBusy(true);
     try {
-      // Точные DOCX ГОРЭЛТЕХ пока содержат legacy browser-transport строк.
-      // Не резервируем официальные номера до полной серверной сверки полей.
+      // Сохранённые факты проверяет сервер. Не резервируем официальные номера
+      // до завершения проверок реквизитов и политик итоговой аттестации.
       const requestedStatus = exactGoreltechDocuments
         ? ("draft" as const)
         : mode === "data"
@@ -597,12 +597,20 @@ export function GroupDocumentsFolder({
                         ? "Черновик"
                         : "Готово к итоговому"}
                   </Badge>
-                  <span className="text-muted-foreground">
+                  {!(exactGoreltechDocuments && r.type === "schedule") && <span className="text-muted-foreground">
                     записей: {r.info.recordCount} · охват: {r.info.coverage}
-                  </span>
+                  </span>}
                 </div>
-                <div className="text-muted-foreground mt-0.5">Источник: {r.info.source}</div>
-                {r.info.warning && <div className="text-muted-foreground mt-0.5">{r.info.warning}</div>}
+                {exactGoreltechDocuments && r.type === "schedule" ? (
+                  <div className="mt-1 space-y-1">
+                    <p>Источник: сохранённое расписание в настройках этой группы — до четырёх блоков «дата, время, тема» в оригинальном Word-бланке.</p>
+                    <p className="text-muted-foreground">Кнопка «Проверить 9 Word-документов без сохранения» перечитает расписание на сервере. Даты журнала и уроки курса не подставляются вместо него. В рабочем бланке занятия остаются пустыми.</p>
+                    {onOpenGroupSettings && <Button type="button" variant="outline" size="sm" onClick={onOpenGroupSettings}>Настроить расписание</Button>}
+                  </div>
+                ) : <>
+                  <div className="text-muted-foreground mt-0.5">Источник: {r.info.source}</div>
+                  {r.info.warning && <div className="text-muted-foreground mt-0.5">{r.info.warning}</div>}
+                </>}
               </div>
             ))}
           </div>

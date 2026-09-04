@@ -41,6 +41,8 @@ import { loadGroupCompletionFacts } from "../_shared/docx-ooxml/groupCompletionF
 import { loadGroupPassFacts } from "../_shared/docx-ooxml/groupPassFactsSource.ts";
 import { buildGroupPassFactRows, type GroupPassFactsResult } from "../_shared/docx-ooxml/groupPassFacts.ts";
 import { buildGroupTitleFacts, type GroupTitleFactsResult } from "../_shared/docx-ooxml/groupTitleFacts.ts";
+import { buildGroupScheduleFacts, type GroupScheduleFactsResult } from "../_shared/docx-ooxml/groupScheduleFacts.ts";
+import { loadGroupScheduleFacts, GROUP_SCHEDULE_FACTS_SELECT } from "../_shared/docx-ooxml/groupScheduleFactsSource.ts";
 import {
   buildGroupAttestationFacts,
   type GroupAttestationFactsResult,
@@ -56,7 +58,7 @@ import {
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v17";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v18";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -424,6 +426,16 @@ Deno.serve(async (req) => {
         .order("id")
         .range(from, to),
     });
+    const scheduleFacts = await loadGroupScheduleFacts({
+      organizationId: body.organizationId, groupId: body.groupId,
+    }, {
+      schedule: async ({ organizationId, groupId }) => await userClient
+        .from("group_document_schedules")
+        .select(GROUP_SCHEDULE_FACTS_SELECT)
+        .eq("organization_id", organizationId)
+        .eq("group_id", groupId)
+        .maybeSingle(),
+    });
     const factSnapshot = {
       organization, group, course,
       profiles: profilesResult.data || [],
@@ -431,7 +443,7 @@ Deno.serve(async (req) => {
       studentFrdoData: facts.studentFrdoData,
     };
     type ServerDocumentFacts = GroupDocumentFactsResult | GroupAttestationFactsResult
-      | GroupRegistrationFactsResult | GroupPassFactsResult | GroupTitleFactsResult;
+      | GroupRegistrationFactsResult | GroupPassFactsResult | GroupTitleFactsResult | GroupScheduleFactsResult;
     const serverDocumentFacts = new Map<string, ServerDocumentFacts>();
     for (const docType of FACT_ROW_TYPES) {
       const factRows = buildGroupDocumentFactRows({
@@ -475,6 +487,10 @@ Deno.serve(async (req) => {
       snapshot: { organization, group },
       documentDate: body.otherDocuments.find((document) => document.doc_type === "title_page")!.document_date,
     }));
+    serverDocumentFacts.set("schedule", buildGroupScheduleFacts({
+      snapshot: { organization, group, schedule: scheduleFacts.schedule },
+      fillMode: body.otherDocuments.find((document) => document.doc_type === "schedule")!.fill_mode,
+    }));
     const sourceDependencies: Record<string, readonly string[]> = {
       enrollment_order: ["enrollments"],
       expulsion_order: ["enrollments"],
@@ -483,8 +499,9 @@ Deno.serve(async (req) => {
       registration_book: ["enrollments", "education_document_records", "student_frdo_data"],
       pass: ["pass_contacts", "companies"],
       title_page: [],
+      schedule: ["group_document_schedules"],
     };
-    const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues, ...passFacts.sourceIssues];
+    const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues, ...passFacts.sourceIssues, ...scheduleFacts.sourceIssues];
     const documentSourceIssues = (docType: string) => allSourceIssues.filter((issue) =>
       sourceDependencies[docType]?.includes(issue.source));
     for (const [docType, factRows] of serverDocumentFacts) {
@@ -694,8 +711,8 @@ Deno.serve(async (req) => {
     };
     }
 
-    // Точные клиентские DOCX сохраняются. Для трёх типов browser HTML больше
-    // не является источником фактов; прочие типы ещё используют legacy transport.
+    // Все восемь клиентских шаблонов получают факты от серверных источников;
+    // browser HTML не является источником строк или реквизитов расписания.
     const compiledPackageDocuments = [];
     for (const document of body.otherDocuments) {
       stage = `package-template-${document.doc_type}`;
@@ -796,6 +813,7 @@ Deno.serve(async (req) => {
           document.source_note,
           factRows ? "Данные получены сервером из сохранённой группы и доступных записей своей организации; совпадение ФИО не используется как связь." : null,
           document.doc_type === "title_page" ? "Год титула — год выбранной даты оформления, а не автоматически текущий год." : null,
+          document.doc_type === "schedule" ? "Расписание — четыре сохранённых блока из настроек этой группы. Даты журнала и прохождение курса не являются источником расписания." : null,
           document.doc_type === "registration_book" ? "Запись реестра не подтверждает физическое вручение документа; подписи и отметки о вручении автоматически не проставляются." : null,
           ...(factRows?.issues.map((issue) => issue.message) || []),
           ...documentSourceIssues(document.doc_type).map((issue) => issue.message),
@@ -808,6 +826,7 @@ Deno.serve(async (req) => {
           rows: packageRows,
           signatory_source: documentSignatory.source,
           fidelity_status: packageManifest.fidelity_status,
+          ...(factRows && "scheduleSource" in factRows ? { schedule_source: factRows.scheduleSource } : {}),
           ...(factRows ? {
             row_source: "server_database_ids",
             row_sources: factRows.rowSources,

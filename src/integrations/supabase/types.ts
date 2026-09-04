@@ -4216,6 +4216,39 @@ export type Database = {
           },
         ]
       }
+      group_document_schedules: {
+        Row: {
+          group_id: string
+          organization_id: string
+          course_id: string | null
+          slots: Json
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          group_id: string
+          organization_id: string
+          course_id?: string | null
+          slots: Json
+          revision?: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          group_id?: string
+          organization_id?: string
+          course_id?: string | null
+          slots?: Json
+          revision?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          { foreignKeyName: "group_document_schedules_group_id_fkey"; columns: ["group_id"]; isOneToOne: true; referencedRelation: "student_groups"; referencedColumns: ["id"] },
+          { foreignKeyName: "group_document_schedules_organization_id_fkey"; columns: ["organization_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+        ]
+      }
       group_documents: {
         Row: {
           company_id: string | null
@@ -12003,6 +12036,16 @@ export type Database = {
       }
     }
     Functions: {
+      save_group_document_schedule: {
+        Args: {
+          p_organization_id: string
+          p_group_id: string
+          p_expected_course_id: string | null
+          p_expected_revision: number | null
+          p_slots: Json
+        }
+        Returns: Json
+      }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
       _org_email_sender_key: {

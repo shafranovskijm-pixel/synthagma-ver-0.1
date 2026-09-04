@@ -19,7 +19,11 @@ export function escapeXml(value: string): string {
 /** Многострочное значение внутри одного <w:t> превращаем в набор строк с <w:br/>. */
 export function xmlTextValue(value: string): string {
   const parts = String(value ?? "").split(/\r?\n/);
-  return parts.map(escapeXml).join('</w:t><w:br/><w:t xml:space="preserve">');
+  // Values are data, not another template. Numeric XML entities preserve the
+  // visible brackets in Word while preventing a later replacement pass or
+  // unresolved-token check from interpreting literal [[CODE]] as a directive.
+  return parts.map(part => escapeXml(part).replace(/\[/g, "&#91;"))
+    .join('</w:t><w:br/><w:t xml:space="preserve">');
 }
 
 /** Заменяет токены [[KEY]] значениями. Отсутствующие ключи остаются нетронутыми. */

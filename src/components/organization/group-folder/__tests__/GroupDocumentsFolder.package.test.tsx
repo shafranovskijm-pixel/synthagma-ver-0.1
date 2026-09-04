@@ -237,6 +237,33 @@ describe("GroupDocumentsFolder package contract routing", () => {
     );
   });
 
+  it("открывает настройки сохранённого расписания и не выдаёт отсутствие browser-данных за пустую базу", async () => {
+    const onOpenGroupSettings = vi.fn();
+    render(<GroupDocumentsFolder organizationId="org-1" groupId="group-1" groupName="Группа 1"
+      students={SAMPLE_CONTEXT.students} ctx={goreltechContext()} onOpenGroupSettings={onOpenGroupSettings} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Заполнить по данным Синтагмы" }), { button: 0, ctrlKey: false });
+    const settings = await screen.findByRole("button", { name: "Настроить расписание" });
+    fireEvent.click(settings);
+    expect(onOpenGroupSettings).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Источник: сохранённое расписание/)).toBeInTheDocument();
+    expect(screen.queryByText(/занятий не задано/)).not.toBeInTheDocument();
+    expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+  });
+
+  it.each(["id", "inn", "name"] as const)("не показывает CTA сохранённого расписания при несовпадении точного профиля: %s", async field => {
+    const ctx = goreltechContext();
+    ctx.organization[field] = field === "name" ? "Другая организация" : "other-organization";
+    const onOpenGroupSettings = vi.fn();
+    render(<GroupDocumentsFolder organizationId="org-1" groupId="group-1" groupName="Группа 1"
+      students={SAMPLE_CONTEXT.students} ctx={ctx} onOpenGroupSettings={onOpenGroupSettings} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Заполнить по данным Синтагмы" }), { button: 0, ctrlKey: false });
+    await screen.findByRole("button", { name: "Пакет компании (универсальный)" });
+    expect(screen.queryByRole("button", { name: "Настроить расписание" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Источник: сохранённое расписание/)).not.toBeInTheDocument();
+    expect(onOpenGroupSettings).not.toHaveBeenCalled();
+    expect(mocks.generateClassJournalDocx).not.toHaveBeenCalled();
+  });
+
   it("заранее показывает, что пакет ГОРЭЛТЕХ останется черновиком без номера", () => {
     renderFolder();
 

@@ -40,9 +40,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v17");
+    expect(source).toContain("goreltech-group-package-server-facts-v18");
     const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
-    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v17"');
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v18"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -210,12 +210,12 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(records).toContain('.range(from, to)');
   });
 
-  it("registers seven canonical document types without accepting attempts/record sources or policy from the browser", () => {
+  it("registers eight canonical document types without accepting attempts/record sources or policy from the browser", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
     const baseTypes = source.match(/const FACT_ROW_TYPES = \[([^\]]+)\] as const/)?.[1] || "";
     const names = [...baseTypes.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
     names.push(...[...source.matchAll(/serverDocumentFacts\.set\("([^"]+)"/g)].map((match) => match[1]));
-    expect(names.sort()).toEqual(["attestation_sheet", "enrollment_order", "expulsion_order", "pass", "registration_book", "student_list", "title_page"]);
+    expect(names.sort()).toEqual(["attestation_sheet", "enrollment_order", "expulsion_order", "pass", "registration_book", "schedule", "student_list", "title_page"]);
     const builders = sourceSection(source, "const factSnapshot =", "const sourceDependencies:");
     expect(builders).toContain("snapshot: factSnapshot");
     expect(builders).toContain("lessons: completionFacts.lessons, testAttempts: completionFacts.testAttempts");
@@ -253,7 +253,7 @@ describe("compile-group-class-journal deployment contract", () => {
     const dependencies = sourceSection(source, "const sourceDependencies:", "const instructorSlots =");
     expect(dependencies).toContain('attestation_sheet: ["enrollments", "lessons", "test_attempts"]');
     expect(dependencies).toContain('registration_book: ["enrollments", "education_document_records", "student_frdo_data"]');
-    expect(dependencies).toContain("const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues, ...passFacts.sourceIssues]");
+    expect(dependencies).toContain("const allSourceIssues = [...facts.sourceIssues, ...completionFacts.sourceIssues, ...passFacts.sourceIssues, ...scheduleFacts.sourceIssues]");
     expect(dependencies).toContain("sourceDependencies[docType]?.includes(issue.source)");
     expect(dependencies).toContain("for (const issue of documentSourceIssues(docType)) statusWarnings.push");
     const metadata = sourceSection(source, "body.otherDocuments = body.otherDocuments.map", "let journalDocument:");
@@ -266,7 +266,7 @@ describe("compile-group-class-journal deployment contract", () => {
 
   it("loads pass contacts and companies under caller RLS and derives the title without browser scalars", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
-    const adapters = sourceSection(source, "const passFacts = await", "const factSnapshot =");
+    const adapters = sourceSection(source, "const passFacts = await", "const scheduleFacts =");
     expect(adapters).toContain("studentUserIds: activeStudentIds");
     expect(adapters.match(/=> await userClient/g)).toHaveLength(2);
     expect(adapters).not.toContain("=> await admin");
@@ -284,6 +284,24 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(builders).not.toContain("trainingDays(");
     expect(builders).toContain('code: "contact_not_available"');
     expect(source).toContain('pass: ["pass_contacts", "companies"]');
+  });
+
+  it("reads the saved schedule through caller RLS and persists its revision", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const adapter = sourceSection(source, "const scheduleFacts = await", "const factSnapshot =");
+    expect(adapter).toContain("loadGroupScheduleFacts");
+    expect(adapter).toContain("=> await userClient");
+    expect(adapter).not.toContain("=> await admin");
+    expect(adapter).toContain('.from("group_document_schedules")');
+    expect(adapter).toContain('.eq("organization_id", organizationId)');
+    expect(adapter).toContain('.eq("group_id", groupId)');
+    expect(adapter).toContain(".maybeSingle()");
+    const builders = sourceSection(source, "const factSnapshot =", "const sourceDependencies:");
+    expect(builders).toContain('serverDocumentFacts.set("schedule", buildGroupScheduleFacts({');
+    expect(builders).toContain("snapshot: { organization, group, schedule: scheduleFacts.schedule }");
+    expect(builders).not.toContain("document.variables");
+    expect(source).toContain('schedule: ["group_document_schedules"]');
+    expect(source).toContain("schedule_source: factRows.scheduleSource");
   });
 
   it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {
