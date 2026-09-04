@@ -27,7 +27,7 @@ import {
   type ProofStatus,
 } from "@/lib/groups/releaseReadiness";
 import { useGroupFolderCounts } from "@/hooks/useGroupFolderCounts";
-import { courseDetailsPathForGroup, groupContextPath, studentDetailsPath } from "@/lib/groups/groupContext";
+import { courseDetailsPathForGroup, groupContextPath, groupAttendancePath, studentDetailsPath } from "@/lib/groups/groupContext";
 import { frdoReadinessLabel, resolveFrdoReadiness } from "@/lib/frdo/readiness";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -1028,6 +1028,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   organizationMissingFields={missingOrganizationDocFields}
                   courseId={group?.course_id || courseInfo?.id || null}
                   onOpenGroupSettings={() => setSettingsOpen(true)}
+                  onOpenGroupAttendance={() => navigate(groupAttendancePath(groupId))}
                   onOpenOrganizationRequisites={!permissionsLoading && canSeeOrgTab("settings") && can("settings.write")
                     ? () => navigate("/organization?tab=documents&documentView=constructor")
                     : undefined}

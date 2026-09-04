@@ -83,6 +83,7 @@ interface Props {
   /** Курс, привязанный к группе — подставляется в мастер договора. */
   courseId?: string | null;
   onOpenGroupSettings?: () => void;
+  onOpenGroupAttendance?: () => void;
   onOpenOrganizationRequisites?: () => void;
   /** Вызывается после генерации/удаления документов — чтобы обновить счётчики папок. */
   onDataChanged?: () => void;
@@ -146,6 +147,7 @@ function GroupDocumentsFolderContent({
   organizationMissingFields = [],
   courseId = null,
   onOpenGroupSettings,
+  onOpenGroupAttendance,
   onOpenOrganizationRequisites,
   onDataChanged,
   packageGate,
@@ -714,11 +716,17 @@ function GroupDocumentsFolderContent({
                         ? "Черновик"
                         : "Готово к итоговому"}
                   </Badge>
-                  {!(exactGoreltechDocuments && r.type === "schedule") && <span className="text-muted-foreground">
+                  {!(exactGoreltechDocuments && (r.type === "schedule" || r.type === "class_journal")) && <span className="text-muted-foreground">
                     записей: {r.info.recordCount} · охват: {r.info.coverage}
                   </span>}
                 </div>
-                {exactGoreltechDocuments && r.type === "schedule" ? (
+                {exactGoreltechDocuments && r.type === "class_journal" ? (
+                  <div className="mt-1 space-y-1">
+                    <p>В Word попадут сохранённые очные отметки этой группы. Завершение онлайн-урока не заменяет отметку посещаемости.</p>
+                    <p className="text-muted-foreground">Проверьте даты и отметки, затем нажмите «Проверить 9 Word-документов без сохранения». Проверка сверит их с составом группы и курсом.</p>
+                    {onOpenGroupAttendance && <Button type="button" variant="outline" size="sm" onClick={onOpenGroupAttendance}>Открыть очные отметки группы</Button>}
+                  </div>
+                ) : exactGoreltechDocuments && r.type === "schedule" ? (
                   <div className="mt-1 space-y-1">
                     <p>Источник: сохранённое расписание в настройках этой группы — до четырёх блоков «дата, время, тема» в оригинальном Word-бланке.</p>
                     <p className="text-muted-foreground">Кнопка «Проверить 9 Word-документов без сохранения» перечитает расписание на сервере. Даты журнала и уроки курса не подставляются вместо него. В рабочем бланке занятия остаются пустыми.</p>

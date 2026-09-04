@@ -6,6 +6,7 @@ import { emptyFactualData } from "@/lib/group-docs/factualData";
 import { PACKAGE_DOC_TYPES } from "@/lib/group-docs/packageTypes";
 import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
 import type { GroupDocumentRow } from "@/hooks/useGroupDocuments";
+import { groupAttendancePath } from "@/lib/groups/groupContext";
 
 const mocks = vi.hoisted(() => ({
   useGroupDocuments: vi.fn(),
@@ -176,6 +177,22 @@ async function confirmSourceSignatories() {
 }
 
 describe("GroupDocumentsFolder package contract routing", () => {
+  it("не объявляет очной журнал пустым по отсутствию online completions и вызывает переход с контекстом группы", () => {
+    // This UI test verifies the callback and URL only, not live saved attendance.
+    const openEditor = vi.fn((path: string) => {
+      const params = new URL(path, "https://example.test").searchParams;
+      expect(params.get("journal")).toBe("group-attendance");
+      expect(params.get("groupId")).toBe("group-manual");
+    });
+    render(<GroupDocumentsFolder organizationId={GORELTECH_ORGANIZATION_ID} groupId="group-manual"
+      groupName="Очная группа" students={SAMPLE_CONTEXT.students} ctx={goreltechContext()}
+      onOpenGroupAttendance={() => openEditor(groupAttendancePath("group-manual"))} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Заполнить по данным Синтагмы" }), { button: 0, ctrlKey: false });
+    expect(screen.getByText(/сохранённые очные отметки этой группы/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нет завершённых уроков — журнал будет пустым/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть очные отметки группы" }));
+    expect(openEditor).toHaveBeenCalledWith(groupAttendancePath("group-manual"));
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.dialogState.docxProps = null;
