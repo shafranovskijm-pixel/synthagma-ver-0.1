@@ -28,6 +28,8 @@ export interface SafeInvokeOptions {
 interface SafeInvokeResult<T = unknown> {
   data: T | null;
   error: Error | null;
+  /** Present only for an actual FunctionsHttpError response, never inferred from its message. */
+  httpStatus?: number;
 }
 
 export async function safeInvoke<T = unknown>(
@@ -60,7 +62,10 @@ export async function safeInvoke<T = unknown>(
         }
         // HTTP error (4xx, 5xx) — try to extract server-side error message from body
         let friendlyMessage: string | null = null;
+        let httpStatus: number | undefined;
         if (error instanceof FunctionsHttpError) {
+          const status = error.context?.status;
+          if (typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 599) httpStatus = status;
           try {
             const body: any = await error.context.clone().json();
             friendlyMessage = body?.error || body?.message || body?.msg || null;
@@ -72,7 +77,7 @@ export async function safeInvoke<T = unknown>(
           }
         }
         const finalMsg = friendlyMessage || (error instanceof Error ? error.message : String(error));
-        return { data: null, error: new Error(finalMsg) };
+        return { data: null, error: new Error(finalMsg), ...(httpStatus === undefined ? {} : { httpStatus }) };
       }
 
       return { data: data as T, error: null };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ interface AddStudentDialogProps {
   groupsError?: boolean;
   onSubmit: (input: AddStudentInput) => void;
   isCreating: boolean;
+  creationWarning?: string | null;
 }
 
 const NO_GROUP_VALUE = "__no_group__";
@@ -58,6 +59,7 @@ export function AddStudentDialog({
   groupsError = false,
   onSubmit,
   isCreating,
+  creationWarning = null,
 }: AddStudentDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -67,13 +69,21 @@ export function AddStudentDialog({
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [courseSearch, setCourseSearch] = useState("");
+  const [manualRetryConfirmed, setManualRetryConfirmed] = useState(false);
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => { setManualRetryConfirmed(false); }, [creationWarning, open]);
 
   useEffect(() => {
-    if (open) {
+    const opening = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    // A warning may clear during a manual submission. Only a fresh normal open
+    // resets the form; checking the list must not erase an uncertain draft.
+    if (opening && !creationWarning) {
       setName(""); setEmail(""); setCourseIds([]); setCompanyId(""); setGroupId("");
       setLogin(""); setPassword(""); setCourseSearch("");
     }
-  }, [open]);
+  }, [open, creationWarning]);
 
   const publishedCourses = courses.filter(c => c.is_published);
   const filteredCourses = publishedCourses.filter(c => 
@@ -97,6 +107,7 @@ export function AddStudentDialog({
   };
 
   const handleSubmit = () => {
+    if (isCreating || (creationWarning && !manualRetryConfirmed)) return;
     if (login && !/^[a-zA-Z0-9._-]+$/.test(login)) {
       alert("Логин может содержать только латинские буквы, цифры и знаки . _ -");
       return;
@@ -105,12 +116,13 @@ export function AddStudentDialog({
       alert("Пароль должен быть не короче 6 символов");
       return;
     }
+    setManualRetryConfirmed(false);
     onSubmit({ name, email, courseIds, companyId, groupId, login, password });
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
-      if (!v) {
+      if (!v && !creationWarning) {
         setName(""); setEmail(""); setCourseIds([]); setCompanyId(""); setGroupId("");
         setLogin(""); setPassword(""); setCourseSearch("");
       }
@@ -124,6 +136,15 @@ export function AddStudentDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {creationWarning && (
+            <div role="alert" className="space-y-3 rounded-xl border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
+              <p>{creationWarning}</p>
+              <label className="flex items-start gap-2">
+                <input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={manualRetryConfirmed} disabled={isCreating} onChange={(event) => setManualRetryConfirmed(event.target.checked)} />
+                <span>Результат регистрации проверен: подтверждено, что ученика можно создать заново без дубликата.</span>
+              </label>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>ФИО *</Label>
             <Input placeholder="Иванов Иван Иванович" className="rounded-xl" value={name} onChange={e => setName(e.target.value)} />
@@ -225,8 +246,8 @@ export function AddStudentDialog({
               )}
             </div>
           </div>
-          <Button className="w-full btn-gradient rounded-xl" onClick={handleSubmit} disabled={isCreating}>
-            {isCreating ? (<><SigmaSpinner size="sm" className="mr-2" />Добавление...</>) : "Добавить ученика"}
+          <Button className="w-full btn-gradient rounded-xl" onClick={handleSubmit} disabled={isCreating || Boolean(creationWarning && !manualRetryConfirmed)}>
+            {isCreating ? (<><SigmaSpinner size="sm" className="mr-2" />Добавление...</>) : creationWarning ? "Создать после ручной проверки" : "Добавить ученика"}
           </Button>
         </div>
       </DialogContent>

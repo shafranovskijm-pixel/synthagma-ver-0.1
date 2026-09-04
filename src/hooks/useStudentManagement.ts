@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
@@ -47,6 +47,8 @@ export function useStudentManagement({
 }: UseStudentManagementProps) {
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
+  const [creationWarning, setCreationWarning] = useState<string | null>(null);
+  const creatingStudentRef = useRef(false);
 
   const createStudent = useCallback(async (overrides?: {
     name?: string;
@@ -57,6 +59,7 @@ export function useStudentManagement({
     login?: string;
     password?: string;
   }) => {
+    if (creatingStudentRef.current) return false;
     if (checkStudentLimit) {
       const result = checkStudentLimit();
       if (!result.allowed) {
@@ -84,15 +87,22 @@ export function useStudentManagement({
       return false;
     }
 
+    creatingStudentRef.current = true;
     setIsCreatingStudent(true);
+    setCreationWarning(null);
     let registeredStudent: any = null;
     let generatedPassword = "";
+    let registrationUnconfirmed = false;
 
     try {
       const firstCourseId = effectiveCourseIds[0] || null;
       const password = customPassword || generateStrongPassword();
       generatedPassword = password;
-      const { data, error } = await safeInvoke<any>("register-student", {
+      registrationUnconfirmed = true;
+      const { data, error, httpStatus } = await safeInvoke<any>("register-student", {
+        // A lost response does not prove rollback. Without email/login, another
+        // invocation can create a different account, so never retry this write.
+        retry: false,
         body: {
           token: null,
           email: effectiveEmail || null,
@@ -108,8 +118,15 @@ export function useStudentManagement({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Current register-student uses these statuses for pre-write rejection
+        // or confirmed compensation. Retained/uncertain new accounts instead
+        // return structured partial_success; 5xx/408 remain unconfirmed.
+        if (httpStatus !== undefined && [400, 401, 403, 404, 409].includes(httpStatus)) registrationUnconfirmed = false;
+        throw error;
+      }
       if (data?.partial_success) {
+        registrationUnconfirmed = false;
         const credentials = data.student_created && data.login && data.password
           ? ` Логин: ${data.login}, пароль: ${data.password}.`
           : "";
@@ -120,7 +137,14 @@ export function useStudentManagement({
         );
         return false;
       }
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        registrationUnconfirmed = false;
+        throw new Error(data.error);
+      }
+      if (typeof data?.user_id !== "string" || !data.user_id.trim()) {
+        throw new Error("Сервер не вернул подтверждённый идентификатор ученика");
+      }
+      registrationUnconfirmed = false;
       registeredStudent = data;
 
       if (effectiveGroupId) {
@@ -255,7 +279,16 @@ export function useStudentManagement({
     } catch (error: any) {
       console.error("Error creating student:", error);
 
-      if (registeredStudent?.user_id) {
+      if (registrationUnconfirmed) {
+        // Keep the entered fields. Refresh is only a viewing aid, never evidence
+        // that the write stopped. The form asks for an explicit manual check.
+        const warning = "Результат создания ученика не подтверждён. Запрос мог сохранить ученика, даже если ответ не получен. " +
+          "Проверьте список учеников: если ученик появился, откройте его карточку, не создавайте повторно. " +
+          "Отсутствие ученика в списке ещё не означает, что запрос завершился. Перед ручным повтором уточните результат у администратора.";
+        setCreationWarning(warning);
+        toast.warning(warning, { duration: 30000 });
+        try { onRefresh(); } catch (refreshError) { console.error("Student list refresh failed after an uncertain creation:", refreshError); }
+      } else if (registeredStudent?.user_id) {
         const wasExisting = registeredStudent.is_existing === true;
         const displayLogin = registeredStudent.login || customLogin;
         const displayPassword = registeredStudent.password || generatedPassword;
@@ -287,6 +320,7 @@ export function useStudentManagement({
       }
       return false;
     } finally {
+      creatingStudentRef.current = false;
       setIsCreatingStudent(false);
     }
   }, [organizationId, onRefresh, checkStudentLimit]);
@@ -295,6 +329,7 @@ export function useStudentManagement({
     showAddStudentDialog,
     setShowAddStudentDialog,
     isCreatingStudent,
+    creationWarning,
     createStudent,
   };
 }

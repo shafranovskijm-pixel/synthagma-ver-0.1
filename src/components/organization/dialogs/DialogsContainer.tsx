@@ -69,6 +69,7 @@ export function DialogsContainer() {
           await d.studentManagement.createStudent(input);
         }}
         isCreating={d.studentManagement.isCreatingStudent}
+        creationWarning={d.studentManagement.creationWarning}
       />
 
       <EnrollDialog

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { safeInvoke } from "../safeInvoke";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), toastError: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({
@@ -92,5 +93,19 @@ describe("safeInvoke retry contract", () => {
     expect(result.error?.message).toBe("Permission denied");
     expect(mocks.invoke).toHaveBeenCalledTimes(1);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([400, 403, 409, 500])("preserves the actual HTTP %i status without changing the server message or retrying", async status => {
+    mocks.invoke.mockResolvedValue({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify({ error: "Сервер отклонил запрос" }), { status })) });
+    const result = await safeInvoke("register-student", { retry: false });
+    expect(result.httpStatus).toBe(status);
+    expect(result.error?.message).toBe("Сервер отклонил запрос");
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not infer an HTTP status from an error message", async () => {
+    mocks.invoke.mockResolvedValue({ data: null, error: new Error("HTTP 400 Permission denied") });
+    const result = await safeInvoke("register-student", { retry: false });
+    expect(result).not.toHaveProperty("httpStatus");
   });
 });

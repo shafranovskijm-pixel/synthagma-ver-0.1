@@ -123,6 +123,7 @@ describe("useStudentManagement enrollment release compatibility", () => {
     expect(mocks.safeInvoke).toHaveBeenCalledWith(
       "register-student",
       expect.objectContaining({
+        retry: false,
         body: expect.objectContaining({
           enrollment_request_source: "organization_add_student",
         }),
