@@ -17,8 +17,14 @@ import {
   type CourseImportScope,
 } from "@/lib/courseImportScope";
 import { createImportedCourseHeader } from "@/api/courseImport";
+import { createStructuredCourseDraft } from "@/api/structuredCourseImport";
 import { CourseCreationError, courseCreationErrorMessage } from "@/api/courses";
 import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
+import {
+  isCszStructuredCourseHtml,
+  parseCszStructuredCourseHtml,
+  type StructuredCourseDraftPayload,
+} from "@/utils/structuredCourseImport";
 
 interface ParsedLesson {
   id: string;
@@ -72,11 +78,13 @@ export default function CourseImport() {
   const [step, setStep] = useState<ImportStep>('upload');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedAnswerKeyFile, setSelectedAnswerKeyFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [courseTitle, setCourseTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+  const [structuredPayload, setStructuredPayload] = useState<StructuredCourseDraftPayload | null>(null);
   const [scopeState, setScopeState] = useState<ScopeState>({ status: "loading" });
   const [scopeRefreshKey, setScopeRefreshKey] = useState(0);
 
@@ -120,10 +128,11 @@ export default function CourseImport() {
     e.preventDefault();
     setIsDragging(false);
     
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      validateAndSetFile(file);
-    }
+    const files = Array.from(e.dataTransfer.files);
+    const answerKeyFile = files.find((file) => file.name.toLowerCase().endsWith(".json"));
+    const courseFile = files.find((file) => !file.name.toLowerCase().endsWith(".json"));
+    if (courseFile) validateAndSetFile(courseFile);
+    if (answerKeyFile) validateAndSetAnswerKeyFile(answerKeyFile);
   }, []);
 
   const validateAndSetFile = (file: File) => {
@@ -166,13 +175,76 @@ export default function CourseImport() {
     }
   };
 
+  const validateAndSetAnswerKeyFile = (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      toast.error("Закрытый банк вопросов должен быть файлом JSON");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Максимальный размер закрытого банка вопросов — 2 МБ");
+      return;
+    }
+    setSelectedAnswerKeyFile(file);
+  };
+
+  const handleAnswerKeyFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndSetAnswerKeyFile(file);
+  };
+
   const processFile = async () => {
     if (!selectedFile || scopeState.status !== "ready") return;
     
     setStep('processing');
     setProgress(10);
+    setStructuredPayload(null);
     
     try {
+      const isHtml = /\.html?$/i.test(selectedFile.name) || selectedFile.type === "text/html";
+      if (isHtml) {
+        const html = await selectedFile.text();
+        if (isCszStructuredCourseHtml(html)) {
+          if (!selectedAnswerKeyFile) {
+            throw new Error("Для курса ЦСЗ выберите отдельный закрытый JSON с ключами тестов");
+          }
+          const closedQuestionBankJson = await selectedAnswerKeyFile.text();
+          const parsed = parseCszStructuredCourseHtml(html, closedQuestionBankJson);
+          setProgress(100);
+          setStructuredPayload(parsed);
+          setImportResult({
+            success: true,
+            courseTitle: parsed.title,
+            lessons: parsed.lessons.map((lesson) => ({
+              id: lesson.key,
+              type: lesson.type,
+              title: lesson.title,
+              content: lesson.content,
+              order_index: lesson.order_index,
+            })),
+            filesCount: 2,
+            sectionsCount: parsed.lessons.length,
+            analysis: [
+              {
+                fileName: selectedFile.name,
+                title: parsed.title,
+                wordCount: html.trim().split(/\s+/).length,
+                contentType: "structured-csz-course-v2",
+              },
+              {
+                fileName: selectedAnswerKeyFile.name,
+                title: "Закрытый банк вопросов",
+                wordCount: 0,
+                contentType: "closed-question-bank",
+              },
+            ],
+          });
+          setCourseTitle(parsed.title);
+          setStep("preview");
+          return;
+        }
+      }
+
+      setStructuredPayload(null);
       const formData = new FormData();
       formData.append('file_0', selectedFile);
       formData.append('organization_id', scopeState.scope.organizationId);
@@ -226,46 +298,53 @@ export default function CourseImport() {
         );
       }
 
-      // The RPC atomically rechecks courses.write and the effective tariff
-      // limit before inserting the draft course header.
-      const courseId = await createImportedCourseHeader({
-        organizationId: verifiedScope.organizationId,
-        title: courseTitle,
-        description: `Импортирован из ${selectedFile?.name || "учебных материалов"}`,
-      });
-      
-      // Create lessons
-      const lessonsToInsert = importResult.lessons.map((lesson, index) => ({
-        course_id: courseId,
-        title: lesson.title,
-        // Imported HTML is untrusted even when the uploader may create
-        // courses. Strip executable markup before it reaches lessons.content.
-        content: sanitizeCourseHtml(lesson.content),
-        type: 'text',
-        order_index: index }));
-      
-      const { error: lessonsError } = await supabase
-        .from('lessons')
-        .insert(lessonsToInsert);
-      
-      if (lessonsError) {
-        // Do not leave an empty draft when lesson persistence fails. The
-        // organization predicate is defence in depth in addition to RLS.
-        const { error: cleanupError } = await supabase
-          .from("courses")
-          .delete()
-          .eq("id", courseId)
-          .eq("organization_id", verifiedScope.organizationId);
-        if (cleanupError) console.error("Course import cleanup failed");
-        throw new CourseCreationError(
-          "unknown",
-          "Не удалось сохранить уроки. Повторите импорт",
-        );
+      let courseId: string;
+      if (structuredPayload) {
+        // The database validates and inserts the complete graph in a single
+        // transaction. It always returns an unpublished course.
+        const result = await createStructuredCourseDraft({
+          organizationId: verifiedScope.organizationId,
+          title: courseTitle,
+          payload: structuredPayload,
+        });
+        courseId = result.course_id;
+      } else {
+        // Legacy flat import remains available for ordinary office files.
+        const importedCourseId = await createImportedCourseHeader({
+          organizationId: verifiedScope.organizationId,
+          title: courseTitle,
+          description: `Импортирован из ${selectedFile?.name || "учебных материалов"}`,
+        });
+
+        const lessonsToInsert = importResult.lessons.map((lesson, index) => ({
+          course_id: importedCourseId,
+          title: lesson.title,
+          content: sanitizeCourseHtml(lesson.content),
+          type: 'text',
+          order_index: index }));
+
+        const { error: lessonsError } = await supabase
+          .from('lessons')
+          .insert(lessonsToInsert);
+
+        if (lessonsError) {
+          const { error: cleanupError } = await supabase
+            .from("courses")
+            .delete()
+            .eq("id", importedCourseId)
+            .eq("organization_id", verifiedScope.organizationId);
+          if (cleanupError) console.error("Course import cleanup failed");
+          throw new CourseCreationError(
+            "unknown",
+            "Не удалось сохранить уроки. Повторите импорт",
+          );
+        }
+        courseId = importedCourseId;
       }
       
       setCreatedCourseId(courseId);
       setStep('done');
-      toast.success('Курс успешно создан!');
+      toast.success('Черновик курса успешно создан');
       
     } catch (error) {
       console.error('Create course error:', error);
@@ -282,10 +361,12 @@ export default function CourseImport() {
   const resetImport = () => {
     setStep('upload');
     setSelectedFile(null);
+    setSelectedAnswerKeyFile(null);
     setProgress(0);
     setImportResult(null);
     setCourseTitle('');
     setCreatedCourseId(null);
+    setStructuredPayload(null);
   };
 
   return (
@@ -344,11 +425,17 @@ export default function CourseImport() {
           <UploadStep
             isDragging={isDragging}
             selectedFile={selectedFile}
+            selectedAnswerKeyFile={selectedAnswerKeyFile}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onFileSelect={handleFileSelect}
-            onClearFile={() => setSelectedFile(null)}
+            onAnswerKeyFileSelect={handleAnswerKeyFileSelect}
+            onClearFile={() => {
+              setSelectedFile(null);
+              setSelectedAnswerKeyFile(null);
+            }}
+            onClearAnswerKeyFile={() => setSelectedAnswerKeyFile(null)}
             onProcess={processFile}
           />
         )}

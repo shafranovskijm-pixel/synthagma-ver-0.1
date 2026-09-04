@@ -12,12 +12,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
+import { CourseLibraryManager } from "@/components/course-library/CourseLibraryManager";
+import { RequirePerm } from "@/hooks/useStaffPermissions";
 // EnrollmentHistory pulls in recharts (~200KB) — load it only when the history tab is opened
 const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, BookOpen, Eye, Edit, TrendingUp, CheckCircle2, FileText, History, CheckSquare, Plus, Trash2, Settings, RotateCcw, Search, UserPlus, ClipboardCheck, Bell, Globe, ExternalLink, Trophy, ArrowLeft } from "lucide-react";
+import { Users, BookOpen, Eye, Edit, TrendingUp, CheckCircle2, FileText, History, CheckSquare, Plus, Trash2, Settings, RotateCcw, Search, UserPlus, ClipboardCheck, Bell, Globe, ExternalLink, Trophy, ArrowLeft, type LucideIcon } from "lucide-react";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
@@ -29,6 +31,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatCourseTestResult, safePercent } from "@/lib/courseTestResult";
 import type { CourseStudentPageRow, TestResultDetail } from "@/api/courseStudents";
+import { isCourseElectronicLibraryEnabled } from "@/lib/courseLibrary";
 
 import { useCourseDetails } from "@/hooks/useCourseDetails";
 
@@ -52,20 +55,39 @@ interface Course {
   frdo_specialty_group?: string | null; frdo_qualification_name?: string | null; frdo_profession_name?: string | null;
   frdo_qualification_rank?: string | null; frdo_duration_hours?: number | null; frdo_financing_source?: string | null;
   frdo_education_form?: string | null;
+  landing_content?: unknown;
 }
 
 interface Student { id: string; user_id: string; enrollment_id: string | null; name: string; email: string; progress: number; status: string | null; }
 
 type CourseTabKey = "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview";
 
-type GroupKey = "editor" | "students" | "page" | "settings";
+type GroupKey = "editor" | "students" | "library" | "page" | "settings";
+type TabGroup = { key: GroupKey; label: string; icon: LucideIcon; subTabs: CourseTabKey[]; beta?: boolean };
 
-const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[]; beta?: boolean }[] = [
+const BASE_TAB_GROUPS: TabGroup[] = [
   { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },
   { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "tests", "achievements", "reminders"] },
   { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing"], beta: true },
   { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings"] },
 ];
+
+const LIBRARY_TAB_GROUP: TabGroup = {
+  key: "library",
+  label: "Электронная библиотека",
+  icon: BookOpen,
+  subTabs: ["materials"],
+};
+
+function getTabGroups(electronicLibraryEnabled: boolean): TabGroup[] {
+  if (!electronicLibraryEnabled) return BASE_TAB_GROUPS;
+  return [
+    BASE_TAB_GROUPS[0],
+    BASE_TAB_GROUPS[1],
+    LIBRARY_TAB_GROUP,
+    ...BASE_TAB_GROUPS.slice(2),
+  ];
+}
 
 const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description?: string }> = {
   editor:       { label: "Конструктор",   icon: Edit },
@@ -82,8 +104,8 @@ const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description
   tests:        { label: "Результаты тестов", icon: CheckSquare, description: "Отчёт по результатам тестирования учеников" },
 };
 
-function getGroupForTab(tab: CourseTabKey): GroupKey {
-  for (const g of TAB_GROUPS) {
+function getGroupForTab(tab: CourseTabKey, tabGroups: readonly TabGroup[]): GroupKey {
+  for (const g of tabGroups) {
     if (g.key === "editor" && tab === "editor") return "editor";
     if (g.subTabs.includes(tab)) return g.key;
   }
@@ -114,6 +136,8 @@ export function CourseDetailsContent({
 }: CourseDetailsContentProps) {
   const { isEnabled } = useOrgFeatures(organizationId);
   const isFrdoEnabled = isEnabled('frdo');
+  const electronicLibraryEnabled = isCourseElectronicLibraryEnabled(course.landing_content);
+  const tabGroups = getTabGroups(electronicLibraryEnabled);
   // useCourseDetails covers course-scoped enrollment mutations (bulk
   // enroll/unenroll/progress reset) — enrollment invalidations only.
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onEnrollmentChanged, onCourseDeleted);
@@ -182,20 +206,20 @@ export function CourseDetailsContent({
     }
   };
 
-  const activeGroup = getGroupForTab(activeTab);
+  const activeGroup = getGroupForTab(activeTab, tabGroups);
 
   const handleGroupClick = (group: GroupKey) => {
     if (group === "editor") {
       onTabChange("editor");
       return;
     }
-    const g = TAB_GROUPS.find(x => x.key === group);
+    const g = tabGroups.find(x => x.key === group);
     if (!g || g.subTabs.length === 0) return;
     // If we're already in this group, do nothing; else jump to its first sub-tab
     if (activeGroup !== group) onTabChange(g.subTabs[0]);
   };
 
-  const currentGroupDef = TAB_GROUPS.find(g => g.key === activeGroup);
+  const currentGroupDef = tabGroups.find(g => g.key === activeGroup);
   const showSubTabs = !!currentGroupDef && currentGroupDef.subTabs.length > 1;
 
   return (
@@ -288,10 +312,10 @@ export function CourseDetailsContent({
         </div>
       </div>
 
-      {/* Top-level tabs (4 groups) */}
+      {/* Course-level navigation groups. The library is course-gated. */}
       <div className="mb-3 flex items-center justify-center">
         <div className="inline-flex items-center gap-1 bg-muted/60 backdrop-blur-sm rounded-xl p-1.5 border border-border/40 flex-wrap">
-          {TAB_GROUPS.map(g => {
+          {tabGroups.map(g => {
             const Icon = g.icon;
             const isActive = activeGroup === g.key;
             return (
@@ -411,7 +435,21 @@ export function CourseDetailsContent({
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
           {activeTab === "students" && <StudentsSection h={h} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
-        {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
+        {activeTab === "materials" && electronicLibraryEnabled && organizationId && (
+          <div className="space-y-6">
+            <CourseLibraryManager courseId={course.id} courseName={course.title} organizationId={organizationId} />
+            <RequirePerm perm="courses.write">
+              <details className="rounded-2xl border bg-muted/20 p-4">
+                <summary className="cursor-pointer text-sm font-medium">Прочие файлы курса — прежний раздел</summary>
+                <p className="mb-4 mt-2 text-xs text-muted-foreground">Старые материалы сохранены для совместимости. Новые ресурсы образовательной программы добавляйте выше.</p>
+                <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />
+              </details>
+            </RequirePerm>
+          </div>
+        )}
+        {activeTab === "materials" && !electronicLibraryEnabled && (
+          <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />
+        )}
         {activeTab === "history" && (
           <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
             <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />

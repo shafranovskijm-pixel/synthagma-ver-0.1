@@ -13,6 +13,7 @@ import { parseLessonContent } from "@/components/course-builder/block-editor/par
 import type { ContentBlock } from "@/components/course-builder/block-editor/types";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
 import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
+import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 
 import type { Lesson, Course, LessonProgress } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
@@ -406,8 +407,28 @@ export function useCourseLearning() {
   }, [user, enrollmentId, currentLesson?.id, saveLessonTime, isAdminView]);
 
   const fetchCourseData = async () => {
+    const requestedLibraryOnly = typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).get("view") === "library";
     try {
       const lookupUserId = effectiveUserId; // target student in admin view, otherwise current user
+
+      if (requestedLibraryOnly) {
+        const shell = await fetchCourseLibraryShell(courseId || "");
+        setCourse({
+          id: shell.courseId,
+          title: shell.title,
+          description: null,
+          duration: null,
+          landing_content: { electronic_library: { enabled: true } },
+        });
+        setLessons([]);
+        setLessonProgress([]);
+        setLessonAttachments({});
+        setEnrollmentId(null);
+        setIsOfflineMode(false);
+        return;
+      }
+
       const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
         supabase
           .from('courses')
@@ -465,7 +486,7 @@ export function useCourseLearning() {
 
       setLessons(lessonsData);
 
-      let enrollment = enrollmentResult.data;
+      const enrollment = enrollmentResult.data;
       if (!enrollment) {
         if (isAdminView) {
           // Admin preview: continue without enrollment so admin can browse the course content.
@@ -499,7 +520,7 @@ export function useCourseLearning() {
 
       const courseLessonIds = lessonsData.map((l: Lesson) => l.id);
       let progressData: LessonProgress[] = [];
-      let attMap: Record<string, typeof lessonAttachments[string]> = {};
+      const attMap: Record<string, typeof lessonAttachments[string]> = {};
 
       if (courseLessonIds.length > 0 && lookupUserId) {
         const [progressResult, attachmentsResult] = await Promise.all([
@@ -521,6 +542,17 @@ export function useCourseLearning() {
       if (courseId) { cacheCourseData(courseId, courseData, lessonsData, progressData, attMap).catch(() => {}); }
     } catch (error) {
       console.error('Error fetching course:', error);
+      if (requestedLibraryOnly) {
+        setCourse(null);
+        setLessons([]);
+        setLessonProgress([]);
+        setLessonAttachments({});
+        toast.error('Электронная библиотека недоступна', {
+          description: 'Проверьте зачисление или обратитесь в учебный центр.',
+        });
+        navigate('/student', { replace: true });
+        return;
+      }
       if (courseId) {
         const cached = await getCachedCourseData(courseId);
         if (cached) {

@@ -9,6 +9,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { useStudentDashboardSnapshot } from "@/hooks/useStudentDashboardSnapshot";
+import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 
 
 export interface StudentCourse {
@@ -355,7 +356,7 @@ export function useStudentDashboard() {
         setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements === true, showAiChat: s.showAiChat === true, showRadio: s.showRadio === true, showAnnouncements: s.showAnnouncements === true, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog", studentTheme: (s.studentTheme as string | null) ?? null });
       }
 
-      let cachedCoursesData: StudentCourse[] = [];
+      const cachedCoursesData: StudentCourse[] = [];
       let cachedTotalTime = 0;
       let cachedCompletedLessonsTotal = 0;
 
@@ -397,6 +398,35 @@ export function useStudentDashboard() {
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false,
             cover_image_url: course.cover_image_url || null,
+          });
+        }
+
+        // RLS intentionally hides the full row of an unpublished
+        // library-only course. Recover only its column-limited shell so the
+        // enrolled reviewer does not lose the course card when this fallback
+        // load replaces the faster dashboard snapshot.
+        const hiddenCourseEnrollments = enrollments.filter(e => !e.courses);
+        const hiddenCourseShells = await Promise.allSettled(
+          hiddenCourseEnrollments.map(async (enrollment) => ({
+            enrollment,
+            shell: await fetchCourseLibraryShell(enrollment.course_id),
+          })),
+        );
+        for (const result of hiddenCourseShells) {
+          if (result.status !== "fulfilled" || !result.value.shell.libraryOnly) continue;
+          const { enrollment, shell } = result.value;
+          cachedTotalTime += enrollment.time_spent || 0;
+          cachedCoursesData.push({
+            id: shell.courseId,
+            title: shell.title,
+            description: null,
+            duration: null,
+            progress: Math.min(enrollment.progress || 0, 100),
+            totalLessons: 0,
+            completedLessons: 0,
+            status: enrollment.status === "completed" ? "completed" : "in_progress",
+            skip_video_identification: true,
+            cover_image_url: null,
           });
         }
         setCourses(cachedCoursesData);

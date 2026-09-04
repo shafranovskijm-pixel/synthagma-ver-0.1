@@ -1,5 +1,6 @@
 import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks } from "@/components/course-builder/block-editor";
 import { isHtmlContent, parseHtmlCourse } from "@/utils/htmlCourseParser";
+import { isCszStructuredCourseHtml } from "@/utils/structuredCourseImport";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { toast } from "sonner";
@@ -75,6 +76,7 @@ export function normalizeLessonsFromDB(
         }
       }
     }
+    const lessonMetadata: unknown = l.metadata;
     return {
       id: l.id, type: l.type as LessonType, title: l.title,
       content: hasContentColumn ? (l.content || "") : "",
@@ -86,6 +88,9 @@ export function normalizeLessonsFromDB(
       questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
       attachments: attachmentsMap[l.id] || [],
       module_id: (l as any).module_id ?? null,
+      metadata: (lessonMetadata !== null && typeof lessonMetadata === "object")
+        ? lessonMetadata as NonNullable<Lesson["metadata"]>
+        : {},
       __contentLoaded: hasContentColumn,
     };
   });
@@ -124,6 +129,9 @@ export async function importFiles(
 
   for (const file of htmlFiles) {
     const text = await file.text();
+    if (isCszStructuredCourseHtml(text)) {
+      throw new Error("Пакет ЦСЗ импортируется через раздел «Импорт курса», чтобы сохранить 11 модулей, типы занятий и статус черновика");
+    }
     const parsed = parseHtmlCourse(text);
     if (!courseTitle && parsed.title) setCourseTitle(parsed.title);
     if (parsed.description) setCourseDescription(parsed.description);

@@ -4983,6 +4983,7 @@ export type Database = {
           created_at: string
           id: string
           is_locked: boolean
+          metadata: Json
           module_id: string | null
           order_index: number
           test_max_attempts: number | null
@@ -5017,6 +5018,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_locked?: boolean
+          metadata?: Json
           module_id?: string | null
           order_index?: number
           test_max_attempts?: number | null
@@ -5051,6 +5053,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_locked?: boolean
+          metadata?: Json
           module_id?: string | null
           order_index?: number
           test_max_attempts?: number | null
@@ -12252,6 +12255,13 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      import_csz_course_draft_v2: {
+        Args: {
+          p_organization_id: string
+          p_payload: Json
+        }
+        Returns: Json
       }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }

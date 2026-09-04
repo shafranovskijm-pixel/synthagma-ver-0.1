@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,12 @@ import { LessonAttachments } from "@/components/course-learning/LessonAttachment
 import { AiChatPanel } from "@/components/course-learning/AiChatPanel";
 import { LessonAIAvatar } from "@/components/course-learning/LessonAIAvatar";
 import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
+import { CourseLibraryReader } from "@/components/course-library/CourseLibraryReader";
+import { resolveCourseElectronicLibraryView } from "@/lib/courseLibrary";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const {
     user, navigate, isMobile, contentRef,
@@ -62,6 +65,33 @@ const CourseLearning = () => {
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
   const [chatBtnVisible, setChatBtnVisible] = useReactState(true);
+  const libraryView = resolveCourseElectronicLibraryView(
+    course?.landing_content,
+    searchParams.get("view"),
+  );
+  const libraryOpen = libraryView.open;
+
+  useEffect(() => {
+    if (loading || !course || !libraryView.shouldClearRequestedView) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    setSearchParams(next, { replace: true });
+  }, [course, libraryView.shouldClearRequestedView, loading, searchParams, setSearchParams]);
+
+  const openLibrary = () => {
+    if (!libraryView.enabled) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("view", "library");
+    setSearchParams(next, { replace: false });
+    setIsChatOpen(false);
+  };
+
+  const selectLesson = (index: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    setSearchParams(next, { replace: false });
+    goToLesson(index);
+  };
 
   // Auto-hide floating AI chat button while scrolling the lesson content on mobile,
   // so it doesn't overlap the "Отправить"/pagination controls in tests.
@@ -96,8 +126,8 @@ const CourseLearning = () => {
   }, [currentLesson?.id]);
   
   const swipeRef = useSwipeGesture<HTMLDivElement>({
-    onSwipeLeft: isMobile && !isTestActive ? handleSwipeLeft : undefined,
-    onSwipeRight: isMobile && !isTestActive ? handleSwipeRight : undefined,
+    onSwipeLeft: isMobile && !isTestActive && !libraryOpen ? handleSwipeLeft : undefined,
+    onSwipeRight: isMobile && !isTestActive && !libraryOpen ? handleSwipeRight : undefined,
     threshold: 100, minSwipeDistance: 70 });
 
   if (loading) {
@@ -123,8 +153,10 @@ const CourseLearning = () => {
   const sidebarProps = {
     courseTitle: course.title,
     lessons, currentLessonIndex, completedCount, progressPercent,
-    getLessonIcon, isLessonCompleted, isLessonAccessible, goToLesson,
+    getLessonIcon, isLessonCompleted, isLessonAccessible, goToLesson: selectLesson,
     resetCourseProgress, onNavigateBack: () => navigate('/student'),
+    isLibraryOpen: libraryOpen,
+    onOpenLibrary: libraryView.enabled ? openLibrary : undefined,
   };
 
   const testPassed = testScore ? (testScore.score / testScore.max) * 100 >= testPassingScore : false;
@@ -140,10 +172,10 @@ const CourseLearning = () => {
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             {isMobile && <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0"><List className="w-5 h-5" /></Button>}
             {!isMobile && <><SigmaLogo size="sm" /><span className="text-muted-foreground">|</span></>}
-            <span className={cn("font-medium truncate", isMobile ? "text-sm max-w-[140px]" : "max-w-md")}>{currentLesson?.title}</span>
+            <span className={cn("font-medium truncate", isMobile ? "text-sm max-w-[140px]" : "max-w-md")}>{libraryOpen ? "Электронная библиотека" : currentLesson?.title}</span>
           </div>
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
-            {(currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
+            {!libraryOpen && (currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
               <>
                 <Button variant={isSpeaking ? "default" : "outline"} size="sm" onClick={speakText} className={cn("rounded-lg", isSpeaking && "bg-primary text-primary-foreground", isMobile && "h-8 w-8 p-0")} title={isSpeaking ? "Стоп" : "Озвучить"}>
                   {isSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -178,9 +210,13 @@ const CourseLearning = () => {
                 )}
               </>
             )}
-            <Button variant="outline" size="sm" disabled={currentLessonIndex === 0} onClick={goToPrevLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronLeft className="w-4 h-4" /></Button>
-            <div className={cn("bg-secondary rounded-lg text-sm", isMobile ? "px-2 py-1" : "px-3 py-1")}><span className="font-medium">{currentLessonIndex + 1}</span><span className="text-muted-foreground">/{lessons.length}</span></div>
-            <Button variant="outline" size="sm" disabled={currentLessonIndex === lessons.length - 1} onClick={goToNextLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronRight className="w-4 h-4" /></Button>
+            {!libraryOpen && (
+              <>
+                <Button variant="outline" size="sm" disabled={currentLessonIndex === 0} onClick={goToPrevLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronLeft className="w-4 h-4" /></Button>
+                <div className={cn("bg-secondary rounded-lg text-sm", isMobile ? "px-2 py-1" : "px-3 py-1")}><span className="font-medium">{currentLessonIndex + 1}</span><span className="text-muted-foreground">/{lessons.length}</span></div>
+                <Button variant="outline" size="sm" disabled={currentLessonIndex === lessons.length - 1} onClick={goToNextLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronRight className="w-4 h-4" /></Button>
+              </>
+            )}
           </div>
         </header>
 
@@ -197,6 +233,10 @@ const CourseLearning = () => {
             onContextMenu={(course as any)?.landing_content?.copy_protection ? (e: React.MouseEvent) => e.preventDefault() : undefined}
             onCopy={(course as any)?.landing_content?.copy_protection ? (e: React.ClipboardEvent) => e.preventDefault() : undefined}
           >
+            {libraryOpen && courseId ? (
+              <CourseLibraryReader courseId={courseId} />
+            ) : (
+              <>
             {/* Text lesson */}
             {currentLesson?.type === 'text' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
@@ -398,11 +438,13 @@ const CourseLearning = () => {
             {currentLesson && lessonAttachments[currentLesson.id] && lessonAttachments[currentLesson.id].length > 0 && (
               <LessonAttachments attachments={lessonAttachments[currentLesson.id]} onPreview={setPreviewFile} />
             )}
+              </>
+            )}
           </div>
         </ScrollArea>
 
         {/* Mobile lesson dots */}
-        {isMobile && (
+        {isMobile && !libraryOpen && (
           <div className="border-t border-border bg-card px-4 py-2 flex overflow-x-auto no-scrollbar gap-2 shrink-0">
             {lessons.map((l, i) => {
               const completed = isLessonCompleted(l.id);
@@ -417,7 +459,7 @@ const CourseLearning = () => {
         )}
 
         {/* Footer */}
-        <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
+        {!libraryOpen && <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
@@ -451,11 +493,11 @@ const CourseLearning = () => {
             )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "Готово!" : "Курс завершён!"}</Button>}
           </div>
-        </footer>
+        </footer>}
       </main>
 
       {/* AI Chat — скрываем на мобильных, когда курс полностью пройден, чтобы кнопка не перекрывала точки навигации и «Готово!» */}
-      {!(isMobile && lessons.length > 0 && lessons.every(l => isLessonCompleted(l.id))) && (
+      {!libraryOpen && !(isMobile && lessons.length > 0 && lessons.every(l => isLessonCompleted(l.id))) && (
         <Button onClick={() => setIsChatOpen(true)} className={cn("fixed shadow-md z-40 bg-gradient-to-r from-primary to-primary/80 rounded-full p-0", isMobile ? "bottom-36 right-3 w-9 h-9" : "bottom-24 right-6 w-11 h-11", isChatOpen && "hidden", isMobile && !chatBtnVisible && "opacity-0 pointer-events-none translate-y-4")}><MessageCircle className={cn(isMobile ? "w-4 h-4" : "w-5 h-5")} /></Button>
       )}
       {isChatOpen && <AiChatPanel isMobile={!!isMobile} chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} isChatLoading={isChatLoading} chatScrollRef={chatScrollRef} sendChatMessage={sendChatMessage} onClose={() => setIsChatOpen(false)} />}

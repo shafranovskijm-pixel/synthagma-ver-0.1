@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { LibrarySupabaseClient } from "@/integrations/supabase/libraryDatabase";
 import { toast } from "sonner";
 
 interface LibraryDocument {
@@ -9,6 +10,8 @@ interface LibraryDocument {
   type: string;
   description: string | null;
   file_url: string | null;
+  storage_path?: string | null;
+  library_status?: "active" | "needs_review" | "archive" | null;
   file_size: number | null;
   folder_id: string | null;
   created_at: string;
@@ -24,6 +27,7 @@ interface LibraryFolder {
 }
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+const libraryDb = supabase as unknown as LibrarySupabaseClient;
 
 export function useLibraryManager(organizationId: string) {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
@@ -44,7 +48,7 @@ export function useLibraryManager(organizationId: string) {
     setIsLoading(true);
     try {
       const [docsResult, foldersResult] = await Promise.all([
-        supabase
+        libraryDb
           .from("library_documents")
           .select("*")
           .eq("organization_id", organizationId)
@@ -127,8 +131,12 @@ export function useLibraryManager(organizationId: string) {
     }
 
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `library/${organizationId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const safeName = file.name
+        .normalize("NFKC")
+        .replace(/[^\p{L}\p{N}._-]+/gu, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(-120) || "material";
+      const fileName = `library/${organizationId}/${crypto.randomUUID()}-${safeName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("library-files")
@@ -136,23 +144,26 @@ export function useLibraryManager(organizationId: string) {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("library-files")
-        .getPublicUrl(fileName);
-
-      const { error } = await supabase
+      const { error } = await libraryDb
         .from("library_documents")
         .insert({
           organization_id: organizationId,
           name: name.trim(),
           type,
           description: description.trim() || null,
-          file_url: urlData.publicUrl,
+          file_url: null,
+          storage_path: fileName,
+          original_filename: file.name,
+          mime_type: file.type || "application/octet-stream",
           file_size: file.size,
           folder_id: folderId,
+          library_status: "needs_review",
         });
 
-      if (error) throw error;
+      if (error) {
+        await supabase.storage.from("library-files").remove([fileName]);
+        throw error;
+      }
 
       toast.success("Материал добавлен в библиотеку");
       await fetchData();
@@ -233,24 +244,17 @@ export function useLibraryManager(organizationId: string) {
     }
   };
 
-  const deleteDocument = async (docId: string, fileUrl: string | null) => {
+  const deleteDocument = async (docId: string, _fileUrl: string | null) => {
     try {
-      if (fileUrl) {
-        const path = fileUrl.split("/library-files/")[1];
-        if (path) {
-          await supabase.storage.from("library-files").remove([path]);
-        }
-      }
-
-      const { error } = await supabase
+      const { error } = await libraryDb
         .from("library_documents")
-        .delete()
+        .update({ library_status: "archive" })
         .eq("id", docId);
 
       if (error) throw error;
 
       setDocuments(prev => prev.filter(d => d.id !== docId));
-      toast.success("Материал удалён");
+      toast.success("Материал перенесён в архив");
       return true;
     } catch (error) {
       console.error("Error deleting document:", error);
@@ -259,9 +263,24 @@ export function useLibraryManager(organizationId: string) {
     }
   };
 
+  const getDocumentOpenUrl = async (document: LibraryDocument): Promise<string> => {
+    if (document.storage_path) {
+      const { data, error } = await supabase.storage
+        .from("library-files")
+        .createSignedUrl(document.storage_path, 10 * 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("Не удалось получить временную ссылку на материал");
+      return data.signedUrl;
+    }
+    if (document.file_url?.startsWith("https://")) return document.file_url;
+    throw new Error("У материала нет доступного файла или безопасной ссылки");
+  };
+
   // Get folders and documents for current view
   const currentFolders = folders.filter(f => f.parent_id === currentFolderId);
-  const currentDocuments = documents.filter(d => d.folder_id === currentFolderId);
+  const currentDocuments = documents.filter(d => (
+    d.folder_id === currentFolderId && d.library_status !== "archive"
+  ));
 
   const filteredDocuments = currentDocuments.filter((doc) => {
     const matchesSearch = searchQuery === "" || 
@@ -310,6 +329,7 @@ export function useLibraryManager(organizationId: string) {
     updateFolder,
     deleteFolder,
     deleteDocument,
+    getDocumentOpenUrl,
     getFolderStats,
     refreshData: fetchData,
   };

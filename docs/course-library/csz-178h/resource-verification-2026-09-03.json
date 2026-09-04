@@ -1,0 +1,43 @@
+{
+  "checked_at": "2026-09-03",
+  "method": "HTTP HEAD/GET, official record and PDF read-only inspection, API/oEmbed and official-site indexing; no source artifacts stored in the workspace",
+  "overall_decision": "NO_GO",
+  "summary": {
+    "http_200": 21,
+    "http_404": 1,
+    "network_timeout": 5,
+    "tls_failure": 1,
+    "confirmed_replacements_http_200": 5,
+    "remaining_holds": 5
+  },
+  "resources": [
+    { "id": 1, "http": "200_HTML", "source_class": "GOV_OFFICIAL", "reuse_signal": "MCHS_CC_BY_4_0", "decision": "GO_LINK_ONLY", "recommended_url": "https://mchs.gov.ru/dokumenty/7404", "recommended_http": "200_HTML", "recommended_source_page": "https://minjust.consultant.ru/documents/33502", "edition_label": "в редакции приказа МЧС России от 24.06.2026 № 468", "note": "The source URL was corrected to the official MChS page with the exact Order No. 1156 title and downloadable DOCX/PDF files. The official Minjust record for Order No. 468 confirms the current amendment; the MChS footer states CC BY 4.0 for site materials." },
+    { "id": 2, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "REPLACE", "recommended_url": "https://minjust.consultant.ru/files/61298", "recommended_http": "200_PDF", "recommended_source_page": "https://minjust.consultant.ru/documents/61298", "edition_label": "приказ МЧС России от 24.06.2026 № 468; зарегистрирован 23.07.2026 № 87573", "note": "The official Minjust record and PDF confirm Order No. 468 and registration No. 87573. The order removes the words limiting Order No. 1156 to 1 September 2026." },
+    { "id": 3, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "REPLACE", "recommended_url": "https://minjust.consultant.ru/files/55117", "recommended_http": "200_PDF", "recommended_source_page": "https://minjust.consultant.ru/documents/55117", "edition_label": "приказ Минобрнауки России от 24.03.2025 № 266; действует с 01.09.2025 по 01.09.2031", "note": "The official Minjust record and PDF confirm Order No. 266, registration No. 81928, and the validity period from 1 September 2025 through 1 September 2031." },
+    { "id": 4, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "pravo.gov.ru was unavailable from the checking network" },
+    { "id": 5, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "HOLD", "note": "pravo.gov.ru was unavailable from the checking network" },
+    { "id": 6, "http": "000_TIMEOUT", "source_class": "GOV_OFFICIAL", "reuse_signal": "UNASSESSED", "decision": "REPLACE", "recommended_url": "https://02.mchs.gov.ru/uploads/resource/2026-06-08/71225f84f8519180b820ac49498fe800.pdf", "recommended_http": "200_PDF", "recommended_source_page": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/perechen-obyazatelnyh-trebovaniy/federalnyy-gosudarstvennyy-pozharnyy-nadzor", "edition_label": "редакция от 03.02.2025; срок действия до 31.12.2026", "note": "The official MChS PDF is Government Resolution No. 1479 dated 16.09.2020, edition dated 03.02.2025, valid through 31.12.2026. Rejected false replacement https://mchs.gov.ru/dokumenty/602 is Resolution No. 390, not No. 1479." },
+    { "id": 7, "http": "200_HTML", "source_class": "GOV_OFFICIAL", "reuse_signal": "MCHS_CC_BY_4_0", "decision": "GO_LINK_ONLY", "recommended_url": "https://mchs.gov.ru/dokumenty/inye-normativnye-pravovye-akty/prochie-normativnye-pravovye-akty/svody-pravil", "recommended_http": "200_HTML", "note": "The source URL was corrected to the verified official MChS collection page." },
+    { "id": 8, "http": "200_HTML", "source_class": "GOV_OFFICIAL", "reuse_signal": "MCHS_CC_BY_4_0", "decision": "GO_LINK_ONLY" },
+    { "id": 9, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
+    { "id": 10, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
+    { "id": 11, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW", "note": "URL has no extension but returns PDF" },
+    { "id": 12, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
+    { "id": 13, "http": "200_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_PRODUCT_PAGE_ONLY" },
+    { "id": 14, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
+    { "id": 15, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW", "note": "double extension, valid PDF response" },
+    { "id": 16, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
+    { "id": 17, "http": "200_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_PRODUCT_PAGE_ONLY" },
+    { "id": 18, "http": "200_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "CONSENT_REQUIRED_FOR_REUSE; CITATION_REQUIRES_LINK", "decision": "LINK_REFERENCE_ONLY" },
+    { "id": 19, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_LINK_COPY_REVIEW" },
+    { "id": 20, "http": "200_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "BOLID_ATTRIBUTION_TERMS", "decision": "GO_PRODUCT_PAGE_ONLY" },
+    { "id": 21, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED; NO_GENERAL_REUSE_LICENSE", "decision": "LINK_REFERENCE_ONLY" },
+    { "id": 22, "http": "200_HTML", "source_class": "THIRD_PARTY_VIDEO", "reuse_signal": "FIRST_PARTY_PROVENANCE; LINK_REFERENCE_ONLY; PLAYBACK_E2E_REQUIRED", "decision": "HOLD", "recommended_url": "https://rutube.ru/video/0e89b3dcf4723b9038dba2f251bf4ac8/", "recommended_http": "200_HTML", "recommended_source_page": "https://mva-rolltor.ru/", "note": "The first-party MVA site links to this exact RUTUBE video. Keep HOLD until playback succeeds in the staging learner flow; store only the external link." },
+    { "id": 23, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED; NO_GENERAL_REUSE_LICENSE", "decision": "LINK_REFERENCE_ONLY" },
+    { "id": 24, "http": "404_HTML", "source_class": "MFR_OFFICIAL", "reuse_signal": "ALL_RIGHTS_RESERVED", "decision": "REPLACE_LINK_ONLY", "recommended_url": "https://doorhan.ru/upload/iblock/4d1/q0h5k5q9qurhknw4y95uuidkymckqlbm/%D0%9F%D1%80%D0%BE%D1%82%D0%B8%D0%B2%D0%BE%D0%BF%D0%BE%D0%B6%D0%B0%D1%80%D0%BD%D1%8B%D0%B5%20%D1%81%D0%B4%D0%B2%D0%B8%D0%B6%D0%BD%D1%8B%D0%B5%20%D0%B2%D0%BE%D1%80%D0%BE%D1%82%D0%B0_11_2024_web.pdf", "recommended_http": "200_PDF", "recommended_source_page": "https://doorhan.ru/service/new_sert/protivopozharnye-vorota-shtory-i-dveri/otkatnye-protivopozharnye-vorota-s-predelom-ognestoykosti-ei60-ei90/" },
+    { "id": 25, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "COPY_OR_USE_PROHIBITED_WITHOUT_PRIOR_CONSENT", "decision": "LINK_REFERENCE_ONLY" },
+    { "id": 26, "http": "TLS_FAIL", "source_class": "MFR_NAMED_DOMAIN_UNSAFE", "reuse_signal": "UNKNOWN", "decision": "REMOVE_OR_REPLACE", "note": "certificate is issued for *.jino.ru, not yarpojinvest.ru" },
+    { "id": 27, "http": "200_PDF", "source_class": "MFR_OFFICIAL", "reuse_signal": "NO_CLEAR_REUSE_BASIS; LINK_REFERENCE_ONLY", "decision": "REPLACE_WITH_MFR_SOURCE", "recommended_url": "https://ptc01.com/upload/iblock/8e6/n8ycmxz75rfl1jotvnawirv0n3cstux5.pdf", "recommended_http": "200_PDF", "recommended_source_page": "https://ptc01.com/production/ognetushiteli_poroshkovye_mig/op_4_z_avse_mig_e_3a_70v/", "note": "The official ZAO Pozhtekhnika product page and manufacturer PDF respond over HTTPS. Use as an external link only unless copying rights are separately approved." },
+    { "id": 28, "http": "200_HTML", "source_class": "THIRD_PARTY_VIDEO", "reuse_signal": "PLAYER_EMBED_ONLY; REPRODUCTION_RESTRICTED", "decision": "HOLD", "note": "YouTube channel ownership by the manufacturer was not independently verified" }
+  ]
+}
