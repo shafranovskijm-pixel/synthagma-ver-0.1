@@ -40,9 +40,9 @@ describe("compile-group-class-journal deployment contract", () => {
   it("exposes a revision marker for live deployment verification", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
-    expect(source).toContain("goreltech-group-package-server-facts-v19");
+    expect(source).toContain("goreltech-group-package-server-facts-v20");
     const clientSource = fs.readFileSync(path.resolve(__dirname, "../docxJournal.ts"), "utf8");
-    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v19"');
+    expect(clientSource).toContain('GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v20"');
     expect(source).toContain("function shortInstructorNames");
     expect(source).toContain("function instructorShortSlots");
     expect(source).toContain('split(/[;\\n]+/)');
@@ -63,9 +63,9 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("documentDate: document.document_date");
     expect(source).toContain("legacySharedDraftDate: parsed.data.documentDate");
     expect(source).not.toContain("const today = body.documentDate");
-    expect(source).toContain('from("group_documents")');
-    expect(source).toContain("committedPaths");
-    expect(source).toContain("unreferencedPaths");
+    expect(source).toContain("readGroupDocumentOperation");
+    expect(source).toContain("persistGroupDocumentOperation");
+    expect(source).toContain("storageAdmin && !persistenceStarted");
     expect(source).toContain("firstPositiveFiniteNumber(");
     expect(source).toContain("course?.duration");
     expect(source).toContain("doc_status: metadata.docStatus");
@@ -75,14 +75,9 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("statusWarnings.push");
     expect(source).toContain("warnings: statusWarnings");
     expect(source).not.toContain("document_date: parsed.data.documentDate");
-    expect(source).toContain('admin.rpc("create_goreltech_group_document_batch"');
-    expect(source).toContain("p_actor_id: userId");
-    expect(source).toContain("isMissingRpcError(");
-    expect(source).toContain('code === "PGRST202"');
-    expect(source).toContain('userClient.rpc("create_group_document_batch"');
-    expect(source).toContain("safeLegacyDraftDocuments");
-    expect(source).toContain('doc_status: "draft"');
-    expect(source).toContain("document_number: null");
+    expect(source).toContain("actorId: userId");
+    expect(source).not.toContain('rpc("create_group_document_batch"');
+    expect(source).not.toContain('rpc("create_goreltech_group_document_batch"');
     expect(source).toContain('PROGRAM_HOURS: programHours > 0 ? String(programHours) : ""');
     expect(source).not.toContain('|| "Генеральный директор"');
 
@@ -98,10 +93,9 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain('dryRun: z.boolean().default(false)');
     expect(source).toContain("X-Sintagma-Required-Compiler-Revision");
     expect(source).toContain('const requiredRevision = req.headers.get("X-Sintagma-Required-Compiler-Revision")');
-    // Explicit revision is enforced for saves too. Headerless old saves may
-    // continue safely on the new server during rollout; dry-run always requires it.
-    expect(source).toContain('if ((body.dryRun || requiredRevision !== null) && requiredRevision !== COMPILER_REVISION)');
-    expect(source.match(/if \(!body\.dryRun\)/g)).toHaveLength(2);
+    // Old tabs must refresh: an unkeyed legacy write cannot be retried safely.
+    expect(source).toContain('if (requiredRevision !== COMPILER_REVISION)');
+    expect(source.match(/if \(!body\.dryRun\)/g)).toHaveLength(3);
     expect(source).toContain('stage = "dry-run-complete"');
     expect(source).toContain("writesPerformed: false");
     expect(source).toContain("documentCount: validatedDocuments.length");
@@ -336,21 +330,37 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("schedule_source: factRows.scheduleSource");
   });
 
-  it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {
+  it("requires idempotent persistence and cannot fall back to an unkeyed write", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const preflight = source.indexOf('stage = "operation-preflight"');
+    const upload = source.indexOf('.storage.from(BUCKET).upload');
+    const persistence = source.indexOf('persistenceStarted = true');
+    expect(preflight).toBeGreaterThan(-1);
+    expect(upload).toBeGreaterThan(preflight);
+    expect(persistence).toBeGreaterThan(upload);
+    expect(source).toContain("const existingReceipt = await readGroupDocumentOperation(admin, operationScope)");
+    expect(source).toContain("if (existingReceipt) return json({ ...existingReceipt, replayed: true })");
+    expect(source).toContain("persistGroupDocumentOperation(admin, operationScope, persistedDocuments, statusWarnings)");
+    expect(source).not.toContain('rpc("create_group_document_batch"');
+    expect(source).not.toContain('rpc("create_goreltech_group_document_batch"');
+    expect(source).not.toContain("isMissingRpcError");
+    expect(source).not.toContain("unreferencedPaths");
+    expect(source).toContain("storageAdmin && !persistenceStarted");
+    expect(source).toContain("body.dryRun || Boolean(body.operationId)");
+  });
 
-    const trustedCall = source.indexOf('admin.rpc("create_goreltech_group_document_batch"');
-    const missingRpcGate = source.indexOf("isMissingRpcError(", trustedCall);
-    const legacyCall = source.indexOf('userClient.rpc("create_group_document_batch"', missingRpcGate);
-    expect(trustedCall).toBeGreaterThan(-1);
-    expect(missingRpcGate).toBeGreaterThan(trustedCall);
-    expect(legacyCall).toBeGreaterThan(missingRpcGate);
-    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_actor_id: userId");
-    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_organization_id: body.organizationId");
-    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_group_id: body.groupId");
-    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_organization_id: body.organizationId");
-    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_group_id: body.groupId");
-    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_docs: safeLegacyDraftDocuments");
+  it("reads exact operation status with authentication, no compilation, and no writes", () => {
+    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
+    const block = sourceSection(source, 'if (rawBody?.action === "operation-status")', "const parsed = BodySchema.safeParse(rawBody)");
+    expect(block).toContain("OperationStatusSchema.safeParse(rawBody)");
+    expect(block).toContain("statusUser.auth.getUser()");
+    expect(block).toContain("statusAuth.data.user.id");
+    expect(block).toContain("readGroupDocumentOperation(statusAdmin");
+    expect(block).toContain('operationStatus: receipt ? "completed" : "unknown"');
+    expect(block).toContain("writesPerformed: false");
+    expect(block).not.toContain(".storage.");
+    expect(block).not.toContain("persistGroupDocumentOperation(");
+    expect(block).not.toContain("studentUserIds");
   });
 
   it("не выдаёт фирменные шаблоны организации с теми же названием и ИНН, но другим UUID", () => {
@@ -385,6 +395,12 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("const authzError = adminRoleResult.error ||");
     expect(source).toContain("if (authzError) throw authzError");
     expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
+    expect(source).toContain('userClient.rpc("can_access_organization"');
+    expect(source).not.toContain('admin.rpc("has_org_staff_permission"');
+    const access = sourceSection(source, 'userClient.rpc("can_access_organization"', 'admin.rpc("is_org_owner"');
+    expect(access).toContain('_permission: "documents.manage"');
+    expect(access).toContain('_organization_id: body.organizationId');
+    expect(source.indexOf('userClient.rpc("can_access_organization"')).toBeLessThan(source.indexOf('stage = "source-data"'));
   });
 
   it("keeps the contract compiler off the ambiguous has_role RPC overload", () => {

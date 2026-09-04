@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,7 @@ import { batchStatusLabel, groupDocumentBatches } from "@/lib/group-docs/factual
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerateContractDialog } from "./GenerateContractDialog";
 import { GenerateDocxContractDialog } from "./GenerateDocxContractDialog";
-import { generateClassJournalDocx } from "@/lib/group-docs/docxJournal";
+import { generateClassJournalDocx, readClassJournalOperation } from "@/lib/group-docs/docxJournal";
 import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfile";
 import { downloadPrivateFile } from "@/utils/storageHelpers";
 import {
@@ -56,6 +56,8 @@ import {
 } from "@/lib/group-docs/signatories";
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
 import { localDateIso } from "@/lib/date/localDate";
+import { reconcileGroupDocumentPackage, type ReconciledGroupDocuments } from "@/lib/group-docs/packageReconciliation";
+import { useGroupDocumentPackageGate, type GroupDocumentPackageGate } from "@/hooks/useGroupDocumentPackageGate";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
@@ -122,7 +124,17 @@ function DocumentFactIssues({ row }: { row: GroupDocumentRow }) {
   );
 }
 
-export function GroupDocumentsFolder({
+/** Keep pending/uncertain writes across tab unmounts and A → B → A navigation. */
+export function GroupDocumentsFolder(props: Props) {
+  const enabled = props.ctx ? resolveGroupDocumentClientProfile(props.ctx.organization)?.key === "goreltech" : false;
+  const { gate, notify, beginOperation, acknowledgeOperation } = useGroupDocumentPackageGate(props.organizationId, props.groupId, enabled);
+  const key = JSON.stringify([props.organizationId, props.groupId]);
+  // A keyed child also isolates the legacy hook's late reads and open dialogs.
+  return <GroupDocumentsFolderContent key={key} {...props} packageGate={gate} notifyPackageGate={notify}
+    beginOperation={beginOperation} acknowledgeOperation={acknowledgeOperation} />;
+}
+
+function GroupDocumentsFolderContent({
   organizationId,
   groupId,
   groupName,
@@ -136,10 +148,23 @@ export function GroupDocumentsFolder({
   onOpenGroupSettings,
   onOpenOrganizationRequisites,
   onDataChanged,
-}: Props) {
-  const { documents, loading, refresh: refreshDocuments, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
+  packageGate,
+  notifyPackageGate,
+  beginOperation,
+  acknowledgeOperation,
+}: Props & {
+  packageGate: GroupDocumentPackageGate; notifyPackageGate: () => void;
+  beginOperation: (retry: boolean) => string; acknowledgeOperation: (operationId: string) => boolean;
+}) {
+  const { documents: loadedDocuments, loading, refresh: refreshDocuments, saveGenerated, remove } = useGroupDocuments(organizationId, groupId);
+  const [reconciled, setReconciled] = useState<ReconciledGroupDocuments | null>(null);
+  const documents = reconciled?.documents ?? loadedDocuments;
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [price, setPrice] = useState<number>(Number(defaultPrice) || 0);
-  const [busy, setBusy] = useState(false);
+  const busy = packageGate.busy;
+  const [reconciliationError, setReconciliationError] = useState<string | null>(null);
+  const [confirmedOperationVersion, setConfirmedOperationVersion] = useState<number | null>(null);
   const [companyPackageOpen, setCompanyPackageOpen] = useState(false);
   const [individualPackageOpen, setIndividualPackageOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<GroupDocumentRow | null>(null);
@@ -149,7 +174,7 @@ export function GroupDocumentsFolder({
   const [signatoriesOpen, setSignatoriesOpen] = useState(false);
   const [blankSignatoriesConfirmed, setBlankSignatoriesConfirmed] = useState(false);
   const [pendingPackageScenario, setPendingPackageScenario] =
-    useState<"legal" | "individual" | "documents" | "validation" | null>(null);
+    useState<"legal" | "individual" | "documents" | "validation" | "retry" | null>(null);
   const documentClientProfile = useMemo(
     () => ctx ? resolveGroupDocumentClientProfile(ctx.organization) : null,
     [ctx],
@@ -250,6 +275,7 @@ export function GroupDocumentsFolder({
   }, [missingFields, organizationMissingFields]);
 
   const requestPackage = (scenario: "legal" | "individual") => {
+    if (packageGate.busy || packageGate.requiresReload) return;
     if (packageDataBlockers.length > 0) {
       toast.error("Заполните обязательные данные группы", { description: packageDataBlockers.join(", ") });
       return;
@@ -264,6 +290,7 @@ export function GroupDocumentsFolder({
   };
 
   const requestDocumentsRebuild = () => {
+    if (packageGate.busy || packageGate.requiresReload) return;
     if (packageDataBlockers.length > 0) {
       toast.error("Заполните обязательные данные группы", { description: packageDataBlockers.join(", ") });
       return;
@@ -277,6 +304,7 @@ export function GroupDocumentsFolder({
   };
 
   const requestDocumentsValidation = () => {
+    if (packageGate.busy) return;
     if (packageDataBlockers.length > 0) {
       toast.error("Заполните обязательные данные группы", { description: packageDataBlockers.join(", ") });
       return;
@@ -304,7 +332,10 @@ export function GroupDocumentsFolder({
     docBlockers?: string[],
     contractBasis?: string,
     dryRun = false,
+    retryExisting = false,
   ) => {
+    if (!active.current || packageGate.busy || (!dryRun && packageGate.requiresReload && !retryExisting)) return false;
+    if (retryExisting && (!packageGate.operationId || packageGate.storageError)) return false;
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
     const gate = docBlockers ?? Array.from(new Set([
       ...packageBlockers,
@@ -317,7 +348,13 @@ export function GroupDocumentsFolder({
     }
     if (ctx.students.length === 0) { toast.error("В группе нет учеников"); return false; }
 
-    setBusy(true);
+    // Ref-backed gate closes before the first await / React render.
+    packageGate.busy = true;
+    const operation = ++packageGate.revision;
+    let mutationStarted = false;
+    let operationId: string | undefined;
+    let acknowledged = false;
+    notifyPackageGate();
     try {
       // Сохранённые факты проверяет сервер. Не резервируем официальные номера
       // до завершения проверок реквизитов и политик итоговой аттестации.
@@ -386,10 +423,19 @@ export function GroupDocumentsFolder({
         : generatedTypes.length > 1
           ? generatePackage(generationCtx, generatedTypes, genOpts)
           : [];
+      if (!active.current) return false;
+      if (exactGoreltechDocuments && !dryRun) {
+        operationId = beginOperation(retryExisting);
+        mutationStarted = true;
+        setReconciled(null);
+        setReconciliationError(null);
+        setConfirmedOperationVersion(null);
+      }
       const res = exactGoreltechDocuments
         ? await generateClassJournalDocx({
             organizationId,
             groupId,
+            ...(!dryRun ? { operationId } : {}),
             studentUserIds: ctx.students.map((student) => student.user_id),
              journalDocumentDate: journalDraftDate,
              fillMode: mode,
@@ -398,6 +444,16 @@ export function GroupDocumentsFolder({
             journalSignatory: documentSignatories.class_journal,
             otherDocuments: docs,
           }).then(async result => {
+            if (Boolean(result.dryRun) !== dryRun) throw new Error("Режим операции не подтверждён сервером");
+            if (!dryRun) {
+              if (!operationId || result.operationId !== operationId) throw new Error("Сервер не подтвердил идентификатор сохранённой операции");
+              if (packageGate.revision !== operation || packageGate.operationId !== operationId) return result;
+              // A late exact acknowledgment settles only its scoped durable ID,
+              // even when its original component has already unmounted.
+              acknowledged = acknowledgeOperation(operationId);
+              if (!acknowledged) throw new Error(packageGate.storageError || "Появилась другая операция; её состояние нужно проверить отдельно.");
+            }
+            if (!active.current || packageGate.revision !== operation) return result;
             if (result.dryRun) {
               const warnings = result.warnings || [];
               if (warnings.length) {
@@ -412,6 +468,7 @@ export function GroupDocumentsFolder({
               return result;
             }
              await refreshDocuments();
+            if (!active.current || packageGate.revision !== operation) return result;
             const warnings = result.warnings || [];
             toast.warning("Документы ГОРЭЛТЕХ сохранены как черновики", {
               description: warnings.length
@@ -421,22 +478,79 @@ export function GroupDocumentsFolder({
             return result;
           })
        : await saveGenerated(docs);
+      if (!active.current || packageGate.revision !== operation) return false;
+      if (mutationStarted && !acknowledged) return false;
       const ok = !!res;
       if (ok && exactGoreltechDocuments && "dryRun" in res && res.dryRun) return true;
+      if (ok && retryExisting) setRetryPackage(null);
       if (ok) onDataChanged?.();
       if (ok && types.length === 1) {
         toast.success(`Документ сформирован (версия ${res!.version ?? "—"})`);
       } else if (ok) {
-        toast.success(`Пакет сохранён как версия ${res!.version ?? "—"} (текущая)`);
+        toast.success(`Пакет сохранён как версия ${res!.version ?? "—"}`);
       }
       return ok;
     } catch (e: any) {
-      toast.error("Ошибка генерации: " + (e?.message || ""));
+      if (mutationStarted && packageGate.operationId === operationId) packageGate.requiresReload = true;
+      if (active.current && packageGate.revision === operation) {
+        toast.error("Ошибка генерации: " + (e?.message || ""));
+      }
       return false;
     } finally {
-      setBusy(false);
+      if (packageGate.revision === operation) {
+        packageGate.busy = false;
+        notifyPackageGate();
+      }
     }
 
+  };
+
+  const reconcilePackage = async () => {
+    if (!active.current || packageGate.busy || !packageGate.requiresReload) return;
+    const operationId = packageGate.operationId;
+    if (!operationId || packageGate.storageError) return;
+    packageGate.busy = true;
+    const operation = ++packageGate.revision;
+    setReconciliationError(null);
+    notifyPackageGate();
+    try {
+      const receipt = await readClassJournalOperation({ organizationId, groupId, operationId });
+      if (packageGate.revision !== operation || packageGate.operationId !== operationId) return;
+      let acknowledged = false;
+      if (receipt) {
+        if (receipt.dryRun || receipt.operationId !== operationId) throw new Error("Сервер вернул подтверждение другой операции. Повтор новой записью запрещён.");
+        acknowledged = acknowledgeOperation(operationId);
+        if (!acknowledged) throw new Error(packageGate.storageError || "Состояние сохранённой операции изменилось. Проверьте его повторно.");
+      }
+      if (!active.current || packageGate.revision !== operation) return;
+      if (acknowledged) {
+        setConfirmedOperationVersion(receipt!.version);
+        setRetryPackage(null);
+      } else {
+        setReconciliationError("Сервер ещё не подтвердил завершение этой операции. Она может продолжать выполняться; список документов не доказывает её завершение.");
+      }
+      const confirmed = await reconcileGroupDocumentPackage({ organizationId, groupId });
+      if (!active.current || packageGate.revision !== operation || packageGate.operationId !== (acknowledged ? null : operationId)) return;
+      // The legacy refresh swallows failures. It only synchronizes its cache;
+      // confirmation and visible rows come from the validated read above.
+      await refreshDocuments();
+      if (!active.current || packageGate.revision !== operation || packageGate.operationId !== (acknowledged ? null : operationId)) return;
+      setReconciled(confirmed);
+    } catch (error) {
+      if (active.current && packageGate.revision === operation) {
+        setReconciliationError(error instanceof Error ? error.message : "Не удалось подтвердить список документов.");
+      }
+    } finally {
+      if (packageGate.revision === operation) { packageGate.busy = false; notifyPackageGate(); }
+    }
+  };
+
+  const requestIdempotentRetry = () => {
+    if (packageGate.busy || !packageGate.operationId || packageGate.storageError) return;
+    if (blankSignatoryBlocker.length > 0) {
+      setPendingPackageScenario("retry"); setSignatoriesOpen(true); return;
+    }
+    void run(PACKAGE_DOC_TYPES, packageDataBlockers, undefined, false, true);
   };
 
   /**
@@ -445,6 +559,7 @@ export function GroupDocumentsFolder({
    * Остальные 9 документов создаются только после подтверждённого сохранения договора.
    */
   const handleContractsGenerated = async (result?: GeneratedContractBatch) => {
+    if (!active.current) return false;
     const scenario = result?.scenario ?? "individual";
     const count = result?.count ?? 0;
     const validContractBatch = scenario === "legal" ? count === 1 : count > 0;
@@ -466,6 +581,7 @@ export function GroupDocumentsFolder({
         ? `Договоры № ${numbers.join(", ")}`
         : undefined;
     const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
+    if (!active.current) return false;
     if (ok) {
       setRetryPackage(null);
       toast.success(packageResultMessage(scenario, count, PACKAGE_DOC_TYPES.length));
@@ -476,7 +592,7 @@ export function GroupDocumentsFolder({
   };
 
   const retryPackageDocuments = async () => {
-    if (!retryPackage) return;
+    if (!retryPackage || packageGate.busy || packageGate.requiresReload) return;
     const numbers = retryPackage.contractNumbers;
     const contractBasis = numbers.length === 1
       ? `Договор № ${numbers[0]}`
@@ -484,6 +600,7 @@ export function GroupDocumentsFolder({
         ? `Договоры № ${numbers.join(", ")}`
         : undefined;
     const ok = await run(PACKAGE_DOC_TYPES, undefined, contractBasis);
+    if (!active.current) return;
     if (ok) {
       toast.success(packageResultMessage(retryPackage.scenario, retryPackage.count, PACKAGE_DOC_TYPES.length));
       setRetryPackage(null);
@@ -617,12 +734,38 @@ export function GroupDocumentsFolder({
         )}
       </Card>
 
+      {packageGate.requiresReload && !busy && (
+        <Card role="alert" className="space-y-2 rounded-2xl border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <p className="font-medium">{packageGate.storageError ? "Новое сохранение отключено" : "Сохранение пакета не подтверждено"}</p>
+          <p>Новая операция отключена до подтверждения сервером именно этого сохранения. Обычный список документов не подтверждает завершение запроса. Автоматических повторов нет.</p>
+          {packageGate.storageError && <p className="text-destructive">{packageGate.storageError} Восстановите доступ к хранилищу и перезагрузите страницу; не удаляйте идентификатор до проверки.</p>}
+          {reconciliationError && <p className="text-destructive">{reconciliationError}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" disabled={!packageGate.operationId || !!packageGate.storageError} onClick={() => void reconcilePackage()}>Проверить операцию и перечитать список</Button>
+            <Button variant="outline" disabled={!packageGate.operationId || !!packageGate.storageError} onClick={requestIdempotentRetry}>Повторить сохранение без дубликата</Button>
+          </div>
+          <p>Повтор использует тот же идентификатор. Сервер вернёт первую завершённую партию этой операции; текущие изменения формы не гарантируются. Для изменённого комплекта нужна новая операция после подтверждения предыдущей.</p>
+        </Card>
+      )}
+      {packageGate.requiresReload && busy && <p role="status" className="text-sm text-muted-foreground">Операция ещё выполняется. Повторное сохранение отключено.</p>}
+      {(reconciled || confirmedOperationVersion !== null) && (
+        <Card role="status" className="rounded-2xl border-border p-3 text-sm">
+          {confirmedOperationVersion !== null && <p>Сервер подтвердил сохранённую партию операции: версия {confirmedOperationVersion}. Это историческое подтверждение, а не утверждение, что версия остаётся текущей.</p>}
+          {reconciled && <p>Список документов перечитан: {reconciled.documents.length} файлов.
+            {reconciled.currentVersion === null
+              ? " Текущая версия пакета в доступном списке не найдена."
+              : ` Текущая версия по перечитанному списку: ${reconciled.currentVersion}.`}
+            {" Сам список не подтверждает завершение или откат неизвестной операции; сохранение не повторялось."}
+          </p>}
+        </Card>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
+        <Button className="gap-1.5 rounded-xl" disabled={busy || packageGate.requiresReload || !ctx || !!retryPackage} onClick={() => requestPackage("legal")}>
           <FileType2 className="w-4 h-4" /> {busy ? "Генерация…" : exactGoreltechDocuments ? "Пакет компании (Word клиента)" : "Пакет компании (универсальный)"}
         </Button>
-        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || !ctx || !!retryPackage} onClick={() => requestPackage("individual")}>
+        <Button variant="outline" className="gap-1.5 rounded-xl" disabled={busy || packageGate.requiresReload || !ctx || !!retryPackage} onClick={() => requestPackage("individual")}>
           <User className="w-4 h-4" /> Пакет физлица
         </Button>
         {exactGoreltechDocuments && (
@@ -656,7 +799,7 @@ export function GroupDocumentsFolder({
             <Button
               variant="outline"
               className="gap-1.5 rounded-xl"
-              disabled={busy || !ctx || !!retryPackage}
+              disabled={busy || packageGate.requiresReload || !ctx || !!retryPackage}
               onClick={requestDocumentsRebuild}
               title={blankSignatoryBlocker.length > 0
                 ? "Сначала откроется проверка подписантов, затем будут пересобраны все девять Word-документов"
@@ -724,10 +867,10 @@ export function GroupDocumentsFolder({
         <Card className="p-4 rounded-2xl border-amber-500/40 bg-amber-500/10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm">
-              <div className="font-medium">Договор сохранён, 9 документов группы не обновлены</div>
-              <div className="text-muted-foreground mt-0.5">Повтор безопасен: новый договор создаваться не будет.</div>
+              <div className="font-medium">Договор сохранён; результат формирования 9 документов требует проверки</div>
+              <div className="text-muted-foreground mt-0.5">Новый договор создаваться не будет. Перед повтором проверьте актуальный список документов.</div>
             </div>
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" disabled={busy} onClick={retryPackageDocuments}>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5" disabled={busy || packageGate.requiresReload} onClick={retryPackageDocuments}>
               <RotateCcw className="w-3.5 h-3.5" /> Повторить 9 документов
             </Button>
           </div>
@@ -830,7 +973,7 @@ export function GroupDocumentsFolder({
                       </Button>
                     </>
                   )}
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Удалить ${row.name}`} title={`Удалить ${row.name}`} onClick={() => setDeleteRow(row)}>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={busy || packageGate.requiresReload} aria-label={`Удалить ${row.name}`} title={`Удалить ${row.name}`} onClick={() => setDeleteRow(row)}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -923,6 +1066,9 @@ export function GroupDocumentsFolder({
             if (pendingPackageScenario === "validation") {
               void run(PACKAGE_DOC_TYPES, packageDataBlockers, undefined, true);
             }
+            if (pendingPackageScenario === "retry") {
+              void run(PACKAGE_DOC_TYPES, packageDataBlockers, undefined, false, true);
+            }
             setPendingPackageScenario(null);
           }}
         />
@@ -955,11 +1101,16 @@ export function GroupDocumentsFolder({
             <AlertDialogCancel className="rounded-xl">Отмена</AlertDialogCancel>
             <AlertDialogAction
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={busy || packageGate.requiresReload}
               onClick={async () => {
                 const row = deleteRow;
-                if (!row) return;
+                if (!row || packageGate.busy || packageGate.requiresReload) return;
                 const deleted = await remove(row.id);
-                if (deleted) onDataChanged?.();
+                if (deleted && active.current) {
+                  // Stop presenting the earlier recovery snapshot as a current read.
+                  setReconciled(null);
+                  onDataChanged?.();
+                }
               }}
             >
               Удалить

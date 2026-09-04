@@ -59,12 +59,13 @@ import {
   REGISTRATION_RECORD_STATUSES,
   type GroupRegistrationFactsResult,
 } from "../_shared/docx-ooxml/groupRegistrationFacts.ts";
+import { readGroupDocumentOperation, persistGroupDocumentOperation } from "../_shared/docx-ooxml/groupDocumentOperation.ts";
 
 /**
  * Visible in every response so a live check can distinguish the deploy-safe
  * embedded-template compiler from the older Deno.readFile implementation.
  */
-export const COMPILER_REVISION = "goreltech-group-package-server-facts-v19";
+export const COMPILER_REVISION = "goreltech-group-package-server-facts-v20";
 const GORELTECH_ORGANIZATION_ID = "7237f9d4-3670-4a19-8946-a43c68fd3473";
 const GORELTECH_INN = "7806541216";
 
@@ -103,6 +104,7 @@ const LegacyDocumentSchema = z.object({
 const BodySchema = z.object({
   organizationId: z.string().uuid(),
   groupId: z.string().uuid(),
+  operationId: z.string().uuid().optional(),
   studentUserIds: z.array(z.string().uuid()).max(5000),
   /** @deprecated Общая дата старого клиента, только для fallback черновика. */
   documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -123,7 +125,15 @@ const BodySchema = z.object({
 ).refine(
   (body) => new Set(body.otherDocuments.map((document) => document.doc_type)).size === body.otherDocuments.length,
   { message: "Один тип документа нельзя добавить в пакет дважды", path: ["otherDocuments"] },
+).refine(
+  (body) => body.dryRun || Boolean(body.operationId),
+  { message: "Обновите интерфейс: для сохранения нужен идентификатор операции", path: ["operationId"] },
 );
+
+const OperationStatusSchema = z.object({
+  action: z.literal("operation-status"), organizationId: z.string().uuid(),
+  groupId: z.string().uuid(), operationId: z.string().uuid(),
+}).strict();
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -135,24 +145,6 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
 
 function decodeBase64Bytes(value: string): Uint8Array {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
-}
-
-function isMissingRpcError(error: unknown, functionName: string): boolean {
-  const value = error && typeof error === "object"
-    ? error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown }
-    : {};
-  const code = String(value.code || "");
-  const text = [value.message, value.details, value.hint]
-    .map((part) => String(part || ""))
-    .join(" ")
-    .toLowerCase();
-  const normalizedName = functionName.toLowerCase();
-  return code === "PGRST202"
-    || (text.includes(normalizedName) && (
-      text.includes("could not find the function")
-      || text.includes("schema cache")
-      || text.includes("does not exist")
-    ));
 }
 
 function shortInstructorNames(value: unknown): string {
@@ -203,13 +195,35 @@ Deno.serve(async (req) => {
   const uploadedPaths: string[] = [];
   const statusWarnings: string[] = [];
   let storageAdmin: any = null;
+  let persistenceStarted = false;
   let stage = "request-validation";
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
     const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader.startsWith("Bearer ")) return json({ error: "Требуется авторизация" }, 401);
 
-    const parsed = BodySchema.safeParse(await req.json());
+    const rawBody = await req.json();
+    if (rawBody?.action === "operation-status") {
+      const status = OperationStatusSchema.safeParse(rawBody);
+      if (!status.success) return json({ error: "Некорректные данные операции", writesPerformed: false }, 400);
+      if (req.headers.get("X-Sintagma-Required-Compiler-Revision") !== COMPILER_REVISION) {
+        return json({ error: "Обновите интерфейс проверки операции", writesPerformed: false }, 409);
+      }
+      // Read-only receipt recovery does not depend on today's roster/form data.
+      // SQL checks service role, authenticated actor permission and exact tenant/group.
+      const statusUser = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const statusAuth = await statusUser.auth.getUser();
+      if (statusAuth.error || !statusAuth.data?.user) return json({ error: "Недействительная сессия", writesPerformed: false }, 401);
+      const statusAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      stage = "operation-status";
+      const receipt = await readGroupDocumentOperation(statusAdmin, {
+        actorId: statusAuth.data.user.id, ...status.data,
+      });
+      return json({ operationId: status.data.operationId, operationStatus: receipt ? "completed" : "unknown", writesPerformed: false, ...(receipt ? { receipt } : {}) });
+    }
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) {
       return json({ error: "Некорректные данные", details: parsed.error.flatten().fieldErrors }, 400);
     }
@@ -229,10 +243,8 @@ Deno.serve(async (req) => {
       })),
     };
     const requiredRevision = req.headers.get("X-Sintagma-Required-Compiler-Revision");
-    // Old open tabs may still save drafts without this header during rollout.
-    // Every explicit revision (including normal saves) is enforced; dry-run
-    // always requires it. Legacy requests still use the new server-only facts.
-    if ((body.dryRun || requiredRevision !== null) && requiredRevision !== COMPILER_REVISION) {
+    // Old open tabs must refresh before saving: v20 requires durable operation IDs.
+    if (requiredRevision !== COMPILER_REVISION) {
       return json({
         error: "Клиент не подтвердил точную ревизию безопасной серверной проверки",
         writesPerformed: false,
@@ -257,8 +269,9 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .eq("role", "admin")
         .maybeSingle(),
-      admin.rpc("has_org_staff_permission", {
-        _user_id: userId,
+      // Caller-bound policy includes active membership/expiry, unlike the
+      // permission-list helper alone. Keep this check on the user JWT.
+      userClient.rpc("can_access_organization", {
         _organization_id: body.organizationId,
         _permission: "documents.manage",
       }),
@@ -271,6 +284,16 @@ Deno.serve(async (req) => {
     const isOwner = ownerResult.data;
     if (!isAdmin && !hasPermission && !isOwner) {
       return json({ error: "Недостаточно прав для генерации журнала" }, 403);
+    }
+
+    const operationScope = {
+      actorId: userId, organizationId: body.organizationId,
+      groupId: body.groupId, operationId: body.operationId || "",
+    };
+    if (!body.dryRun) {
+      stage = "operation-preflight";
+      const existingReceipt = await readGroupDocumentOperation(admin, operationScope);
+      if (existingReceipt) return json({ ...existingReceipt, replayed: true });
     }
 
     stage = "source-data";
@@ -891,87 +914,16 @@ Deno.serve(async (req) => {
       ...compiledPackageDocuments,
       ...(journalDocument ? [journalDocument] : []),
     ];
-    let batchResult = await admin.rpc("create_goreltech_group_document_batch", {
-      p_actor_id: userId,
-      p_organization_id: body.organizationId,
-      p_group_id: body.groupId,
-      p_docs: persistedDocuments,
-    });
-    if (batchResult.error && isMissingRpcError(
-      batchResult.error,
-      "create_goreltech_group_document_batch",
-    )) {
-      const rolloutWarning = "База данных ещё использует совместимый режим выкладки: пакет сохранён только как черновик без официальных номеров.";
-      statusWarnings.push(rolloutWarning);
-      const safeLegacyDraftDocuments = persistedDocuments.map((document) => ({
-        ...document,
-        doc_status: "draft",
-        document_number: null,
-        generation_status: "draft",
-        source_note: [document.source_note, rolloutWarning].filter(Boolean).join(" "),
-      }));
-      batchResult = await userClient.rpc("create_group_document_batch", {
-        p_organization_id: body.organizationId,
-        p_group_id: body.groupId,
-        p_docs: safeLegacyDraftDocuments,
-      });
-    }
-    let batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
-    if (batchResult.error) {
-      // The RPC transaction may have committed even if its HTTP response was
-      // lost. Reconcile by the unique uploaded paths before deleting anything.
-      const reconciliation = await admin
-        .from("group_documents")
-        .select("file_path, package_batch_id, package_version")
-        .eq("organization_id", body.organizationId)
-        .eq("group_id", body.groupId)
-        .in("file_path", uploadedPaths);
-
-      if (reconciliation.error) {
-        uploadedPaths.length = 0;
-        throw new Error(
-          "Ответ базы не подтверждён; Word-файлы сохранены для безопасной сверки. Обновите страницу",
-        );
-      }
-
-      const committedRows = ((reconciliation.data as any[]) || []);
-      const committedPaths = new Set(committedRows.map((row) => String(row.file_path || "")));
-      const unreferencedPaths = uploadedPaths.filter((path) => !committedPaths.has(path));
-      if (unreferencedPaths.length) {
-        await admin.storage.from(BUCKET).remove(unreferencedPaths);
-      }
-      uploadedPaths.length = 0;
-
-      const batchIds = new Set(committedRows.map((row) => row.package_batch_id).filter(Boolean));
-      if (committedRows.length === committedPaths.size
-        && committedPaths.size === compiledPackageDocuments.length + (journalDocument ? 1 : 0)
-        && batchIds.size === 1) {
-        batch = {
-          batch_id: committedRows[0].package_batch_id,
-          batch_version: committedRows[0].package_version,
-          inserted_count: committedRows.length,
-        };
-      } else {
-        throw batchResult.error;
-      }
-    }
+    // Once persistence starts, a lost response cannot authorize deleting uploads:
+    // the transaction may still commit after a proxy timeout. The durable receipt
+    // and batch are committed atomically by the scoped idempotent RPC.
+    persistenceStarted = true;
+    const receipt = await persistGroupDocumentOperation(admin, operationScope, persistedDocuments, statusWarnings);
+    uploadedPaths.length = 0;
     stage = "complete";
-    return json({
-      document: journalDocument
-        ? {
-            doc_type: journalDocument.doc_type,
-            name: journalDocument.name,
-            file_path: journalDocument.file_path,
-            docx_sha256: journalDocument.docx_sha256,
-            pdf_status: journalDocument.pdf_status,
-            template_version_label: journalDocument.template_version_label,
-          }
-        : null,
-      batch,
-      warnings: statusWarnings,
-    });
+    return json(receipt);
   } catch (error) {
-    if (uploadedPaths.length && storageAdmin) {
+    if (uploadedPaths.length && storageAdmin && !persistenceStarted) {
       const cleanupPaths = [...uploadedPaths];
       uploadedPaths.length = 0;
       try {

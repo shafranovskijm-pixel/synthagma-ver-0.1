@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
   generatePackage: vi.fn(),
   generateDocument: vi.fn(),
   generateClassJournalDocx: vi.fn(),
+  readClassJournalOperation: vi.fn(),
   refreshDocuments: vi.fn(),
+  reconcilePackage: vi.fn(),
   saveGenerated: vi.fn(),
   onDataChanged: vi.fn(),
   docxSave: vi.fn(),
@@ -52,6 +54,10 @@ vi.mock("@/lib/group-docs/generate", () => ({
 
 vi.mock("@/lib/group-docs/docxJournal", () => ({
   generateClassJournalDocx: mocks.generateClassJournalDocx,
+  readClassJournalOperation: mocks.readClassJournalOperation,
+}));
+vi.mock("@/lib/group-docs/packageReconciliation", () => ({
+  reconcileGroupDocumentPackage: mocks.reconcilePackage,
 }));
 
 vi.mock("sonner", () => ({
@@ -182,9 +188,11 @@ describe("GroupDocumentsFolder package contract routing", () => {
     mocks.remove.mockReset();
     mocks.remove.mockResolvedValue(true);
     mocks.refreshDocuments.mockResolvedValue(undefined);
+    mocks.reconcilePackage.mockResolvedValue({ documents: [], currentVersion: null });
     mocks.saveGenerated.mockResolvedValue({ version: 1 });
     mocks.generatePackage.mockReturnValue(legacyDocs);
-    mocks.generateClassJournalDocx.mockResolvedValue({ version: 1 });
+    mocks.generateClassJournalDocx.mockImplementation(async (params: { operationId?: string; dryRun?: boolean }) => ({ version: 1, operationId: params.operationId ?? null, dryRun: params.dryRun === true }));
+    mocks.readClassJournalOperation.mockResolvedValue(null);
     mocks.useGroupDocuments.mockReturnValue({
       documents: [],
       loading: false,
@@ -291,7 +299,7 @@ describe("GroupDocumentsFolder package contract routing", () => {
   it("повторяет только 9 документов, если Word-договор уже сохранён", async () => {
     mocks.generateClassJournalDocx
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ version: 2 });
+      .mockImplementationOnce(async (params: { operationId?: string }) => ({ version: 2, operationId: params.operationId }));
     renderFolder();
     await confirmSourceSignatories();
 
@@ -303,7 +311,8 @@ describe("GroupDocumentsFolder package contract routing", () => {
     expect(screen.getByRole("button", { name: "Пакет физлица" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Пересобрать 9 Word-документов" })).toBeDisabled();
 
-    fireEvent.click(retry);
+    expect(retry).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить сохранение без дубликата" }));
 
     await waitFor(() => expect(mocks.generateClassJournalDocx).toHaveBeenCalledTimes(2));
     expect(mocks.docxSave).toHaveBeenCalledTimes(1);

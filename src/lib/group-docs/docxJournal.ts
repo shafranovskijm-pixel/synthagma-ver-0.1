@@ -2,7 +2,33 @@ import type { GeneratedDocument } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 
-export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v19";
+export const GORELTECH_DRY_RUN_COMPILER_REVISION = "goreltech-group-package-server-facts-v20";
+const validOperationId = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+/** Read-only receipt lookup. Unknown is not proof that a save did not happen. */
+export async function readClassJournalOperation(input: { organizationId: string; groupId: string; operationId: string }): Promise<GenerateClassJournalResult | null> {
+  if (!input.organizationId || !input.groupId || !validOperationId(input.operationId)) throw new Error("Некорректный контекст операции");
+  await assertCompilerCapability();
+  const { data: payload, error } = await safeInvoke<any>("compile-group-class-journal", {
+    retry: true, body: { action: "operation-status", ...input },
+    headers: { "X-Sintagma-Required-Compiler-Revision": GORELTECH_DRY_RUN_COMPILER_REVISION },
+  });
+  if (error) throw error;
+  if (!payload || payload.error || payload.compilerRevision !== GORELTECH_DRY_RUN_COMPILER_REVISION || payload.operationId !== input.operationId || payload.writesPerformed !== false) throw new Error("Статус операции не подтверждён");
+  if (payload.operationStatus === "unknown") {
+    if (payload.receipt != null) throw new Error("Противоречивый статус операции");
+    return null;
+  }
+  const receipt = payload.receipt;
+  const batch = receipt?.batch;
+  const journal = receipt?.document;
+  if (payload.operationStatus !== "completed" || receipt?.operationId !== input.operationId
+    || typeof batch?.batch_id !== "string" || !batch.batch_id.trim() || !Number.isSafeInteger(batch.batch_version) || batch.batch_version < 1 || batch.inserted_count !== 9
+    || journal?.doc_type !== "class_journal" || typeof journal.name !== "string" || !journal.name.trim()
+    || typeof journal.file_path !== "string" || !journal.file_path.trim() || typeof journal.docx_sha256 !== "string" || !/^[A-F0-9]{64}$/.test(journal.docx_sha256)) throw new Error("Квитанция полного пакета не подтверждена");
+  return { operationId: input.operationId, dryRun: false, writesPerformed: false, batchId: batch.batch_id, version: batch.batch_version, insertedCount: batch.inserted_count, filePath: journal.file_path,
+    warnings: Array.isArray(receipt.warnings) ? receipt.warnings.map(String).filter(Boolean) : [], documents: [] };
+}
 
 async function readCompilerRevision(error: unknown): Promise<string> {
   if (!error || typeof error !== "object" || !("context" in error)) return "";
@@ -17,7 +43,7 @@ async function readCompilerRevision(error: unknown): Promise<string> {
 
   // Старый Nginx production физически передаёт revision, но не открывает
   // custom response header браузерному CORS. Edge дублирует revision в JSON.
-  // Читаем только копию error-response и принимаем ровно v19: восемь видов
+  // Читаем только копию error-response и принимаем ровно v20: восемь видов
   // документов используют серверные источники, а не табличный HTML клиента.
   const response = context as Partial<Response>;
   if (typeof response.clone !== "function") return "";
@@ -45,6 +71,7 @@ async function assertCompilerCapability(): Promise<void> {
 }
 
 export interface GenerateClassJournalParams {
+  operationId?: string;
   organizationId: string;
   groupId: string;
   /** Снимок активного состава группы, использованный для всех документов пакета. */
@@ -65,6 +92,7 @@ export interface GenerateClassJournalParams {
 }
 
 export interface GenerateClassJournalResult {
+  operationId: string | null;
   dryRun: boolean;
   writesPerformed: boolean;
   batchId: string | null;
@@ -100,6 +128,7 @@ const legacyPayload = (document: GeneratedDocument) => ({
 export async function generateClassJournalDocx(
   params: GenerateClassJournalParams,
 ): Promise<GenerateClassJournalResult> {
+  if (!params.dryRun && !validOperationId(params.operationId)) throw new Error("Нужен корректный идентификатор операции сохранения");
   // Both preview and save must negotiate the server-only facts revision before
   // any real roster/document payload is sent (including a rolling deployment).
   await assertCompilerCapability();
@@ -109,6 +138,7 @@ export async function generateClassJournalDocx(
     retry: params.dryRun === true,
     body: {
       organizationId: params.organizationId,
+      ...(!params.dryRun ? { operationId: params.operationId } : {}),
       groupId: params.groupId,
       studentUserIds: params.studentUserIds,
       journalDocumentDate: params.journalDocumentDate,
@@ -157,16 +187,31 @@ export async function generateClassJournalDocx(
     ) {
       throw new Error("Сервер не подтвердил безопасную проверку Word-пакета без сохранения");
     }
+  } else {
+    const expectedCount = params.otherDocuments.length + (params.includeJournal === false ? 0 : 1);
+    const journal = payload?.document;
+    // The save endpoint currently returns batch metadata and the journal only,
+    // not the dry-run documents array. Validate what it actually acknowledges.
+    const validJournal = params.includeJournal === false ? journal === null
+      : journal?.doc_type === "class_journal"
+        && typeof journal.name === "string" && journal.name.trim().length > 0
+        && typeof journal.file_path === "string" && journal.file_path.trim().length > 0
+        && typeof journal.docx_sha256 === "string" && /^[A-F0-9]{64}$/.test(journal.docx_sha256);
+    if (payload?.operationId !== params.operationId || payload?.dryRun === true || payload?.writesPerformed === false
+      || typeof batch.batch_id !== "string" || !batch.batch_id.trim()
+      || !Number.isSafeInteger(batch.batch_version) || batch.batch_version < 1
+      || !Number.isSafeInteger(batch.inserted_count) || batch.inserted_count !== expectedCount
+      || !validJournal) {
+      throw new Error(failureMessage("Ответ сервера не подтвердил сохранение полной партии документов"));
+    }
   }
   return {
+    operationId: params.dryRun ? null : params.operationId!,
     dryRun: payload?.dryRun === true,
     writesPerformed: payload?.writesPerformed !== false && payload?.dryRun !== true,
     batchId: batch.batch_id || null,
     version: Number(batch.batch_version) || null,
-    insertedCount:
-      Number(batch.inserted_count)
-      || Number(payload?.documentCount)
-      || params.otherDocuments.length + (params.includeJournal === false ? 0 : 1),
+    insertedCount: params.dryRun ? Number(payload.documentCount) : batch.inserted_count,
     filePath: String(payload?.document?.file_path || ""),
     warnings: Array.isArray(payload?.warnings)
       ? payload.warnings.map((warning: unknown) => String(warning)).filter(Boolean)
