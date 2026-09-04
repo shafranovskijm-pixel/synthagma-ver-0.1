@@ -400,7 +400,7 @@ export interface CourseLibraryCsvOptions {
 }
 
 function protectSpreadsheetFormula(value: string): string {
-  const withoutNullBytes = value.replaceAll("\u0000", "");
+  const withoutNullBytes = value.split("\u0000").join("");
   const normalizedLineEndings = withoutNullBytes.replace(/\r\n?/gu, "\n");
 
   return /^[\t ]*[=+\-@]/u.test(normalizedLineEndings)

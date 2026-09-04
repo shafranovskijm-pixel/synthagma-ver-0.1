@@ -281,6 +281,16 @@ describe("courseLibrary", () => {
     expect(csv).toContain("\r\n");
   });
 
+  it("removes every null byte before checking spreadsheet formulas", () => {
+    const csv = exportCourseLibraryResourcesToCsv([
+      resource({ sourceName: "\u0000=SUM(1,2)\u0000", description: "a\u0000b\u0000c" }),
+    ], { includeBom: false, lineEnding: "\n" });
+
+    expect(csv).not.toContain("\u0000");
+    expect(csv).toContain('"\'=SUM(1,2)"');
+    expect(csv).toContain('"abc"');
+  });
+
   it("exports the API view-model field names without a second mapper", () => {
     const csv = courseLibraryToCsv([{
       assignmentId: "assignment-1",

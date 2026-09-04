@@ -8,27 +8,26 @@ import {
   buildCourseLibraryImportDryRun,
   isSafeCourseLibraryStoragePath,
 } from "@/lib/courseLibraryImportDryRun";
+import type { CourseLibraryImportResource } from "@/lib/courseLibraryManifest";
 
 const courseId = "11111111-1111-4111-8111-111111111111";
 const organizationId = CSZ_LIBRARY_IMPORT_ORGANIZATION_ID;
 const moduleId = "33333333-3333-4333-8333-333333333333";
 
+interface TestManifestResource extends Partial<CourseLibraryImportResource> {
+  candidate_id: string;
+  title: string;
+  import_action: string;
+  approval_status: string;
+  mime_type?: string;
+  original_filename?: string;
+  file_size?: number;
+  sort_order?: number;
+  allow_download?: boolean;
+}
+
 function readyManifest() {
-  return {
-    approval_status: "approved",
-    import_ready: true,
-    overall_decision: "GO",
-    target_course: {
-      id: courseId,
-      organization_id: organizationId,
-      hours: CSZ_LIBRARY_IMPORT_COURSE_HOURS,
-      is_published: false,
-      landing_content: {
-        electronic_library: { enabled: true },
-      },
-    },
-    do_not_modify_course_ids: [...COURSE_LIBRARY_HARD_DENYLIST],
-    resources: [{
+  const resources: TestManifestResource[] = [{
       candidate_id: "approved-external-1",
       approval_status: "APPROVED",
       import_action: "IMPORT",
@@ -51,7 +50,22 @@ function readyManifest() {
       approval_status: "HOLD",
       import_action: "HOLD",
       title: "Неутверждённый ресурс",
-    }],
+    }];
+  return {
+    approval_status: "approved",
+    import_ready: true,
+    overall_decision: "GO",
+    target_course: {
+      id: courseId,
+      organization_id: organizationId,
+      hours: CSZ_LIBRARY_IMPORT_COURSE_HOURS,
+      is_published: false,
+      landing_content: {
+        electronic_library: { enabled: true },
+      },
+    },
+    do_not_modify_course_ids: [...COURSE_LIBRARY_HARD_DENYLIST],
+    resources,
   };
 }
 
@@ -177,7 +191,7 @@ describe("course library manifest dry-run importer", () => {
       manifest.target_course.hours = 177;
     }, "target_course_hours_must_equal_178"],
     ["module id", (manifest: ReturnType<typeof readyManifest>) => {
-      manifest.resources[0].module_id = null as unknown as string;
+      manifest.resources[0].module_id = null;
     }, "resource_1:target_module_id_missing_or_invalid"],
   ])("blocks a missing %s precondition", (_label, mutate, expected) => {
     const manifest = readyManifest();
@@ -226,7 +240,7 @@ describe("course library manifest dry-run importer", () => {
       mime_type: "application/pdf",
       original_filename: "manual.pdf",
       file_size: 1024,
-    } as typeof manifest.resources[0];
+    };
 
     expect(buildWithApprovedTarget(manifest).status).toBe("MANIFEST_VALID");
     expect(isSafeCourseLibraryStoragePath(

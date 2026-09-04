@@ -89,7 +89,7 @@ export function normalizeLessonsFromDB(
       attachments: attachmentsMap[l.id] || [],
       module_id: (l as any).module_id ?? null,
       metadata: (lessonMetadata !== null && typeof lessonMetadata === "object")
-        ? lessonMetadata as Record<string, unknown>
+        ? lessonMetadata as NonNullable<Lesson["metadata"]>
         : {},
       __contentLoaded: hasContentColumn,
     };

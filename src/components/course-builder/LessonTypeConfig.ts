@@ -3,6 +3,7 @@ import {
   FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare, BookCheck, Sparkles,
 } from "lucide-react";
 import type { ContentBlock } from "@/components/course-builder/block-editor";
+import type { Json } from "@/integrations/supabase/types";
 
 export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice" | "feedback" | "homework" | "ai_avatar";
 
@@ -48,7 +49,7 @@ export interface Lesson {
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];
   module_id?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, Json | undefined>;
   /**
    * Lazy-load flag. `true` means lesson content is fully loaded into memory
    * (used by `useCourseBuilder` to avoid pulling huge slider-base64 content
