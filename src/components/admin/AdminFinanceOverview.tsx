@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AdminPaymentTester } from "./AdminPaymentTester";
 
 interface PaymentRow {
   id: string;
@@ -207,7 +206,6 @@ export function AdminFinanceOverview() {
           <TabsTrigger value="payments">Все платежи</TabsTrigger>
           <TabsTrigger value="registers">Настройки касс</TabsTrigger>
           <TabsTrigger value="transactions">Транзакции баланса</TabsTrigger>
-          <TabsTrigger value="test">🧪 Тест платежей</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payments">
@@ -361,9 +359,6 @@ export function AdminFinanceOverview() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="test">
-          <AdminPaymentTester />
         </TabsContent>
       </Tabs>
     </div>
