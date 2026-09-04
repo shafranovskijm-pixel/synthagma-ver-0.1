@@ -628,7 +628,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -639,7 +638,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -650,7 +648,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -4216,39 +4213,6 @@ export type Database = {
           },
         ]
       }
-      group_document_schedules: {
-        Row: {
-          group_id: string
-          organization_id: string
-          course_id: string | null
-          slots: Json
-          revision: number
-          updated_at: string
-          updated_by: string
-        }
-        Insert: {
-          group_id: string
-          organization_id: string
-          course_id?: string | null
-          slots: Json
-          revision?: number
-          updated_at?: string
-          updated_by: string
-        }
-        Update: {
-          group_id?: string
-          organization_id?: string
-          course_id?: string | null
-          slots?: Json
-          revision?: number
-          updated_at?: string
-          updated_by?: string
-        }
-        Relationships: [
-          { foreignKeyName: "group_document_schedules_group_id_fkey"; columns: ["group_id"]; isOneToOne: true; referencedRelation: "student_groups"; referencedColumns: ["id"] },
-          { foreignKeyName: "group_document_schedules_organization_id_fkey"; columns: ["organization_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
-        ]
-      }
       group_documents: {
         Row: {
           company_id: string | null
@@ -4686,78 +4650,6 @@ export type Database = {
           title?: string
         }
         Relationships: []
-      }
-      labor_safety_enrollment_protocols: {
-        Row: {
-          id: string
-          organization_id: string
-          enrollment_id: string | null
-          source_enrollment_id: string
-          source_user_id: string
-          source_course_id: string
-          learner_name_snapshot: string | null
-          course_title_snapshot: string
-          protocol_number: string
-          knowledge_check_date: string
-          is_passed: boolean
-          version: number
-          created_by: string
-          updated_by: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          enrollment_id?: string | null
-          source_enrollment_id: string
-          source_user_id: string
-          source_course_id: string
-          learner_name_snapshot?: string | null
-          course_title_snapshot: string
-          protocol_number: string
-          knowledge_check_date: string
-          is_passed: boolean
-          version?: number
-          created_by: string
-          updated_by: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          enrollment_id?: string | null
-          source_enrollment_id?: string
-          source_user_id?: string
-          source_course_id?: string
-          learner_name_snapshot?: string | null
-          course_title_snapshot?: string
-          protocol_number?: string
-          knowledge_check_date?: string
-          is_passed?: boolean
-          version?: number
-          created_by?: string
-          updated_by?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "labor_safety_enrollment_protocols_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "labor_safety_enrollment_protocols_enrollment_id_fkey"
-            columns: ["enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "enrollments"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       labor_safety_groups: {
         Row: {
@@ -12036,16 +11928,6 @@ export type Database = {
       }
     }
     Functions: {
-      save_group_document_schedule: {
-        Args: {
-          p_organization_id: string
-          p_group_id: string
-          p_expected_course_id: string | null
-          p_expected_revision: number | null
-          p_slots: Json
-        }
-        Returns: Json
-      }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
       _org_email_sender_key: {
@@ -12132,16 +12014,6 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
-      }
-      apply_tbank_balance_credit: {
-        Args: {
-          p_amount: number
-          p_description: string
-          p_idempotency_key: string
-          p_organization_id: string
-          p_transaction_type: string
-        }
-        Returns: Json
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       attest_cold_outreach_campaign: {
@@ -13297,34 +13169,6 @@ export type Database = {
         Args: { p_reason?: string; p_signature_id: string }
         Returns: Json
       }
-      save_labor_safety_enrollment_protocol: {
-        Args: {
-          p_organization_id: string
-          p_enrollment_id: string
-          p_protocol_number: string
-          p_knowledge_check_date: string
-          p_is_passed: boolean
-          p_expected_version?: number | null
-        }
-        Returns: {
-          id: string
-          organization_id: string
-          enrollment_id: string | null
-          source_enrollment_id: string
-          source_user_id: string
-          source_course_id: string
-          learner_name_snapshot: string | null
-          course_title_snapshot: string
-          protocol_number: string
-          knowledge_check_date: string
-          is_passed: boolean
-          version: number
-          created_by: string
-          updated_by: string
-          created_at: string
-          updated_at: string
-        }[]
-      }
       save_student_frdo_data: {
         Args: { p_data: Json; p_organization_id: string; p_user_id: string }
         Returns: {
@@ -13514,12 +13358,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13543,11 +13387,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13568,11 +13412,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13593,11 +13437,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13610,11 +13454,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
