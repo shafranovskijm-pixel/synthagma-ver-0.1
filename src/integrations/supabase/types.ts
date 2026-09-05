@@ -628,6 +628,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -638,6 +639,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -648,6 +650,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -12480,6 +12483,16 @@ export type Database = {
         Returns: undefined
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
+      apply_tbank_balance_credit: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_idempotency_key: string
+          p_organization_id: string
+          p_transaction_type: string
+        }
+        Returns: Json
+      }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
         Returns: undefined

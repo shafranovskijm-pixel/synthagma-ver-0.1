@@ -2,7 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const testState = vi.hoisted(() => ({
-  existingEnrollmentsResult: { data: [] as Array<{ user_id: string }>, error: null as Error | null },
+  existingEnrollmentsResult: {
+    data: [] as Array<{ id: string; user_id: string; course_id: string; status: string | null; expires_at: string | null }>,
+    error: null as Error | null,
+  },
   insertResult: {
     data: [] as Array<{ id: string; user_id: string; course_id: string }>,
     error: null as Error | null,
@@ -304,6 +307,83 @@ describe("EnrollDialog enrollment integration", () => {
     expect(testState.toastSuccess).not.toHaveBeenCalled();
     expect(testState.organizationSelect).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it.each([false, true])("does not skip expired access or mutate any student (all existing: %s)", async (allExisting) => {
+    testState.existingEnrollmentsResult.data = [{
+      id: "old-enrollment", user_id: "student-1", course_id: "published-course",
+      status: "active", expires_at: "2020-01-01T00:00:00Z",
+    }];
+    if (allExisting) testState.existingEnrollmentsResult.data.push({
+      id: "current-enrollment", user_id: "student-2", course_id: "published-course",
+      status: "active", expires_at: null,
+    });
+    const onRefresh = vi.fn();
+    render(<EnrollmentHarness onRefresh={onRefresh} />);
+    openAndSelectPublishedCourse();
+
+    await waitFor(() => expect(testState.toastError).toHaveBeenCalledWith(
+      "Срок доступа ученика к курсу истёк. Измените срок доступа в карточке ученика.",
+    ));
+    expect(testState.enrollmentSelect).toHaveBeenCalledWith("id, user_id, course_id, status, expires_at");
+    expect(testState.enrollmentInsert).not.toHaveBeenCalled();
+    expect(testState.organizationSelect).not.toHaveBeenCalled();
+    expect(testState.toastInfo).not.toHaveBeenCalled();
+    expect(testState.toastSuccess).not.toHaveBeenCalled();
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["active", null],
+    ["active", "2999-01-01T00:00:00Z"],
+    ["completed", "2020-01-01T00:00:00Z"],
+    ["in_progress", null],
+  ])("preserves current %s access (%s) and inserts only missing enrollments", async (status, expires_at) => {
+    testState.existingEnrollmentsResult.data = [{
+      id: "old-enrollment", user_id: "student-1", course_id: "published-course", status, expires_at,
+    }];
+    testState.insertResult.data = [{ id: "new-enrollment", user_id: "student-2", course_id: "published-course" }];
+    testState.readbackResult.data = testState.insertResult.data;
+    const onRefresh = vi.fn();
+    render(<EnrollmentHarness onRefresh={onRefresh} />);
+    openAndSelectPublishedCourse();
+
+    await waitFor(() => expect(testState.toastSuccess).toHaveBeenCalledWith("Зачислено 1 учеников"));
+    expect(testState.enrollmentInsert).toHaveBeenCalledTimes(1);
+    expect(testState.enrollmentInsert).toHaveBeenCalledWith([
+      { user_id: "student-2", course_id: "published-course", status: "active", progress: 0 },
+    ]);
+    expect(testState.toastError).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("leaves all usable existing enrollments unchanged", async () => {
+    testState.existingEnrollmentsResult.data = ["student-1", "student-2"].map((user_id) => ({
+      id: `enrollment-${user_id}`, user_id, course_id: "published-course", status: "active", expires_at: null,
+    }));
+    const onRefresh = vi.fn();
+    render(<EnrollmentHarness onRefresh={onRefresh} />);
+    openAndSelectPublishedCourse();
+
+    await waitFor(() => expect(testState.toastInfo).toHaveBeenCalledWith("Все выбранные ученики уже зачислены на этот курс"));
+    expect(testState.enrollmentInsert).not.toHaveBeenCalled();
+    expect(testState.toastSuccess).not.toHaveBeenCalled();
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not mutate when checking existing access fails", async () => {
+    testState.existingEnrollmentsResult = { data: [], error: new Error("read unavailable") };
+    render(<EnrollmentHarness onRefresh={vi.fn()} />);
+    openAndSelectPublishedCourse();
+
+    await waitFor(() => expect(testState.toastError).toHaveBeenCalledWith("Не удалось проверить существующие зачисления. Зачисление отменено."));
+    expect(testState.enrollmentInsert).not.toHaveBeenCalled();
+    expect(testState.organizationSelect).not.toHaveBeenCalled();
+    expect(testState.toastSuccess).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

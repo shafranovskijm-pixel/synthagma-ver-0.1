@@ -8,8 +8,11 @@ import { deleteStudent, fetchStudentsByUserIds } from "@/api/students";
 import { qk } from "@/lib/queryKeys";
 import { invalidateOrganizationEnrollmentData } from "@/lib/invalidateOrganizationQueries";
 import {
+  EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
+  isEnrollmentAccessExpired,
   insertEnrollmentsVerified,
+  type EnrollmentAccessRow,
 } from "@/api/enrollments";
 
 /**
@@ -147,21 +150,27 @@ export function useEnrollmentActions(
       }
 
       // 2. Existing enrollments — abort on error, don't silently proceed.
-      let existingUserIds: Set<string>;
+      let existingEnrollments: EnrollmentAccessRow[];
       try {
-        const { data: existingEnrollments, error: existErr } = await supabase
+        const { data, error: existErr } = await supabase
           .from("enrollments")
-          .select("user_id")
+          .select("id, user_id, course_id, status, expires_at")
           .eq("course_id", courseId)
           .in("user_id", userIds);
         if (existErr) throw existErr;
-        existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+        existingEnrollments = (data ?? []) as EnrollmentAccessRow[];
       } catch (err) {
         console.error("[bulkEnroll] preflight existing enrollments failed:", err);
         toast.error("Не удалось проверить существующие зачисления. Зачисление отменено.");
         return false;
       }
 
+      // Check the entire selection before any write. An expired row is not
+      // proof of usable access; leave its dates/progress unchanged for review.
+      if (existingEnrollments.some((row) => isEnrollmentAccessExpired(row))) {
+        throw new EnrollmentAccessExpiredError([courseId]);
+      }
+      const existingUserIds = new Set(existingEnrollments.map((row) => row.user_id));
       const newUserIds = userIds.filter(id => !existingUserIds.has(id));
       if (newUserIds.length === 0) {
         toast.info("Все выбранные ученики уже зачислены на этот курс");
@@ -215,7 +224,9 @@ export function useEnrollmentActions(
       return true;
     } catch (error) {
       console.error("Error enrolling students:", error);
-      if (error instanceof EnrollmentPersistenceError) {
+      if (error instanceof EnrollmentAccessExpiredError) {
+        toast.error(error.message);
+      } else if (error instanceof EnrollmentPersistenceError) {
         invalidateCourse(courseId);
         onEnrollmentChanged();
         toast.error("База не подтвердила зачисление. Список обновлён — повторите операцию.");

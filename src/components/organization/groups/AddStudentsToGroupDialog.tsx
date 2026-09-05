@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, UserPlus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { fetchOrganizationStudentsPage } from "@/api/students";
+import { EnrollmentAccessExpiredError, isEnrollmentAccessExpired } from "@/api/enrollments";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 
 interface AvailableStudent {
@@ -16,6 +18,14 @@ interface AvailableStudent {
   full_name: string | null;
   email: string | null;
   login: string | null;
+}
+
+interface RegistrationResult {
+  user_id?: string;
+  success?: boolean;
+  partial_success?: boolean;
+  message?: string;
+  error?: string;
 }
 
 interface AddStudentsToGroupDialogProps {
@@ -44,8 +54,22 @@ export function AddStudentsToGroupDialog({
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentEmail, setNewStudentEmail] = useState("");
   const [creating, setCreating] = useState(false);
+  const [creationWarning, setCreationWarning] = useState<string | null>(null);
+  const creatingRef = useRef(false);
+  const scopeKey = JSON.stringify([organizationId, groupId]);
+  const dialogContextRef = useRef<{ open: boolean; scopeKey: string } | null>(null);
+  // Keep uncertain attempts across close/reopen in this mounted dialog only.
+  // No learner details or operation state are written to browser storage.
+  const creationWarningsRef = useRef(new Map<string, string>());
+
+  useLayoutEffect(() => {
+    dialogContextRef.current = { open, scopeKey };
+    return () => { dialogContextRef.current = null; };
+  }, [open, scopeKey]);
 
   const loadAvailableStudents = useCallback(async () => {
+    const context = dialogContextRef.current;
+    const isCurrent = () => context?.open && dialogContextRef.current === context;
     setLoading(true);
     try {
       const rows: AvailableStudent[] = [];
@@ -59,6 +83,7 @@ export function AddStudentsToGroupDialog({
           limit: 100,
           offset,
         });
+        if (!isCurrent()) return;
         rows.push(...page.rows.map((student) => ({
           user_id: student.user_id,
           full_name: student.name,
@@ -70,11 +95,12 @@ export function AddStudentsToGroupDialog({
       }
       setAvailableStudents(rows);
     } catch (error) {
+      if (!isCurrent()) return;
       console.error("Failed to load students available for group", error);
       toast.error("Не удалось загрузить учеников без группы");
       setAvailableStudents([]);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [organizationId]);
 
@@ -82,11 +108,13 @@ export function AddStudentsToGroupDialog({
     if (!open) return;
     setSelectedIds(new Set());
     setSearch("");
-    setShowCreateForm(false);
+    const warning = creationWarningsRef.current.get(scopeKey) ?? null;
+    setShowCreateForm(Boolean(warning));
     setNewStudentName("");
     setNewStudentEmail("");
+    setCreationWarning(warning);
     void loadAvailableStudents();
-  }, [open, loadAvailableStudents]);
+  }, [open, scopeKey, loadAvailableStudents]);
 
   const filteredStudents = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("ru");
@@ -141,10 +169,34 @@ export function AddStudentsToGroupDialog({
 
   const handleCreateStudent = async () => {
     const fullName = newStudentName.trim();
-    if (!fullName) return;
+    const context = dialogContextRef.current;
+    const isCurrentOperation = () => context?.open && dialogContextRef.current === context;
+    if (!fullName || !isCurrentOperation() || creatingRef.current || creationWarning || creationWarningsRef.current.has(scopeKey)) return;
+    creatingRef.current = true;
     setCreating(true);
+    // If the view changes before verification, returning to this group must
+    // not offer a blind retry. This is not server-side idempotency.
+    creationWarningsRef.current.set(scopeKey,
+      `Результат регистрации в группе «${groupName}» не подтверждён. Запрос мог сохранить ученика. ` +
+      "Проверьте список учеников и обратитесь к администратору перед повторным созданием.");
+    let confirmedRejection = false;
+    let registeredUserId: string | null = null;
+
+    const refreshPopulation = async () => {
+      if (!isCurrentOperation()) return false;
+      try {
+        await onStudentsChanged("population");
+        return true;
+      } catch (refreshError) {
+        console.error("Failed to refresh students after registration", refreshError);
+        return false;
+      }
+    };
+
     try {
-      const { data, error } = await supabase.functions.invoke("register-student", {
+      // A lost response can leave a created account. Never retry this write.
+      const { data, error, httpStatus, errorCode } = await safeInvoke<RegistrationResult>("register-student", {
+        retry: false,
         body: {
           full_name: fullName,
           email: newStudentEmail.trim() || undefined,
@@ -152,29 +204,119 @@ export function AddStudentsToGroupDialog({
           student_group_id: groupId,
         },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (!isCurrentOperation()) return;
+      if (error) {
+        // Some 409 responses follow a confirmed backend compensation rather
+        // than a pre-write rejection; neither is an ambiguous partial result.
+        confirmedRejection = (httpStatus !== undefined && [400, 401, 403, 404, 409].includes(httpStatus))
+          || (httpStatus === 500 && ["GROUP_PREFLIGHT_FAILED", "GROUP_COURSE_PREFLIGHT_FAILED"].includes(errorCode ?? ""));
+        throw error;
+      }
+      if (typeof data?.user_id === "string" && data.user_id.trim()) registeredUserId = data.user_id;
+      if (data?.partial_success || data?.error || data?.success === false) {
+        throw new Error(data?.error || data?.message || "Сервер сообщил о частичном завершении операции");
+      }
+      if (!registeredUserId) throw new Error("Сервер не вернул подтверждённый идентификатор ученика");
 
-      toast.success(data?.message || "Ученик создан и добавлен только в группу", {
-        description: "На курс ещё не зачислен. Следующий шаг — «Зачислить на курс».",
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, organization_id, student_group_id")
+        .eq("user_id", registeredUserId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      if (!isCurrentOperation()) return;
+      if (profileError) throw profileError;
+      if (profile?.user_id !== registeredUserId || profile.organization_id !== organizationId || profile.student_group_id !== groupId) {
+        throw new Error("База не подтвердила добавление ученика в выбранную группу");
+      }
+
+      // register-student also enrolls in the group's course when one is set.
+      // Read the current group instead of trusting stale dialog/server flags.
+      const { data: group, error: groupError } = await supabase
+        .from("student_groups")
+        .select("id, organization_id, course_id")
+        .eq("id", groupId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      if (!isCurrentOperation()) return;
+      if (groupError) throw groupError;
+      if (group?.id !== groupId || group.organization_id !== organizationId
+        || (group.course_id !== null && (typeof group.course_id !== "string" || !group.course_id.trim()))) {
+        throw new Error("База не подтвердила настройки выбранной группы");
+      }
+
+      if (group.course_id) {
+        const { data: course, error: courseError } = await supabase
+          .from("courses")
+          .select("id, organization_id")
+          .eq("id", group.course_id)
+          .eq("organization_id", organizationId)
+          .maybeSingle();
+        if (!isCurrentOperation()) return;
+        if (courseError) throw courseError;
+        if (course?.id !== group.course_id || course.organization_id !== organizationId) {
+          throw new Error("База не подтвердила принадлежность курса группы организации");
+        }
+        const { data: enrollment, error: enrollmentError } = await supabase
+          .from("enrollments")
+          .select("id, user_id, course_id, status, expires_at")
+          .eq("user_id", registeredUserId)
+          .eq("course_id", group.course_id)
+          .maybeSingle();
+        if (!isCurrentOperation()) return;
+        if (enrollmentError) throw enrollmentError;
+        if (!enrollment?.id || enrollment.user_id !== registeredUserId || enrollment.course_id !== group.course_id) {
+          throw new Error("База не подтвердила зачисление на курс группы");
+        }
+        if (isEnrollmentAccessExpired(enrollment)) throw new EnrollmentAccessExpiredError([group.course_id]);
+      }
+
+      const refreshed = await refreshPopulation();
+      if (!isCurrentOperation()) return;
+      creationWarningsRef.current.delete(scopeKey);
+      const resultMessage = group.course_id
+        ? "Ученик добавлен в группу и зачислен на её курс"
+        : "Ученик добавлен в группу";
+      toast.success(resultMessage, {
+        description: group.course_id
+          ? `Группа «${groupName}» и зачисление подтверждены в базе.`
+          : `У группы «${groupName}» нет курса. Зачисление можно выполнить отдельно на этапе «Обучение».`,
       });
-      await onStudentsChanged("population");
+      if (!refreshed) toast.warning("Данные сохранены, но список не обновился. Обновите страницу, чтобы увидеть ученика.");
       onOpenChange(false);
     } catch (error) {
+      if (!isCurrentOperation()) return;
       console.error("Failed to create student in group", error);
-      toast.error("Не удалось создать ученика в группе");
+      const reason = error instanceof Error ? error.message : "Не удалось подтвердить результат операции";
+      if (confirmedRejection) {
+        creationWarningsRef.current.delete(scopeKey);
+        toast.error(reason);
+      } else {
+        const warning = registeredUserId
+          ? `Сервер вернул ученика, но завершение операции не подтверждено: ${reason}. Проверьте его карточку и группу. Не создавайте ученика повторно.`
+          : "Результат создания ученика не подтверждён. Запрос мог сохранить ученика, даже если ответ не получен. " +
+            "Проверьте список учеников и обратитесь к администратору перед повторным созданием. Отсутствие в списке не доказывает, что запрос завершился.";
+        creationWarningsRef.current.set(scopeKey, warning);
+        setCreationWarning(warning);
+        toast.warning(warning, { duration: 30000 });
+        await refreshPopulation();
+      }
     } finally {
-      setCreating(false);
+      creatingRef.current = false;
+      if (dialogContextRef.current) setCreating(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && creatingRef.current) return;
+      onOpenChange(nextOpen);
+    }}>
       <DialogContent className="flex max-h-[82vh] max-w-xl flex-col rounded-2xl">
         <DialogHeader>
           <DialogTitle>Добавить учеников в «{groupName}»</DialogTitle>
           <DialogDescription>
-            Выберите учеников без группы или создайте нового. Это добавит их только в группу — зачисление на курс выполняется отдельно на этапе «Обучение».
+            Выбранные из списка ученики добавляются только в группу. При создании нового ученика учитывается курс группы: если он задан, зачисление проверяется сразу.
           </DialogDescription>
         </DialogHeader>
 
@@ -184,11 +326,17 @@ export function AddStudentsToGroupDialog({
               <Plus className="h-4 w-4 text-primary" />
               Новый ученик
             </div>
+            {creationWarning && (
+              <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                {creationWarning}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="group-new-student-name">ФИО *</Label>
               <Input
                 id="group-new-student-name"
                 value={newStudentName}
+                disabled={creating}
                 onChange={(event) => setNewStudentName(event.target.value)}
                 placeholder="Иванов Иван Иванович"
                 className="rounded-xl"
@@ -200,6 +348,7 @@ export function AddStudentsToGroupDialog({
                 id="group-new-student-email"
                 type="email"
                 value={newStudentEmail}
+                disabled={creating}
                 onChange={(event) => setNewStudentEmail(event.target.value)}
                 placeholder="student@example.ru"
                 className="rounded-xl"
@@ -209,10 +358,10 @@ export function AddStudentsToGroupDialog({
               <Button
                 className="flex-1 rounded-xl gap-2"
                 onClick={handleCreateStudent}
-                disabled={!newStudentName.trim() || creating}
+                disabled={!newStudentName.trim() || creating || Boolean(creationWarning)}
               >
                 {creating ? <SigmaSpinner size="sm" /> : <UserPlus className="h-4 w-4" />}
-                Создать и добавить только в группу
+                Создать и добавить в группу
               </Button>
               <Button variant="outline" className="rounded-xl" onClick={() => setShowCreateForm(false)} disabled={creating}>
                 Отмена

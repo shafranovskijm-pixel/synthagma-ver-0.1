@@ -16,6 +16,23 @@ import {
   normalizeLessonsFromDB, importFiles, generateAIContent, createFallbackSlides,
 } from "./useCourseBuilderHelpers";
 
+const normalizeSaveError = (value: unknown): Error => {
+  if (value instanceof Error) return value;
+  if (value && typeof value === "object") {
+    const candidate = value as { message?: unknown; name?: unknown };
+    const error = new Error(
+      typeof candidate.message === "string" ? candidate.message : JSON.stringify(value),
+    );
+    if (typeof candidate.name === "string") error.name = candidate.name;
+    return error;
+  }
+  return new Error(String(value));
+};
+
+const isSaveCancellation = (error: Error): boolean =>
+  error.name === "AbortError"
+  || /aborterror|aborted|cancelled|canceled|отмен/i.test(error.message);
+
 export function useCourseBuilder(propCourseId?: string) {
   const navigate = useNavigate();
   const { courseId: paramCourseId } = useParams();
@@ -42,18 +59,100 @@ export function useCourseBuilder(propCourseId?: string) {
   const aiLimit = useAiGenerationLimit(organizationId, subscriptionPlan);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const delayedSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestStateRef = useRef({ courseTitle: '', courseDescription: '', lessons: [] as Lesson[] });
+  const statusResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveInFlightRef = useRef<Promise<boolean> | null>(null);
+  const courseCreationRef = useRef<Promise<string> | null>(null);
+  const editorActiveRef = useRef(true);
+  const editorGenerationRef = useRef(0);
+  const saveCourseRef = useRef<(silent?: boolean) => Promise<boolean>>(() => Promise.resolve(false));
+  const savedCourseIdRef = useRef<string | null>(courseId ?? null);
+  const draftOriginCourseIdRef = useRef<string | undefined>(externalCourseId);
+  const organizationIdRef = useRef<string | null>(organizationId);
+  const changeVersionRef = useRef(0);
+  const persistedChangeVersionRef = useRef(0);
+  const loadedLessonIdsRef = useRef(new Set<string>());
+  const contentReadyRef = useRef(false);
+  const latestStateRef = useRef({
+    courseTitle: '',
+    courseDescription: '',
+    lessons: [] as Lesson[],
+    courseId: null as string | null,
+  });
 
-  useEffect(() => { latestStateRef.current = { courseTitle, courseDescription, lessons }; }, [courseTitle, courseDescription, lessons]);
+  if (courseId) savedCourseIdRef.current = courseId;
+  organizationIdRef.current = organizationId;
+  latestStateRef.current = {
+    courseTitle,
+    courseDescription,
+    lessons,
+    courseId: savedCourseIdRef.current ?? courseId ?? null,
+  };
 
-  const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
+  const clearScheduledSaveTimers = useCallback(() => {
+    if (delayedSaveTimerRef.current) {
+      clearTimeout(delayedSaveTimerRef.current);
+      delayedSaveTimerRef.current = null;
+    }
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = null;
+    }
+    if (statusResetTimerRef.current) {
+      clearTimeout(statusResetTimerRef.current);
+      statusResetTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleSave = useCallback((delayMs = 500) => {
+    if (!editorActiveRef.current) return;
+    if (delayedSaveTimerRef.current) clearTimeout(delayedSaveTimerRef.current);
+    delayedSaveTimerRef.current = setTimeout(() => {
+      delayedSaveTimerRef.current = null;
+      void saveCourseRef.current(true);
+    }, delayMs);
+  }, []);
+
+  useEffect(() => {
+    editorActiveRef.current = true;
+    return () => {
+      editorActiveRef.current = false;
+      editorGenerationRef.current += 1;
+      clearScheduledSaveTimers();
+    };
+  }, [clearScheduledSaveTimers]);
+
+  const markAsChanged = useCallback(() => {
+    changeVersionRef.current += 1;
+    setHasUnsavedChanges(true);
+  }, []);
   const updateLessons = useCallback((updater: Lesson[] | ((prev: Lesson[]) => Lesson[])) => { setLessons(updater); markAsChanged(); }, [markAsChanged]);
   const getBackPath = () => userRole === 'admin' ? "/admin" : "/organization?tab=courses";
   const handleBackClick = () => { if (hasUnsavedChanges) setShowExitDialog(true); else navigate(getBackPath()); };
-  const handleSaveAndExit = async () => { await saveCourse(); setShowExitDialog(false); navigate(getBackPath()); };
-  const handleExitWithoutSave = () => { setShowExitDialog(false); navigate(getBackPath()); };
+  const saveLatestCourse = useCallback(async (): Promise<boolean> => {
+    // Joining an in-flight autosave is not enough when the editor changed after
+    // that operation captured its snapshot. Keep saving until the version that
+    // reached the database is the current editor version.
+    while (true) {
+      const saved = await saveCourseRef.current(false);
+      if (!saved) return false;
+      if (persistedChangeVersionRef.current === changeVersionRef.current) return true;
+    }
+  }, []);
+  const handleSaveAndExit = async () => {
+    const saved = await saveLatestCourse();
+    if (!saved) return;
+    setShowExitDialog(false);
+    navigate(getBackPath());
+  };
+  const handleExitWithoutSave = () => {
+    editorActiveRef.current = false;
+    editorGenerationRef.current += 1;
+    clearScheduledSaveTimers();
+    setShowExitDialog(false);
+    navigate(getBackPath());
+  };
 
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -61,7 +160,7 @@ export function useCourseBuilder(propCourseId?: string) {
     setIsImporting(true);
     try {
       const totalImported = await importFiles(Array.from(fileList), courseTitle, setCourseTitle, setCourseDescription, setLessons);
-      if (totalImported > 0) { toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`); markAsChanged(); setTimeout(() => { saveCourse(true); }, 500); }
+      if (totalImported > 0) { toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`); markAsChanged(); scheduleSave(); }
       else toast.warning("Не удалось извлечь уроки из файла");
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Ошибка импорта файлов'); }
     finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
@@ -77,6 +176,7 @@ export function useCourseBuilder(propCourseId?: string) {
 
       setIsLoading(true);
       setScopeError(null);
+      contentReadyRef.current = false;
 
       const coursePromise = courseId
         ? supabase.from("courses").select("*").eq("id", courseId).single()
@@ -117,6 +217,12 @@ export function useCourseBuilder(propCourseId?: string) {
           userRole,
           requestedOrganizationId: course?.organization_id ?? null,
         });
+        if (courseId && (modulesRes?.error || !Array.isArray(modulesRes?.data))) {
+          throw new Error("Не удалось загрузить модули курса. Сохранение недоступно, обновите страницу.");
+        }
+        if (courseId && (lessonsRes?.error || !Array.isArray(lessonsRes?.data))) {
+          throw new Error("Не удалось загрузить уроки курса. Сохранение недоступно, обновите страницу.");
+        }
         const orgId = scope.organizationId;
         const modulesData = modulesRes?.data ?? null;
         const lessonsData = lessonsRes?.data ?? null;
@@ -162,9 +268,17 @@ export function useCourseBuilder(propCourseId?: string) {
           ? supabase.from("lesson_attachments").select("*").in("lesson_id", allLessonIds).order("order_index")
           : Promise.resolve({ data: [], error: null } as any);
 
-        const [{ data: questionsData }, { data: attachmentsData }] = await Promise.all([
+        const [questionsRes, attachmentsRes] = await Promise.all([
           questionsPromise, attachmentsPromise,
         ]);
+        if (questionsRes.error || !Array.isArray(questionsRes.data)) {
+          throw new Error("Не удалось загрузить вопросы курса. Сохранение недоступно, обновите страницу.");
+        }
+        if (attachmentsRes.error || !Array.isArray(attachmentsRes.data)) {
+          throw new Error("Не удалось загрузить вложения курса. Сохранение недоступно, обновите страницу.");
+        }
+        const questionsData = questionsRes.data;
+        const attachmentsData = attachmentsRes.data;
 
         const questionsMap: Record<string, TestQuestionLocal[]> = {};
         if (questionsData) {
@@ -192,9 +306,13 @@ export function useCourseBuilder(propCourseId?: string) {
         }
         }
 
+        loadedLessonIdsRef.current = new Set((lessonsData ?? []).map((lesson: { id: string }) => lesson.id));
+        contentReadyRef.current = true;
         setIsDataLoaded(true);
       } catch (error) {
         console.error("Course builder scope resolution failed", error);
+        contentReadyRef.current = false;
+        organizationIdRef.current = null;
         setOrganizationId(null);
         setScopeError(error instanceof Error
           ? error.message
@@ -250,17 +368,17 @@ export function useCourseBuilder(propCourseId?: string) {
 
   // Debounced autosave
   useEffect(() => {
-    if (!hasUnsavedChanges || !isDataLoaded) return;
+    if (!hasUnsavedChanges || !isDataLoaded || !editorActiveRef.current) return;
     saveDraftToLocal(courseId, courseTitle, courseDescription, lessons);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     // Уменьшен debounce: 1.5с вместо 3с — данные сохраняются быстрее
-    draftTimerRef.current = setTimeout(() => { saveCourse(true); }, 1500);
+    draftTimerRef.current = setTimeout(() => { draftTimerRef.current = null; void saveCourseRef.current(true); }, 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
   }, [hasUnsavedChanges, courseTitle, courseDescription, lessons]);
 
   // Save draft on unload
   useEffect(() => {
-    const saveDraft = () => { const s = latestStateRef.current; saveDraftToLocal(courseId, s.courseTitle, s.courseDescription, s.lessons); };
+    const saveDraft = () => { if (!editorActiveRef.current) return; const s = latestStateRef.current; saveDraftToLocal(courseId, s.courseTitle, s.courseDescription, s.lessons); };
     const handleBeforeUnload = (e: BeforeUnloadEvent) => { saveDraft(); if (hasUnsavedChanges) e.preventDefault(); };
     const handleVisibility = () => { if (document.visibilityState === 'hidden') saveDraft(); };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -292,24 +410,51 @@ export function useCourseBuilder(propCourseId?: string) {
   };
 
   // ===== MODULES CRUD =====
+  // Module bootstrap, full save and single-lesson save must share creation.
+  // Otherwise two entry points can create two course IDs before React rerenders.
+  const createCourseIdentity = useCallback((orgId: string, title: string, description: string): Promise<string> => {
+    if (savedCourseIdRef.current) return Promise.resolve(savedCourseIdRef.current);
+    if (courseCreationRef.current) return courseCreationRef.current;
+    const generation = editorGenerationRef.current;
+    const operation = (async () => {
+      const { data, error } = await supabase.from("courses")
+        .insert({ title, description: description.trim() || null, organization_id: orgId, is_published: false })
+        .select().single();
+      if (error) throw error;
+      if (!data?.id) throw new Error("Курс создан без идентификатора");
+      savedCourseIdRef.current = data.id;
+      if (editorActiveRef.current && generation === editorGenerationRef.current) {
+        latestStateRef.current = { ...latestStateRef.current, courseId: data.id };
+        setSavedCourseIdState(data.id);
+        window.history.replaceState(null, '', `/course-builder/${data.id}`);
+      }
+      return data.id;
+    })();
+    const tracked: Promise<string> = operation.finally(() => {
+      if (courseCreationRef.current === tracked) courseCreationRef.current = null;
+    });
+    courseCreationRef.current = tracked;
+    return tracked;
+  }, []);
+
   const ensureCourseId = async (): Promise<string | null> => {
-    if (courseId) return courseId;
+    if (!editorActiveRef.current || !contentReadyRef.current) return null;
+    if (savedCourseIdRef.current) return savedCourseIdRef.current;
     const orgId = await ensureOrganizationId();
-    if (!orgId) return null;
-    if (!courseTitle.trim()) setCourseTitle("Новый курс");
-    const { data: newCourse, error } = await supabase
-      .from("courses")
-      .insert({ title: courseTitle.trim() || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId, is_published: false })
-      .select()
-      .single();
-    if (error || !newCourse) return null;
-    setSavedCourseIdState(newCourse.id);
-    window.history.replaceState(null, '', `/course-builder/${newCourse.id}`);
-    return newCourse.id;
+    if (!editorActiveRef.current || !orgId) return null;
+    const current = latestStateRef.current;
+    if (!current.courseTitle.trim()) setCourseTitle("Новый курс");
+    try {
+      return await createCourseIdentity(orgId, current.courseTitle.trim() || "Новый курс", current.courseDescription);
+    } catch (error) {
+      console.error("Course creation failed:", normalizeSaveError(error));
+      return null;
+    }
   };
 
   const createModule = async () => {
     const cId = await ensureCourseId();
+    if (!editorActiveRef.current) return;
     if (!cId) { toast.error("Не удалось определить курс"); return; }
     const nextOrder = modules.length > 0 ? Math.max(...modules.map(m => m.order_index)) + 1 : 0;
     const { data, error } = await supabase
@@ -413,7 +558,7 @@ export function useCourseBuilder(propCourseId?: string) {
         setLessons(prev => [...prev, ...generatedLessons]);
         toast.success(`Добавлено ${generatedLessons.length} уроков`);
         markAsChanged();
-        setTimeout(() => { saveCourse(true); }, 500);
+        scheduleSave();
       } else {
         toast.error("AI не вернул уроки");
       }
@@ -429,11 +574,11 @@ export function useCourseBuilder(propCourseId?: string) {
     try { await generateAIContent(type, prompt, courseTitle, courseDescription, newLesson); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Ошибка генерации"); return; }
     await aiLimit.increment();
     setLessons(prev => [...prev, newLesson]); markAsChanged();
-    setTimeout(() => { saveCourse(true); }, 500);
+    scheduleSave();
   };
 
   const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); }, [markAsChanged]);
-  const deleteLesson = useCallback((id: string) => { setLessons(prev => prev.filter(l => l.id !== id)); markAsChanged(); if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500); }, [markAsChanged]);
+  const deleteLesson = useCallback((id: string) => { setLessons(prev => prev.filter(l => l.id !== id)); markAsChanged(); scheduleSave(); }, [markAsChanged, scheduleSave]);
 
   // Lazy-load full content for a single lesson (slider blobs can be 10+ MB).
   // Called when a lesson is opened/expanded in the editor.
@@ -488,129 +633,241 @@ export function useCourseBuilder(propCourseId?: string) {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (over && active.id !== over.id) { setLessons(prev => { const oldIndex = prev.findIndex(l => l.id === active.id); const newIndex = prev.findIndex(l => l.id === over.id); return arrayMove(prev, oldIndex, newIndex); }); markAsChanged(); setTimeout(() => { saveCourse(true); }, 500); }
+    if (over && active.id !== over.id) { setLessons(prev => { const oldIndex = prev.findIndex(l => l.id === active.id); const newIndex = prev.findIndex(l => l.id === over.id); return arrayMove(prev, oldIndex, newIndex); }); markAsChanged(); scheduleSave(); }
   };
 
   const ensureOrganizationId = async (): Promise<string | null> => {
-    if (organizationId) return organizationId;
+    if (contentReadyRef.current && organizationIdRef.current) return organizationIdRef.current;
     return null;
   };
 
-  const saveCourse = async (silent = false): Promise<boolean> => {
-    if (isSaving) return false;
-    if (!courseTitle.trim()) { if (!silent) toast.error("Введите название курса"); return false; }
-    const orgId = await ensureOrganizationId();
-    if (!orgId) { if (!silent) toast.error("Не найдена организация"); return false; }
-    setIsSaving(true); setAutoSaveStatus('saving');
-    try {
-      let savedCourseId = courseId;
-      if (courseId) { const { error } = await supabase.from("courses").update({ title: courseTitle.trim(), description: courseDescription.trim() || null }).eq("id", courseId); if (error) throw error; }
-      else { const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single(); if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`); }
+  const saveCourse = useCallback((silent = false): Promise<boolean> => {
+    // React state is intentionally not the lock: two callbacks can observe the
+    // same stale `isSaving=false` render. This ref is set synchronously before
+    // the first async boundary, so every caller joins the exact same operation.
+    if (!editorActiveRef.current) return Promise.resolve(false);
+    if (saveInFlightRef.current) return saveInFlightRef.current;
+    const generation = editorGenerationRef.current;
+    const isCurrentEditor = () => editorActiveRef.current && generation === editorGenerationRef.current;
 
-      if (lessons.length > 0 && savedCourseId) {
-        const currentLessonIds = lessons.map(l => l.id);
-        if (courseId) await supabase.from("lessons").delete().eq("course_id", courseId).not("id", "in", `(${currentLessonIds.join(",")})`);
-        // Split into two upsert batches:
-        // - lessonsWithContent: content was loaded (or freshly created) → write everything
-        // - lessonsMetaOnly: lazy placeholder → write metadata, KEEP existing content in DB
-        const baseRow = (lesson: typeof lessons[number], index: number) => ({
-          id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type,
-          order_index: index, test_passing_score: lesson.testPassingScore ?? 60,
-          test_questions_to_show: lesson.testQuestionsToShow ?? null,
-          test_max_attempts: lesson.testMaxAttempts ?? null,
-          test_show_answers: lesson.testShowAnswers ?? true,
-          module_id: lesson.module_id ?? null,
-          metadata: lesson.metadata ?? {},
-        });
-        const lessonsWithContent = lessons
-          .map((l, i) => ({ l, i }))
-          .filter(({ l }) => l.__contentLoaded !== false)
-          .map(({ l, i }) => ({ ...baseRow(l, i), content: l.content || null }));
-        const lessonsMetaOnly = lessons
-          .map((l, i) => ({ l, i }))
-          .filter(({ l }) => l.__contentLoaded === false)
-          .map(({ l, i }) => baseRow(l, i));
+    clearScheduledSaveTimers();
+    setIsSaving(true);
+    setAutoSaveStatus('saving');
 
-        const upsertResults = await Promise.all([
-          lessonsWithContent.length > 0
-            ? supabase.from("lessons").upsert(lessonsWithContent, { onConflict: "id" })
-            : Promise.resolve({ error: null } as any),
-          lessonsMetaOnly.length > 0
-            ? supabase.from("lessons").upsert(lessonsMetaOnly, { onConflict: "id" })
-            : Promise.resolve({ error: null } as any),
-        ]);
-        const batchError = upsertResults.find(r => r.error)?.error;
-        if (batchError && !batchError.message?.includes('AbortError')) {
-          console.error("Error saving lessons:", batchError);
-          if (!silent) toast.error("Ошибка сохранения уроков: " + batchError.message);
-          throw batchError;
+    const operation = (async (): Promise<boolean> => {
+      const snapshot = latestStateRef.current;
+      const saveVersion = changeVersionRef.current;
+      const currentLessons = snapshot.lessons;
+      try {
+        if (!contentReadyRef.current) {
+          if (!silent) toast.error("Данные курса не загружены полностью. Обновите страницу перед сохранением.");
+          setAutoSaveStatus('error');
+          return false;
+        }
+        saveDraftToLocal(snapshot.courseId ?? draftOriginCourseIdRef.current, snapshot.courseTitle, snapshot.courseDescription, snapshot.lessons);
+        if (!snapshot.courseTitle.trim()) {
+          if (!silent) toast.error("Введите название курса");
+          setAutoSaveStatus('error');
+          return false;
+        }
+        const orgId = await ensureOrganizationId();
+        if (!isCurrentEditor()) return false;
+        if (!orgId) {
+          if (!silent) toast.error("Не найдена организация");
+          setAutoSaveStatus('error');
+          return false;
         }
 
-        // Параллельная обработка тестовых вопросов и вложений для скорости
-        const testOps: Promise<unknown>[] = [];
-        const attachOps: Promise<unknown>[] = [];
-
-        for (const lesson of lessons) {
-          if (lesson.type === "test" && lesson.questions && lesson.questions.length > 0) {
-            const activeQuestions = lesson.questions.filter(q => !q.isDeleted);
-            const toDelete = lesson.questions.filter(q => q.isDeleted && !q.isNew);
-            for (const q of toDelete) {
-              testOps.push(Promise.resolve(supabase.from("test_questions").delete().eq("id", q.id)));
-            }
-            if (activeQuestions.length > 0) {
-              const rows = activeQuestions.map((q, i) => ({ id: q.id, lesson_id: lesson.id, question: q.question.trim(), options: q.options.filter(o => o.text.trim()), correct_answer: q.correct_answer, order_index: i, explanation: q.explanation || null, image_url: q.image_url || null }));
-              testOps.push(Promise.resolve(supabase.from("test_questions").upsert(rows, { onConflict: "id" })));
-            }
-          }
-          if (lesson.attachments && lesson.attachments.length > 0) {
-            const toDelete = lesson.attachments.filter(a => a.isDeleted && !a.isNew);
-            const toInsert = lesson.attachments.filter(a => a.isNew && !a.isDeleted);
-            for (const a of toDelete) {
-              attachOps.push(Promise.resolve(supabase.from("lesson_attachments").delete().eq("id", a.id)));
-            }
-            if (toInsert.length > 0) {
-              const rows = toInsert.map((a, i) => ({ id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size, category: a.category, order_index: i }));
-              attachOps.push(Promise.resolve(supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" })));
-            }
+        const existingCourseId = savedCourseIdRef.current ?? snapshot.courseId;
+        const wasExistingCourse = Boolean(existingCourseId);
+        const joinedCreation = Boolean(courseCreationRef.current);
+        let savedCourseId = existingCourseId;
+        if (existingCourseId) {
+          const { error } = await supabase
+            .from("courses")
+            .update({ title: snapshot.courseTitle.trim(), description: snapshot.courseDescription.trim() || null })
+            .eq("id", existingCourseId);
+          if (error) throw error;
+        } else {
+          savedCourseId = await createCourseIdentity(orgId, snapshot.courseTitle.trim(), snapshot.courseDescription);
+          if (!isCurrentEditor()) return false;
+          // A concurrent module action may have bootstrapped with an older title.
+          if (joinedCreation) {
+            const { error } = await supabase.from("courses")
+              .update({ title: snapshot.courseTitle.trim(), description: snapshot.courseDescription.trim() || null })
+              .eq("id", savedCourseId);
+            if (error) throw error;
           }
         }
-        const results = await Promise.allSettled([...testOps, ...attachOps]);
-        const failed = results.filter(r => r.status === 'rejected');
-        if (failed.length > 0) {
-          console.error("Some lesson sub-records failed to save:", failed);
-          if (!silent) toast.warning(`Не удалось сохранить ${failed.length} элементов (вопросы/файлы)`);
+        if (!isCurrentEditor()) return false;
+
+        // Only delete lessons known to this editor. Empty or stale loads must
+        // never turn into a course-wide DELETE or remove another window's work.
+        const currentLessonIds = new Set(currentLessons.map(lesson => lesson.id));
+        const removedLessonIds = [...loadedLessonIdsRef.current].filter(id => !currentLessonIds.has(id));
+        if (savedCourseId && removedLessonIds.length > 0) {
+          const { error: deleteError } = await supabase.from("lessons").delete()
+            .eq("course_id", savedCourseId).in("id", removedLessonIds);
+          if (deleteError) throw deleteError;
+          removedLessonIds.forEach(id => loadedLessonIdsRef.current.delete(id));
+          if (!isCurrentEditor()) return false;
         }
+
+        if (currentLessons.length > 0 && savedCourseId) {
+          // Split into two upsert batches:
+          // - lessonsWithContent: content was loaded (or freshly created) → write everything
+          // - lessonsMetaOnly: lazy placeholder → write metadata, KEEP existing content in DB
+          const baseRow = (lesson: typeof currentLessons[number], index: number) => ({
+            id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type,
+            order_index: index, test_passing_score: lesson.testPassingScore ?? 60,
+            test_questions_to_show: lesson.testQuestionsToShow ?? null,
+            test_max_attempts: lesson.testMaxAttempts ?? null,
+            test_show_answers: lesson.testShowAnswers ?? true,
+            module_id: lesson.module_id ?? null,
+            metadata: lesson.metadata ?? {},
+          });
+          const lessonsWithContent = currentLessons
+            .map((l, i) => ({ l, i }))
+            .filter(({ l }) => l.__contentLoaded !== false)
+            .map(({ l, i }) => ({ ...baseRow(l, i), content: l.content || null }));
+          const lessonsMetaOnly = currentLessons
+            .map((l, i) => ({ l, i }))
+            .filter(({ l }) => l.__contentLoaded === false)
+            .map(({ l, i }) => baseRow(l, i));
+
+          const lessonBatches = [lessonsWithContent, lessonsMetaOnly].filter(batch => batch.length > 0);
+          // A response can fail after the row was committed. Retain all IDs
+          // attempted by this editor, so removing one on a retry still deletes
+          // that exact row without touching lessons created in another window.
+          lessonBatches.forEach(batch => batch.forEach(lesson => loadedLessonIdsRef.current.add(lesson.id)));
+          // Wait for both batches even after one failure, so a retry cannot race
+          // a write from the previous attempt.
+          const upsertResults = await Promise.allSettled(lessonBatches.map(batch =>
+            Promise.resolve(supabase.from("lessons").upsert(batch, { onConflict: "id" })),
+          ));
+          const lessonErrors: unknown[] = [];
+          upsertResults.forEach(result => {
+            if (result.status === "rejected") lessonErrors.push(result.reason);
+            else if (result.value.error) lessonErrors.push(result.value.error);
+          });
+          if (lessonErrors.length > 0) throw normalizeSaveError(lessonErrors[0]);
+          if (!isCurrentEditor()) return false;
+
+          // Параллельная обработка тестовых вопросов и вложений для скорости
+          const testOps: Promise<unknown>[] = [];
+          const attachOps: Promise<unknown>[] = [];
+
+          for (const lesson of currentLessons) {
+            if (lesson.type === "test" && lesson.questions && lesson.questions.length > 0) {
+              const activeQuestions = lesson.questions.filter(q => !q.isDeleted);
+              const toDelete = lesson.questions.filter(q => q.isDeleted && !q.isNew);
+              for (const q of toDelete) {
+                testOps.push(Promise.resolve(supabase.from("test_questions").delete().eq("id", q.id)));
+              }
+              if (activeQuestions.length > 0) {
+                const rows = activeQuestions.map((q, i) => ({ id: q.id, lesson_id: lesson.id, question: q.question.trim(), options: q.options.filter(o => o.text.trim()), correct_answer: q.correct_answer, order_index: i, explanation: q.explanation || null, image_url: q.image_url || null }));
+                testOps.push(Promise.resolve(supabase.from("test_questions").upsert(rows, { onConflict: "id" })));
+              }
+            }
+            if (lesson.attachments && lesson.attachments.length > 0) {
+              const toDelete = lesson.attachments.filter(a => a.isDeleted && !a.isNew);
+              const toInsert = lesson.attachments.filter(a => a.isNew && !a.isDeleted);
+              for (const a of toDelete) {
+                attachOps.push(Promise.resolve(supabase.from("lesson_attachments").delete().eq("id", a.id)));
+              }
+              if (toInsert.length > 0) {
+                const rows = toInsert.map((a, i) => ({ id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size, category: a.category, order_index: i }));
+                attachOps.push(Promise.resolve(supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" })));
+              }
+            }
+          }
+          const results = await Promise.allSettled([...testOps, ...attachOps]);
+          const subRecordErrors = results.flatMap(result => {
+            if (result.status === 'rejected') return [result.reason];
+            const value = result.value;
+            if (value && typeof value === 'object' && 'error' in value) {
+              const operationError = (value as { error?: unknown }).error;
+              return operationError ? [operationError] : [];
+            }
+            return [];
+          });
+          if (subRecordErrors.length > 0) {
+            console.error("Some lesson sub-records failed to save:", subRecordErrors);
+            throw normalizeSaveError(subRecordErrors[0]);
+          }
+        }
+        if (!isCurrentEditor()) return false;
+
+        persistedChangeVersionRef.current = saveVersion;
+        if (!silent) toast.success(wasExistingCourse ? "Курс обновлён" : "Курс создан");
+        if (changeVersionRef.current === saveVersion) {
+          setHasUnsavedChanges(false);
+          const draftOriginCourseId = draftOriginCourseIdRef.current;
+          clearDraftFromLocal(draftOriginCourseId);
+          if (savedCourseId && savedCourseId !== draftOriginCourseId) {
+            clearDraftFromLocal(savedCourseId);
+          }
+          // Stop touching the shared new-course draft after the first confirmed
+          // save. Another tab may now own that draft key.
+          draftOriginCourseIdRef.current = savedCourseId ?? draftOriginCourseId;
+        } else {
+          const current = latestStateRef.current;
+          setHasUnsavedChanges(true);
+          saveDraftToLocal(savedCourseIdRef.current ?? current.courseId, current.courseTitle, current.courseDescription, current.lessons);
+          scheduleSave();
+        }
+        setAutoSaveStatus('saved');
+        statusResetTimerRef.current = setTimeout(() => {
+          statusResetTimerRef.current = null;
+          setAutoSaveStatus('idle');
+        }, 3000);
+        return true;
+      } catch (error: unknown) {
+        if (!isCurrentEditor()) return false;
+        const err = normalizeSaveError(error);
+        const wasCancelled = isSaveCancellation(err);
+        console.error(wasCancelled ? "Course save was cancelled:" : "Course save failed:", err);
+        // A failed or cancelled write can be partial. Keep the editor dirty and
+        // the local draft intact so the same idempotent operations can be retried.
+        const current = latestStateRef.current;
+        saveDraftToLocal(savedCourseIdRef.current ?? current.courseId ?? draftOriginCourseIdRef.current, current.courseTitle, current.courseDescription, current.lessons);
+        setHasUnsavedChanges(true);
+        setAutoSaveStatus('error');
+        if (!silent) {
+          toast.error(
+            wasCancelled
+              ? "Сохранение прервано. Изменения не потеряны — попробуйте ещё раз"
+              : "Ошибка сохранения: " + err.message,
+          );
+        }
+        return false;
       }
-      if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
-      setHasUnsavedChanges(false); clearDraftFromLocal(courseId); setAutoSaveStatus('saved');
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
-      return true;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      if (err.name === 'AbortError' || err.message?.includes('AbortError')) {
-        if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
-        setHasUnsavedChanges(false); clearDraftFromLocal(courseId); setAutoSaveStatus('saved');
-        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000); return true;
-      } else { toast.error("Ошибка сохранения: " + err.message); setAutoSaveStatus('error'); return false; }
-    } finally { setIsSaving(false); }
-  };
+    })();
+
+    const trackedOperation: Promise<boolean> = operation.finally(() => {
+      if (saveInFlightRef.current === trackedOperation) saveInFlightRef.current = null;
+      if (isCurrentEditor()) setIsSaving(false);
+    });
+    saveInFlightRef.current = trackedOperation;
+    return trackedOperation;
+  }, [clearScheduledSaveTimers, scheduleSave, createCourseIdentity]);
+
+  saveCourseRef.current = saveCourse;
 
   const saveSingleLesson = async (lesson: Lesson, orderIndex: number) => {
+    if (!editorActiveRef.current) return;
     const orgId = await ensureOrganizationId();
+    if (!editorActiveRef.current) return;
     if (!orgId) { toast.error("Не найдена организация"); return; }
     setIsSaving(true);
     try {
-      let savedCourseId = courseId;
-      if (!savedCourseId) {
-        if (!courseTitle.trim()) setCourseTitle(lesson.title || "Новый курс");
-        const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim() || lesson.title || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single();
-        if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
-      }
+      const current = latestStateRef.current;
+      if (!current.courseTitle.trim()) setCourseTitle(lesson.title || "Новый курс");
+      const savedCourseId = await createCourseIdentity(orgId, current.courseTitle.trim() || lesson.title || "Новый курс", current.courseDescription);
+      if (!editorActiveRef.current) return;
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
-      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, test_show_answers: lesson.testShowAnswers ?? true, module_id: lesson.module_id ?? null, metadata: lesson.metadata ?? {} }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
-      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, test_show_answers: lesson.testShowAnswers ?? true, module_id: lesson.module_id ?? null, metadata: lesson.metadata ?? {} }); if (error) throw error; toast.success("Лекция сохранена"); }
+      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, test_show_answers: lesson.testShowAnswers ?? true, module_id: lesson.module_id ?? null, metadata: lesson.metadata ?? {} }).eq("id", lesson.id); if (error) throw error; loadedLessonIdsRef.current.add(lesson.id); toast.success("Лекция обновлена"); }
+      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, test_show_answers: lesson.testShowAnswers ?? true, module_id: lesson.module_id ?? null, metadata: lesson.metadata ?? {} }); if (error) throw error; loadedLessonIdsRef.current.add(lesson.id); toast.success("Лекция сохранена"); }
     } catch (error: unknown) { toast.error("Ошибка сохранения: " + (error instanceof Error ? error.message : String(error))); }
     finally { setIsSaving(false); }
   };
