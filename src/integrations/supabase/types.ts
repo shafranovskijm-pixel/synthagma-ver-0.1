@@ -628,7 +628,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -639,7 +638,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -650,7 +648,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -4085,6 +4082,7 @@ export type Database = {
           access_days: number | null
           completed_at: string | null
           course_id: string
+          document_facts_revision: number
           expires_at: string | null
           id: string
           progress: number
@@ -4097,6 +4095,7 @@ export type Database = {
           access_days?: number | null
           completed_at?: string | null
           course_id: string
+          document_facts_revision?: number
           expires_at?: string | null
           id?: string
           progress?: number
@@ -4109,6 +4108,7 @@ export type Database = {
           access_days?: number | null
           completed_at?: string | null
           course_id?: string
+          document_facts_revision?: number
           expires_at?: string | null
           id?: string
           progress?: number
@@ -4244,6 +4244,279 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goreltech_document_operations: {
+        Row: {
+          actor_id: string
+          created_at: string
+          group_id: string
+          operation_id: string
+          organization_id: string
+          receipt: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          group_id: string
+          operation_id: string
+          organization_id: string
+          receipt: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          group_id?: string
+          operation_id?: string
+          organization_id?: string
+          receipt?: Json
+        }
+        Relationships: []
+      }
+      goreltech_enrollment_orders: {
+        Row: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          document_date: string
+          document_number: string
+          docx_sha256: string | null
+          file_path: string | null
+          group_id: string
+          operation_id: string
+          organization_id: string
+          signatory: Json
+          snapshot: Json
+          snapshot_hash: string
+          status: string
+          template_sha256: string
+        }
+        Insert: {
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          document_date: string
+          document_number: string
+          docx_sha256?: string | null
+          file_path?: string | null
+          group_id: string
+          operation_id: string
+          organization_id: string
+          signatory: Json
+          snapshot: Json
+          snapshot_hash: string
+          status?: string
+          template_sha256: string
+        }
+        Update: {
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          document_date?: string
+          document_number?: string
+          docx_sha256?: string | null
+          file_path?: string | null
+          group_id?: string
+          operation_id?: string
+          organization_id?: string
+          signatory?: Json
+          snapshot?: Json
+          snapshot_hash?: string
+          status?: string
+          template_sha256?: string
+        }
+        Relationships: []
+      }
+      group_class_journal_marks: {
+        Row: {
+          course_id: string | null
+          group_id: string
+          id: string
+          mark: string
+          organization_id: string
+          revision: number
+          slot: number
+          source_date: string
+          updated_at: string
+          updated_by: string
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          group_id: string
+          id?: string
+          mark: string
+          organization_id: string
+          revision?: number
+          slot: number
+          source_date: string
+          updated_at?: string
+          updated_by: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          group_id?: string
+          id?: string
+          mark?: string
+          organization_id?: string
+          revision?: number
+          slot?: number
+          source_date?: string
+          updated_at?: string
+          updated_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_class_journal_marks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_class_journal_marks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_completion_decision_history: {
+        Row: {
+          decision: Json
+          decision_id: string
+          group_id: string
+          organization_id: string
+          recorded_at: string
+          revision: number
+          user_id: string
+        }
+        Insert: {
+          decision: Json
+          decision_id: string
+          group_id: string
+          organization_id: string
+          recorded_at?: string
+          revision: number
+          user_id: string
+        }
+        Update: {
+          decision?: Json
+          decision_id?: string
+          group_id?: string
+          organization_id?: string
+          recorded_at?: string
+          revision?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      group_completion_decisions: {
+        Row: {
+          confirmed_at: string
+          confirmed_by: string
+          course_id: string
+          decision_note: string | null
+          enrollment_facts_revision: number
+          enrollment_id: string
+          grade_text: string
+          group_end_date: string | null
+          group_id: string
+          group_start_date: string | null
+          id: string
+          issuance_decision: string
+          organization_id: string
+          protocol_date: string | null
+          protocol_number: string | null
+          revision: number
+          user_id: string
+        }
+        Insert: {
+          confirmed_at: string
+          confirmed_by: string
+          course_id: string
+          decision_note?: string | null
+          enrollment_facts_revision: number
+          enrollment_id: string
+          grade_text: string
+          group_end_date?: string | null
+          group_id: string
+          group_start_date?: string | null
+          id?: string
+          issuance_decision: string
+          organization_id: string
+          protocol_date?: string | null
+          protocol_number?: string | null
+          revision: number
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          confirmed_by?: string
+          course_id?: string
+          decision_note?: string | null
+          enrollment_facts_revision?: number
+          enrollment_id?: string
+          grade_text?: string
+          group_end_date?: string | null
+          group_id?: string
+          group_start_date?: string | null
+          id?: string
+          issuance_decision?: string
+          organization_id?: string
+          protocol_date?: string | null
+          protocol_number?: string | null
+          revision?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      group_document_schedules: {
+        Row: {
+          course_id: string | null
+          group_id: string
+          organization_id: string
+          revision: number
+          slots: Json
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          course_id?: string | null
+          group_id: string
+          organization_id: string
+          revision?: number
+          slots: Json
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          course_id?: string | null
+          group_id?: string
+          organization_id?: string
+          revision?: number
+          slots?: Json
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_document_schedules_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_document_schedules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -4685,6 +4958,78 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      labor_safety_enrollment_protocols: {
+        Row: {
+          course_title_snapshot: string
+          created_at: string
+          created_by: string
+          enrollment_id: string | null
+          id: string
+          is_passed: boolean
+          knowledge_check_date: string
+          learner_name_snapshot: string | null
+          organization_id: string
+          protocol_number: string
+          source_course_id: string
+          source_enrollment_id: string
+          source_user_id: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          course_title_snapshot: string
+          created_at?: string
+          created_by: string
+          enrollment_id?: string | null
+          id?: string
+          is_passed: boolean
+          knowledge_check_date: string
+          learner_name_snapshot?: string | null
+          organization_id: string
+          protocol_number: string
+          source_course_id: string
+          source_enrollment_id: string
+          source_user_id: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          course_title_snapshot?: string
+          created_at?: string
+          created_by?: string
+          enrollment_id?: string | null
+          id?: string
+          is_passed?: boolean
+          knowledge_check_date?: string
+          learner_name_snapshot?: string | null
+          organization_id?: string
+          protocol_number?: string
+          source_course_id?: string
+          source_enrollment_id?: string
+          source_user_id?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_safety_enrollment_protocols_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labor_safety_enrollment_protocols_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       labor_safety_groups: {
         Row: {
@@ -8297,6 +8642,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_group_organization_registration_fkey"
+            columns: ["student_group_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
             foreignKeyName: "profiles_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -10575,6 +10927,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_groups_course_organization_registration_fkey"
+            columns: ["course_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
             foreignKeyName: "student_groups_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -12002,8 +12361,39 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_goreltech_enrollment_order_access: {
+        Args: {
+          p_actor_id: string
+          p_allow_read?: boolean
+          p_organization_id: string
+        }
+        Returns: undefined
+      }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
+      _goreltech_enrollment_order_result: {
+        Args: {
+          p_row: Database["public"]["Tables"]["goreltech_enrollment_orders"]["Row"]
+        }
+        Returns: Json
+      }
+      _goreltech_enrollment_order_snapshot: {
+        Args: { p_group_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      _group_completion_can_access: {
+        Args: { p_manage: boolean; p_organization_id: string }
+        Returns: boolean
+      }
+      _group_completion_date: { Args: { p_text: string }; Returns: string }
+      _group_completion_decision_json: {
+        Args: {
+          p_row: Database["public"]["Tables"]["group_completion_decisions"]["Row"]
+        }
+        Returns: Json
+      }
+      _group_completion_nonblank: { Args: { p_text: string }; Returns: boolean }
+      _group_completion_xml_text: { Args: { p_text: string }; Returns: boolean }
       _org_email_sender_key: {
         Args: { _organization_id: string }
         Returns: string
@@ -12090,16 +12480,6 @@ export type Database = {
         Returns: undefined
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
-      apply_tbank_balance_credit: {
-        Args: {
-          p_amount: number
-          p_description: string
-          p_idempotency_key: string
-          p_organization_id: string
-          p_transaction_type: string
-        }
-        Returns: Json
-      }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
         Returns: undefined
@@ -12273,6 +12653,17 @@ export type Database = {
         Returns: string
       }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      complete_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_docx_sha256: string
+          p_file_path: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       complete_own_course_enrollment: {
         Args: { p_enrollment_id: string }
         Returns: Json
@@ -12340,6 +12731,17 @@ export type Database = {
           batch_version: number
           inserted_count: number
         }[]
+      }
+      create_goreltech_group_document_batch_once: {
+        Args: {
+          p_actor_id: string
+          p_docs: Json
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+          p_warnings?: string[]
+        }
+        Returns: Json
       }
       create_group_document_batch: {
         Args: { p_docs: Json; p_group_id: string; p_organization_id: string }
@@ -12637,6 +13039,24 @@ export type Database = {
           ready_for_export: number
           total_documents: number
         }[]
+      }
+      get_goreltech_document_operation: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      get_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+        }
+        Returns: Json
       }
       get_mailing_deliverability_seed_secret: {
         Args: { p_seed_id: string }
@@ -13017,6 +13437,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      list_goreltech_enrollment_orders: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       list_org_task_assignees: {
         Args: { _org_id: string }
         Returns: {
@@ -13123,6 +13551,14 @@ export type Database = {
               port: number
             }[]
           }
+      preview_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       public_get_organization_by_slug: {
         Args: { p_slug: string }
         Returns: {
@@ -13173,6 +13609,10 @@ export type Database = {
         Returns: Json
       }
       purge_recycle_bin_30d: { Args: never; Returns: number }
+      read_group_completion_decisions: {
+        Args: { p_group_id: string; p_organization_id: string }
+        Returns: Json
+      }
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
         Returns: undefined
@@ -13206,6 +13646,19 @@ export type Database = {
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
+      }
+      reserve_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_document_date: string
+          p_expected_snapshot_hash: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+          p_signatory: Json
+          p_template_sha256: string
+        }
+        Returns: Json
       }
       reserve_mailing_campaign_quota: {
         Args: {
@@ -13280,6 +13733,82 @@ export type Database = {
       revoke_signature: {
         Args: { p_reason?: string; p_signature_id: string }
         Returns: Json
+      }
+      save_group_class_journal_mark: {
+        Args: {
+          p_expected_course_id: string
+          p_expected_date: string
+          p_expected_revision: number
+          p_group_id: string
+          p_mark: string
+          p_organization_id: string
+          p_slot: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      save_group_completion_decision: {
+        Args: {
+          p_decision_note?: string
+          p_expected_course_id: string
+          p_expected_decision_revision: number
+          p_expected_end_date: string
+          p_expected_enrollment_id: string
+          p_expected_enrollment_revision: string
+          p_expected_start_date: string
+          p_grade_text: string
+          p_group_id: string
+          p_issuance_decision: string
+          p_organization_id: string
+          p_protocol_date?: string
+          p_protocol_number?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      save_group_document_schedule: {
+        Args: {
+          p_expected_course_id: string
+          p_expected_revision: number
+          p_group_id: string
+          p_organization_id: string
+          p_slots: Json
+        }
+        Returns: Json
+      }
+      save_labor_safety_enrollment_protocol: {
+        Args: {
+          p_enrollment_id: string
+          p_expected_version?: number
+          p_is_passed: boolean
+          p_knowledge_check_date: string
+          p_organization_id: string
+          p_protocol_number: string
+        }
+        Returns: {
+          course_title_snapshot: string
+          created_at: string
+          created_by: string
+          enrollment_id: string | null
+          id: string
+          is_passed: boolean
+          knowledge_check_date: string
+          learner_name_snapshot: string | null
+          organization_id: string
+          protocol_number: string
+          source_course_id: string
+          source_enrollment_id: string
+          source_user_id: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "labor_safety_enrollment_protocols"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       save_student_frdo_data: {
         Args: { p_data: Json; p_organization_id: string; p_user_id: string }
