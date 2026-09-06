@@ -628,7 +628,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -639,7 +638,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -650,7 +648,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -2007,34 +2004,52 @@ export type Database = {
       }
       course_documents: {
         Row: {
+          allow_download: boolean
           course_id: string
           created_at: string
           description: string | null
           file_url: string | null
           id: string
+          library_category: string | null
+          library_document_id: string | null
+          module_id: string | null
           name: string
+          sort_order: number
           type: string
           updated_at: string
+          visible_to_students: boolean
         }
         Insert: {
+          allow_download?: boolean
           course_id: string
           created_at?: string
           description?: string | null
           file_url?: string | null
           id?: string
+          library_category?: string | null
+          library_document_id?: string | null
+          module_id?: string | null
           name: string
+          sort_order?: number
           type?: string
           updated_at?: string
+          visible_to_students?: boolean
         }
         Update: {
+          allow_download?: boolean
           course_id?: string
           created_at?: string
           description?: string | null
           file_url?: string | null
           id?: string
+          library_category?: string | null
+          library_document_id?: string | null
+          module_id?: string | null
           name?: string
+          sort_order?: number
           type?: string
           updated_at?: string
+          visible_to_students?: boolean
         }
         Relationships: [
           {
@@ -2042,6 +2057,20 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_documents_library_document_id_fkey"
+            columns: ["library_document_id"]
+            isOneToOne: false
+            referencedRelation: "library_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_documents_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
             referencedColumns: ["id"]
           },
         ]
@@ -2892,6 +2921,785 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "org_contract_template_versions"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_audit: {
+        Row: {
+          action: string
+          created_at: string
+          detail: Json
+          id: number
+          organization_id: string
+          target: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: Json
+          id?: number
+          organization_id: string
+          target?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: Json
+          id?: number
+          organization_id?: string
+          target?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_audit_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_cars: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          name: string
+          number: string
+          organization_id: string
+          transmission: Database["public"]["Enums"]["driving_transmission"]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          number: string
+          organization_id: string
+          transmission?: Database["public"]["Enums"]["driving_transmission"]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          number?: string
+          organization_id?: string
+          transmission?: Database["public"]["Enums"]["driving_transmission"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_cars_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_courses: {
+        Row: {
+          created_at: string
+          id: string
+          lms_course_id: string | null
+          material: string
+          name: string
+          organization_id: string
+          pass_percent: number
+          program_id: string
+          questions: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lms_course_id?: string | null
+          material?: string
+          name: string
+          organization_id: string
+          pass_percent?: number
+          program_id: string
+          questions?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lms_course_id?: string | null
+          material?: string
+          name?: string
+          organization_id?: string
+          pass_percent?: number
+          program_id?: string
+          questions?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_courses_lms_course_id_fkey"
+            columns: ["lms_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_courses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_courses_program_fkey"
+            columns: ["organization_id", "program_id"]
+            isOneToOne: false
+            referencedRelation: "driving_programs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      driving_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          kind: Database["public"]["Enums"]["driving_entry_kind"]
+          organization_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          id?: string
+          kind: Database["public"]["Enums"]["driving_entry_kind"]
+          organization_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          kind?: Database["public"]["Enums"]["driving_entry_kind"]
+          organization_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_entries_student_fkey"
+            columns: ["organization_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "driving_students"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      driving_entry_reversals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entry_id: string
+          organization_id: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entry_id: string
+          organization_id: string
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entry_id?: string
+          organization_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_entry_reversals_entry_fkey"
+            columns: ["organization_id", "entry_id"]
+            isOneToOne: false
+            referencedRelation: "driving_entries"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_entry_reversals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_groups_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_groups_program_fkey"
+            columns: ["organization_id", "program_id"]
+            isOneToOne: false
+            referencedRelation: "driving_programs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      driving_instructors: {
+        Row: {
+          active: boolean
+          car_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          car_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          car_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_instructors_car_fkey"
+            columns: ["organization_id", "car_id"]
+            isOneToOne: false
+            referencedRelation: "driving_cars"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_instructors_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_invites: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          expires_at: string
+          id: string
+          instructor_id: string | null
+          organization_id: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          student_id: string | null
+          token_hash: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expires_at: string
+          id?: string
+          instructor_id?: string | null
+          organization_id: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          student_id?: string | null
+          token_hash: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expires_at?: string
+          id?: string
+          instructor_id?: string | null
+          organization_id?: string
+          role?: Database["public"]["Enums"]["driving_member_role"]
+          student_id?: string | null
+          token_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_invites_instructor_fkey"
+            columns: ["organization_id", "instructor_id"]
+            isOneToOne: false
+            referencedRelation: "driving_instructors"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_invites_student_fkey"
+            columns: ["organization_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "driving_students"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      driving_lessons: {
+        Row: {
+          actual_minutes: number
+          car_id: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          instructor_id: string
+          note: string
+          organization_id: string
+          revision: number
+          starts_at: string
+          status: Database["public"]["Enums"]["driving_lesson_status"]
+          student_id: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          actual_minutes?: number
+          car_id: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          instructor_id: string
+          note?: string
+          organization_id: string
+          revision?: number
+          starts_at: string
+          status?: Database["public"]["Enums"]["driving_lesson_status"]
+          student_id: string
+          topic?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_minutes?: number
+          car_id?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          instructor_id?: string
+          note?: string
+          organization_id?: string
+          revision?: number
+          starts_at?: string
+          status?: Database["public"]["Enums"]["driving_lesson_status"]
+          student_id?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_lessons_car_fkey"
+            columns: ["organization_id", "car_id"]
+            isOneToOne: false
+            referencedRelation: "driving_cars"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_lessons_instructor_fkey"
+            columns: ["organization_id", "instructor_id"]
+            isOneToOne: false
+            referencedRelation: "driving_instructors"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_lessons_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_lessons_student_fkey"
+            columns: ["organization_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "driving_students"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      driving_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string | null
+          organization_id: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          student_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id?: string | null
+          organization_id: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          student_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string | null
+          organization_id?: string
+          role?: Database["public"]["Enums"]["driving_member_role"]
+          student_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_memberships_instructor_fkey"
+            columns: ["organization_id", "instructor_id"]
+            isOneToOne: false
+            referencedRelation: "driving_instructors"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_memberships_student_fkey"
+            columns: ["organization_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "driving_students"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      driving_operations: {
+        Row: {
+          created_at: string
+          operation_id: string
+          organization_id: string
+          payload_hash: string
+          result: Json
+        }
+        Insert: {
+          created_at?: string
+          operation_id: string
+          organization_id: string
+          payload_hash: string
+          result: Json
+        }
+        Update: {
+          created_at?: string
+          operation_id?: string
+          organization_id?: string
+          payload_hash?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_operations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_programs: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          practice_minutes: number
+          transmission: Database["public"]["Enums"]["driving_transmission"]
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          practice_minutes: number
+          transmission?: Database["public"]["Enums"]["driving_transmission"]
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          practice_minutes?: number
+          transmission?: Database["public"]["Enums"]["driving_transmission"]
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_programs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_schools: {
+        Row: {
+          cancel_hours: number
+          created_at: string
+          created_by: string | null
+          horizon_days: number
+          id: string
+          name: string
+          organization_id: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_hours?: number
+          created_at?: string
+          created_by?: string | null
+          horizon_days?: number
+          id?: string
+          name: string
+          organization_id: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_hours?: number
+          created_at?: string
+          created_by?: string | null
+          horizon_days?: number
+          id?: string
+          name?: string
+          organization_id?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_schools_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_shifts: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          instructor_id: string
+          organization_id: string
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          instructor_id: string
+          organization_id: string
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          instructor_id?: string
+          organization_id?: string
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_shifts_instructor_fkey"
+            columns: ["organization_id", "instructor_id"]
+            isOneToOne: false
+            referencedRelation: "driving_instructors"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_shifts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driving_students: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string | null
+          group_id: string | null
+          id: string
+          instructor_id: string | null
+          name: string
+          organization_id: string
+          phone: string | null
+          practice_minutes: number
+          program_id: string
+          transmission: Database["public"]["Enums"]["driving_transmission"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email?: string | null
+          group_id?: string | null
+          id?: string
+          instructor_id?: string | null
+          name: string
+          organization_id: string
+          phone?: string | null
+          practice_minutes: number
+          program_id: string
+          transmission: Database["public"]["Enums"]["driving_transmission"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string | null
+          group_id?: string | null
+          id?: string
+          instructor_id?: string | null
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          practice_minutes?: number
+          program_id?: string
+          transmission?: Database["public"]["Enums"]["driving_transmission"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_students_group_fkey"
+            columns: ["organization_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "driving_groups"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_students_instructor_fkey"
+            columns: ["organization_id", "instructor_id"]
+            isOneToOne: false
+            referencedRelation: "driving_instructors"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "driving_students_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driving_students_program_fkey"
+            columns: ["organization_id", "program_id"]
+            isOneToOne: false
+            referencedRelation: "driving_programs"
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -4053,6 +4861,7 @@ export type Database = {
           access_days: number | null
           completed_at: string | null
           course_id: string
+          document_facts_revision: number
           expires_at: string | null
           id: string
           progress: number
@@ -4065,6 +4874,7 @@ export type Database = {
           access_days?: number | null
           completed_at?: string | null
           course_id: string
+          document_facts_revision?: number
           expires_at?: string | null
           id?: string
           progress?: number
@@ -4077,6 +4887,7 @@ export type Database = {
           access_days?: number | null
           completed_at?: string | null
           course_id?: string
+          document_facts_revision?: number
           expires_at?: string | null
           id?: string
           progress?: number
@@ -4212,6 +5023,279 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goreltech_document_operations: {
+        Row: {
+          actor_id: string
+          created_at: string
+          group_id: string
+          operation_id: string
+          organization_id: string
+          receipt: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          group_id: string
+          operation_id: string
+          organization_id: string
+          receipt: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          group_id?: string
+          operation_id?: string
+          organization_id?: string
+          receipt?: Json
+        }
+        Relationships: []
+      }
+      goreltech_enrollment_orders: {
+        Row: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          document_date: string
+          document_number: string
+          docx_sha256: string | null
+          file_path: string | null
+          group_id: string
+          operation_id: string
+          organization_id: string
+          signatory: Json
+          snapshot: Json
+          snapshot_hash: string
+          status: string
+          template_sha256: string
+        }
+        Insert: {
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          document_date: string
+          document_number: string
+          docx_sha256?: string | null
+          file_path?: string | null
+          group_id: string
+          operation_id: string
+          organization_id: string
+          signatory: Json
+          snapshot: Json
+          snapshot_hash: string
+          status?: string
+          template_sha256: string
+        }
+        Update: {
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          document_date?: string
+          document_number?: string
+          docx_sha256?: string | null
+          file_path?: string | null
+          group_id?: string
+          operation_id?: string
+          organization_id?: string
+          signatory?: Json
+          snapshot?: Json
+          snapshot_hash?: string
+          status?: string
+          template_sha256?: string
+        }
+        Relationships: []
+      }
+      group_class_journal_marks: {
+        Row: {
+          course_id: string | null
+          group_id: string
+          id: string
+          mark: string
+          organization_id: string
+          revision: number
+          slot: number
+          source_date: string
+          updated_at: string
+          updated_by: string
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          group_id: string
+          id?: string
+          mark: string
+          organization_id: string
+          revision?: number
+          slot: number
+          source_date: string
+          updated_at?: string
+          updated_by: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          group_id?: string
+          id?: string
+          mark?: string
+          organization_id?: string
+          revision?: number
+          slot?: number
+          source_date?: string
+          updated_at?: string
+          updated_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_class_journal_marks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_class_journal_marks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_completion_decision_history: {
+        Row: {
+          decision: Json
+          decision_id: string
+          group_id: string
+          organization_id: string
+          recorded_at: string
+          revision: number
+          user_id: string
+        }
+        Insert: {
+          decision: Json
+          decision_id: string
+          group_id: string
+          organization_id: string
+          recorded_at?: string
+          revision: number
+          user_id: string
+        }
+        Update: {
+          decision?: Json
+          decision_id?: string
+          group_id?: string
+          organization_id?: string
+          recorded_at?: string
+          revision?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      group_completion_decisions: {
+        Row: {
+          confirmed_at: string
+          confirmed_by: string
+          course_id: string
+          decision_note: string | null
+          enrollment_facts_revision: number
+          enrollment_id: string
+          grade_text: string
+          group_end_date: string | null
+          group_id: string
+          group_start_date: string | null
+          id: string
+          issuance_decision: string
+          organization_id: string
+          protocol_date: string | null
+          protocol_number: string | null
+          revision: number
+          user_id: string
+        }
+        Insert: {
+          confirmed_at: string
+          confirmed_by: string
+          course_id: string
+          decision_note?: string | null
+          enrollment_facts_revision: number
+          enrollment_id: string
+          grade_text: string
+          group_end_date?: string | null
+          group_id: string
+          group_start_date?: string | null
+          id?: string
+          issuance_decision: string
+          organization_id: string
+          protocol_date?: string | null
+          protocol_number?: string | null
+          revision: number
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          confirmed_by?: string
+          course_id?: string
+          decision_note?: string | null
+          enrollment_facts_revision?: number
+          enrollment_id?: string
+          grade_text?: string
+          group_end_date?: string | null
+          group_id?: string
+          group_start_date?: string | null
+          id?: string
+          issuance_decision?: string
+          organization_id?: string
+          protocol_date?: string | null
+          protocol_number?: string | null
+          revision?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      group_document_schedules: {
+        Row: {
+          course_id: string | null
+          group_id: string
+          organization_id: string
+          revision: number
+          slots: Json
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          course_id?: string | null
+          group_id: string
+          organization_id: string
+          revision?: number
+          slots: Json
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          course_id?: string | null
+          group_id?: string
+          organization_id?: string
+          revision?: number
+          slots?: Json
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_document_schedules_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_document_schedules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -4654,6 +5738,78 @@ export type Database = {
         }
         Relationships: []
       }
+      labor_safety_enrollment_protocols: {
+        Row: {
+          course_title_snapshot: string
+          created_at: string
+          created_by: string
+          enrollment_id: string | null
+          id: string
+          is_passed: boolean
+          knowledge_check_date: string
+          learner_name_snapshot: string | null
+          organization_id: string
+          protocol_number: string
+          source_course_id: string
+          source_enrollment_id: string
+          source_user_id: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          course_title_snapshot: string
+          created_at?: string
+          created_by: string
+          enrollment_id?: string | null
+          id?: string
+          is_passed: boolean
+          knowledge_check_date: string
+          learner_name_snapshot?: string | null
+          organization_id: string
+          protocol_number: string
+          source_course_id: string
+          source_enrollment_id: string
+          source_user_id: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          course_title_snapshot?: string
+          created_at?: string
+          created_by?: string
+          enrollment_id?: string | null
+          id?: string
+          is_passed?: boolean
+          knowledge_check_date?: string
+          learner_name_snapshot?: string | null
+          organization_id?: string
+          protocol_number?: string
+          source_course_id?: string
+          source_enrollment_id?: string
+          source_user_id?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_safety_enrollment_protocols_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labor_safety_enrollment_protocols_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_safety_groups: {
         Row: {
           created_at: string
@@ -5087,40 +6243,76 @@ export type Database = {
       }
       library_documents: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string
+          created_by: string | null
           description: string | null
+          edition_label: string | null
+          external_url: string | null
           file_size: number | null
           file_url: string | null
           folder_id: string | null
           id: string
+          last_checked_at: string | null
+          library_status: string | null
+          mime_type: string | null
           name: string
           organization_id: string
+          original_filename: string | null
+          source_name: string | null
+          storage_path: string | null
           type: string
           updated_at: string
+          usage_basis: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
+          edition_label?: string | null
+          external_url?: string | null
           file_size?: number | null
           file_url?: string | null
           folder_id?: string | null
           id?: string
+          last_checked_at?: string | null
+          library_status?: string | null
+          mime_type?: string | null
           name: string
           organization_id: string
+          original_filename?: string | null
+          source_name?: string | null
+          storage_path?: string | null
           type?: string
           updated_at?: string
+          usage_basis?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
+          edition_label?: string | null
+          external_url?: string | null
           file_size?: number | null
           file_url?: string | null
           folder_id?: string | null
           id?: string
+          last_checked_at?: string | null
+          library_status?: string | null
+          mime_type?: string | null
           name?: string
           organization_id?: string
+          original_filename?: string | null
+          source_name?: string | null
+          storage_path?: string | null
           type?: string
           updated_at?: string
+          usage_basis?: string | null
         }
         Relationships: [
           {
@@ -8229,6 +9421,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_group_organization_registration_fkey"
+            columns: ["student_group_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
             foreignKeyName: "profiles_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -10507,6 +11706,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_groups_course_organization_registration_fkey"
+            columns: ["course_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
             foreignKeyName: "student_groups_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -11934,8 +13140,39 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_goreltech_enrollment_order_access: {
+        Args: {
+          p_actor_id: string
+          p_allow_read?: boolean
+          p_organization_id: string
+        }
+        Returns: undefined
+      }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
+      _goreltech_enrollment_order_result: {
+        Args: {
+          p_row: Database["public"]["Tables"]["goreltech_enrollment_orders"]["Row"]
+        }
+        Returns: Json
+      }
+      _goreltech_enrollment_order_snapshot: {
+        Args: { p_group_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      _group_completion_can_access: {
+        Args: { p_manage: boolean; p_organization_id: string }
+        Returns: boolean
+      }
+      _group_completion_date: { Args: { p_text: string }; Returns: string }
+      _group_completion_decision_json: {
+        Args: {
+          p_row: Database["public"]["Tables"]["group_completion_decisions"]["Row"]
+        }
+        Returns: Json
+      }
+      _group_completion_nonblank: { Args: { p_text: string }; Returns: boolean }
+      _group_completion_xml_text: { Args: { p_text: string }; Returns: boolean }
       _org_email_sender_key: {
         Args: { _organization_id: string }
         Returns: string
@@ -12021,16 +13258,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      apply_tbank_balance_credit: {
-        Args: {
-          p_amount: number
-          p_description: string
-          p_idempotency_key: string
-          p_organization_id: string
-          p_transaction_type: string
-        }
-        Returns: Json
-      }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
@@ -12055,6 +13282,10 @@ export type Database = {
         Args: { _course_id: string; _permission?: string }
         Returns: boolean
       }
+      can_access_course_as_learner: {
+        Args: { _course_id: string }
+        Returns: boolean
+      }
       can_access_lesson: {
         Args: { _lesson_id: string; _permission?: string }
         Returns: boolean
@@ -12067,12 +13298,20 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_delete_orphan_library_file_object: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
       can_manage_course_file_object: {
         Args: { _object_name: string }
         Returns: boolean
       }
       can_manage_course_files_org: {
         Args: { _organization_id: string; _permission?: string }
+        Returns: boolean
+      }
+      can_manage_library_file_object: {
+        Args: { _object_name: string }
         Returns: boolean
       }
       can_manage_webinar_recording_org: {
@@ -12083,8 +13322,16 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_read_electronic_library_document: {
+        Args: { _library_document_id: string }
+        Returns: boolean
+      }
       can_read_lesson_attachment: {
         Args: { _lesson_id: string }
+        Returns: boolean
+      }
+      can_read_library_file_object: {
+        Args: { _object_name: string }
         Returns: boolean
       }
       can_read_webinar_recording_object: {
@@ -12185,6 +13432,17 @@ export type Database = {
         Returns: string
       }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      complete_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_docx_sha256: string
+          p_file_path: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       complete_own_course_enrollment: {
         Args: { p_enrollment_id: string }
         Returns: Json
@@ -12253,6 +13511,17 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      create_goreltech_group_document_batch_once: {
+        Args: {
+          p_actor_id: string
+          p_docs: Json
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+          p_warnings?: string[]
+        }
+        Returns: Json
+      }
       create_group_document_batch: {
         Args: { p_docs: Json; p_group_id: string; p_organization_id: string }
         Returns: {
@@ -12268,13 +13537,6 @@ export type Database = {
           p_title: string
         }
         Returns: string
-      }
-      import_csz_course_draft_v2: {
-        Args: {
-          p_organization_id: string
-          p_payload: Json
-        }
-        Returns: Json
       }
       create_mailing_report_link: {
         Args: { p_campaign_id: string; p_days?: number }
@@ -12314,6 +13576,206 @@ export type Database = {
       delete_signature_comment_by_token: {
         Args: { p_comment_id: string; p_token: string }
         Returns: undefined
+      }
+      driving_accept_invite: { Args: { _token: string }; Returns: Json }
+      driving_add_entry: {
+        Args: {
+          _kind: string
+          _operation_id: string
+          _organization_id: string
+          _payload: Json
+          _student_id: string
+        }
+        Returns: Json
+      }
+      driving_add_shift: {
+        Args: {
+          _ends_at: string
+          _instructor_id: string
+          _organization_id: string
+          _starts_at: string
+        }
+        Returns: string
+      }
+      driving_assert_manage: {
+        Args: { _organization_id: string }
+        Returns: undefined
+      }
+      driving_assign_student: {
+        Args: {
+          _group_id?: string
+          _instructor_id: string
+          _organization_id: string
+          _student_id: string
+        }
+        Returns: undefined
+      }
+      driving_book_lesson: {
+        Args: {
+          _car_id: string
+          _ends_at: string
+          _instructor_id: string
+          _lesson_id?: string
+          _organization_id: string
+          _starts_at: string
+          _student_id: string
+        }
+        Returns: string
+      }
+      driving_can_manage: {
+        Args: { _organization_id: string }
+        Returns: boolean
+      }
+      driving_can_read: { Args: { _organization_id: string }; Returns: boolean }
+      driving_connect_module: {
+        Args: { _organization_id: string; _timezone?: string }
+        Returns: Json
+      }
+      driving_create_invite: {
+        Args: { _organization_id: string; _role: string; _target_id: string }
+        Returns: Json
+      }
+      driving_get_state: { Args: { _organization_id: string }; Returns: Json }
+      driving_is_member: {
+        Args: { _organization_id: string }
+        Returns: boolean
+      }
+      driving_lesson_action: {
+        Args: {
+          _action: string
+          _actual_minutes?: number
+          _lesson_id: string
+          _organization_id: string
+          _reason?: string
+          _topic?: string
+        }
+        Returns: Json
+      }
+      driving_link_student_account: {
+        Args: {
+          _organization_id: string
+          _student_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      driving_log: {
+        Args: {
+          _action: string
+          _detail?: Json
+          _organization_id: string
+          _target?: string
+        }
+        Returns: undefined
+      }
+      driving_membership: {
+        Args: { _organization_id: string }
+        Returns: {
+          instructor_id: string
+          role: Database["public"]["Enums"]["driving_member_role"]
+          student_id: string
+        }[]
+      }
+      driving_module_status: {
+        Args: { _organization_id: string }
+        Returns: Json
+      }
+      driving_my_schools: { Args: never; Returns: Json }
+      driving_reverse_entry: {
+        Args: { _entry_id: string; _organization_id: string; _reason: string }
+        Returns: Json
+      }
+      driving_save_car: {
+        Args: {
+          _name: string
+          _number: string
+          _organization_id: string
+          _transmission: string
+        }
+        Returns: string
+      }
+      driving_save_course: {
+        Args: {
+          _lms_course_id?: string
+          _material: string
+          _name: string
+          _organization_id: string
+          _pass_percent: number
+          _program_id: string
+          _questions: Json
+        }
+        Returns: string
+      }
+      driving_save_group: {
+        Args: { _name: string; _organization_id: string; _program_id: string }
+        Returns: string
+      }
+      driving_save_instructor: {
+        Args: {
+          _car_id: string
+          _email: string
+          _name: string
+          _organization_id: string
+        }
+        Returns: string
+      }
+      driving_save_program: {
+        Args: {
+          _name: string
+          _organization_id: string
+          _practice_minutes: number
+          _transmission: string
+          _version: string
+        }
+        Returns: string
+      }
+      driving_save_settings: {
+        Args: {
+          _cancel_hours: number
+          _horizon_days: number
+          _name: string
+          _organization_id: string
+          _timezone: string
+        }
+        Returns: undefined
+      }
+      driving_save_student: {
+        Args: {
+          _email: string
+          _group_id?: string
+          _instructor_id?: string
+          _name: string
+          _organization_id: string
+          _phone: string
+          _program_id: string
+          _user_id?: string
+        }
+        Returns: string
+      }
+      driving_set_resource_status: {
+        Args: {
+          _active: boolean
+          _id: string
+          _kind: string
+          _organization_id: string
+          _reason: string
+        }
+        Returns: undefined
+      }
+      driving_student_minutes: {
+        Args: {
+          _excluded_lesson?: string
+          _organization_id: string
+          _student_id: string
+        }
+        Returns: {
+          completed: number
+          reserved: number
+        }[]
+      }
+      driving_submit_attempt: {
+        Args: { _answers: Json; _course_id: string; _organization_id: string }
+        Returns: Json
       }
       encrypt_password: { Args: { p_text: string }; Returns: string }
       ensure_sales_manager_for_current_user: { Args: never; Returns: string }
@@ -12376,6 +13838,10 @@ export type Database = {
           p_scope: string
           p_source: string
         }
+        Returns: Json
+      }
+      get_course_electronic_library_shell: {
+        Args: { p_course_id: string }
         Returns: Json
       }
       get_course_student_test_results_page: {
@@ -12552,6 +14018,24 @@ export type Database = {
           ready_for_export: number
           total_documents: number
         }[]
+      }
+      get_goreltech_document_operation: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      get_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+        }
+        Returns: Json
       }
       get_mailing_deliverability_seed_secret: {
         Args: { p_seed_id: string }
@@ -12847,6 +14331,10 @@ export type Database = {
         Args: { p_signature_id: string }
         Returns: undefined
       }
+      import_csz_course_draft_v2: {
+        Args: { p_organization_id: string; p_payload: Json }
+        Returns: Json
+      }
       import_mailing_contacts: {
         Args: { p_organization_id: string; p_rows: Json }
         Returns: Json
@@ -12927,6 +14415,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      list_goreltech_enrollment_orders: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
       }
       list_org_task_assignees: {
         Args: { _org_id: string }
@@ -13034,6 +14530,14 @@ export type Database = {
               port: number
             }[]
           }
+      preview_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       public_get_organization_by_slug: {
         Args: { p_slug: string }
         Returns: {
@@ -13084,6 +14588,10 @@ export type Database = {
         Returns: Json
       }
       purge_recycle_bin_30d: { Args: never; Returns: number }
+      read_group_completion_decisions: {
+        Args: { p_group_id: string; p_organization_id: string }
+        Returns: Json
+      }
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
         Returns: undefined
@@ -13117,6 +14625,19 @@ export type Database = {
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
+      }
+      reserve_goreltech_enrollment_order: {
+        Args: {
+          p_actor_id: string
+          p_document_date: string
+          p_expected_snapshot_hash: string
+          p_group_id: string
+          p_operation_id: string
+          p_organization_id: string
+          p_signatory: Json
+          p_template_sha256: string
+        }
+        Returns: Json
       }
       reserve_mailing_campaign_quota: {
         Args: {
@@ -13191,6 +14712,82 @@ export type Database = {
       revoke_signature: {
         Args: { p_reason?: string; p_signature_id: string }
         Returns: Json
+      }
+      save_group_class_journal_mark: {
+        Args: {
+          p_expected_course_id: string
+          p_expected_date: string
+          p_expected_revision: number
+          p_group_id: string
+          p_mark: string
+          p_organization_id: string
+          p_slot: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      save_group_completion_decision: {
+        Args: {
+          p_decision_note?: string
+          p_expected_course_id: string
+          p_expected_decision_revision: number
+          p_expected_end_date: string
+          p_expected_enrollment_id: string
+          p_expected_enrollment_revision: string
+          p_expected_start_date: string
+          p_grade_text: string
+          p_group_id: string
+          p_issuance_decision: string
+          p_organization_id: string
+          p_protocol_date?: string
+          p_protocol_number?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      save_group_document_schedule: {
+        Args: {
+          p_expected_course_id: string
+          p_expected_revision: number
+          p_group_id: string
+          p_organization_id: string
+          p_slots: Json
+        }
+        Returns: Json
+      }
+      save_labor_safety_enrollment_protocol: {
+        Args: {
+          p_enrollment_id: string
+          p_expected_version?: number
+          p_is_passed: boolean
+          p_knowledge_check_date: string
+          p_organization_id: string
+          p_protocol_number: string
+        }
+        Returns: {
+          course_title_snapshot: string
+          created_at: string
+          created_by: string
+          enrollment_id: string | null
+          id: string
+          is_passed: boolean
+          knowledge_check_date: string
+          learner_name_snapshot: string | null
+          organization_id: string
+          protocol_number: string
+          source_course_id: string
+          source_enrollment_id: string
+          source_user_id: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "labor_safety_enrollment_protocols"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       save_student_frdo_data: {
         Args: { p_data: Json; p_organization_id: string; p_user_id: string }
@@ -13365,6 +14962,10 @@ export type Database = {
         | "sales_manager"
         | "company"
       company_staff_role: "owner" | "manager" | "viewer"
+      driving_entry_kind: "charge" | "payment" | "exam" | "attempt"
+      driving_lesson_status: "booked" | "completed" | "cancelled" | "no_show"
+      driving_member_role: "student" | "instructor"
+      driving_transmission: "MT" | "AT"
       payer_type: "individual" | "legal_entity"
     }
     CompositeTypes: {
@@ -13381,12 +14982,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13410,11 +15011,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13435,11 +15036,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13460,11 +15061,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13477,11 +15078,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13501,6 +15102,10 @@ export const Constants = {
         "company",
       ],
       company_staff_role: ["owner", "manager", "viewer"],
+      driving_entry_kind: ["charge", "payment", "exam", "attempt"],
+      driving_lesson_status: ["booked", "completed", "cancelled", "no_show"],
+      driving_member_role: ["student", "instructor"],
+      driving_transmission: ["MT", "AT"],
       payer_type: ["individual", "legal_entity"],
     },
   },
