@@ -1,0 +1,1046 @@
+import http from 'node:http';
+import {
+  randomUUID,
+  randomBytes,
+  createHash,
+  scryptSync,
+  timingSafeEqual,
+} from 'node:crypto';
+import { resolve, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
+import { openDatabase, transaction } from './database.mjs';
+
+const id = () => randomUUID();
+const token = () => randomBytes(32).toString('hex');
+const hash = (x) => createHash('sha256').update(x).digest('hex');
+const encode = (x) => JSON.stringify(x);
+function fail(message, status = 400) {
+  throw Object.assign(new Error(message), { status });
+}
+function str(v, label, max = 300) {
+  if (typeof v !== 'string' || !v.trim() || v.length > max)
+    fail(`Проверьте поле «${label}»`);
+  return v.trim();
+}
+function integer(v, min, max, name) {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < min || n > max)
+    fail(`Проверьте поле «${name}»`);
+  return n;
+}
+function email(v) {
+  const s = str(v, 'Почта', 254).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) fail('Некорректная почта');
+  return s;
+}
+function password(v) {
+  if (typeof v !== 'string' || v.length < 10 || v.length > 128)
+    fail('Пароль: от 10 до 128 символов');
+  const salt = token();
+  return salt + ':' + scryptSync(v, salt, 64).toString('hex');
+}
+function verify(v, saved) {
+  if (typeof v !== 'string' || v.length > 128) return false;
+  const [salt, digest] = saved.split(':');
+  return timingSafeEqual(scryptSync(v, salt, 64), Buffer.from(digest, 'hex'));
+}
+const unpack = (r) => (r ? { ...r, data: JSON.parse(r.data) } : null);
+function timestamp(value) {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/.test(
+      value,
+    )
+  )
+    fail('Передайте дату ISO с часовым поясом');
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > new Date(Date.UTC(year, month, 0)).getUTCDate()
+  )
+    fail('Такой календарной даты не существует');
+  const n = Date.parse(value);
+  if (
+    !Number.isFinite(n) ||
+    Number(value.slice(11, 13)) > 23 ||
+    Number(value.slice(14, 16)) > 59 ||
+    Number(value.slice(17, 19)) > 59
+  )
+    fail('Некорректная дата');
+  return n;
+}
+const mime = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.json': 'application/json',
+};
+
+export function createApp({
+  dbPath,
+  origin = 'http://127.0.0.1:4186',
+  staticDir = null,
+}) {
+  const db = openDatabase(dbPath);
+  const q = (sql, ...a) => db.prepare(sql).get(...a);
+  const all = (sql, ...a) => db.prepare(sql).all(...a);
+  const run = (sql, ...a) => db.prepare(sql).run(...a);
+  const tx = (fn) => transaction(db, fn);
+  const audit = (u, action, target, detail = {}) =>
+    run(
+      'INSERT INTO audit(school_id,user_id,action,target,detail,created) VALUES(?,?,?,?,?,?)',
+      u.school_id,
+      u.id,
+      action,
+      target,
+      encode(detail),
+      Date.now(),
+    );
+  const resource = (u, rid, kind) => {
+    const r = unpack(
+      q('SELECT * FROM resources WHERE school_id=? AND id=?', u.school_id, rid),
+    );
+    if (!r || (kind && r.kind !== kind)) fail('Запись не найдена', 404);
+    return r;
+  };
+  const owner = (u) => {
+    if (u.role !== 'owner')
+      fail('Это действие доступно администратору автошколы', 403);
+  };
+  const studentAccess = (u, sid) => {
+    const s = resource(u, sid, 'student');
+    if (u.role === 'student' && u.resource_id !== sid) fail('Нет доступа', 403);
+    if (u.role === 'instructor' && s.data.instructorId !== u.resource_id)
+      fail('Нет доступа', 403);
+    return s;
+  };
+  const put = (u, kind, name, data, rid = id()) => {
+    run(
+      'INSERT INTO resources(id,school_id,kind,name,data) VALUES(?,?,?,?,?)',
+      rid,
+      u.school_id,
+      kind,
+      name,
+      encode(data),
+    );
+    return rid;
+  };
+  function minutes(u, sid, excluded = '') {
+    return q(
+      "SELECT COALESCE(SUM(CASE WHEN status='completed' THEN actual_minutes ELSE 0 END),0) completed,COALESCE(SUM(CASE WHEN status='booked' THEN (end-start)/60000 ELSE 0 END),0) reserved FROM lessons WHERE school_id=? AND student_id=? AND id<>?",
+      u.school_id,
+      sid,
+      excluded,
+    );
+  }
+  function validateResource(u, kind, b) {
+    const name = str(b.name, 'Название / ФИО');
+    let d = {};
+    if (kind === 'program')
+      d = {
+        version: str(b.version, 'Версия программы'),
+        transmission: b.transmission === 'AT' ? 'AT' : 'MT',
+        practiceMinutes: integer(
+          b.practiceMinutes,
+          60,
+          60000,
+          'Минуты практики',
+        ),
+        category: 'B',
+      };
+    else if (kind === 'car')
+      d = {
+        number: str(b.number, 'Госномер', 30),
+        transmission: b.transmission === 'AT' ? 'AT' : 'MT',
+        category: 'B',
+      };
+    else if (kind === 'group') {
+      resource(u, b.programId, 'program');
+      d = { programId: b.programId };
+    } else if (kind === 'instructor') {
+      resource(u, b.carId, 'car');
+      d = { email: email(b.email), carId: b.carId, windows: [] };
+    } else if (kind === 'student') {
+      const p = resource(u, b.programId, 'program');
+      if (b.groupId) {
+        const g = resource(u, b.groupId, 'group');
+        if (g.data.programId !== p.id) fail('Программа группы не совпадает');
+      }
+      if (b.instructorId) {
+        const i = resource(u, b.instructorId, 'instructor');
+        const car = resource(u, i.data.carId, 'car');
+        if (car.data.transmission !== p.data.transmission)
+          fail('Трансмиссия инструктора не совпадает с программой');
+      }
+      d = {
+        email: email(b.email),
+        phone: typeof b.phone === 'string' ? b.phone.slice(0, 40) : '',
+        programId: p.id,
+        groupId: b.groupId || null,
+        instructorId: b.instructorId || null,
+        practiceMinutes: p.data.practiceMinutes,
+        transmission: p.data.transmission,
+      };
+    } else if (kind === 'course') {
+      resource(u, b.programId, 'program');
+      const questions = b.questions;
+      if (
+        !Array.isArray(questions) ||
+        !questions.length ||
+        questions.length > 50
+      )
+        fail('Добавьте от 1 до 50 вопросов');
+      d = {
+        programId: b.programId,
+        material: str(b.material, 'Материал', 30000),
+        passPercent: integer(b.passPercent, 1, 100, 'Порог сдачи'),
+        questions: questions.map((x) => ({
+          text: str(x.text, 'Вопрос', 2000),
+          options: [
+            str(x.options?.[0], 'Ответ 1', 2000),
+            str(x.options?.[1], 'Ответ 2', 2000),
+            str(x.options?.[2], 'Ответ 3', 2000),
+          ],
+          correct: integer(x.correct, 0, 2, 'Верный ответ'),
+        })),
+      };
+    } else fail('Неизвестный тип');
+    return { name, data: d };
+  }
+  function booking(u, b, old = null) {
+    const s = studentAccess(u, b.studentId);
+    if (u.role === 'instructor')
+      fail('Запись выполняет ученик или администратор', 403);
+    const i = resource(u, b.instructorId, 'instructor'),
+      c = resource(u, b.carId, 'car');
+    if (!s.active || !i.active || !c.active)
+      fail('Ученик, инструктор или автомобиль недоступен');
+    if (s.data.instructorId !== i.id)
+      fail('Выберите назначенного инструктору ученика');
+    if (i.data.carId !== c.id || s.data.transmission !== c.data.transmission)
+      fail('Автомобиль не соответствует назначению / программе');
+    const start = timestamp(b.start),
+      end = timestamp(b.end);
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      start % 60000 ||
+      end % 60000 ||
+      end - start < 30 * 60000 ||
+      end - start > 180 * 60000
+    )
+      fail('Занятие должно длиться 30–180 минут');
+    if (start < Date.now()) fail('Новое занятие нельзя записать в прошлое');
+    const settings = JSON.parse(
+      q('SELECT settings FROM schools WHERE id=?', u.school_id).settings,
+    );
+    if (start > Date.now() + (settings.horizonDays || 30) * 86400000)
+      fail('Дата за пределами горизонта записи');
+    if (
+      !(i.data.windows || []).some(
+        (w) => Date.parse(w.start) <= start && end <= Date.parse(w.end),
+      )
+    )
+      fail('У инструктора нет рабочей смены на это время');
+    const m = minutes(u, s.id, old?.id);
+    if (
+      m.completed + m.reserved + (end - start) / 60000 >
+      s.data.practiceMinutes
+    )
+      fail('Не хватает свободных минут практики');
+    if (old)
+      run(
+        'UPDATE lessons SET start=?,end=?,instructor_id=?,car_id=?,revision=revision+1 WHERE id=? AND school_id=?',
+        start,
+        end,
+        i.id,
+        c.id,
+        old.id,
+        u.school_id,
+      );
+    else {
+      const rid = id();
+      run(
+        'INSERT INTO lessons(id,school_id,student_id,instructor_id,car_id,start,end) VALUES(?,?,?,?,?,?,?)',
+        rid,
+        u.school_id,
+        s.id,
+        i.id,
+        c.id,
+        start,
+        end,
+      );
+      return rid;
+    }
+    return old.id;
+  }
+  function state(u) {
+    let resources = all(
+      'SELECT * FROM resources WHERE school_id=? ORDER BY name',
+      u.school_id,
+    ).map(unpack);
+    if (u.role === 'student') {
+      const own = resource(u, u.resource_id, 'student');
+      const permitted = new Set([
+        own.id,
+        own.data.programId,
+        own.data.groupId,
+        own.data.instructorId,
+      ]);
+      const instructor = resources.find((r) => r.id === own.data.instructorId);
+      if (instructor) permitted.add(instructor.data.carId);
+      resources = resources.filter(
+        (r) =>
+          permitted.has(r.id) ||
+          (r.kind === 'course' && r.data.programId === own.data.programId),
+      );
+      resources = resources.map((r) =>
+        r.kind === 'course'
+          ? {
+              ...r,
+              data: {
+                ...r.data,
+                questions: r.data.questions.map(
+                  ({ correct: _correct, ...rest }) => rest,
+                ),
+              },
+            }
+          : r.kind === 'instructor'
+            ? { ...r, data: { carId: r.data.carId, windows: r.data.windows } }
+            : r,
+      );
+    } else if (u.role === 'instructor')
+      resources = resources.filter(
+        (r) => r.kind !== 'student' || r.data.instructorId === u.resource_id,
+      );
+    const students = resources.filter((r) => r.kind === 'student');
+    const lessons = all(
+      'SELECT * FROM lessons WHERE school_id=? ORDER BY start',
+      u.school_id,
+    ).filter(
+      (l) =>
+        u.role === 'owner' ||
+        (u.role === 'instructor'
+          ? l.instructor_id === u.resource_id
+          : l.student_id === u.resource_id),
+    );
+    const entries = all(
+      'SELECT * FROM entries WHERE school_id=? ORDER BY created DESC',
+      u.school_id,
+    )
+      .filter(
+        (e) =>
+          students.some((s) => s.id === e.student_id) &&
+          (u.role !== 'instructor' || ['exam', 'attempt'].includes(e.kind)),
+      )
+      .map(unpack)
+      .map((e) => ({
+        ...e,
+        reversal:
+          q(
+            'SELECT reason,created FROM reversals WHERE school_id=? AND entry_id=?',
+            u.school_id,
+            e.id,
+          ) || null,
+      }));
+    // Students need occupied windows, not names or records belonging to other students.
+    const busy =
+      u.role === 'student'
+        ? all(
+            "SELECT start,end FROM lessons WHERE school_id=? AND instructor_id=? AND status IN ('booked','completed')",
+            u.school_id,
+            students[0]?.data.instructorId || '',
+          )
+        : [];
+    return {
+      user: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        resource_id: u.resource_id,
+      },
+      school: q('SELECT id,name,settings FROM schools WHERE id=?', u.school_id),
+      resources,
+      lessons,
+      entries,
+      busy,
+      balances: students.map((s) => ({
+        id: s.id,
+        ...minutes(u, s.id),
+        planned: s.data.practiceMinutes,
+      })),
+      audit:
+        u.role === 'owner'
+          ? all(
+              'SELECT action,target,detail,created FROM audit WHERE school_id=? ORDER BY id DESC LIMIT 100',
+              u.school_id,
+            )
+          : [],
+    };
+  }
+  const limits = new Map();
+  function rateLimit(req) {
+    const key = req.socket.remoteAddress,
+      now = Date.now();
+    let r = limits.get(key);
+    if (!r || now - r.time > 900000) r = { time: now, n: 0 };
+    r.n++;
+    limits.set(key, r);
+    if (r.n > 60)
+      fail('Слишком много попыток входа. Повторите через 15 минут', 429);
+  }
+  const server = http.createServer(async (req, res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('Cache-Control', 'no-store');
+    const reply = (value, status = 200) => {
+      res.writeHead(status, {
+        'Content-Type': 'application/json; charset=utf-8',
+      });
+      res.end(encode(value));
+    };
+    try {
+      const url = new URL(req.url, 'http://local');
+      if (!url.pathname.startsWith('/api/')) {
+        if (!staticDir)
+          return reply(
+            { error: 'API работает. Откройте интерфейс: ' + origin },
+            404,
+          );
+        let path = resolve(staticDir, '.' + decodeURIComponent(url.pathname));
+        if (
+          !path.startsWith(resolve(staticDir) + '\\') &&
+          !path.startsWith(resolve(staticDir) + '/')
+        )
+          path = resolve(staticDir, 'index.html');
+        if (url.pathname === '/' || !extname(path))
+          path = resolve(staticDir, 'index.html');
+        if (!existsSync(path)) return reply({ error: 'Файл не найден' }, 404);
+        res.writeHead(200, {
+          'Content-Type': mime[extname(path)] || 'application/octet-stream',
+        });
+        res.end(readFileSync(path));
+        return;
+      }
+      const validHosts = new Set([
+        new URL(origin).host,
+        '127.0.0.1:' + server.address()?.port,
+      ]);
+      if (!validHosts.has(req.headers.host))
+        fail('Недопустимый адрес сервера', 403);
+      const write = req.method !== 'GET';
+      if (write && req.headers.origin !== origin)
+        fail('Недопустимый источник запроса', 403);
+      if (!['GET', 'POST'].includes(req.method))
+        fail('Метод не поддерживается', 405);
+      let b = {};
+      if (write) {
+        if (!req.headers['content-type']?.startsWith('application/json'))
+          fail('Нужен JSON', 415);
+        let raw = '';
+        for await (const chunk of req) {
+          raw += chunk;
+          if (Buffer.byteLength(raw) > 100000)
+            fail('Слишком большой запрос', 413);
+        }
+        try {
+          b = JSON.parse(raw || '{}');
+        } catch {
+          fail('Некорректный JSON');
+        }
+      }
+      if (url.pathname === '/api/health')
+        return reply({
+          ok: true,
+          app: 'sintagma-driving-local',
+          storage: 'SQLite',
+          mode: 'local',
+          schema: 1,
+        });
+      const sessionToken = (req.headers.cookie || '')
+        .split(';')
+        .map((x) => x.trim())
+        .find((x) => x.startsWith('drive_session='))
+        ?.slice(14);
+      const session = sessionToken
+        ? q(
+            'SELECT s.csrf,s.expires,u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires>?',
+            hash(sessionToken),
+            Date.now(),
+          )
+        : null;
+      const login = (u) => {
+        const t = token(),
+          csrf = token();
+        if (sessionToken)
+          run('DELETE FROM sessions WHERE hash=?', hash(sessionToken));
+        run(
+          'INSERT INTO sessions(hash,user_id,csrf,expires) VALUES(?,?,?,?)',
+          hash(t),
+          u.id,
+          csrf,
+          Date.now() + 12 * 3600000,
+        );
+        res.setHeader(
+          'Set-Cookie',
+          `drive_session=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${origin.startsWith('https:') ? '; Secure' : ''}`,
+        );
+        return { csrf, ...state(u) };
+      };
+      if (write && url.pathname === '/api/register') {
+        rateLimit(req);
+        const mail = email(b.email),
+          name = str(b.name, 'Имя'),
+          schoolName = str(b.school, 'Автошкола'),
+          pw = password(b.password);
+        const u = tx(() => {
+          if (q('SELECT id FROM users WHERE email=?', mail))
+            fail('Этот адрес уже зарегистрирован');
+          const school = id(),
+            uid = id();
+          run(
+            'INSERT INTO schools(id,name,settings) VALUES(?,?,?)',
+            school,
+            schoolName,
+            encode({
+              horizonDays: 30,
+              cancelHours: 12,
+              timezone: 'Asia/Vladivostok',
+            }),
+          );
+          run(
+            'INSERT INTO users(id,school_id,name,email,password,role) VALUES(?,?,?,?,?,?)',
+            uid,
+            school,
+            name,
+            mail,
+            pw,
+            'owner',
+          );
+          return q('SELECT * FROM users WHERE id=?', uid);
+        });
+        return reply(login(u), 201);
+      }
+      if (write && url.pathname === '/api/login') {
+        rateLimit(req);
+        const u = q('SELECT * FROM users WHERE email=?', email(b.email));
+        if (!u || !verify(b.password, u.password))
+          fail('Неверная почта или пароль', 401);
+        return reply(login(u));
+      }
+      if (write && url.pathname === '/api/accept-invite') {
+        rateLimit(req);
+        const pw = password(b.password);
+        const u = tx(() => {
+          const inv = q(
+            'SELECT * FROM invites WHERE hash=? AND used=0 AND expires>?',
+            hash(str(b.token, 'Приглашение')),
+            Date.now(),
+          );
+          if (!inv) fail('Приглашение истекло или уже использовано');
+          if (q('SELECT id FROM users WHERE email=?', inv.email))
+            fail('Адрес уже занят. Обратитесь к администратору');
+          const uid = id();
+          run(
+            'INSERT INTO users(id,school_id,name,email,password,role,resource_id) VALUES(?,?,?,?,?,?,?)',
+            uid,
+            inv.school_id,
+            str(b.name, 'Имя'),
+            inv.email,
+            pw,
+            inv.role,
+            inv.resource_id,
+          );
+          run('UPDATE invites SET used=1 WHERE hash=?', inv.hash);
+          return q('SELECT * FROM users WHERE id=?', uid);
+        });
+        return reply(login(u));
+      }
+      if (!session) fail('Войдите в кабинет', 401);
+      const u = session;
+      if (write && req.headers['x-csrf-token'] !== u.csrf)
+        fail('Сессия обновилась. Перезагрузите страницу', 403);
+      if (!write && url.pathname === '/api/state')
+        return reply({ csrf: u.csrf, ...state(u) });
+      if (write && url.pathname === '/api/logout') {
+        run('DELETE FROM sessions WHERE hash=?', hash(sessionToken));
+        res.setHeader(
+          'Set-Cookie',
+          'drive_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0',
+        );
+        return reply({ ok: true });
+      }
+      const out = tx(() => {
+        if (url.pathname === '/api/reverse-entry' && write) {
+          owner(u);
+          const e = q(
+            'SELECT * FROM entries WHERE school_id=? AND id=?',
+            u.school_id,
+            b.id,
+          );
+          if (!e || !['charge', 'payment'].includes(e.kind))
+            fail('Финансовая запись не найдена', 404);
+          if (q('SELECT entry_id FROM reversals WHERE entry_id=?', e.id))
+            return { ok: true };
+          const reason = str(b.reason, 'Причина исправления');
+          run(
+            'INSERT INTO reversals(entry_id,school_id,reason,created) VALUES(?,?,?,?)',
+            e.id,
+            u.school_id,
+            reason,
+            Date.now(),
+          );
+          audit(u, 'reverse_' + e.kind, e.id, {
+            reason,
+            original: JSON.parse(e.data),
+          });
+          return { ok: true };
+        }
+        if (url.pathname === '/api/resources' && write) {
+          owner(u);
+          const v = validateResource(u, b.kind, b);
+          const rid = put(u, b.kind, v.name, v.data);
+          audit(u, 'create_' + b.kind, rid);
+          return { id: rid };
+        }
+        if (url.pathname === '/api/resource-status' && write) {
+          owner(u);
+          const r = resource(u, b.id);
+          if (!['student', 'instructor', 'car'].includes(r.kind))
+            fail('Статус не изменяется');
+          if (b.active !== true && b.active !== false) fail('Нужен статус');
+          run(
+            'UPDATE resources SET active=? WHERE id=? AND school_id=?',
+            b.active ? 1 : 0,
+            r.id,
+            u.school_id,
+          );
+          audit(u, 'availability', r.id, {
+            active: b.active,
+            reason: str(b.reason, 'Причина'),
+          });
+          return { ok: true };
+        }
+        if (url.pathname === '/api/assign-student' && write) {
+          owner(u);
+          const s = resource(u, b.id, 'student'),
+            i = resource(u, b.instructorId, 'instructor'),
+            c = resource(u, i.data.carId, 'car');
+          if (c.data.transmission !== s.data.transmission)
+            fail('Трансмиссии не совпадают');
+          if (
+            q(
+              "SELECT id FROM lessons WHERE school_id=? AND student_id=? AND status='booked'",
+              u.school_id,
+              s.id,
+            )
+          )
+            fail('Сначала отмените или проведите существующие записи');
+          s.data.instructorId = i.id;
+          if (b.groupId) {
+            const g = resource(u, b.groupId, 'group');
+            if (g.data.programId !== s.data.programId)
+              fail('Программа группы не совпадает');
+            s.data.groupId = g.id;
+          }
+          run('UPDATE resources SET data=? WHERE id=?', encode(s.data), s.id);
+          audit(u, 'assign_student', s.id, {
+            instructorId: i.id,
+            groupId: s.data.groupId,
+          });
+          return { ok: true };
+        }
+        if (url.pathname === '/api/shifts' && write) {
+          owner(u);
+          const i = resource(u, b.instructorId, 'instructor');
+          const a = timestamp(b.start),
+            z = timestamp(b.end);
+          if (
+            !Number.isFinite(a) ||
+            !Number.isFinite(z) ||
+            z <= a ||
+            z - a > 24 * 3600000
+          )
+            fail('Проверьте начало и конец смены (до 24 часов)');
+          if (
+            i.data.windows.some(
+              (w) => Date.parse(w.start) < z && a < Date.parse(w.end),
+            )
+          )
+            fail('Смена пересекается с существующей');
+          i.data.windows.push({
+            id: id(),
+            start: new Date(a).toISOString(),
+            end: new Date(z).toISOString(),
+          });
+          run('UPDATE resources SET data=? WHERE id=?', encode(i.data), i.id);
+          audit(u, 'add_shift', i.id, { start: b.start, end: b.end });
+          return { ok: true };
+        }
+        if (url.pathname === '/api/invites' && write) {
+          owner(u);
+          const r = resource(u, b.resourceId);
+          if (!['instructor', 'student'].includes(r.kind))
+            fail('Приглашение только для ученика или инструктора');
+          if (q('SELECT id FROM users WHERE resource_id=?', r.id))
+            fail('Пользователь уже подключён');
+          const t = token();
+          run(
+            'UPDATE invites SET used=1 WHERE school_id=? AND resource_id=?',
+            u.school_id,
+            r.id,
+          );
+          run(
+            'INSERT INTO invites(hash,school_id,email,role,resource_id,expires) VALUES(?,?,?,?,?,?)',
+            hash(t),
+            u.school_id,
+            r.data.email,
+            r.kind,
+            r.id,
+            Date.now() + 72 * 3600000,
+          );
+          audit(u, 'invite', r.id);
+          return { url: origin + '/?invite=' + t, email: r.data.email };
+        }
+        if (url.pathname === '/api/lessons' && write) {
+          const rid = booking(u, b);
+          audit(u, 'book_lesson', rid);
+          return { id: rid };
+        }
+        if (url.pathname === '/api/lesson-action' && write) {
+          const l = q(
+            'SELECT * FROM lessons WHERE school_id=? AND id=?',
+            u.school_id,
+            b.id,
+          );
+          if (!l) fail('Занятие не найдено', 404);
+          if (u.role === 'student' && l.student_id !== u.resource_id)
+            fail('Нет доступа', 403);
+          if (u.role === 'instructor' && l.instructor_id !== u.resource_id)
+            fail('Нет доступа', 403);
+          const settings = JSON.parse(
+            q('SELECT settings FROM schools WHERE id=?', u.school_id).settings,
+          );
+          if (['cancel', 'reschedule'].includes(b.action)) {
+            if (u.role === 'instructor')
+              fail('Отмену выполняет администратор или ученик', 403);
+            if (l.status === 'cancelled' && b.action === 'cancel')
+              return { ok: true };
+            if (l.status !== 'booked')
+              fail('Изменить можно только запланированное занятие');
+            if (
+              u.role === 'student' &&
+              l.start - Date.now() < (settings.cancelHours ?? 12) * 3600000
+            )
+              fail(
+                'Срок самостоятельной отмены истёк. Обратитесь к администратору',
+              );
+            if (b.action === 'cancel')
+              run(
+                "UPDATE lessons SET status='cancelled',note=?,revision=revision+1 WHERE id=?",
+                str(b.reason, 'Причина отмены'),
+                l.id,
+              );
+            else
+              booking(
+                u,
+                {
+                  ...b,
+                  studentId: l.student_id,
+                  instructorId: l.instructor_id,
+                  carId: l.car_id,
+                },
+                l,
+              );
+          } else if (['complete', 'no_show', 'correct'].includes(b.action)) {
+            if (u.role === 'student')
+              fail('Подтверждает только инструктор или администратор', 403);
+            if (b.action === 'complete' && l.status === 'completed')
+              return { ok: true };
+            if (b.action === 'correct') {
+              owner(u);
+              if (l.status !== 'completed')
+                fail('Исправить можно проведённое занятие');
+              str(b.reason, 'Причина исправления');
+            } else if (l.status !== 'booked') fail('Занятие уже закрыто');
+            if (l.end > Date.now())
+              fail('Подтвердите занятие после его окончания');
+            const actual =
+              b.action === 'no_show'
+                ? 0
+                : integer(
+                    b.actualMinutes,
+                    1,
+                    (l.end - l.start) / 60000,
+                    'Фактические минуты',
+                  );
+            const totals = minutes(u, l.student_id, l.id),
+              student = resource(u, l.student_id, 'student');
+            if (
+              totals.completed + totals.reserved + actual >
+              student.data.practiceMinutes
+            )
+              fail(
+                'Исправление превысит план практики с учётом уже забронированных занятий',
+              );
+            run(
+              'UPDATE lessons SET status=?,actual_minutes=?,topic=?,note=?,revision=revision+1 WHERE id=?',
+              b.action === 'no_show' ? 'no_show' : 'completed',
+              actual,
+              b.action === 'no_show' ? 'Неявка' : str(b.topic, 'Тема'),
+              String(b.reason || b.note || '').slice(0, 2000),
+              l.id,
+            );
+          } else fail('Неизвестное действие');
+          audit(u, b.action, l.id, {
+            before: l,
+            reason: b.reason || '',
+            actualMinutes: b.actualMinutes || 0,
+          });
+          return { ok: true };
+        }
+        if (url.pathname === '/api/entries' && write) {
+          owner(u);
+          const key = str(b.operationId, 'Ключ операции', 100),
+            payloadHash = hash(encode(b));
+          const previous = q(
+            'SELECT * FROM operations WHERE school_id=? AND operation_id=?',
+            u.school_id,
+            key,
+          );
+          if (previous) {
+            if (previous.payload_hash !== payloadHash)
+              fail('Ключ операции уже использован для других данных', 409);
+            return JSON.parse(previous.result);
+          }
+          const s = studentAccess(u, b.studentId);
+          let data = {};
+          if (['charge', 'payment'].includes(b.kind))
+            data = {
+              kopecks: integer(b.kopecks, 1, 100000000, 'Сумма в копейках'),
+              note: str(b.note, 'Назначение'),
+              date: str(b.date, 'Дата'),
+            };
+          else if (b.kind === 'exam') {
+            if (
+              !['internal', 'external'].includes(b.examType) ||
+              !['passed', 'failed'].includes(b.result)
+            )
+              fail('Проверьте экзамен');
+            data = {
+              examType: b.examType,
+              result: b.result,
+              date: str(b.date, 'Дата'),
+              protocol: str(b.protocol, 'Номер протокола'),
+              note: String(b.note || '').slice(0, 2000),
+            };
+          } else fail('Неизвестная запись');
+          const rid = id();
+          run(
+            'INSERT INTO entries(id,school_id,student_id,kind,data,created) VALUES(?,?,?,?,?,?)',
+            rid,
+            u.school_id,
+            s.id,
+            b.kind,
+            encode(data),
+            Date.now(),
+          );
+          audit(u, 'add_' + b.kind, rid, data);
+          run(
+            'INSERT INTO operations(school_id,operation_id,payload_hash,result) VALUES(?,?,?,?)',
+            u.school_id,
+            key,
+            payloadHash,
+            encode({ id: rid }),
+          );
+          return { id: rid };
+        }
+        if (url.pathname === '/api/attempts' && write) {
+          if (u.role !== 'student') fail('Тест проходит ученик', 403);
+          const s = resource(u, u.resource_id, 'student'),
+            c = resource(u, b.courseId, 'course');
+          if (c.data.programId !== s.data.programId)
+            fail('Этот курс не назначен', 403);
+          if (
+            !Array.isArray(b.answers) ||
+            b.answers.length !== c.data.questions.length ||
+            b.answers.some((x) => !Number.isInteger(x) || x < 0 || x > 2)
+          )
+            fail('Ответьте на все вопросы');
+          const correct = c.data.questions.filter(
+            (x, k) => x.correct === b.answers[k],
+          ).length;
+          const score = Math.round((correct / c.data.questions.length) * 100);
+          const data = {
+            courseId: c.id,
+            courseName: c.name,
+            score,
+            passed: score >= c.data.passPercent,
+            answers: b.answers,
+          };
+          const rid = id();
+          run(
+            'INSERT INTO entries(id,school_id,student_id,kind,data,created) VALUES(?,?,?,?,?,?)',
+            rid,
+            u.school_id,
+            s.id,
+            'attempt',
+            encode(data),
+            Date.now(),
+          );
+          audit(u, 'test_attempt', rid, { score });
+          return data;
+        }
+        if (url.pathname === '/api/settings' && write) {
+          owner(u);
+          const settings = {
+            horizonDays: integer(b.horizonDays, 1, 90, 'Горизонт записи'),
+            cancelHours: integer(b.cancelHours, 0, 168, 'Отмена до начала'),
+            timezone: str(b.timezone, 'Часовой пояс'),
+          };
+          try {
+            new Intl.DateTimeFormat('ru', { timeZone: settings.timezone });
+          } catch {
+            fail('Неизвестный часовой пояс');
+          }
+          run(
+            'UPDATE schools SET name=?,settings=? WHERE id=?',
+            str(b.name, 'Название'),
+            encode(settings),
+            u.school_id,
+          );
+          audit(u, 'settings', u.school_id, settings);
+          return { ok: true };
+        }
+        if (url.pathname === '/api/demo' && write) {
+          owner(u);
+          if (
+            q('SELECT id FROM resources WHERE school_id=? LIMIT 1', u.school_id)
+          )
+            fail('Демоданные добавляются только в пустой кабинет');
+          const p = put(u, 'program', 'Демо · Категория B · Механика', {
+            version: 'Демонстрация 2026 — не утверждённая программа',
+            category: 'B',
+            transmission: 'MT',
+            practiceMinutes: 600,
+          });
+          const g = put(u, 'group', 'Демо · Сентябрь', { programId: p }),
+            c = put(u, 'car', 'Демо · Учебный автомобиль', {
+              number: 'ДЕМО',
+              transmission: 'MT',
+              category: 'B',
+            });
+          const windows = [];
+          for (let d = -1; d < 8; d++) {
+            const a = new Date();
+            a.setDate(a.getDate() + d);
+            a.setHours(8, 0, 0, 0);
+            const z = new Date(a);
+            z.setHours(20);
+            windows.push({
+              id: id(),
+              start: a.toISOString(),
+              end: z.toISOString(),
+            });
+          }
+          const i = put(u, 'instructor', 'Демо · Алексей, инструктор', {
+            email: 'instructor-' + u.school_id.slice(0, 8) + '@example.test',
+            carId: c,
+            windows,
+          });
+          const s = put(u, 'student', 'Демо · Анна, ученица', {
+            email: 'student-' + u.school_id.slice(0, 8) + '@example.test',
+            phone: '',
+            programId: p,
+            groupId: g,
+            instructorId: i,
+            practiceMinutes: 600,
+            transmission: 'MT',
+          });
+          put(u, 'course', 'Демо · Подготовка к занятию', {
+            programId: p,
+            material:
+              'Это демонстрационный материал, не официальный тренажёр ПДД. Перед практикой согласуйте время с инструктором, убедитесь в назначении автомобиля и ознакомьтесь с правилами отмены автошколы.',
+            passPercent: 100,
+            questions: [
+              {
+                text: 'Кто подтверждает фактическое проведение занятия?',
+                options: [
+                  'Сам ученик',
+                  'Инструктор или администратор',
+                  'Бронирование подтверждает автоматически',
+                ],
+                correct: 1,
+              },
+            ],
+          });
+          const past = new Date();
+          past.setDate(past.getDate() - 1);
+          past.setHours(10, 0, 0, 0);
+          const rid = id();
+          run(
+            'INSERT INTO lessons(id,school_id,student_id,instructor_id,car_id,start,end) VALUES(?,?,?,?,?,?,?)',
+            rid,
+            u.school_id,
+            s,
+            i,
+            c,
+            +past,
+            +past + 3600000,
+          );
+          audit(u, 'demo_seed', u.school_id, { synthetic: true });
+          return { ok: true };
+        }
+        fail('Маршрут не найден', 404);
+      });
+      return reply(out);
+    } catch (error) {
+      const conflict = String(error.message).includes('TIME_CONFLICT');
+      const known = error.status || conflict;
+      reply(
+        {
+          error: conflict
+            ? 'Время уже занято: ученик, инструктор или автомобиль пересекается с другим занятием'
+            : known
+              ? error.message
+              : 'Не удалось сохранить запись. Данные не изменены',
+        },
+        conflict ? 409 : error.status || 500,
+      );
+      if (!known) console.error(error);
+    }
+  });
+  return { server, db };
+}
+
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  const port = Number(process.env.DRIVE_PORT || 4187),
+    root = resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const app = createApp({
+    dbPath: process.env.DRIVE_DB || resolve(root, '.data/drive.sqlite'),
+    origin: process.env.DRIVE_ORIGIN || 'http://127.0.0.1:4186',
+    staticDir: process.env.DRIVE_STATIC
+      ? resolve(root, process.env.DRIVE_STATIC)
+      : null,
+  });
+  app.server.listen(port, '127.0.0.1', () =>
+    console.log(`Driving school local API: http://127.0.0.1:${port}`),
+  );
+  process.on('SIGINT', () =>
+    app.server.close(() => {
+      app.db.close();
+      process.exit(0);
+    }),
+  );
+}

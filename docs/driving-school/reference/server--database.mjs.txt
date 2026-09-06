@@ -1,0 +1,38 @@
+import { DatabaseSync } from 'node:sqlite';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+
+export function openDatabase(path) {
+  mkdirSync(dirname(path), { recursive: true });
+  const db = new DatabaseSync(path);
+  db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
+    CREATE TABLE IF NOT EXISTS schools(id TEXT PRIMARY KEY,name TEXT NOT NULL, settings TEXT NOT NULL DEFAULT '{}');
+    CREATE TABLE IF NOT EXISTS resources(id TEXT PRIMARY KEY,school_id TEXT NOT NULL REFERENCES schools(id),kind TEXT NOT NULL CHECK(kind IN ('student','instructor','car','group','program','course')),name TEXT NOT NULL,data TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,UNIQUE(school_id,id));
+    CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,school_id TEXT NOT NULL REFERENCES schools(id),name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,password TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('owner','instructor','student')),resource_id TEXT,FOREIGN KEY(school_id,resource_id) REFERENCES resources(school_id,id));
+    CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),csrf TEXT NOT NULL,expires INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS invites(hash TEXT PRIMARY KEY,school_id TEXT NOT NULL REFERENCES schools(id),email TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('student','instructor')),resource_id TEXT NOT NULL,expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0,FOREIGN KEY(school_id,resource_id) REFERENCES resources(school_id,id));
+    CREATE TABLE IF NOT EXISTS lessons(id TEXT PRIMARY KEY,school_id TEXT NOT NULL REFERENCES schools(id),student_id TEXT NOT NULL,instructor_id TEXT NOT NULL,car_id TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL CHECK(end>start),status TEXT NOT NULL DEFAULT 'booked' CHECK(status IN ('booked','completed','cancelled','no_show')),actual_minutes INTEGER NOT NULL DEFAULT 0 CHECK(actual_minutes>=0),topic TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',revision INTEGER NOT NULL DEFAULT 0,FOREIGN KEY(school_id,student_id) REFERENCES resources(school_id,id),FOREIGN KEY(school_id,instructor_id) REFERENCES resources(school_id,id),FOREIGN KEY(school_id,car_id) REFERENCES resources(school_id,id));
+    CREATE INDEX IF NOT EXISTS lesson_school_time ON lessons(school_id,start,end);
+    CREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY,school_id TEXT NOT NULL REFERENCES schools(id),student_id TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('charge','payment','exam','attempt')),data TEXT NOT NULL,created INTEGER NOT NULL,FOREIGN KEY(school_id,student_id) REFERENCES resources(school_id,id));
+    CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,school_id TEXT NOT NULL REFERENCES schools(id),user_id TEXT NOT NULL REFERENCES users(id),action TEXT NOT NULL,target TEXT NOT NULL,detail TEXT NOT NULL,created INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS operations(school_id TEXT NOT NULL REFERENCES schools(id),operation_id TEXT NOT NULL,payload_hash TEXT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(school_id,operation_id));
+    CREATE TABLE IF NOT EXISTS reversals(entry_id TEXT PRIMARY KEY REFERENCES entries(id),school_id TEXT NOT NULL REFERENCES schools(id),reason TEXT NOT NULL,created INTEGER NOT NULL);
+    CREATE TRIGGER IF NOT EXISTS lesson_conflict_insert BEFORE INSERT ON lessons WHEN NEW.status IN ('booked','completed') BEGIN
+      SELECT RAISE(ABORT,'TIME_CONFLICT') WHERE EXISTS(SELECT 1 FROM lessons l WHERE l.school_id=NEW.school_id AND l.status IN ('booked','completed') AND l.start<NEW.end AND NEW.start<l.end AND (l.student_id=NEW.student_id OR l.instructor_id=NEW.instructor_id OR l.car_id=NEW.car_id)); END;
+    CREATE TRIGGER IF NOT EXISTS lesson_conflict_update BEFORE UPDATE ON lessons WHEN NEW.status IN ('booked','completed') BEGIN
+      SELECT RAISE(ABORT,'TIME_CONFLICT') WHERE EXISTS(SELECT 1 FROM lessons l WHERE l.id<>NEW.id AND l.school_id=NEW.school_id AND l.status IN ('booked','completed') AND l.start<NEW.end AND NEW.start<l.end AND (l.student_id=NEW.student_id OR l.instructor_id=NEW.instructor_id OR l.car_id=NEW.car_id)); END;
+  `);
+  return db;
+}
+
+export function transaction(db, callback) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const value = callback();
+    db.exec('COMMIT');
+    return value;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
