@@ -881,6 +881,7 @@ export function OrgSidebar() {
         <div className={cn("flex flex-1 flex-col justify-start overflow-y-auto py-2 scrollbar-hide", effectiveExpanded ? "gap-0.5 px-2" : "items-center gap-1 px-2")}>
           <nav aria-label="Основные разделы" className={cn("flex w-full flex-col", effectiveExpanded ? "gap-0.5" : "items-center gap-1")}>
             {mainItems.filter((item) => item.id === "home").map((item) => renderNavItem(item))}
+            {mainItems.filter((item) => item.id === "driving-school").map((item) => renderNavItem(item))}
             {navGroups.find((group) => group.id === "courses") && renderNavGroup(navGroups.find((group) => group.id === "courses")!)}
             {navGroups.find((group) => group.id === "students") && renderNavGroup(navGroups.find((group) => group.id === "students")!)}
             {mainItems.filter((item) => item.id === "organizations").map((item) => renderNavItem(item))}
