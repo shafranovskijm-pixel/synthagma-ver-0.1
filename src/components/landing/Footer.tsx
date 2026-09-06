@@ -64,6 +64,7 @@ export function Footer() {
                 { label: "Помощь и обучение", to: "/help" },
                 { label: "Блог", to: "/blog" },
                 { label: "Документы", to: "/documents" },
+                { label: "Автошколы — Beta", to: "/auto-schools" },
               ].map((link) => (
                 <li key={link.label}>
                   {link.to ? (

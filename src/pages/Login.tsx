@@ -21,6 +21,8 @@ import {
   DialogTitle } from "@/components/ui/dialog";
 
 
+import { safeInternalNext, organizationRegistrationTarget, isDrivingInvitationTarget } from "@/utils/authReturn";
+
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
   organization: { email: "org@demo.sigma", password: "demo123456", role: "organization", label: "Организация", icon: Building2, color: "bg-sigma-blue" },
@@ -41,6 +43,7 @@ const Login = () => {
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isDrivingInvitation = isDrivingInvitationTarget(searchParams.get("next"));
 
   // Prefill from ?u=&p= (auto-fill link for student credentials).
   useEffect(() => {
@@ -59,7 +62,7 @@ const Login = () => {
       if (userRole) {
         // If a "next" param is set and points to an allowed in-app path, honor it.
         const nextRaw = searchParams.get("next");
-        const next = nextRaw && nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : null;
+        const next = safeInternalNext(nextRaw);
         if (next) {
           navigate(next, { replace: true });
           return;
@@ -437,12 +440,14 @@ const Login = () => {
             </DialogContent>
           </Dialog>
 
+          {isDrivingInvitation ? <p className="text-center text-muted-foreground mt-8">Для приглашения нужен действующий общий аккаунт этой автошколы. Если аккаунта нет, обратитесь к владельцу школы. Регистрация новой организации для этого приглашения не подходит.</p> : (
           <p className="text-center text-muted-foreground mt-8">
             Нет аккаунта?{" "}
-            <Link to="/register-organization" className="text-primary hover:underline font-medium">
+            <Link to={organizationRegistrationTarget(searchParams) === "/organization/driving-school" ? "/register-organization?module=driving-school" : "/register-organization"} className="text-primary hover:underline font-medium">
               Зарегистрировать организацию
             </Link>
           </p>
+          )}
 
           {(window.location.hostname.includes('preview--') || window.location.hostname === 'localhost') && (
             <p className="text-center text-[10px] text-muted-foreground/50 mt-3 font-mono">

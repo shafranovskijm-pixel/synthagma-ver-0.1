@@ -120,7 +120,7 @@ const RegisterOrganization = () => {
           </form>
 
           <p className="text-center text-muted-foreground mt-8">
-            Уже есть аккаунт?{" "}<Link to="/login" className="text-primary hover:underline font-medium">Войти</Link>
+            Уже есть аккаунт?{" "}<Link to={h.loginTarget} className="text-primary hover:underline font-medium">Войти</Link>
           </p>
         </div>
       </div>

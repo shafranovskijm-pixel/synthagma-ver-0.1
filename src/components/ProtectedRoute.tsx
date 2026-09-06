@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { SmartLoadingFallback } from '@/components/SmartLoadingFallback';
+
+import { loginWithNext } from '@/utils/authReturn';
 
 const ROLE_LOADING_TIMEOUT = 8000; // 8 seconds
 
@@ -13,6 +15,8 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+  const location = useLocation();
+  const loginTarget = loginWithNext(location.pathname + location.search + location.hash);
   const { user, userRole, loading, refreshUserRole } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -43,7 +47,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginTarget} replace />;
   }
 
   // Wait for role to load before making redirect decisions
@@ -84,7 +88,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
               </Button>
               <Button
                 variant="default"
-                onClick={() => (window.location.href = '/login')}
+                onClick={() => (window.location.href = loginTarget)}
                 className="rounded-xl"
               >
                 Войти заново

@@ -22,6 +22,9 @@ const MailingApp = lazyWithRetry(() => import("@/pages/MailingApp"));
 const TariffNavigationHarness = lazyWithRetry(() => import("@/pages/dev/TariffNavigationHarness"));
 const CourseLibraryHarness = lazyWithRetry(() => import("@/pages/dev/CourseLibraryHarness"));
 
+const OrganizationDrivingSchool = lazyWithRetry(() => import("@/pages/OrganizationDrivingSchool"));
+const DrivingSchoolPage = lazyWithRetry(() => import("@/pages/DrivingSchoolPage"));
+const DrivingSchoolPreview = import.meta.env.DEV ? lazyWithRetry(() => import("@/pages/DrivingSchoolPreview")) : null;
 const org = "organization";
 
 export const organizationRoutes = (
@@ -29,6 +32,7 @@ export const organizationRoutes = (
     {/* All /organization/* routes share a single OrgDashboardProvider via OrgLayout */}
     <Route path="/organization" element={protectedRoute(<OrgLayout />, org)}>
       <Route index element={<OrganizationDashboard />} />
+      <Route path="driving-school" element={<OrganizationDrivingSchool />} />
       <Route path="profile" element={<OrganizationProfile />} />
       <Route path="settings" element={<OrganizationSettings />} />
       <Route path="documents" element={<OrganizationDocuments />} />
@@ -36,6 +40,9 @@ export const organizationRoutes = (
       <Route path="whats-new" element={<OrganizationWhatsNew />} />
       <Route path="student/:studentId" element={<OrganizationStudentDetails />} />
     </Route>
+
+    <Route path="/driving-school" element={protectedRoute(<DrivingSchoolPage />)} />
+    {DrivingSchoolPreview && <Route path="/__dev/driving-school" element={<DrivingSchoolPreview />} />}
 
     {/* These routes have their own layout, not nested under /organization */}
     <Route path="/course/:courseId/edit" element={protectedRoute(<CourseEditor />, org)} />

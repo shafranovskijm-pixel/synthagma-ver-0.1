@@ -53,11 +53,13 @@ const DemonstrationPage = lazyWithRetry(() => import("@/pages/DemonstrationPage"
 const OAuthConsent = lazyWithRetry(() => import("@/pages/OAuthConsent"));
 const MailingLanding = lazyWithRetry(() => import("@/pages/MailingLanding"));
 const MailingReportPublic = lazyWithRetry(() => import("@/pages/MailingReportPublic"));
+const AutoSchools = lazyWithRetry(() => import("@/pages/AutoSchools"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
   <>
     <Route path="/" element={<Index />} />
+    <Route path="/auto-schools" element={<AutoSchools />} />
     <Route path="/login" element={<Login />} />
     <Route path="/login/:slug" element={<BrandedLogin />} />
     <Route path="/reset-password" element={<ResetPassword />} />

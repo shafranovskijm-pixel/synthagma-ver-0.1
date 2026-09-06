@@ -9,10 +9,14 @@ import { getUtmData } from "@/utils/utmCapture";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 
+import { organizationRegistrationTarget, loginWithNext, DRIVING_ORGANIZATION_PATH } from "@/utils/authReturn";
+
 const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
 export function useRegisterOrganization() {
   const [searchParams] = useSearchParams();
+  const registrationTarget = organizationRegistrationTarget(searchParams);
+  const loginTarget = registrationTarget === DRIVING_ORGANIZATION_PATH ? loginWithNext(registrationTarget) : "/login";
   const planParam = searchParams.get('plan') as SubscriptionPlan | null;
   const selectedPlan = planParam && planKeys.includes(planParam) ? planParam : 'free';
   const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
@@ -44,13 +48,13 @@ export function useRegisterOrganization() {
 
   useEffect(() => {
     if (user && !loading && !isRegistering && userRole) {
-      const target = userRole === 'organization' ? '/organization'
+      const target = userRole === 'organization' ? registrationTarget
         : userRole === 'admin' ? '/admin'
         : userRole === 'company' ? '/company'
         : userRole === 'student' ? '/student' : '/';
       navigate(target, { replace: true });
     }
-  }, [user, userRole, loading, navigate, isRegistering]);
+  }, [user, userRole, loading, navigate, isRegistering, registrationTarget]);
 
   const loadCompanyByInn = async () => {
     if (!inn || inn.length < 10) {
@@ -198,7 +202,7 @@ export function useRegisterOrganization() {
           description: "Аккаунт создан. Войдите вручную по email и паролю.",
         });
         window.removeEventListener('beforeunload', unloadHandler);
-        navigate("/login", { replace: true, state: { email } });
+        navigate(registrationTarget === "/organization" ? "/login" : loginWithNext(registrationTarget), { replace: true, state: { email } });
         return;
       }
 
@@ -242,7 +246,7 @@ export function useRegisterOrganization() {
         toast.success("Успешно!", { description: "Организация зарегистрирована. Добро пожаловать!" });
       }
       window.removeEventListener('beforeunload', unloadHandler);
-      navigate("/organization", { replace: true });
+      navigate(registrationTarget, { replace: true });
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.message?.includes("already registered")) errorMessage = "Пользователь с таким email уже зарегистрирован";
@@ -256,7 +260,7 @@ export function useRegisterOrganization() {
   };
 
   return {
-    selectedPlan, planInfo, loading,
+    selectedPlan, planInfo, loading, loginTarget,
     orgName, setOrgName, contactName, setContactName, email, setEmail,
     phone, setPhone, inn, setInn, kpp, setKpp, ogrn, setOgrn,
     address, setAddress, directorName, setDirectorName,

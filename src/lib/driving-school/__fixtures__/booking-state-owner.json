@@ -1,0 +1,629 @@
+{
+  "busy": [],
+  "cars": [
+    {
+      "id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "name": "Car",
+      "active": true,
+      "number": "SYNTHETIC-1",
+      "category": "B",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "transmission": "MT",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "0d617a0e-c814-456e-aa9f-b408791aa772",
+      "name": "Car2",
+      "active": true,
+      "number": "SYNTHETIC-2",
+      "category": "B",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "transmission": "MT",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    }
+  ],
+  "audit": [
+    {
+      "action": "test_attempt",
+      "detail": {
+        "score": 100,
+        "passed": true
+      },
+      "target": "867f4941-f90e-46ea-8f8c-ca3b3c9e311f",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "add_exam",
+      "detail": {
+        "date": "2026-09-06",
+        "note": "Synthetic exam record",
+        "result": "passed",
+        "protocol": "SYNTHETIC-CONTRACT",
+        "exam_type": "internal"
+      },
+      "target": "540cacd2-30b2-4b90-bad2-88b7e47f06a9",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "reverse_payment",
+      "detail": {
+        "reason": "Synthetic reversal",
+        "original": {
+          "date": "2026-09-06",
+          "note": "Synthetic payment",
+          "kopecks": 50000
+        }
+      },
+      "target": "883f17ec-4c26-46ed-b679-cf9408cdaf14",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "add_payment",
+      "detail": {
+        "date": "2026-09-06",
+        "note": "Synthetic payment",
+        "kopecks": 50000
+      },
+      "target": "883f17ec-4c26-46ed-b679-cf9408cdaf14",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "add_charge",
+      "detail": {
+        "date": "2026-09-06",
+        "note": "Synthetic tuition",
+        "kopecks": 100000
+      },
+      "target": "832b90f2-1448-48a3-96fe-2fa36e061fa8",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "create_course",
+      "detail": {},
+      "target": "d5ca7ee2-0cb2-47b0-a156-806766a75065",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "create_group",
+      "detail": {},
+      "target": "d566cde2-a6dc-4615-928e-8a58b5cd820c",
+      "created_at": "2026-09-06T23:22:47.131+10:00"
+    },
+    {
+      "action": "book_lesson",
+      "detail": {
+        "before": null,
+        "ends_at": "2026-09-09T05:22:00+10:00",
+        "starts_at": "2026-09-09T04:22:00+10:00"
+      },
+      "target": "e83f146b-b42c-4366-8c78-7f01567ab2e6",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "no_show",
+      "detail": {
+        "before": {
+          "id": "4de05eaf-57bf-4dc2-91b2-b2ae40325f0d",
+          "note": "",
+          "topic": "",
+          "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+          "status": "booked",
+          "ends_at": "2026-09-06T22:22:46.957+10:00",
+          "revision": 0,
+          "starts_at": "2026-09-06T21:22:46.957+10:00",
+          "created_at": "2026-09-06T23:22:46.957+10:00",
+          "created_by": null,
+          "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+          "updated_at": "2026-09-06T23:22:46.957+10:00",
+          "confirmed_at": null,
+          "confirmed_by": null,
+          "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+          "actual_minutes": 0,
+          "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+        },
+        "reason": "student absent",
+        "actual_minutes": 0
+      },
+      "target": "4de05eaf-57bf-4dc2-91b2-b2ae40325f0d",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "correct",
+      "detail": {
+        "before": {
+          "id": "89833c3d-159b-45cc-a20b-ede09f3a6f94",
+          "note": "",
+          "topic": "Parking",
+          "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+          "status": "completed",
+          "ends_at": "2026-09-06T20:22:46.957+10:00",
+          "revision": 0,
+          "starts_at": "2026-09-06T19:22:46.957+10:00",
+          "created_at": "2026-09-06T23:22:46.957+10:00",
+          "created_by": null,
+          "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+          "updated_at": "2026-09-06T23:22:46.957+10:00",
+          "confirmed_at": null,
+          "confirmed_by": null,
+          "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+          "actual_minutes": 30,
+          "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+        },
+        "reason": "record correction",
+        "actual_minutes": 60
+      },
+      "target": "89833c3d-159b-45cc-a20b-ede09f3a6f94",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "cancel",
+      "detail": {
+        "before": {
+          "id": "9f4185e1-8648-40f4-9153-d29cf3f3edfd",
+          "note": "",
+          "topic": "",
+          "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+          "status": "booked",
+          "ends_at": "2026-09-09T01:22:00+10:00",
+          "revision": 0,
+          "starts_at": "2026-09-09T00:22:00+10:00",
+          "created_at": "2026-09-06T23:22:46.957+10:00",
+          "created_by": "48889f3f-4929-412d-948f-c0a622096999",
+          "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+          "updated_at": "2026-09-06T23:22:46.957+10:00",
+          "confirmed_at": null,
+          "confirmed_by": null,
+          "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+          "actual_minutes": 0,
+          "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+        },
+        "reason": "cleanup future reservation",
+        "actual_minutes": 0
+      },
+      "target": "9f4185e1-8648-40f4-9153-d29cf3f3edfd",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "cancel",
+      "detail": {
+        "before": {
+          "id": "751cc050-08cd-411d-a2eb-601f8426f8bd",
+          "note": "",
+          "topic": "",
+          "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+          "status": "booked",
+          "ends_at": "2026-09-09T03:22:00+10:00",
+          "revision": 1,
+          "starts_at": "2026-09-09T02:22:00+10:00",
+          "created_at": "2026-09-06T23:22:46.957+10:00",
+          "created_by": "48889f3f-4929-412d-948f-c0a622096999",
+          "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+          "updated_at": "2026-09-06T23:22:46.957+10:00",
+          "confirmed_at": null,
+          "confirmed_by": null,
+          "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+          "actual_minutes": 0,
+          "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+        },
+        "reason": "owner cancellation",
+        "actual_minutes": 0
+      },
+      "target": "751cc050-08cd-411d-a2eb-601f8426f8bd",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "availability",
+      "detail": {
+        "kind": "car",
+        "active": true,
+        "reason": "available"
+      },
+      "target": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "availability",
+      "detail": {
+        "kind": "car",
+        "active": false,
+        "reason": "maintenance"
+      },
+      "target": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "reschedule",
+      "detail": {
+        "before": {
+          "id": "751cc050-08cd-411d-a2eb-601f8426f8bd",
+          "note": "",
+          "topic": "",
+          "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+          "status": "booked",
+          "ends_at": "2026-09-07T01:22:46.957+10:00",
+          "revision": 0,
+          "starts_at": "2026-09-07T00:22:46.957+10:00",
+          "created_at": "2026-09-06T23:22:46.957+10:00",
+          "created_by": "48889f3f-4929-412d-948f-c0a622096999",
+          "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+          "updated_at": "2026-09-06T23:22:46.957+10:00",
+          "confirmed_at": null,
+          "confirmed_by": null,
+          "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+          "actual_minutes": 0,
+          "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+        },
+        "ends_at": "2026-09-09T03:22:00+10:00",
+        "starts_at": "2026-09-09T02:22:00+10:00"
+      },
+      "target": "751cc050-08cd-411d-a2eb-601f8426f8bd",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "book_lesson",
+      "detail": {
+        "before": null,
+        "ends_at": "2026-09-09T01:22:00+10:00",
+        "starts_at": "2026-09-09T00:22:00+10:00"
+      },
+      "target": "9f4185e1-8648-40f4-9153-d29cf3f3edfd",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "book_lesson",
+      "detail": {
+        "before": null,
+        "ends_at": "2026-09-09T00:22:00+10:00",
+        "starts_at": "2026-09-08T23:22:00+10:00"
+      },
+      "target": "751cc050-08cd-411d-a2eb-601f8426f8bd",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "add_shift",
+      "detail": {
+        "ends_at": "2026-09-09T07:22:00+10:00",
+        "starts_at": "2026-09-08T22:22:00+10:00"
+      },
+      "target": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "create_car",
+      "detail": {},
+      "target": "0d617a0e-c814-456e-aa9f-b408791aa772",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "create_car",
+      "detail": {},
+      "target": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    },
+    {
+      "action": "create_program",
+      "detail": {},
+      "target": "81e67f73-9bc3-4ad8-99f5-47956c6550c9",
+      "created_at": "2026-09-06T23:22:46.957+10:00"
+    }
+  ],
+  "groups": [
+    {
+      "id": "d566cde2-a6dc-4615-928e-8a58b5cd820c",
+      "name": "Synthetic contract group",
+      "created_at": "2026-09-06T23:22:47.131+10:00",
+      "program_id": "81e67f73-9bc3-4ad8-99f5-47956c6550c9",
+      "updated_at": "2026-09-06T23:22:47.131+10:00",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    }
+  ],
+  "school": {
+    "name": "Synthetic school",
+    "timezone": "Europe/Moscow",
+    "cancel_hours": 12,
+    "horizon_days": 30,
+    "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+  },
+  "viewer": {
+    "role": "owner",
+    "student_id": null,
+    "instructor_id": null
+  },
+  "courses": [
+    {
+      "id": "d5ca7ee2-0cb2-47b0-a156-806766a75065",
+      "name": "Synthetic contract course",
+      "material": "Synthetic material, not an official question bank",
+      "questions": [
+        {
+          "text": "Synthetic question",
+          "correct": 0,
+          "options": [
+            "Synthetic A",
+            "Synthetic B"
+          ]
+        }
+      ],
+      "program_id": "81e67f73-9bc3-4ad8-99f5-47956c6550c9",
+      "pass_percent": 100,
+      "lms_course_id": null
+    }
+  ],
+  "entries": [
+    {
+      "id": "832b90f2-1448-48a3-96fe-2fa36e061fa8",
+      "data": {
+        "date": "2026-09-06",
+        "note": "Synthetic tuition",
+        "kopecks": 100000
+      },
+      "kind": "charge",
+      "reversal": null,
+      "created_at": "2026-09-06T23:22:47.131+10:00",
+      "created_by": "dd42ab3a-5f3e-4a45-b093-6ab2d7e7cc49",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "883f17ec-4c26-46ed-b679-cf9408cdaf14",
+      "data": {
+        "date": "2026-09-06",
+        "note": "Synthetic payment",
+        "kopecks": 50000
+      },
+      "kind": "payment",
+      "reversal": {
+        "reason": "Synthetic reversal",
+        "created_at": "2026-09-06T23:22:47.131+10:00"
+      },
+      "created_at": "2026-09-06T23:22:47.131+10:00",
+      "created_by": "dd42ab3a-5f3e-4a45-b093-6ab2d7e7cc49",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "540cacd2-30b2-4b90-bad2-88b7e47f06a9",
+      "data": {
+        "date": "2026-09-06",
+        "note": "Synthetic exam record",
+        "result": "passed",
+        "protocol": "SYNTHETIC-CONTRACT",
+        "exam_type": "internal"
+      },
+      "kind": "exam",
+      "reversal": null,
+      "created_at": "2026-09-06T23:22:47.131+10:00",
+      "created_by": "dd42ab3a-5f3e-4a45-b093-6ab2d7e7cc49",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "867f4941-f90e-46ea-8f8c-ca3b3c9e311f",
+      "data": {
+        "score": 100,
+        "passed": true,
+        "answers": [
+          0
+        ],
+        "course_id": "d5ca7ee2-0cb2-47b0-a156-806766a75065",
+        "course_name": "Synthetic contract course"
+      },
+      "kind": "attempt",
+      "reversal": null,
+      "created_at": "2026-09-06T23:22:47.131+10:00",
+      "created_by": "48889f3f-4929-412d-948f-c0a622096999",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    }
+  ],
+  "lessons": [
+    {
+      "id": "89833c3d-159b-45cc-a20b-ede09f3a6f94",
+      "note": "record correction",
+      "topic": "Parking",
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "status": "completed",
+      "ends_at": "2026-09-06T20:22:46.957+10:00",
+      "revision": 1,
+      "starts_at": "2026-09-06T19:22:46.957+10:00",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "created_by": null,
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_by": "dd42ab3a-5f3e-4a45-b093-6ab2d7e7cc49",
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "actual_minutes": 60,
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "5f0326ab-6fae-4e6f-b423-c8726c8ff3e0",
+      "note": "",
+      "topic": "Parking",
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "status": "completed",
+      "ends_at": "2026-09-06T21:22:46.957+10:00",
+      "revision": 0,
+      "starts_at": "2026-09-06T20:22:46.957+10:00",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "created_by": null,
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_at": null,
+      "confirmed_by": null,
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "actual_minutes": 30,
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "4de05eaf-57bf-4dc2-91b2-b2ae40325f0d",
+      "note": "student absent",
+      "topic": "Неявка",
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "status": "no_show",
+      "ends_at": "2026-09-06T22:22:46.957+10:00",
+      "revision": 1,
+      "starts_at": "2026-09-06T21:22:46.957+10:00",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "created_by": null,
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_by": "b06353db-f0b8-4edf-8261-1148ba90b393",
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "actual_minutes": 0,
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "9f4185e1-8648-40f4-9153-d29cf3f3edfd",
+      "note": "cleanup future reservation",
+      "topic": "",
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "status": "cancelled",
+      "ends_at": "2026-09-09T01:22:00+10:00",
+      "revision": 1,
+      "starts_at": "2026-09-09T00:22:00+10:00",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "created_by": "48889f3f-4929-412d-948f-c0a622096999",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_at": null,
+      "confirmed_by": null,
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "actual_minutes": 0,
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "751cc050-08cd-411d-a2eb-601f8426f8bd",
+      "note": "owner cancellation",
+      "topic": "",
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "status": "cancelled",
+      "ends_at": "2026-09-09T03:22:00+10:00",
+      "revision": 2,
+      "starts_at": "2026-09-09T02:22:00+10:00",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "created_by": "48889f3f-4929-412d-948f-c0a622096999",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_at": null,
+      "confirmed_by": null,
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "actual_minutes": 0,
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "e83f146b-b42c-4366-8c78-7f01567ab2e6",
+      "note": "",
+      "topic": "",
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "status": "booked",
+      "ends_at": "2026-09-09T05:22:00+10:00",
+      "revision": 0,
+      "starts_at": "2026-09-09T04:22:00+10:00",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "created_by": "dd42ab3a-5f3e-4a45-b093-6ab2d7e7cc49",
+      "student_id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "confirmed_at": null,
+      "confirmed_by": null,
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "actual_minutes": 0,
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    }
+  ],
+  "balances": [
+    {
+      "id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "planned": 600,
+      "reserved": 60,
+      "completed": 90
+    },
+    {
+      "id": "2c56603e-09ff-4f7c-a6d4-0c56beab8e0e",
+      "planned": 600,
+      "reserved": 0,
+      "completed": 0
+    }
+  ],
+  "programs": [
+    {
+      "id": "81e67f73-9bc3-4ad8-99f5-47956c6550c9",
+      "name": "B MT",
+      "active": true,
+      "version": "synthetic",
+      "category": "B",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "transmission": "MT",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5",
+      "practice_minutes": 600
+    }
+  ],
+  "students": [
+    {
+      "id": "2c56603e-09ff-4f7c-a6d4-0c56beab8e0e",
+      "name": "Other student",
+      "email": null,
+      "phone": null,
+      "active": true,
+      "group_id": null,
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "program_id": "81e67f73-9bc3-4ad8-99f5-47956c6550c9",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "transmission": "MT",
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5",
+      "practice_minutes": 600
+    },
+    {
+      "id": "c0e9f7d8-3d3a-4deb-8c5c-f5bfbeb61336",
+      "name": "Student",
+      "email": null,
+      "phone": null,
+      "active": true,
+      "group_id": "d566cde2-a6dc-4615-928e-8a58b5cd820c",
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "program_id": "81e67f73-9bc3-4ad8-99f5-47956c6550c9",
+      "updated_at": "2026-09-06T23:22:47.131+10:00",
+      "transmission": "MT",
+      "instructor_id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5",
+      "practice_minutes": 600
+    }
+  ],
+  "connected": true,
+  "can_manage": true,
+  "instructors": [
+    {
+      "id": "adeed2b2-eea9-4fe6-a159-5ba412b14815",
+      "name": "Instructor",
+      "email": null,
+      "active": true,
+      "car_id": "680e5ef1-5d0e-42a6-9e3b-f65c25ce3d6b",
+      "shifts": [
+        {
+          "id": "54947924-d5ff-4070-a6dc-c4388f537c36",
+          "ends_at": "2026-09-09T07:22:00+10:00",
+          "starts_at": "2026-09-08T22:22:00+10:00"
+        }
+      ],
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    },
+    {
+      "id": "35216449-6805-4632-8349-8cfdc07d3324",
+      "name": "Other instructor",
+      "email": null,
+      "active": true,
+      "car_id": "0d617a0e-c814-456e-aa9f-b408791aa772",
+      "shifts": [],
+      "created_at": "2026-09-06T23:22:46.957+10:00",
+      "updated_at": "2026-09-06T23:22:46.957+10:00",
+      "organization_id": "706cf550-eb34-4bbd-aa38-ad7e70b792b5"
+    }
+  ]
+}

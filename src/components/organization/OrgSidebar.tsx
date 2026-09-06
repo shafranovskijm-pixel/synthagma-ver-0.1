@@ -148,6 +148,8 @@ interface NavGroup {
   hasNew?: boolean;
 }
 
+import { useDrivingSchoolEntry } from "@/hooks/useDrivingSchoolEntry";
+
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
 const EXPANDED_KEY = "org-sidebar-expanded";
 const MODE_KEY = "org-sidebar-mode";
@@ -162,6 +164,7 @@ const COMPACT_RAIL_LABEL =
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
+  const canOpenDrivingSchool = useDrivingSchoolEntry(d.organizationId);
   const { canSeeOrgTab, loading: permsLoading } = useStaffPermissions();
   const activeTab = d.tabNavigation.activeTab;
   const setActiveTab = d.tabNavigation.setActiveTab;
@@ -340,6 +343,7 @@ export function OrgSidebar() {
   // Seven stable roots. Existing workspaces remain available as children, so
   // the menu is calmer without removing a feature or bypassing staff rights.
   const mainItems: NavItem[] = [];
+  if (canOpenDrivingSchool) mainItems.push({id: "driving-school", href: "/organization/driving-school", icon: BookOpen, label: "Автошкола", statusBadge: "Beta", description: "Расписание, практика и учёт автошколы"});
   if (canShowTab("home")) {
     mainItems.push(makeTabItem("home", {
       id: "home",
