@@ -1,17 +1,7 @@
-/**
- * IndexedDB-backed queue for test answer submissions that failed
- * to reach the server (e.g. corporate firewall blocked the edge function).
- *
- * On enqueue we attempt sendBeacon as a last-ditch immediate delivery,
- * because Beacon API uses a separate browser network stack that often
- * succeeds where fetch() is blocked. The queue is then flushed on:
- *   - browser online event
- *   - app boot
- *   - explicit retry button
- */
+/** Durable retries use the original server attempt and authenticated owner. */
 
 import { supabase } from '@/integrations/supabase/client';
-import { safeInvoke } from '@/utils/safeInvoke';
+
 
 const DB_NAME = 'sigma-test-queue';
 const STORE = 'pending';
@@ -19,6 +9,8 @@ const VERSION = 1;
 
 export interface PendingTestSubmission {
   id: string;
+  attemptId?: string;
+  userId?: string;
   lessonId: string;
   answers: Record<string, number>;
   shownQuestionIds: string[];
@@ -40,49 +32,20 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function enqueueTestSubmission(payload: Omit<PendingTestSubmission, 'id' | 'createdAt' | 'attempts'>): Promise<string> {
-  const id = `${payload.lessonId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+export function isRetryableTestError(error: unknown): boolean {
+  const code = (error as { code?: string })?.code;
+  return !code || code.startsWith('08') || code === '57014';
+}
+export async function enqueueTestSubmission(payload: Omit<PendingTestSubmission, 'id' | 'createdAt' | 'attempts'> & { attemptId: string; userId: string }): Promise<string> {
+  const id = payload.userId + ':' + payload.attemptId;
   const item: PendingTestSubmission = { ...payload, id, createdAt: Date.now(), attempts: 0 };
+  const db = await openDB();
   try {
-    const db = await openDB();
     const tx = db.transaction(STORE, 'readwrite');
     tx.objectStore(STORE).put(item);
-    await new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
-    db.close();
-  } catch (e) {
-    console.warn('[testAnswerQueue] Failed to persist', e);
-  }
-  // Fire-and-forget Beacon — может пройти через антивирус, который режет fetch
-  trySendBeacon(item);
+    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
+  } finally { db.close(); }
   return id;
-}
-
-function trySendBeacon(item: PendingTestSubmission): boolean {
-  try {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/grade-test`;
-    const sessionStr = localStorage.getItem(`sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`);
-    let token: string | null = null;
-    try {
-      const parsed = sessionStr ? JSON.parse(sessionStr) : null;
-      token = parsed?.access_token ?? null;
-    } catch { /* noop */ }
-    if (!token) return false;
-
-    const blob = new Blob(
-      [JSON.stringify({
-        lesson_id: item.lessonId,
-        answers: item.answers,
-        shown_question_ids: item.shownQuestionIds,
-        // sendBeacon не позволяет ставить custom headers — токен передаём как поле
-        _auth: token,
-        _queued_id: item.id,
-      })],
-      { type: 'application/json' },
-    );
-    return navigator.sendBeacon(url, blob);
-  } catch {
-    return false;
-  }
 }
 
 export async function listPendingSubmissions(): Promise<PendingTestSubmission[]> {
@@ -122,20 +85,21 @@ async function bumpAttempts(item: PendingTestSubmission): Promise<void> {
 }
 
 /** Try to flush all pending submissions through normal edge function. */
-export async function flushPendingSubmissions(): Promise<{ sent: number; failed: number }> {
+async function flushQueue(): Promise<{ sent: number; failed: number }> {
   const items = await listPendingSubmissions();
   let sent = 0, failed = 0;
   for (const item of items) {
     // если у нас вообще нет сессии — нет смысла пытаться
     const { data: session } = await supabase.auth.getSession();
-    if (!session?.session) { failed++; continue; }
+    if (!session?.session || !item.attemptId || !item.userId || session.session.user.id !== item.userId) { failed++; continue; }
 
-    const { data, error } = await safeInvoke('grade-test', {
-      body: { lesson_id: item.lessonId, answers: item.answers, shown_question_ids: item.shownQuestionIds },
-    });
+    const { data, error } = await supabase.rpc('submit_test_attempt' as never, {
+      p_attempt_id: item.attemptId, p_answers: item.answers,
+    } as never);
     if (!error && data) {
       await removePendingSubmission(item.id);
       sent++;
+      window.dispatchEvent(new Event('test-submission-synced'));
     } else {
       await bumpAttempts(item);
       failed++;
@@ -144,6 +108,11 @@ export async function flushPendingSubmissions(): Promise<{ sent: number; failed:
   return { sent, failed };
 }
 
+let pendingFlush: Promise<{ sent: number; failed: number }> | null = null;
+export function flushPendingSubmissions(): Promise<{ sent: number; failed: number }> {
+  if (!pendingFlush) pendingFlush = flushQueue().finally(() => { pendingFlush = null; });
+  return pendingFlush;
+}
 let listenersInstalled = false;
 export function installTestQueueListeners(): void {
   if (listenersInstalled || typeof window === 'undefined') return;

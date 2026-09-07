@@ -45,6 +45,7 @@ export interface Lesson {
   testPassingScore?: number;
   testQuestionsToShow?: number | null;
   testMaxAttempts?: number | null;
+  testMaxAttemptsPerDay?: number | null;
   testShowAnswers?: boolean;
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];

@@ -80,3 +80,18 @@ describe("formatCourseTestResult", () => {
     expect(r.title).toBe("Сдан");
   });
 });
+
+describe("manual course credit", () => {
+  it.each([0, 2])("shows explicit offline credit with %s previous online attempts without presenting their score as a pass", (attempts) => {
+    expect(formatCourseTestResult({
+      ...base,
+      result_status: "passed",
+      tests_attempted: attempts > 0 ? 1 : 0,
+      latest_score: attempts > 0 ? 2 : null,
+      latest_max_score: attempts > 0 ? 10 : null,
+      latest_percent: attempts > 0 ? 20 : null,
+      attempts_used: attempts,
+      test_details: [{ manual_credited_at: "2026-09-07T04:00:00Z" }],
+    })).toEqual({ tone: "success", title: "Зачтено организацией", subtitle: null });
+  });
+});

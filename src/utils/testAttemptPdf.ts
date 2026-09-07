@@ -1,11 +1,12 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { getTestAnswerKeyNotice, getTestAnswerKeyState } from "@/utils/testAnswerKey";
 
 interface QuestionForExport {
   id: string;
   question: string;
   options: any[];
-  correct_answer: number | null;
+  correct_answer?: number | null;
   explanation?: string | null;
 }
 
@@ -14,11 +15,13 @@ interface TestAttemptExportData {
   courseTitle: string;
   testTitle: string;
   completedAt: string;
+  startedAt?: string | null;
+  legacy?: boolean;
   score: number;
   maxScore: number;
   percentage: number;
-  isPassed: boolean;
-  passingScore: number;
+  isPassed: boolean | null;
+  passingScore: number | null;
   questions: QuestionForExport[];
   answers: Record<string, number>;
 }
@@ -62,20 +65,25 @@ export async function generateTestAttemptPdf(data: TestAttemptExportData) {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-  const questionsHtml = data.questions
+  const questionsHtml = (data.legacy ? [] : data.questions)
     .map((q, idx) => {
       const studentAnswer = data.answers[q.id];
+      const answerKeyState = getTestAnswerKeyState(q.correct_answer, q.options);
+      const keyNotice = getTestAnswerKeyNotice(answerKeyState);
+      const hasValidKey = answerKeyState === 'valid';
       const optionsHtml = q.options
         .map((opt, optIdx) => {
           const isStudentChoice = studentAnswer === optIdx;
-          const isCorrectOption = q.correct_answer === optIdx;
+          const isCorrectOption = hasValidKey && q.correct_answer === optIdx;
           let bg = "#ffffff";
           let border = "#e5e7eb";
           let mark = "";
           if (isStudentChoice && isCorrectOption) {
             bg = "#ecfdf5"; border = "#10b981"; mark = "✓ ";
-          } else if (isStudentChoice) {
+          } else if (isStudentChoice && hasValidKey) {
             bg = "#fef2f2"; border = "#ef4444"; mark = "✗ ";
+          } else if (isStudentChoice) {
+            bg = "#f8fafc"; mark = "Ответ ученика: ";
           } else if (isCorrectOption) {
             bg = "#f0fdf4"; border = "#86efac"; mark = "→ ";
           }
@@ -88,6 +96,7 @@ export async function generateTestAttemptPdf(data: TestAttemptExportData) {
       return `
         <div style="margin-bottom:14px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;page-break-inside:avoid">
           <div style="font-weight:600;font-size:12px;margin-bottom:6px">${idx + 1}. ${esc(q.question)}</div>
+          ${keyNotice ? `<div style="font-size:11px;color:#475569;margin-bottom:6px">${esc(keyNotice)}</div>` : ''}
           ${optionsHtml}
           ${explanationHtml}
         </div>
@@ -96,12 +105,14 @@ export async function generateTestAttemptPdf(data: TestAttemptExportData) {
     .join("");
 
   const statusColor = data.isPassed ? "#10b981" : "#ef4444";
-  const statusText = data.isPassed ? "Пройден" : "Не пройден";
+  const statusText = data.isPassed == null ? "Исторический статус не подтверждён" : data.isPassed ? "Пройден" : "Не пройден";
 
   container.innerHTML = `
     <div style="border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px">
       <div style="font-size:20px;font-weight:700">Отчёт о тестировании</div>
-      <div style="font-size:11px;color:#666;margin-top:4px">${esc(dateStr)}</div>
+      <div style="font-size:11px;color:#666;margin-top:4px">Завершение: ${esc(dateStr)}</div>
+      <div style="font-size:11px;color:#666;margin-top:4px">Начало: ${data.startedAt ? esc(new Date(data.startedAt).toLocaleString('ru-RU')) : 'не записывалось'}</div>
+      ${data.legacy ? '<div>Историческая запись без снимка вопросов. Разбор на момент сдачи не подтверждён.</div>' : ''}
     </div>
     <table style="width:100%;font-size:12px;margin-bottom:16px;border-collapse:collapse">
       <tbody>
@@ -109,7 +120,7 @@ export async function generateTestAttemptPdf(data: TestAttemptExportData) {
         <tr><td style="padding:4px 0;color:#666">Курс</td><td style="padding:4px 0">${esc(data.courseTitle)}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Тест</td><td style="padding:4px 0">${esc(data.testTitle)}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Результат</td><td style="padding:4px 0;font-weight:600">${data.score} из ${data.maxScore} (${data.percentage}%)</td></tr>
-        <tr><td style="padding:4px 0;color:#666">Проходной балл</td><td style="padding:4px 0">${data.passingScore}%</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Проходной балл</td><td style="padding:4px 0">${data.passingScore == null ? "не сохранён" : data.passingScore + "%"}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Статус</td><td style="padding:4px 0"><span style="display:inline-block;padding:2px 10px;border-radius:12px;background:${statusColor};color:#fff;font-size:11px;font-weight:600">${statusText}</span></td></tr>
       </tbody>
     </table>
@@ -174,25 +185,30 @@ export async function generateTestAttemptExcel(data: TestAttemptExportData) {
     ["Ученик", data.studentName],
     ["Курс", data.courseTitle],
     ["Тест", data.testTitle],
-    ["Дата", dateStr],
+    ["Завершение", dateStr],
+    ["Начало", data.startedAt ? new Date(data.startedAt).toLocaleString("ru-RU") : "не записывалось"],
+    ["Снимок вопросов", data.legacy ? "Не сохранялся; разбор на момент сдачи не подтверждён" : "Сохранён"],
     ["Результат", `${data.score} из ${data.maxScore} (${data.percentage}%)`],
-    ["Проходной балл", `${data.passingScore}%`],
-    ["Статус", data.isPassed ? "Пройден" : "Не пройден"],
+    ["Проходной балл", data.passingScore == null ? "не сохранён" : `${data.passingScore}%`],
+    ["Статус", data.isPassed == null ? "Исторический статус не подтверждён" : data.isPassed ? "Пройден" : "Не пройден"],
   ];
 
   const header = ["№", "Вопрос", "Ответ ученика", "Правильный ответ", "Итог", "Пояснение"];
-  const rows = data.questions.map((q, idx) => {
+  const rows = (data.legacy ? [] : data.questions).map((q, idx) => {
     const studentIdx = data.answers[q.id];
+    const answerKeyState = getTestAnswerKeyState(q.correct_answer, q.options);
+    const keyNotice = getTestAnswerKeyNotice(answerKeyState);
+    const hasValidKey = answerKeyState === 'valid';
     const studentAnswer = typeof studentIdx === "number" ? optText(q.options[studentIdx]) : "—";
     const correctAnswer =
-      typeof q.correct_answer === "number" ? optText(q.options[q.correct_answer]) : "—";
-    const ok = studentIdx === q.correct_answer;
+      hasValidKey ? optText(q.options[q.correct_answer as number]) : keyNotice || "Не раскрыт";
+    const ok = hasValidKey && studentIdx === q.correct_answer;
     return [
       idx + 1,
       q.question,
       studentAnswer,
       correctAnswer,
-      ok ? "Верно" : "Неверно",
+      hasValidKey ? (ok ? "Верно" : "Неверно") : keyNotice ? "Балл не начислен" : "Не раскрыт",
       q.explanation || "",
     ];
   });

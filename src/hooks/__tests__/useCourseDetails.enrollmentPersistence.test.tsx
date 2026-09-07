@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
+  rpc: vi.fn(),
   enrollmentSelect: vi.fn(),
   existingCourseEq: vi.fn(),
   existingUsersIn: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from } }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
 
 vi.mock("sonner", () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError, info: mocks.toastInfo },
@@ -88,5 +89,30 @@ describe("useCourseDetails enrollment persistence", () => {
     expect(mocks.toastError).toHaveBeenCalledWith(
       "База не подтвердила зачисление. Список обновлён — повторите операцию.",
     );
+  });
+});
+
+describe("reset study progress without erasing test evidence", () => {
+  const student = { enrollment_id: "enrollment-1", user_id: "student-1", name: "Иванов" } as any;
+  beforeEach(() => vi.clearAllMocks());
+  it("uses the atomic scoped RPC and describes retained attempts", async () => {
+    mocks.rpc.mockResolvedValue({ data: { enrollmentId: "enrollment-1", reset: true }, error: null });
+    const { result } = renderHook(() => useCourseDetails(course, [], "org-1"));
+    await act(async () => result.current.handleResetProgress(student));
+    expect(mocks.rpc).toHaveBeenCalledWith("reset_course_learning_progress", { p_enrollment_id: "enrollment-1", p_organization_id: "org-1" });
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(expect.stringContaining("История тестов и использованные попытки сохранены"));
+  });
+  it.each([
+    { data: null, error: { message: "forbidden" } },
+    { data: null, error: null },
+    { data: { reset: true, enrollmentId: "different-enrollment" }, error: null },
+  ])("does not report a failed or unconfirmed reset as successful", async (response) => {
+    mocks.rpc.mockResolvedValue(response);
+    const { result } = renderHook(() => useCourseDetails(course, [], "org-1"));
+    await act(async () => result.current.handleResetProgress(student));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith("Ошибка сброса прогресса");
+    expect(mocks.invalidateQueries).not.toHaveBeenCalled();
   });
 });

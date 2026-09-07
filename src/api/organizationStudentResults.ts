@@ -199,7 +199,9 @@ export async function fetchOrganizationStudentResults(
           || row.tests_total < 0
           || row.tests_attempted < 0
           || row.tests_attempted > row.tests_total
-          || details.length !== row.tests_attempted
+          || details.filter(detail => detail.attempts_used > 0).length !== row.tests_attempted
+          || details.length > row.tests_total
+          || details.some(detail => detail.attempts_used === 0 && !detail.manual_credited_at)
         ) {
           throw new Error(`Не удалось проверить полноту результатов курса «${course.title}»`);
         }

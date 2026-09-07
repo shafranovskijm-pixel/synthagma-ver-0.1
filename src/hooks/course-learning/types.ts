@@ -38,7 +38,7 @@ export interface TestQuestion {
   id: string;
   question: string;
   options: unknown;
-  correct_answer: number;
+  correct_answer?: number | null;
   order_index: number;
   explanation?: string;
   is_bank_question?: boolean;

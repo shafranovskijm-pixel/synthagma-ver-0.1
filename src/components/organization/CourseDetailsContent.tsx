@@ -510,7 +510,7 @@ export function CourseDetailsContent({
 
       {/* Reset Progress */}
       <AlertDialog open={!!h.resetConfirmStudent} onOpenChange={(open) => !open && h.setResetConfirmStudent(null)}>
-        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>Сбросить прогресс?</AlertDialogTitle><AlertDialogDescription>Все результаты тестов ученика "{h.resetConfirmStudent?.name}" будут удалены.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>Сбросить прогресс?</AlertDialogTitle><AlertDialogDescription>Учебный прогресс ученика "{h.resetConfirmStudent?.name}" будет сброшен, ручной зачёт отменён. История тестов, результаты и использованные попытки сохранятся. Лимиты попыток не сбрасываются.</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel className="rounded-xl" disabled={h.isResetting}>Отмена</AlertDialogCancel><AlertDialogAction className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => h.resetConfirmStudent && h.handleResetProgress(h.resetConfirmStudent)} disabled={h.isResetting}>{h.isResetting ? <><SigmaSpinner size="sm" className="mr-2" />Сброс...</> : <><RotateCcw className="w-4 h-4 mr-2" />Сбросить</>}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
@@ -814,15 +814,16 @@ function CourseStudentTestDetailsDialog({
                       d.passed ? "bg-sigma-green/10 text-sigma-green border-sigma-green/20"
                                : "bg-destructive/10 text-destructive border-destructive/20"
                     )}>
-                      {d.passed ? "Сдан" : "Не сдан"}
+                      {d.manual_credited_at ? "Зачтено организацией" : d.passed ? "Сдан" : "Не сдан"}
                     </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <div>Баллы: <span className="text-foreground font-medium">{d.score} из {d.max_score}</span></div>
+                    <div>{d.manual_credited_at ? "Последняя онлайн-попытка: " : "Баллы: "}<span className="text-foreground font-medium">{d.score != null && d.max_score != null ? `${d.score} из ${d.max_score}` : "—"}</span></div>
                     <div>Результат: <span className="text-foreground font-medium">{percent != null ? `${percent}%` : "—"}</span></div>
                     <div>Проходной балл: <span className="text-foreground font-medium">{d.passing_score}%</span></div>
-                    <div>Попыток: <span className="text-foreground font-medium">{d.attempts_used}{d.max_attempts ? ` из ${d.max_attempts}` : ""}</span></div>
-                    <div className="col-span-2">Дата: <span className="text-foreground font-medium">{d.completed_at ? new Date(d.completed_at).toLocaleString("ru-RU") : "—"}</span></div>
+                    <div>Завершено попыток: <span className="text-foreground font-medium">{d.attempts_used}{d.max_attempts ? ` из ${d.max_attempts}` : ""}</span></div>
+                    {d.manual_credited_at && <div className="col-span-2">Очный зачёт: <span className="text-foreground font-medium">{new Date(d.manual_credited_at).toLocaleString("ru-RU")}</span></div>}
+                    <div className="col-span-2">Дата онлайн-попытки: <span className="text-foreground font-medium">{d.completed_at ? new Date(d.completed_at).toLocaleString("ru-RU") : "—"}</span></div>
                   </div>
                 </div>
               );
@@ -833,6 +834,3 @@ function CourseStudentTestDetailsDialog({
     </Dialog>
   );
 }
-
-
-

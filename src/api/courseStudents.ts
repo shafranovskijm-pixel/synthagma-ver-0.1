@@ -181,11 +181,13 @@ export interface CourseStudentPageRow {
 }
 
 export interface TestResultDetail {
+  manual_credited_at?: string | null;
+  manual_credited_by?: string | null;
   lesson_id: string;
   lesson_title: string;
-  score: number;
-  max_score: number;
-  percent: number;
+  score: number | null;
+  max_score: number | null;
+  percent: number | null;
   passing_score: number;
   passed: boolean;
   attempts_used: number;

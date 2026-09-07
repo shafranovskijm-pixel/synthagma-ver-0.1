@@ -4989,6 +4989,7 @@ export type Database = {
           metadata: Json
           module_id: string | null
           order_index: number
+          test_max_attempts_per_day: number | null
           test_max_attempts: number | null
           test_passing_score: number
           test_questions_count: number | null
@@ -5024,6 +5025,7 @@ export type Database = {
           metadata?: Json
           module_id?: string | null
           order_index?: number
+          test_max_attempts_per_day?: number | null
           test_max_attempts?: number | null
           test_passing_score?: number
           test_questions_count?: number | null
@@ -5059,6 +5061,7 @@ export type Database = {
           metadata?: Json
           module_id?: string | null
           order_index?: number
+          test_max_attempts_per_day?: number | null
           test_max_attempts?: number | null
           test_passing_score?: number
           test_questions_count?: number | null

@@ -280,6 +280,9 @@ export async function duplicateCourse(
           test_questions_count: lesson.test_questions_count,
           test_passing_score: lesson.test_passing_score,
           test_questions_to_show: lesson.test_questions_to_show,
+          test_max_attempts: lesson.test_max_attempts ?? null,
+          test_max_attempts_per_day: lesson.test_max_attempts_per_day ?? null,
+          test_show_answers: lesson.test_show_answers ?? true,
           is_locked: lesson.is_locked ?? false,
         })
         .select("id")

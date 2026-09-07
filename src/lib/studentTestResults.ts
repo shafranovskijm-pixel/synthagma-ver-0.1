@@ -15,6 +15,8 @@ export interface StudentTestResultRecord {
   status: string;
   completedAt: string | null;
   attemptsUsed: number | null;
+  manualCreditedAt?: string | null;
+  manualCreditedBy?: string | null;
 }
 
 const emptyStatusLabels: Record<OrganizationStudentCourseResult["result_status"], string> = {
@@ -25,6 +27,7 @@ const emptyStatusLabels: Record<OrganizationStudentCourseResult["result_status"]
 };
 
 function finiteOrNull(value: unknown): number | null {
+  if (value == null) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -58,9 +61,11 @@ export function flattenStudentTestResults(
           maxScore: finiteOrNull(detail.max_score),
           percent: safePercent(detail.score, detail.max_score, detail.percent),
           passingScore: finiteOrNull(detail.passing_score),
-          status: detail.passed ? "Сдан" : "Не сдан",
+          status: detail.manual_credited_at ? "Зачтено организацией" : detail.passed ? "Сдан" : "Не сдан",
           completedAt: detail.completed_at ?? null,
           attemptsUsed: finiteOrNull(detail.attempts_used),
+          manualCreditedAt: detail.manual_credited_at ?? null,
+          manualCreditedBy: detail.manual_credited_by ?? null,
         });
       } else {
         records.push({
@@ -117,6 +122,8 @@ export function toStudentTestWorkbookRows(
     "Тест": safeSpreadsheetText(record.testTitle),
     "Результат тестирования": record.percent === null
       ? record.status
+      : record.manualCreditedAt
+      ? `${record.status}; последняя онлайн-попытка: ${record.percent}%`
       : `${record.percent}% — ${record.status}`,
     "Баллы": record.score ?? "—",
     "Максимальный балл": record.maxScore ?? "—",
@@ -127,6 +134,8 @@ export function toStudentTestWorkbookRows(
       ? new Date(record.completedAt).toLocaleString("ru-RU")
       : "—",
     "Количество попыток": record.attemptsUsed ?? "—",
+    "Дата очного зачёта": record.manualCreditedAt ? new Date(record.manualCreditedAt).toLocaleString("ru-RU") : "—",
+    "Кто зачёл (ID)": record.manualCreditedBy ?? "—",
   }));
 }
 
@@ -143,4 +152,6 @@ export const studentTestWorkbookColumnWidths = [
   { wch: 16 },
   { wch: 24 },
   { wch: 20 },
+  { wch: 24 },
+  { wch: 38 },
 ];

@@ -38,7 +38,7 @@ interface StudentTestResultsDialogProps {
 }
 
 function statusClass(status: string): string {
-  if (status === "Сдан" || status === "Сдано") {
+  if (status === "Сдан" || status === "Сдано" || status === "Зачтено организацией") {
     return "bg-sigma-green/10 text-sigma-green border-sigma-green/20";
   }
   if (status === "Не сдан" || status === "Не сдано") {
@@ -105,7 +105,7 @@ export function StudentTestResultsDialog({
             Результаты тестирования
           </DialogTitle>
           <DialogDescription>
-            Последний результат каждого теста. Проходной балл берётся из настроек конкретного урока.
+            Последний онлайн-результат каждого теста и зачёты организации. Проходной балл берётся из настроек урока.
           </DialogDescription>
         </DialogHeader>
 
@@ -227,7 +227,7 @@ export function StudentTestResultsDialog({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {record.completedAt ? new Date(record.completedAt).toLocaleString("ru-RU") : "—"}
+                        {record.manualCreditedAt ? `Зачёт: ${new Date(record.manualCreditedAt).toLocaleString("ru-RU")}` : record.completedAt ? new Date(record.completedAt).toLocaleString("ru-RU") : "—"}
                       </td>
                     </tr>
                   ))}

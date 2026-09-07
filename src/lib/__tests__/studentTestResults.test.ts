@@ -153,3 +153,28 @@ describe("toStudentTestWorkbookRows", () => {
     expect(workbookRows[0]["Email"]).toBe("'+1@example.ru");
   });
 });
+
+describe("offline credit report evidence", () => {
+  it.each([false, true])("retains a distinct credit and actual online evidence (past attempt: %s)", (hasAttempt) => {
+    const row = makeRow();
+    row.test_details = [{
+      ...row.test_details[0], score: hasAttempt ? 2 : null, max_score: hasAttempt ? 10 : null,
+      percent: hasAttempt ? 20 : null, attempts_used: hasAttempt ? 2 : 0,
+      completed_at: hasAttempt ? "2026-09-06T04:00:00Z" : null,
+      manual_credited_at: "2026-09-07T04:00:00Z", manual_credited_by: "teacher-1",
+    }];
+    const [record] = flattenStudentTestResults([row]);
+    expect(record).toMatchObject({
+      status: "Зачтено организацией", score: hasAttempt ? 2 : null,
+      percent: hasAttempt ? 20 : null, attemptsUsed: hasAttempt ? 2 : 0,
+      manualCreditedAt: "2026-09-07T04:00:00Z", manualCreditedBy: "teacher-1",
+    });
+    const [exported] = toStudentTestWorkbookRows([record]);
+    expect(exported["Количество попыток"]).toBe(hasAttempt ? 2 : 0);
+    expect(exported["Кто зачёл (ID)"]).toBe("teacher-1");
+    if (!hasAttempt) {
+      expect(exported["Баллы"]).toBe("—");
+      expect(exported["Дата последней попытки"]).toBe("—");
+    }
+  });
+});

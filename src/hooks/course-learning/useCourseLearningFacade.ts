@@ -568,7 +568,7 @@ export function useCourseLearning() {
   const triggerHapticFeedback = useCallback(() => { if (navigator.vibrate) navigator.vibrate(10); }, []);
   const handleSwipeLeft = useCallback(() => { if (currentLessonIndex < lessons.length - 1) { triggerHapticFeedback(); goToNextLesson(); } }, [currentLessonIndex, lessons.length]);
   const handleSwipeRight = useCallback(() => { if (currentLessonIndex > 0) { triggerHapticFeedback(); goToPrevLesson(); } }, [currentLessonIndex]);
-  const isTestActive = currentLesson?.type === 'test' && !testHook.testSubmitted;
+  const isTestActive = currentLesson?.type === 'test' && !!testHook.testAttemptId && !testHook.testSubmitted;
 
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile && !isTestActive ? handleSwipeLeft : undefined,

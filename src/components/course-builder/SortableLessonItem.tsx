@@ -388,9 +388,14 @@ export function SortableLessonItem({
                     <p className="text-xs text-muted-foreground">Оставьте пустым, чтобы показать все вопросы.</p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm">Количество попыток</Label>
+                    <Label className="text-sm">Количество попыток за всё время</Label>
                     <Input type="number" min={1} value={lesson.testMaxAttempts ?? ''} onChange={(e) => { const val = e.target.value; onUpdate({ testMaxAttempts: val ? parseInt(val) : null }); }} placeholder="Без ограничений" className="rounded-lg" />
                     <p className="text-xs text-muted-foreground">Оставьте пустым для неограниченного количества попыток.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`daily-attempts-${lesson.id}`} className="text-sm">Попыток в день</Label>
+                    <Input id={`daily-attempts-${lesson.id}`} type="number" min={1} step={1} value={lesson.testMaxAttemptsPerDay ?? ''} onChange={(e) => { const value = e.target.value; const count = Number(value); if (value === '' || (Number.isSafeInteger(count) && count > 0)) onUpdate({ testMaxAttemptsPerDay: value === '' ? null : count }); }} placeholder="Без ограничений" className="rounded-lg" />
+                    <p className="text-xs text-muted-foreground">Например, 3 или 5. Сброс в 00:00 по Москве. Пустое поле — без суточного лимита. Попытка учитывается при нажатии «Начать тест»; продолжение начатой попытки повторно не считается.</p>
                   </div>
                 </div>
                 <label className="mt-4 flex items-start gap-3 cursor-pointer">

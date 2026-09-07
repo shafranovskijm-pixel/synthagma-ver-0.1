@@ -1,3 +1,4 @@
+import { TestAttemptStatus } from '@/components/course-learning/TestAttemptStatus';
 import { useRef, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -35,6 +36,7 @@ import { LessonAIAvatar } from "@/components/course-learning/LessonAIAvatar";
 import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 import { CourseLibraryReader } from "@/components/course-library/CourseLibraryReader";
 import { resolveCourseElectronicLibraryView } from "@/lib/courseLibrary";
+import { getTestAnswerKeyNotice, getTestAnswerKeyState } from "@/utils/testAnswerKey";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -45,7 +47,8 @@ const CourseLearning = () => {
     course, lessons, currentLessonIndex, lessonProgress, loading,
     sidebarOpen, setSidebarOpen, isTransitioning,
     testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions, testMaxAttempts, testAttemptsUsed,
-    testQuestionsLoading, testQuestionsError,
+    testQuestionsLoading, testQuestionsError, testLegacy, testSubmitting, testAttemptId, testShowAnswers, testManualCredit, testLimitReached,
+    testMaxAttemptsPerDay, testAttemptsUsedToday, startTest, refreshTestState,
     answers, setAnswers,
     isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
@@ -62,7 +65,7 @@ const CourseLearning = () => {
   const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
-  const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
+  const isTestActive = currentLesson?.type === 'test' && !!testAttemptId && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
   const [chatBtnVisible, setChatBtnVisible] = useReactState(true);
   const libraryView = resolveCourseElectronicLibraryView(
@@ -159,7 +162,7 @@ const CourseLearning = () => {
     onOpenLibrary: libraryView.enabled ? openLibrary : undefined,
   };
 
-  const testPassed = testScore ? (testScore.score / testScore.max) * 100 >= testPassingScore : false;
+  const testPassed = !!testManualCredit || (!testLegacy && testScore ? Math.round((testScore.score / testScore.max) * 100) >= testPassingScore : false);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -338,6 +341,7 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-sigma-purple/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><ClipboardList className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-sigma-purple")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestionsLoading ? 'загрузка вопросов…' : `${testQuestions.length} вопросов`} • Проходной балл: {testPassingScore}%</p></div>
                 </div>
+                {!testQuestionsLoading && <TestAttemptStatus maxAttempts={testMaxAttempts} attemptsUsed={testAttemptsUsed} maxAttemptsPerDay={testMaxAttemptsPerDay} attemptsUsedToday={testAttemptsUsedToday} active={!!testAttemptId} submitted={testSubmitted} busy={testSubmitting || testQuestionsLoading} blocked={testLimitReached} error={testQuestionsError} manualCredit={testManualCredit} onStart={startTest} onRefresh={refreshTestState} />}
                 {testQuestionsLoading && (
                   <div className="flex items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-muted-foreground">
                     <SigmaSpinner size="sm" />
@@ -351,28 +355,20 @@ const CourseLearning = () => {
                   </div>
                 )}
                 {testScore && (
-                  <div className={cn("p-6 rounded-2xl border transition-all", testPassed ? "bg-sigma-green/10 border-sigma-green/20" : "bg-destructive/10 border-destructive/20")}>
+                  <div className={cn("p-6 rounded-2xl border transition-all", testLegacy ? "bg-muted border-border" : testPassed ? "bg-sigma-green/10 border-sigma-green/20" : "bg-destructive/10 border-destructive/20")}>
                     <div className="flex items-center gap-4">
                       <div className={cn("w-16 h-16 rounded-full flex items-center justify-center", testPassed ? "bg-sigma-green/20" : "bg-destructive/20")}><Trophy className={cn("w-8 h-8", testPassed ? "text-sigma-green" : "text-destructive")} /></div>
-                      <div><h3 className="text-xl font-bold">{testPassed ? 'Тест пройден!' : 'Тест не пройден'}</h3><p className="text-muted-foreground">Результат: {testScore.score} из {testScore.max} ({Math.round(testScore.score / testScore.max * 100)}%)</p></div>
+                      <div><h3 className="text-xl font-bold">{testLegacy ? 'Результат прошлой попытки' : testPassed ? 'Тест пройден!' : 'Тест не пройден'}</h3><p className="text-muted-foreground">Результат: {testScore.score} из {testScore.max} ({Math.round(testScore.score / testScore.max * 100)}%)</p></div>
                     </div>
+                    {testLegacy && <p className="mt-2 text-sm text-muted-foreground">В этой исторической записи не сохранялись версия вопросов и проходной балл. Разбор на момент сдачи недоступен.</p>}
                     {!testPassed && (
                       <div className="mt-4 flex items-center gap-3 flex-wrap">
-                        {testMaxAttempts && testMaxAttempts > 0 && testAttemptsUsed >= testMaxAttempts ? (
-                          <p className="text-sm text-destructive font-medium">Использованы все попытки ({testAttemptsUsed}/{testMaxAttempts})</p>
-                        ) : (
-                          <>
-                            <Button onClick={retryTest}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button>
-                            {testMaxAttempts && testMaxAttempts > 0 && (
-                              <span className="text-xs text-muted-foreground">Попытка {testAttemptsUsed} из {testMaxAttempts}</span>
-                            )}
-                          </>
-                        )}
+                        <Button onClick={retryTest} disabled={testLimitReached || testQuestionsLoading || testSubmitting || !!testQuestionsError}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button>
                       </div>
                     )}
                   </div>
                 )}
-                {testSubmitted && testScore && ((currentLesson as any)?.test_show_answers ?? true) && (
+                {testSubmitted && testScore && !testLegacy && testShowAnswers && (
                   <Collapsible open={reviewOpen} onOpenChange={setReviewOpen}>
                     <CollapsibleTrigger asChild>
                       <Button variant="outline" className="w-full rounded-xl"><ClipboardList className="w-4 h-4 mr-2" />{reviewOpen ? 'Скрыть разбор ответов' : 'Показать разбор ответов'}</Button>
@@ -382,18 +378,22 @@ const CourseLearning = () => {
                         const options = Array.isArray(q.options) ? q.options : [];
                         const userAnswer = answers[q.id];
                         const correctAnswer = q.correct_answer;
-                        const isCorrect = userAnswer === correctAnswer;
+                        const answerKeyState = getTestAnswerKeyState(correctAnswer, options);
+                        const keyNotice = getTestAnswerKeyNotice(answerKeyState);
+                        const hasValidKey = answerKeyState === 'valid';
+                        const isCorrect = hasValidKey && userAnswer === correctAnswer;
                         return (
                           <div key={q.id} className="bg-card rounded-2xl p-5 border border-border shadow-sm space-y-3">
                             <h3 className="font-semibold flex items-center gap-2">
-                              <span className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", isCorrect ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400")}>{i + 1}</span>
+                              <span className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", !hasValidKey ? "bg-muted text-muted-foreground" : isCorrect ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400")}>{i + 1}</span>
                               {q.question}
                             </h3>
+                            {keyNotice && <p className="text-sm text-muted-foreground">{keyNotice}</p>}
                             {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-48 rounded-lg border border-border object-contain" />}
                             <div className="space-y-2">
                               {options.map((opt: any, oi: number) => {
-                                const isCorrectOption = oi === correctAnswer;
-                                const isUserWrong = oi === userAnswer && oi !== correctAnswer;
+                                const isCorrectOption = hasValidKey && oi === correctAnswer;
+                                const isUserWrong = hasValidKey && oi === userAnswer && oi !== correctAnswer;
                                 return (
                                   <div key={oi} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all text-sm",
                                     isCorrectOption ? "border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600" :
@@ -403,6 +403,7 @@ const CourseLearning = () => {
                                       {(isCorrectOption || isUserWrong) && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                     <span>{getOptionText(opt)}</span>
+                                    {!hasValidKey && oi === userAnswer && <span className="text-xs text-muted-foreground ml-auto">Ваш ответ</span>}
                                     {isCorrectOption && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 ml-auto shrink-0" />}
                                   </div>
                                 );
@@ -462,7 +463,7 @@ const CourseLearning = () => {
         {!libraryOpen && <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
-            {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
+            {currentLesson?.type === 'test' && !!testAttemptId && !testSubmitted && <Button onClick={submitTest} disabled={testSubmitting || testQuestionsLoading || !!testQuestionsError || testQuestions.length === 0 || Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{testSubmitting ? "Отправка…" : testQuestionsLoading ? "Загрузка…" : isMobile ? "Отправить" : "Отправить ответы"}</Button>}
             {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (() => {
               const VIDEO_FINISH_THRESHOLD = 85; // допускаем 85% — на мобильных последние ~10% часто пропускаются
               const gated = currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < VIDEO_FINISH_THRESHOLD;

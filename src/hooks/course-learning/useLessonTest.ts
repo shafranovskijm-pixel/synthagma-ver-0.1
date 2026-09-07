@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { safeInvoke } from "@/utils/safeInvoke";
-import { enqueueTestSubmission } from "@/utils/testAnswerQueue";
+import { enqueueTestSubmission, isRetryableTestError } from "@/utils/testAnswerQueue";
 import { toast } from "sonner";
 import { isAdminViewActive } from "@/utils/adminViewMode";
 import type { Lesson, LessonProgress, TestQuestion } from "./types";
@@ -19,181 +18,202 @@ interface UseLessonTestParams {
   saveLessonTime: () => Promise<void>;
   handleCourseCompletion: (testScore?: { score: number; max: number }) => Promise<void>;
 }
-
-export function useLessonTest({
-  currentLesson, user, lessons, lessonProgress, completedCount,
-  enrollmentId, courseId, course, setLessonProgress, saveLessonTime, handleCourseCompletion,
-}: UseLessonTestParams) {
+interface Limits {
+  maxAttempts: number | null;
+  maxAttemptsPerDay: number | null;
+  attemptsUsed: number;
+  attemptsUsedToday: number;
+  resetAt: string | null;
+}
+interface ActiveAttempt extends Limits {
+  attemptId: string;
+  status?: string;
+  startedAt: string;
+  questions: TestQuestion[];
+  passingScore: number;
+  showAnswers: boolean;
+}
+interface TestState extends Limits {
+  hasAttempt: boolean;
+  passed?: boolean | null;
+  passingScore: number;
+  showAnswers: boolean;
+  activeAttempt: ActiveAttempt | null;
+  manualCredit?: { creditedAt: string; creditedBy: string } | null;
+  attempt?: { legacy?: boolean; score: number; max_score: number; answers: Record<string, number>; questions?: TestQuestion[]; question_snapshot?: TestQuestion[]; passing_score?: number };
+  correctAnswers?: Record<string, number | null>;
+  explanations?: Record<string, string | null>;
+}
+const emptyLimits: Limits = { maxAttempts: null, maxAttemptsPerDay: null, attemptsUsed: 0, attemptsUsedToday: 0, resetAt: null };
+const withAnswerKey = (question: TestQuestion, keys?: Record<string, number | null>): TestQuestion =>
+  keys && Object.prototype.hasOwnProperty.call(keys, question.id)
+    ? { ...question, correct_answer: keys[question.id] }
+    : question;
+const rpc = async <T,>(name: string, args: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.rpc(name as never, args as never);
+  if (error) throw error;
+  if (data == null) throw new Error('Сервер не вернул состояние теста.');
+  return data as T;
+};
+export function testErrorMessage(error: unknown): string {
+  const message = (error as { message?: string })?.message || '';
+  if (/test content invalid|no test questions available/i.test(message)) return 'В тесте некорректно настроены вопросы или варианты ответа. Попытка не списана. Обратитесь в учебную организацию.';
+  if (/daily|per.day|суточн/i.test(message)) return 'На сегодня попытки закончились. Лимит обновится в 00:00 по Москве.';
+  if (/exhaust|attempt.limit|попытк.*исчерп/i.test(message)) return 'Использованы все доступные попытки теста.';
+  if (/manual|credit/i.test(message)) return 'Курс уже зачтён организацией. Обновите состояние теста.';
+  return 'Не удалось выполнить действие с тестом. Проверьте соединение и повторите попытку.';
+}
+function readDraft(userId: string, attemptId: string): Record<string, number> {
+  try { return JSON.parse(sessionStorage.getItem('test-draft:' + userId + ':' + attemptId) || '{}'); } catch { return {}; }
+}
+export function useLessonTest({ currentLesson, user, lessons, lessonProgress, setLessonProgress, saveLessonTime, handleCourseCompletion }: UseLessonTestParams) {
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
-  const [allBankQuestions, setAllBankQuestions] = useState<TestQuestion[]>([]);
-  const [usedQuestionIds, setUsedQuestionIds] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
+  const [testLegacy, setTestLegacy] = useState(false);
   const [testScore, setTestScore] = useState<{ score: number; max: number } | null>(null);
-  const [testQuestionsCount, setTestQuestionsCount] = useState<number | null>(null);
-  const [testPassingScore, setTestPassingScore] = useState<number>(60);
+  const [testPassingScore, setTestPassingScore] = useState(60);
   const [testExplanations, setTestExplanations] = useState<Record<string, string | null>>({});
-  const [testMaxAttempts, setTestMaxAttempts] = useState<number | null>(null);
-  const [testAttemptsUsed, setTestAttemptsUsed] = useState<number>(0);
+  const [limits, setLimits] = useState<Limits>(emptyLimits);
   const [testQuestionsLoading, setTestQuestionsLoading] = useState(false);
   const [testQuestionsError, setTestQuestionsError] = useState<string | null>(null);
-  const testQuestionRequestRef = useRef(0);
+  const [testSubmitting, setTestSubmitting] = useState(false);
+  const [testAttemptId, setTestAttemptId] = useState<string | null>(null);
+  const [testStartedAt, setTestStartedAt] = useState<string | null>(null);
+  const [testShowAnswers, setTestShowAnswers] = useState(false);
+  const [testManualCredit, setTestManualCredit] = useState<TestState['manualCredit']>(null);
+  const scope = user?.id + ':' + currentLesson?.id;
+  const scopeRef = useRef(scope); scopeRef.current = scope;
+  const requestRef = useRef(0);
+  const activeScopeRef = useRef<string | null>(null);
+  const busyRef = useRef(false);
+  const startRequestRef = useRef<string | null>(null);
+  const lessonId = currentLesson?.type === 'test' ? currentLesson.id : null;
+
+  const applyActive = (active: ActiveAttempt) => {
+    activeScopeRef.current = scope; setTestLegacy(false);
+    setTestAttemptId(active.attemptId); setTestStartedAt(active.startedAt);
+    setTestQuestions(active.questions || []); setTestSubmitted(false); setTestScore(null);
+    setTestPassingScore(active.passingScore); setTestShowAnswers(active.showAnswers);
+    setAnswers(user ? readDraft(user.id, active.attemptId) : {});
+    setLimits(active);
+  };
+  const refreshTestState = useCallback(async () => {
+    if (!lessonId || !user) return;
+    const expectedScope = scope; const request = ++requestRef.current;
+    setTestQuestionsLoading(true); setTestQuestionsError(null);
+    try {
+      const data = await rpc<TestState>('get_student_test_state', { p_lesson_id: lessonId });
+      if (scopeRef.current !== expectedScope || request !== requestRef.current) return;
+      setLimits(data); setTestPassingScore(data.passingScore ?? 60); setTestShowAnswers(data.showAnswers === true);
+      setTestManualCredit(data.manualCredit ?? null); setTestLegacy(data.attempt?.legacy === true && !data.manualCredit);
+      setTestExplanations(data.explanations || {});
+      if (data.manualCredit) {
+        setTestSubmitted(true); setTestScore(null); setTestQuestions([]); setTestAttemptId(null);
+        setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
+      } else if (data.activeAttempt) {
+        applyActive(data.activeAttempt);
+      } else if (data.hasAttempt && data.attempt) {
+        const attempt = data.attempt;
+        setTestAttemptId(null); setTestSubmitted(true); setTestScore({ score: attempt.score, max: attempt.max_score });
+        setAnswers(attempt.answers || {});
+        if (attempt.passing_score != null) setTestPassingScore(attempt.passing_score);
+        setTestQuestions((attempt.questions || attempt.question_snapshot || []).map(q => withAnswerKey(q, data.correctAnswers)));
+      } else { setTestSubmitted(false); setTestQuestions([]); setTestScore(null); setTestAttemptId(null); }
+      if (data.passed === true && !data.manualCredit) setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
+      return data;
+    } catch (error) {
+      if (scopeRef.current === expectedScope && request === requestRef.current) setTestQuestionsError(testErrorMessage(error));
+    } finally {
+      if (scopeRef.current === expectedScope && request === requestRef.current) setTestQuestionsLoading(false);
+    }
+  }, [lessonId, user?.id, scope]);
 
   useEffect(() => {
-    const requestId = ++testQuestionRequestRef.current;
-    setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({});
-    setAllBankQuestions([]); setUsedQuestionIds([]); setTestExplanations({});
-    setTestMaxAttempts(null); setTestAttemptsUsed(0);
-    setTestQuestionsError(null);
-    setTestQuestionsLoading(currentLesson?.type === 'test');
-    if (currentLesson?.type === 'test') void fetchTestQuestions(currentLesson.id, requestId);
-  }, [currentLesson?.id]);
+    requestRef.current++; activeScopeRef.current = null; startRequestRef.current = null; busyRef.current = false;
+    setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({}); setLimits(emptyLimits);
+    setTestManualCredit(null); setTestLegacy(false); setTestAttemptId(null); setTestStartedAt(null); setTestExplanations({}); setTestSubmitting(false);
+    setTestQuestionsError(null); setTestQuestionsLoading(!!lessonId);
+    if (lessonId) void refreshTestState();
+    return () => { requestRef.current++; };
+  }, [scope, lessonId, refreshTestState]);
+  useEffect(() => {
+    if (!lessonId) return;
+    const refresh = () => { if (!busyRef.current) void refreshTestState(); };
+    window.addEventListener('focus', refresh);
+    const synced = async () => {
+      if (busyRef.current) return;
+      const expectedScope = scope;
+      const data = await refreshTestState();
+      if (scopeRef.current !== expectedScope || !data?.passed || data.manualCredit || !data.attempt) return;
+      if (lessons.every(l => l.id === lessonId || lessonProgress.some(p => p.lesson_id === l.id && p.completed))) {
+        await handleCourseCompletion({ score: data.attempt.score, max: data.attempt.max_score });
+      }
+    };
+    window.addEventListener('test-submission-synced', synced);
+    const resetDelay = limits.resetAt ? Date.parse(limits.resetAt) - Date.now() + 1000 : 0;
+    const timer = resetDelay > 0 ? window.setTimeout(refresh, Math.min(resetDelay, 2147483647)) : null;
+    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('test-submission-synced', synced); if (timer) window.clearTimeout(timer); };
+  }, [lessonId, limits.resetAt, refreshTestState, lessons, lessonProgress, handleCourseCompletion, scope]);
+  useEffect(() => {
+    if (!user || !testAttemptId || testSubmitted || activeScopeRef.current !== scope) return;
+    try { sessionStorage.setItem('test-draft:' + user.id + ':' + testAttemptId, JSON.stringify(answers)); } catch { /* Submission still works when storage is unavailable. */ }
+  }, [answers, testAttemptId, testSubmitted, user?.id]);
 
-  const selectRandomQuestions = (allQuestions: TestQuestion[], count: number | null, excludeIds: string[]) => {
-    if (count === null || count <= 0 || count >= allQuestions.length) {
-      setTestQuestions([...allQuestions].sort(() => Math.random() - 0.5));
-      return;
-    }
-    let availableQuestions = allQuestions.filter(q => !excludeIds.includes(q.id));
-    if (availableQuestions.length < count) availableQuestions = allQuestions;
-    const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5);
-    setTestQuestions(shuffled.slice(0, Math.min(count, shuffled.length)));
-  };
-
-  const fetchTestQuestions = async (lessonId: string, requestId: number) => {
-    const isCurrentRequest = () => testQuestionRequestRef.current === requestId;
+  const startTest = async () => {
+    if (!lessonId || !user || busyRef.current || testManualCredit) return;
+    if (isAdminViewActive()) { toast.info('Начало теста недоступно в режиме просмотра администратора'); return; }
+    const expectedScope = scope;
+    requestRef.current++;
+    busyRef.current = true; setTestQuestionsLoading(true); setTestQuestionsError(null);
+    const requestId = startRequestRef.current ?? crypto.randomUUID(); startRequestRef.current = requestId;
     try {
-      const { data: lessonData, error: lessonError } = await supabase.from('lessons').select('test_questions_to_show, test_passing_score').eq('id', lessonId).single();
-      if (!isCurrentRequest()) return;
-      if (lessonError) throw lessonError;
-      const questionsToShow = (lessonData as Record<string, unknown>)?.test_questions_to_show as number | null ?? null;
-      const passingScore = (lessonData as Record<string, unknown>)?.test_passing_score as number ?? 60;
-      setTestQuestionsCount(questionsToShow);
-      setTestPassingScore(passingScore);
-
-      const { data, error } = await supabase.rpc(
-        'get_student_test_questions' as never,
-        { p_lesson_id: lessonId } as never,
-      );
-      if (!isCurrentRequest()) return;
-      if (error) throw error;
-      const allQuestions = (data || []) as TestQuestion[];
-      setAllBankQuestions(allQuestions);
-      if (allQuestions.length === 0) {
-        setTestQuestionsError('В этом тесте пока нет доступных вопросов. Обратитесь в учебную организацию.');
-        return;
-      }
-
-      const { data: resultsData, error: resultsError } = await safeInvoke<{
-        hasAttempt?: boolean;
-        attempt?: { score: number; max_score: number; answers: Record<string, number>; shown_question_ids: string[] };
-        correctAnswers?: Record<string, number>;
-        explanations?: Record<string, string | null>;
-        usedQuestionIds?: string[];
-        maxAttempts?: number | null;
-        attemptsUsed?: number;
-      }>('get-test-results', { body: { lesson_id: lessonId } });
-      if (!isCurrentRequest()) return;
-
-      if (resultsData) {
-        setTestMaxAttempts(resultsData.maxAttempts ?? null);
-        setTestAttemptsUsed(resultsData.attemptsUsed ?? 0);
-      }
-
-      if (resultsError) { selectRandomQuestions(allQuestions, questionsToShow, []); setUsedQuestionIds([]); setAnswers({}); return; }
-
-      if (resultsData?.hasAttempt && resultsData.attempt) {
-        const { attempt, correctAnswers, explanations, usedQuestionIds: allUsedIds } = resultsData;
-        if (explanations) setTestExplanations(explanations);
-        setTestSubmitted(true);
-        setTestScore({ score: attempt.score, max: attempt.max_score });
-        setAnswers(attempt.answers || {});
-        setUsedQuestionIds(allUsedIds || []);
-        const shownIds = attempt.shown_question_ids || [];
-        if (shownIds.length > 0) {
-          setTestQuestions(allQuestions.filter(q => shownIds.includes(q.id)).map(q => ({ ...q, correct_answer: correctAnswers?.[q.id] ?? q.correct_answer })));
-        } else {
-          setTestQuestions(allQuestions);
-        }
-      } else {
-        selectRandomQuestions(allQuestions, questionsToShow, []);
-        setUsedQuestionIds([]); setAnswers({});
-      }
-    } catch (error) {
-      if (!isCurrentRequest()) return;
-      console.error('Error fetching test questions:', error);
-      setTestQuestions([]);
-      setAllBankQuestions([]);
-      setTestQuestionsError('Не удалось загрузить вопросы. Проверьте соединение и повторите попытку.');
-    } finally {
-      if (isCurrentRequest()) setTestQuestionsLoading(false);
-    }
+      const active = await rpc<ActiveAttempt>('start_test_attempt', { p_lesson_id: lessonId, p_request_id: requestId });
+      if (scopeRef.current !== expectedScope) return;
+      if (active.status === "completed") await refreshTestState(); else applyActive(active);
+      startRequestRef.current = null;
+    } catch (error) { if (scopeRef.current === expectedScope) setTestQuestionsError(testErrorMessage(error)); }
+    finally { if (scopeRef.current === expectedScope) { busyRef.current = false; setTestQuestionsLoading(false); } }
   };
-
   const submitTest = async () => {
-    if (!currentLesson || !user) return;
-    if (isAdminViewActive()) {
-      toast.info('Отправка теста недоступна в режиме просмотра администратора');
-      return;
-    }
-    if (testQuestions.length === 0) { toast.error('Нет вопросов для теста.'); return; }
-    await saveLessonTime();
-    const shownIds = testQuestions.map(q => q.id);
+    if (!lessonId || !user || !testAttemptId || busyRef.current || testSubmitted || testManualCredit) return;
+    if (isAdminViewActive()) { toast.info('Отправка теста недоступна в режиме просмотра администратора'); return; }
+    if (testQuestions.length === 0 || testQuestions.some(q => answers[q.id] == null)) { toast.error('Ответьте на все вопросы.'); return; }
+    const expectedScope = scope; const attemptId = testAttemptId;
+    requestRef.current++;
+    busyRef.current = true; setTestSubmitting(true); setTestQuestionsLoading(false); setTestQuestionsError(null);
     try {
-      const { data: gradeResult, error: gradeError } = await safeInvoke<{
-        score: number; maxScore: number; scorePercent: number; passed: boolean;
-        correctAnswers: Record<string, number>; explanations?: Record<string, string | null>;
-        maxAttempts?: number | null; attemptsUsed?: number;
-      }>('grade-test', { body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds } });
-      if (gradeError || !gradeResult) {
-        // Fallback: ставим в очередь, чтобы при восстановлении сети ответ ушёл.
-        // Это спасает учеников за корпоративным firewall, у которых edge-функции не открываются.
-        await enqueueTestSubmission({ lessonId: currentLesson.id, answers, shownQuestionIds: shownIds });
-        toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
-        return;
-      }
-      const { score, maxScore, scorePercent, passed, correctAnswers, explanations, maxAttempts, attemptsUsed } = gradeResult;
-      if (explanations) setTestExplanations(explanations);
-      if (maxAttempts !== undefined) setTestMaxAttempts(maxAttempts ?? null);
-      if (attemptsUsed !== undefined) setTestAttemptsUsed(attemptsUsed);
-      setTestQuestions(testQuestions.map(q => ({ ...q, correct_answer: correctAnswers[q.id] ?? q.correct_answer })));
-      setTestSubmitted(true);
-      setTestScore({ score, max: maxScore });
-      if (passed) {
-        setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== currentLesson.id), { lesson_id: currentLesson.id, completed: true }]);
-        const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
-        if (newProgress >= 100) { await handleCourseCompletion({ score, max: maxScore }); } else { toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`); }
-      } else {
-        toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%.`);
-      }
-    } catch (err) {
-      console.error('Error submitting test:', err);
-      // Сохраняем в очередь даже при необработанном исключении
-      try {
-        await enqueueTestSubmission({ lessonId: currentLesson.id, answers, shownQuestionIds: shownIds });
-        toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
-      } catch {
-        toast.error('Ошибка отправки теста');
-      }
-    }
+      const result = await rpc<Limits & { score: number; maxScore: number; scorePercent: number; passed: boolean; passingScore: number; showAnswers?: boolean; correctAnswers: Record<string, number | null>; explanations: Record<string, string | null> }>('submit_test_attempt', { p_attempt_id: attemptId, p_answers: answers });
+      if (scopeRef.current !== expectedScope) return;
+      setLimits(result); if (result.showAnswers !== undefined) setTestShowAnswers(result.showAnswers); setTestPassingScore(result.passingScore); setTestExplanations(result.explanations || {});
+      setTestQuestions(prev => prev.map(q => withAnswerKey(q, result.correctAnswers)));
+      setTestSubmitted(true); setTestAttemptId(null); setTestScore({ score: result.score, max: result.maxScore });
+      try { sessionStorage.removeItem('test-draft:' + user.id + ':' + attemptId); } catch { /* optional cache */ }
+      await saveLessonTime();
+      if (scopeRef.current !== expectedScope) return;
+      if (result.passed) {
+        setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
+        const complete = lessons.every(l => l.id === lessonId || lessonProgress.some(p => p.lesson_id === l.id && p.completed));
+        if (complete) await handleCourseCompletion({ score: result.score, max: result.maxScore });
+        else toast.success('Тест пройден! ' + result.score + '/' + result.maxScore + ' (' + result.scorePercent + '%)');
+      } else toast.error('Тест не пройден. ' + result.scorePercent + '%. Нужно: ' + result.passingScore + '%.');
+    } catch (error) {
+      if (scopeRef.current !== expectedScope) return;
+      if (isRetryableTestError(error)) {
+        try {
+          await enqueueTestSubmission({ attemptId, userId: user.id, lessonId, answers, shownQuestionIds: testQuestions.map(q => q.id) });
+          toast.warning('Ответы сохранены на этом устройстве и будут отправлены при восстановлении соединения.');
+        } catch { toast.error('Не удалось сохранить ответы на устройстве. Оставьте страницу открытой и повторите отправку.'); }
+      } else toast.error(testErrorMessage(error));
+    } finally { if (scopeRef.current === expectedScope) { busyRef.current = false; setTestSubmitting(false); } }
   };
-
-  const retryTest = () => {
-    if (testMaxAttempts && testMaxAttempts > 0 && testAttemptsUsed >= testMaxAttempts) {
-      toast.error(`Использованы все попытки (${testAttemptsUsed}/${testMaxAttempts})`);
-      return;
-    }
-    const newUsedIds = [...usedQuestionIds, ...testQuestions.map(q => q.id)];
-    setUsedQuestionIds(newUsedIds);
-    selectRandomQuestions(allBankQuestions, testQuestionsCount, newUsedIds);
-    setAnswers({}); setTestSubmitted(false); setTestScore(null);
-  };
-
+  const testLimitReached = (limits.maxAttempts != null && limits.attemptsUsed >= limits.maxAttempts)
+    || (limits.maxAttemptsPerDay != null && limits.attemptsUsedToday >= limits.maxAttemptsPerDay);
   return {
-    testQuestions, allBankQuestions, answers, setAnswers,
-    testSubmitted, testScore, testPassingScore, testExplanations,
-    testMaxAttempts, testAttemptsUsed,
-    testQuestionsLoading, testQuestionsError,
-    submitTest, retryTest,
+    testQuestions, allBankQuestions: testQuestions, answers, setAnswers, testSubmitted, testScore, testPassingScore, testExplanations,
+    testMaxAttempts: limits.maxAttempts, testAttemptsUsed: limits.attemptsUsed,
+    testMaxAttemptsPerDay: limits.maxAttemptsPerDay, testAttemptsUsedToday: limits.attemptsUsedToday, testResetAt: limits.resetAt,
+    testQuestionsLoading, testQuestionsError, testLegacy, testSubmitting, testAttemptId, testStartedAt, testShowAnswers, testManualCredit, testLimitReached,
+    submitTest, retryTest: startTest, startTest, refreshTestState,
   };
 }

@@ -11,6 +11,7 @@
 export type CourseResultStatus = "passed" | "failed" | "not_started" | "no_tests";
 
 export interface CourseTestResultInput {
+  test_details?: { manual_credited_at?: string | null }[];
   result_status: CourseResultStatus;
   tests_total: number;
   tests_attempted: number;
@@ -52,7 +53,14 @@ export function formatCourseTestResult(row: CourseTestResultInput): CourseTestRe
   if (row.result_status === "no_tests" || row.tests_total <= 0) {
     return { tone: "muted", title: "В курсе нет тестов", subtitle: null };
   }
-  if (row.result_status === "not_started" || row.tests_attempted === 0) {
+  if (row.result_status === "passed" && row.test_details?.some(detail => detail.manual_credited_at)) {
+    return {
+      tone: "success",
+      title: "Зачтено организацией",
+      subtitle: row.tests_total > 1 ? `Сдано ${row.tests_passed} из ${row.tests_total}` : null,
+    };
+  }
+  if (row.result_status === "not_started" || (row.tests_attempted === 0 && row.result_status !== "passed")) {
     return { tone: "neutral", title: "Не проходил", subtitle: null };
   }
 

@@ -146,84 +146,15 @@ export function ActivityTab({ userId, organizationId, studentName, defaultSubTab
       }
 
       if (shouldLoadTests) {
-        const attemptsRes = await supabase
-          .from("test_attempts")
-          .select("id, lesson_id, score, max_score, completed_at, answers, shown_question_ids, lessons!inner(courses!inner(organization_id))")
-          .eq("user_id", userId)
-          .eq("lessons.courses.organization_id", organizationId)
-          .order("completed_at", { ascending: false })
-          .limit(100);
-        if (attemptsRes.error) throw new Error("Не удалось загрузить результаты тестирования");
-
-        const rawAttempts = (attemptsRes.data || []) as any[];
-        if (rawAttempts.length > 0) {
-          const lessonIds = [...new Set(rawAttempts.map((attempt) => attempt.lesson_id))];
-          const [lessonsRes, questionsRes] = await Promise.all([
-            supabase
-              .from("lessons")
-              .select("id, title, course_id, test_passing_score")
-              .in("id", lessonIds),
-            supabase
-              .from("test_questions")
-              .select("id, lesson_id, question, options, correct_answer, explanation, order_index")
-              .in("lesson_id", lessonIds)
-              .order("order_index", { ascending: true }),
-          ]);
-          if (lessonsRes.error || questionsRes.error) {
-            throw new Error("Не удалось подтвердить детали тестирования");
-          }
-
-          const lessons = lessonsRes.data || [];
-          const courseIds = [...new Set(lessons.map((lesson: any) => lesson.course_id).filter(Boolean))];
-          const coursesRes = courseIds.length > 0
-            ? await supabase
-              .from("courses")
-              .select("id, title")
-              .eq("organization_id", organizationId)
-              .in("id", courseIds)
-            : { data: [], error: null };
-          if (coursesRes.error) throw new Error("Не удалось подтвердить принадлежность курсов");
-
-          const lessonMap = new Map(lessons.map((lesson: any) => [lesson.id, lesson]));
-          const courseMap = new Map((coursesRes.data || []).map((course: any) => [course.id, course.title]));
-          const organizationCourseIds = new Set((coursesRes.data || []).map((course: any) => course.id));
-          const questionsByLesson = new Map<string, QuestionData[]>();
-          (questionsRes.data || []).forEach((question: any) => {
-            const list = questionsByLesson.get(question.lesson_id) || [];
-            list.push({
-              id: question.id,
-              question: question.question,
-              options: Array.isArray(question.options)
-                ? question.options.map((option: any) => typeof option === "object" && option !== null ? option.text : String(option))
-                : [],
-              correct_answer: question.correct_answer,
-              explanation: question.explanation,
-            });
-            questionsByLesson.set(question.lesson_id, list);
-          });
-
-          nextTestAttempts = rawAttempts
-            .filter((attempt) => {
-              const lesson = lessonMap.get(attempt.lesson_id) as any;
-              return lesson && organizationCourseIds.has(lesson.course_id);
-            })
-            .map((attempt) => {
-              const lesson = lessonMap.get(attempt.lesson_id) as any;
-              return {
-                id: attempt.id,
-                lesson_id: attempt.lesson_id,
-                lesson_title: lesson.title,
-                course_title: courseMap.get(lesson.course_id) || "Неизвестный курс",
-                score: attempt.score,
-                max_score: attempt.max_score,
-                completed_at: attempt.completed_at,
-                answers: (attempt.answers as Record<string, number>) || {},
-                shown_question_ids: attempt.shown_question_ids as string[] | null,
-                passing_score: lesson.test_passing_score || 60,
-                questions: questionsByLesson.get(attempt.lesson_id) || [],
-              };
-            });
-        }
+        const attemptsRes = await supabase.rpc('get_test_attempt_history' as never, {
+          p_user_id: userId, p_organization_id: organizationId,
+        } as never);
+        if (attemptsRes.error || !Array.isArray(attemptsRes.data)) throw new Error('Не удалось загрузить историю тестирования');
+        nextTestAttempts = (attemptsRes.data as unknown as EnrichedTestAttempt[]).map(attempt => ({
+          ...attempt, course_title: attempt.course_title || 'Курс',
+          answers: attempt.answers || {}, questions: attempt.questions || [],
+          shown_question_ids: attempt.shown_question_ids || (attempt.questions || []).map(q => q.id),
+        }));
       }
 
       if (!isCurrentRequest()) return;
@@ -347,6 +278,7 @@ export function ActivityTab({ userId, organizationId, studentName, defaultSubTab
           </div>
         ) : (
           <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Всего попыток: {currentTestAttempts.length}. Завершено: {currentTestAttempts.filter(attempt => !!attempt.completed_at).length}. Не завершено: {currentTestAttempts.filter(attempt => !attempt.completed_at).length}.</p>
             {currentTestAttempts.map((attempt) => (
               <TestAttemptDetail
                 key={attempt.id}

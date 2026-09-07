@@ -19,6 +19,7 @@ const queryState = vi.hoisted(() => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
+    rpc: (name: string, args: Record<string, unknown>) => { const context = { table: name, filters: args, operations: [] }; queryState.calls.push(context); return queryState.responder?.(context) ?? Promise.resolve({ data: [], error: null }); },
     from: (table: string) => {
       const filters: Record<string, unknown> = {};
       const operations: QueryOperation[] = [];
@@ -166,7 +167,7 @@ describe("ActivityTab fail-closed loading", () => {
   });
 
   it("does not show a false empty testing state after a test query error", async () => {
-    queryState.responder = async ({ table }) => table === "test_attempts"
+    queryState.responder = async ({ table }) => table === "get_test_attempt_history"
       ? { data: null, error: { message: "database unavailable" } }
       : { data: [], error: null };
 
@@ -181,75 +182,35 @@ describe("ActivityTab fail-closed loading", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.queryByText("Нет записей о тестировании")).not.toBeInTheDocument();
-    expect(queryState.calls.map((call) => call.table)).toEqual(["test_attempts"]);
+    expect(queryState.calls.map((call) => call.table)).toEqual(["get_test_attempt_history"]);
   });
 
-  it("fails closed when test enrichment cannot be confirmed", async () => {
-    queryState.responder = async ({ table }) => {
-      if (table === "test_attempts") {
-        return {
-          data: [{ id: "attempt-1", lesson_id: "lesson-1", score: 1, max_score: 1, completed_at: "2026-09-03T10:00:00Z" }],
-          error: null,
-        };
-      }
-      if (table === "lessons") return { data: null, error: { message: "lessons unavailable" } };
-      if (table === "test_questions") return { data: [], error: null };
-      return { data: [], error: null };
-    };
-
-    render(
-      <ActivityTab
-        userId="student-1"
-        organizationId="org-1"
-        defaultSubTab="tests"
-        onlySubTab
-      />,
-    );
-
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.queryByText("Нет записей о тестировании")).not.toBeInTheDocument();
-  });
-
-  it("filters test attempts by organization through both inner joins before the latest-100 limit", async () => {
-    const attempt = {
-      score: 1, max_score: 1, completed_at: "2026-09-03T10:00:00Z", answers: {}, shown_question_ids: null,
-    };
-    const attempts = [
-      ...Array.from({ length: 100 }, (_, index) => ({
-        ...attempt, id: `other-${index}`, lesson_id: "other-lesson", organizationId: "org-other",
-      })),
-      { ...attempt, id: "own-attempt", lesson_id: "own-lesson", organizationId: "org-1" },
-    ];
-    queryState.responder = async ({ table, operations }) => {
-      if (table === "test_attempts") {
-        let rows = attempts;
-        const selection = String(operations.find((operation) => operation.method === "select")?.args[0]);
-        // Model server filtering followed by limiting: missing either inner join must fail this regression.
-        for (const operation of operations) {
-          if (operation.method === "eq" && operation.args[0] === "lessons.courses.organization_id"
-            && selection.includes("lessons!inner(courses!inner(organization_id))")) {
-            rows = rows.filter((row) => row.organizationId === operation.args[1]);
-          }
-          if (operation.method === "limit") rows = rows.slice(0, Number(operation.args[0]));
-        }
-        return { data: rows, error: null };
-      }
-      if (table === "lessons") return {
-        data: [{ id: "own-lesson", title: "Результат своей организации", course_id: "own-course", test_passing_score: 60 }],
-        error: null,
-      };
-      if (table === "courses") return { data: [{ id: "own-course", title: "Охрана труда" }], error: null };
-      return { data: [], error: null };
-    };
-
+  it('fails closed when the history RPC returns malformed data', async () => {
+    queryState.responder = async () => ({ data: null, error: null });
     render(<ActivityTab userId="student-1" organizationId="org-1" defaultSubTab="tests" onlySubTab />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText('Нет записей о тестировании')).not.toBeInTheDocument();
+  });
 
-    expect(await screen.findByText("Результат своей организации")).toBeInTheDocument();
-    const attemptsQuery = queryState.calls.find((call) => call.table === "test_attempts")!;
-    expect(attemptsQuery.filters).toEqual({ "user_id": "student-1", "lessons.courses.organization_id": "org-1" });
-    expect(attemptsQuery.operations.map((operation) => operation.method)).toEqual(["select", "eq", "eq", "order", "limit"]);
-    expect(attemptsQuery.operations.at(-1)).toEqual({ method: "limit", args: [100] });
-    expect(queryState.calls.find((call) => call.table === "lessons")?.filters.id).toEqual(["own-lesson"]);
+  it('requests the selected organization and renders returned snapshot without current question lookups', async () => {
+    queryState.responder = async ({ table, filters }) => {
+      if (table !== 'get_test_attempt_history') throw new Error('Unexpected live question lookup');
+      expect(filters).toEqual({ p_user_id: 'student-1', p_organization_id: 'org-1' });
+      return { data: [{ id: 'own-attempt', lesson_id: 'own-lesson', lesson_title: 'Результат своей организации', course_title: 'Охрана труда', completed_at: '2026-09-03T10:00:00Z', answers: {}, questions: [] }], error: null };
+    };
+    render(<ActivityTab userId="student-1" organizationId="org-1" defaultSubTab="tests" onlySubTab />);
+    expect(await screen.findByText('Результат своей организации')).toBeInTheDocument();
+    expect(queryState.calls).toHaveLength(1);
+  });
+
+  it('ignores old test history when the selected student changes', async () => {
+    const old = deferred<QueryResponse>();
+    queryState.responder = ({ filters }) => filters.p_user_id === 'old-student' ? old.promise : Promise.resolve({ data: [{ id: 'new-attempt', lesson_id: 'new', lesson_title: 'Новый ученик', questions: [], answers: {} }], error: null });
+    const view = render(<ActivityTab userId="old-student" organizationId="org-1" defaultSubTab="tests" onlySubTab />);
+    view.rerender(<ActivityTab userId="new-student" organizationId="org-1" defaultSubTab="tests" onlySubTab />);
+    expect(await screen.findByText('Новый ученик')).toBeInTheDocument();
+    await act(async () => { old.resolve({ data: [{ id: 'old', lesson_title: 'Старый ученик', questions: [], answers: {} }], error: null }); await old.promise; });
+    expect(screen.queryByText('Старый ученик')).not.toBeInTheDocument();
   });
 
   it("ignores a slow previous organization response for the same student", async () => {

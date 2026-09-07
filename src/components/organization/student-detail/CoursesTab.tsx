@@ -88,11 +88,12 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
     setCompletingId(enrollmentId);
     try {
       const { error } = await supabase
-        .from("enrollments")
-        .update({ status: "completed", completed_at: new Date().toISOString(), progress: 100 })
-        .eq("id", enrollmentId);
+        .rpc("manual_complete_course" as any, {
+          p_enrollment_id: enrollmentId,
+          p_organization_id: organizationId,
+        });
       if (error) throw error;
-      toast.success("Курс отмечен как завершённый");
+      toast.success("Курс и тесты зачтены организацией");
       h.onStudentUpdated?.();
     } catch (e: any) {
       toast.error("Ошибка: " + e.message);
@@ -289,11 +290,12 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
                   <div className="w-full bg-muted rounded-full h-2 mt-2">
                     <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${Math.min(e.progress, 100)}%` }} />
                   </div>
+                  <p className="mt-2 text-xs text-muted-foreground">Очный зачёт завершает курс и его тесты. Онлайн-попытки и ответы сохраняются.</p>
                   <div className="flex gap-2 mt-3">
-                    {e.status !== "completed" && (
+                    {(
                       <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => handleManualComplete(e.id)} disabled={completingId === e.id}>
                         <CheckCircle className="w-4 h-4" />
-                        {completingId === e.id ? "Завершение..." : "Завершить курс"}
+                        {completingId === e.id ? "Сохранение..." : "Зачесть курс очно"}
                       </Button>
                     )}
                     {e.status === "completed" && (

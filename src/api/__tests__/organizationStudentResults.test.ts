@@ -212,3 +212,24 @@ describe("fetchOrganizationStudentResults", () => {
     })).rejects.toThrow("повторяющиеся зачисления");
   });
 });
+
+describe("explicit offline credits in the organization report", () => {
+  it("accepts credited tests without creating online attempts or scores", async () => {
+    const creditedRow = makePageRow("offline", {
+      status: "completed", progress: 100, result_status: "passed",
+      tests_total: 1, tests_passed: 1, tests_attempted: 0,
+      test_details: [{
+        lesson_id: "test-1", lesson_title: "Итоговый тест",
+        score: null, max_score: null, percent: null, passing_score: 70,
+        passed: true, attempts_used: 0, max_attempts: 3, completed_at: null,
+        manual_credited_at: "2026-09-07T04:00:00Z", manual_credited_by: "teacher-1",
+      }],
+    });
+    const rows = await fetchOrganizationStudentResults({
+      organizationId: "org-1", courses: [{ id: "course-1", title: "Курс" }],
+    }, { loadCoursePage: async () => ({ rows: [creditedRow], totalFiltered: 1, nextOffset: null }) });
+    expect(rows[0].tests_attempted).toBe(0);
+    expect(rows[0].test_details[0]).toMatchObject({ score: null, percent: null, passed: true, attempts_used: 0 });
+    expect(rows[0].course_tests).toHaveLength(1);
+  });
+});

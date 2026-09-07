@@ -21,10 +21,20 @@ export interface FinalAttestationRecord {
   started_at: string; completed_at: string | null; progress: number;
   final_test_score: number | null; final_test_max_score: number | null;
   final_test_passed: boolean; final_test_date: string | null;
+  manual_credited_at?: string | null; manual_credited_by?: string | null;
   total_time_spent: number; test_attempt_id: string | null;
 }
 
 interface Course { id: string; title: string; }
+
+interface ManualCredit { enrollment_id: string; credited_at: string; credited_by: string; }
+interface FinalAttempt { score: number; max_score: number; completed_at: string | null; passed?: boolean | null; passing_score?: number | null; }
+export function resolveFinalTestOutcome(attempt: FinalAttempt | null | undefined, passingScore: number, credit?: ManualCredit) {
+  return {
+    passed: credit != null || (attempt?.passed ?? (!!attempt && attempt.max_score > 0 && Math.round(attempt.score / attempt.max_score * 100) >= (attempt.passing_score ?? passingScore))),
+    date: credit?.credited_at ?? attempt?.completed_at ?? null,
+  };
+}
 
 export function useAutoFinalAttestation(organizationId: string, groupContext?: GroupJournalContext | null) {
   const [loading, setLoading] = useState(true);
@@ -69,8 +79,13 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
 
         const userIds = [...new Set(enrollments.map(e => e.user_id))];
         const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, email").eq("organization_id", organizationId).in("user_id", userIds);
-        const { data: lessons } = await supabase.from("lessons").select("id, course_id, type, order_index").in("course_id", courseIds).eq("type", "test").order("order_index", { ascending: false });
+        const { data: lessons } = await supabase.from("lessons").select("id, course_id, type, order_index, test_passing_score").in("course_id", courseIds).eq("type", "test").order("order_index", { ascending: false });
 
+        const { data: manualCredits, error: creditError } = await supabase.from("course_manual_credits" as any)
+          .select("enrollment_id, credited_at, credited_by").in("enrollment_id", enrollments.map(e => e.id)).is("revoked_at", null);
+        if (creditError) throw creditError;
+        const manualCreditMap = new Map(((manualCredits ?? []) as unknown as ManualCredit[]).map(credit => [credit.enrollment_id, credit]));
+        const passingScoreMap = new Map((lessons ?? []).map(lesson => [lesson.id, lesson.test_passing_score ?? 70]));
         const finalTestMap = new Map<string, string>();
         const processed = new Set<string>();
         for (const l of lessons || []) { if (!processed.has(l.course_id)) { finalTestMap.set(l.course_id, l.id); processed.add(l.course_id); } }
@@ -89,19 +104,20 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
           if (!p || !c) continue;
           const ftId = finalTestMap.get(e.course_id);
           const attempt = ftId ? bestAttemptMap.get(`${e.user_id}_${ftId}`) : null;
-          let passed = false;
-          if (attempt && attempt.max_score > 0) passed = (attempt.score / attempt.max_score) * 100 >= 70;
+          const credit = ftId ? manualCreditMap.get(e.id) : undefined;
+          const outcome = resolveFinalTestOutcome(attempt, ftId ? passingScoreMap.get(ftId) ?? 70 : 70, credit);
           result.push({
             id: e.id, user_id: e.user_id, student_name: p.full_name || p.email || "Без имени", student_email: p.email || "",
             course_id: e.course_id, course_title: c.title, enrollment_status: e.status,
             started_at: e.started_at, completed_at: e.completed_at, progress: e.progress || 0,
             final_test_score: attempt?.score ?? null, final_test_max_score: attempt?.max_score ?? null,
-            final_test_passed: passed, final_test_date: attempt?.completed_at ?? null,
+            final_test_passed: outcome.passed, final_test_date: outcome.date,
+            manual_credited_at: credit?.credited_at ?? null, manual_credited_by: credit?.credited_by ?? null,
             total_time_spent: e.time_spent || 0, test_attempt_id: attempt?.id ?? null,
           });
         }
         setRecords(result);
-      } catch (error) { console.error("Error fetching attestation data:", error); toast.error("Ошибка загрузки данных"); }
+      } catch (error) { setRecords([]); console.error("Error fetching attestation data:", error); toast.error("Ошибка загрузки данных"); }
       finally { setLoading(false); }
     })();
   }, [organizationId]);
@@ -121,7 +137,7 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
     else if (selectedStatus === "in_progress") matchStatus = r.enrollment_status === "in_progress";
     else if (selectedStatus === "passed") matchStatus = r.final_test_passed;
     else if (selectedStatus === "failed") matchStatus = r.final_test_score !== null && !r.final_test_passed;
-    const rd = r.completed_at ? parseISO(r.completed_at) : parseISO(r.started_at);
+    const rd = parseISO(r.final_test_date ?? r.completed_at ?? r.started_at);
     const matchDate = isWithinInterval(rd, { start: dateRange.from, end: dateRange.to });
     return matchSearch && matchCourse && matchStatus && matchDate;
   }), [scopedRecords, searchQuery, selectedCourse, selectedStatus, dateRange]);
@@ -129,9 +145,10 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
   const stats = useMemo(() => {
     const unique = new Set(filteredRecords.map(r => r.user_id)).size;
     const completed = filteredRecords.filter(r => r.enrollment_status === "completed").length;
-    const withTest = filteredRecords.filter(r => r.final_test_score !== null).length;
+    const withTest = filteredRecords.filter(r => r.final_test_score !== null || r.manual_credited_at).length;
+    const withOnlineScore = filteredRecords.filter(r => r.final_test_score !== null && r.final_test_max_score).length;
     const passed = filteredRecords.filter(r => r.final_test_passed).length;
-    const avg = withTest > 0 ? Math.round(filteredRecords.filter(r => r.final_test_score !== null && r.final_test_max_score).reduce((a, r) => a + (r.final_test_score! / r.final_test_max_score!) * 100, 0) / withTest) : 0;
+    const avg = withOnlineScore > 0 ? Math.round(filteredRecords.filter(r => r.final_test_score !== null && r.final_test_max_score).reduce((a, r) => a + (r.final_test_score! / r.final_test_max_score!) * 100, 0) / withOnlineScore) : null;
     return { uniqueStudents: unique, completed, withFinalTest: withTest, passedFinal: passed, avgScore: avg };
   }, [filteredRecords]);
 
@@ -143,9 +160,9 @@ export function useAutoFinalAttestation(organizationId: string, groupContext?: G
       "Статус": r.enrollment_status === "completed" ? "Завершён" : "В процессе", "Прогресс (%)": r.progress,
       "Дата начала": format(parseISO(r.started_at), "dd.MM.yyyy", { locale: ru }),
       "Дата завершения": r.completed_at ? format(parseISO(r.completed_at), "dd.MM.yyyy", { locale: ru }) : "—",
-      "Итоговый тест": r.final_test_score !== null ? `${r.final_test_score}/${r.final_test_max_score}` : "Не сдан",
+      "Итоговый тест": r.final_test_score !== null ? `${r.final_test_score}/${r.final_test_max_score}` : r.manual_credited_at ? "Очный зачёт" : "Не сдан",
       "Процент": r.final_test_score !== null && r.final_test_max_score ? `${Math.round((r.final_test_score / r.final_test_max_score) * 100)}%` : "—",
-      "Результат": r.final_test_score === null ? "Ожидается" : r.final_test_passed ? "ЗАЧЁТ" : "НЕЗАЧЁТ",
+      "Результат": r.manual_credited_at ? "Зачтено организацией" : r.final_test_passed ? "ЗАЧЁТ" : r.final_test_score === null ? "Ожидается" : "НЕЗАЧЁТ",
       "Дата аттестации": r.final_test_date ? format(parseISO(r.final_test_date), "dd.MM.yyyy HH:mm", { locale: ru }) : "—",
       "Время (мин)": Math.round(r.total_time_spent / 60),
     }));

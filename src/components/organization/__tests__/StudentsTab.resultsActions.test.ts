@@ -19,8 +19,8 @@ describe("StudentsTab test-result actions", () => {
     expect(studentsTabSource).toContain("<StudentTestResultsDialog");
   });
 
-  it("states that the report uses the latest result and the configured passing score", () => {
-    expect(resultsDialogSource).toContain("Последний результат каждого теста");
-    expect(resultsDialogSource).toContain("Проходной балл берётся из настроек конкретного урока");
+  it("distinguishes the latest online result from organization credits", () => {
+    expect(resultsDialogSource).toContain("Последний онлайн-результат каждого теста и зачёты организации");
+    expect(resultsDialogSource).toContain("Проходной балл берётся из настроек урока");
   });
 });

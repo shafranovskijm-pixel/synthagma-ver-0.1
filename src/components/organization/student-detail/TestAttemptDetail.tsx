@@ -5,13 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { generateTestAttemptPdf, generateTestAttemptExcel } from "@/utils/testAttemptPdf";
+import { getTestAnswerKeyNotice, getTestAnswerKeyState } from "@/utils/testAnswerKey";
 
 
 export interface QuestionData {
   id: string;
   question: string;
   options: string[];
-  correct_answer: number | null;
+  correct_answer?: number | null;
   explanation?: string | null;
 }
 
@@ -20,12 +21,16 @@ export interface EnrichedTestAttempt {
   lesson_id: string;
   lesson_title: string;
   course_title: string;
-  score: number;
-  max_score: number;
-  completed_at: string;
+  score: number | null;
+  max_score: number | null;
+  started_at?: string | null;
+  completed_at: string | null;
+  status?: "in_progress" | "completed";
+  passed?: boolean | null;
+  legacy?: boolean;
   answers: Record<string, number>;
   shown_question_ids: string[] | null;
-  passing_score: number;
+  passing_score: number | null;
   questions: QuestionData[];
 }
 
@@ -37,8 +42,9 @@ interface TestAttemptDetailProps {
 export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailProps) {
   const [open, setOpen] = useState(false);
 
-  const percentage = attempt.max_score > 0 ? Math.round((attempt.score / attempt.max_score) * 100) : 0;
-  const isPassed = percentage >= attempt.passing_score;
+  const inProgress = attempt.status === 'in_progress' || !attempt.completed_at;
+  const percentage = attempt.max_score != null && attempt.max_score > 0 && attempt.score != null ? Math.round((attempt.score / attempt.max_score) * 100) : 0;
+  const isPassed = !inProgress && (attempt.passed ?? percentage >= attempt.passing_score);
 
   const shownQuestions = attempt.shown_question_ids
     ? attempt.questions.filter((q) => attempt.shown_question_ids!.includes(q.id))
@@ -48,11 +54,13 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
     studentName,
     courseTitle: attempt.course_title,
     testTitle: attempt.lesson_title,
-    completedAt: attempt.completed_at,
-    score: attempt.score,
-    maxScore: attempt.max_score,
+    completedAt: attempt.completed_at!,
+    startedAt: attempt.started_at,
+    legacy: attempt.legacy,
+    score: attempt.score ?? 0,
+    maxScore: attempt.max_score ?? 0,
     percentage,
-    isPassed,
+    isPassed: attempt.legacy ? null : isPassed,
     passingScore: attempt.passing_score,
     questions: shownQuestions,
     answers: attempt.answers,
@@ -83,12 +91,13 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{attempt.lesson_title}</div>
             <div className="text-xs text-muted-foreground truncate">{attempt.course_title}</div>
+            <div className="text-xs text-muted-foreground">Начало: {attempt.started_at ? new Date(attempt.started_at).toLocaleString('ru-RU') : 'не записывалось'} · Завершение: {attempt.completed_at ? new Date(attempt.completed_at).toLocaleString('ru-RU') : 'ещё не завершена'}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Badge className={isPassed ? "bg-green-500/15 text-green-600 border-green-500/30 hover:bg-green-500/20" : "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20"}>
-              {isPassed ? `${percentage}%` : "Не пройден"}
+              {inProgress ? "Не завершена" : attempt.legacy ? `${percentage}% — архив` : isPassed ? `${percentage}% — сдан` : `${percentage}% — не сдан`}
             </Badge>
-            <DropdownMenu>
+            {!inProgress && <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-7 w-7" title="Скачать">
                   <Download className="w-4 h-4" />
@@ -104,7 +113,7 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
                   Скачать Excel
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
 
             {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
@@ -113,30 +122,37 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
       <CollapsibleContent>
         <div className="ml-14 mr-3 mt-2 mb-3 space-y-3">
           <div className="text-xs text-muted-foreground">
-            Результат: {attempt.score} из {attempt.max_score} ({percentage}%) · Проходной балл: {attempt.passing_score}%
+            {inProgress ? 'Попытка начата, результат ещё не получен.' : `Результат: ${attempt.score} из ${attempt.max_score} (${percentage}%) · Проходной балл: ${attempt.passing_score == null ? "не сохранён" : attempt.passing_score + "%"}`}
           </div>
-          {shownQuestions.map((q, idx) => {
+          {attempt.legacy && <p className="text-xs text-muted-foreground">Историческая запись: снимок вопросов и время начала не сохранялись. Детальный разбор на момент сдачи подтвердить нельзя.</p>}
+          {!attempt.legacy && !inProgress && shownQuestions.map((q, idx) => {
             const studentAnswer = attempt.answers[q.id];
-            const isCorrect = studentAnswer === q.correct_answer;
+            const answerKeyState = getTestAnswerKeyState(q.correct_answer, q.options);
+            const keyNotice = getTestAnswerKeyNotice(answerKeyState);
+            const hasValidKey = answerKeyState === 'valid';
+            const isCorrect = hasValidKey && studentAnswer === q.correct_answer;
             return (
               <div key={q.id} className="rounded-lg border border-border p-3 space-y-2">
                 <div className="text-sm font-medium">
                   {idx + 1}. {q.question}
                 </div>
+                {studentAnswer == null && <p className="text-xs text-muted-foreground">Ответ не дан</p>}
+                {keyNotice && <p className="text-xs text-muted-foreground">{keyNotice}</p>}
                 <div className="space-y-1">
                   {q.options.map((opt, optIdx) => {
                     const isStudentChoice = studentAnswer === optIdx;
-                    const isCorrectOption = q.correct_answer === optIdx;
+                    const isCorrectOption = hasValidKey && q.correct_answer === optIdx;
                     let bg = "";
                     if (isStudentChoice && isCorrect) bg = "bg-green-500/10 border-green-500/30 text-green-700";
-                    else if (isStudentChoice && !isCorrect) bg = "bg-destructive/10 border-destructive/30 text-destructive";
+                    else if (isStudentChoice && hasValidKey && !isCorrect) bg = "bg-destructive/10 border-destructive/30 text-destructive";
                     else if (isCorrectOption) bg = "bg-green-500/5 border-green-500/20 text-green-600";
 
                     return (
                       <div key={optIdx} className={`text-sm px-3 py-1.5 rounded-md border ${bg || "border-transparent"}`}>
                         {isStudentChoice && isCorrect && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5" />}
-                        {isStudentChoice && !isCorrect && <XCircle className="w-3.5 h-3.5 inline mr-1.5" />}
+                        {isStudentChoice && hasValidKey && !isCorrect && <XCircle className="w-3.5 h-3.5 inline mr-1.5" />}
                         {!isStudentChoice && isCorrectOption && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5 opacity-50" />}
+                        {isStudentChoice && !hasValidKey && <span className="text-muted-foreground">Ответ ученика: </span>}
                         {typeof opt === 'object' && opt !== null ? (opt as any).text : opt}
                       </div>
                     );

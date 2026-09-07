@@ -476,15 +476,13 @@ export function useCourseDetails(
     if (!course || !student.enrollment_id) return;
     setIsResetting(true);
     try {
-      const { data: lessons } = await supabase.from("lessons").select("id").eq("course_id", course.id);
-      const lessonIds = (lessons || []).map((l) => l.id);
-      if (lessonIds.length > 0) {
-        await supabase.from("lesson_progress").delete().eq("user_id", student.user_id).in("lesson_id", lessonIds);
-        await supabase.from("test_attempts").delete().eq("user_id", student.user_id).in("lesson_id", lessonIds);
-      }
-      const { error } = await supabase.from("enrollments").update({ progress: 0, status: "active", completed_at: null }).eq("id", student.enrollment_id);
+      const { data, error } = await supabase.rpc("reset_course_learning_progress" as any, {
+        p_enrollment_id: student.enrollment_id, p_organization_id: organizationId,
+      });
       if (error) throw error;
-      toast.success(`Прогресс ученика "${student.name}" сброшен`);
+      const reset = data as { enrollmentId?: string; reset?: boolean } | null;
+      if (reset?.reset !== true || reset.enrollmentId !== student.enrollment_id) throw new Error("Сброс не подтверждён сервером");
+      toast.success(`Учебный прогресс ученика "${student.name}" сброшен. История тестов и использованные попытки сохранены.`);
       setResetConfirmStudent(null);
       invalidateStudents();
     } catch (error) { console.error("Error resetting:", error); toast.error("Ошибка сброса прогресса"); }
