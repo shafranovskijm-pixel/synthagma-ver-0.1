@@ -2113,6 +2113,41 @@ export type Database = {
           },
         ]
       }
+      course_manual_credits: {
+        Row: {
+          credited_at: string
+          credited_by: string
+          enrollment_id: string
+          id: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          credited_at?: string
+          credited_by: string
+          enrollment_id: string
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          credited_at?: string
+          credited_by?: string
+          enrollment_id?: string
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_manual_credits_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -6146,6 +6181,7 @@ export type Database = {
           module_id: string | null
           order_index: number
           test_max_attempts: number | null
+          test_max_attempts_per_day: number | null
           test_passing_score: number
           test_questions_count: number | null
           test_questions_to_show: number | null
@@ -6181,6 +6217,7 @@ export type Database = {
           module_id?: string | null
           order_index?: number
           test_max_attempts?: number | null
+          test_max_attempts_per_day?: number | null
           test_passing_score?: number
           test_questions_count?: number | null
           test_questions_to_show?: number | null
@@ -6216,6 +6253,7 @@ export type Database = {
           module_id?: string | null
           order_index?: number
           test_max_attempts?: number | null
+          test_max_attempts_per_day?: number | null
           test_passing_score?: number
           test_questions_count?: number | null
           test_questions_to_show?: number | null
@@ -12348,6 +12386,92 @@ export type Database = {
         }
         Relationships: []
       }
+      test_attempt_sessions: {
+        Row: {
+          id: string
+          lesson_id: string
+          passing_score: number
+          questions_snapshot: Json
+          request_id: string
+          show_answers: boolean
+          started_at: string
+          status: string
+          submitted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          lesson_id: string
+          passing_score: number
+          questions_snapshot: Json
+          request_id: string
+          show_answers: boolean
+          started_at?: string
+          status?: string
+          submitted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          lesson_id?: string
+          passing_score?: number
+          questions_snapshot?: Json
+          request_id?: string
+          show_answers?: boolean
+          started_at?: string
+          status?: string
+          submitted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_attempt_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_attempt_start_requests: {
+        Row: {
+          lesson_id: string
+          request_id: string
+          requested_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          lesson_id: string
+          request_id: string
+          requested_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          lesson_id?: string
+          request_id?: string
+          requested_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_attempt_start_requests_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_attempt_start_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "test_attempt_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_attempts: {
         Row: {
           answers: Json
@@ -12355,8 +12479,12 @@ export type Database = {
           id: string
           lesson_id: string
           max_score: number
+          passed: boolean | null
+          passing_score: number | null
           score: number
+          session_id: string | null
           shown_question_ids: Json | null
+          started_at: string | null
           user_id: string
         }
         Insert: {
@@ -12365,8 +12493,12 @@ export type Database = {
           id?: string
           lesson_id: string
           max_score?: number
+          passed?: boolean | null
+          passing_score?: number | null
           score?: number
+          session_id?: string | null
           shown_question_ids?: Json | null
+          started_at?: string | null
           user_id: string
         }
         Update: {
@@ -12375,8 +12507,12 @@ export type Database = {
           id?: string
           lesson_id?: string
           max_score?: number
+          passed?: boolean | null
+          passing_score?: number | null
           score?: number
+          session_id?: string | null
           shown_question_ids?: Json | null
+          started_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -12385,6 +12521,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_attempts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "test_attempt_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -13148,6 +13291,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      _assert_test_learner_access: {
+        Args: { p_lesson_id: string }
+        Returns: undefined
+      }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
       _goreltech_enrollment_order_result: {
@@ -13189,6 +13336,21 @@ export type Database = {
           sender_hash: string
         }[]
       }
+      _test_attempt_limits: {
+        Args: { p_lesson_id: string; p_user_id: string }
+        Returns: Json
+      }
+      _test_grade_payload: { Args: { p_session_id: string }; Returns: Json }
+      _test_manual_credit: { Args: { p_lesson_id: string }; Returns: Json }
+      _test_normalize_options: {
+        Args: { p_correct_answer: number; p_options: Json }
+        Returns: Json
+      }
+      _test_public_questions: {
+        Args: { p_feedback?: boolean; p_questions: Json }
+        Returns: Json
+      }
+      _test_session_payload: { Args: { p_session_id: string }; Returns: Json }
       _webinar_rate_check: {
         Args: {
           p_action: string
@@ -14269,6 +14431,15 @@ export type Database = {
           question: string
         }[]
       }
+      get_student_test_state: { Args: { p_lesson_id: string }; Returns: Json }
+      get_test_attempt_history: {
+        Args: {
+          p_lesson_id?: string
+          p_organization_id?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       get_user_companies: {
         Args: { _user_id: string }
         Returns: {
@@ -14474,6 +14645,10 @@ export type Database = {
           invitation_type: string
         }[]
       }
+      manual_complete_course: {
+        Args: { p_enrollment_id: string; p_organization_id: string }
+        Returns: Json
+      }
       mark_email_sender_result: {
         Args: { _error?: string; _sender_id: string }
         Returns: undefined
@@ -14673,6 +14848,10 @@ export type Database = {
           remaining: number
         }[]
       }
+      reset_course_learning_progress: {
+        Args: { p_enrollment_id: string; p_organization_id: string }
+        Returns: Json
+      }
       resolve_campaign_recipients: {
         Args: { p_campaign_id: string }
         Returns: {
@@ -14871,7 +15050,15 @@ export type Database = {
         Args: { p_id: string; p_table: string }
         Returns: boolean
       }
+      start_test_attempt: {
+        Args: { p_lesson_id: string; p_request_id: string }
+        Returns: Json
+      }
       storage_try_uuid: { Args: { _value: string }; Returns: string }
+      submit_test_attempt: {
+        Args: { p_answers: Json; p_attempt_id: string }
+        Returns: Json
+      }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       transfer_org_ownership_atomic: {
         Args: { p_new_owner_user_id: string; p_organization_id: string }
