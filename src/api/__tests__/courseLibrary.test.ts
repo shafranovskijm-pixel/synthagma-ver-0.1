@@ -20,7 +20,6 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   documentInsert: vi.fn(),
   documentInsertSelect: vi.fn(),
-  documentInsertSingle: vi.fn(),
   documentUpdate: vi.fn(),
   documentUpdateEq: vi.fn(),
   assignmentInsert: vi.fn(),
@@ -125,9 +124,13 @@ describe("course library API contracts", () => {
       createSignedUrl: mocks.createSignedUrl,
     });
 
-    mocks.documentInsertSingle.mockResolvedValue({ data: { id: "document-1" }, error: null });
-    mocks.documentInsertSelect.mockReturnValue({ single: mocks.documentInsertSingle });
-    mocks.documentInsert.mockReturnValue({ select: mocks.documentInsertSelect });
+    mocks.documentInsertSelect.mockImplementation(() => {
+      throw new Error("INSERT RETURNING cannot see the new card through its STABLE RLS helper");
+    });
+    mocks.documentInsert.mockReturnValue(Object.assign(
+      Promise.resolve({ data: null, error: null }),
+      { select: mocks.documentInsertSelect },
+    ));
     mocks.documentUpdateEq.mockResolvedValue({ data: null, error: null });
     mocks.documentUpdate.mockReturnValue({ eq: mocks.documentUpdateEq });
     mocks.assignmentInsert.mockResolvedValue({ data: null, error: null });
@@ -284,7 +287,11 @@ describe("course library API contracts", () => {
     await expect(createCourseLibraryResource(externalInput)).resolves.toBeUndefined();
 
     expect(mocks.storageFrom).not.toHaveBeenCalled();
+    const documentId = mocks.documentInsert.mock.calls[0][0].id;
+    expect(documentId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu);
+    expect(mocks.documentInsertSelect).not.toHaveBeenCalled();
     expect(mocks.documentInsert).toHaveBeenCalledWith({
+      id: documentId,
       organization_id: "org-1",
       name: "Правила безопасности",
       type: "external_link",
@@ -308,7 +315,7 @@ describe("course library API contracts", () => {
       type: "library_resource",
       description: "Нормативный материал",
       file_url: null,
-      library_document_id: "document-1",
+      library_document_id: documentId,
       module_id: "module-1",
       library_category: "legal_acts",
       sort_order: 7,
@@ -385,7 +392,7 @@ describe("course library API contracts", () => {
 
   it("removes an uploaded object when canonical document creation fails", async () => {
     const file = new File(["manual"], "guide.pdf", { type: "application/pdf" });
-    mocks.documentInsertSingle.mockResolvedValueOnce({
+    mocks.documentInsert.mockResolvedValueOnce({
       data: null,
       error: new Error("document insert failed"),
     });
@@ -412,8 +419,29 @@ describe("course library API contracts", () => {
       .rejects.toThrow("assignment insert failed");
 
     expect(mocks.documentUpdate).toHaveBeenCalledWith({ library_status: "archive" });
-    expect(mocks.documentUpdateEq).toHaveBeenCalledWith("id", "document-1");
+    expect(mocks.documentUpdateEq).toHaveBeenCalledWith("id", mocks.documentInsert.mock.calls[0][0].id);
     expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("keeps an RLS-denied external insert failed without assignment or false compensation", async () => {
+    const error = { code: "42501", message: "new row violates row-level security policy" };
+    mocks.documentInsert.mockResolvedValueOnce({ data: null, error });
+
+    await expect(createCourseLibraryResource(externalInput)).rejects.toEqual(error);
+
+    expect(mocks.assignmentInsert).not.toHaveBeenCalled();
+    expect(mocks.documentUpdate).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("uses distinct canonical IDs for separate creates and links each exact ID", async () => {
+    await createCourseLibraryResource(externalInput);
+    await createCourseLibraryResource(externalInput);
+
+    const ids = mocks.documentInsert.mock.calls.map(([input]) => input.id);
+    expect(new Set(ids).size).toBe(2);
+    expect(mocks.assignmentInsert.mock.calls.map(([input]) => input.library_document_id)).toEqual(ids);
+    expect(mocks.documentInsertSelect).not.toHaveBeenCalled();
   });
 
   it("updates an external canonical card and its course assignment", async () => {

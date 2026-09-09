@@ -312,9 +312,15 @@ export async function createCourseLibraryResource(
       : null;
     uploadedPath = uploaded?.storagePath ?? null;
 
-    const { data: document, error: documentError } = await libraryDb
+    // The SELECT policy resolves a card by ID in a STABLE function. During
+    // INSERT RETURNING that lookup cannot see the new row yet, so even an
+    // authorized writer is rejected. Keep the INSERT under its normal RLS
+    // check and use a generated ID for the subsequent assignment request.
+    const newDocumentId = crypto.randomUUID();
+    const { error: documentError } = await libraryDb
       .from("library_documents")
       .insert({
+        id: newDocumentId,
         organization_id: input.organizationId,
         name: input.title.trim(),
         type: uploaded ? "internal_file" : "external_link",
@@ -331,11 +337,9 @@ export async function createCourseLibraryResource(
         usage_basis: input.usageBasis,
         library_status: input.status ?? "active",
         created_by: (await supabase.auth.getUser()).data.user?.id ?? null,
-      })
-      .select("id")
-      .single();
+      });
     if (documentError) throw documentError;
-    documentId = document.id;
+    documentId = newDocumentId;
 
     const { error: assignmentError } = await libraryDb.from("course_documents").insert({
       course_id: input.courseId,
