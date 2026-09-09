@@ -1,0 +1,11 @@
+{
+  "extends": "./qa-text-lesson-import.tsconfig.json",
+  "include": [
+    "src/vite-env.d.ts",
+    "src/components/course-builder/ReplaceTextLessonContent.tsx",
+    "src/components/course-builder/__tests__/ReplaceTextLessonContent.test.tsx",
+    "src/lib/__tests__/textLessonReplacement.test.tsx",
+    "src/utils/__tests__/safeInvoke.body.test.ts",
+    "src/components/course-builder/__tests__/ImageBlock.generated-url.test.tsx"
+  ]
+}

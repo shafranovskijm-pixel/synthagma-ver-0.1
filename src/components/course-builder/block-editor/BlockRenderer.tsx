@@ -96,7 +96,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "bulletList":
       return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: renderHtml(item) }} />)}</ul>;
     case "numberedList":
-      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: renderHtml(item) }} />)}</ol>;
+      return <ol start={block.listStart} className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: renderHtml(item) }} />)}</ol>;
     case "quote":
       return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "callout-info":
@@ -253,12 +253,12 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
           <table className="w-full border-collapse rounded-lg overflow-hidden border border-border">
             {hasHeader && rows[0] && (
               <thead className="bg-muted/60">
-                <tr>{rows[0].map((cell, i) => <th key={i} className="border border-border px-3 py-2 text-left text-sm font-semibold">{cell}</th>)}</tr>
+                <tr>{rows[0].map((cell, i) => <th key={i} className="border border-border px-3 py-2 text-left text-sm font-semibold">{block.tableCellsHtml ? <span dangerouslySetInnerHTML={{ __html: renderHtml(cell) }} /> : cell}</th>)}</tr>
               </thead>
             )}
             <tbody>
               {(hasHeader ? rows.slice(1) : rows).map((row, rIdx) => (
-                <tr key={rIdx}>{row.map((cell, cIdx) => <td key={cIdx} className="border border-border px-3 py-2 text-sm">{cell}</td>)}</tr>
+                <tr key={rIdx}>{row.map((cell, cIdx) => <td key={cIdx} className="border border-border px-3 py-2 text-sm">{block.tableCellsHtml ? <span dangerouslySetInnerHTML={{ __html: renderHtml(cell) }} /> : cell}</td>)}</tr>
               ))}
             </tbody>
           </table>

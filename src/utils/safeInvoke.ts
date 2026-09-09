@@ -7,7 +7,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { FunctionsHttpError } from '@supabase/supabase-js';
+import { FunctionsHttpError, type FunctionInvokeOptions } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import {
   isBlockedBySecuritySoftware,
@@ -18,10 +18,7 @@ import {
 const RETRY_DELAYS = [0, 2000, 5000]; // immediate, 2 s, 5 s
 const MAX_RETRIES = 3;
 
-interface SafeInvokeOptions {
-  body?: unknown;
-  headers?: Record<string, string>;
-}
+type SafeInvokeOptions = Pick<FunctionInvokeOptions, 'body' | 'headers'>;
 
 interface SafeInvokeResult<T = unknown> {
   data: T | null;

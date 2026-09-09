@@ -20,12 +20,13 @@ export interface Lesson {
 
 export interface Course {
   id: string;
+  organization_id?: string | null;
   title: string;
   description: string | null;
   duration: string | null;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
-  skip_video_identification?: boolean;
+  skip_video_identification?: boolean | null;
   landing_content?: unknown;
 }
 

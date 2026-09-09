@@ -72,6 +72,9 @@ export interface ContentBlock {
   // Table
   tableRows?: string[][];
   tableHasHeader?: boolean;
+  /** Opt-in sanitized rich cells from single-lesson text import. */
+  tableCellsHtml?: boolean;
+  listStart?: number;
   // Button
   buttonLabel?: string;
   buttonUrl?: string;

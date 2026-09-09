@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "taskId": "S-021",
+  "claimId": "2a378d28-b7a9-44a5-ba38-dcdb0e3d7583",
+  "sourcePackage": "csz_20260907",
+  "purpose": "Read-only fidelity fixtures for the nine existing lecture imports; not production course content or a publication approval.",
+  "copiedWithoutContentChanges": true,
+  "files": [
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module01.md",
+      "source": "22_закрытие_содержания/module01/lecture.md",
+      "bytes": 177004,
+      "sha256": "72e28f205078a9ad62789b0ddc33f352b4c8a84d2f0db493fd00f43081940057",
+      "sourceLastWriteTimeUtc": "2026-09-07T17:48:16.3177578Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module01.md",
+      "source": "29_импорт_лекций/student_exports_v1/module01.md",
+      "bytes": 177004,
+      "sha256": "72e28f205078a9ad62789b0ddc33f352b4c8a84d2f0db493fd00f43081940057",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.7885462Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module02.md",
+      "source": "22_закрытие_содержания/module02/lecture.md",
+      "bytes": 133499,
+      "sha256": "be90561b41e5cf0c26494cdca8736a66c1ea3fe480c9e789a7d42ad40322f7ce",
+      "sourceLastWriteTimeUtc": "2026-09-07T16:37:01.4068740Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module02.md",
+      "source": "29_импорт_лекций/student_exports_v1/module02.md",
+      "bytes": 133499,
+      "sha256": "be90561b41e5cf0c26494cdca8736a66c1ea3fe480c9e789a7d42ad40322f7ce",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8032527Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module03.md",
+      "source": "22_закрытие_содержания/module03/lecture.md",
+      "bytes": 109840,
+      "sha256": "e58bf266672db2293f4d8234bbf20be8fdcd497f1b31786597dea1298065599d",
+      "sourceLastWriteTimeUtc": "2026-09-07T15:39:03.9056424Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module03.md",
+      "source": "29_импорт_лекций/student_exports_v1/module03.md",
+      "bytes": 109389,
+      "sha256": "87a0b9a18d4fa74c4e817b60780d7cdff8e59bc5f68c5a2a5ece7ab3777e8b0d",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8163266Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module04.md",
+      "source": "22_закрытие_содержания/module04/lecture.md",
+      "bytes": 107482,
+      "sha256": "4ebd6242c6831b9ff9c702b06b647373e4cf91f519072a912f722825a64ac03c",
+      "sourceLastWriteTimeUtc": "2026-09-07T16:15:57.8894355Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module04.md",
+      "source": "29_импорт_лекций/student_exports_v1/module04.md",
+      "bytes": 107253,
+      "sha256": "21df0f68d5a76e332a7c0249e8f18a4897466da16711ff3b0d018da782e037c1",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8236997Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module05.md",
+      "source": "22_закрытие_содержания/module05/lecture.md",
+      "bytes": 105144,
+      "sha256": "944996f0e6fd8448ea3b2e3651fb37a22c06eb854084cac1fe773beeea4681a5",
+      "sourceLastWriteTimeUtc": "2026-09-07T16:57:22.0772152Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module05.md",
+      "source": "29_импорт_лекций/student_exports_v1/module05.md",
+      "bytes": 104600,
+      "sha256": "880d64ec0208324cc6fdf797bcc845c514e195f8a5f874d2a206b21055cebf87",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8386322Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module06.md",
+      "source": "22_закрытие_содержания/module06/lecture.md",
+      "bytes": 119308,
+      "sha256": "e85b54bac302af758ac90eb9c944f0cd4962d4be45a438c8733c75c4d5ee48f6",
+      "sourceLastWriteTimeUtc": "2026-09-07T15:34:48.4298155Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module06.md",
+      "source": "29_импорт_лекций/student_exports_v1/module06.md",
+      "bytes": 118577,
+      "sha256": "a11f85bbd403a295a0b875e3259712bd499896cdb24c51107be1f6e5dcf2f94a",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8525125Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module07.md",
+      "source": "22_закрытие_содержания/module07/lecture.md",
+      "bytes": 117999,
+      "sha256": "e4d8b0045118c8d9061b5bddd0a9fed77d7420628eb609a5be92d79892bca8e1",
+      "sourceLastWriteTimeUtc": "2026-09-07T16:19:33.2512026Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module07.md",
+      "source": "29_импорт_лекций/student_exports_v1/module07.md",
+      "bytes": 116704,
+      "sha256": "5103a4ab71a419e831ff5c17891246a6b807dd1d1dfbe7ea613a6a1c1c0db840",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8624695Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module08.md",
+      "source": "22_закрытие_содержания/module08/lecture.md",
+      "bytes": 122524,
+      "sha256": "0fa37d9b2db3172c68306691c401f36405affb746f8ea447905d02bd5ee38f56",
+      "sourceLastWriteTimeUtc": "2026-09-07T16:59:11.0400897Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module08.md",
+      "source": "29_импорт_лекций/student_exports_v1/module08.md",
+      "bytes": 121548,
+      "sha256": "55b86e463c87cd3094ff95257ca4289327141e5a8e0a267fed27eab11e7d06c4",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8710614Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/source/module10.md",
+      "source": "22_закрытие_содержания/module10/lecture.md",
+      "bytes": 100141,
+      "sha256": "8bb0dc85bdc4c0d22b42349a76be078e0851144baee646260e2f47fee279936d",
+      "sourceLastWriteTimeUtc": "2026-09-07T15:35:30.9275610Z"
+    },
+    {
+      "path": "tests/fixtures/csz-text-lesson-replacement/student-exports-v1/module10.md",
+      "source": "29_импорт_лекций/student_exports_v1/module10.md",
+      "bytes": 99630,
+      "sha256": "784c211135d3952d1f753bf5acb635d90767d0da066573aaa15ed1aa4ee9bbb6",
+      "sourceLastWriteTimeUtc": "2026-09-07T18:45:09.8790983Z"
+    }
+  ]
+}

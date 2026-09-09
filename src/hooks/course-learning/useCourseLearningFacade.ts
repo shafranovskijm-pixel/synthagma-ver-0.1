@@ -345,7 +345,7 @@ export function useCourseLearning() {
 
   const submitFeedback = async () => {
     if (isAdminView) { toast.info('Отправка отзывов недоступна в режиме просмотра'); return; }
-    if (!currentLesson || !user || !feedbackAnswer.trim()) return;
+    if (!currentLesson || !user || !courseId || !feedbackAnswer.trim()) return;
     setFeedbackSending(true);
     try {
       const { data: courseData } = await supabase.from('courses').select('organization_id').eq('id', courseId).single();
@@ -407,6 +407,7 @@ export function useCourseLearning() {
   }, [user, enrollmentId, currentLesson?.id, saveLessonTime, isAdminView]);
 
   const fetchCourseData = async () => {
+    if (!courseId) return;
     const requestedLibraryOnly = typeof window !== "undefined"
       && new URLSearchParams(window.location.search).get("view") === "library";
     try {
@@ -432,7 +433,7 @@ export function useCourseLearning() {
       const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
         supabase
           .from('courses')
-          .select('id, title, description, duration, sequential_lessons, allow_video_seek, skip_video_identification, landing_content')
+          .select('id, organization_id, title, description, duration, sequential_lessons, allow_video_seek, skip_video_identification, landing_content')
           .eq('id', courseId)
           .single(),
         supabase

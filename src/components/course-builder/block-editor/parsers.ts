@@ -178,7 +178,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
   return blocks;
 }
 
-export function htmlToBlocks(html: string): ContentBlock[] {
+export function htmlToBlocks(html: string, options: { preserveTextStructure?: boolean } = {}): ContentBlock[] {
   const blocks: ContentBlock[] = [];
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
@@ -197,6 +197,24 @@ export function htmlToBlocks(html: string): ContentBlock[] {
     const el = node as Element;
     const tagName = el.tagName.toLowerCase();
 
+    // Opt-in for replacing one text lesson; legacy import behaviour remains unchanged.
+    if (options.preserveTextStructure) {
+      if (tagName === "table") {
+        const tableRows = Array.from(el.querySelectorAll("tr"))
+          .filter(row => row.closest("table") === el)
+          .map(row => Array.from(row.children).filter(cell => ["td", "th"].includes(cell.tagName.toLowerCase())).map(cell => cell.innerHTML));
+        if (tableRows.length) blocks.push({ id: crypto.randomUUID(), type: "table", content: "", tableRows, tableHasHeader: !!el.querySelector("tr th"), tableCellsHtml: true });
+        return;
+      }
+      if (/^h[1-6]$/.test(tagName)) {
+        const type = tagName === "h1" ? "heading1" : tagName === "h2" ? "heading2" : tagName === "h3" ? "heading3" : "heading4";
+        blocks.push({ id: crypto.randomUUID(), type, content: el.innerHTML });
+        return;
+      }
+      if (tagName === "hr") { blocks.push({ id: crypto.randomUUID(), type: "divider", content: "" }); return; }
+      if (tagName === "pre") { blocks.push({ id: crypto.randomUUID(), type: "code", content: el.textContent || "" }); return; }
+    }
+
     switch (tagName) {
       case "h1":
         blocks.push({ id: crypto.randomUUID(), type: "heading1", content: el.textContent || "" });
@@ -214,12 +232,13 @@ export function htmlToBlocks(html: string): ContentBlock[] {
         }
         break;
       case "ul":
-        const bulletItems = Array.from(el.querySelectorAll(":scope > li")).map(li => li.innerHTML || "").join("\n");
+        const bulletItems = Array.from(el.querySelectorAll(":scope > li")).map(li => options.preserveTextStructure ? li.innerHTML.replace(/\n/g, " ") : li.innerHTML || "").join("\n");
         blocks.push({ id: crypto.randomUUID(), type: "bulletList", content: bulletItems });
         break;
       case "ol":
-        const numberedItems = Array.from(el.querySelectorAll(":scope > li")).map(li => li.innerHTML || "").join("\n");
-        blocks.push({ id: crypto.randomUUID(), type: "numberedList", content: numberedItems });
+        const numberedItems = Array.from(el.querySelectorAll(":scope > li")).map(li => options.preserveTextStructure ? li.innerHTML.replace(/\n/g, " ") : li.innerHTML || "").join("\n");
+        blocks.push({ id: crypto.randomUUID(), type: "numberedList", content: numberedItems,
+          ...(options.preserveTextStructure && el.hasAttribute("start") ? { listStart: Number(el.getAttribute("start")) } : {}) });
         break;
       case "blockquote":
         blocks.push({ id: crypto.randomUUID(), type: "quote", content: el.innerHTML || "" });
@@ -240,5 +259,6 @@ export function htmlToBlocks(html: string): ContentBlock[] {
 
   doc.body.childNodes.forEach(processNode);
 
-  return blocks.filter(b => b.content || b.imageSrc || b.documentUrl || b.type === "quiz" || b.type === "accordion" || b.type === "image" || b.type === "document");
+  return blocks.filter(b => b.content || b.imageSrc || b.documentUrl || b.type === "quiz" || b.type === "accordion" || b.type === "image" || b.type === "document"
+    || (options.preserveTextStructure && (b.type === "table" || b.type === "divider")));
 }

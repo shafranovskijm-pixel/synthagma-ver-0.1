@@ -28,6 +28,7 @@ import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
+import { resolveHomeworkContext } from "@/lib/homeworkReport";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar";
 import { LessonAttachments } from "@/components/course-learning/LessonAttachments";
@@ -59,7 +60,9 @@ const CourseLearning = () => {
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest, retryCourseCompletion,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
-    isOfflineMode, offlineCachedAt } = useCourseLearning();
+    isOfflineMode, offlineCachedAt, isAdminView } = useCourseLearning();
+
+  const homeworkContext = resolveHomeworkContext(courseId, course, currentLesson, user?.id, isAdminView);
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
   const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
@@ -273,7 +276,7 @@ const CourseLearning = () => {
 
             {/* Slider lesson */}
             {currentLesson?.type === 'slider' && (
-              <SliderLessonViewer content={currentLesson.content} title={currentLesson.title} lessonIndex={currentLessonIndex} isMobile={!!isMobile} />
+              <SliderLessonViewer content={currentLesson.content ?? null} title={currentLesson.title} lessonIndex={currentLessonIndex} isMobile={!!isMobile} />
             )}
 
             {/* Audio lesson */}
@@ -327,7 +330,13 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><BookCheck className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-indigo-500")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Задание • Урок {currentLessonIndex + 1}</p></div>
                 </div>
-                {user && courseId && <HomeworkSubmission lessonId={currentLesson.id} courseId={courseId} userId={user.id} taskDescription={currentLesson.content} isMobile={!!isMobile} onComplete={() => markLessonComplete(false)} />}
+                {isAdminView ? (
+                  <p role="status">Режим просмотра: сдача задания и завершение урока недоступны.</p>
+                ) : homeworkContext ? (
+                  <HomeworkSubmission {...homeworkContext} taskDescription={currentLesson.content ?? null} isMobile={!!isMobile} allowAttachments={homeworkContext.courseId !== '7630559a-6caf-42e7-97f9-1cd0e4598c39'} onComplete={() => markLessonComplete(false)} />
+                ) : (
+                  <p role="alert">Контекст курса и урока ещё не подтверждён. Отправка задания недоступна.</p>
+                )}
               </div>
             )}
 

@@ -1,0 +1,18 @@
+{
+  "extends": "./qa-csz-base.tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "types": [
+      "vitest/globals",
+      "node",
+      "@testing-library/jest-dom"
+    ]
+  },
+  "include": [
+    "src/vite-env.d.ts",
+    "src/components/course-builder/ReplaceTextLessonContent.tsx",
+    "src/components/course-builder/__tests__/ReplaceTextLessonContent.test.tsx",
+    "src/lib/__tests__/textLessonReplacement.test.tsx"
+  ]
+}

@@ -39,6 +39,7 @@ import type { ParsedAnswer } from "@/utils/testAnswersExport";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
+import { ReplaceTextLessonContent } from "@/components/course-builder/ReplaceTextLessonContent";
 
 interface SortableLessonProps {
   lesson: Lesson;
@@ -171,6 +172,7 @@ export function SortableLessonItem({
                   </DropdownMenu>
                 </div>
               </div>
+              {(lesson.type === "text" || lesson.type === "lesson") && <ReplaceTextLessonContent lesson={lesson} courseId={courseId} organizationId={organizationId} onUpdate={onUpdate} disabled={media.isGeneratingContent} />}
               {isPreviewMode ? (
                 <div className="relative">
                   <div className="bg-secondary/30 rounded-xl p-6 prose prose-sm dark:prose-invert max-w-none min-h-[200px]">

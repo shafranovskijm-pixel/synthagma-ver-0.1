@@ -7,6 +7,20 @@ import { Image as ImageIcon, Upload, Sparkles, Wand2 } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
+interface GeneratedImageResponse { url?: unknown; error?: unknown }
+
+function generatedImageUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const candidate = value.trim();
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") return candidate;
+    // generate-block-image can return an image data URL when storage upload fails.
+    if (parsed.protocol === "data:" && /^data:image\/[a-z0-9.+-]+(?:;[^,]*)?,.+$/i.test(candidate)) return candidate;
+  } catch { /* Invalid URL is not a successful generation. */ }
+  return null;
+}
+
 export function ImageBlock({ block, onUpdate, courseId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseId?: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const { isGenerating, run: runGenerate } = useBlockAIGenerate();
@@ -95,17 +109,18 @@ export function ImageBlock({ block, onUpdate, courseId }: { block: ContentBlock;
       let url: string | null = null;
       let lastError: string | null = null;
       try {
-        const { data, error } = await safeInvoke<any>("generate-block-image", { body: { prompt: aiPrompt.trim() } });
-        if (!error && data?.url) url = data.url;
-        else lastError = error?.message || data?.error || null;
+        const { data, error } = await safeInvoke<GeneratedImageResponse>("generate-block-image", { body: { prompt: aiPrompt.trim() } });
+        const candidate = generatedImageUrl(data?.url);
+        if (!error && candidate) url = candidate;
+        else lastError = error?.message || (typeof data?.error === "string" ? data.error : null);
       } catch (e) { lastError = e instanceof Error ? e.message : null; }
       if (!url) {
-        const { data, error } = await safeInvoke<any>("generate-image", { body: { prompt: aiPrompt.trim(), provider: "gigachat", slotIndex: Date.now() } });
+        const { data, error } = await safeInvoke<GeneratedImageResponse>("generate-image", { body: { prompt: aiPrompt.trim(), provider: "gigachat", slotIndex: Date.now() } });
         if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        if (!data?.url) throw new Error(lastError || "Изображение не было сгенерировано");
-        url = data.url;
+        if (data?.error) throw new Error(typeof data.error === "string" ? data.error : "Сервис вернул ошибку генерации");
+        url = generatedImageUrl(data?.url);
       }
+      if (!url) throw new Error(lastError || "Изображение не было сгенерировано");
       onUpdate({ imageSrc: url, imageAlt: aiPrompt.trim() });
       return url;
     }, "Ошибка генерации изображения");

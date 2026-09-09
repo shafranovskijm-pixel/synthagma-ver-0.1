@@ -1,0 +1,13 @@
+{
+  "extends": "./qa-csz-base.tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true
+  },
+  "include": [
+    "src/vite-env.d.ts",
+    "src/components/course-learning/HomeworkSubmission.tsx",
+    "src/lib/homeworkReport.ts",
+    "src/components/course-learning/__tests__/HomeworkSubmission.test.tsx"
+  ]
+}
