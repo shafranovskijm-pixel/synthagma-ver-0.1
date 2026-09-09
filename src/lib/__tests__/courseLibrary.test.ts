@@ -151,6 +151,17 @@ describe("courseLibrary", () => {
     }))).toThrowError(expect.objectContaining({ field: "status" }));
   });
 
+  it.each(["sourceName", "usageBasis", "status"])("keeps create normalization mandatory for %s despite nullable read metadata", (field) => {
+    // Deliberately supply an invalid runtime value, as an untyped caller could.
+    expect(() => Reflect.apply(normalizeCourseLibraryResource, undefined, [{ ...baseResource, [field]: null }]))
+      .toThrowError(expect.objectContaining({ field }));
+  });
+
+  it("still rejects a blank create source", () => {
+    expect(() => normalizeCourseLibraryResource(resource({ sourceName: "  " })))
+      .toThrowError(expect.objectContaining({ field: "sourceName" }));
+  });
+
   it("sorts without mutating by fixed category, display order, Russian name and id", () => {
     const inputs = [
       resource({
@@ -313,6 +324,24 @@ describe("courseLibrary", () => {
     expect(csv).toContain('"Руководство изготовителя";"Инструкции и руководства изготовителей"');
     expect(csv).toContain('"library/org-1/manual.pdf";"Модуль 2";"редакция 2025 года"');
     expect(csv).toContain('"разрешение правообладателя";"действует";"3"');
+  });
+
+  it("keeps null metadata as empty CSV cells without fabricating source or enum values", () => {
+    const csv = courseLibraryToCsv([{
+      assignmentId: "nullable-draft", category: "educational_materials",
+      title: "Неполная карточка", sourceName: null, usageBasis: null, status: null,
+      storagePath: "library/org-1/draft.pdf", sortOrder: 0,
+    }], { includeBom: false });
+    const lines = csv.split("\r\n");
+    expect(lines).toHaveLength(2);
+    const cells = lines[1].split(";");
+    expect(cells).toHaveLength(11);
+    expect(cells[0]).toBe('"Неполная карточка"');
+    expect(cells[3]).toBe('""');
+    expect(cells[8]).toBe('""');
+    expect(cells[9]).toBe('""');
+    expect(csv).not.toContain("официальный открытый источник");
+    expect(csv).not.toContain("действует");
   });
 
   it("keeps an unavailable review card in the complete CSV instead of dropping the export", () => {

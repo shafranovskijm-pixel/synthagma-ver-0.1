@@ -1,3 +1,4 @@
+import { formatLibraryResourceError } from "@/lib/libraryResourceError";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,8 +62,8 @@ export function CourseLibraryResourceDialog({
   const [moduleId, setModuleId] = useState("course-wide");
   const [editionLabel, setEditionLabel] = useState("");
   const [lastCheckedAt, setLastCheckedAt] = useState("");
-  const [usageBasis, setUsageBasis] = useState<CourseLibraryUsageBasis>("official_open_source");
-  const [status, setStatus] = useState<CourseLibraryStatus>("active");
+  const [usageBasis, setUsageBasis] = useState<CourseLibraryUsageBasis | "">("official_open_source");
+  const [status, setStatus] = useState<CourseLibraryStatus | "">("active");
   const [sortOrder, setSortOrder] = useState("0");
   const [allowDownload, setAllowDownload] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -80,8 +81,8 @@ export function CourseLibraryResourceDialog({
     setModuleId(resource?.moduleId ?? "course-wide");
     setEditionLabel(resource?.editionLabel ?? "");
     setLastCheckedAt(toDateInput(resource?.lastCheckedAt));
-    setUsageBasis(resource?.usageBasis ?? "official_open_source");
-    setStatus(resource?.status ?? "active");
+    setUsageBasis(resource ? resource.usageBasis ?? "" : "official_open_source");
+    setStatus(resource ? resource.status ?? "" : "active");
     setSortOrder(String(resource?.sortOrder ?? 0));
     setAllowDownload(resource?.allowDownload ?? true);
     setError(null);
@@ -90,13 +91,13 @@ export function CourseLibraryResourceDialog({
 
   const fileAlreadyStored = editing && Boolean(resource?.storagePath);
   const canSubmit = useMemo(() => {
-    if (!title.trim() || !sourceName.trim()) return false;
+    if (!title.trim() || !sourceName.trim() || !usageBasis || !status) return false;
     if (sourceKind === "external") return isValidHttpsUrl(externalUrl.trim());
     return fileAlreadyStored || Boolean(file);
-  }, [externalUrl, file, fileAlreadyStored, sourceKind, sourceName, title]);
+  }, [externalUrl, file, fileAlreadyStored, sourceKind, sourceName, title, usageBasis, status]);
 
   const handleSubmit = async () => {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit || submitting || !usageBasis || !status) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -117,8 +118,9 @@ export function CourseLibraryResourceDialog({
       });
       onOpenChange(false);
     } catch (caught) {
-      console.error("[course-library] save failed", caught);
-      setError(caught instanceof Error ? caught.message : "Не удалось сохранить ресурс");
+      const diagnostic = formatLibraryResourceError(caught);
+      console.error("[course-library] save failed", diagnostic);
+      setError(diagnostic);
     } finally {
       setSubmitting(false);
     }
@@ -206,15 +208,15 @@ export function CourseLibraryResourceDialog({
 
           <div className="space-y-2">
             <Label>Основание использования *</Label>
-            <Select value={usageBasis} onValueChange={(value) => setUsageBasis(value as CourseLibraryUsageBasis)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={usageBasis} onValueChange={(value) => setUsageBasis(USAGE_OPTIONS.find(option => option.value === value)?.value ?? "")}>
+              <SelectTrigger><SelectValue placeholder="Выберите основание" /></SelectTrigger>
               <SelectContent>{USAGE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Статус *</Label>
-            <Select value={status} onValueChange={(value) => setStatus(value as CourseLibraryStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={status} onValueChange={(value) => setStatus(STATUS_OPTIONS.find(option => option.value === value)?.value ?? "")}>
+              <SelectTrigger><SelectValue placeholder="Выберите статус" /></SelectTrigger>
               <SelectContent>{STATUS_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -229,7 +231,7 @@ export function CourseLibraryResourceDialog({
           </label>
         </div>
 
-        {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+        {error && <p role="alert" className="whitespace-pre-wrap rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Отмена</Button>

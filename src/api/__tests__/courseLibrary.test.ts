@@ -205,6 +205,81 @@ describe("course library API contracts", () => {
     expect(mocks.from).toHaveBeenCalledWith("course_documents");
   });
 
+  it.each([
+    { name: "omits a null-category row", category: null, hasDocument: true, expectedIds: [] },
+    { name: "retains a categorized row", category: "educational_materials", hasDocument: true, expectedIds: ["assignment-1"] },
+    { name: "still omits a missing joined document", category: "educational_materials", hasDocument: false, expectedIds: [] },
+  ] as const)("$name without inventing a category", async ({ category, hasDocument, expectedIds }) => {
+    const document = {
+      id: "document-1", name: "Методический материал", description: null,
+      source_name: "Учебный центр", external_url: null,
+      storage_path: "library/org-1/document-1.pdf", mime_type: "application/pdf",
+      original_filename: "Материал.pdf", file_size: 42, edition_label: null,
+      last_checked_at: null, usage_basis: "own_material", library_status: "active",
+      created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
+    };
+    const order = vi.fn().mockResolvedValue({ data: [{
+      id: "assignment-1", course_id: "course-1", module_id: "module-1",
+      library_category: category, sort_order: 1, allow_download: true,
+      library_document: hasDocument ? document : null,
+    }], error: null });
+    const not = vi.fn().mockReturnValue({ order });
+    const eq = vi.fn().mockReturnValue({ not });
+    const select = vi.fn().mockReturnValue({ eq });
+    mocks.from.mockReturnValue({ select });
+
+    const result = await fetchCourseLibrary("course-1");
+
+    expect(result.resources.map(resource => resource.assignmentId)).toEqual(expectedIds);
+    if (expectedIds.length > 0) {
+      expect(result.resources[0]).toMatchObject({
+        category: "educational_materials", originalFilename: "Материал.pdf",
+        moduleTitle: "Модуль 1", storagePath: "library/org-1/document-1.pdf",
+      });
+    }
+    expect(eq).toHaveBeenCalledWith("course_id", "course-1");
+    expect(mocks.storageFrom).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { source_name: null },
+    { usage_basis: null },
+    { library_status: null },
+    { source_name: null, usage_basis: null, library_status: null },
+  ])("retains incomplete administrator metadata without changing it: %j", async (missing) => {
+    const document = {
+      id: "document-draft", name: "Черновая методичка", description: null,
+      source_name: "Учебный центр", external_url: null,
+      storage_path: "library/org-1/draft.pdf", mime_type: "application/pdf",
+      original_filename: "Черновик.pdf", file_size: 42, edition_label: null,
+      last_checked_at: null, usage_basis: "own_material", library_status: "needs_review",
+      created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
+      ...missing,
+    };
+    const order = vi.fn().mockResolvedValue({ data: [{
+      id: "assignment-draft", course_id: "course-1", module_id: null,
+      library_category: "educational_materials", sort_order: 1, allow_download: true,
+      library_document: document,
+    }], error: null });
+    const not = vi.fn().mockReturnValue({ order });
+    const eq = vi.fn().mockReturnValue({ not });
+    const select = vi.fn().mockReturnValue({ eq });
+    mocks.from.mockReturnValue({ select });
+
+    const { resources } = await fetchCourseLibrary("course-1");
+
+    expect(resources).toHaveLength(1);
+    expect(resources[0]).toMatchObject({
+      assignmentId: "assignment-draft", libraryDocumentId: "document-draft",
+      sourceName: document.source_name, usageBasis: document.usage_basis,
+      status: document.library_status, originalFilename: "Черновик.pdf",
+    });
+    expect(mocks.documentInsert).not.toHaveBeenCalled();
+    expect(mocks.documentUpdate).not.toHaveBeenCalled();
+    expect(mocks.assignmentUpdate).not.toHaveBeenCalled();
+    expect(mocks.storageFrom).not.toHaveBeenCalled();
+  });
+
   it("creates one canonical external document and preserves course assignment metadata", async () => {
     await expect(createCourseLibraryResource(externalInput)).resolves.toBeUndefined();
 
@@ -265,6 +340,20 @@ describe("course library API contracts", () => {
       mime_type: "application/pdf",
       original_filename: "Guide 2026.pdf",
       file_size: file.size,
+    }));
+  });
+
+  it("uses an ASCII object basename while retaining a Cyrillic original filename", async () => {
+    const file = new File(["manual"], "Методические материалы.pdf", { type: "application/pdf" });
+
+    await expect(createCourseLibraryResource({ ...externalInput, externalUrl: null, file }))
+      .resolves.toBeUndefined();
+
+    const [storagePath, uploadedFile] = mocks.upload.mock.calls[0];
+    expect(storagePath).toMatch(/^library\/org-1\/[0-9a-f-]+-material\.pdf$/u);
+    expect(uploadedFile).toBe(file);
+    expect(mocks.documentInsert).toHaveBeenCalledWith(expect.objectContaining({
+      storage_path: storagePath, original_filename: "Методические материалы.pdf",
     }));
   });
 

@@ -56,7 +56,7 @@ vi.mock("@/components/ui/select", () => ({
     <option value={value}>{children}</option>
   ),
   SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SelectValue: () => null,
+  SelectValue: ({ placeholder }: { placeholder?: string }) => placeholder ? <option value="" disabled>{placeholder}</option> : null,
 }));
 
 import { CourseLibraryManager } from "@/components/course-library/CourseLibraryManager";
@@ -72,11 +72,9 @@ function resource(
 ): CourseLibraryResource {
   return {
     assignmentId: `assignment-${overrides.libraryDocumentId}`,
-    libraryDocumentId: overrides.libraryDocumentId,
     courseId: "course-178",
     moduleId: null,
     moduleTitle: null,
-    title: overrides.title,
     category: "legal_acts",
     description: "Описание материала",
     sourceName: "МЧС России",
@@ -246,12 +244,60 @@ describe("CourseLibrary organization UI flows", () => {
     expect(screen.queryByRole("button", { name: /Удалить/u })).not.toBeInTheDocument();
   });
 
-  it("runs CSV export and renders the complete printable list", async () => {
+  it.each([null, "needs_review"] as const)("keeps a nullable draft editable without defaulting its %s status", async (savedStatus) => {
+    const draft = resource({
+      libraryDocumentId: "nullable-draft", title: "Неполная методичка",
+      sourceName: null, usageBasis: null, status: savedStatus,
+      externalUrl: null, storagePath: "library/org-csz/draft.pdf", originalFilename: "Черновик.pdf",
+    });
+    apiMocks.fetchCourseLibrary.mockResolvedValue({ modules, resources: [draft] });
+    render(<CourseLibraryManager courseId="course-178" courseName="Программа 178 часов" organizationId="org-csz" />);
+    await screen.findByText("Неполная методичка");
+    expect(screen.getByText("не указан")).toBeInTheDocument();
+    expect(apiMocks.updateCourseLibraryResource).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Изменить" }));
+    const dialog = screen.getByRole("dialog");
+    const choices = getDialogComboboxes();
+    const source = within(dialog).getByLabelText("Организация или автор источника *");
+    const save = within(dialog).getByRole("button", { name: "Сохранить" });
+    expect(source).toHaveValue("");
+    expect(choices[3]).toHaveValue("");
+    expect(choices[4]).toHaveValue(savedStatus ?? "");
+    expect(save).toBeDisabled();
+    fireEvent.change(source, { target: { value: "Автор методички" } });
+    expect(save).toBeDisabled();
+    fireEvent.change(choices[3], { target: { value: "own_material" } });
+    if (savedStatus === null) {
+      expect(save).toBeDisabled();
+      fireEvent.change(choices[4], { target: { value: "needs_review" } });
+    }
+    fireEvent.click(save);
+    await waitFor(() => expect(apiMocks.updateCourseLibraryResource).toHaveBeenCalledWith(draft,
+      expect.objectContaining({ sourceName: "Автор методички", usageBasis: "own_material", status: "needs_review" })));
+    expect(draft.status).toBe(savedStatus);
+    expect(draft.sourceName).toBeNull();
+    expect(apiMocks.createCourseLibraryResource).not.toHaveBeenCalled();
+  });
+
+  it("does not submit a normal new create without its mandatory source", async () => {
+    render(<CourseLibraryManager courseId="course-178" courseName="Программа 178 часов" organizationId="org-csz" />);
+    await screen.findByText("Библиотека курса пока пуста");
+    const dialog = openCreateDialog();
+    fireEvent.change(within(dialog).getByLabelText("Название *"), { target: { value: "Новая методичка" } });
+    fireEvent.change(within(dialog).getByLabelText("HTTPS-ссылка *"), { target: { value: "https://example.test/new" } });
+    const create = within(dialog).getByRole("button", { name: "Добавить ресурс" });
+    expect(create).toBeDisabled();
+    fireEvent.click(create);
+    expect(apiMocks.createCourseLibraryResource).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("runs CSV export and prints the full list, nullable metadata: %s", async (incomplete) => {
     const listed = resource({
       libraryDocumentId: "listed",
       moduleId: "module-a",
       moduleTitle: "Модуль А",
       title: "Проверяемый официальный материал",
+      ...(incomplete ? { sourceName: null, usageBasis: null, status: null } : {}),
     });
     apiMocks.fetchCourseLibrary.mockResolvedValue({ modules, resources: [listed] });
     const createObjectURL = vi.fn(() => "blob:course-library");
@@ -298,6 +344,10 @@ describe("CourseLibrary organization UI flows", () => {
     expect(printDocument.body.textContent).toContain("Электронная библиотека — Программа 178 часов");
     expect(printDocument.body.textContent).toContain("Проверяемый официальный материал");
     expect(printDocument.body.textContent).toContain("Модуль А");
+    if (incomplete) {
+      expect(printDocument.body.textContent).toContain("не указан");
+      expect(printDocument.body.textContent).toContain("Не указан");
+    }
   });
 });
 
@@ -356,6 +406,19 @@ describe("CourseLibrary learner UI flows", () => {
     expect(internalWindow.value.opener).toBeNull();
     expect(open).toHaveBeenNthCalledWith(1, "about:blank", "_blank");
     expect(open).toHaveBeenNthCalledWith(2, "about:blank", "_blank");
+  });
+
+  it("displays an absent source without broadening the active-only learner filter", () => {
+    render(<CourseLibraryReader courseId="course-178" previewData={{ modules: [], resources: [
+      resource({ libraryDocumentId: "active-null-source", title: "Действующий материал", sourceName: null }),
+      resource({ libraryDocumentId: "null-status", title: "Неизвестный статус", status: null }),
+      resource({ libraryDocumentId: "draft-status", title: "Только редактору", status: "needs_review" }),
+      resource({ libraryDocumentId: "archive-status", title: "Архивный материал", status: "archive" }),
+    ] }} />);
+    expect(screen.getByTestId("library-resource-active-null-source")).toHaveTextContent("Источник: не указан");
+    expect(screen.queryByText("Неизвестный статус")).not.toBeInTheDocument();
+    expect(screen.queryByText("Только редактору")).not.toBeInTheDocument();
+    expect(screen.queryByText("Архивный материал")).not.toBeInTheDocument();
   });
 
   it("filters by module while retaining resources assigned to the whole course", () => {

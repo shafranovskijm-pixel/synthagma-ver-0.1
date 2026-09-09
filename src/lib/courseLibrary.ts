@@ -146,7 +146,7 @@ export interface CourseLibraryListResource {
 
 export interface CourseLibraryCsvResource extends CourseLibraryListResource {
   description?: string | null;
-  sourceName: string;
+  sourceName: string | null;
   externalUrl?: string | null;
   internalFilePath?: string | null;
   storagePath?: string | null;
@@ -155,8 +155,8 @@ export interface CourseLibraryCsvResource extends CourseLibraryListResource {
   documentDateOrEdition?: string | null;
   editionLabel?: string | null;
   lastCheckedAt?: string | null;
-  usageBasis: CourseLibraryUsageBasis;
-  status: CourseLibraryStatus;
+  usageBasis: CourseLibraryUsageBasis | null;
+  status: CourseLibraryStatus | null;
 }
 
 export class CourseLibraryValidationError extends Error {
@@ -453,7 +453,7 @@ export function courseLibraryToCsv(
           requireFixedValue(resource.category, COURSE_LIBRARY_CATEGORIES, "category")
         ],
         optionalTrimmedString(resource.description) ?? "",
-        requireTrimmedString(resource.sourceName, "sourceName"),
+        resource.sourceName === null ? "" : requireTrimmedString(resource.sourceName, "sourceName"),
         location,
         optionalTrimmedString(resource.moduleName ?? resource.moduleTitle)
           ?? optionalTrimmedString(resource.moduleId)
@@ -462,10 +462,10 @@ export function courseLibraryToCsv(
           resource.documentDateOrEdition ?? resource.editionLabel,
         ) ?? "",
         optionalTrimmedString(resource.lastCheckedAt) ?? "",
-        LIBRARY_USAGE_BASIS_LABELS[
+        resource.usageBasis === null ? "" : LIBRARY_USAGE_BASIS_LABELS[
           requireFixedValue(resource.usageBasis, COURSE_LIBRARY_USAGE_BASES, "usageBasis")
         ],
-        LIBRARY_STATUS_LABELS[
+        resource.status === null ? "" : LIBRARY_STATUS_LABELS[
           requireFixedValue(resource.status, COURSE_LIBRARY_STATUSES, "status")
         ],
         getListResourceOrder(resource),

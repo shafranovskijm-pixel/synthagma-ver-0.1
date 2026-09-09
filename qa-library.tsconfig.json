@@ -1,0 +1,16 @@
+{
+  "extends": "./qa-csz-base.tsconfig.json",
+  "include": [
+    "src/vite-env.d.ts",
+    "src/api/courseLibrary.ts",
+    "src/components/course-library/CourseLibraryResourceDialog.tsx",
+    "src/components/course-library/CourseLibraryManager.tsx",
+    "src/components/course-library/CourseLibraryReader.tsx",
+    "src/lib/courseLibrary.ts",
+    "src/lib/libraryStorageFilename.ts",
+    "src/lib/libraryResourceError.ts",
+    "src/api/__tests__/courseLibrary.test.ts",
+    "src/components/course-library/__tests__/CourseLibraryUiFlows.test.tsx",
+    "src/lib/__tests__/courseLibrary.test.ts"
+  ]
+}

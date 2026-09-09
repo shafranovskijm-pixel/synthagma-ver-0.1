@@ -80,11 +80,11 @@ function printLibrary(courseName: string, resources: CourseLibraryResource[]) {
       String(index + 1),
       resource.title,
       CATEGORY_LABELS[resource.category] ?? resource.category,
-      resource.sourceName,
+      resource.sourceName ?? "не указан",
       resource.moduleTitle ?? "Весь курс",
       resource.editionLabel ?? "",
       resource.lastCheckedAt?.slice(0, 10) ?? "",
-      STATUS_LABELS[resource.status] ?? resource.status,
+      resource.status === null ? "Не указан" : STATUS_LABELS[resource.status] ?? resource.status,
       resource.externalUrl ?? resource.originalFilename ?? resource.storagePath ?? "Недоступно",
     ];
     for (const value of values) {
@@ -234,12 +234,12 @@ export function CourseLibraryManager({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{resource.title}</h3>
-                    <Badge variant={resource.status === "archive" ? "secondary" : resource.status === "needs_review" ? "outline" : "default"}>{STATUS_LABELS[resource.status] ?? resource.status}</Badge>
+                    <Badge variant={resource.status === null || resource.status === "archive" ? "secondary" : resource.status === "needs_review" ? "outline" : "default"}>{resource.status === null ? "Не указан" : STATUS_LABELS[resource.status] ?? resource.status}</Badge>
                     <Badge variant="secondary">{CATEGORY_LABELS[resource.category] ?? resource.category}</Badge>
                   </div>
                   {resource.description && <p className="mt-2 text-sm text-muted-foreground">{resource.description}</p>}
                   <div className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-                    <span><strong className="text-foreground">Источник:</strong> {resource.sourceName}</span>
+                    <span><strong className="text-foreground">Источник:</strong> {resource.sourceName ?? "не указан"}</span>
                     <span><strong className="text-foreground">Модуль:</strong> {resource.moduleTitle ?? "Весь курс"}</span>
                     <span><strong className="text-foreground">Редакция:</strong> {resource.editionLabel || "не указана"}</span>
                     <span><strong className="text-foreground">Проверено:</strong> {resource.lastCheckedAt?.slice(0, 10) || "не проверено"}</span>

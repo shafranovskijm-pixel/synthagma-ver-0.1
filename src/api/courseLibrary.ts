@@ -1,3 +1,4 @@
+import { storageSafeFilename } from "@/lib/libraryStorageFilename";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   CourseLibraryCategory,
@@ -31,7 +32,7 @@ export interface CourseLibraryResource {
   title: string;
   category: CourseLibraryCategory;
   description: string | null;
-  sourceName: string;
+  sourceName: string | null;
   externalUrl: string | null;
   storagePath: string | null;
   mimeType: string | null;
@@ -39,8 +40,8 @@ export interface CourseLibraryResource {
   fileSize: number | null;
   editionLabel: string | null;
   lastCheckedAt: string | null;
-  usageBasis: CourseLibraryUsageBasis;
-  status: CourseLibraryStatus;
+  usageBasis: CourseLibraryUsageBasis | null;
+  status: CourseLibraryStatus | null;
   sortOrder: number;
   allowDownload: boolean;
   createdAt: string;
@@ -69,14 +70,14 @@ type RawLibraryAssignment = {
   id: string;
   course_id: string;
   module_id: string | null;
-  library_category: CourseLibraryCategory;
+  library_category: CourseLibraryCategory | null;
   sort_order: number | null;
   allow_download: boolean | null;
   library_document: {
     id: string;
     name: string;
     description: string | null;
-    source_name: string;
+    source_name: string | null;
     external_url: string | null;
     storage_path: string | null;
     mime_type: string | null;
@@ -84,21 +85,12 @@ type RawLibraryAssignment = {
     file_size: number | null;
     edition_label: string | null;
     last_checked_at: string | null;
-    usage_basis: CourseLibraryUsageBasis;
-    library_status: CourseLibraryStatus;
+    usage_basis: CourseLibraryUsageBasis | null;
+    library_status: CourseLibraryStatus | null;
     created_at: string;
     updated_at: string;
   } | null;
 };
-
-function storageSafeFilename(name: string): string {
-  const cleaned = name
-    .normalize("NFKC")
-    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(-120);
-  return cleaned || "material";
-}
 
 type ValidatedCreateLocation =
   | { kind: "external"; externalUrl: string; file: null }
@@ -169,7 +161,7 @@ function mapResource(
   moduleTitles: Map<string, string>,
 ): CourseLibraryResource | null {
   const doc = row.library_document;
-  if (!doc) return null;
+  if (!doc || row.library_category === null) return null;
   return {
     assignmentId: row.id,
     libraryDocumentId: doc.id,

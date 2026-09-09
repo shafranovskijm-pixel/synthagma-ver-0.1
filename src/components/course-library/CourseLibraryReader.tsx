@@ -77,7 +77,7 @@ function LibraryResourceCard({
       </div>
 
       <dl className="mt-3 grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
-        <div><dt className="inline font-medium text-foreground">Источник: </dt><dd className="inline">{resource.sourceName}</dd></div>
+        <div><dt className="inline font-medium text-foreground">Источник: </dt><dd className="inline">{resource.sourceName ?? "не указан"}</dd></div>
         {resource.editionLabel && <div><dt className="inline font-medium text-foreground">Редакция: </dt><dd className="inline">{resource.editionLabel}</dd></div>}
         {resource.moduleTitle && <div><dt className="inline font-medium text-foreground">Модуль: </dt><dd className="inline">{resource.moduleTitle}</dd></div>}
         {!resource.moduleTitle && <div><dt className="inline font-medium text-foreground">Раздел: </dt><dd className="inline">Весь курс</dd></div>}
