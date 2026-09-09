@@ -11,7 +11,9 @@ export default defineConfig({
     include: ['src/components/course-learning/__tests__/HomeworkSubmission.test.tsx',
       'src/components/course-learning/__tests__/TestAttemptStatus.test.tsx',
       'src/utils/__tests__/testAnswerKey.test.ts',
-      'src/hooks/__tests__/useCourseLearning.test.ts'],
+      'src/hooks/__tests__/useCourseLearning.test.ts',
+      'src/components/organization/__tests__/HomeworkReviewDialog.test.tsx',
+      'src/hooks/course-learning/__tests__/useCourseLearningFacade.cszReset.test.tsx'],
   },
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
 });

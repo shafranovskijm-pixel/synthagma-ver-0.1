@@ -331,6 +331,10 @@ export function useCourseLearning() {
   const resetCourseProgress = async () => {
     if (isAdminView) { toast.info('Сброс прогресса недоступен в режиме просмотра'); return; }
     if (!user || !courseId) return;
+    if (['7630559a-6caf-42e7-97f9-1cd0e4598c39', '7e5bc4e6-0629-4186-9745-a821cbe7255a'].includes(courseId)) {
+      toast.info('Сброс этого курса выполняет администратор');
+      return;
+    }
     try {
       const lessonIds = lessons.map(l => l.id);
       if (lessonIds.length > 0) {

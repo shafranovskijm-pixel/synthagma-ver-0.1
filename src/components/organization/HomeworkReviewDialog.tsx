@@ -46,26 +46,42 @@ export function HomeworkReviewDialog({ submission, open, onOpenChange, onUpdated
 
   const handleSubmit = async () => {
     setSaving(true);
-    const { error } = await supabase
-      .from("homework_submissions")
-      .update({
-        status: newStatus,
-        reviewer_comment: comment.trim() || null,
-        score: score ? parseInt(score) : null,
-        reviewer_id: (await supabase.auth.getUser()).data.user?.id,
-        reviewed_at: new Date().toISOString() } as any)
-      .eq("id", submission.id);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const reviewerId = authData.user?.id;
+      if (authError || !reviewerId) {
+        toast.error("Ошибка сохранения");
+        return;
+      }
 
-    if (error) {
-      toast.error("Ошибка сохранения");
-    } else {
+      const { data: updatedSubmission, error } = await supabase
+        .from("homework_submissions")
+        .update({
+          status: newStatus,
+          reviewer_comment: comment.trim() || null,
+          score: score ? parseInt(score) : null,
+          reviewer_id: reviewerId,
+          reviewed_at: new Date().toISOString() })
+        .eq("id", submission.id)
+        .select("id, status, reviewer_id")
+        .maybeSingle();
+
+      if (error || !updatedSubmission || updatedSubmission.id !== submission.id
+        || updatedSubmission.status !== newStatus || updatedSubmission.reviewer_id !== reviewerId) {
+        toast.error("Ошибка сохранения");
+        return;
+      }
+
       // Fire-and-forget student notification (in-app + email if enabled)
       supabase.functions.invoke("notify-homework-graded", { body: { submission_id: submission.id } })
         .catch((e) => console.error("notify-homework-graded invoke error:", e));
       toast.success("Проверка сохранена");
       onUpdated();
+    } catch {
+      toast.error("Ошибка сохранения");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (
