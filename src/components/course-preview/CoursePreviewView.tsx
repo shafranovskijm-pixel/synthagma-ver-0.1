@@ -133,6 +133,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
   const h = useCoursePreview({ courseIdOverride: courseId, embedded, onNavigateBack, onNavigateToEditor });
   const {
     course, lessons, currentLesson, currentLessonIndex, loading, isTransitioning,
+    lessonContentLoading, lessonContentError, reloadLessonContent,
     testQuestions, selectedAnswers, setSelectedAnswers, lessonAttachments, courseDocuments,
     showDocumentsView, previewFile, setPreviewFile, contentRef, fromStore,
     goToNextLesson, goToPrevLesson, goToLesson, goToDocumentsView,
@@ -140,6 +141,7 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
   } = h;
 
   const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
+  const lessonContentReady = !lessonContentLoading && !lessonContentError;
 
   if (loading) return (
     <div className={cn("flex items-center justify-center", embedded ? "py-20" : "min-h-screen bg-background")}>
@@ -256,13 +258,26 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               </div>
             )}
 
-            {currentLesson?.type === 'text' && (
+            {currentLesson && currentLesson.type !== 'test' && lessonContentLoading && (
+              <div role="status" className="text-center py-12 text-muted-foreground">
+                <SigmaSpinner size="lg" className="mx-auto mb-4" />
+                <p>Загрузка содержимого урока...</p>
+              </div>
+            )}
+            {currentLesson && currentLesson.type !== 'test' && lessonContentError && (
+              <div role="alert" className="text-center py-12">
+                <p>Не удалось загрузить содержимое урока.</p>
+                <Button variant="outline" className="mt-4" onClick={() => reloadLessonContent()}>Повторить загрузку</Button>
+              </div>
+            )}
+
+            {lessonContentReady && currentLesson?.type === 'text' && (
               <div className="prose prose-lg dark:prose-invert max-w-none">
                 {contentBlocks.length > 0 ? <BlockRenderer blocks={contentBlocks} /> : <div className="text-center py-12 text-muted-foreground"><FileText className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Контент урока пуст</p><p className="text-sm">Добавьте содержимое в редакторе</p></div>}
               </div>
             )}
 
-            {currentLesson?.type === 'homework' && (
+            {lessonContentReady && currentLesson?.type === 'homework' && (
               <section className="space-y-6" aria-label="Предпросмотр письменного задания">
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
                   <h3 className="font-display font-bold text-lg">Письменное задание</h3>
@@ -276,13 +291,13 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               </section>
             )}
 
-            {currentLesson?.type === 'video' && (
+            {lessonContentReady && currentLesson?.type === 'video' && (
               <div className="space-y-6">
                 {currentLesson.content ? <VideoPreview content={currentLesson.content} /> : <div className="aspect-video rounded-2xl border-2 border-dashed border-border flex items-center justify-center"><div className="text-center text-muted-foreground"><Video className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Видео не добавлено</p></div></div>}
               </div>
             )}
 
-            {currentLesson?.type === 'audio' && (
+            {lessonContentReady && currentLesson?.type === 'audio' && (
               <div className="space-y-6">
                 {currentLesson.content && currentLesson.content.startsWith('http') ? (
                   <div className="bg-card rounded-2xl border border-border p-6">
@@ -293,10 +308,10 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               </div>
             )}
 
-            {currentLesson?.type === 'image' && <div className="space-y-6"><div className="rounded-2xl border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[300px]"><div className="text-center text-muted-foreground"><Image className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Изображение не добавлено</p></div></div></div>}
-            {currentLesson?.type === 'slider' && <SliderPreview content={currentLesson.content} title={currentLesson.title} />}
+            {lessonContentReady && currentLesson?.type === 'image' && <div className="space-y-6"><div className="rounded-2xl border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[300px]"><div className="text-center text-muted-foreground"><Image className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Изображение не добавлено</p></div></div></div>}
+            {lessonContentReady && currentLesson?.type === 'slider' && <SliderPreview content={currentLesson.content} title={currentLesson.title} />}
 
-            {currentLesson?.type === 'feedback' && (
+            {lessonContentReady && currentLesson?.type === 'feedback' && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-blue-500/10 to-primary/10 rounded-2xl p-6 border border-blue-500/20">
                   <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center"><MessageSquare className="w-6 h-6 text-blue-500" /></div><div><h3 className="font-display font-bold text-lg">Обратная связь</h3><p className="text-sm text-muted-foreground">Ответ студента будет отправлен в чат организации</p></div></div>

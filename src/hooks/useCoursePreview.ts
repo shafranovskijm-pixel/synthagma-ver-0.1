@@ -52,6 +52,14 @@ interface CoursePreviewData {
 const coursePreviewKey = (courseId?: string) => ['coursePreview', courseId] as const;
 const testQuestionsKey = (lessonId?: string) => ['testQuestions', lessonId] as const;
 
+async function fetchLessonContent(lessonId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('lessons').select('content').eq('id', lessonId).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Lesson content is unavailable');
+  return data.content;
+}
+
 async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewData> {
   const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }, modulesResult] = await Promise.all([
     supabase.from('courses').select('*').eq('id', courseId).single(),
@@ -130,30 +138,21 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const baseLesson = showDocumentsView ? null : lessons[currentLessonIndex];
 
   // Lazy load content for currently opened lesson + prefetch next.
-  const { data: currentContent } = useQuery({
+  const currentContentQuery = useQuery({
     queryKey: ['lesson-content', baseLesson?.id],
     enabled: !!baseLesson?.id,
     staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('lessons').select('content').eq('id', baseLesson!.id).maybeSingle();
-      if (error) throw error;
-      return (data?.content ?? null) as string | null;
-    },
+    queryFn: () => fetchLessonContent(baseLesson!.id),
   });
   const nextLesson = baseLesson ? lessons[currentLessonIndex + 1] : null;
   useQuery({
     queryKey: ['lesson-content', nextLesson?.id],
     enabled: !!nextLesson?.id,
     staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('lessons').select('content').eq('id', nextLesson!.id).maybeSingle();
-      return (data?.content ?? null) as string | null;
-    },
+    queryFn: () => fetchLessonContent(nextLesson!.id),
   });
 
-  const currentLesson = baseLesson ? { ...baseLesson, content: baseLesson.content ?? currentContent ?? null } as Lesson : null;
+  const currentLesson = baseLesson ? { ...baseLesson, content: baseLesson.content ?? currentContentQuery.data ?? null } as Lesson : null;
 
   const { data: testQuestionsData } = useQuery({
     queryKey: testQuestionsKey(currentLesson?.id),
@@ -220,6 +219,9 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   return {
     courseId, course, lessons, currentLesson, currentLessonIndex,
     loading: isLoading, isTransitioning,
+    lessonContentLoading: !!baseLesson && currentContentQuery.isPending,
+    lessonContentError: currentContentQuery.isError,
+    reloadLessonContent: () => currentContentQuery.refetch(),
     testQuestions, selectedAnswers, setSelectedAnswers, lessonAttachments, courseDocuments,
     showDocumentsView, previewFile, setPreviewFile, contentRef, fromStore,
     goToNextLesson, goToPrevLesson, goToLesson, goToDocumentsView,
