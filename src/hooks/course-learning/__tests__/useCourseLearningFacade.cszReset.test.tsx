@@ -78,6 +78,7 @@ class SyntheticQuery implements PromiseLike<QueryResult> {
         { lesson_id: 'lesson-a', completed: true }, { lesson_id: 'lesson-b', completed: true },
       ], error: null };
       case 'lesson_attachments': return { data: [], error: null };
+      case 'course_modules': return { data: [], error: null };
       default: throw new Error(`Unexpected synthetic read: ${this.request.table}`);
     }
   }

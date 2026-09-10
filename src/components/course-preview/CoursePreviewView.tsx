@@ -15,7 +15,7 @@ import {
   ArrowLeft, FileText, Video, ClipboardList, ChevronLeft, ChevronRight,
   Eye, BookOpen, Clock, Edit, Headphones, Image, Play, Presentation,
   Download, FileSpreadsheet, File, FileText as FileTextIcon, Presentation as PresentationIcon,
-  MessageSquare, Lock
+  MessageSquare, Lock, BookCheck
 } from "lucide-react";
 
 // ---- Helpers ----
@@ -91,10 +91,10 @@ const SliderPreview = ({ content, title }: { content: string | null; title: stri
 };
 
 const getLessonIcon = (type: string) => {
-  switch (type) { case 'video': return Video; case 'test': return ClipboardList; case 'audio': return Headphones; case 'image': return Image; case 'slider': return Presentation; default: return FileText; }
+  switch (type) { case 'video': return Video; case 'test': return ClipboardList; case 'homework': return BookCheck; case 'audio': return Headphones; case 'image': return Image; case 'slider': return Presentation; default: return FileText; }
 };
 const getLessonTypeName = (type: string) => {
-  switch (type) { case 'video': return 'Видео'; case 'test': return 'Тест'; case 'audio': return 'Аудио'; case 'image': return 'Изображение'; case 'slider': return 'Презентация'; default: return 'Текст'; }
+  switch (type) { case 'video': return 'Видео'; case 'test': return 'Тест'; case 'homework': return 'Письменное задание'; case 'audio': return 'Аудио'; case 'image': return 'Изображение'; case 'slider': return 'Презентация'; default: return 'Текст'; }
 };
 
 const getFileIcon = (ft: string | null) => {
@@ -260,6 +260,20 @@ export function CoursePreviewView({ courseId, embedded = false, onNavigateBack, 
               <div className="prose prose-lg dark:prose-invert max-w-none">
                 {contentBlocks.length > 0 ? <BlockRenderer blocks={contentBlocks} /> : <div className="text-center py-12 text-muted-foreground"><FileText className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Контент урока пуст</p><p className="text-sm">Добавьте содержимое в редакторе</p></div>}
               </div>
+            )}
+
+            {currentLesson?.type === 'homework' && (
+              <section className="space-y-6" aria-label="Предпросмотр письменного задания">
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
+                  <h3 className="font-display font-bold text-lg">Письменное задание</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Здесь можно только прочитать задание. Отправка ответа и просмотр оценки доступны в кабинете слушателя; работу проверяет преподаватель.
+                  </p>
+                </div>
+                {currentLesson.content?.trim()
+                  ? <div role="document" aria-label="Условия задания" className="whitespace-pre-wrap break-words">{currentLesson.content}</div>
+                  : <p className="text-muted-foreground">Содержимое задания недоступно. Проверьте его в редакторе.</p>}
+              </section>
             )}
 
             {currentLesson?.type === 'video' && (

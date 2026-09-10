@@ -279,7 +279,7 @@ export function CourseDetailsContent({
                       <>{h.totalStudents} учеников</>
                     )}
                   </div>
-                  <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
+                  <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount == null ? "Количество уроков недоступно" : `${course.lessonsCount} уроков`}</div>
                 </div>
               </div>
             </div>

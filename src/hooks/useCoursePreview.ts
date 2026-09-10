@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAdminAwareBackPath, getCourseDetailsPath } from "@/lib/utils";
+import { orderCourseLessons } from "@/lib/courseLessonOrder";
 
 export interface Lesson {
   id: string;
@@ -12,6 +13,7 @@ export interface Lesson {
   type: string;
   content?: string | null;
   order_index: number;
+  module_id?: string | null;
   test_questions_count?: number | null;
   is_locked?: boolean;
 }
@@ -51,7 +53,7 @@ const coursePreviewKey = (courseId?: string) => ['coursePreview', courseId] as c
 const testQuestionsKey = (lessonId?: string) => ['testQuestions', lessonId] as const;
 
 async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewData> {
-  const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }] = await Promise.all([
+  const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }, modulesResult] = await Promise.all([
     supabase.from('courses').select('*').eq('id', courseId).single(),
     // PERF: skip heavy `content` column for the list; fetched per-lesson on open.
     supabase
@@ -60,12 +62,14 @@ async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewDa
       .eq('course_id', courseId)
       .order('order_index'),
     supabase.from('course_documents').select('*').eq('course_id', courseId).order('created_at'),
+    supabase.from('course_modules').select('id, order_index').eq('course_id', courseId).order('order_index'),
   ]);
 
   if (courseError) throw courseError;
   if (lessonsError) throw lessonsError;
+  if (modulesResult.error) throw modulesResult.error;
 
-  const lessons = (lessonsData || []) as Lesson[];
+  const lessons = orderCourseLessons((lessonsData || []) as Lesson[], modulesResult.data || []);
   let lessonAttachments: Record<string, any[]> = {};
 
   if (lessons.length > 0) {

@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { publishCourse } from "@/api/courses";
+import { fetchCourseLessonCount } from "@/api/courseLessonCount";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { Button } from "@/components/ui/button";
@@ -119,10 +120,13 @@ export function CourseDetailsTab() {
     }
 
     // 2) Lesson count (non-critical).
-    const { count: lessonsCount } = await supabase
-      .from("lessons")
-      .select("*", { count: "exact", head: true })
-      .eq("course_id", courseId);
+    let lessonsCount: number | undefined;
+    try {
+      lessonsCount = await fetchCourseLessonCount(courseId);
+    } catch (error) {
+      if (!isCurrentRequest()) return;
+      console.error("[CourseDetailsTab] lesson count fetch failed:", error);
+    }
 
     if (!isCurrentRequest()) return;
 
@@ -130,7 +134,7 @@ export function CourseDetailsTab() {
     //    RPC — CourseDetailsTab no longer prefetches the entire enrollment list.
     setCourse({
       ...courseData,
-      lessonsCount: lessonsCount || 0,
+      lessonsCount,
     });
     setState("success");
   }, [courseId, organizationId]);

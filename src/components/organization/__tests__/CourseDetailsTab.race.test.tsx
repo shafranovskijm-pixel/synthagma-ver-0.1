@@ -18,6 +18,7 @@ const testState = vi.hoisted(() => ({
   selectedCourseId: "course-a" as string | null,
   courseResponses: new Map<string, Promise<{ data: any; error: any }>>(),
   courseLookups: [] as Array<Record<string, string>>,
+  lessonResponse: { data: [{ id: "lesson-1" }, { id: "lesson-2" }], error: null } as { data: { id: string }[] | null; error: unknown },
   publishResponse: Promise.resolve(true) as Promise<boolean>,
   publishCourse: vi.fn(),
   setCourses: vi.fn(),
@@ -76,7 +77,7 @@ vi.mock("@/components/organization/CourseDetailsContent", () => ({
     activeTab,
     onCourseUpdated,
   }: {
-    course: { title: string; is_published?: boolean };
+    course: { title: string; is_published?: boolean; lessonsCount?: number };
     activeTab: string;
     onCourseUpdated: () => void;
   }) => (
@@ -84,6 +85,7 @@ vi.mock("@/components/organization/CourseDetailsContent", () => ({
       <span>{course.title}</span>
       <span data-testid="active-course-tab">{activeTab}</span>
       <span data-testid="publication-state">{course.is_published ? "Опубликован" : "Черновик"}</span>
+      <span data-testid="lessons-count">{course.lessonsCount ?? "unknown"}</span>
       <button type="button" onClick={onCourseUpdated}>Обновить сведения курса</button>
     </div>
   ),
@@ -116,7 +118,9 @@ vi.mock("@/integrations/supabase/client", () => ({
       if (table === "lessons") {
         const query = {
           select: () => query,
-          eq: () => Promise.resolve({ count: 2, error: null }),
+          eq: () => query,
+          order: () => query,
+          range: () => Promise.resolve(testState.lessonResponse),
         };
         return query;
       }
@@ -140,12 +144,29 @@ describe("CourseDetailsTab URL request ordering", () => {
     testState.selectedCourseId = "course-a";
     testState.courseResponses.clear();
     testState.courseLookups.length = 0;
+    testState.lessonResponse = { data: [{ id: "lesson-1" }, { id: "lesson-2" }], error: null };
     testState.publishResponse = Promise.resolve(true);
     testState.publishCourse.mockClear();
     testState.setCourses.mockClear();
     testState.toastSuccess.mockClear();
     testState.toastError.mockClear();
     testState.canWriteCourses = true;
+  });
+
+  it("keeps the course available and clears its count when a background lesson request fails", async () => {
+    testState.courseResponses.set("course-a", Promise.resolve({
+      data: { id: "course-a", title: "Course A" }, error: null,
+    }));
+    renderCourseDetailsTab();
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+    expect(screen.getByTestId("lessons-count")).toHaveTextContent("2");
+
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    testState.lessonResponse = { data: null, error: { message: "Request failed" } };
+    fireEvent.click(screen.getByRole("button", { name: "Обновить сведения курса" }));
+    await waitFor(() => expect(screen.getByTestId("lessons-count")).toHaveTextContent("unknown"));
+    expect(screen.getByText("Course A")).toBeInTheDocument();
+    errorLog.mockRestore();
   });
 
   it("keeps course B when the slower course A lookup resolves last", async () => {

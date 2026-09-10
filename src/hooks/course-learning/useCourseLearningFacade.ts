@@ -14,6 +14,7 @@ import type { ContentBlock } from "@/components/course-builder/block-editor/type
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
 import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
+import { COURSE_LESSON_ORDER_VERSION, orderCourseLessons } from "@/lib/courseLessonOrder";
 
 import type { Lesson, Course, LessonProgress } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
@@ -434,7 +435,7 @@ export function useCourseLearning() {
         return;
       }
 
-      const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
+      const [courseResult, lessonsResult, enrollmentResult, modulesResult] = await Promise.all([
         supabase
           .from('courses')
           .select('id, organization_id, title, description, duration, sequential_lessons, allow_video_seek, skip_video_identification, landing_content')
@@ -448,8 +449,11 @@ export function useCourseLearning() {
         lookupUserId
           ? supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', lookupUserId).maybeSingle()
           : Promise.resolve({ data: null, error: null }),
+        supabase.from('course_modules').select('id, order_index').eq('course_id', courseId).order('order_index'),
       ]);
       if (courseResult.error) throw courseResult.error;
+      if (lessonsResult.error) throw lessonsResult.error;
+      if (modulesResult.error) throw modulesResult.error;
       const courseData = courseResult.data;
       setCourse(courseData);
       setIsOfflineMode(false);
@@ -466,8 +470,7 @@ export function useCourseLearning() {
           }
         }
       }
-      if (lessonsResult.error) throw lessonsResult.error;
-      let lessonsData = lessonsResult.data || [];
+      let lessonsData = orderCourseLessons(lessonsResult.data || [], modulesResult.data || []);
 
       // Apply module access schedules + per-user overrides (use target student's id in admin view)
       try {
@@ -544,7 +547,9 @@ export function useCourseLearning() {
         setLessonProgress([]);
       }
 
-      if (courseId) { cacheCourseData(courseId, courseData, lessonsData, progressData, attMap).catch(() => {}); }
+      if (courseId) {
+        cacheCourseData(courseId, { ...courseData, _lessonOrderVersion: COURSE_LESSON_ORDER_VERSION }, lessonsData, progressData, attMap).catch(() => {});
+      }
     } catch (error) {
       console.error('Error fetching course:', error);
       if (requestedLibraryOnly) {
@@ -560,10 +565,17 @@ export function useCourseLearning() {
       }
       if (courseId) {
         const cached = await getCachedCourseData(courseId);
-        if (cached) {
+        const hasKnownOrder = cached && (
+          cached.course?._lessonOrderVersion === COURSE_LESSON_ORDER_VERSION ||
+          cached.lessons.every((lesson: Lesson) => !lesson.module_id)
+        );
+        if (cached && hasKnownOrder) {
           setCourse(cached.course); setLessons(cached.lessons); setLessonProgress(cached.lessonProgress); setLessonAttachments(cached.lessonAttachments);
           setIsOfflineMode(true); setOfflineCachedAt(cached.cachedAt);
           toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
+        } else if (cached) {
+          setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null);
+          toast.error('Подключитесь к Интернету, чтобы обновить порядок модулей курса');
         } else { toast.error('Ошибка загрузки курса'); }
       } else { toast.error('Ошибка загрузки курса'); }
     } finally { setLoading(false); }
