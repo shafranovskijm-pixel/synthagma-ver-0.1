@@ -94,6 +94,7 @@ export const publicRoutes = (
     <Route path="/documents/:slug" element={<DocumentPage />} />
     <Route path="/public-offer" element={<Navigate to="/documents/paid-plan-offer" replace />} />
     <Route path="/student-agreement" element={<Navigate to="/documents/user-agreement" replace />} />
+    <Route path="/terms" element={<Navigate to="/documents/user-agreement" replace />} />
     <Route path="/privacy" element={<Navigate to="/documents/personal-data-policy" replace />} />
     <Route path="/personal-data" element={<Navigate to="/documents/personal-data-policy" replace />} />
     <Route path="/email-response" element={<EmailResponse />} />
