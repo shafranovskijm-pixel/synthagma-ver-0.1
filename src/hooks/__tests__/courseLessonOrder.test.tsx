@@ -15,13 +15,14 @@ const mocks = vi.hoisted(() => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   lessons: [] as FixtureLesson[],
   modules: [] as { id: string; order_index: number }[],
+  search: '',
   reads: [] as { table: string; filters: { column: string; value: unknown }[] }[],
   courseError: false, modulesError: false,
 }));
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ courseId: '7e5bc4e6-0629-4186-9745-a821cbe7255a' }),
   useNavigate: () => mocks.navigate,
-  useSearchParams: () => [new URLSearchParams()],
+  useSearchParams: () => [new URLSearchParams(mocks.search)],
 }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
@@ -85,6 +86,8 @@ beforeEach(() => {
   localStorage.clear(); sessionStorage.clear();
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   mocks.courseError = false; mocks.modulesError = false; mocks.reads.length = 0;
+  mocks.user.id = 'synthetic-student';
+  mocks.search = '';
   mocks.modules = [{ id: 'm2', order_index: 1 }, { id: 'm1', order_index: 0 }];
   mocks.lessons = ['2.1', 'S2', 'test2', 'final-work', 'final-test', '1.1', 'S1', 'test1'].map((id, order_index) => ({
     id, title: id, type: 'text', course_id: COURSE_ID, order_index, module_id: order_index < 5 ? 'm2' : 'm1',
@@ -102,6 +105,94 @@ describe('preview and learner consume the same module order', () => {
     expect(ids(result.current.lessons)).toEqual(expected);
     expect(result.current.currentLesson?.id).toBe('1.1');
     expect(mocks.reads).toContainEqual({ table: 'course_modules', filters: [{ column: 'course_id', value: COURSE_ID }] });
+  });
+
+  it('loads masked test questions through the preview RPC', async () => {
+    const safeQuestions = [{
+      id: 'question-1', lesson_id: 'test-preview', question: 'Synthetic question',
+      options: ['A', 'B'], order_index: 0, explanation: 'Staff-only explanation',
+      is_bank_question: false, image_url: null,
+    }];
+    mocks.lessons = [{
+      id: 'test-preview', title: 'Preview test', type: 'test', course_id: COURSE_ID,
+      order_index: 0, module_id: null,
+    }];
+    mocks.modules = [];
+    mocks.rpc.mockImplementation((name: string) => Promise.resolve(
+      name === 'get_student_test_questions'
+        ? { data: safeQuestions, error: null }
+        : { data: null, error: null },
+    ));
+
+    const { result } = renderHook(() => useCoursePreview(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.testQuestions).toHaveLength(1));
+    expect(mocks.rpc).toHaveBeenCalledWith('get_student_test_questions', { p_lesson_id: 'test-preview' });
+    expect(mocks.from).not.toHaveBeenCalledWith('test_questions_for_students');
+    expect(result.current.testQuestions[0]).not.toHaveProperty('correct_answer');
+    expect(client.getQueryData(['testQuestions', 'test-preview', 'synthetic-student'])).toEqual(safeQuestions);
+  });
+
+  it('loads a published store preview through the same masked RPC', async () => {
+    mocks.search = 'from=store';
+    mocks.lessons = [{
+      id: 'test-preview', title: 'Store preview test', type: 'test', course_id: COURSE_ID,
+      order_index: 0, module_id: null,
+    }];
+    mocks.modules = [];
+    const safeQuestions = [{
+      id: 'store-question', lesson_id: 'test-preview', question: 'Published store question',
+      options: ['A', 'B'], order_index: 0, explanation: null,
+      is_bank_question: false, image_url: null,
+    }];
+    mocks.rpc.mockImplementation((name: string) => Promise.resolve(
+      name === 'get_student_test_questions'
+        ? { data: safeQuestions, error: null }
+        : { data: null, error: null },
+    ));
+
+    const { result } = renderHook(() => useCoursePreview(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.testQuestions).toHaveLength(1));
+    expect(mocks.rpc).toHaveBeenCalledWith('get_student_test_questions', { p_lesson_id: 'test-preview' });
+    expect(mocks.from).not.toHaveBeenCalledWith('test_questions_for_students');
+    expect(result.current.testQuestions[0]).not.toHaveProperty('correct_answer');
+    expect(result.current.testQuestions[0].explanation).toBeNull();
+    expect(client.getQueryData(['testQuestions', 'test-preview', 'synthetic-student'])).toEqual(safeQuestions);
+  });
+
+  it('isolates masked question caches between authenticated users', async () => {
+    mocks.user.id = 'staff-preview-user';
+    mocks.lessons = [{
+      id: 'test-preview', title: 'Preview test', type: 'test', course_id: COURSE_ID,
+      order_index: 0, module_id: null,
+    }];
+    mocks.modules = [];
+    mocks.rpc.mockImplementation((name: string) => Promise.resolve(
+      name === 'get_student_test_questions'
+        ? { data: [{
+          id: `${mocks.user.id}-question`, lesson_id: 'test-preview', question: 'Question',
+          options: ['A', 'B'], order_index: 0,
+          explanation: mocks.user.id === 'staff-preview-user' ? 'Staff-only explanation' : null,
+          is_bank_question: false, image_url: null,
+        }], error: null }
+        : { data: null, error: null },
+    ));
+
+    const { result, rerender } = renderHook(() => useCoursePreview(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.testQuestions[0]?.id).toBe('staff-preview-user-question'));
+    expect(client.getQueryData(['testQuestions', 'test-preview', 'staff-preview-user'])).toEqual([
+      expect.objectContaining({ id: 'staff-preview-user-question', explanation: 'Staff-only explanation' }),
+    ]);
+
+    mocks.user.id = 'published-preview-user';
+    rerender();
+    await waitFor(() => expect(result.current.testQuestions[0]?.id).toBe('published-preview-user-question'));
+
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+    expect(client.getQueryData(['testQuestions', 'test-preview', 'published-preview-user'])).toEqual([
+      expect.objectContaining({ id: 'published-preview-user-question', explanation: null }),
+    ]);
   });
 
   it('uses the ordered array for learner navigation, sequential access, and the persisted offline copy', async () => {

@@ -35,21 +35,27 @@ CREATE FUNCTION public.can_access_organization(p_org uuid, p_permission text DEF
 LANGUAGE sql STABLE SECURITY DEFINER AS $$
  SELECT EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id=auth.uid() AND p.organization_id=p_org AND p.role='staff')
 $$;
-CREATE FUNCTION public.can_access_course(p_course uuid, p_permission text DEFAULT 'courses.read') RETURNS boolean
+CREATE FUNCTION public.can_access_course(_course_id uuid, _permission text DEFAULT 'courses.read') RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER AS $$
- SELECT EXISTS (SELECT 1 FROM public.courses c WHERE c.id=p_course AND public.can_access_organization(c.organization_id,p_permission))
+ SELECT EXISTS (SELECT 1 FROM public.courses c WHERE c.id=_course_id AND public.can_access_organization(c.organization_id,_permission))
 $$;
-CREATE FUNCTION public.can_access_lesson(p_lesson uuid, p_permission text DEFAULT 'courses.read') RETURNS boolean
+CREATE FUNCTION public.can_access_lesson(_lesson_id uuid, _permission text DEFAULT 'courses.read') RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER AS $$
- SELECT EXISTS (SELECT 1 FROM public.lessons l WHERE l.id=p_lesson AND public.can_access_course(l.course_id,p_permission))
+ SELECT EXISTS (SELECT 1 FROM public.lessons l WHERE l.id=_lesson_id AND public.can_access_course(l.course_id,_permission))
 $$;
-CREATE FUNCTION public.can_access_course_as_learner(p_course uuid) RETURNS boolean
+CREATE FUNCTION public.can_access_course_as_learner(_course_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER AS $$
  SELECT auth.uid() IS NOT NULL AND EXISTS (SELECT 1 FROM public.enrollments e
  JOIN public.courses c ON c.id=e.course_id JOIN public.profiles p ON p.user_id=e.user_id AND p.organization_id=c.organization_id
- WHERE e.user_id=auth.uid() AND e.course_id=p_course AND e.status IN ('active','completed')
+ WHERE e.user_id=auth.uid() AND e.course_id=_course_id AND e.status IN ('active','completed')
  AND (e.expires_at IS NULL OR e.expires_at>now() OR e.status='completed'))
 $$;
+ALTER TABLE public.test_questions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY test_questions_tenant_select
+ON public.test_questions
+FOR SELECT
+TO authenticated
+USING (public.can_access_lesson(lesson_id, 'courses.read'));
 CREATE FUNCTION public.test_assert(p_condition boolean, p_description text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
  IF p_condition IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL: %', p_description; END IF;

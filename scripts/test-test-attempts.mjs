@@ -35,13 +35,18 @@ const permissions=await readFile(path.join(repo,'supabase/migrations/20260728072
 const course=permissions.match(/CREATE OR REPLACE FUNCTION public\.can_access_course\([\s\S]*?\$\$;/)?.[0];
 const lesson=permissions.match(/CREATE OR REPLACE FUNCTION public\.can_access_lesson\([\s\S]*?\$\$;/)?.[0];
 if (!learner||!course||!lesson) throw new Error('Authoritative access helpers not found');
-// Existing fixture signatures use different argument names; replace in dependency order.
-await sql('DROP FUNCTION public.can_access_course_as_learner(uuid); DROP FUNCTION public.can_access_lesson(uuid,text); DROP FUNCTION public.can_access_course(uuid,text);');
+// Replace the fixture helpers with the repository definitions while preserving
+// the production-like RLS policy that depends on can_access_lesson.
 await sql([learner,course,lesson].join('\n'));
+const previewMigration='supabase/migrations/20260913120000_public_course_test_question_preview.sql';
 const migrations=await command(['-d',db,
   '-f','supabase/migrations/20260907120000_test_attempt_sessions.sql',
+  '-f',previewMigration,
   '-f','supabase/migrations/20260907120001_course_manual_credits.sql']);
 await writeFile(path.join(out,'migrations.log'),migrations.stdout+migrations.stderr);
+const repeatedMigration=await command(['-d',db,'-f',previewMigration]);
+await writeFile(path.join(out,'migration-idempotence.log'),repeatedMigration.stdout+repeatedMigration.stderr);
+console.log('PASS: preview security migration is idempotent');
 const checks=await command(['-d',db,'-f','supabase/tests/test_attempt_sessions.test.sql']);
 await writeFile(path.join(out,'behavior.log'),checks.stdout+checks.stderr);
 const passed=(checks.stderr.match(/PASS:/g)||[]).length;

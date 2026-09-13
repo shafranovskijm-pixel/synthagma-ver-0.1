@@ -25,6 +25,33 @@ SELECT public.test_assert(
 SELECT public.test_assert(NOT EXISTS(SELECT 1 FROM public.get_student_test_questions('40000000-0000-0000-0000-000000000001') WHERE explanation IS NOT NULL), 'legacy question endpoint hides explanation hints from learners');
 SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000003',false);
 SELECT public.test_assert(EXISTS(SELECT 1 FROM public.get_student_test_questions('40000000-0000-0000-0000-000000000001') WHERE explanation='Original explanation'), 'authorized staff preview retains explanations');
+SELECT public.test_assert(
+ (SELECT count(*)=2 AND bool_and(correct_answer IS NOT NULL AND explanation IS NOT NULL)
+  FROM public.test_questions_for_students WHERE lesson_id='40000000-0000-0000-0000-000000000001'),
+ 'legacy question view exposes answer fields to staff with lesson-tenant access');
+SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000002',false);
+SELECT public.test_assert(
+ (SELECT count(*)=2 AND bool_and(NOT (to_jsonb(q) ? 'correct_answer') AND q.explanation IS NULL)
+  FROM public.get_student_test_questions('40000000-0000-0000-0000-000000000001') q),
+ 'published-course outsider preview receives questions without answer keys or explanations');
+SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000004',false);
+SELECT public.test_assert(
+ NOT EXISTS(SELECT 1 FROM public.test_questions_for_students WHERE lesson_id='40000000-0000-0000-0000-000000000001'),
+ 'security-invoker legacy view respects base-table RLS for foreign-tenant staff');
+RESET ROLE;
+UPDATE public.courses SET is_published=false WHERE id='30000000-0000-0000-0000-000000000001';
+SET ROLE authenticated;
+SELECT public.test_expect_error('SELECT * FROM public.get_student_test_questions(''40000000-0000-0000-0000-000000000001'')','42501','not available');
+SELECT public.test_assert(
+ NOT EXISTS(SELECT 1 FROM public.test_questions_for_students WHERE lesson_id='40000000-0000-0000-0000-000000000001'),
+ 'legacy question view does not expose an unpublished foreign-tenant course');
+SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000003',false);
+SELECT public.test_assert(
+ EXISTS(SELECT 1 FROM public.get_student_test_questions('40000000-0000-0000-0000-000000000001') WHERE explanation='Original explanation'),
+ 'authorized staff can preview masked questions for an unpublished own-tenant course');
+RESET ROLE;
+UPDATE public.courses SET is_published=true WHERE id='30000000-0000-0000-0000-000000000001';
+SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
 SELECT public.start_test_attempt('40000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001')->>'attemptId' AS attempt1 \gset
 SELECT public.test_assert(public.start_test_attempt('40000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000002')->>'attemptId'=:'attempt1',

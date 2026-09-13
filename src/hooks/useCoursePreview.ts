@@ -30,8 +30,8 @@ export interface TestQuestion {
   id: string;
   question: string;
   options: unknown;
-  correct_answer: number;
   order_index: number;
+  explanation?: string | null;
   image_url?: string | null;
 }
 
@@ -50,7 +50,7 @@ interface CoursePreviewData {
 }
 
 const coursePreviewKey = (courseId?: string) => ['coursePreview', courseId] as const;
-const testQuestionsKey = (lessonId?: string) => ['testQuestions', lessonId] as const;
+const testQuestionsKey = (lessonId?: string, userId?: string) => ['testQuestions', lessonId, userId] as const;
 
 async function fetchLessonContent(lessonId: string): Promise<string | null> {
   const { data, error } = await supabase
@@ -155,17 +155,15 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const currentLesson = baseLesson ? { ...baseLesson, content: baseLesson.content ?? currentContentQuery.data ?? null } as Lesson : null;
 
   const { data: testQuestionsData } = useQuery({
-    queryKey: testQuestionsKey(currentLesson?.id),
+    queryKey: testQuestionsKey(currentLesson?.id, user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('test_questions_for_students')
-        .select('*')
-        .eq('lesson_id', currentLesson!.id)
-        .order('order_index');
+      const { data, error } = await supabase.rpc('get_student_test_questions', {
+        p_lesson_id: currentLesson!.id,
+      });
       if (error) throw error;
       return (data || []) as TestQuestion[];
     },
-    enabled: !!currentLesson?.id && currentLesson.type === 'test',
+    enabled: !!user && !!currentLesson?.id && currentLesson.type === 'test',
     staleTime: 5 * 60_000,
   });
 
@@ -213,7 +211,7 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
 
   // Backwards-compatible refetcher for test questions used by callers (e.g. after submit)
   const fetchTestQuestions = (lessonId: string) => {
-    qc.invalidateQueries({ queryKey: testQuestionsKey(lessonId) });
+    qc.invalidateQueries({ queryKey: testQuestionsKey(lessonId, user?.id) });
   };
 
   return {
