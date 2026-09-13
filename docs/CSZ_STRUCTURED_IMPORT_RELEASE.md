@@ -11,8 +11,8 @@ course is a separate, explicitly authorized action.
 
 ## Fixed targets from repository configuration
 
-- Supabase project ref: `atxwvjxbqjgkbjlhsdch`
-- Lovable project: `d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2`
+- Global/Lovable Cloud project: `ORIGINAL SINTAGMA`, `d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2`
+- Connected database ref: `atxwvjxbqjgkbjlhsdch`
 - Current documented live frontend: `https://synthagma-bloom.lovable.app`
 - Library prerequisite: `supabase/migrations/20260903100000_csz_electronic_library_schema.sql`
 - Import migration: `supabase/migrations/20260903110000_import_csz_course_draft_v2.sql`
@@ -23,9 +23,16 @@ course is a separate, explicitly authorized action.
 - Authenticated application route: `/course-import`
 - Exact course title: `Деятельность по монтажу, техническому обслуживанию и ремонту средств обеспечения пожарной безопасности зданий и сооружений`
 
-The Supabase ref is present in `supabase/config.toml`, the Lovable MCP
-manifest, and the hostname configured in `.env`. Never print or commit the
+The database ref is present in `supabase/config.toml`, the Lovable MCP
+manifest, and the hostname configured in `.env`. It identifies the database
+connected to Global/Lovable Cloud; it is not a separate Supabase contour and
+does not require a separate Supabase account switch. Never print or commit the
 public key or any access token while verifying the target.
+
+Current access status on 14.09.2026: the connected Codex Lovable connector is
+open in another workspace and does not list `ORIGINAL SINTAGMA`. Browser access
+to the correct Global/Lovable Cloud workspace and its SQL editor is available
+and is the verified release route.
 
 The repository also contains copy-paste proxy templates for
 `sintagma.com.ru` and `синтагма.рф`, but no Wrangler, Cloudflare, Timeweb,
@@ -35,45 +42,33 @@ automatically.
 
 ## Hard release gate: migration history
 
-Do not run `supabase db push` until a fresh linked migration comparison is
-clean and reviewed. The last repository audit recorded one remote-only version
+Use the database and migration controls of the correct Global/Lovable Cloud
+workspace. Do not create or connect a separate Supabase project and do not ask
+the user to switch a separate Supabase account.
+
+Before any write, save the remote migration ledger and the platform-supported
+dry-run result. The last repository audit recorded one remote-only version
 (`20260808041330`) and three older local-only versions (`20260808101500`,
-`20260808142000`, and `20260809223500`). A normal push is therefore not proven
-to apply only the reviewed library/import pair.
+`20260808142000`, and `20260809223500`), so an unscoped migration push is not
+proven to apply only the reviewed library/import pair.
 
-From an authenticated workstation with the Supabase CLI installed, record the
-CLI version and inspect the linked target:
-
-```powershell
-Set-Location -LiteralPath 'D:\Codex\ЗАДАЧИ\work\csz_main_integration_candidate_20260903'
-supabase --version
-supabase link --project-ref atxwvjxbqjgkbjlhsdch
-supabase migration list --linked
-supabase db push --dry-run
-```
-
-`supabase link` changes local linkage and the other linked commands contact the
-remote project; run them only with release authorization. Stop if the output
-contains any migration other than the reviewed reconciliation entries and
-the exact `20260903100000`/`20260903110000` library/import pair. In particular,
-stop if `20260902090000` appears as pending. Do not use `--include-all`, run the old data-transfer SQL
-again, edit remote migration history, or use `migration repair` without a
+Stop if the comparison contains any migration other than the reviewed
+reconciliation entries and the exact `20260903100000`/`20260903110000`
+library/import pair. In particular, stop if `20260902090000` appears as
+pending. Do not include all pending changes, run the old data-transfer SQL
+again, edit remote migration history, or repair migration history without a
 separately reviewed reconciliation decision.
 
 After the histories are reconciled and the dry-run contains exactly the
-approved migration set, the database release command is:
-
-```powershell
-supabase db push
-```
-
-Save the command output in the release record. Do not deploy an Edge Function:
-this feature is a PostgreSQL RPC called directly by the frontend.
+approved migration set, apply only that set through the same Global/Lovable
+Cloud project and save the platform log in the release record. Do not deploy an
+Edge Function: this feature is a PostgreSQL RPC called directly by the frontend.
 
 ## Migration smoke test before frontend publication
 
-Run the following read-only checks in the target project's SQL editor after
-the migration is recorded as applied. They do not create a course:
+Run the following read-only checks through the target project's Global/Lovable
+Cloud database tools after the migration is recorded as applied. They do not
+create a course:
 
 ```sql
 select

@@ -8,6 +8,8 @@
 
 Статус: **IMPLEMENTED_LOCALLY_FRONTEND_AND_DB_TESTED_NOT_DEPLOYED**. Миграция не применялась к production, frontend не развертывался, production-грант не создавался, доступ учетной записи и данные рабочего курса не менялись. Изолированный PostgreSQL 18.6 runtime-контракт пройден локально на чистой временной базе; транзакция теста откатилась, сервер остановлен.
 
+Production-база `atxwvjxbqjgkbjlhsdch` подключена к проекту `ORIGINAL SINTAGMA` в Global/Lovable Cloud. Отдельного Supabase-контура и отдельного переключения аккаунта Supabase нет. Текущий Codex-коннектор Lovable открыт в другом рабочем пространстве и не показывает `ORIGINAL SINTAGMA`, однако рабочий браузерный доступ к Global/Lovable Cloud и его SQL editor подтвержден; это штатный маршрут для точечного применения и проверки миграций.
+
 ## Реализованная граница доступа
 
 - Авторизация обязательна на `/review/course/:courseId`.
