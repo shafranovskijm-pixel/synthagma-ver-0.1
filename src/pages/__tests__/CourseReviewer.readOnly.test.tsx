@@ -86,7 +86,7 @@ vi.mock("@/hooks/useReviewerCoursePreview", () => ({
         is_published: false,
         cover_image_url: null,
       },
-      grant_expires_at: "2026-09-27T00:00:00.000Z",
+      grant_expires_at: "infinity",
       counts: { modules: 11, elements: 35, homework: 12, tests: 12, questions: 67 },
       modules: state.modules,
       lessons: state.lessons,
@@ -157,6 +157,7 @@ describe("read-only course reviewer screen", () => {
     expect(within(counts).getByText("35")).toBeInTheDocument();
     expect(within(counts).getAllByText("12")).toHaveLength(2);
     expect(within(counts).getByText("67")).toBeInTheDocument();
+    expect(screen.getByText("Доступ без ограничения срока")).toBeInTheDocument();
 
     expect(view.container.querySelectorAll("aside section")).toHaveLength(11);
     expect(view.container.querySelectorAll("aside button")).toHaveLength(35);

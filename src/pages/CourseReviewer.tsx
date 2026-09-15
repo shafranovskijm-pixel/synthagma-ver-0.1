@@ -33,11 +33,16 @@ function safeExternalHref(value: string | null): string | undefined {
   }
 }
 
-function formatExpiry(value: string): string {
+function accessExpiryLabel(value: string): string {
+  if (["infinity", "+infinity"].includes(value.trim().toLowerCase())) {
+    return "Доступ без ограничения срока";
+  }
+
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
+  const formatted = Number.isNaN(date.getTime())
     ? value
     : new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return `Доступ до ${formatted}`;
 }
 
 function lessonTypeLabel(type: string) {
@@ -106,7 +111,7 @@ export default function CourseReviewer() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="gap-1"><LockKeyhole className="h-3.5 w-3.5" />Режим проверяющего</Badge>
             <Badge variant="outline">Только чтение</Badge>
-            <span className="text-xs text-muted-foreground">Доступ до {formatExpiry(grantExpiresAt)}</span>
+            <span className="text-xs text-muted-foreground">{accessExpiryLabel(grantExpiresAt)}</span>
           </div>
         </div>
       </header>
