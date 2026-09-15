@@ -21,7 +21,8 @@ import {
   DialogTitle } from "@/components/ui/dialog";
 
 
-import { safeInternalNext, organizationRegistrationTarget, isDrivingInvitationTarget } from "@/utils/authReturn";
+import { organizationRegistrationTarget, isDrivingInvitationTarget } from "@/utils/authReturn";
+import { resolveLoginDestination } from "@/utils/loginDestination";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
@@ -57,29 +58,12 @@ const Login = () => {
     }
   }, [searchParams]);
   useEffect(() => {
-    if (user && !loading) {
-      // Wait for userRole to be loaded before navigating
-      if (userRole) {
-        // If a "next" param is set and points to an allowed in-app path, honor it.
-        const nextRaw = searchParams.get("next");
-        const next = safeInternalNext(nextRaw);
-        if (next) {
-          navigate(next, { replace: true });
-          return;
-        }
-        if (userRole === 'admin') {
-          navigate("/admin", { replace: true });
-        } else if (userRole === 'organization') {
-          navigate("/organization", { replace: true });
-        } else if (userRole === 'company') {
-          navigate("/company", { replace: true });
-        } else if (userRole === 'sales_manager') {
-          navigate("/sales", { replace: true });
-        } else {
-          navigate("/student", { replace: true });
-        }
-      }
-    }
+    if (!user || loading || !userRole) return;
+    let cancelled = false;
+    resolveLoginDestination(user.id, userRole, searchParams.get("next")).then((target) => {
+      if (!cancelled) navigate(target, { replace: true });
+    });
+    return () => { cancelled = true; };
   }, [user, userRole, loading, navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
+vi.mock("@/components/course-reviewer/CourseReviewRegister", () => ({
+  CourseReviewRegister: ({ courseId: scope }: { courseId: string }) => <section aria-label="Учёт слушателей" data-course-id={scope} />,
+}));
+
 const state = vi.hoisted(() => {
   const modules = Array.from({ length: 11 }, (_, index) => ({
     id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
@@ -158,6 +162,7 @@ describe("read-only course reviewer screen", () => {
     expect(within(counts).getAllByText("12")).toHaveLength(2);
     expect(within(counts).getByText("67")).toBeInTheDocument();
     expect(screen.getByText("Доступ без ограничения срока")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Учёт слушателей" })).toHaveAttribute("data-course-id", courseId);
 
     expect(view.container.querySelectorAll("aside section")).toHaveLength(11);
     expect(view.container.querySelectorAll("aside button")).toHaveLength(35);

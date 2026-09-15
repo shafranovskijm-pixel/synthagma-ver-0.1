@@ -18,6 +18,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { cn } from "@/lib/utils";
 import { useReviewerCoursePreview } from "@/hooks/useReviewerCoursePreview";
 import { ReviewerLessonContent } from "@/components/course-reviewer/ReviewerLessonContent";
+import { CourseReviewRegister } from "@/components/course-reviewer/CourseReviewRegister";
 import type { CourseReviewLessonSummary } from "@/api/courseReviewer";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -261,6 +262,8 @@ export default function CourseReviewer() {
               </nav>
             </article>
           )}
+
+          <CourseReviewRegister courseId={course.id} />
 
           <section className="mx-auto mt-12 max-w-5xl border-t-2 border-border pt-8" aria-label="Электронная библиотека курса">
             <div className="mb-4 flex items-center justify-between gap-3">
