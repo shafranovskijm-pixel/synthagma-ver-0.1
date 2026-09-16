@@ -20,6 +20,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { hasVerifiedAdminRole } from "./admin-role.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,10 +68,16 @@ serve(async (req: Request) => {
       if (!userData?.user) return json({ error: "Unauthorized" }, 401);
       const userId = userData.user.id;
 
-      const { data: adminRow } = await userClient.rpc("has_role", {
-        _role: "admin", _user_id: userId,
-      });
-      const isAdmin = adminRow === true;
+      // PostgREST cannot choose between the two named-argument has_role
+      // overloads. Read the verified caller's existing role under the same
+      // user JWT/RLS instead; never trust a role or user id from the request.
+      let isAdmin: boolean;
+      try {
+        isAdmin = await hasVerifiedAdminRole(userClient, userId);
+      } catch {
+        console.error("run-email-campaign: verified admin role lookup failed");
+        return json({ error: "Не удалось проверить права запуска рассылки" }, 500);
+      }
 
       if (!campaign) {
         authorized = false;
