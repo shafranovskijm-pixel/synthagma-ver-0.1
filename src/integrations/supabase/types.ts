@@ -2429,6 +2429,50 @@ export type Database = {
           },
         ]
       }
+      course_review_grants: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+          updated_at: string
+          updated_by: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by: string
+          expires_at: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          updated_at?: string
+          updated_by: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          updated_at?: string
+          updated_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_review_grants_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_snapshots: {
         Row: {
           course_id: string
@@ -13251,7 +13295,7 @@ export type Database = {
         }
         Insert: {
           correct_answer?: never
-          explanation?: string | null
+          explanation?: never
           id?: string | null
           image_url?: string | null
           is_bank_question?: boolean | null
@@ -13262,7 +13306,7 @@ export type Database = {
         }
         Update: {
           correct_answer?: never
-          explanation?: string | null
+          explanation?: never
           id?: string | null
           image_url?: string | null
           is_bank_question?: boolean | null
@@ -13413,12 +13457,24 @@ export type Database = {
         Args: { _org_id: string }
         Returns: undefined
       }
+      admin_revoke_course_review_grant: {
+        Args: { p_course_id: string; p_user_identifier: string }
+        Returns: Json
+      }
       admin_update_user_role: {
         Args: {
           p_new_role: Database["public"]["Enums"]["app_role"]
           p_user_id: string
         }
         Returns: undefined
+      }
+      admin_upsert_course_review_grant: {
+        Args: {
+          p_course_id: string
+          p_expires_at: string
+          p_user_identifier: string
+        }
+        Returns: Json
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       attest_cold_outreach_campaign: {
@@ -13500,6 +13556,7 @@ export type Database = {
         Args: { _object_name: string }
         Returns: boolean
       }
+      can_review_course: { Args: { p_course_id: string }; Returns: boolean }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -13634,6 +13691,19 @@ export type Database = {
         Returns: number
       }
       count_org_students: { Args: { org_id: string }; Returns: number }
+      course_review_json_boolean: { Args: { p_value: Json }; Returns: Json }
+      course_review_json_number: { Args: { p_value: Json }; Returns: Json }
+      course_review_json_string: { Args: { p_value: Json }; Returns: Json }
+      course_review_safe_lesson_content: {
+        Args: { p_content: string }
+        Returns: string
+      }
+      course_review_safe_options: { Args: { p_options: Json }; Returns: Json }
+      course_review_safe_slider_slides: {
+        Args: { p_slides: Json }
+        Returns: Json
+      }
+      course_review_safe_table_rows: { Args: { p_rows: Json }; Returns: Json }
       create_external_contract_signature:
         | {
             Args: {
@@ -13731,6 +13801,19 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      csz_homework_select_allowed: {
+        Args: {
+          p_course: string
+          p_lesson: string
+          p_org: string
+          p_student: string
+        }
+        Returns: boolean
+      }
+      csz_latest_homework_approved: {
+        Args: { p_course: string; p_lesson: string; p_student: string }
+        Returns: boolean
       }
       current_company_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
@@ -14007,6 +14090,18 @@ export type Database = {
         Returns: Json
       }
       get_course_electronic_library_shell: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      get_course_review_lesson: {
+        Args: { p_course_id: string; p_lesson_id: string }
+        Returns: Json
+      }
+      get_course_review_register: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      get_course_review_snapshot: {
         Args: { p_course_id: string }
         Returns: Json
       }
