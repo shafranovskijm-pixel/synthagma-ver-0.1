@@ -13,6 +13,10 @@ serve(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+    if (!SERVICE_KEY || bearer !== SERVICE_KEY) return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const now = new Date().toISOString();
@@ -44,13 +48,13 @@ serve(async (req: Request) => {
           continue;
         }
 
-        // переводим в draft, чтобы run-email-campaign смог запустить
-        await admin.from("email_campaigns").update({ status: "draft" }).eq("id", c.id);
-        const { error: invErr } = await admin.functions.invoke("run-email-campaign", {
+        // No state rewrite: only the atomic run claim can start a due campaign.
+        const { data, error: invErr } = await admin.functions.invoke("run-email-campaign", {
           body: { campaignId: c.id },
         });
         if (invErr) throw invErr;
-        results.push({ id: c.id, started: true });
+        results.push({ id: c.id, started: data?.ok === true && data?.started > 0,
+          reason: data?.reason || (data?.error ? "run_rejected" : undefined) });
       } catch (e) {
         results.push({ id: c.id, started: false, error: (e as Error).message });
       }

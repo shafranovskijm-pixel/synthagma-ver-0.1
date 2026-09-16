@@ -9,18 +9,39 @@ export interface ImapConfig {
   password: string;
 }
 
-type Conn = { conn: Deno.TlsConn; reader: ReadableStreamDefaultReader<Uint8Array>; buf: string };
+type Conn = { conn: Deno.TlsConn; reader: ReadableStreamDefaultReader<Uint8Array>; buf: string; decoder?: TextDecoder };
 
 const dec = new TextDecoder();
 const enc = new TextEncoder();
 
+async function bounded<T>(c: Conn, operation: Promise<T>, milliseconds: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([operation, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        try { c.conn.close(); } catch { /* already closed */ }
+        reject(new Error("IMAP operation timeout"));
+      }, Math.max(1, milliseconds));
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
+async function readBytes(c: Conn, deadline: number): Promise<Uint8Array> {
+  if (Date.now() >= deadline) throw new Error("IMAP operation timeout");
+  const { value, done } = await bounded(c, c.reader.read(), deadline - Date.now());
+  if (done || !value?.length) throw new Error("IMAP connection closed or empty read");
+  return value;
+}
+
+function decodeChunk(c: Conn, bytes: Uint8Array): string {
+  c.decoder ??= new TextDecoder();
+  return c.decoder.decode(bytes, { stream: true });
+}
+
 async function readUntilTag(c: Conn, tag: string, timeoutMs = 20000): Promise<string> {
   const deadline = Date.now() + timeoutMs;
-  while (!new RegExp(`(^|\\n)${tag} (OK|NO|BAD)`, "m").test(c.buf)) {
-    if (Date.now() > deadline) throw new Error(`IMAP timeout waiting for ${tag}`);
-    const { value, done } = await c.reader.read();
-    if (done) throw new Error("IMAP connection closed");
-    c.buf += dec.decode(value);
+  while (!new RegExp(`(^|\\n)${tag} (OK|NO|BAD)[^\\n]*\\n`, "m").test(c.buf)) {
+    c.buf += decodeChunk(c, await readBytes(c, deadline));
   }
   const idx = c.buf.search(new RegExp(`(^|\\n)${tag} (OK|NO|BAD)[^\\n]*\\n`, "m"));
   const endMatch = c.buf.slice(idx).match(new RegExp(`${tag} (OK|NO|BAD)[^\\n]*\\n`));
@@ -31,7 +52,17 @@ async function readUntilTag(c: Conn, tag: string, timeoutMs = 20000): Promise<st
 }
 
 async function send(c: Conn, line: string) {
-  await c.conn.write(enc.encode(line + "\r\n"));
+  const bytes = enc.encode(line + "\r\n");
+  await bounded(c, (async () => {
+    let offset = 0;
+    while (offset < bytes.length) {
+      const written = await c.conn.write(bytes.subarray(offset));
+      if (!Number.isInteger(written) || written <= 0 || written > bytes.length - offset) {
+        throw new Error("IMAP invalid write result");
+      }
+      offset += written;
+    }
+  })(), 20000);
 }
 
 let tagCounter = 0;
@@ -42,23 +73,33 @@ async function cmd(c: Conn, command: string): Promise<string> {
   await send(c, `${tag} ${command}`);
   const resp = await readUntilTag(c, tag);
   if (!new RegExp(`${tag} OK`, "m").test(resp)) {
-    throw new Error(`IMAP ${command.split(" ")[0]} failed: ${resp.trim().slice(0, 300)}`);
+    // Do not echo server responses: LOGIN failures can contain credentials.
+    throw new Error(`IMAP ${command.split(" ")[0]} rejected`);
   }
   return resp;
 }
 
 export async function connectImap(cfg: ImapConfig): Promise<Conn> {
-  const conn = await Deno.connectTls({ hostname: cfg.host, port: cfg.port });
+  if (/[\r\n\x00]/.test(cfg.user + cfg.password + cfg.host)) throw new Error("Invalid IMAP configuration");
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const connecting = Deno.connectTls({ hostname: cfg.host, port: cfg.port }).then(conn => {
+    if (timedOut) { conn.close(); throw new Error("IMAP connect timeout"); }
+    return conn;
+  });
+  let conn: Deno.TlsConn;
+  try {
+    conn = await Promise.race([connecting, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => { timedOut = true; reject(new Error("IMAP connect timeout")); }, 10000);
+    })]);
+  } finally { clearTimeout(timer); }
   const reader = conn.readable.getReader();
   const c: Conn = { conn, reader, buf: "" };
   // прочитать приветствие
   const deadline = Date.now() + 10000;
-  while (!/\* OK/.test(c.buf)) {
-    if (Date.now() > deadline) throw new Error("IMAP greeting timeout");
-    const { value, done } = await reader.read();
-    if (done) throw new Error("IMAP closed on greeting");
-    c.buf += dec.decode(value);
-  }
+  try {
+  while (!/\r?\n/.test(c.buf)) c.buf += decodeChunk(c, await readBytes(c, deadline));
+  if (!/^\* OK\b/.test(c.buf)) throw new Error("IMAP greeting rejected");
   // очистить всё до конца приветствия
   const nl = c.buf.indexOf("\n");
   if (nl >= 0) c.buf = c.buf.slice(nl + 1);
@@ -67,6 +108,10 @@ export async function connectImap(cfg: ImapConfig): Promise<Conn> {
   const escU = cfg.user.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   await cmd(c, `LOGIN "${escU}" "${escP}"`);
   return c;
+  } catch (error) {
+    try { conn.close(); } catch { /* already closed */ }
+    throw error;
+  }
 }
 
 export async function closeImap(c: Conn) {
@@ -140,6 +185,17 @@ async function examineFolder(c: Conn, folder: string) {
   await cmd(c, `EXAMINE "${safe}"`);
 }
 
+/** The selected mailbox's UIDVALIDITY, obtained by read-only EXAMINE itself. */
+export async function examineInbox(c: Conn): Promise<{ uidValidity: number }> {
+  const response = await cmd(c, 'EXAMINE "INBOX"');
+  const match = response.match(/\[UIDVALIDITY (\d+)\]/i);
+  const uidValidity = match ? Number(match[1]) : 0;
+  if (!Number.isSafeInteger(uidValidity) || uidValidity < 1 || uidValidity > 4294967295) {
+    throw new Error("IMAP UIDVALIDITY missing or invalid");
+  }
+  return { uidValidity };
+}
+
 /**
  * Read-only placement check used by the deliverability MVP.
  * EXAMINE + SEARCH do not mark, move, delete, or fetch message bodies.
@@ -203,37 +259,79 @@ export interface RawImapMessage {
 
 /** UID SEARCH UID <from>:* — возвращает список UID > sinceUid в текущей папке. */
 export async function searchUidsSince(c: Conn, sinceUid: number): Promise<number[]> {
+  if (!Number.isSafeInteger(sinceUid) || sinceUid < 0 || sinceUid > 4294967295) throw new Error("Invalid IMAP cursor");
   const from = Math.max(1, sinceUid + 1);
   const resp = await cmd(c, `UID SEARCH UID ${from}:*`);
   const m = resp.match(/\* SEARCH([^\r\n]*)/);
-  if (!m) return [];
-  const parts = m[1].trim().split(/\s+/).filter(Boolean).map(x => parseInt(x, 10)).filter(x => !isNaN(x) && x > sinceUid);
-  return parts.sort((a, b) => a - b);
+  if (!m) throw new Error("IMAP SEARCH response missing");
+  const values = m[1].trim().split(/\s+/).filter(Boolean);
+  if (values.some(x => !/^\d+$/.test(x) || Number(x) < 1 || Number(x) > 4294967295)) throw new Error("Invalid IMAP SEARCH UID");
+  return [...new Set(values.map(Number).filter(x => x > sinceUid))].sort((a, b) => a - b);
 }
 
 /** Скачивает RFC822 для указанного UID (первые ~64KB). */
 export async function fetchRfc822(c: Conn, uid: number, maxBytes = 65536): Promise<string | null> {
-  const tag = nextTag();
-  await send(c, `${tag} UID FETCH ${uid} (BODY.PEEK[]<0.${maxBytes}>)`);
-  // Ответ literal имеет форму: * <seq> FETCH (UID <uid> BODY[]<0> {<N>}\r\n<N bytes>...)
-  const deadline = Date.now() + 30000;
-  // Читаем пока не встретим тег OK/NO/BAD
-  while (!new RegExp(`(^|\\n)${tag} (OK|NO|BAD)`, "m").test(c.buf)) {
-    if (Date.now() > deadline) throw new Error(`IMAP FETCH timeout uid ${uid}`);
-    const { value, done } = await c.reader.read();
-    if (done) throw new Error("IMAP closed during FETCH");
-    c.buf += dec.decode(value);
+  if (!Number.isSafeInteger(uid) || uid < 1 || uid > 4294967295 || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 2000000) {
+    throw new Error("Invalid IMAP FETCH limits");
   }
-  const idx = c.buf.search(new RegExp(`${tag} (OK|NO|BAD)`, "m"));
-  const chunk = c.buf.slice(0, idx);
-  c.buf = c.buf.slice(idx).replace(new RegExp(`^${tag} [^\\n]*\\n?`), "");
-  // Ищем literal {N}\r\n
-  const litMatch = chunk.match(/\{(\d+)\}\r\n/);
-  if (!litMatch) return null;
-  const startIdx = chunk.indexOf(litMatch[0]) + litMatch[0].length;
-  const n = parseInt(litMatch[1], 10);
-  const raw = chunk.slice(startIdx, startIdx + n);
-  return raw;
+  const tag = nextTag();
+  await send(c, `${tag} UID FETCH ${uid} (UID BODY.PEEK[]<0.${maxBytes}>)`);
+  // Work in bytes: literal lengths are octets, not JavaScript characters. Only
+  // protocol lines outside literals can terminate FETCH (a body may contain a tag).
+  const deadline = Date.now() + 30000;
+  let buffer = enc.encode(c.buf); c.buf = "";
+  let offset = 0;
+  let raw: Uint8Array | null = null;
+  let messageUid: number | null = null;
+  let literal: { length: number; capture: boolean } | null = null;
+  while (true) {
+    if (literal) {
+      if (buffer.length - offset >= literal.length) {
+        if (literal.capture) raw = buffer.slice(offset, offset + literal.length);
+        offset += literal.length; literal = null;
+        continue;
+      }
+    } else {
+      const newline = buffer.indexOf(10, offset);
+      if (newline >= 0) {
+        const line = dec.decode(buffer.subarray(offset, newline + 1));
+        offset = newline + 1;
+        const completed = line.match(new RegExp(`^${tag} (OK|NO|BAD)\\b`));
+        if (completed) {
+          c.buf = decodeChunk(c, buffer.subarray(offset));
+          if (completed[1] !== "OK" || !raw?.length) throw new Error("IMAP FETCH rejected or message missing");
+          if (messageUid !== uid) throw new Error("IMAP FETCH UID mismatch");
+          const message = dec.decode(raw);
+          if (!/\r?\n\r?\n/.test(message)) throw new Error("IMAP message headers incomplete");
+          return message;
+        }
+        const marker = line.match(/\{(\d+)\}\r?\n$/);
+        if (marker) {
+          const length = Number(marker[1]);
+          if (!Number.isSafeInteger(length) || length > maxBytes) throw new Error("IMAP literal exceeds limit");
+          const returnedUid = line.match(/\bUID (\d+)\b/i);
+          const capture = /\bFETCH\s*\(/i.test(line) && /BODY\[\]/i.test(line);
+          if (capture) {
+            if (raw) throw new Error("IMAP duplicate FETCH body");
+            messageUid = returnedUid ? Number(returnedUid[1]) : null;
+          }
+          literal = { length, capture };
+        } else if (raw && !line.startsWith("*")) {
+          // RFC3501 permits UID after the BODY literal instead of before it.
+          const returnedUid = line.match(/\bUID (\d+)\b/i);
+          if (returnedUid) {
+            if (messageUid !== null && messageUid !== Number(returnedUid[1])) throw new Error("IMAP conflicting FETCH UID");
+            messageUid = Number(returnedUid[1]);
+          }
+        }
+        continue;
+      }
+    }
+    const bytes = await readBytes(c, deadline);
+    if (buffer.length + bytes.length > maxBytes + 65536) throw new Error("IMAP FETCH response exceeds limit");
+    const combined = new Uint8Array(buffer.length + bytes.length);
+    combined.set(buffer); combined.set(bytes, buffer.length); buffer = combined;
+  }
 }
 
 function nextTagExport() { return nextTag(); }
@@ -247,7 +345,8 @@ export async function scanInbox(c: Conn, sinceUid: number, limit = 30): Promise<
   for (const uid of uids) {
     try {
       const raw = await fetchRfc822(c, uid);
-      if (raw) out.push({ uid, raw });
+      if (!raw) break;
+      out.push({ uid, raw });
     } catch {
       // Preserve cursor safety: the caller must retry this UID instead of
       // advancing beyond an unreadable message and losing a possible reply.
@@ -270,7 +369,7 @@ function decodeMimeWord(input: string): string {
         return new TextDecoder(charset.toLowerCase() === "utf-8" ? "utf-8" : charset).decode(bytes);
       } else {
         // Q-encoding
-        const decoded = data.replace(/_/g, " ").replace(/=([0-9A-Fa-f]{2})/g, (_m: string, h: string) => String.fromCharCode(parseInt(h, 16)));
+        const decoded: string = data.replace(/_/g, " ").replace(/=([0-9A-Fa-f]{2})/g, (_m: string, h: string) => String.fromCharCode(parseInt(h, 16)));
         const bytes = Uint8Array.from(decoded, ch => ch.charCodeAt(0));
         return new TextDecoder(charset.toLowerCase() === "utf-8" ? "utf-8" : charset).decode(bytes);
       }

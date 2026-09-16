@@ -64,7 +64,7 @@ describe("runner authorization wiring regression", () => {
   it("fails before consent, quota and SMTP when role lookup fails", () => {
     const failure = source.indexOf('return json({ error: "Не удалось проверить права запуска рассылки" }, 500)');
     expect(failure).toBeGreaterThan(-1);
-    for (const effect of ['admin.rpc("confirm_campaign_send_consent_admin"', '"resolve_campaign_recipients"', 'admin.rpc("consume_email_quota"', 'admin.functions.invoke("send-campaign-email"']) {
+    for (const effect of ['admin.rpc("claim_ordinary_campaign_run"', '"resolve_campaign_recipients"', 'admin.rpc("consume_email_quota"', 'admin.functions.invoke("send-campaign-email"']) {
       expect(source.indexOf(effect)).toBeGreaterThan(failure);
     }
   });
@@ -78,6 +78,9 @@ describe("runner authorization wiring regression", () => {
     expect(source).toContain('authorized = writeRow === true');
     expect(source).toContain('if (!authorized) return json({ error: "Forbidden" }, 403)');
     expect(source).toContain('if (!consentConfirmed)');
-    expect(source).toContain('admin.rpc("confirm_campaign_send_consent_admin"');
+    expect(source).toContain('admin.rpc("claim_ordinary_campaign_run"');
+    expect(source).toContain('p_consent_confirmed: consentConfirmed, p_requested_by: requestedBy');
+    const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260908010000_ordinary_campaign_claims.sql"), "utf8");
+    expect(migration).toContain("public.confirm_campaign_send_consent_admin(p_campaign_id, p_requested_by, 'launch')");
   });
 });

@@ -199,4 +199,12 @@ verify_jwt = false
 [functions.mailing-reply-worker]
 verify_jwt = false
 
+# These handlers validate the existing cron secret or service role themselves.
+# inbox-scanner additionally permits a verified platform administrator.
+[functions.inbox-scanner]
+verify_jwt = false
+
+[functions.notify-mailing-campaign-report]
+verify_jwt = false
+
 

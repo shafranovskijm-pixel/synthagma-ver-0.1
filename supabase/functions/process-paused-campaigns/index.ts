@@ -13,6 +13,10 @@ serve(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+    if (!SERVICE_KEY || bearer !== SERVICE_KEY) return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     // Найдём кампании в статусе paused, КРОМЕ поставленных на паузу пользователем вручную
@@ -44,23 +48,16 @@ serve(async (req: Request) => {
         if (cntErr) throw cntErr;
         const pendingCount = count || 0;
 
-        if (pendingCount === 0) {
-          // Финализируем как completed
-          await admin.from("email_campaigns").update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          }).eq("id", c.id);
-          results.push({ id: c.id, name: c.name, pending: 0, resumed: false });
-          continue;
-        }
-
-        // Запускаем отправку через run-email-campaign (он сам помечает sending и шлёт)
-        const { error: invErr } = await admin.functions.invoke("run-email-campaign", {
+        // The runner checks managed jobs, claims, consent and unresolved attempts.
+        // Zero pending alone is NOT proof of completion and cannot finalize here.
+        const { data, error: invErr } = await admin.functions.invoke("run-email-campaign", {
           body: { campaignId: c.id },
         });
         if (invErr) throw invErr;
 
-        results.push({ id: c.id, name: c.name, pending: pendingCount, resumed: true });
+        results.push({ id: c.id, name: c.name, pending: pendingCount,
+          resumed: data?.ok === true && data?.started > 0,
+          error: data?.error ? "run_rejected" : data?.reason });
       } catch (e) {
         results.push({ id: c.id, name: c.name, pending: -1, resumed: false, error: (e as Error).message });
       }

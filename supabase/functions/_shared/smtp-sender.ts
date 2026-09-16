@@ -7,6 +7,7 @@ import {
   encodeFromHeaderValue,
   encodeSubjectHeader,
   isCompleteSmtpResponse,
+  parseSmtpResponse,
   SMTP_EXPECTED,
   SMTP_RESPONSE_MAX_BYTES,
 } from "./smtp-protocol.ts";
@@ -72,7 +73,33 @@ async function withSmtpTimeout<T>(operation: Promise<T>, context: string, close?
  * Отправляет письмо через SMTP (TLS/SSL).
  * Бросает Error при неуспехе.
  */
+/** Delivery knowledge, not a retry recommendation. Unknown must never auto-resend. */
+export class SmtpDeliveryError extends Error {
+  readonly delivery: "not_sent" | "unknown";
+  constructor(message: string, delivery: "not_sent" | "unknown") {
+    super(message);
+    this.name = "SmtpDeliveryError";
+    this.delivery = delivery;
+  }
+}
+
 export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise<{ messageId: string }> {
+  const phase = { dataMayHaveBeenSent: false };
+  try {
+    return await sendSmtpEmailAttempt(cfg, opts, phase);
+  } catch (error) {
+    // Do not infer delivery from error text. The flag changes before DATA bytes
+    // reach the transport; only a complete negative reply proves rejection.
+    throw new SmtpDeliveryError(
+      error instanceof Error ? error.message : "SMTP transport error",
+      phase.dataMayHaveBeenSent ? "unknown" : "not_sent",
+    );
+  }
+}
+
+async function sendSmtpEmailAttempt(
+  cfg: SmtpConfig, opts: SendOptions, phase: { dataMayHaveBeenSent: boolean },
+): Promise<{ messageId: string }> {
   const senderFrom = opts.fromOverride
     || (cfg.from_name ? `${cfg.from_name} <${cfg.from_email}>` : cfg.from_email);
   const envelopeFrom = assertEnvelopeAddress(
@@ -132,13 +159,28 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     }
   }
 
+  /** Deno.write may consume only a prefix. Bound the whole buffer, not each chunk. */
+  async function writeAll(buffer: Uint8Array, context: string): Promise<void> {
+    const connection = activeConn;
+    await withSmtpTimeout(
+      (async () => {
+        let offset = 0;
+        while (offset < buffer.length) {
+          const written = await connection.write(buffer.subarray(offset));
+          if (!Number.isInteger(written) || written <= 0 || written > buffer.length - offset) {
+            throw new Error(`SMTP ${context}: invalid write progress`);
+          }
+          offset += written;
+        }
+      })(),
+      context,
+      () => connection.close(),
+    );
+  }
+
   /** Пишет команду и читает ответ. Текст команды в ошибках не раскрывается. */
   async function sendCommand(cmd: string, context: string): Promise<string> {
-    await withSmtpTimeout(
-      activeConn.write(encoder.encode(cmd + "\r\n")),
-      `write SMTP command (${context})`,
-      () => activeConn.close(),
-    );
+    await writeAll(encoder.encode(cmd + "\r\n"), `write SMTP command (${context})`);
     return await readResponse(context);
   }
 
@@ -180,13 +222,15 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     resp = await sendCommand("DATA", "DATA");
     assertSmtpCode(resp, [...SMTP_EXPECTED.data], "DATA");
 
-    await withSmtpTimeout(
-      activeConn.write(encoder.encode(rawEmail + "\r\n.\r\n")),
-      "write SMTP DATA body",
-      () => activeConn.close(),
-    );
+    phase.dataMayHaveBeenSent = true;
+    await writeAll(encoder.encode(rawEmail + "\r\n.\r\n"), "write SMTP DATA body");
     // Успех фиксируется ТОЛЬКО при строгом 250 на end-of-data.
     resp = await readResponse("DATA body");
+    const dataReply = parseSmtpResponse(resp, "DATA body");
+    if (!dataReply.lines.every(line => line.startsWith(`${dataReply.code}-`) || line.startsWith(`${dataReply.code} `))) {
+      throw new Error("SMTP DATA body: inconsistent response codes");
+    }
+    if (dataReply.code >= 400 && dataReply.code <= 599) phase.dataMayHaveBeenSent = false;
     assertSmtpCode(resp, [...SMTP_EXPECTED.dataBody], "DATA body");
 
     // QUIT — best effort: письмо уже принято сервером, ошибки здесь игнорируем.

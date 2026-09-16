@@ -3,6 +3,9 @@ import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { hasVerifiedAdminRole } from "./admin-role";
+import { platformSenderId, platformSmtp } from "../send-campaign-email/platform-sender";
+import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle";
+import { webcrypto } from "node:crypto";
 
 // Execute the actual Edge handler with injected, fail-closed local dependencies.
 // No Supabase SDK or remote Deno import is loaded, and no real network is used.
@@ -56,6 +59,8 @@ function harness(options: Options = {}) {
     delivery_mode: "standard",
     campaign_mode: "standard",
     consent_confirmed_at: options.storedConsent ?? null,
+    name: "Authorization fixture", subject: "No real mail", html_body: "<p>Fixture</p>",
+    recipient_source: "manual", recipient_filter: {}, updated_at: "2026-09-17T00:00:00Z",
   };
   const campaignQuery = {
     select: vi.fn(), eq: vi.fn(),
@@ -94,7 +99,7 @@ function harness(options: Options = {}) {
       return campaignQuery;
     }),
     rpc: vi.fn(async (name: string) => {
-      if (name !== "confirm_campaign_send_consent_admin" || !options.consentError) {
+      if (name !== "claim_ordinary_campaign_run" || !options.consentError) {
         throw new Error(`Unexpected service RPC: ${name}`);
       }
       return { data: null, error: options.consentError };
@@ -110,14 +115,18 @@ function harness(options: Options = {}) {
     SUPABASE_URL: "https://unused.invalid",
     SUPABASE_SERVICE_ROLE_KEY: serviceKey,
     SUPABASE_ANON_KEY: "handler-test-anon-key-not-a-real-secret",
+    SMTP_HOST: "smtp.example.invalid", SMTP_PORT: "465",
+    SMTP_USER: "sender@example.invalid", SMTP_PASS: "fixture-only",
   };
   const logger = { error: vi.fn(), log: vi.fn(), warn: vi.fn() };
   new Function(
     "serve", "createClient", "hasVerifiedAdminRole", "Deno", "console",
+    "platformSenderId", "platformSmtp", "dispatchOrdinaryBatch", "requireQuotaDecision", "crypto",
     "fetch", "EdgeRuntime", "setTimeout", executable,
   )(
     serve, createClient, hasVerifiedAdminRole,
     { env: { get: (key: string) => env[key] } }, logger,
+    platformSenderId, platformSmtp, dispatchOrdinaryBatch, requireQuotaDecision, webcrypto,
     effects.fetch, { waitUntil: effects.waitUntil }, effects.timer,
   );
   if (!handler) throw new Error("Actual runner did not register a handler");
@@ -138,11 +147,13 @@ function expectNoSending(h: ReturnType<typeof harness>) {
 }
 
 describe("run-email-campaign real handler authorization (no network)", () => {
-  it("loads only the three explicitly injected imports", () => {
+  it("loads only the explicitly injected authorization and lifecycle imports", () => {
     expect(imports.map((item) => (item.moduleSpecifier as ts.StringLiteral).text)).toEqual([
       "https://deno.land/std@0.168.0/http/server.ts",
       "https://esm.sh/@supabase/supabase-js@2.45.0",
       "./admin-role.ts",
+      "../send-campaign-email/platform-sender.ts",
+      "./run-lifecycle.ts",
     ]);
   });
 
@@ -256,13 +267,15 @@ describe("run-email-campaign real handler authorization (no network)", () => {
     expectNoSending(h);
   });
 
-  it("stops before materialization/quota/SMTP if consent persistence fails", async () => {
+  it("stops before materialization/quota/SMTP if atomic consent and run claim fail", async () => {
     const h = harness({ adminRole: true, consentError: { message: "fixture consent failure" } });
     const result = await h.call({ consent_confirmed: true });
-    expect(result.response.status).toBe(500);
-    expect(result.body.error).toBe("Не удалось записать подтверждение согласия");
-    expect(h.admin.rpc).toHaveBeenCalledExactlyOnceWith("confirm_campaign_send_consent_admin", {
-      p_campaign_id: campaignId, p_user_id: verifiedId, p_method: "launch",
+    expect(result.response.status).toBe(503);
+    expect(result.body.error).toBe("Не удалось подтвердить захват запуска; повторная отправка не выполнялась");
+    expect(h.admin.rpc).toHaveBeenCalledExactlyOnceWith("claim_ordinary_campaign_run", {
+      p_campaign_id: campaignId, p_requested_by: verifiedId,
+      p_token: expect.any(String), p_expected_updated_at: "2026-09-17T00:00:00Z",
+      p_is_service_role: false, p_consent_confirmed: true,
     });
     expectNoSending(h);
   });

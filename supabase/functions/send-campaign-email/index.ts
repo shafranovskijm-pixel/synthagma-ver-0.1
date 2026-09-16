@@ -5,6 +5,8 @@ import { buildIcs } from "../_shared/ics.ts";
 import { processCampaignHtml } from "../_shared/email-html-utils.ts";
 import { buildListUnsubscribeHeaders } from "../_shared/mailing-variables.ts";
 import { platformSenderId, reservePlatformSender, type PlatformSenderRow } from "./platform-sender.ts";
+import { OrdinaryDispatch, validOrdinaryIdentity } from "./ordinary-dispatch.ts";
+import { ordinaryMessageFacts, type OrdinarySenderKind } from "./ordinary-message.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +18,7 @@ interface ReqBody {
   recipientId: string;
   jobId?: string;
   claimToken?: string;
+  runToken?: string;
 }
 
 serve(async (req: Request) => {
@@ -45,6 +48,11 @@ serve(async (req: Request) => {
   let jobId: string | null = null;
   let claimToken: string | null = null;
   let queuedSenderId: string | null = null;
+  let ordinary: OrdinaryDispatch | null = null;
+  let fastJobValidated = false;
+  const respond = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
   try {
     const body: ReqBody = await req.json();
@@ -56,6 +64,13 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "campaignId & recipientId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    const ordinaryIdentity = !jobId ? {
+      campaignId, recipientId, runToken: typeof body.runToken === "string" ? body.runToken : "",
+      attemptToken: crypto.randomUUID(),
+    } : null;
+    if (ordinaryIdentity && !validOrdinaryIdentity(ordinaryIdentity)) {
+      return respond({ success: false, recorded: false, state: "unclaimed", error_category: "invalid_claim" }, 400);
     }
 
     const { data: campaign, error: cErr } = await admin
@@ -85,15 +100,43 @@ serve(async (req: Request) => {
         throw new Error("send job claim is not active");
       }
       queuedSenderId = job.sender_id;
+      fastJobValidated = true;
+    } else if (ordinaryIdentity) {
+      ordinary = new OrdinaryDispatch(ordinaryIdentity, {
+        claim: async (identity) => {
+          const { data, error } = await admin.rpc("claim_ordinary_campaign_recipient", {
+            p_campaign_id: identity.campaignId, p_recipient_id: identity.recipientId,
+            p_run_token: identity.runToken, p_attempt_token: identity.attemptToken,
+          });
+          if (error || !data) throw new Error("Не удалось подтвердить попытку отправки");
+          return data;
+        },
+        transition: async (identity, state, messageId, category) => {
+          const { data, error } = await admin.rpc("transition_ordinary_campaign_attempt", {
+            p_campaign_id: identity.campaignId, p_recipient_id: identity.recipientId,
+            p_run_token: identity.runToken, p_attempt_token: identity.attemptToken,
+            p_state: state, p_smtp_message_id: messageId, p_error_category: category,
+          });
+          if (error || !data) throw new Error("Не удалось сохранить результат попытки");
+          return data;
+        },
+      });
+      const rejected = await ordinary.claim();
+      if (rejected) return respond(rejected);
     }
 
     // ============ Suppression check ============
     const scopeKey = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
-    const { data: isSupp } = await admin.rpc("is_email_suppressed", {
+    const { data: isSupp, error: suppressionError } = await admin.rpc("is_email_suppressed", {
       p_email: recipient.email,
       p_scope: scopeKey,
     });
+    if (suppressionError || typeof isSupp !== "boolean") {
+      if (ordinary) return respond(await ordinary.failBeforeSmtp("suppression_lookup_failed"));
+      throw new Error("Не удалось проверить отписку получателя");
+    }
     if (isSupp === true) {
+      if (ordinary) return respond({ ...await ordinary.failBeforeSmtp("suppressed"), suppressed: true });
       await admin.from("email_campaign_recipients").update({
         status: "failed",
         error: "Адрес в списке отписавшихся",
@@ -115,34 +158,24 @@ serve(async (req: Request) => {
     // Fast outreach already guarantees campaign-level uniqueness and still
     // respects the real scope-specific suppression check above.
     if (!jobId) {
-      const { data: alreadySent } = await admin
+      const { data: alreadySent, error: historyError } = await admin
         .from("broadcast_companies_db")
         .select("email")
         .eq("email", (recipient.email as string).toLowerCase())
         .maybeSingle();
+      if (historyError) return respond(await ordinary!.failBeforeSmtp("legacy_history_lookup_failed"));
       if (alreadySent) {
-        await admin.from("email_campaign_recipients").update({
-          status: "failed",
-          error: "Уже был в базе компаний рассылок",
-        }).eq("id", recipientId);
-        const { data: c2 } = await admin.from("email_campaigns")
-          .select("failed_count").eq("id", campaignId).single();
-        await admin.from("email_campaigns").update({
-          failed_count: (c2?.failed_count || 0) + 1,
-        }).eq("id", campaignId);
-        if (jobId) await admin.from("mailing_send_jobs").update({
-          status: "cancelled", last_error_category: "already_sent", last_error: null,
-        }).eq("id", jobId).eq("status", "claimed");
-        return new Response(JSON.stringify({ success: false, alreadyInBroadcastDb: true }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return respond({ ...await ordinary!.failBeforeSmtp("legacy_history_blocked"), alreadyInBroadcastDb: true });
       }
     }
 
     // Получаем SMTP-конфигурацию
     let smtp: SmtpConfig;
+    let senderKind: OrdinarySenderKind;
+    let mailingSenderId: string | null = null;
     const selectedPoolId = platformSenderId(campaign.scope, campaign.recipient_filter);
     if (selectedPoolId) {
+      senderKind = "pool";
       // This admin-only campaign chooses a saved pool row, not an arbitrary From.
       // Service-role gate above is mandatory. Never fall back to another mailbox on an error.
       if (jobId) throw new Error("Пул платформы не поддерживается очередью fast_2_day");
@@ -166,6 +199,7 @@ serve(async (req: Request) => {
         },
       }, selectedPoolId, campaign.from_name);
     } else if (campaign.scope === "platform") {
+      senderKind = "platform_env";
       const host = Deno.env.get("SMTP_HOST");
       const port = Deno.env.get("SMTP_PORT");
       const user = Deno.env.get("SMTP_USER");
@@ -181,6 +215,7 @@ serve(async (req: Request) => {
         from_name: m ? m[1].trim() : (campaign.from_name || "Sintagma"),
       };
     } else if (queuedSenderId || (campaign as any).sender_id) {
+      senderKind = "mailing";
       // org-scope, новый путь: подключённый аккаунт из mailing_senders.
       // organization_id / is_active / smtp_status проверяются на сервере,
       // from_email берётся ТОЛЬКО из аккаунта, секрет — только через RPC.
@@ -196,6 +231,7 @@ serve(async (req: Request) => {
       }
       if (sender.is_active !== true) throw new Error("Отправитель отключён");
       if (sender.smtp_status !== "ok") throw new Error("Отправитель не прошёл SMTP-проверку");
+      mailingSenderId = sender.id;
 
       const { data: secretRows, error: secErr } = await admin.rpc("get_mailing_sender_secret", {
         p_sender_id: sender.id,
@@ -213,6 +249,7 @@ serve(async (req: Request) => {
         from_name: campaign.from_name || cfg.from_name || sender.from_name || "СИНТАГМА",
       };
     } else {
+      senderKind = "org_legacy";
       // org-scope legacy (sender_id = null): SMTP организации.
       const { data: smtpRow, error: smErr } = await admin.rpc("get_decrypted_org_smtp", {
         p_organization_id: campaign.organization_id,
@@ -461,7 +498,7 @@ serve(async (req: Request) => {
     const queuedMessageId = jobId
       ? `<sintagma.${jobId}@${smtp.from_email.split("@")[1] || "sintagma.com.ru"}>`
       : undefined;
-    const smtpResult = await sendSmtpEmail(smtp, {
+    const smtpOptions = {
       to: recipient.email,
       subject: personalizedSubject,
       html: personalizedHtml,
@@ -477,7 +514,48 @@ serve(async (req: Request) => {
         }),
         "Precedence": "bulk",
       },
-    });
+    };
+
+    if (ordinary) {
+      const facts = ordinaryMessageFacts({
+        smtp, fromName: campaign.from_name, replyTo: campaign.reply_to,
+        senderKind, senderPoolId: selectedPoolId, mailingSenderId,
+        messageId: ordinary.messageId, subject: personalizedSubject, html: personalizedHtml,
+      });
+      // A saved personalized snapshot is mandatory before dispatching. RPC also
+      // checks the same active run/recipient claim and prohibits mutable replays.
+      const { data: prepared, error: prepareError } = await admin.rpc("prepare_ordinary_campaign_message", {
+        p_campaign_id: campaignId, p_recipient_id: recipientId,
+        p_run_token: ordinaryIdentity!.runToken, p_attempt_token: ordinaryIdentity!.attemptToken,
+        p_payload: facts,
+      });
+      if (prepareError || prepared?.prepared !== true || prepared.message_id !== ordinary.messageId) {
+        return respond(await ordinary.failBeforeSmtp("message_snapshot_failed"));
+      }
+      const result = await ordinary.dispatch((messageId) => sendSmtpEmail(smtp, {
+        ...smtpOptions, messageId, subject: facts.subject, html: facts.html_body, text: facts.text_body,
+        fromOverride: facts.from_name ? `${facts.from_name} <${facts.from_email}>` : facts.from_email,
+        replyTo: facts.reply_to || undefined,
+      }));
+      // Durable attempt is authoritative. Ancillary legacy-history failure must
+      // never rewrite an accepted, finalized email as failed or trigger resend.
+      if (result.recorded && result.state === "sent") {
+        let historyRecorded = false;
+        try {
+          const { error: historyError } = await admin.from("broadcast_companies_db").upsert({
+            email: (recipient.email as string).toLowerCase(),
+            company_name: recipient.recipient_name || null,
+            last_sent_at: new Date().toISOString(), last_campaign_id: campaignId,
+            source: campaign.scope === "platform" ? "platform_campaign" : "org_campaign", status: "sent",
+          }, { onConflict: "email" });
+          historyRecorded = !historyError;
+        } catch { /* Report this separate history result without changing delivery. */ }
+        return respond({ ...result, history_recorded: historyRecorded });
+      }
+      return respond(result);
+    }
+
+    const smtpResult = await sendSmtpEmail(smtp, smtpOptions);
 
     // Помечаем как отправленное
     const sentAt = new Date().toISOString();
@@ -520,11 +598,15 @@ serve(async (req: Request) => {
     const msg = (e as Error).message;
     console.error("send-campaign-email error", msg);
 
-    if (recipientId) {
+    if (ordinary) return respond(await ordinary.failBeforeSmtp("pre_smtp_error"));
+
+    // Validation failures have no mutation authority. In particular a guessed
+    // recipient or mismatched fast job must not be corrupted by this catch.
+    if (recipientId && fastJobValidated) {
       try {
         await admin.from("email_campaign_recipients").update({
           status: "failed", error: msg,
-        }).eq("id", recipientId);
+        }).eq("id", recipientId).eq("campaign_id", campaignId!);
         if (campaignId) {
           const { data: c2 } = await admin.from("email_campaigns")
             .select("failed_count").eq("id", campaignId).single();
@@ -537,12 +619,13 @@ serve(async (req: Request) => {
             status: "failed",
             last_error_category: "send_failed",
             last_error: msg.slice(0, 500),
-          }).eq("id", jobId).in("status", ["claimed", "dispatching"]);
+          }).eq("id", jobId).eq("campaign_id", campaignId!).eq("recipient_id", recipientId)
+            .eq("claim_token", claimToken!).in("status", ["claimed", "dispatching"]);
         }
       } catch (_) { /* ignore */ }
     }
 
-    return new Response(JSON.stringify({ success: false, error: msg, error_category: "send_failed" }), {
+    return new Response(JSON.stringify({ success: false, error: msg, error_category: "send_failed", ...(!jobId ? { recorded: false, state: "unclaimed" } : {}) }), {
       status: 200, // мягкая ошибка — воркер продолжает
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
