@@ -4,6 +4,7 @@ import { sendSmtpEmail, type SmtpConfig, type Attachment } from "../_shared/smtp
 import { buildIcs } from "../_shared/ics.ts";
 import { processCampaignHtml } from "../_shared/email-html-utils.ts";
 import { buildListUnsubscribeHeaders } from "../_shared/mailing-variables.ts";
+import { platformSenderId, reservePlatformSender, type PlatformSenderRow } from "./platform-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,7 +141,31 @@ serve(async (req: Request) => {
 
     // Получаем SMTP-конфигурацию
     let smtp: SmtpConfig;
-    if (campaign.scope === "platform") {
+    const selectedPoolId = platformSenderId(campaign.scope, campaign.recipient_filter);
+    if (selectedPoolId) {
+      // This admin-only campaign chooses a saved pool row, not an arbitrary From.
+      // Service-role gate above is mandatory. Never fall back to another mailbox on an error.
+      if (jobId) throw new Error("Пул платформы не поддерживается очередью fast_2_day");
+      smtp = await reservePlatformSender({
+        read: async (id) => {
+          const { data, error } = await admin.from("email_sender_pool")
+            .select("id,email,app_password,host,port,encryption,from_name,is_active,daily_limit,sends_today,sends_reset_at,total_sent,updated_at")
+            .eq("id", id).maybeSingle();
+          if (error) throw new Error("Не удалось проверить выбранного отправителя");
+          return data as PlatformSenderRow | null;
+        },
+        reserve: async (previous, next) => {
+          const { data, error } = await admin.from("email_sender_pool").update(next)
+            .eq("id", previous.id).eq("is_active", true)
+            .eq("updated_at", previous.updated_at)
+            .eq("sends_today", previous.sends_today).eq("sends_reset_at", previous.sends_reset_at)
+            .eq("total_sent", previous.total_sent).eq("daily_limit", previous.daily_limit)
+            .select("id").maybeSingle();
+          if (error) throw new Error("Не удалось зарезервировать лимит отправителя");
+          return !!data;
+        },
+      }, selectedPoolId, campaign.from_name);
+    } else if (campaign.scope === "platform") {
       const host = Deno.env.get("SMTP_HOST");
       const port = Deno.env.get("SMTP_PORT");
       const user = Deno.env.get("SMTP_USER");

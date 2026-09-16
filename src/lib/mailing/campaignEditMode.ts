@@ -13,6 +13,9 @@ export interface CampaignEditInitial {
   subject?: string;
   html?: string;
   recipientSource?: string;
+  manualEmails?: string[];
+  recipientFilter?: Record<string, unknown> | null;
+  consentConfirmedAt?: string | null;
   senderId?: string | null;
   fromName?: string | null;
   replyTo?: string | null;
@@ -32,6 +35,9 @@ export interface CampaignRowLike {
   subject: string;
   html_body: string;
   recipient_source: string;
+  manual_emails?: string[] | null;
+  recipient_filter?: unknown;
+  consent_confirmed_at?: string | null;
   sender_id?: string | null;
   from_name: string | null;
   reply_to: string | null;
@@ -46,11 +52,21 @@ export function buildEditorInitial(row: CampaignRowLike): CampaignEditInitial {
     subject: row.subject || "",
     html: row.html_body || "",
     recipientSource: row.recipient_source,
+    manualEmails: [...(row.manual_emails || [])],
+    recipientFilter: row.recipient_filter && typeof row.recipient_filter === "object" && !Array.isArray(row.recipient_filter)
+      ? { ...row.recipient_filter as Record<string, unknown> } : null,
+    consentConfirmedAt: row.consent_confirmed_at ?? null,
     senderId: row.sender_id ?? null,
     fromName: row.from_name ?? "",
     replyTo: row.reply_to ?? "",
     status: row.status,
   };
+}
+
+/** A draft flag remembers the editor checkbox, not server permission to send. */
+export function initialDraftConsent(initial: CampaignEditInitial | undefined): boolean {
+  const remembered = initial?.recipientFilter?.draft_consent_confirmed;
+  return typeof remembered === "boolean" ? remembered : !!initial?.consentConfirmedAt;
 }
 
 export interface CampaignFormSnapshot {
@@ -60,6 +76,7 @@ export interface CampaignFormSnapshot {
   fromName: string;
   replyTo: string;
   senderId: string;
+  platformSenderPoolId?: string;
 }
 
 export function snapshotOf(v: CampaignFormSnapshot): string {
@@ -70,6 +87,7 @@ export function snapshotOf(v: CampaignFormSnapshot): string {
     fromName: (v.fromName || "").trim(),
     replyTo: (v.replyTo || "").trim(),
     senderId: v.senderId || "",
+    platformSenderPoolId: v.platformSenderPoolId || "",
   });
 }
 
@@ -81,6 +99,8 @@ export function initialSnapshot(initial: CampaignEditInitial | undefined): strin
     fromName: initial?.fromName || "",
     replyTo: initial?.replyTo || "",
     senderId: initial?.senderId || "",
+    platformSenderPoolId: typeof initial?.recipientFilter?.platform_sender_pool_id === "string"
+      ? initial.recipientFilter.platform_sender_pool_id : "",
   });
 }
 

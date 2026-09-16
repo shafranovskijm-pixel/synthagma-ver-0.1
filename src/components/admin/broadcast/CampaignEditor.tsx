@@ -23,7 +23,9 @@ import {
   buildDraftMutation,
   hasUnsavedChanges as computeUnsaved,
   initialSnapshot,
+  initialDraftConsent,
   snapshotOf,
+  type CampaignEditInitial,
 } from "@/lib/mailing/campaignEditMode";
 
 interface SenderAccountOption {
@@ -43,7 +45,7 @@ import {
   validateVariables,
 } from "@/utils/mailing/mailingVariables";
 
-interface InitialData {
+interface InitialData extends CampaignEditInitial {
   /** ID сохранённой кампании (нужен для seed-отправки: тему/тело берёт сервер). */
   id?: string;
   name?: string;
@@ -106,12 +108,14 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [fromName, setFromName] = useState("");
   const [replyTo, setReplyTo] = useState("");
   const [consent, setConsent] = useState(false);
+  const [consentTouched, setConsentTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   // P0: новая кампания НЕ выбирает получателей автоматически.
   const [recipients, setRecipients] = useState<RecipientPickerValue>({
     source: (initial?.recipientSource as RecipientPickerValue["source"]) || defaultRecipientValue().source,
-    manualEmails: [],
+    manualEmails: [...(initial?.manualEmails || [])],
     count: 0,
+    previewReady: false,
   });
 
   // Meeting attachment state
@@ -145,6 +149,13 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   // Этап 3: явный аккаунт отправителя + seed-адреса тестовой отправки.
   const [senderAccounts, setSenderAccounts] = useState<SenderAccountOption[]>([]);
   const [senderAccountId, setSenderAccountId] = useState<string>("");
+  const [platformSenders, setPlatformSenders] = useState<Array<{ id: string; email: string; from_name: string | null }>>([]);
+  const [platformSenderPoolId, setPlatformSenderPoolId] = useState("");
+  const [platformSendersLoading, setPlatformSendersLoading] = useState(false);
+  const [platformSendersError, setPlatformSendersError] = useState(false);
+  const selectedPlatformSender = platformSenders.find((s) => s.id === platformSenderPoolId);
+  const platformSenderUnavailable = scope === "platform" && !!platformSenderPoolId
+    && (platformSendersLoading || platformSendersError || !selectedPlatformSender);
   const [seedRaw, setSeedRaw] = useState("");
   const [seedSending, setSeedSending] = useState(false);
   const selectedSender = senderAccounts.find((s) => s.id === senderAccountId) || null;
@@ -154,7 +165,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [savedSnapshot, setSavedSnapshot] = useState<string>("");
   const [recipientsTouched, setRecipientsTouched] = useState(false);
   const unsavedChanges = isEditMode
-    ? computeUnsaved(savedSnapshot, { name, subject, html, fromName, replyTo, senderId: senderAccountId })
+    ? computeUnsaved(savedSnapshot, { name, subject, html, fromName, replyTo, senderId: senderAccountId, platformSenderPoolId })
     : false;
 
   useEffect(() => {
@@ -173,6 +184,26 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       cancelled = true;
     };
   }, [open, scope, organizationId]);
+
+  useEffect(() => {
+    if (!open || scope !== "platform") return;
+    let cancelled = false;
+    setPlatformSendersLoading(true);
+    setPlatformSendersError(false);
+    (async () => {
+      try {
+        // Admin RLS applies. Never load app_password/SMTP credentials into this editor.
+        const { data, error } = await supabase.from("email_sender_pool")
+          .select("id,email,from_name").eq("is_active", true).order("email");
+        if (cancelled) return;
+        setPlatformSenders(data || []);
+        setPlatformSendersError(!!error);
+      } catch {
+        if (!cancelled) { setPlatformSenders([]); setPlatformSendersError(true); }
+      } finally { if (!cancelled) setPlatformSendersLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [open, scope]);
 
   const sendSeedTest = async () => {
     const gate = validateSeedTest({
@@ -238,16 +269,31 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
   // Apply initial data when dialog opens
   useEffect(() => {
-    if (!open || !initial) return;
+    if (!open) return;
+    if (!initial) {
+      setPlatformSenderPoolId("");
+      setRecipients({ ...defaultRecipientValue(), previewReady: false });
+      setRecipientsTouched(false);
+      setConsent(false);
+      setConsentTouched(false);
+      return;
+    }
     setName(initial.name || "");
     setSubject(initial.subject || "");
     if (initial.html) setHtml(initial.html);
     setFromName(initial.fromName || "");
     setReplyTo(initial.replyTo || "");
     setSenderAccountId(initial.senderId || "");
-    if (initial.recipientSource) {
-      setRecipients((prev) => ({ ...prev, source: initial.recipientSource as RecipientPickerValue["source"] }));
-    }
+    setPlatformSenderPoolId(typeof initial.recipientFilter?.platform_sender_pool_id === "string"
+      ? initial.recipientFilter.platform_sender_pool_id : "");
+    setRecipients({
+      source: (initial.recipientSource as RecipientPickerValue["source"]) || "none",
+      manualEmails: [...(initial.manualEmails || [])],
+      count: 0,
+      previewReady: false,
+    });
+    setConsent(initialDraftConsent(initial));
+    setConsentTouched(false);
     setRecipientsTouched(false);
     setSavedSnapshot(initialSnapshot(initial));
   }, [open, initial]);
@@ -375,8 +421,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   }, [open, scope, organizationId]);
 
   const reset = () => {
+    setPlatformSenderPoolId("");
     setName(""); setSubject(""); setHtml(DEFAULT_HTML);
-    setFromName(""); setReplyTo(""); setConsent(false);
+    setFromName(""); setReplyTo(""); setConsent(false); setConsentTouched(false);
     setMeetingMode("none"); setExternalUrl(""); setExternalDate(""); setExternalTime("");
     setSelectedWebinarId(""); setNewWebinarMeta(null);
     setScheduleEnabled(false); setScheduledDate(""); setScheduledTime("");
@@ -414,6 +461,10 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const handleSave = async (launch: boolean) => {
     // P0: черновик (без планирования) требует только контент письма.
     const isSendAction = launch || scheduleEnabled;
+    if (isSendAction && platformSenderUnavailable) {
+      toast.error("Выбранный отправитель недоступен. Проверьте активный ящик в настройках SMTP.");
+      return;
+    }
     const gate = isSendAction
       ? validateSend({
           name, subject, html,
@@ -424,7 +475,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           quotaBlocked: quotaBlocksLaunch,
           quotaReason: quotaBlockReason,
           overDailyLimit: !!tooMany || senderOverLimit,
-          senderAccountId: senderAccountId || null,
+          senderAccountId: scope === "platform" ? (platformSenderPoolId || "system") : (senderAccountId || null),
         })
       : validateDraft({ name, subject, html });
     if (!gate.ok) {
@@ -462,7 +513,17 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     setSaving(true);
     try {
       const meta = meeting;
-      const recipientFilter: any = {};
+      // Keep opaque settings owned by other features (including platform sender).
+      const recipientFilter: any = { ...(initial?.recipientFilter || {}) };
+      if (scope === "platform") {
+        if (platformSenderPoolId) recipientFilter.platform_sender_pool_id = platformSenderPoolId;
+        else delete recipientFilter.platform_sender_pool_id;
+      }
+      if (consentTouched) {
+        // Remember a user's draft checkbox; never fabricate or clear server audit.
+        // Server confirmation still happens only on real launch/schedule below.
+        recipientFilter.draft_consent_confirmed = consent;
+      }
       if (meta) {
         recipientFilter.meeting = {
           url: meta.url,
@@ -558,7 +619,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         toast.success("Кампания запущена");
       }
       if (isEditMode) {
-        setSavedSnapshot(snapshotOf({ name, subject, html, fromName, replyTo, senderId: senderAccountId }));
+        setSavedSnapshot(snapshotOf({ name, subject, html, fromName, replyTo, senderId: senderAccountId, platformSenderPoolId }));
         setRecipientsTouched(false);
       } else {
         reset();
@@ -822,7 +883,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                   <InboxPreview
                     subject={subject || "Тема письма"}
                     fromName={fromName || "Команда Sintagma"}
-                    fromEmail={replyTo || "noreply@sintagma.com.ru"}
+                    fromEmail={scope === "platform"
+                      ? (selectedPlatformSender?.email || "Адрес системного SMTP")
+                      : (selectedSender?.from_email || "Адрес SMTP организации")}
                     html={renderPreview()}
                   />
                 </TabsContent>
@@ -833,7 +896,14 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               scope={scope}
               organizationId={organizationId}
               value={recipients}
-              onChange={(v) => { setRecipientsTouched(true); setRecipients(v); }}
+              onChange={(v, reason) => {
+                if (reason === "user") {
+                  setRecipientsTouched(true);
+                  setConsent(false);
+                  setConsentTouched(true);
+                }
+                setRecipients(v);
+              }}
             />
 
             {tooMany && (
@@ -879,13 +949,37 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
             </div>
 
             <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={consent} onCheckedChange={(v) => setConsent(!!v)} />
+              <Checkbox data-testid="campaign-consent-checkbox" checked={consent} onCheckedChange={(v) => { setConsent(!!v); setConsentTouched(true); }} />
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
             <p className="text-xs text-muted-foreground">
               Согласие, отправитель, получатели и лимиты нужны только для тестовой отправки, планирования и запуска.
               Черновик сохраняется без них.
             </p>
+
+            {scope === "platform" && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label>Фактический отправитель (From)</Label>
+                <Select value={platformSenderPoolId || "system"}
+                  onValueChange={(v) => setPlatformSenderPoolId(v === "system" ? "" : v)}>
+                  <SelectTrigger data-testid="campaign-platform-sender-select" disabled={platformSendersLoading}>
+                    <SelectValue placeholder="Выберите настроенный ящик" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="system">Системный SMTP — адрес задан на сервере</SelectItem>
+                    {platformSenders.map((s) => <SelectItem key={s.id} value={s.id}>{s.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground" data-testid="campaign-platform-from-summary">
+                  {selectedPlatformSender ? `From: ${selectedPlatformSender.email}. ` : ""}
+                  Ящик выбирается из настроек СИНТАГМЫ. Поле «Ответить на» не меняет From.
+                  SMTP и доступный лимит повторно проверяются сервером перед отправкой.
+                </p>
+                {platformSenderUnavailable && <p className="text-xs text-destructive">
+                  Выбранный ящик пока не подтверждён в списке активных отправителей. Сохранить черновик можно; запуск заблокирован.
+                </p>}
+              </div>
+            )}
 
             {scope === "org" && (
               <div className="space-y-2 rounded-lg border p-3">
@@ -958,6 +1052,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                 saving ||
                 !!tooMany ||
                 senderOverLimit ||
+                platformSenderUnavailable ||
 
                 recipients.count === 0 ||
                 !consent ||

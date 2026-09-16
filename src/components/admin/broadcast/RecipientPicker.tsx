@@ -32,7 +32,7 @@ interface Props {
   scope: "platform" | "org";
   organizationId: string | null;
   value: RecipientPickerValue;
-  onChange: (v: RecipientPickerValue) => void;
+  onChange: (v: RecipientPickerValue, reason: "user" | "preview") => void;
 }
 
 // Parse raw manual tokens WITHOUT deduplication — the server owns duplicate stats.
@@ -55,10 +55,30 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
   const debounceRef = useRef<number | null>(null);
   // Monotonic request id — only the last in-flight request may commit state.
   const requestSeqRef = useRef(0);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const manualKey = JSON.stringify(value.manualEmails);
   // AbortController for the current preview request.
   const abortRef = useRef<AbortController | null>(null);
   // Track mounted state to avoid post-unmount setState.
   const mountedRef = useRef(true);
+  const invalidatePreview = () => {
+    ++requestSeqRef.current;
+    abortRef.current?.abort();
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    setPreview(null);
+    setError(null);
+    setLoading(false);
+  };
+
+  // Reopening another/saved draft must replace the textarea, not the stored list.
+  // Do not normalize the visible text while the user is typing separators.
+  useEffect(() => {
+    setManualText(previous => JSON.stringify(parseManualRaw(previous)) === manualKey
+      ? previous : value.manualEmails.join("\n"));
+  }, [manualKey]);
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -96,73 +116,68 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
       const { data, error: rpcErr } = await withSignal;
 
       // Stale response — a newer request has been issued; drop.
-      if (mySeq !== requestSeqRef.current || !mountedRef.current || ac.signal.aborted) return;
+      if (mySeq !== requestSeqRef.current || !mountedRef.current || ac.signal.aborted
+        || source !== valueRef.current.source
+        || (source === "manual" && JSON.stringify(manualEmails) !== JSON.stringify(valueRef.current.manualEmails))) return;
 
       if (rpcErr) {
         const msg = rpcErr.message || "Ошибка запроса";
         const isPerm = /permission denied|42501|Forbidden/i.test(msg);
         setError({ code: isPerm ? "permission" : "network", message: msg });
         setPreview(null);
-        onChange({ ...value, source, manualEmails, previewReady: false });
+        onChangeRef.current({ ...valueRef.current, count: 0, previewReady: false }, "preview");
         return;
       }
       const p = (data as any) as PreviewResult;
       setPreview(p);
-      onChange({
-        ...value,
-        source,
-        manualEmails,
+      onChangeRef.current({
+        ...valueRef.current,
         count: p?.eligible_count ?? 0,
         previewReady: true,
-      });
+      }, "preview");
     } catch (e: any) {
       if (mySeq !== requestSeqRef.current || !mountedRef.current || ac.signal.aborted) return;
       setError({ code: "network", message: e?.message || "Сетевая ошибка" });
       setPreview(null);
-      onChange({ ...value, source, manualEmails, previewReady: false });
+      onChangeRef.current({ ...valueRef.current, count: 0, previewReady: false }, "preview");
     } finally {
       if (mySeq === requestSeqRef.current && mountedRef.current) setLoading(false);
     }
   };
 
-  // Preview for auto sources — runs whenever source/scope/org changes.
-  // Any pending manual request is invalidated by fetchPreview's abort.
+  // Invalidate immediately for every input change, before the manual debounce.
+  // Old RPCs must never restore an older list or unlock Launch on newer input.
   useEffect(() => {
-    if (value.source === "manual") return;
+    invalidatePreview();
     // "none": получатели не выбраны — никаких запросов и записей в БД.
     if (value.source === "none") {
       setPreview(null);
       setError(null);
       setLoading(false);
       if (value.count !== 0 || value.previewReady !== false) {
-        onChange({ ...value, count: 0, previewReady: false });
+        onChangeRef.current({ ...valueRef.current, count: 0, previewReady: false }, "preview");
       }
       return;
     }
     if (scope === "org" && !organizationId) return;
     // Immediately block launch: previewReady=false until new response arrives.
     if (value.previewReady !== false) {
-      onChange({ ...value, previewReady: false });
+      onChangeRef.current({ ...valueRef.current, count: 0, previewReady: false }, "preview");
     }
-    fetchPreview(value.source, []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value.source, scope, organizationId]);
-
-
-  // Manual: 350ms debounce for the RPC only. previewReady=false is set
-  // synchronously in the Textarea onChange handler (see below).
-  useEffect(() => {
-    if (value.source !== "manual") return;
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      const emails = parseManualRaw(manualText);
-      fetchPreview("manual", emails);
-    }, 350);
+    if (value.source === "manual") {
+      debounceRef.current = window.setTimeout(() => {
+        fetchPreview("manual", value.manualEmails);
+      }, 350);
+    } else {
+      fetchPreview(value.source, []);
+    }
     return () => {
+      ++requestSeqRef.current;
+      abortRef.current?.abort();
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualText, value.source]);
+  }, [manualKey, manualText, value.source, scope, organizationId]);
 
   const NONE_SOURCE = { value: "none" as RecipientSource, label: "Без получателей / добавить позже" };
   const sources: { value: RecipientSource; label: string }[] = scope === "platform"
@@ -200,11 +215,12 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         toast.error("В файле не найдено валидных email-адресов");
         return;
       }
-      const existing = parseManualRaw(manualText);
+      const existing = valueRef.current.manualEmails;
       const merged = [...existing, ...collected];
+      invalidatePreview();
       setManualText(merged.join("\n"));
       // Immediately mark preview stale — server will report duplicates.
-      onChange({ ...value, source: "manual", manualEmails: merged, previewReady: false });
+      onChangeRef.current({ ...valueRef.current, source: "manual", manualEmails: merged, count: 0, previewReady: false }, "user");
       toast.success(`Импортировано ${collected.length} адресов (всего ${merged.length})`);
     } catch (e: any) {
       toast.error("Ошибка импорта: " + (e?.message || "не удалось прочитать файл"));
@@ -225,9 +241,10 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           value={value.source}
           onValueChange={(v) => {
             const src = v as RecipientSource;
+            invalidatePreview();
             // Reset previewReady until the new source is verified.
             // fetchPreview will abort any in-flight request on the old source.
-            onChange({ ...value, source: src, previewReady: false });
+            onChange({ ...value, source: src, count: 0, previewReady: false }, "user");
           }}
         >
           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -267,6 +284,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
             value={manualText}
             onChange={(e) => {
               const next = e.target.value;
+              invalidatePreview();
               setManualText(next);
               // SYNCHRONOUS lockout: parent must see previewReady=false in
               // the same render cycle so the Run button disables before
@@ -278,8 +296,9 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
                 ...value,
                 source: "manual",
                 manualEmails: parsed,
+                count: 0,
                 previewReady: false,
-              });
+              }, "user");
             }}
             placeholder="user1@example.com&#10;user2@example.com"
           />
@@ -309,9 +328,9 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
         )}
         {!loading && !error && preview && (
           <>
-            <p className="text-muted-foreground">
+            <div className="text-muted-foreground">
               К отправке: <Badge variant="secondary">{preview.eligible_count}</Badge>
-            </p>
+            </div>
             {showExclusions && (
               <p className="text-xs text-muted-foreground">
                 Исключено:

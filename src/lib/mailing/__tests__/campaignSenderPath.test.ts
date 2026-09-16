@@ -10,6 +10,14 @@ const runFn = read("supabase/functions/run-email-campaign/index.ts");
 const editor = read("src/components/admin/broadcast/CampaignEditor.tsx");
 
 describe("send-campaign-email: путь mailing_senders", () => {
+  it("platform pool is explicit and is resolved before legacy SMTP; editor fetch is secret-free", () => {
+    expect(sendFn).toContain("platformSenderId(campaign.scope, campaign.recipient_filter)");
+    expect(sendFn.indexOf("if (selectedPoolId)")).toBeLessThan(sendFn.indexOf('else if (campaign.scope === "platform")'));
+    expect(sendFn).toContain("reservePlatformSender");
+    expect(sendFn).toContain('.eq("updated_at", previous.updated_at)');
+    expect(editor).toContain('.select("id,email,from_name")');
+    expect(editor).not.toContain('.select("id,email,app_password');
+  });
   it("happy path использует mailing_senders + get_mailing_sender_secret", () => {
     expect(sendFn).toContain('(campaign as any).sender_id');
     expect(sendFn).toContain('.from("mailing_senders")');

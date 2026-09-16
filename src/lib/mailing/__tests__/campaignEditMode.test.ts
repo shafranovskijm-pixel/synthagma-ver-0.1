@@ -4,6 +4,7 @@ import {
   buildEditorInitial,
   hasUnsavedChanges,
   initialSnapshot,
+  initialDraftConsent,
   isCampaignEditable,
 } from "@/lib/mailing/campaignEditMode";
 import { validateSeedTest } from "@/lib/mailing/senderPresets";
@@ -57,6 +58,23 @@ describe("campaign edit mode", () => {
     expect(m.payload).not.toHaveProperty("manual_emails");
     expect(m.payload).not.toHaveProperty("scope");
     expect(m.payload.status).toBe("draft");
+  });
+
+  it("hydrates saved manual recipients and preserves opaque filter settings", () => {
+    const manual_emails = ["first@example.com", "second@example.com"];
+    const recipient_filter = { platform_sender_pool_id: "pool-1", future_feature: { enabled: true } };
+    const initial = buildEditorInitial({ ...row, manual_emails, recipient_filter, consent_confirmed_at: "2026-09-07T00:00:00Z" });
+    expect(initial.manualEmails).toEqual(manual_emails);
+    expect(initial.manualEmails).not.toBe(manual_emails);
+    expect(initial.recipientFilter).toEqual(recipient_filter);
+    expect(initialDraftConsent(initial)).toBe(true);
+  });
+
+  it("remembers explicit draft consent independently of historical server audit", () => {
+    expect(initialDraftConsent(undefined)).toBe(false);
+    expect(initialDraftConsent({ recipientFilter: { draft_consent_confirmed: true } })).toBe(true);
+    expect(initialDraftConsent({ consentConfirmedAt: "old-audit", recipientFilter: { draft_consent_confirmed: false } })).toBe(false);
+    expect(buildEditorInitial({ ...row, recipient_filter: ["malformed"] }).recipientFilter).toBeNull();
   });
 
   it("applies recipient fields on update only after an explicit change", () => {
