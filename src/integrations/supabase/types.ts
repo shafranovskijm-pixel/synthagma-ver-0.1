@@ -4495,6 +4495,7 @@ export type Database = {
         Row: {
           body_html: string | null
           body_text: string | null
+          campaign_id: string | null
           conversation_id: string
           created_at: string
           direction: string
@@ -4505,7 +4506,9 @@ export type Database = {
           in_reply_to: string | null
           is_read: boolean
           message_id: string | null
+          ordinary_attempt_token: string | null
           received_at: string
+          recipient_id: string | null
           references_ids: string | null
           send_error: string | null
           subject: string | null
@@ -4514,6 +4517,7 @@ export type Database = {
         Insert: {
           body_html?: string | null
           body_text?: string | null
+          campaign_id?: string | null
           conversation_id: string
           created_at?: string
           direction: string
@@ -4524,7 +4528,9 @@ export type Database = {
           in_reply_to?: string | null
           is_read?: boolean
           message_id?: string | null
+          ordinary_attempt_token?: string | null
           received_at?: string
+          recipient_id?: string | null
           references_ids?: string | null
           send_error?: string | null
           subject?: string | null
@@ -4533,6 +4539,7 @@ export type Database = {
         Update: {
           body_html?: string | null
           body_text?: string | null
+          campaign_id?: string | null
           conversation_id?: string
           created_at?: string
           direction?: string
@@ -4543,7 +4550,9 @@ export type Database = {
           in_reply_to?: string | null
           is_read?: boolean
           message_id?: string | null
+          ordinary_attempt_token?: string | null
           received_at?: string
+          recipient_id?: string | null
           references_ids?: string | null
           send_error?: string | null
           subject?: string | null
@@ -4551,10 +4560,31 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "email_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_messages_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "email_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_ordinary_attempt_token_fkey"
+            columns: ["ordinary_attempt_token"]
+            isOneToOne: false
+            referencedRelation: "ordinary_campaign_attempts"
+            referencedColumns: ["attempt_token"]
+          },
+          {
+            foreignKeyName: "email_messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_recipients"
             referencedColumns: ["id"]
           },
         ]
@@ -7573,6 +7603,392 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ordinary_campaign_attempts: {
+        Row: {
+          attempt_token: string
+          campaign_id: string
+          claimed_at: string
+          dispatching_at: string | null
+          error_category: string | null
+          finished_at: string | null
+          recipient_id: string
+          run_token: string
+          smtp_message_id: string | null
+          state: string
+        }
+        Insert: {
+          attempt_token: string
+          campaign_id: string
+          claimed_at?: string
+          dispatching_at?: string | null
+          error_category?: string | null
+          finished_at?: string | null
+          recipient_id: string
+          run_token: string
+          smtp_message_id?: string | null
+          state: string
+        }
+        Update: {
+          attempt_token?: string
+          campaign_id?: string
+          claimed_at?: string
+          dispatching_at?: string | null
+          error_category?: string | null
+          finished_at?: string | null
+          recipient_id?: string
+          run_token?: string
+          smtp_message_id?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordinary_campaign_attempts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_attempts_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_attempts_run_token_fkey"
+            columns: ["run_token"]
+            isOneToOne: false
+            referencedRelation: "ordinary_campaign_runs"
+            referencedColumns: ["run_token"]
+          },
+        ]
+      }
+      ordinary_campaign_messages: {
+        Row: {
+          attempt_token: string
+          campaign_id: string
+          from_email: string
+          from_name: string | null
+          html_body: string
+          mailing_sender_id: string | null
+          prepared_at: string
+          prepared_payload: Json
+          recipient_id: string
+          remote_email: string
+          reply_to: string | null
+          run_token: string
+          sender_kind: string
+          sender_pool_id: string | null
+          smtp_message_id: string
+          subject: string
+          text_body: string | null
+        }
+        Insert: {
+          attempt_token: string
+          campaign_id: string
+          from_email: string
+          from_name?: string | null
+          html_body: string
+          mailing_sender_id?: string | null
+          prepared_at?: string
+          prepared_payload: Json
+          recipient_id: string
+          remote_email: string
+          reply_to?: string | null
+          run_token: string
+          sender_kind: string
+          sender_pool_id?: string | null
+          smtp_message_id: string
+          subject: string
+          text_body?: string | null
+        }
+        Update: {
+          attempt_token?: string
+          campaign_id?: string
+          from_email?: string
+          from_name?: string | null
+          html_body?: string
+          mailing_sender_id?: string | null
+          prepared_at?: string
+          prepared_payload?: Json
+          recipient_id?: string
+          remote_email?: string
+          reply_to?: string | null
+          run_token?: string
+          sender_kind?: string
+          sender_pool_id?: string | null
+          smtp_message_id?: string
+          subject?: string
+          text_body?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordinary_campaign_messages_attempt_token_fkey"
+            columns: ["attempt_token"]
+            isOneToOne: true
+            referencedRelation: "ordinary_campaign_attempts"
+            referencedColumns: ["attempt_token"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_messages_mailing_sender_id_fkey"
+            columns: ["mailing_sender_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_senders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_messages_run_token_fkey"
+            columns: ["run_token"]
+            isOneToOne: false
+            referencedRelation: "ordinary_campaign_runs"
+            referencedColumns: ["run_token"]
+          },
+          {
+            foreignKeyName: "ordinary_campaign_messages_sender_pool_id_fkey"
+            columns: ["sender_pool_id"]
+            isOneToOne: false
+            referencedRelation: "email_sender_pool"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordinary_campaign_runs: {
+        Row: {
+          campaign_id: string
+          claimed_at: string
+          finished_at: string | null
+          initial_started_at: string | null
+          initial_status: string
+          outcome: string | null
+          reason: string | null
+          requested_by: string | null
+          run_token: string
+          snapshot_updated_at: string | null
+          state: string
+        }
+        Insert: {
+          campaign_id: string
+          claimed_at?: string
+          finished_at?: string | null
+          initial_started_at?: string | null
+          initial_status: string
+          outcome?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          run_token: string
+          snapshot_updated_at?: string | null
+          state: string
+        }
+        Update: {
+          campaign_id?: string
+          claimed_at?: string
+          finished_at?: string | null
+          initial_started_at?: string | null
+          initial_status?: string
+          outcome?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          run_token?: string
+          snapshot_updated_at?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordinary_campaign_runs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordinary_inbox_receipts: {
+        Row: {
+          ignored_reason: string | null
+          imap_uid: number
+          message_id: string | null
+          sender_pool_id: string
+          stored_at: string
+          uid_validity: number
+        }
+        Insert: {
+          ignored_reason?: string | null
+          imap_uid: number
+          message_id?: string | null
+          sender_pool_id: string
+          stored_at?: string
+          uid_validity: number
+        }
+        Update: {
+          ignored_reason?: string | null
+          imap_uid?: number
+          message_id?: string | null
+          sender_pool_id?: string
+          stored_at?: string
+          uid_validity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordinary_inbox_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "email_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_inbox_receipts_sender_pool_id_fkey"
+            columns: ["sender_pool_id"]
+            isOneToOne: false
+            referencedRelation: "email_sender_pool"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordinary_inbox_scan_state: {
+        Row: {
+          checkpoint_at: string | null
+          claim_token: string | null
+          claimed_at: string | null
+          last_uid: number
+          released_at: string | null
+          sender_pool_id: string
+          state: string
+          uid_validity: number | null
+        }
+        Insert: {
+          checkpoint_at?: string | null
+          claim_token?: string | null
+          claimed_at?: string | null
+          last_uid?: number
+          released_at?: string | null
+          sender_pool_id: string
+          state?: string
+          uid_validity?: number | null
+        }
+        Update: {
+          checkpoint_at?: string | null
+          claim_token?: string | null
+          claimed_at?: string | null
+          last_uid?: number
+          released_at?: string | null
+          sender_pool_id?: string
+          state?: string
+          uid_validity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordinary_inbox_scan_state_sender_pool_id_fkey"
+            columns: ["sender_pool_id"]
+            isOneToOne: true
+            referencedRelation: "email_sender_pool"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordinary_mail_report_events: {
+        Row: {
+          campaign_id: string
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          error_category: string | null
+          event_key: string
+          finished_at: string | null
+          id: string
+          kind: string
+          organization_id: string | null
+          payload: Json
+          related_message_id: string | null
+          run_token: string | null
+          scope: string
+          state: string
+          target_chat_id: string | null
+          telegram_message_id: number | null
+        }
+        Insert: {
+          campaign_id: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          error_category?: string | null
+          event_key: string
+          finished_at?: string | null
+          id?: string
+          kind: string
+          organization_id?: string | null
+          payload: Json
+          related_message_id?: string | null
+          run_token?: string | null
+          scope: string
+          state?: string
+          target_chat_id?: string | null
+          telegram_message_id?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          error_category?: string | null
+          event_key?: string
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          organization_id?: string | null
+          payload?: Json
+          related_message_id?: string | null
+          run_token?: string | null
+          scope?: string
+          state?: string
+          target_chat_id?: string | null
+          telegram_message_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordinary_mail_report_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_mail_report_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_mail_report_events_related_message_id_fkey"
+            columns: ["related_message_id"]
+            isOneToOne: false
+            referencedRelation: "email_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordinary_mail_report_events_run_token_fkey"
+            columns: ["run_token"]
+            isOneToOne: false
+            referencedRelation: "ordinary_campaign_runs"
+            referencedColumns: ["run_token"]
+          },
+        ]
       }
       org_billing_documents: {
         Row: {
@@ -13561,6 +13977,15 @@ export type Database = {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
       }
+      checkpoint_ordinary_inbox_scan: {
+        Args: {
+          p_last_uid: number
+          p_sender_pool_id: string
+          p_token: string
+          p_uid_validity: number
+        }
+        Returns: Json
+      }
       claim_due_mailing_send_jobs: {
         Args: { p_batch_size?: number; p_stale_after?: string }
         Returns: {
@@ -13614,6 +14039,38 @@ export type Database = {
         }
       }
       claim_notification_dedup: { Args: { _key: string }; Returns: boolean }
+      claim_ordinary_campaign_recipient: {
+        Args: {
+          p_attempt_token: string
+          p_campaign_id: string
+          p_recipient_id: string
+          p_run_token: string
+        }
+        Returns: Json
+      }
+      claim_ordinary_campaign_run: {
+        Args: {
+          p_campaign_id: string
+          p_consent_confirmed?: boolean
+          p_expected_updated_at?: string
+          p_is_service_role?: boolean
+          p_requested_by?: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      claim_ordinary_inbox_scan: {
+        Args: { p_sender_pool_id: string; p_token: string }
+        Returns: Json
+      }
+      claim_ordinary_mail_report: {
+        Args: {
+          p_claim_token: string
+          p_event_id: string
+          p_target_chat_id: string
+        }
+        Returns: Json
+      }
       claim_org_email_quota: {
         Args: {
           p_count: number
@@ -14054,6 +14511,25 @@ export type Database = {
           similarity_score: number
           title: string
         }[]
+      }
+      finish_ordinary_campaign_run: {
+        Args: {
+          p_campaign_id: string
+          p_outcome: string
+          p_reason?: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      finish_ordinary_mail_report: {
+        Args: {
+          p_claim_token: string
+          p_error_category?: string
+          p_event_id: string
+          p_state: string
+          p_telegram_message_id?: number
+        }
+        Returns: Json
       }
       generate_org_slug: { Args: { p_name: string }; Returns: string }
       get_admin_staff_role: { Args: { _user_id: string }; Returns: string }
@@ -14621,6 +15097,7 @@ export type Database = {
       invoke_mailing_campaign_worker: { Args: never; Returns: number }
       invoke_mailing_deliverability_worker: { Args: never; Returns: number }
       invoke_mailing_reply_worker: { Args: never; Returns: number }
+      invoke_ordinary_mail_workers: { Args: never; Returns: Json }
       is_active_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_broadcast_company: { Args: { p_email: string }; Returns: boolean }
       is_email_suppressed: {
@@ -14691,6 +15168,16 @@ export type Database = {
           p_actor_id: string
           p_group_id: string
           p_organization_id: string
+        }
+        Returns: Json
+      }
+      list_ordinary_mail_report_candidates: {
+        Args: {
+          p_bot_ready: boolean
+          p_campaign_id?: string
+          p_event_id?: string
+          p_limit?: number
+          p_platform_ready: boolean
         }
         Returns: Json
       }
@@ -14804,6 +15291,16 @@ export type Database = {
               port: number
             }[]
           }
+      prepare_ordinary_campaign_message: {
+        Args: {
+          p_attempt_token: string
+          p_campaign_id: string
+          p_payload: Json
+          p_recipient_id: string
+          p_run_token: string
+        }
+        Returns: Json
+      }
       preview_goreltech_enrollment_order: {
         Args: {
           p_actor_id: string
@@ -14892,6 +15389,10 @@ export type Database = {
             }
             Returns: Json
           }
+      release_ordinary_inbox_scan: {
+        Args: { p_outcome: string; p_sender_pool_id: string; p_token: string }
+        Returns: Json
+      }
       remove_org_staff_member: {
         Args: { p_staff_id: string }
         Returns: boolean
@@ -15150,6 +15651,17 @@ export type Database = {
         Returns: Json
       }
       storage_try_uuid: { Args: { _value: string }; Returns: string }
+      store_ordinary_inbox_message: {
+        Args: {
+          p_message: Json
+          p_scan_token: string
+          p_sender_id: string
+          p_sender_kind: string
+          p_uid: number
+          p_uid_validity: number
+        }
+        Returns: Json
+      }
       submit_test_attempt: {
         Args: { p_answers: Json; p_attempt_id: string }
         Returns: Json
@@ -15158,6 +15670,18 @@ export type Database = {
       transfer_org_ownership_atomic: {
         Args: { p_new_owner_user_id: string; p_organization_id: string }
         Returns: boolean
+      }
+      transition_ordinary_campaign_attempt: {
+        Args: {
+          p_attempt_token: string
+          p_campaign_id: string
+          p_error_category?: string
+          p_recipient_id: string
+          p_run_token: string
+          p_smtp_message_id?: string
+          p_state: string
+        }
+        Returns: Json
       }
       update_signature_revision_html: {
         Args: { p_html: string; p_revision_id: string }
