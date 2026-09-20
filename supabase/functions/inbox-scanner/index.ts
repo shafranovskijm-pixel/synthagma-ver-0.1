@@ -1,5 +1,5 @@
 // Read-only inbox scan. Durable ingestion precedes every cursor checkpoint.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0?target=deno";
 import { connectImap, closeImap, examineInbox, searchUidsSince, fetchRfc822, parseRfc822 } from "../_shared/imap-mini.ts";
 import { inboxMessagePayload } from "./message-payload.ts";
 

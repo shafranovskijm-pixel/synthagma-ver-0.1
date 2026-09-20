@@ -46,6 +46,18 @@ function bundleClosure(entry: string, readSource = (file: string) => readFileSyn
 }
 
 describe("mailing Edge source bundle closure (not a live deployment)", () => {
+  // Keep the release SDK pin aligned. Changing it requires checking the actual
+  // Edge runtime dependency graph, not only typechecking or mocked handlers.
+  it.each(entries)("keeps %s on the release-pinned Supabase SDK", (entry) => {
+    const source = readFileSync(resolve(functionsRoot, entry, "index.ts"), "utf8");
+    const imports = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true).statements
+      .filter(ts.isImportDeclaration)
+      .map((statement) => (statement.moduleSpecifier as ts.StringLiteral).text)
+      .filter((specifier) => specifier.includes("@supabase/supabase-js"));
+    const target = entry === "inbox-scanner" ? "?target=deno" : "";
+    expect(imports).toEqual([`https://esm.sh/@supabase/supabase-js@2.45.0${target}`]);
+  });
+
   it.each(entries)("keeps every local dependency of %s inside its deploy bundle", (entry) => {
     expect(bundleClosure(entry).length).toBeGreaterThan(0);
   });

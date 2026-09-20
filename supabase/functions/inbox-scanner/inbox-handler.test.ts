@@ -94,7 +94,7 @@ function fixture(options: {
   let handler!: (req: Request) => Promise<Response>;
   const env: Record<string, string> = { SUPABASE_URL: "https://fixture.invalid", SUPABASE_SERVICE_ROLE_KEY: "fixture-service-key", SUPABASE_ANON_KEY: "fixture-anon-key", MAILING_CAMPAIGN_CRON_SECRET: options.cronSecret ?? "fixture-cron-secret-at-least-24-chars" };
   const modules: Record<string, unknown> = {
-    "https://esm.sh/@supabase/supabase-js@2.50.0": { createClient },
+    "https://esm.sh/@supabase/supabase-js@2.45.0?target=deno": { createClient },
     "../_shared/imap-mini.ts": { connectImap, closeImap, examineInbox, searchUidsSince, fetchRfc822, parseRfc822 },
     "./message-payload.ts": { inboxMessagePayload },
   };
