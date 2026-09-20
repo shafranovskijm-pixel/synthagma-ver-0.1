@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { hasVerifiedAdminRole } from "./admin-role";
-import { platformSenderId, platformSmtp } from "../send-campaign-email/platform-sender";
+import { platformSenderId, platformSmtp } from "../_shared/platform-sender";
 import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle";
 import { webcrypto } from "node:crypto";
 
@@ -152,7 +152,7 @@ describe("run-email-campaign real handler authorization (no network)", () => {
       "https://deno.land/std@0.168.0/http/server.ts",
       "https://esm.sh/@supabase/supabase-js@2.45.0",
       "./admin-role.ts",
-      "../send-campaign-email/platform-sender.ts",
+      "../_shared/platform-sender.ts",
       "./run-lifecycle.ts",
     ]);
   });

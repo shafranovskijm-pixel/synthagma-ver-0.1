@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import ts from "typescript";
 import { webcrypto } from "node:crypto";
 import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle";
-import { platformSenderId, platformSmtp } from "../send-campaign-email/platform-sender";
+import { platformSenderId, platformSmtp } from "../_shared/platform-sender";
 import { hasVerifiedAdminRole } from "./admin-role";
 
 const source = readFileSync(resolve(__dirname, "index.ts"), "utf8")

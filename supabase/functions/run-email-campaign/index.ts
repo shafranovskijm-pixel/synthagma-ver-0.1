@@ -19,7 +19,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { hasVerifiedAdminRole } from "./admin-role.ts";
-import { platformSenderId, platformSmtp } from "../send-campaign-email/platform-sender.ts";
+import { platformSenderId, platformSmtp } from "../_shared/platform-sender.ts";
 import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle.ts";
 
 const corsHeaders = {
