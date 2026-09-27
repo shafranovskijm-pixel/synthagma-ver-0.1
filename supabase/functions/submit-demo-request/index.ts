@@ -4,7 +4,7 @@ import {
   buildEmailHtml,
   buildEmailSubject,
   buildTelegramMessage,
-  isReasonablePhone,
+  validateDemoContact,
   normalizeDemoRequestInput,
   notificationInvokeSucceeded,
   type NotificationDelivery,
@@ -43,12 +43,8 @@ Deno.serve(async (req) => {
     }
 
     const input = normalizeDemoRequestInput(requestBody);
-    if (!input.name || !input.phone) {
-      return jsonResponse({ ok: false, error: "name_and_phone_required" }, 400);
-    }
-    if (!isReasonablePhone(input.phone)) {
-      return jsonResponse({ ok: false, error: "invalid_phone" }, 400);
-    }
+    const contactError = validateDemoContact(input);
+    if (contactError) return jsonResponse({ ok: false, error: contactError }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

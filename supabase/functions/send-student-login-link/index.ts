@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
 
     const autoUrl = `${BASE_URL}/auto-login?token=${encodeURIComponent(token)}`;
     const credsUrl = profile.login && password
-      ? `${BASE_URL}/login?u=${encodeURIComponent(profile.login)}&p=${encodeURIComponent(password)}`
+      ? `${BASE_URL}/login`
       : null;
 
     const html = `<!DOCTYPE html>
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
         <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
         <p style="font-size:14px;color:#4a4a4a;">Или войдите вручную:</p>
         <p style="font-size:14px;color:#4a4a4a;"><b>Логин:</b> ${profile.login}<br><b>Пароль:</b> ${password}</p>
-        <p style="font-size:12px;color:#9ca3af;">Ссылка с подставленными логином и паролем:<br><a href="${credsUrl}" style="color:#14b8a6;word-break:break-all;">${credsUrl}</a></p>
+        <p style="font-size:12px;color:#9ca3af;">Страница входа — введите логин и пароль из строк выше:<br><a href="${credsUrl}" style="color:#14b8a6;word-break:break-all;">${credsUrl}</a></p>
         ` : ""}
       </div>
     </div>

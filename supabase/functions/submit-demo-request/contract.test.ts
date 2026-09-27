@@ -5,6 +5,7 @@ import {
   buildEmailSubject,
   buildTelegramMessage,
   isReasonablePhone,
+  validateDemoContact,
   normalizeDemoRequestInput,
   normalizeDemoRequestId,
   notificationInvokeSucceeded,
@@ -12,6 +13,20 @@ import {
 } from "./contract";
 
 describe("submit-demo-request notification contract", () => {
+  it.each([
+    ["+7 900 000-00-00", "", null],
+    ["", "owner@example.test", null],
+    ["+7 900 000-00-00", "owner@example.test", null],
+    ["", "", "name_and_contact_required"],
+    ["+7", "owner@example.test", "invalid_phone"],
+    ["+7 900 000-00-00", "bad-email", "invalid_email"],
+    ["", "owner@example.test\r\nCc:bad@example.test", "invalid_email"],
+  ])("validates phone OR email after normalization", (phone, email, expected) => {
+    expect(validateDemoContact(normalizeDemoRequestInput({ name: "Ирина", phone, email }))).toBe(expected);
+  });
+  it("still rejects a missing name even with a valid contact", () => {
+    expect(validateDemoContact(normalizeDemoRequestInput({ email: "owner@example.test" }))).toBe("name_and_contact_required");
+  });
   it("normalizes public form input and applies the safe source default", () => {
     expect(normalizeDemoRequestInput({
       name: "  Максим  ",

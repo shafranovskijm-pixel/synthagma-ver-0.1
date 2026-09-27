@@ -100,6 +100,13 @@ export function isReasonablePhone(value: string): boolean {
   return digitCount >= 10 && digitCount <= 15;
 }
 
+export function validateDemoContact(input: Pick<DemoRequestInput, "name" | "phone" | "email">): string | null {
+  if (!input.name || (!input.phone && !input.email)) return "name_and_contact_required";
+  if (input.phone && !isReasonablePhone(input.phone)) return "invalid_phone";
+  if (input.email && (input.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))) return "invalid_email";
+  return null;
+}
+
 export function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
