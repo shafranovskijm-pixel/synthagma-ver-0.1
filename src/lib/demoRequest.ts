@@ -16,6 +16,10 @@ export function isReasonableDemoPhone(value: string): boolean {
   return digitCount >= 10 && digitCount <= 15;
 }
 
+export function isReasonableDemoEmail(value: string): boolean {
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 export function isDemoRequestAccepted(value: unknown): value is DemoRequestResponse & { ok: true } {
   if (!value || typeof value !== "object") return false;
 
@@ -37,6 +41,8 @@ export function demoRequestErrorMessage(value: unknown): string {
   if (code === "name_and_phone_required") {
     return "Укажите имя и телефон";
   }
+  if (code === "name_and_contact_required") return "Укажите имя и телефон или email";
+  if (code === "invalid_email") return "Укажите корректный email";
   if (code === "invalid_phone") {
     return "Укажите телефон полностью";
   }

@@ -16,6 +16,7 @@ import {
   demoRequestErrorMessage,
   isDemoRequestAccepted,
   isReasonableDemoPhone,
+  isReasonableDemoEmail,
 } from "@/lib/demoRequest";
 import { reachYandexGoal } from "@/lib/yandexMetrika";
 import { getUtmData } from "@/utils/utmCapture";
@@ -58,9 +59,6 @@ const proposalHighlights = [
   "Условия запуска и порядок работы",
 ];
 
-const slots = ["Вт 10:00", "Вт 14:00", "Ср 11:00", "Ср 16:00", "Чт 12:00", "Чт 17:00"];
-
-
 // Kinescope video ID = часть URL после https://kinescope.io/
 const demoVideos: { title: string; text: string; kinescopeId: string }[] = [
   { title: "Создание курса", text: "Работа с блоками курса: видео, текстовые материалы, тесты и файлы.", kinescopeId: "0zLbxNWaXqqVirutHe2hFX" },
@@ -72,9 +70,9 @@ export default function DemonstrationPage() {
   const [requestId] = useState(() => crypto.randomUUID());
   const [name, setName] = useState("");
   const [org, setOrg] = useState("");
-  const [phone, setPhone] = useState("+7 ");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [slot, setSlot] = useState<string | null>(null);
+  const [slot, setSlot] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -85,8 +83,16 @@ export default function DemonstrationPage() {
       toast.error("Укажите имя");
       return;
     }
-    if (!isReasonableDemoPhone(phone)) {
+    if (!phone.trim() && !email.trim()) {
+      toast.error("Укажите телефон или email для связи");
+      return;
+    }
+    if (phone.trim() && !isReasonableDemoPhone(phone)) {
       toast.error("Укажите телефон полностью");
+      return;
+    }
+    if (email.trim() && !isReasonableDemoEmail(email)) {
+      toast.error("Укажите корректный email");
       return;
     }
     setLoading(true);
@@ -414,23 +420,9 @@ export default function DemonstrationPage() {
             ) : (
               <form onSubmit={submit} className="rounded-3xl border border-border bg-card p-6 md:p-10 space-y-6">
                 <div>
-                  <Label className="mb-3 block text-sm font-medium">Удобное время (можно уточнить позже)</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {slots.map((s) => (
-                      <button
-                        type="button"
-                        key={s}
-                        onClick={() => setSlot(s === slot ? null : s)}
-                        className={`px-4 py-2 rounded-full border text-sm transition-colors ${
-                          slot === s
-                            ? "border-accent bg-accent/10 text-accent"
-                            : "border-border bg-secondary/40 hover:border-accent/50"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+                  <Label htmlFor="preferred-time" className="mb-3 block text-sm font-medium">Удобное время и ваш часовой пояс (необязательно)</Label>
+                  <Input id="preferred-time" value={slot} onChange={(e) => setSlot(e.target.value)} placeholder="Например: в будни после 14:00, Владивосток" maxLength={192} />
+                  <p className="mt-2 text-xs text-muted-foreground">Дату и время демонстрации согласуем с вами после заявки.</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -443,15 +435,15 @@ export default function DemonstrationPage() {
                     <Input id="org" value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Название организации" />
                   </div>
                   <div>
-                    <Label htmlFor="phone" className="mb-2 flex items-center gap-1.5 text-sm"><Phone className="w-3.5 h-3.5" /> Телефон *</Label>
-                    <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 (___) ___-__-__" required />
+                    <Label htmlFor="phone" className="mb-2 flex items-center gap-1.5 text-sm"><Phone className="w-3.5 h-3.5" /> Телефон</Label>
+                    <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 (___) ___-__-__" />
                   </div>
                   <div>
                     <Label htmlFor="email" className="mb-2 flex items-center gap-1.5 text-sm"><Mail className="w-3.5 h-3.5" /> Email</Label>
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.ru" />
                   </div>
                 </div>
-
+                <p className="text-sm text-muted-foreground">Для связи достаточно телефона или email.</p>
                 <div>
                   <Label htmlFor="msg" className="mb-2 flex items-center gap-1.5 text-sm"><MessageSquare className="w-3.5 h-3.5" /> Комментарий</Label>
                   <Textarea id="msg" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Расскажите вкратце о задачах — что важно показать на демо" rows={4} />

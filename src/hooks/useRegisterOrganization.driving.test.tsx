@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const state = vi.hoisted(() => ({params:new URLSearchParams(), navigate:vi.fn(), invoke:vi.fn(), signin:vi.fn(), role:vi.fn(), user:null as null | {id:string}, userRole:null as null|string}));
+const state = vi.hoisted(() => ({params:new URLSearchParams(), navigate:vi.fn(), invoke:vi.fn(), signin:vi.fn(), role:vi.fn(), goal:vi.fn(), user:null as null | {id:string}, userRole:null as null|string}));
+vi.mock('@/lib/yandexMetrika',()=>({reachYandexGoal:state.goal}));
 vi.mock('react-router-dom',()=>({useNavigate:()=>state.navigate,useSearchParams:()=>[state.params]}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:state.user,userRole:state.userRole,loading:false,refreshUserRole:state.role})}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{functions:{invoke:state.invoke},auth:{signInWithPassword:state.signin}}}));
@@ -13,7 +14,7 @@ import { useRegisterOrganization } from './useRegisterOrganization';
 describe('registration return intent through the existing handler',()=>{
  beforeEach(()=>{
   vi.clearAllMocks();state.params=new URLSearchParams();state.user=null;state.userRole=null;
-  state.invoke.mockImplementation(async(name:string)=>({data:name==='register-organization'?{organization_id:'test-org',user_id:'test-user'}:{},error:null}));
+  state.invoke.mockImplementation(async(name:string)=>({data:name==='register-organization'?{success:true,organization_id:'test-org',user_id:'test-user'}:{},error:null}));
   state.signin.mockResolvedValue({error:null});state.role.mockResolvedValue('organization');
  });
  async function submit(){
@@ -26,16 +27,19 @@ describe('registration return intent through the existing handler',()=>{
   state.params=new URLSearchParams('module=driving-school');await submit();
   expect(state.invoke).toHaveBeenCalledWith('register-organization',expect.objectContaining({body:expect.objectContaining({email:'owner@example.test'})}));
   expect(state.navigate).toHaveBeenLastCalledWith('/organization/driving-school',{replace:true});
+  expect(state.goal).toHaveBeenCalledExactlyOnceWith('organization_registration_success');
  });
  it('keeps intent when automatic sign-in fails after successful creation',async()=>{
   state.params=new URLSearchParams('module=driving-school');state.signin.mockResolvedValue({error:{message:'synthetic signin failure'}});await submit();
   expect(state.navigate).toHaveBeenLastCalledWith('/login?next=%2Forganization%2Fdriving-school',expect.objectContaining({replace:true}));
+  expect(state.goal).toHaveBeenCalledExactlyOnceWith('organization_registration_success');
  });
  it('preserves ordinary registration target',async()=>{await submit();expect(state.navigate).toHaveBeenLastCalledWith('/organization',{replace:true});});
  it('uses the fixed target for an already signed-in organization',async()=>{
   state.params=new URLSearchParams('module=driving-school&next=https://evil.test');state.user={id:'test-user'};state.userRole='organization';
   renderHook(()=>useRegisterOrganization());await waitFor(()=>expect(state.navigate).toHaveBeenCalledWith('/organization/driving-school',{replace:true}));
   expect(state.invoke).not.toHaveBeenCalled();
+  expect(state.goal).not.toHaveBeenCalled();
  });
  it('keeps the existing-account login link scoped to the driving module',()=>{
   state.params=new URLSearchParams('module=driving-school&next=https://evil.test');
@@ -48,5 +52,17 @@ describe('registration return intent through the existing handler',()=>{
   const hook=renderHook(()=>useRegisterOrganization());
   expect(hook.result.current.loginTarget).toBe('/login');
   expect(state.invoke).not.toHaveBeenCalled();
- });});
+ });
+ it.each([
+  {data:null,error:{message:'Synthetic network failure'}},
+  {data:{error:'Synthetic registration failure'},error:null},
+  {data:{success:true},error:null},
+  {data:{organization_id:'test-org',user_id:'test-user'},error:null},
+ ])('does not count a failed or unconfirmed registration: %j',async(response)=>{
+  state.invoke.mockImplementation(async(name:string)=>name==='register-organization'?response:{data:{},error:null});
+  await submit();
+  expect(state.goal).not.toHaveBeenCalled();
+  expect(state.signin).not.toHaveBeenCalled();
+ });
+});
 

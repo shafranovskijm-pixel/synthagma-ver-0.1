@@ -2,6 +2,60 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
+    <!-- Run before resources/analytics: legacy credentials stay in memory, never in tracking URLs. -->
+    <script id="sintagma-privacy-bootstrap">
+      (function () {
+        var sensitive = /^(u|p|password|passwd|access_token|refresh_token|token|code)$/i;
+        function clean(raw) {
+          if (!raw) return '';
+          try {
+            var url = new URL(raw, location.origin);
+            url.username = ''; url.password = '';
+            Array.from(url.searchParams.keys()).forEach(function (key) {
+              if (sensitive.test(key)) url.searchParams.delete(key);
+            });
+            if (url.hash.indexOf('=') !== -1) {
+              var hash = new URLSearchParams(url.hash.slice(1));
+              Array.from(hash.keys()).forEach(function (key) { if (sensitive.test(key)) hash.delete(key); });
+              url.hash = hash.toString();
+            }
+            return url.href;
+          } catch (_) { return ''; }
+        }
+        var original = new URL(location.href);
+        var isAuth = /^\/(login|auto-login|reset-password)\/?$/.test(original.pathname);
+        var privateEntry = isAuth || clean(location.href) !== location.href || clean(document.referrer) !== document.referrer;
+        if (original.pathname === '/login' || original.pathname === '/login/') {
+          var prefill = { login: original.searchParams.get('u') || '', password: original.searchParams.get('p') || '' };
+          if (prefill.login || prefill.password) {
+            // No automatic reload in this document: it would discard the in-memory prefill.
+            // This boolean deliberately outlives consumption; it contains no credentials.
+            window.__sintagmaLegacyLoginEntry = true;
+            Object.defineProperty(window, '__consumeLegacyLoginPrefill', {
+              configurable: true,
+              value: function () { var value = prefill; prefill = null; delete window.__consumeLegacyLoginPrefill; return value; }
+            });
+            setTimeout(function () { prefill = null; delete window.__consumeLegacyLoginPrefill; }, 60000);
+          }
+        }
+        // Preserve existing reset/auto-login tokens; these pages never run third-party tracking.
+        var changed = false;
+        Array.from(original.searchParams.keys()).forEach(function (key) {
+          if (/^(u|p|password|passwd)$/i.test(key)) { original.searchParams.delete(key); changed = true; }
+        });
+        if (changed) {
+          try { history.replaceState(history.state, '', original.pathname + original.search + original.hash); }
+          catch (_) { privateEntry = true; }
+        }
+        if (privateEntry) {
+          var policy = document.createElement('meta'); policy.name = 'referrer'; policy.content = 'no-referrer';
+          document.head.appendChild(policy);
+        }
+        window.__sintagmaPrivateEntry = privateEntry;
+        window.__sintagmaTrackingUrl = clean(location.href);
+        window.__sintagmaTrackingReferrer = clean(document.referrer);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>СИНТАГМА — СДО и документооборот для организаций</title>
     <meta name="description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров: курсы, ученики, прогресс, документы и подготовка данных для ФИС ФРДО в одном кабинете.">
@@ -32,27 +86,28 @@
     
     <!-- Yandex.Metrika counter (only in web context) -->
     <script type="text/javascript">
-      if (typeof window.Capacitor === 'undefined') {
+      if (typeof window.Capacitor === 'undefined' && !window.__sintagmaPrivateEntry) {
         (function(m,e,t,r,i,k,a){
             m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
             m[i].l=1*new Date();
             for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
             k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
         })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105216554', 'ym');
-        ym(105216554, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+        ym(105216554, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: window.__sintagmaTrackingReferrer, url: window.__sintagmaTrackingUrl, accurateTrackBounce:true, trackLinks:true});
       }
     </script>
     
 </head>
   <body>
     <!-- Yandex.Metrika noscript -->
-    <noscript><div><img src="https://mc.yandex.ru/watch/105216554" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <noscript><div><img src="https://mc.yandex.ru/watch/105216554" referrerpolicy="no-referrer" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     
     <div id="root"></div>
 
     <!-- Cache/SW bootstrap: URL-marker reload in preview, asset-change reload in production -->
     <script>
       (function(){
+        if (window.__sintagmaLegacyLoginEntry) return;
         var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
 
         // Runtime kill-switch: always remove the legacy "Резервный канал" badge.
@@ -144,6 +199,7 @@
     <!-- SW recovery: if app fails to render in 8s, unregister SW and reload -->
     <script>
       (function(){
+        if (window.__sintagmaLegacyLoginEntry) return;
         var recoveryKey = '__sw_recovery_attempted';
         var t = setTimeout(function(){
           var root = document.getElementById('root');
@@ -178,6 +234,13 @@
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
-    <script src="https://integrationjs.t-static.ru/integration.js" async></script>
+    <script>
+      if (!window.__sintagmaPrivateEntry) {
+        var integration = document.createElement('script');
+        integration.src = 'https://integrationjs.t-static.ru/integration.js';
+        integration.async = true;
+        document.body.appendChild(integration);
+      }
+    </script>
   </body>
 </html>

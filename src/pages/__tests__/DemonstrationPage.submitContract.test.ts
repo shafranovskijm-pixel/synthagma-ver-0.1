@@ -162,8 +162,8 @@ describe("/demonstration submission source contract", () => {
   });
 
   it("rejects the untouched +7 phone placeholder on both client and server", () => {
-    expect(pageSource).toContain("if (!isReasonableDemoPhone(phone))");
-    expect(edgeSource).toContain("if (!isReasonablePhone(input.phone))");
-    expect(edgeSource).toContain('error: "invalid_phone"');
+    expect(pageSource).toContain("if (phone.trim() && !isReasonableDemoPhone(phone))");
+    expect(edgeSource).toContain("validateDemoContact(input)");
+    expect(edgeContractSource).toContain('return "invalid_phone"');
   });
 });

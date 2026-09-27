@@ -126,4 +126,33 @@ describe("DemonstrationPage lead confirmation", () => {
     expect(mocks.reachGoal).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Отправить заявку" })).toBeEnabled();
   });
+
+  it("accepts email-only and forwards the client's preferred timezone without fixed slots", async () => {
+    mocks.invoke.mockResolvedValue({ data: { ok: true, lead_id: "lead-email" }, error: null });
+    renderPage();
+    fireEvent.change(screen.getByLabelText(/Имя/), { target: { value: "Ирина" } });
+    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: "irina@example.test" } });
+    fireEvent.change(screen.getByLabelText(/Удобное время и ваш часовой пояс/), { target: { value: "Пятница, после 15:00, UTC+10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Отправить заявку" }));
+    expect(await screen.findByText("Спасибо, заявка принята!")).toBeInTheDocument();
+    expect(mocks.invoke).toHaveBeenCalledWith("submit-demo-request", { body: expect.objectContaining({
+      phone: "", email: "irina@example.test", slot: "Пятница, после 15:00, UTC+10",
+    }) });
+    expect(mocks.reachGoal).toHaveBeenCalledExactlyOnceWith("demo_request_success");
+  });
+
+  it.each([
+    ["", "", "Укажите телефон или email для связи"],
+    ["+7", "irina@example.test", "Укажите телефон полностью"],
+    ["+7 914 000-00-00", "invalid-email", "Укажите корректный email"],
+  ])("rejects missing or invalid contact data", (phone, email, message) => {
+    renderPage();
+    fireEvent.change(screen.getByLabelText(/Имя/), { target: { value: "Ирина" } });
+    fireEvent.change(screen.getByLabelText(/Телефон/), { target: { value: phone } });
+    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: email } });
+    fireEvent.submit(screen.getByRole("button", { name: "Отправить заявку" }).closest("form")!);
+    expect(mocks.toastError).toHaveBeenCalledWith(message);
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    expect(mocks.reachGoal).not.toHaveBeenCalled();
+  });
 });

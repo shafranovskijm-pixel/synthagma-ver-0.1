@@ -2,6 +2,8 @@
  * UTM capture utility — saves utm_* params from URL into localStorage
  * so they survive across page navigations within the registration funnel.
  */
+import { sanitizeTrackingUrl } from "./credentialPrivacy";
+
 const STORAGE_KEY = "utm_capture_v1";
 const TTL_DAYS = 30;
 
@@ -36,18 +38,18 @@ export function captureUtmFromUrl() {
       // First visit without UTM → still capture referrer/landing page if not set yet
       const existing = getUtmData();
       if (existing) return;
-      const ref = document.referrer;
+      const ref = sanitizeTrackingUrl(document.referrer);
       if (!ref || ref.includes(window.location.host)) return;
       found.referrer = ref.slice(0, 1024);
-      found.page_url = window.location.href.slice(0, 1024);
+      found.page_url = sanitizeTrackingUrl(window.location.href).slice(0, 1024);
     } else {
-      found.page_url = window.location.href.slice(0, 1024);
-      found.referrer = document.referrer ? document.referrer.slice(0, 1024) : undefined;
+      found.page_url = sanitizeTrackingUrl(window.location.href).slice(0, 1024);
+      found.referrer = document.referrer ? sanitizeTrackingUrl(document.referrer).slice(0, 1024) : undefined;
     }
     found.saved_at = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(found));
   } catch (e) {
-    console.warn("captureUtmFromUrl failed:", e);
+    console.warn("captureUtmFromUrl failed");
   }
 }
 
@@ -60,7 +62,16 @@ export function getUtmData(): UtmData | null {
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    return parsed;
+    const cleaned = {
+      ...parsed,
+      ...(parsed.page_url ? { page_url: sanitizeTrackingUrl(parsed.page_url) } : {}),
+      ...(parsed.referrer ? { referrer: sanitizeTrackingUrl(parsed.referrer) } : {}),
+    };
+    // Also repair old browser-local attribution before it can be sent to a lead record.
+    if (cleaned.page_url !== parsed.page_url || cleaned.referrer !== parsed.referrer) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return null;
   }

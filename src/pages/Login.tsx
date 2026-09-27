@@ -23,6 +23,7 @@ import {
 
 import { organizationRegistrationTarget, isDrivingInvitationTarget } from "@/utils/authReturn";
 import { resolveLoginDestination } from "@/utils/loginDestination";
+import { consumeLegacyLoginPrefill } from "@/utils/credentialPrivacy";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
@@ -46,17 +47,12 @@ const Login = () => {
   const [searchParams] = useSearchParams();
   const isDrivingInvitation = isDrivingInvitationTarget(searchParams.get("next"));
 
-  // Prefill from ?u=&p= (auto-fill link for student credentials).
+  // The initial privacy guard already removed legacy credentials from the URL.
   useEffect(() => {
-    const u = searchParams.get("u");
-    const p = searchParams.get("p");
-    if (u || p) {
-      if (u) { setLogin(u); setLoginMode("login"); }
-      if (p) setPassword(p);
-      // Clean URL so credentials don't linger in history.
-      try { window.history.replaceState({}, "", window.location.pathname); } catch {}
-    }
-  }, [searchParams]);
+    const prefill = consumeLegacyLoginPrefill();
+    if (prefill?.login) { setLogin(prefill.login); setLoginMode("login"); }
+    if (prefill?.password) setPassword(prefill.password);
+  }, []);
   useEffect(() => {
     if (!user || loading || !userRole) return;
     let cancelled = false;
@@ -427,9 +423,9 @@ const Login = () => {
           {isDrivingInvitation ? <p className="text-center text-muted-foreground mt-8">Для приглашения нужен действующий общий аккаунт этой автошколы. Если аккаунта нет, обратитесь к владельцу школы. Регистрация новой организации для этого приглашения не подходит.</p> : (
           <p className="text-center text-muted-foreground mt-8">
             Нет аккаунта?{" "}
-            <Link to={organizationRegistrationTarget(searchParams) === "/organization/driving-school" ? "/register-organization?module=driving-school" : "/register-organization"} className="text-primary hover:underline font-medium">
+            <a href={organizationRegistrationTarget(searchParams) === "/organization/driving-school" ? "/register-organization?module=driving-school" : "/register-organization"} className="text-primary hover:underline font-medium">
               Зарегистрировать организацию
-            </Link>
+            </a>
           </p>
           )}
 

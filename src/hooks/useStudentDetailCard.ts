@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import { studentCredentialsText } from "@/utils/credentialPrivacy";
 import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -425,9 +426,8 @@ export function useStudentDetailCardLogic({
     if (!student?.login) { toast.error("У ученика нет логина"); return; }
     const pw = decryptedPassword || (student.generated_password && !student.generated_password.startsWith("ENC:") ? student.generated_password : null);
     if (!pw) { toast.error("Пароль недоступен. Задайте новый пароль через «Изменить»."); return; }
-    const url = `${getBaseUrl()}/login?u=${encodeURIComponent(student.login)}&p=${encodeURIComponent(pw)}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Ссылка с логином и паролем скопирована");
+    await navigator.clipboard.writeText(studentCredentialsText(getBaseUrl(), student.login, pw));
+    toast.success("Данные входа скопированы. Передавайте их только лично ученику.");
   }, [student, decryptedPassword]);
 
   const sendLoginLinkEmail = useCallback(async () => {

@@ -308,7 +308,7 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
               <Link2 className="w-4 h-4" />Скопировать ссылку автовхода
             </Button>
             <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={h.copyCredentialsLink} disabled={h.isLoginLinkBusy}>
-              <Copy className="w-4 h-4" />Скопировать ссылку с логином/паролем
+              <Copy className="w-4 h-4" />Скопировать данные входа
             </Button>
             <Button size="sm" className="rounded-lg gap-2" onClick={h.sendLoginLinkEmail} disabled={h.isLoginLinkBusy}>
               <Send className="w-4 h-4" />Отправить на email

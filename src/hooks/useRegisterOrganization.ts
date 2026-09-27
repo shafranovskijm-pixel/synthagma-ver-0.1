@@ -8,6 +8,8 @@ import { getRefCode, clearRefCode, captureRefFromUrl } from "@/utils/referralCoo
 import { getUtmData } from "@/utils/utmCapture";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+import { reachYandexGoal } from "@/lib/yandexMetrika";
+import { sanitizeTrackingUrl } from "@/utils/credentialPrivacy";
 
 import { organizationRegistrationTarget, loginWithNext, DRIVING_ORGANIZATION_PATH } from "@/utils/authReturn";
 
@@ -113,8 +115,8 @@ export function useRegisterOrganization() {
       utm_campaign: utm.utm_campaign || null,
       utm_term: utm.utm_term || null,
       utm_content: utm.utm_content || null,
-      page_url: utm.page_url || (typeof window !== 'undefined' ? window.location.href : null),
-      referrer: utm.referrer || (typeof document !== 'undefined' ? document.referrer || null : null),
+      page_url: utm.page_url || (typeof window !== 'undefined' ? sanitizeTrackingUrl(window.location.href) : null),
+      referrer: utm.referrer || (typeof document !== 'undefined' ? sanitizeTrackingUrl(document.referrer) || null : null),
       ...extra,
     };
   };
@@ -184,6 +186,11 @@ export function useRegisterOrganization() {
 
       const orgId = (regData as any)?.organization_id;
       const userId = (regData as any)?.user_id;
+      if ((regData as any)?.success !== true || typeof orgId !== 'string' || !orgId.trim() || typeof userId !== 'string' || !userId.trim()) {
+        throw new Error("Сервер не подтвердил создание организации. Проверьте результат перед повторной регистрацией.");
+      }
+      // Actual persisted organization, not a click/pageview; never send IDs or other PII.
+      reachYandexGoal("organization_registration_success");
       // Server-side referral attribution already happened in edge — survives signin failure.
       if ((regData as any)?.referral?.attributed === true) clearRefCode();
 

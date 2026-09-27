@@ -12,6 +12,8 @@
  *  - response — только первые ~2 КБ как сниппет (текстовые ответы).
  */
 
+import { sanitizeTrackingUrl } from "./credentialPrivacy";
+
 const FN_NAME = "log-client-error";
 const PROJECT_ID =
   (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID ||
@@ -63,7 +65,10 @@ function loadPersistedBuffer() {
     if (!raw) return;
     const arr = JSON.parse(raw);
     if (Array.isArray(arr)) {
-      buffer.push(...arr.slice(0, MAX_BUFFER));
+      buffer.push(...arr.slice(0, MAX_BUFFER).map((event) => ({
+        ...event,
+        page_url: sanitizeTrackingUrl(typeof event?.page_url === "string" ? event.page_url : ""),
+      })));
     }
     localStorage.removeItem(STORAGE_KEY);
   } catch {
@@ -279,7 +284,7 @@ function buildEvent(params: {
     response_snippet: params.responseSnippet,
     response_content_type: params.responseCT,
     duration_ms: Math.max(0, Math.round(params.durationMs)),
-    page_url: window.location.href.slice(0, 1024),
+    page_url: sanitizeTrackingUrl(window.location.href).slice(0, 1024),
     page_route: window.location.pathname.slice(0, 256),
     user_agent: navigator.userAgent.slice(0, 512),
     proxy_used: proxyUsed,

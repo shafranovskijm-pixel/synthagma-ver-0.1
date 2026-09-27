@@ -4,6 +4,8 @@
  * и передаётся при сабмите формы (instant- и request-режимы).
  */
 
+import { sanitizeTrackingUrl } from "@/utils/credentialPrivacy";
+
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
 
 export interface LeadTracking {
@@ -44,7 +46,7 @@ export function captureLeadSource(): void {
         }
       }
       sessionStorage.setItem("lead_source", source);
-      sessionStorage.setItem("lead_referrer", document.referrer || "");
+      sessionStorage.setItem("lead_referrer", sanitizeTrackingUrl(document.referrer));
     }
   } catch {
     // sessionStorage может быть недоступен (приватный режим Safari) — молча игнорируем
@@ -59,7 +61,7 @@ export function getLeadTracking(): LeadTracking {
     return {
       source: sessionStorage.getItem("lead_source"),
       utm: typeof utm === "object" && utm !== null ? utm : {},
-      landing_referrer: sessionStorage.getItem("lead_referrer"),
+      landing_referrer: sanitizeTrackingUrl(sessionStorage.getItem("lead_referrer") || "") || null,
     };
   } catch {
     return { source: null, utm: {}, landing_referrer: null };

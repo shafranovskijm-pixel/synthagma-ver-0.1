@@ -48,6 +48,9 @@ async function purgeAllCaches() {
 }
 
 (async () => {
+  // Legacy login prefill exists only in memory. Defer cache/SW reloads for this
+  // document instead of persisting credentials or losing them after a release.
+  if ((window as Window & { __sintagmaLegacyLoginEntry?: boolean }).__sintagmaLegacyLoginEntry) return;
   // Build version check (second line of defense — skip if bootstrap just reloaded)
   if (!bootstrapJustReloaded) {
     const storedVersion = localStorage.getItem('app-version');
