@@ -49,7 +49,7 @@ try {
     ALTER TABLE public.org_billing_documents ADD COLUMN deleted_at timestamptz;
     GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
   `);
-  await db.exec(await migration("20260929003000_platform_invoice_acts_api.sql"));
+  await db.exec(await readFile(path.join(root, "drizzle/migrations/0000_platform_invoice_acts_api.sql"), "utf8"));
   await db.exec(await readFile(path.join(root,"supabase/tests/platform_invoice_acts_api.sql"),"utf8"));
   console.log("PASS: platform act migration and SQL assertions in PostgreSQL/PGlite; all synthetic rows rolled back.");
   console.log("Not exercised: multi-session concurrency, production Auth/RLS, storage bytes/HTTP delivery.");
