@@ -7,35 +7,8 @@
  # Crawl-delay for polite crawling
  Crawl-delay: 1
  
- # Allow specific bots full access
- User-agent: Googlebot
- Allow: /
- 
- User-agent: Bingbot
- Allow: /
- 
- User-agent: Yandex
- Allow: /
- 
- User-agent: Mail.RU_Bot
- Allow: /
- 
- User-agent: Twitterbot
- Allow: /
- 
- User-agent: facebookexternalhit
- Allow: /
- 
- User-agent: LinkedInBot
- Allow: /
- 
- User-agent: Slackbot
- Allow: /
- 
- User-agent: TelegramBot
- Allow: /
- 
- # Disallow admin and private sections
+ # The same private-section rules apply to all crawlers.
+ # Crawling rules do not replace authorization or a page's noindex policy.
  Disallow: /admin
  Disallow: /organization
  Disallow: /student

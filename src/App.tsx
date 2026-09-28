@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
+import { DefaultMetadata } from "@/components/DefaultMetadata";
 import { AuthProvider } from "@/hooks/useAuth";
 import { StaffPermissionsProvider } from "@/hooks/useStaffPermissions";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -59,6 +60,7 @@ function ThemeInit() { useThemePersonalization(); return null; }
 const App = () => (
   <ErrorBoundary>
     <HelmetProvider>
+      <DefaultMetadata />
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <QueryClientProvider client={queryClient}>
           <Router>
