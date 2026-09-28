@@ -28,8 +28,11 @@ export default function DocumentsIndex() {
           content="Публичные документы, оферты и политики платформы СИНТАГМА."
         />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/documents" />
         <meta name="twitter:card" content="summary" />
-        <link rel="canonical" href="https://sintagma.com.ru/documents" />
+        <meta name="twitter:title" content="Документы платформы СИНТАГМА" />
+        <meta name="twitter:description" content="Публичные документы, оферты и политики платформы СИНТАГМА." />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/documents" />
       </Helmet>
 
       <LandingHeader showStars={false} />

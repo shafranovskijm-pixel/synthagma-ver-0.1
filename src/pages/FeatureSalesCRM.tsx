@@ -100,9 +100,12 @@ const FeatureSalesCRM = () => {
       <Helmet>
         <title>CRM и Продажи — Синтагма</title>
         <meta name="description" content="Канбан сделок, КП с PDF, договоры и ПЭП, счета и автонапоминания об оплате, лидерборд менеджеров и тайм-лайн «Сделки 360°»." />
-        <link rel="canonical" href="https://sintagma.com.ru/feature/sales-crm" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/feature/sales-crm" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/feature/sales-crm" />
         <meta property="og:title" content="CRM и Продажи — Синтагма" />
         <meta property="og:description" content="Полноценная CRM для B2B: сделки, КП, договоры, счета и контроль менеджеров — в одной системе." />
+        <meta name="twitter:title" content="CRM и Продажи — Синтагма" />
+        <meta name="twitter:description" content="Канбан сделок, КП с PDF, договоры и ПЭП, счета и автонапоминания об оплате, лидерборд менеджеров и тайм-лайн «Сделки 360°»." />
       </Helmet>
 
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">

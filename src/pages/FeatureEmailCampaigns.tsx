@@ -100,9 +100,12 @@ const FeatureEmailCampaigns = () => {
       <Helmet>
         <title>Email-рассылки и SMTP — Синтагма</title>
         <meta name="description" content="Шаблоны, drip-цепочки, A/B-тест тем, click-tracking и UTM. Свой SMTP, проверка SPF/DKIM/DMARC, RFC 8058 unsubscribe и ФЗ-152." />
-        <link rel="canonical" href="https://sintagma.com.ru/feature/email-campaigns" />
+        <link rel="canonical" href="https://xn--80aaiswd0ak.xn--p1ai/feature/email-campaigns" />
+        <meta property="og:url" content="https://xn--80aaiswd0ak.xn--p1ai/feature/email-campaigns" />
         <meta property="og:title" content="Email-рассылки — Синтагма" />
         <meta property="og:description" content="Профессиональные email-рассылки со своего SMTP. Шаблоны, A/B-тесты, drip-цепочки и трекинг открытий." />
+        <meta name="twitter:title" content="Email-рассылки и SMTP — Синтагма" />
+        <meta name="twitter:description" content="Шаблоны, drip-цепочки, A/B-тест тем, click-tracking и UTM. Свой SMTP, проверка SPF/DKIM/DMARC, RFC 8058 unsubscribe и ФЗ-152." />
       </Helmet>
 
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
