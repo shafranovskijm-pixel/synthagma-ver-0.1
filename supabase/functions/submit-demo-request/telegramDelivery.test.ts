@@ -8,7 +8,7 @@ import {
   demoTelegramForceRetryKey,
   isDemoNotificationRecord,
   parseDemoTelegramMetadata,
-} from "../_shared/demoTelegramDelivery";
+} from "../_shared/demoTelegramDelivery.ts";
 
 const REQUEST_ID = "8df1b898-b788-4ce2-a689-9a470eae5cf1";
 
