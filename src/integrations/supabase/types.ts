@@ -9777,6 +9777,88 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_invoice_acts: {
+        Row: {
+          act_date: string
+          act_number: string
+          billing_document_id: string | null
+          created_at: string
+          created_by: string
+          document_name: string
+          html_sha256: string
+          html_snapshot: string
+          id: string
+          invoice_id: string
+          organization_id: string
+          ready_at: string | null
+          request_id: string
+          source_sha256: string
+          source_snapshot: Json
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          act_date: string
+          act_number: string
+          billing_document_id?: string | null
+          created_at?: string
+          created_by: string
+          document_name: string
+          html_sha256: string
+          html_snapshot: string
+          id?: string
+          invoice_id: string
+          organization_id: string
+          ready_at?: string | null
+          request_id: string
+          source_sha256: string
+          source_snapshot: Json
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          act_date?: string
+          act_number?: string
+          billing_document_id?: string | null
+          created_at?: string
+          created_by?: string
+          document_name?: string
+          html_sha256?: string
+          html_snapshot?: string
+          id?: string
+          invoice_id?: string
+          organization_id?: string
+          ready_at?: string | null
+          request_id?: string
+          source_sha256?: string
+          source_snapshot?: Json
+          status?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_invoice_acts_billing_document_id_fkey"
+            columns: ["billing_document_id"]
+            isOneToOne: true
+            referencedRelation: "org_billing_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_invoice_acts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "subscription_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_invoice_acts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_updates: {
         Row: {
           created_at: string
@@ -15641,6 +15723,29 @@ export type Database = {
       set_student_blocked: {
         Args: { _blocked: boolean; _reason?: string; _target_user_id: string }
         Returns: undefined
+      }
+      sintagma_finalize_platform_invoice_act: {
+        Args: { p_act_id: string; p_verified_html_sha256: string }
+        Returns: Json
+      }
+      sintagma_platform_act_source: {
+        Args: { p_invoice_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      sintagma_prepare_platform_invoice_act: {
+        Args: {
+          p_act_date: string
+          p_html: string
+          p_invoice_id: string
+          p_organization_id: string
+          p_request_id: string
+          p_source_sha256: string
+        }
+        Returns: Json
+      }
+      sintagma_search_billing_organizations: {
+        Args: { p_limit?: number; p_offset?: number; p_query: string }
+        Returns: Json
       }
       soft_delete_document: {
         Args: { p_id: string; p_table: string }
