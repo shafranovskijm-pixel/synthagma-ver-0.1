@@ -10,7 +10,7 @@ import {
   normalizeDemoRequestId,
   notificationInvokeSucceeded,
   TELEGRAM_MESSAGE_MAX_LENGTH,
-} from "./contract";
+} from "./contract.ts";
 
 describe("submit-demo-request notification contract", () => {
   it.each([

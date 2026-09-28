@@ -72,7 +72,7 @@ describe("credential privacy before analytics", () => {
     const refreshEnd = main.indexOf("})();", refreshStart);
     const refresh = main.slice(refreshStart, refreshEnd + 5);
     expect(refresh).toContain("__sintagmaLegacyLoginEntry) return;");
-    const productionRefresh = refresh.replaceAll("import.meta.env.PROD", "true");
+    const productionRefresh = refresh.split("import.meta.env.PROD").join("true");
     const executable = transpileModule(productionRefresh, { compilerOptions: { target: ScriptTarget.ES2022 } }).outputText
       .replace(/\nexport \{\};?\s*$/, ""); // empty module marker is unnecessary in the VM harness
     runInNewContext(executable, page);
