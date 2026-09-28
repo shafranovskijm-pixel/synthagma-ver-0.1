@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -18,6 +19,11 @@ const stagger = {
 const FeatureCourseStore = () => {
   return (
     <div className="min-h-screen bg-background">
+      <PublicPageMetadata
+        title="Магазин курсов для организаций и слушателей — СИНТАГМА"
+        description="Магазин курсов СИНТАГМА: публикация и поиск курсов, заявки слушателей, настройка цен и управление размещёнными программами обучения."
+        path="/feature/course-store"
+      />
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">

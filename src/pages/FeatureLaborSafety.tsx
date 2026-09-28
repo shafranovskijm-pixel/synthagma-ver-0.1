@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -18,6 +19,11 @@ const stagger = {
 const FeatureLaborSafety = () => {
   return (
     <div className="min-h-screen bg-background">
+      <PublicPageMetadata
+        title="Модуль обучения по охране труда — СИНТАГМА"
+        description="Обучение по охране труда в СИНТАГМЕ: группы слушателей, назначение курсов, статусы прохождения и подготовка протоколов проверки знаний."
+        path="/feature/labor-safety"
+      />
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">

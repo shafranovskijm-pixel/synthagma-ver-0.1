@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -90,6 +91,11 @@ const aiFeatures = [
 const FeatureAICourses = () => {
   return (
     <div className="min-h-screen bg-background">
+      <PublicPageMetadata
+        title="Создание курсов с помощью ИИ — СИНТАГМА"
+        description="Обзор ИИ-функций конструктора курсов СИНТАГМА: создание структуры, уроков и тестов, озвучка текста и демонстрация редактора."
+        path="/feature/ai-courses"
+      />
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">

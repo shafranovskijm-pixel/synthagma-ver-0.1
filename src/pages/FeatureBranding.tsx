@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { ArrowLeft, Palette, Image, LogIn, Type, Monitor, Sparkles, Layout } from "lucide-react";
@@ -17,6 +18,11 @@ const stagger = {
 const FeatureBranding = () => {
   return (
     <div className="min-h-screen bg-background">
+      <PublicPageMetadata
+        title="Брендирование учебного кабинета — СИНТАГМА"
+        description="Брендирование в СИНТАГМЕ: логотип, обложка, фирменные цвета, название организации и персональная страница входа для слушателей."
+        path="/feature/branding"
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">

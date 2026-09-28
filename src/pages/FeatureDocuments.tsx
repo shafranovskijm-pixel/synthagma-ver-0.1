@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -85,6 +86,11 @@ const packageDocuments = getGroupDocumentTypes("docs").map(document => document.
 
 const FeatureDocuments = () => (
   <div className="min-h-screen bg-background">
+    <PublicPageMetadata
+      title="Документооборот учебной группы — СИНТАГМА"
+      description="Документооборот учебной группы в СИНТАГМЕ: курсы, слушатели, договоры, версии документов и статусы готовности. Возможности и ограничения Beta."
+      path="/feature/documents"
+    />
     <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-xl">
       <div className="container mx-auto flex items-center justify-between px-6 py-4">
         <Link to="/" aria-label="На главную Синтагмы"><SigmaLogo size="sm" /></Link>

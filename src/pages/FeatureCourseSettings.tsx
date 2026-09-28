@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -51,6 +52,11 @@ const features = [
 const FeatureCourseSettings = () => {
   return (
     <div className="min-h-screen bg-background">
+      <PublicPageMetadata
+        title="Настройки курсов и прохождения обучения — СИНТАГМА"
+        description="Настройки курсов в СИНТАГМЕ: последовательность уроков, управление перемоткой видео, напоминания, сбор данных слушателей и уведомления о завершении."
+        path="/feature/course-settings"
+      />
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">

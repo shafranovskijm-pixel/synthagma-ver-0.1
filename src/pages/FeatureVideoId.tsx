@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PublicPageMetadata } from "@/components/PublicPageMetadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -18,6 +19,11 @@ const stagger = {
 const FeatureVideoId = () => {
   return (
     <div className="min-h-screen bg-background">
+      <PublicPageMetadata
+        title="Фотоидентификация слушателей — СИНТАГМА"
+        description="Фотофиксация слушателя перед дистанционной аттестацией: привязка к зачислению, история статусов и ручная проверка администратором организации."
+        path="/feature/video-id"
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">

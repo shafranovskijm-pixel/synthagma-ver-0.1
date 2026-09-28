@@ -34,6 +34,10 @@ export default function DocumentPage() {
   if (!doc) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
+        <Helmet>
+          <title>Документ не найден — СИНТАГМА</title>
+          <meta name="robots" content="noindex, follow" />
+        </Helmet>
         <LandingHeader showStars={false} />
         <main className="flex-1 container mx-auto px-6 py-20 max-w-2xl text-center">
           <h1 className="font-display text-3xl font-medium mb-3">
@@ -64,10 +68,13 @@ export default function DocumentPage() {
         <meta property="og:title" content={`${doc.title} — СИНТАГМА`} />
         <meta property="og:description" content={shortDesc} />
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={`https://xn--80aaiswd0ak.xn--p1ai/documents/${doc.slug}`} />
         <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={`${doc.title} — СИНТАГМА`} />
+        <meta name="twitter:description" content={shortDesc} />
         <link
           rel="canonical"
-          href={`https://sintagma.com.ru/documents/${doc.slug}`}
+          href={`https://xn--80aaiswd0ak.xn--p1ai/documents/${doc.slug}`}
         />
         <script type="application/ld+json">
           {JSON.stringify({
@@ -82,7 +89,7 @@ export default function DocumentPage() {
               "@type": "Organization",
               name: OPERATOR.short,
             },
-            url: `https://sintagma.com.ru/documents/${doc.slug}`,
+            url: `https://xn--80aaiswd0ak.xn--p1ai/documents/${doc.slug}`,
           })}
         </script>
         <style>{`
