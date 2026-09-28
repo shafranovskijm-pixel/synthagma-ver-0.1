@@ -27,6 +27,7 @@ export interface Course {
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
   skip_video_identification?: boolean | null;
+  require_final_test_photo?: boolean;
   landing_content?: unknown;
 }
 

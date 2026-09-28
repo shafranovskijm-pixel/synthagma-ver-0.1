@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TestAttemptDetail, type EnrichedTestAttempt } from '../TestAttemptDetail';
 
 vi.mock('@/utils/testAttemptPdf', () => ({ generateTestAttemptPdf: vi.fn(), generateTestAttemptExcel: vi.fn() }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn().mockResolvedValue({ data: null, error: null }) } }));
 afterEach(cleanup);
 
 const attempt = (key: number | null | undefined): EnrichedTestAttempt => ({
@@ -13,14 +14,15 @@ const attempt = (key: number | null | undefined): EnrichedTestAttempt => ({
   questions: [{ id: 'question', question: 'Вопрос', options: ['Выбранный ответ', 'Другой ответ'],
     ...(key === undefined ? {} : { correct_answer: key }) }],
 });
-function openReview(data: EnrichedTestAttempt) {
+async function openReview(data: EnrichedTestAttempt) {
   render(<TestAttemptDetail attempt={data} studentName="Ученик" />);
   fireEvent.click(screen.getByText('Тест'));
+  await waitFor(() => expect(screen.getByText('Фото для этой попытки не записывалось.')).toBeTruthy());
 }
 
 describe('attempt review with invalid saved keys', () => {
-  it.each([null, -1, 2])('shows neutral saved-key diagnostics for %s without blaming the selected answer', key => {
-    openReview(attempt(key));
+  it.each([null, -1, 2])('shows neutral saved-key diagnostics for %s without blaming the selected answer', async key => {
+    await openReview(attempt(key));
     expect(screen.getByText(/Правильный ответ в вопросе/).textContent).toContain('Балл не начислен');
     const selection = screen.getByText('Ответ ученика:').parentElement!;
     expect(selection.textContent).toContain('Выбранный ответ');
@@ -28,20 +30,20 @@ describe('attempt review with invalid saved keys', () => {
     expect(selection.querySelector('svg')).toBeNull();
   });
 
-  it('does not interpret a hidden answer key as a broken key', () => {
-    openReview(attempt(undefined));
+  it('does not interpret a hidden answer key as a broken key', async () => {
+    await openReview(attempt(undefined));
     expect(screen.queryByText(/Правильный ответ в вопросе/)).toBeNull();
     expect(screen.getByText('Ответ ученика:')).toBeTruthy();
   });
 
-  it('does not disclose key diagnostics before completion', () => {
-    openReview({ ...attempt(null), status: 'in_progress', completed_at: null });
+  it('does not disclose key diagnostics before completion', async () => {
+    await openReview({ ...attempt(null), status: 'in_progress', completed_at: null });
     expect(screen.queryByText(/Правильный ответ в вопросе/)).toBeNull();
     expect(screen.queryByText('1. Вопрос')).toBeNull();
   });
 
-  it('keeps normal correct and wrong option feedback for valid keys', () => {
-    openReview(attempt(1));
+  it('keeps normal correct and wrong option feedback for valid keys', async () => {
+    await openReview(attempt(1));
     expect(screen.queryByText(/Правильный ответ в вопросе/)).toBeNull();
     expect(screen.getByText('Выбранный ответ').className).toContain('destructive');
     expect(screen.getByText('Другой ответ').className).toContain('green');

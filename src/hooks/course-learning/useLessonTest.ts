@@ -4,6 +4,7 @@ import { enqueueTestSubmission, isRetryableTestError } from "@/utils/testAnswerQ
 import { toast } from "sonner";
 import { isAdminViewActive } from "@/utils/adminViewMode";
 import type { Lesson, LessonProgress, TestQuestion } from "./types";
+import type { FinalTestPhotoChallenge } from "@/hooks/useVideoIdentification";
 
 interface UseLessonTestParams {
   currentLesson: Lesson | undefined;
@@ -34,6 +35,7 @@ interface ActiveAttempt extends Limits {
   showAnswers: boolean;
 }
 interface TestState extends Limits {
+  photoRequired?: boolean;
   hasAttempt: boolean;
   passed?: boolean | null;
   passingScore: number;
@@ -57,6 +59,8 @@ const rpc = async <T,>(name: string, args: Record<string, unknown>): Promise<T> 
 };
 export function testErrorMessage(error: unknown): string {
   const message = (error as { message?: string })?.message || '';
+  if (/final test photo expired/i.test(message)) return 'Время подтверждения истекло. Сделайте новое фото перед началом теста. Попытка не списана.';
+  if (/final test photo/i.test(message)) return 'Перед этой попыткой нужно новое фото с камеры. Нажмите «Начать тест». Попытка не списана.';
   if (/test content invalid|no test questions available/i.test(message)) return 'В тесте некорректно настроены вопросы или варианты ответа. Попытка не списана. Обратитесь в учебную организацию.';
   if (/daily|per.day|суточн/i.test(message)) return 'На сегодня попытки закончились. Лимит обновится в 00:00 по Москве.';
   if (/exhaust|attempt.limit|попытк.*исчерп/i.test(message)) return 'Использованы все доступные попытки теста.';
@@ -82,13 +86,23 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
   const [testStartedAt, setTestStartedAt] = useState<string | null>(null);
   const [testShowAnswers, setTestShowAnswers] = useState(false);
   const [testManualCredit, setTestManualCredit] = useState<TestState['manualCredit']>(null);
+  const [testPhotoRequired, setTestPhotoRequired] = useState(false);
+  const [testPhotoChallenge, setTestPhotoChallenge] = useState<FinalTestPhotoChallenge | null>(null);
+  const photoChallengeRef = useRef<FinalTestPhotoChallenge | null>(null);
+  photoChallengeRef.current = testPhotoChallenge;
   const scope = user?.id + ':' + currentLesson?.id;
   const scopeRef = useRef(scope); scopeRef.current = scope;
   const requestRef = useRef(0);
   const activeScopeRef = useRef<string | null>(null);
   const busyRef = useRef(false);
   const startRequestRef = useRef<string | null>(null);
+  const startOperationRef = useRef(0);
   const lessonId = currentLesson?.type === 'test' ? currentLesson.id : null;
+  const startStorageKey = 'test-start-request:' + scope;
+  const clearStartRequest = () => {
+    startRequestRef.current = null;
+    try { sessionStorage.removeItem(startStorageKey); } catch { /* optional retry cache */ }
+  };
 
   const applyActive = (active: ActiveAttempt) => {
     activeScopeRef.current = scope; setTestLegacy(false);
@@ -107,11 +121,13 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
       if (scopeRef.current !== expectedScope || request !== requestRef.current) return;
       setLimits(data); setTestPassingScore(data.passingScore ?? 60); setTestShowAnswers(data.showAnswers === true);
       setTestManualCredit(data.manualCredit ?? null); setTestLegacy(data.attempt?.legacy === true && !data.manualCredit);
+      setTestPhotoRequired(data.photoRequired === true);
       setTestExplanations(data.explanations || {});
       if (data.manualCredit) {
         setTestSubmitted(true); setTestScore(null); setTestQuestions([]); setTestAttemptId(null);
         setLessonProgress(prev => [...prev.filter(p => p.lesson_id !== lessonId), { lesson_id: lessonId, completed: true }]);
       } else if (data.activeAttempt) {
+        clearStartRequest(); setTestPhotoChallenge(null);
         applyActive(data.activeAttempt);
       } else if (data.hasAttempt && data.attempt) {
         const attempt = data.attempt;
@@ -130,12 +146,14 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
   }, [lessonId, user?.id, scope]);
 
   useEffect(() => {
+    startOperationRef.current++;
     requestRef.current++; activeScopeRef.current = null; startRequestRef.current = null; busyRef.current = false;
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({}); setLimits(emptyLimits);
     setTestManualCredit(null); setTestLegacy(false); setTestAttemptId(null); setTestStartedAt(null); setTestExplanations({}); setTestSubmitting(false);
+    setTestPhotoRequired(false); setTestPhotoChallenge(null);
     setTestQuestionsError(null); setTestQuestionsLoading(!!lessonId);
     if (lessonId) void refreshTestState();
-    return () => { requestRef.current++; };
+    return () => { requestRef.current++; startOperationRef.current++; };
   }, [scope, lessonId, refreshTestState]);
   useEffect(() => {
     if (!lessonId) return;
@@ -161,19 +179,50 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
   }, [answers, testAttemptId, testSubmitted, user?.id]);
 
   const startTest = async () => {
-    if (!lessonId || !user || busyRef.current || testManualCredit) return;
+    if (scopeRef.current !== scope || !lessonId || !user || busyRef.current || testManualCredit) return;
     if (isAdminViewActive()) { toast.info('Начало теста недоступно в режиме просмотра администратора'); return; }
     const expectedScope = scope;
+    const operation = ++startOperationRef.current;
+    const isCurrentStart = () => scopeRef.current === expectedScope && startOperationRef.current === operation;
     requestRef.current++;
     busyRef.current = true; setTestQuestionsLoading(true); setTestQuestionsError(null);
-    const requestId = startRequestRef.current ?? crypto.randomUUID(); startRequestRef.current = requestId;
+    let cachedRequest: string | null = null;
+    try { cachedRequest = sessionStorage.getItem(startStorageKey); } catch { /* optional retry cache */ }
+    const requestId = startRequestRef.current ?? (cachedRequest && /^[0-9a-f-]{36}$/i.test(cachedRequest) ? cachedRequest : crypto.randomUUID());
+    startRequestRef.current = requestId;
+    try { sessionStorage.setItem(startStorageKey, requestId); } catch { /* active request remains in memory */ }
     try {
+      if (testPhotoRequired) {
+        const challenge = await rpc<FinalTestPhotoChallenge & { required: boolean; completed?: boolean }>('prepare_final_test_photo', { p_lesson_id: lessonId, p_request_id: requestId });
+        if (!isCurrentStart()) return;
+        if (challenge.required && !challenge.completed) {
+          if (!challenge.challengeId || challenge.bucket !== 'final-test-photos' || !challenge.path) throw new Error('Final test photo challenge not found');
+          setTestPhotoChallenge(challenge);
+          return;
+        }
+      }
       const active = await rpc<ActiveAttempt>('start_test_attempt', { p_lesson_id: lessonId, p_request_id: requestId });
-      if (scopeRef.current !== expectedScope) return;
+      if (!isCurrentStart()) return;
       if (active.status === "completed") await refreshTestState(); else applyActive(active);
-      startRequestRef.current = null;
-    } catch (error) { if (scopeRef.current === expectedScope) setTestQuestionsError(testErrorMessage(error)); }
-    finally { if (scopeRef.current === expectedScope) { busyRef.current = false; setTestQuestionsLoading(false); } }
+      if (!isCurrentStart()) return;
+      clearStartRequest(); setTestPhotoChallenge(null);
+    } catch (error) {
+      if (isCurrentStart()) {
+        if (/final test photo/i.test((error as { message?: string })?.message || '')) setTestPhotoRequired(true);
+        setTestQuestionsError(testErrorMessage(error));
+      }
+    }
+    finally { if (isCurrentStart()) { busyRef.current = false; setTestQuestionsLoading(false); } }
+  };
+  const closeTestPhoto = () => {
+    startOperationRef.current++;
+    photoChallengeRef.current = null; setTestPhotoChallenge(null); clearStartRequest();
+  };
+  const completeTestPhoto = async (challengeId: string) => {
+    if (scopeRef.current !== scope || photoChallengeRef.current?.challengeId !== challengeId) return;
+    photoChallengeRef.current = null;
+    setTestPhotoChallenge(null);
+    await startTest();
   };
   const submitTest = async () => {
     if (!lessonId || !user || !testAttemptId || busyRef.current || testSubmitted || testManualCredit) return;
@@ -214,6 +263,7 @@ export function useLessonTest({ currentLesson, user, lessons, lessonProgress, se
     testMaxAttempts: limits.maxAttempts, testAttemptsUsed: limits.attemptsUsed,
     testMaxAttemptsPerDay: limits.maxAttemptsPerDay, testAttemptsUsedToday: limits.attemptsUsedToday, testResetAt: limits.resetAt,
     testQuestionsLoading, testQuestionsError, testLegacy, testSubmitting, testAttemptId, testStartedAt, testShowAnswers, testManualCredit, testLimitReached,
+    testPhotoRequired, testPhotoChallenge, closeTestPhoto, completeTestPhoto,
     submitTest, retryTest: startTest, startTest, refreshTestState,
   };
 }

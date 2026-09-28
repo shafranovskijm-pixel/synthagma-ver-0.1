@@ -4,7 +4,7 @@ import { Video, Camera, CheckCircle2, AlertCircle, RefreshCw, UserCheck, Shield,
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { useVideoIdentification, type VerificationRecord } from "@/hooks/useVideoIdentification";
+import { useVideoIdentification, type VerificationRecord, type FinalTestPhotoChallenge } from "@/hooks/useVideoIdentification";
 
 interface VideoIdentificationProps {
   userId: string;
@@ -15,6 +15,7 @@ interface VideoIdentificationProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   embedded?: boolean;
+  finalTestPhoto?: FinalTestPhotoChallenge;
 }
 
 function getStatusBadge(status: string) {
@@ -27,9 +28,9 @@ function getStatusBadge(status: string) {
 }
 
 export function VideoIdentification({
-  userId, userName, organizationId, enrollmentId, onVerified, isOpen = false, onOpenChange, embedded = false,
+  userId, userName, organizationId, enrollmentId, onVerified, isOpen = false, onOpenChange, embedded = false, finalTestPhoto,
 }: VideoIdentificationProps) {
-  const vi = useVideoIdentification({ userId, organizationId, enrollmentId, onVerified, isOpen, embedded });
+  const vi = useVideoIdentification({ userId, organizationId, enrollmentId, onVerified, isOpen, embedded, finalTestPhoto });
 
   if (vi.isLoading) {
     const loadingContent = (
@@ -47,10 +48,10 @@ export function VideoIdentification({
     <>
       <div className="mb-4">
         <h3 className="font-display flex items-center gap-2 text-lg font-semibold">
-          <Shield className="w-5 h-5 text-primary" />Видеоидентификация (ЭИОС)
+          <Shield className="w-5 h-5 text-primary" />{finalTestPhoto ? 'Фото перед итоговым тестом' : 'Видеоидентификация (ЭИОС)'}
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде
+          {finalTestPhoto ? 'В настройках курса включено новое фото перед каждой попыткой. Оно сохранится вместе с этой попыткой и будет доступно вашей учебной организации.' : 'Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде'}
         </p>
       </div>
 
@@ -102,7 +103,7 @@ export function VideoIdentification({
             </div>
             <div>
               <h3 className="font-semibold text-lg mb-2">Подтвердите вашу личность</h3>
-              <p className="text-muted-foreground text-sm">В соответствии с требованиями законодательства РФ об образовании, необходимо подтвердить вашу личность для доступа к электронной информационно-образовательной среде (ЭИОС).</p>
+              <p className="text-muted-foreground text-sm">{finalTestPhoto ? 'Сделайте фото с камеры и подтвердите его. Затем начнётся тест. Пока фото не сохранено, попытка не расходуется.' : 'В соответствии с требованиями законодательства РФ об образовании, необходимо подтвердить вашу личность для доступа к электронной информационно-образовательной среде (ЭИОС).'}</p>
             </div>
             {vi.currentVerification && (
               <div className="bg-muted/50 rounded-xl p-4 text-left">
@@ -174,13 +175,14 @@ export function VideoIdentification({
             </div>
             <p className="text-center text-sm">{userName}, это вы?</p>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={vi.retakePhoto} disabled={vi.isUploading}>
+              <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={vi.retakePhoto} disabled={vi.isUploading || vi.photoLocked}>
                 <RefreshCw className="w-4 h-4" />Переснять
               </Button>
               <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={vi.confirmPhoto} disabled={vi.isUploading}>
                 {vi.isUploading ? <><SigmaSpinner size="sm" />Сохранение...</> : <><CheckCircle2 className="w-4 h-4" />Подтвердить</>}
               </Button>
             </div>
+            {finalTestPhoto && vi.photoLocked && <p className="text-xs text-muted-foreground">При повторной отправке используется этот же снимок. Чтобы переснять, закройте окно и снова начните проверку.</p>}
           </div>
         )}
 
@@ -191,10 +193,10 @@ export function VideoIdentification({
             </div>
             <div>
               <h3 className={`font-semibold text-lg mb-2 ${vi.currentVerification?.status === "verified" ? "text-green-500" : "text-amber-500"}`}>
-                {vi.currentVerification?.status === "verified" ? "Идентификация подтверждена!" : "Фото отправлено на проверку"}
+                {finalTestPhoto ? 'Фото сохранено' : vi.currentVerification?.status === "verified" ? "Идентификация подтверждена!" : "Фото отправлено на проверку"}
               </h3>
               <p className="text-muted-foreground text-sm">
-                {vi.currentVerification?.status === "verified" ? "Ваша личность подтверждена. Вы можете продолжить обучение." : "Ожидайте подтверждения от организации. Обычно это занимает до 24 часов."}
+                {finalTestPhoto ? 'Подтверждение сохранено для этой попытки теста.' : vi.currentVerification?.status === "verified" ? "Ваша личность подтверждена. Вы можете продолжить обучение." : "Ожидайте подтверждения от организации. Обычно это занимает до 24 часов."}
               </p>
             </div>
             {vi.currentVerification?.photo_url && (

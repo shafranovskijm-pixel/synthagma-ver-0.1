@@ -1,4 +1,5 @@
 import { TestAttemptStatus } from '@/components/course-learning/TestAttemptStatus';
+import { VideoIdentification } from '@/components/student/VideoIdentification';
 import { useRef, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,6 +51,7 @@ const CourseLearning = () => {
     testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions, testMaxAttempts, testAttemptsUsed,
     testQuestionsLoading, testQuestionsError, testLegacy, testSubmitting, testAttemptId, testShowAnswers, testManualCredit, testLimitReached,
     testMaxAttemptsPerDay, testAttemptsUsedToday, startTest, refreshTestState,
+    testPhotoRequired, testPhotoChallenge, closeTestPhoto, completeTestPhoto,
     answers, setAnswers,
     isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
@@ -350,7 +352,9 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-sigma-purple/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><ClipboardList className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-sigma-purple")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestionsLoading ? 'загрузка вопросов…' : `${testQuestions.length} вопросов`} • Проходной балл: {testPassingScore}%</p></div>
                 </div>
-                {!testQuestionsLoading && <TestAttemptStatus maxAttempts={testMaxAttempts} attemptsUsed={testAttemptsUsed} maxAttemptsPerDay={testMaxAttemptsPerDay} attemptsUsedToday={testAttemptsUsedToday} active={!!testAttemptId} submitted={testSubmitted} busy={testSubmitting || testQuestionsLoading} blocked={testLimitReached} error={testQuestionsError} manualCredit={testManualCredit} onStart={startTest} onRefresh={refreshTestState} />}
+                {!testQuestionsLoading && <TestAttemptStatus maxAttempts={testMaxAttempts} attemptsUsed={testAttemptsUsed} maxAttemptsPerDay={testMaxAttemptsPerDay} attemptsUsedToday={testAttemptsUsedToday} active={!!testAttemptId} submitted={testSubmitted} busy={testSubmitting || testQuestionsLoading} blocked={testLimitReached} error={testQuestionsError} manualCredit={testManualCredit} photoRequired={testPhotoRequired} onStart={startTest} onRefresh={refreshTestState} />}
+                {testPhotoRequired && !testAttemptId && !testManualCredit && <p className="text-sm text-muted-foreground">Перед каждой новой попыткой итогового теста требуется фото с камеры. Ранее сделанное фото не заменяет эту проверку.</p>}
+                {user && testPhotoChallenge && <VideoIdentification key={testPhotoChallenge.challengeId} userId={user.id} userName={user.user_metadata?.full_name || 'Слушатель'} finalTestPhoto={testPhotoChallenge} isOpen onOpenChange={open => { if (!open) closeTestPhoto(); }} onVerified={() => { void completeTestPhoto(testPhotoChallenge.challengeId); }} />}
                 {testQuestionsLoading && (
                   <div className="flex items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-muted-foreground">
                     <SigmaSpinner size="sm" />

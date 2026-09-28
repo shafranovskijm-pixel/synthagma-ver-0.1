@@ -47,6 +47,116 @@ function harness(overrides: Partial<Parameters<typeof useLessonTest>[0]> = {}) {
 const ready = async (result: { current: ReturnType<typeof useLessonTest> }) => {
   await waitFor(() => expect(result.current.testQuestionsLoading).toBe(false));
 };
+
+describe('final test photo gate', () => {
+  const challenge = { required: true, challengeId: 'challenge-a', bucket: 'final-test-photos', path: 'user-a/challenge-a.jpg', completed: false };
+  it('opens a fresh challenge without consuming an attempt and starts after server confirmation', async () => {
+    let confirmed = false;
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'prepare_final_test_photo' ? { ...challenge, completed: confirmed }
+      : name === 'start_test_attempt' ? active() : { ...idle(), photoRequired: true })));
+    const { result } = harness(); await ready(result);
+    await act(async () => { await result.current.startTest(); });
+    expect(result.current.testPhotoChallenge?.challengeId).toBe('challenge-a');
+    expect(result.current.testAttemptsUsed).toBe(0);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    const request = mocks.rpc.mock.calls.find(([name]) => name === 'prepare_final_test_photo')![1].p_request_id;
+    confirmed = true;
+    await act(async () => { await result.current.completeTestPhoto('challenge-a'); });
+    expect(result.current.testAttemptId).toBe('attempt-a');
+    expect(result.current.testPhotoChallenge).toBeNull();
+    expect(mocks.rpc).toHaveBeenCalledWith('start_test_attempt', { p_lesson_id: 'lesson-a', p_request_id: request });
+  });
+
+  it('restores an unstarted request after reload and does not reuse a prior general verification', async () => {
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'prepare_final_test_photo' ? challenge : { ...idle(), photoRequired: true })));
+    const first = harness(); await ready(first.result);
+    await act(async () => { await first.result.current.startTest(); });
+    const request = mocks.rpc.mock.calls.find(([name]) => name === 'prepare_final_test_photo')![1].p_request_id;
+    first.unmount();
+    const second = harness(); await ready(second.result);
+    await act(async () => { await second.result.current.startTest(); });
+    const prepares = mocks.rpc.mock.calls.filter(([name]) => name === 'prepare_final_test_photo');
+    expect(prepares[prepares.length - 1][1].p_request_id).toBe(request);
+    expect(second.result.current.testPhotoChallenge).not.toBeNull();
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+  });
+
+  it('does not prepare a photo for disabled/nonfinal tests or a resumed attempt', async () => {
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'start_test_attempt' ? active() : idle())));
+    const first = harness(); await ready(first.result);
+    await act(async () => { await first.result.current.startTest(); });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'prepare_final_test_photo')).toBe(false);
+    first.unmount(); mocks.rpc.mockClear();
+    mocks.rpc.mockResolvedValue(response({ ...idle(), photoRequired: true, activeAttempt: active() }));
+    const resumed = harness(); await ready(resumed.result);
+    expect(resumed.result.current.testAttemptId).toBe('attempt-a');
+    expect(resumed.result.current.testPhotoChallenge).toBeNull();
+    expect(mocks.rpc.mock.calls.every(([name]) => name === 'get_student_test_state')).toBe(true);
+  });
+
+  it('closes photo without starting and ignores a late challenge for another lesson', async () => {
+    const pending = deferred<ReturnType<typeof response>>();
+    mocks.rpc.mockImplementation(name => name === 'prepare_final_test_photo' ? pending.promise : Promise.resolve(response({ ...idle(), photoRequired: true })));
+    const { result, params, rerender } = harness(); await ready(result);
+    let start!: Promise<void>;
+    act(() => { start = result.current.startTest(); });
+    rerender({ ...params, currentLesson: lesson('lesson-b') }); await ready(result);
+    await act(async () => { pending.resolve(response(challenge)); await start; });
+    expect(result.current.testPhotoChallenge).toBeNull();
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+  });
+
+  it('keeps the requirement after a server denial caused by a freshly enabled course setting', async () => {
+    const { result } = harness(); await ready(result);
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'Final test photo required' } });
+    await act(async () => { await result.current.startTest(); });
+    expect(result.current.testPhotoRequired).toBe(true);
+    expect(result.current.testQuestionsError).toContain('нужно новое фото');
+    expect(result.current.testAttemptsUsed).toBe(0);
+  });
+
+  it('rejects late confirmation after cancellation and uses a new request for a new camera dialog', async () => {
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'prepare_final_test_photo' ? challenge : { ...idle(), photoRequired: true })));
+    const { result } = harness(); await ready(result);
+    await act(async () => { await result.current.startTest(); });
+    const request = mocks.rpc.mock.calls.find(([name]) => name === 'prepare_final_test_photo')![1].p_request_id;
+    const lateComplete = result.current.completeTestPhoto;
+    act(() => result.current.closeTestPhoto());
+    await act(async () => { await lateComplete('challenge-a'); });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+    await act(async () => { await result.current.startTest(); });
+    const prepares = mocks.rpc.mock.calls.filter(([name]) => name === 'prepare_final_test_photo');
+    expect(prepares[prepares.length - 1][1].p_request_id).not.toBe(request);
+  });
+
+  it('rejects an old photo completion after the learner changes lessons', async () => {
+    mocks.rpc.mockImplementation(name => Promise.resolve(response(name === 'prepare_final_test_photo' ? challenge : { ...idle(), photoRequired: true })));
+    const { result, rerender, params } = harness(); await ready(result);
+    await act(async () => { await result.current.startTest(); });
+    const lateComplete = result.current.completeTestPhoto;
+    rerender({ ...params, currentLesson: lesson('lesson-b') }); await ready(result);
+    await act(async () => { await lateComplete('challenge-a'); });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'start_test_attempt')).toBe(false);
+  });
+
+  it('does not overwrite a renewed challenge with a late A-to-B-to-A response', async () => {
+    const pending = deferred<ReturnType<typeof response>>();
+    let prepareCount = 0;
+    mocks.rpc.mockImplementation(name => name === 'prepare_final_test_photo'
+      ? (++prepareCount === 1 ? pending.promise : Promise.resolve(response({ ...challenge, challengeId: 'challenge-new', path: 'user-a/new.jpg' })))
+      : Promise.resolve(response({ ...idle(), photoRequired: true })));
+    const { result, params, rerender } = harness(); await ready(result);
+    let oldStart!: Promise<void>;
+    act(() => { oldStart = result.current.startTest(); });
+    rerender({ ...params, currentLesson: lesson('lesson-b') }); await ready(result);
+    rerender(params); await ready(result);
+    await act(async () => { await result.current.startTest(); });
+    expect(result.current.testPhotoChallenge?.challengeId).toBe('challenge-new');
+    await act(async () => { pending.resolve(response(challenge)); await oldStart; });
+    expect(result.current.testPhotoChallenge?.challengeId).toBe('challenge-new');
+    expect(result.current.testQuestionsLoading).toBe(false);
+  });
+});
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
