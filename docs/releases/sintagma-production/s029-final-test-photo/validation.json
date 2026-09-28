@@ -1,0 +1,57 @@
+{
+  "observedAt": "2026-09-28T17:41:22.403Z",
+  "status": "passed",
+  "assertions": 270,
+  "engine": "Existing PGlite / synthetic fixture, no network",
+  "source": {
+    "file": "supabase/migrations/20260929120000_final_test_photo.sql",
+    "bytes": 24718,
+    "sha256": "8a2c48c31c4f83892507a8705bce72bc3abfc0cb38a520d2b13bf262a59eae21",
+    "lfMd5": "c6de5bea7fc4d902b175fc50582986bb"
+  },
+  "artifacts": [
+    {
+      "file": "preflight.sql",
+      "bytes": 7980,
+      "sha256": "2e5040b6453132bb98b44b0fcb0583463b24813ba13c4d1f032e9ec45c43ec3d"
+    },
+    {
+      "file": "preflight-diagnostics.sql",
+      "bytes": 1005,
+      "sha256": "b9a5eea84cdd015f31196b913d1ec90be7d5e0cb21dc1dfa1a7c831f862663e5"
+    },
+    {
+      "file": "backup-functions.sql",
+      "bytes": 1153,
+      "sha256": "c8572e59b346fadb4007df3eee2d1f1b15de3a97df42c21a3b37550873ac3631"
+    },
+    {
+      "file": "release-transaction.sql",
+      "bytes": 33658,
+      "sha256": "faa9b205b5cba7e8aad7c66c07881c8734b3aeec7383ed36c862484e1970b7e7"
+    },
+    {
+      "file": "postcheck.sql",
+      "bytes": 9296,
+      "sha256": "be3f3a02858e96590c39787d37b6cc3b24c712ab29723381f94cce030e877bbd"
+    }
+  ],
+  "productionExecuted": false,
+  "checks": [
+    "preflight baseline",
+    "recovery query",
+    "transaction commit and exact ledger",
+    "postcheck catalog and privileges",
+    "replay refusal",
+    "full DDL/function/policy rollback on ledger failure",
+    "live-source drift refusal"
+  ],
+  "notCovered": [
+    "provider transport/project identity",
+    "fresh production backup",
+    "live multi-connection locks",
+    "PostgREST notification delivery",
+    "Storage HTTP",
+    "camera"
+  ]
+}
