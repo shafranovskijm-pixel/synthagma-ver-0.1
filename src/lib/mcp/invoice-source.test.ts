@@ -114,6 +114,21 @@ describe("authorization and explicit scope", () => {
     });
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("falls back to the public anon key without changing caller authorization", async () => {
+    const f = fakeDb();
+    vi.stubEnv("SUPABASE_URL", "https://example.invalid");
+    vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", undefined);
+    vi.stubEnv("SUPABASE_ANON_KEY", "legacy-public-anon-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "must-never-use");
+    vi.mocked(createClient).mockReturnValue(f.db as unknown as ReturnType<typeof createClient>);
+    const response = await searchSintagmaInvoices(scope, ctx);
+    expect(response.isError).not.toBe(true);
+    expect(createClient).toHaveBeenCalledWith("https://example.invalid", "legacy-public-anon-key", {
+      global: { headers: { Authorization: "Bearer verified-user-token" } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("search and bounded projections", () => {

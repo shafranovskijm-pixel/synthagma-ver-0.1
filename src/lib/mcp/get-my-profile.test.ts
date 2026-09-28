@@ -55,6 +55,20 @@ describe("get_my_profile privacy boundary", () => {
     expect(serialized).not.toMatch(/generated_password|secret-generated-password|private-login/);
   });
 
+  it("falls back to the public anon key and keeps the caller JWT and profile scope", async () => {
+    vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", undefined);
+    vi.stubEnv("SUPABASE_ANON_KEY", "legacy-public-anon-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "must-never-use");
+    const db = fakeProfiles();
+    const result = await profileTool.handler({}, caller());
+    expect(result.isError).not.toBe(true);
+    expect(createClient).toHaveBeenCalledWith("https://example.invalid", "legacy-public-anon-key", {
+      global: { headers: { Authorization: "Bearer test-user-jwt" } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    expect(db.query.eq).toHaveBeenCalledWith("user_id", userId);
+  });
+
   it.each([
     { name: "unauthenticated", authenticated: false, token: "test-user-jwt", id: userId },
     { name: "missing JWT", authenticated: true, token: "", id: userId },

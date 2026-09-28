@@ -59,7 +59,7 @@ function failure(error: unknown): ToolHandlerResult {
 }
 function userClient(token: string): SupabaseClient {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) throw new ActError("configuration_unavailable");
   return createClient(url, key, { global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false } });

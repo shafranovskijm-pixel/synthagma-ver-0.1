@@ -37,7 +37,7 @@ const SIGNED_URL_SECONDS = 120;
 
 function userClient(token: string): SupabaseClient {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) throw new SourceError("configuration_unavailable");
   // Use the caller's JWT for database AND storage RLS. Never use a service key.
   return createClient(url, key, {

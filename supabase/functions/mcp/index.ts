@@ -35,7 +35,7 @@ import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
 function supabaseForUser(ctx) {
   return createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
+    process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY,
     {
       global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
       auth: { persistSession: false, autoRefreshToken: false }
@@ -97,7 +97,7 @@ var TABLES = {
 var SIGNED_URL_SECONDS = 120;
 function userClient(token) {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) throw new SourceError("configuration_unavailable");
   return createClient2(url, key, {
     global: { headers: { Authorization: `Bearer ${token}` } },
@@ -490,7 +490,7 @@ function failure(error) {
 }
 function userClient2(token) {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) throw new ActError("configuration_unavailable");
   return createClient3(url, key, {
     global: { headers: { Authorization: `Bearer ${token}` } },

@@ -108,6 +108,19 @@ describe("platform act boundary", () => {
       global: { headers: { Authorization: "Bearer caller-jwt" } }, auth: { persistSession: false, autoRefreshToken: false },
     });
   });
+  it("falls back to the public anon key while retaining caller JWT", async () => {
+    const f = fake();
+    vi.stubEnv("SUPABASE_URL", "https://example.invalid");
+    vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", undefined);
+    vi.stubEnv("SUPABASE_ANON_KEY", "legacy-public-anon-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "must-not-use");
+    vi.mocked(createClient).mockReturnValue(f.db as ReturnType<typeof createClient>);
+    const response = await searchSintagmaBillingOrganizations({ query: "Client" }, ctx);
+    expect(response.isError).not.toBe(true);
+    expect(createClient).toHaveBeenCalledWith("https://example.invalid", "legacy-public-anon-key", {
+      global: { headers: { Authorization: "Bearer caller-jwt" } }, auth: { persistSession: false, autoRefreshToken: false },
+    });
+  });
   it("rejects source crossing organization scope", async () => {
     const f = fake({ foreign: true });
     expect(data(await createSintagmaInvoiceAct(createInput, ctx, f.factory)).error).toBe("source_scope_mismatch");
