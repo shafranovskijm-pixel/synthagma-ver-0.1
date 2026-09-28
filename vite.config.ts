@@ -1,15 +1,19 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vite";
+import { defineConfig, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
-import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
+import { loadMcpPlugin } from "./scripts/mcp-sdk-windows.mjs";
 
 const pwaCacheVersion = "sintagma-1.0.81";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(async ({ mode }): Promise<UserConfig & {
+  test: { globals: boolean; environment: "jsdom"; include: string[] };
+}> => {
+  const mcpPlugin = await loadMcpPlugin(__dirname);
+  return ({
   base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',
   server: {
     host: "::",
@@ -161,4 +165,5 @@ export default defineConfig(({ mode }) => ({
     environment: "jsdom",
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
-}));
+  });
+});

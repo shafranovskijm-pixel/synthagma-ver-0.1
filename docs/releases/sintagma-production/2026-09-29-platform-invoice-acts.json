@@ -1,0 +1,24 @@
+{
+  "local": {
+    "runtime": "Deno boot unauthorized 401 passed",
+    "whitespace": "Generated bundle retains one template whitespace line; authored source clean",
+    "typescript": "scoped MCP, OAuth, node passed",
+    "sql": "PGlite PostgreSQL assertions passed; BEGIN/ROLLBACK",
+    "unit": "23 API/renderer/profile and 25 OAuth tests passed",
+    "build": "Vite production passed"
+  },
+  "remote": "pending",
+  "supabase_project": "atxwvjxbqjgkbjlhsdch",
+  "task": "S-027",
+  "baseline": "212bddcd5de5ff1bc3c317d3e3d473fe613ac4ef",
+  "migration": "20260929003000_platform_invoice_acts_api.sql",
+  "hosting": "pending",
+  "actual_customer_acts_created": 0,
+  "api_version": "0.2.0",
+  "chatgpt_connection": "pending",
+  "domain": "pending",
+  "project_id": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "date": "2026-09-29",
+  "owner": "01a0e643-30d3-7e60-8254-1a08ba094c10",
+  "tool_count": 7
+}

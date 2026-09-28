@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client", "vitest/globals"],
+    "strict": true
+  },
+  "include": ["src/lib/mcp/**/*.ts"]
+}

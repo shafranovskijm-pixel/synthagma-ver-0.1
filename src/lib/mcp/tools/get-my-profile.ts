@@ -19,16 +19,16 @@ export default defineTool({
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx: ToolContext) => {
-    if (!ctx.isAuthenticated()) {
+    if (!ctx.isAuthenticated() || !ctx.getToken() || !ctx.getUserId()) {
       return { content: [{ type: "text", text: "Не авторизован" }], isError: true };
     }
     const { data, error } = await supabaseForUser(ctx)
       .from("profiles")
-      .select("*")
-      .eq("id", ctx.getUserId())
+      .select("id,user_id,email,full_name,organization_id")
+      .eq("user_id", ctx.getUserId())
       .maybeSingle();
     if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
+      return { content: [{ type: "text", text: "Не удалось прочитать профиль" }], isError: true };
     }
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
