@@ -39,11 +39,11 @@
     }
   },
   "release": {
-    "status": "awaiting_browser_recovery_after_confirmation",
-    "databasePreflight": "19/19 passed; existing provider policy_grants explicitly delegates storage.objects to postgres. No role/owner/GUC changes.",
+    "status": "database_verified_frontend_pending",
+    "databasePreflight": "19/19 passed on 2026-09-29; catalog and ledger confirmed previously absent before execution",
     "freshDatabaseBackup": "not_created",
     "migration": "supabase/migrations/20260929120000_final_test_photo.sql",
-    "migrationApplied": null,
+    "migrationApplied": true,
     "sourcePushed": false,
     "frontendPublished": false,
     "cameraAndStorageSmoke": "not_run"
@@ -71,25 +71,29 @@
     "evidenceFile": "D:/Codex/work/sintagma-queue/work/s029-domain-before.json"
   },
   "remaining": [
-    "Restore authenticated browser access to the existing database and hosting.",
-    "Refresh the production and remote baseline, take a scoped recovery copy, inspect live RPC definitions.",
-    "Apply only the exact photo migration transaction and verify independently.",
-    "Integrate the approved commit without overwriting concurrent source changes; verify Timeweb build and the actual domain.",
-    "Check the opt-in photo flow using an appropriate test course and learner; do not consume real learner attempts."
+    "Publish approved frontend and verify Timeweb revision and domain.",
+    "Check settings and photo flow in a permitted test account/course; no real attempts used."
   ],
   "integrationCommit": "0b494101a5bc77d317da264a29dba9f0259e6098",
   "providerBackupObserved": {
     "downloaded": false,
-    "timestamp": "2026-09-28T00:32:32Z",
+    "timestamp": "2026-09-29T00:33:07Z",
     "source": "Cloud Database Backups UI",
     "restored": false
   },
-  "recoveryMetadataFile": "D:/Codex/work/sintagma-queue/work/s029-live-functions-before.json",
+  "recoveryMetadataFile": "D:/Codex/work/sintagma-queue/work/s029-live-functions-before-20260929.json",
   "migrationAttempt": {
     "wrapperSha256": "faa9b205b5cba7e8aad7c66c07881c8734b3aeec7383ed36c862484e1970b7e7",
     "preflightPassed": 19,
     "editorTextExact": true,
     "publicApiProbe": "D:/Codex/work/sintagma-queue/work/s029-public-schema-probe.json",
-    "step": "Run opened generic DELETE confirmation; Run anyway click timed out; result remains unconfirmed. Do not repeat until independently reading ledger/catalog."
+    "step": "29.09 wrapper execution confirmed by exact ledger source and independent schema/functions/policies checks; source migration applied once."
+  },
+  "databasePostcheck": {
+    "pg17Review": "D:/Codex/work/sintagma-queue/reports/s029-postgres17-catalog-check.md",
+    "caveat": "Raw postcheck expects PostgreSQL18 NOT NULL catalog rows; live17.6 stores all9 NOT NULL flags in pg_attribute.attnotnull, all verified.11 remaining exact constraints matched. No migration or expected source hash changed.",
+    "verified": true,
+    "evidence": "D:/Codex/work/sintagma-queue/work/s029-live-postcheck-20260929.json",
+    "versionEvidence": "D:/Codex/work/sintagma-queue/work/s029-live-postgres-version-20260929.json"
   }
 }
