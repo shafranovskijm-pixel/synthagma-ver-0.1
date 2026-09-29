@@ -39,14 +39,20 @@
     }
   },
   "release": {
-    "status": "database_verified_frontend_pending",
+    "status": "published_camera_smoke_pending",
     "databasePreflight": "19/19 passed on 2026-09-29; catalog and ledger confirmed previously absent before execution",
     "freshDatabaseBackup": "not_created",
     "migration": "supabase/migrations/20260929120000_final_test_photo.sql",
     "migrationApplied": true,
-    "sourcePushed": false,
-    "frontendPublished": false,
-    "cameraAndStorageSmoke": "not_run"
+    "sourcePushed": true,
+    "frontendPublished": true,
+    "cameraAndStorageSmoke": "not_run",
+    "publishedCommit": "72b1db9fcfa5a2ae8846f7aa4b7e5cb995058add",
+    "evidence": [
+      "D:/Codex/work/sintagma-queue/work/s029-timeweb-deploy-20260929.txt",
+      "D:/Codex/work/sintagma-queue/work/s029-domain-after-20260929.json",
+      "D:/Codex/work/sintagma-queue/work/s029-live-settings-20260929.txt"
+    ]
   },
   "accessEvidence": [
     "Lovable get_database_status for the exact project returned 404 project_not_found.",
@@ -71,8 +77,7 @@
     "evidenceFile": "D:/Codex/work/sintagma-queue/work/s029-domain-before.json"
   },
   "remaining": [
-    "Publish approved frontend and verify Timeweb revision and domain.",
-    "Check settings and photo flow in a permitted test account/course; no real attempts used."
+    "Hardware camera capture/upload/learner attempt smoke in an authorized test course remains unverified; no live course switch enabled."
   ],
   "integrationCommit": "0b494101a5bc77d317da264a29dba9f0259e6098",
   "providerBackupObserved": {
