@@ -2547,9 +2547,9 @@ export type Database = {
           price: number
           reminder_advance_days: number
           require_enrollment_approval: boolean
+          require_final_test_photo: boolean
           retraining_period_months: number | null
           sequential_lessons: boolean
-          require_final_test_photo: boolean
           skip_video_identification: boolean | null
           slug: string | null
           source_course_id: string | null
@@ -2591,9 +2591,9 @@ export type Database = {
           price?: number
           reminder_advance_days?: number
           require_enrollment_approval?: boolean
+          require_final_test_photo?: boolean
           retraining_period_months?: number | null
           sequential_lessons?: boolean
-          require_final_test_photo?: boolean
           skip_video_identification?: boolean | null
           slug?: string | null
           source_course_id?: string | null
@@ -2635,9 +2635,9 @@ export type Database = {
           price?: number
           reminder_advance_days?: number
           require_enrollment_approval?: boolean
+          require_final_test_photo?: boolean
           retraining_period_months?: number | null
           sequential_lessons?: boolean
-          require_final_test_photo?: boolean
           skip_video_identification?: boolean | null
           slug?: string | null
           source_course_id?: string | null
@@ -5053,6 +5053,80 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      final_test_photo_challenges: {
+        Row: {
+          completed_at: string | null
+          course_id: string
+          created_at: string
+          enrollment_id: string
+          expires_at: string
+          id: string
+          lesson_id: string
+          object_path: string
+          request_id: string
+          session_id: string | null
+          storage_object_id: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id: string
+          created_at?: string
+          enrollment_id: string
+          expires_at: string
+          id?: string
+          lesson_id: string
+          object_path: string
+          request_id: string
+          session_id?: string | null
+          storage_object_id?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string
+          created_at?: string
+          enrollment_id?: string
+          expires_at?: string
+          id?: string
+          lesson_id?: string
+          object_path?: string
+          request_id?: string
+          session_id?: string | null
+          storage_object_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "final_test_photo_challenges_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_test_photo_challenges_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_test_photo_challenges_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_test_photo_challenges_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "test_attempt_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       frdo_signed_documents: {
         Row: {
@@ -9911,6 +9985,7 @@ export type Database = {
           company_id: string | null
           contact_email: string | null
           created_at: string
+          department: string | null
           email: string | null
           full_name: string | null
           generated_password: string | null
@@ -9943,6 +10018,7 @@ export type Database = {
           company_id?: string | null
           contact_email?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
           full_name?: string | null
           generated_password?: string | null
@@ -9975,6 +10051,7 @@ export type Database = {
           company_id?: string | null
           contact_email?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
           full_name?: string | null
           generated_password?: string | null
@@ -12938,6 +13015,7 @@ export type Database = {
           passing_score: number
           questions_snapshot: Json
           request_id: string
+          requires_final_test_photo: boolean
           show_answers: boolean
           started_at: string
           status: string
@@ -12950,6 +13028,7 @@ export type Database = {
           passing_score: number
           questions_snapshot: Json
           request_id: string
+          requires_final_test_photo?: boolean
           show_answers: boolean
           started_at?: string
           status?: string
@@ -12962,6 +13041,7 @@ export type Database = {
           passing_score?: number
           questions_snapshot?: Json
           request_id?: string
+          requires_final_test_photo?: boolean
           show_answers?: boolean
           started_at?: string
           status?: string
@@ -13841,6 +13921,14 @@ export type Database = {
         Returns: undefined
       }
       _email_daily_limit: { Args: { _day: number }; Returns: number }
+      _final_test_photo_object_valid: {
+        Args: { p_challenge_id: string }
+        Returns: boolean
+      }
+      _final_test_photo_required: {
+        Args: { p_lesson_id: string }
+        Returns: boolean
+      }
       _get_pw_key: { Args: never; Returns: string }
       _goreltech_enrollment_order_result: {
         Args: {
@@ -14045,6 +14133,7 @@ export type Database = {
         Args: { _library_document_id: string }
         Returns: boolean
       }
+      can_read_final_test_photo: { Args: { p_path: string }; Returns: boolean }
       can_read_lesson_attachment: {
         Args: { _lesson_id: string }
         Returns: boolean
@@ -14058,6 +14147,10 @@ export type Database = {
         Returns: boolean
       }
       can_review_course: { Args: { p_course_id: string }; Returns: boolean }
+      can_upload_final_test_photo: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -14193,6 +14286,10 @@ export type Database = {
         Returns: string
       }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      complete_final_test_photo: {
+        Args: { p_challenge_id: string }
+        Returns: Json
+      }
       complete_goreltech_enrollment_order: {
         Args: {
           p_actor_id: string
@@ -15096,6 +15193,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_test_attempt_photo: { Args: { p_attempt_id: string }; Returns: Json }
       get_user_companies: {
         Args: { _user_id: string }
         Returns: {
@@ -15376,6 +15474,10 @@ export type Database = {
               port: number
             }[]
           }
+      prepare_final_test_photo: {
+        Args: { p_lesson_id: string; p_request_id: string }
+        Returns: Json
+      }
       prepare_ordinary_campaign_message: {
         Args: {
           p_attempt_token: string
@@ -15692,6 +15794,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_student_registration_details: {
+        Args: {
+          p_actor_id: string
+          p_birth_date?: string
+          p_confirm_identity?: boolean
+          p_department?: string
+          p_organization_id: string
+          p_snils?: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
