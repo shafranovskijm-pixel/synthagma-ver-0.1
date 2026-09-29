@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "assertions": 58,
+  "tests": [
+    {
+      "name": "commit, exact ledger and postchecks; repeat aborts",
+      "passed": true
+    },
+    {
+      "name": "ledger failure rolls back schema and function",
+      "passed": true
+    },
+    {
+      "name": "postcheck failure rolls back ledger and schema",
+      "passed": true
+    },
+    {
+      "name": "source drift refused before DDL",
+      "passed": true
+    },
+    {
+      "name": "missing helper refused before DDL",
+      "passed": true
+    },
+    {
+      "name": "unversioned department refused and preserved",
+      "passed": true
+    },
+    {
+      "name": "existing nullable department values preserved; old comment captured",
+      "passed": true
+    },
+    {
+      "name": "older or changed authorization helper refused",
+      "passed": true
+    }
+  ],
+  "migration": {
+    "version": "20260929140000",
+    "name": "student_registration_details",
+    "sourceBytes": 4876,
+    "sha256": "d1d72f75a1c843f4bd4f1ca65bec63b65f579af474be27f7935927aaec15ff24",
+    "md5": "8c9402bfaeb72420586be5a67ded3476",
+    "functionBodyMd5": "cb2ac19a504c810c9d15e38dd4f9b0f5"
+  },
+  "expectedHelpers": {
+    "ownerMd5": "5894db724b2a3cbc52701cabfb2cf73c",
+    "studentMd5": "84081e97d17f223d9e2ffa4145bf8949"
+  },
+  "wrapper": {
+    "bytes": 11837,
+    "sha256": "42bc7b04c65ba17e69b1b025d0649d72f938b6917c48d7825483b3d4ffc75639"
+  },
+  "limitation": "Synthetic PostgreSQL only; no production execution, hosted Edge deployment or multi-connection concurrency proven."
+}
