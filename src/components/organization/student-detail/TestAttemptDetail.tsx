@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, ChevronUp, Download, CheckCircle2, XCircle, FileText, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,29 @@ interface TestAttemptDetailProps {
 
 export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailProps) {
   const [open, setOpen] = useState(false);
+  const [photo, setPhoto] = useState<{ url: string; capturedAt: string } | null>(null);
+  const [photoState, setPhotoState] = useState<'idle' | 'loading' | 'absent' | 'error' | 'ready'>('idle');
+  const [photoRetry, setPhotoRetry] = useState(0);
+  useEffect(() => {
+    let current = true;
+    setPhoto(null); setPhotoState('idle');
+    if (!open || attempt.legacy) return;
+    setPhotoState('loading');
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_test_attempt_photo' as never, { p_attempt_id: attempt.id } as never);
+        if (error) throw error;
+        if (!current) return;
+        const evidence = data as { bucket: string; path: string; capturedAt: string } | null;
+        if (!evidence) { setPhotoState('absent'); return; }
+        if (evidence.bucket !== 'final-test-photos' || !evidence.path) throw new Error('Invalid photo evidence');
+        const signed = await supabase.storage.from(evidence.bucket).createSignedUrl(evidence.path, 60);
+        if (signed.error || !signed.data?.signedUrl) throw signed.error || new Error('Photo URL unavailable');
+        if (current) { setPhoto({ url: signed.data.signedUrl, capturedAt: evidence.capturedAt }); setPhotoState('ready'); }
+      } catch { if (current) setPhotoState('error'); }
+    })();
+    return () => { current = false; };
+  }, [open, attempt.id, attempt.legacy, photoRetry]);
 
   const inProgress = attempt.status === 'in_progress' || !attempt.completed_at;
   const percentage = attempt.max_score != null && attempt.max_score > 0 && attempt.score != null ? Math.round((attempt.score / attempt.max_score) * 100) : 0;
@@ -121,6 +145,14 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="ml-14 mr-3 mt-2 mb-3 space-y-3">
+          {!attempt.legacy && <div className="rounded-lg border border-border p-3 space-y-2">
+            <p className="text-sm font-medium">Фото перед попыткой</p>
+            {photoState === 'loading' && <p role="status" className="text-xs text-muted-foreground">Загружаем фото…</p>}
+            {photoState === 'absent' && <p className="text-xs text-muted-foreground">Фото для этой попытки не записывалось.</p>}
+            {photoState === 'error' && <p role="alert" className="text-xs text-destructive">Не удалось загрузить фото. Это не означает, что его нет.</p>}
+            {photo && <><img src={photo.url} alt="Фото слушателя перед этой попыткой теста" className="max-h-64 rounded-lg" onError={() => { setPhoto(null); setPhotoState('error'); }} /><p className="text-xs text-muted-foreground">Сохранено: {new Date(photo.capturedAt).toLocaleString('ru-RU')}</p></>}
+            {(photoState === 'error' || photoState === 'ready') && <Button size="sm" variant="outline" onClick={() => setPhotoRetry(value => value + 1)}>Обновить фото</Button>}
+          </div>}
           <div className="text-xs text-muted-foreground">
             {inProgress ? 'Попытка начата, результат ещё не получен.' : `Результат: ${attempt.score} из ${attempt.max_score} (${percentage}%) · Проходной балл: ${attempt.passing_score == null ? "не сохранён" : attempt.passing_score + "%"}`}
           </div>

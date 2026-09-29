@@ -1,0 +1,24 @@
+{
+  "task": "S-029",
+  "date": "2026-09-29",
+  "baseCommit": "06206ca80d3cce604a45caa98ade745948b27178",
+  "branch": "codex/final-test-photo",
+  "defaultEnabled": false,
+  "tests": {
+    "vitest": { "passed": 65, "failed": 0, "pending": 0, "report": "final-test-photo-vitest.json" },
+    "postgresqlPglite": { "assertionsPassed": 70, "runner": "scripts/test-final-test-photo.mjs", "executedBy": "final_photo_sql subagent" },
+    "scopedSemanticTypeScript": { "exitCode": 0, "config": "scripts/tsconfig.final-test-photo.json", "realImports": true },
+    "fullTypeScript": { "status": "interrupted_without_diagnostics", "passed": false },
+    "viteBuild": { "exitCode": 0, "modulesTransformed": 6507, "bundlingDuration": "4m 6s", "pwaPrecacheEntries": 297 }
+  },
+  "productionMigrationApplied": false,
+  "frontendPublished": false,
+  "realCameraTested": false,
+  "storageHttpTested": false,
+  "realCustomerDataChanged": false,
+  "limitations": [
+    "Full application semantic typecheck did not complete; scoped semantic check passed.",
+    "Storage metadata and ownership are verified; image content, face match and liveness are not verified.",
+    "Physical camera, hosted Storage HTTP and multi-session live PostgreSQL concurrency require a separate release smoke check."
+  ]
+}

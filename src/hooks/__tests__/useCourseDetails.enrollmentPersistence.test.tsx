@@ -46,6 +46,31 @@ const course = {
   created_at: "2026-08-26T00:00:00.000Z",
 };
 
+describe('course final photo setting', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it('defaults off and changes only after a persisted server result', async () => {
+    const single = vi.fn().mockResolvedValue({ data: { id: course.id, require_final_test_photo: true }, error: null });
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) });
+    mocks.from.mockReturnValue({ update });
+    const refreshed = vi.fn();
+    const { result } = renderHook(() => useCourseDetails(course, [], 'org-1', refreshed));
+    expect(result.current.requireFinalTestPhoto).toBe(false);
+    await act(async () => { await result.current.handleToggleRequireFinalTestPhoto(true); });
+    expect(update).toHaveBeenCalledWith({ require_final_test_photo: true });
+    expect(result.current.requireFinalTestPhoto).toBe(true);
+    expect(refreshed).toHaveBeenCalledTimes(1);
+  });
+  it('does not pretend a rejected setting was saved', async () => {
+    const single = vi.fn().mockResolvedValue({ data: null, error: { message: 'denied' } });
+    mocks.from.mockReturnValue({ update: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }) });
+    const { result } = renderHook(() => useCourseDetails(course, [], 'org-1'));
+    await act(async () => { await result.current.handleToggleRequireFinalTestPhoto(true); });
+    expect(result.current.requireFinalTestPhoto).toBe(false);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(expect.stringContaining('Не удалось сохранить настройку'));
+  });
+});
+
 describe("useCourseDetails enrollment persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks();

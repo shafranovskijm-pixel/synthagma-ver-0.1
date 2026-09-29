@@ -40,6 +40,7 @@ interface Course {
   duration?: string;
   category_id?: string | null;
   skip_video_identification?: boolean;
+  require_final_test_photo?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
   training_form?: string | null;
@@ -81,6 +82,7 @@ export function useCourseDetails(
 
   // Course settings state
   const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
+  const [requireFinalTestPhoto, setRequireFinalTestPhoto] = useState(course?.require_final_test_photo === true);
   const [sequentialLessons, setSequentialLessons] = useState(course?.sequential_lessons || false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(course?.allow_video_seek !== false);
   const [trainingForm, setTrainingForm] = useState(course?.training_form || "Очная");
@@ -124,6 +126,7 @@ export function useCourseDetails(
   useEffect(() => {
     if (course) {
       setSkipVideoId(course.skip_video_identification || false);
+      setRequireFinalTestPhoto(course.require_final_test_photo === true);
       setSequentialLessons(course.sequential_lessons || false);
       setAllowVideoSeek(course.allow_video_seek !== false);
       setTrainingForm(course.training_form || "Очная");
@@ -394,6 +397,21 @@ export function useCourseDetails(
   };
 
   const handleToggleSkipVideoId = async (v: boolean) => { setSkipVideoId(v); await updateCourseSetting("skip_video_identification", v, v ? "Видеоидентификация отключена" : "Видеоидентификация включена"); };
+  const handleToggleRequireFinalTestPhoto = async (value: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { data, error } = await supabase.from("courses")
+        .update({ require_final_test_photo: value }).eq("id", course.id)
+        .select("id, require_final_test_photo").single();
+      if (error || data?.require_final_test_photo !== value) throw error || new Error("Setting was not saved");
+      setRequireFinalTestPhoto(value);
+      onCourseUpdated?.();
+      toast.success(value ? "Фото перед итоговым тестом включено" : "Фото перед итоговым тестом отключено");
+    } catch (error) {
+      console.error("Error updating final test photo setting:", error);
+      toast.error("Не удалось сохранить настройку фото перед итоговым тестом");
+    } finally { setIsSavingSettings(false); }
+  };
   const handleToggleSequentialLessons = async (v: boolean) => { setSequentialLessons(v); await updateCourseSetting("sequential_lessons", v, v ? "Последовательность уроков включена" : "Последовательность уроков отключена"); };
   const handleToggleAllowVideoSeek = async (v: boolean) => { setAllowVideoSeek(v); await updateCourseSetting("allow_video_seek", v, v ? "Перемотка видео разрешена" : "Перемотка видео запрещена"); };
 
@@ -504,7 +522,7 @@ export function useCourseDetails(
 
   return {
     navigate, showDeleteConfirm, setShowDeleteConfirm, isDeleting, isSavingSettings,
-    skipVideoId, sequentialLessons, allowVideoSeek, trainingForm, retrainingPeriod, setRetrainingPeriod,
+    skipVideoId, requireFinalTestPhoto, handleToggleRequireFinalTestPhoto, sequentialLessons, allowVideoSeek, trainingForm, retrainingPeriod, setRetrainingPeriod,
     reminderAdvanceDays, setReminderAdvanceDays, notifyOnCompletion, setNotifyOnCompletion,
     completionNotifyEmails, setCompletionNotifyEmails, defaultAccessDays, setDefaultAccessDays,
     requireEnrollmentApproval, copyProtection, videoWatermark, externalCardUrl, setExternalCardUrl,

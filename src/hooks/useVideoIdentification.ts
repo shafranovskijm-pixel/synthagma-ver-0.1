@@ -12,6 +12,12 @@ export interface VerificationRecord {
 }
 
 type Step = "intro" | "camera" | "confirm" | "success" | "history";
+export interface FinalTestPhotoChallenge {
+  challengeId: string;
+  bucket: 'final-test-photos';
+  path: string;
+  expiresAt?: string;
+}
 
 interface UseVideoIdentificationProps {
   userId: string;
@@ -20,13 +26,18 @@ interface UseVideoIdentificationProps {
   onVerified?: () => void;
   isOpen?: boolean;
   embedded?: boolean;
+  finalTestPhoto?: FinalTestPhotoChallenge;
 }
 
 export function useVideoIdentification({
-  userId, organizationId, enrollmentId, onVerified, isOpen = false, embedded = false,
+  userId, organizationId, enrollmentId, onVerified, isOpen = false, embedded = false, finalTestPhoto,
 }: UseVideoIdentificationProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const generationRef = useRef(0);
+  const submittedPhotoRef = useRef<string | null>(null);
+  const [photoLocked, setPhotoLocked] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -45,9 +56,16 @@ export function useVideoIdentification({
   };
 
   useEffect(() => {
-    if (isOpen || embedded) loadVerificationHistory();
-    return () => { stopCamera(); };
-  }, [isOpen, embedded, userId]);
+    generationRef.current++;
+    if (isOpen || embedded) {
+      if (finalTestPhoto) {
+        setVerificationHistory([]); setCurrentVerification(null); setCapturedPhoto(null);
+        submittedPhotoRef.current = null; setPhotoLocked(false);
+        setStep('intro'); setIsLoading(false);
+      } else { void loadVerificationHistory(); }
+    }
+    return () => { generationRef.current++; streamRef.current?.getTracks().forEach(track => track.stop()); streamRef.current = null; };
+  }, [isOpen, embedded, userId, finalTestPhoto?.challengeId]);
 
   const loadVerificationHistory = async () => {
     setIsLoading(true);
@@ -122,6 +140,7 @@ export function useVideoIdentification({
         }
 
         setStream(mediaStream);
+        streamRef.current = mediaStream;
         setIsCapturing(true);
         setTimeout(() => { if (!cancelled) { addLog("Fallback таймер сработал"); setIsVideoReady(true); setIsCameraLoading(false); } }, 3000);
       } catch (err: any) {
@@ -137,9 +156,10 @@ export function useVideoIdentification({
   }, [step]);
 
   const stopCamera = useCallback(() => {
-    if (stream) { stream.getTracks().forEach(track => track.stop()); setStream(null); }
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null; setStream(null);
     setIsCapturing(false);
-  }, [stream]);
+  }, []);
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -160,14 +180,39 @@ export function useVideoIdentification({
     stopCamera();
   };
 
-  const retakePhoto = () => { setCapturedPhoto(null); startCamera(); };
+  const retakePhoto = () => { if (finalTestPhoto && submittedPhotoRef.current) return; setCapturedPhoto(null); startCamera(); };
 
   const confirmPhoto = async () => {
     if (!capturedPhoto) return;
+    const generation = generationRef.current;
+    if (finalTestPhoto) { submittedPhotoRef.current ??= capturedPhoto; setPhotoLocked(true); }
+    const submittedPhoto = finalTestPhoto ? submittedPhotoRef.current! : capturedPhoto;
     setIsUploading(true);
     try {
-      const response = await fetch(capturedPhoto);
+      const response = await fetch(submittedPhoto);
       const blob = await response.blob();
+      if (finalTestPhoto) {
+        if (generationRef.current !== generation) return;
+        let uploadError: unknown = null;
+        try {
+          const uploaded = await supabase.storage.from(finalTestPhoto.bucket)
+            .upload(finalTestPhoto.path, blob, { contentType: 'image/jpeg', upsert: false });
+          uploadError = uploaded.error;
+        } catch (error) { uploadError = error; }
+        if (generationRef.current !== generation) return;
+        // A lost upload/completion response may leave the immutable object behind.
+        // Only the server can accept that exact challenge-owned object on retry.
+        const { data, error } = await supabase.rpc('complete_final_test_photo' as never, { p_challenge_id: finalTestPhoto.challengeId } as never);
+        const result = data as { challengeId?: string; completed?: boolean } | null;
+        if (error || result?.completed !== true || result.challengeId !== finalTestPhoto.challengeId) throw error || uploadError || new Error('Photo confirmation was not recorded');
+        if (generationRef.current !== generation) return;
+        setCurrentVerification({ id: finalTestPhoto.challengeId, status: 'verified', photo_url: submittedPhoto,
+          created_at: new Date().toISOString(), verified_at: null, rejection_reason: null });
+        setStep('success');
+        toast.success('Фото сохранено для этой попытки теста');
+        onVerified?.();
+        return;
+      }
       const fileName = `${userId}/verification_${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, blob, { contentType: "image/jpeg", upsert: true });
       if (uploadError) throw uploadError;
@@ -195,12 +240,16 @@ export function useVideoIdentification({
       toast.success("Идентификация подтверждена! Доступ к курсам открыт.");
       onVerified?.();
     } catch (error) {
+      if (generationRef.current !== generation) return;
       console.error("Upload error:", error);
-      toast.error("Ошибка загрузки. Попробуйте еще раз.");
-    } finally { setIsUploading(false); }
+      toast.error(/expired/i.test((error as { message?: string })?.message || '')
+        ? 'Время подтверждения истекло. Закройте окно и снова нажмите «Начать тест».'
+        : "Не удалось сохранить фото. Попробуйте еще раз.");
+    } finally { if (generationRef.current === generation) setIsUploading(false); }
   };
 
   const handleClose = useCallback((onOpenChange?: (open: boolean) => void) => {
+    generationRef.current++;
     stopCamera();
     setCapturedPhoto(null);
     setStep("intro");
@@ -212,6 +261,7 @@ export function useVideoIdentification({
 
   return {
     videoRef, canvasRef, stream, isCapturing, capturedPhoto, isUploading,
+    photoLocked,
     verificationHistory, currentVerification, step, setStep,
     cameraError, isLoading, isCameraLoading, isVideoReady, debugLog,
     startCamera, stopCamera, capturePhoto, retakePhoto, confirmPhoto,
