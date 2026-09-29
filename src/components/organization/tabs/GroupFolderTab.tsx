@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, UserPlus, Calendar, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -76,6 +77,7 @@ interface StudentRow {
   email: string | null;
   login: string | null;
   phone: string | null;
+  department: string | null;
   documents: {
     passport: number;
     snils: number;
@@ -148,6 +150,8 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [archivedStudentsCount, setArchivedStudentsCount] = useState(0);
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [participantSearch, setParticipantSearch] = useState("");
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
   const [courseEnrollments, setCourseEnrollments] = useState<EnrollmentEvidence[]>([]);
@@ -166,6 +170,31 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     });
   }, [setSearchParams]);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
+
+  useEffect(() => {
+    setDepartmentFilter("all");
+    setParticipantSearch("");
+  }, [organizationId, groupId]);
+
+  const departmentNames = useMemo(() => Array.from(new Set(
+    students.map(student => student.department).filter((department): department is string => Boolean(department)),
+  )).sort((a, b) => a.localeCompare(b, "ru")), [students]);
+  const selectedDepartment = departmentFilter.startsWith("department:")
+    ? departmentFilter.slice("department:".length) : null;
+  const filteredParticipants = useMemo(() => {
+    const query = participantSearch.trim().toLocaleLowerCase("ru");
+    return students.filter(student => {
+      const matchesDepartment = departmentFilter === "all"
+        || (departmentFilter === "none" ? !student.department : student.department === selectedDepartment);
+      const matchesSearch = !query || [student.full_name, student.email, student.login]
+        .some(value => value?.toLocaleLowerCase("ru").includes(query));
+      return matchesDepartment && matchesSearch;
+    });
+  }, [students, departmentFilter, selectedDepartment, participantSearch]);
+  const resetParticipantFilters = () => {
+    setDepartmentFilter("all");
+    setParticipantSearch("");
+  };
 
   // Deep-link «Изменить в настройках группы»: ?groupSettings=1 открывает диалог
   // настроек текущей группы и сразу убирает параметр из URL.
@@ -243,10 +272,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
         const groupProfiles = await fetchAllRows<{
           user_id: string; full_name: string | null; email: string | null;
-          login: string | null; phone: string | null; archived_at: string | null;
-        }>(({ from, to }) => supabase
+          login: string | null; phone: string | null; archived_at: string | null; department: string | null;
+        }>(({ from, to }) => (supabase as any)
           .from("profiles")
-          .select("user_id, full_name, email, login, phone, archived_at")
+          .select("user_id, full_name, email, login, phone, archived_at, department")
           .eq("organization_id", organizationId)
           .eq("student_group_id", groupId)
           .order("user_id")
@@ -352,6 +381,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           email: p.email,
           login: p.login,
           phone: p.phone ?? null,
+          department: p.department?.trim() || null,
           documents: docsByUser.get(p.user_id) || { passport: 0, snils: 0 },
           frdo: frdoByUser.get(p.user_id) || null,
           contracts_count: contractsByUser.get(p.user_id) || 0,
@@ -807,6 +837,41 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                 </Button>
               )}
             </div>
+            <div className="flex flex-wrap items-end gap-3 border-b border-border px-4 py-3">
+              <label className="min-w-[200px] flex-1 space-y-1 text-sm">
+                <span>Поиск участников</span>
+                <Input
+                  value={participantSearch}
+                  onChange={event => setParticipantSearch(event.target.value)}
+                  placeholder="ФИО, email или логин"
+                  aria-label="Поиск участников"
+                />
+              </label>
+              <label className="min-w-[200px] flex-1 space-y-1 text-sm">
+                <span>Подразделение</span>
+                <select
+                  aria-label="Подразделение"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={departmentFilter}
+                  onChange={event => setDepartmentFilter(event.target.value)}
+                >
+                  <option value="all">Все подразделения</option>
+                  <option value="none">Без подразделения</option>
+                  {selectedDepartment !== null && !departmentNames.includes(selectedDepartment) && (
+                    <option value={departmentFilter}>{selectedDepartment} (нет активных участников)</option>
+                  )}
+                  {departmentNames.map(department => (
+                    <option key={department} value={`department:${department}`}>{department}</option>
+                  ))}
+                </select>
+              </label>
+              {(departmentFilter !== "all" || participantSearch !== "") && (
+                <Button variant="ghost" onClick={resetParticipantFilters}>Сбросить фильтры</Button>
+              )}
+              <p className="w-full text-xs text-muted-foreground" aria-live="polite">
+                Показано {filteredParticipants.length} из {students.length} активных участников
+              </p>
+            </div>
             {students.length === 0 ? (
               <div className="flex flex-col items-center px-6 py-10 text-center">
                 <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
@@ -822,12 +887,17 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   </Button>
                 )}
               </div>
+            ) : filteredParticipants.length === 0 ? (
+              <div className="px-6 py-10 text-center text-sm text-muted-foreground">
+                По выбранным условиям ученики не найдены. Измените подразделение или строку поиска.
+              </div>
             ) : (
               <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="text-left px-3 py-2 font-medium">ФИО</th>
+                    <th className="text-left px-3 py-2 font-medium">Подразделение</th>
                     <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Документы</th>
                     <th className="text-left px-3 py-2 font-medium hidden lg:table-cell">ФРДО</th>
                     <th className="text-right px-3 py-2 font-medium">Договоры</th>
@@ -836,7 +906,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {students.map(s => {
+                  {filteredParticipants.map(s => {
                     const frdo = resolveFrdoReadiness(s.frdo, s.full_name);
                     return (
                       <tr
@@ -848,6 +918,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                           <div className="font-medium truncate">{s.full_name}</div>
                           <div className="text-xs text-muted-foreground truncate">{s.email || s.login || "—"}</div>
                         </td>
+                        <td className="px-3 py-2.5">{s.department || "Не указано"}</td>
                         <td className="px-3 py-2.5 hidden md:table-cell">
                           <div className="flex gap-1.5">
                             <Badge variant={s.documents.passport > 0 ? "default" : "outline"} className="rounded-full text-[10px]">
