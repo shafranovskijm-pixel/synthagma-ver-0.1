@@ -20,6 +20,8 @@ vi.mock("@/integrations/supabase/client", () => ({
       ));
       const builder = {
         select: () => builder,
+        order: () => builder,
+        range: () => builder,
         eq: (field: string, value: unknown) => { query.filters.push([field, value]); return builder; },
         is: (field: string, value: unknown) => { query.filters.push([field, value]); return builder; },
         in: (field: string, values: unknown[]) => { query.filters.push([field, values]); return builder; },

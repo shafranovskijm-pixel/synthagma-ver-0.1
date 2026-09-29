@@ -2549,6 +2549,7 @@ export type Database = {
           require_enrollment_approval: boolean
           retraining_period_months: number | null
           sequential_lessons: boolean
+          require_final_test_photo: boolean
           skip_video_identification: boolean | null
           slug: string | null
           source_course_id: string | null
@@ -2592,6 +2593,7 @@ export type Database = {
           require_enrollment_approval?: boolean
           retraining_period_months?: number | null
           sequential_lessons?: boolean
+          require_final_test_photo?: boolean
           skip_video_identification?: boolean | null
           slug?: string | null
           source_course_id?: string | null
@@ -2635,6 +2637,7 @@ export type Database = {
           require_enrollment_approval?: boolean
           retraining_period_months?: number | null
           sequential_lessons?: boolean
+          require_final_test_photo?: boolean
           skip_video_identification?: boolean | null
           slug?: string | null
           source_course_id?: string | null

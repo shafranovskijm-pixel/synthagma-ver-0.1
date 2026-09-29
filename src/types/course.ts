@@ -12,6 +12,7 @@ export interface Course {
   duration?: string | null;
   frdo_duration_hours?: number | null;
   skip_video_identification?: boolean;
+  require_final_test_photo?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
   training_form?: string | null;

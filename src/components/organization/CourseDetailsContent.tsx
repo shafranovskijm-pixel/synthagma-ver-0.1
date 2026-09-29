@@ -49,7 +49,8 @@ interface Course {
   id: string; title: string; description: string | null; is_published: boolean; created_at: string;
   lessonsCount?: number; studentsCount?: number; duration?: string; category_id?: string | null;
   cover_image_url?: string | null;
-  skip_video_identification?: boolean; sequential_lessons?: boolean; allow_video_seek?: boolean;
+  skip_video_identification?: boolean;
+  require_final_test_photo?: boolean; sequential_lessons?: boolean; allow_video_seek?: boolean;
   training_form?: string | null; retraining_period_months?: number | null;
   frdo_program_type?: string | null; frdo_document_type?: string | null; frdo_professional_area?: string | null;
   frdo_specialty_group?: string | null; frdo_qualification_name?: string | null; frdo_profession_name?: string | null;
@@ -471,6 +472,7 @@ export function CourseDetailsContent({
           <CourseSettingsTabbed course={course} isFrdoEnabled={isFrdoEnabled} isSavingSettings={h.isSavingSettings}
             courseStudents={h.courseStudents as any}
             skipVideoId={h.skipVideoId} onToggleSkipVideoId={h.handleToggleSkipVideoId}
+            requireFinalTestPhoto={h.requireFinalTestPhoto} onToggleRequireFinalTestPhoto={h.handleToggleRequireFinalTestPhoto}
             sequentialLessons={h.sequentialLessons} onToggleSequentialLessons={h.handleToggleSequentialLessons}
             allowVideoSeek={h.allowVideoSeek} onToggleAllowVideoSeek={h.handleToggleAllowVideoSeek}
             copyProtection={h.copyProtection} onToggleCopyProtection={h.handleToggleCopyProtection}

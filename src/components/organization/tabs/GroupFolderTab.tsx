@@ -33,6 +33,7 @@ import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfil
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
 import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddStudentsToGroupDialog";
+import { fetchAllRows } from "@/utils/retryFetch";
 
 
 
@@ -142,9 +143,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [searchParams, setSearchParams] = useSearchParams();
   const [showMembers, setShowMembers] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [archivedStudentsCount, setArchivedStudentsCount] = useState(0);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
   const [courseEnrollments, setCourseEnrollments] = useState<EnrollmentEvidence[]>([]);
@@ -207,38 +210,52 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setLoadError(null);
       setGroup(null);
+      setOrgInfo(null);
       setCourseInfo(null);
       setCourseEnrollments([]);
       setCourseEnrollmentEvidenceError(false);
       setStudents([]);
+      setArchivedStudentsCount(0);
       try {
-        const { data: groupData } = await supabase
+        const { data: groupData, error: groupError } = await supabase
           .from("student_groups")
           .select("id, name, color, start_date, end_date, group_number, program_title, program_hours, program_form, schedule_text, instructor_name, training_dates, default_price, course_id")
           .eq("id", groupId)
           .eq("organization_id", organizationId)
           .maybeSingle();
         if (cancelled) return;
+        if (groupError) throw groupError;
         if (!groupData) return;
         setGroup(groupData as any as GroupData | null);
 
-        const { data: orgRow } = await supabase
+        const { data: orgRow, error: organizationError } = await supabase
           .from("organizations")
           .select("id, name, inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
           .eq("id", organizationId)
           .maybeSingle();
+        if (organizationError) throw organizationError;
         if (!cancelled) setOrgInfo(orgRow as any);
 
         // Курс группы: явная привязка, иначе — общий курс по зачислениям учеников
         const linkedCourseId = (groupData as any)?.course_id as string | null;
 
-        const { data: profiles } = await supabase
+        const groupProfiles = await fetchAllRows<{
+          user_id: string; full_name: string | null; email: string | null;
+          login: string | null; phone: string | null; archived_at: string | null;
+        }>(({ from, to }) => supabase
           .from("profiles")
-          .select("user_id, full_name, email, login, phone")
+          .select("user_id, full_name, email, login, phone, archived_at")
           .eq("organization_id", organizationId)
           .eq("student_group_id", groupId)
-          .is("archived_at", null);
+          .order("user_id")
+          .range(from, to));
+        if (cancelled) return;
+        // Archived learners remain visible in the group counter, but must not
+        // enter the active roster or document-generation batch.
+        const profiles = groupProfiles.filter(profile => !profile.archived_at);
+        setArchivedStudentsCount(groupProfiles.length - profiles.length);
 
         const userIds = (profiles || []).map((p: any) => p.user_id);
         if (!cancelled) {
@@ -341,6 +358,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           test_attempts_count: attemptsByUser.get(p.user_id) || 0,
         }));
         if (!cancelled) setStudents(rows);
+      } catch {
+        if (!cancelled) {
+          setLoadError("Не удалось загрузить данные группы. Проверьте соединение и повторите попытку.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -520,6 +541,21 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   if (loading) {
     return <div className="flex items-center justify-center min-h-[300px]"><SigmaSpinner size="lg" /></div>;
   }
+  if (loadError) {
+    return (
+      <div className="p-6 space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => backToStudentsGroups()} className="gap-1.5 rounded-xl">
+          <ArrowLeft className="w-4 h-4" /> К ученикам
+        </Button>
+        <div role="alert" className="rounded-xl border border-destructive/30 p-4">
+          <p>{loadError}</p>
+          <Button variant="outline" className="mt-3 gap-1.5" onClick={() => setReloadKey(key => key + 1)}>
+            <RefreshCw className="h-4 w-4" /> Повторить загрузку
+          </Button>
+        </div>
+      </div>
+    );
+  }
   if (!group) {
     return (
       <div className="p-6">
@@ -581,7 +617,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     frdo: Shield,
   };
   const workflowDetails: Record<GroupWorkflowItem["id"], string> = {
-    participants: `${students.length} в группе`,
+    participants: `${students.length} активных`,
     learning: "Журналы и ход обучения",
     "personal-files": "Договоры, паспорта и СНИЛС",
     "group-documents": "Приказы, журналы и ведомости",
@@ -643,7 +679,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
             <div className="min-w-0">
               <h1 className="font-display text-xl lg:text-2xl font-semibold truncate">{group.name}</h1>
               <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                <span className="inline-flex items-center gap-1"><Users className="w-4 h-4" />{students.length} учеников</span>
+                <span className="inline-flex items-center gap-1"><Users className="w-4 h-4" />{students.length} активных учеников</span>
                 {(group.start_date || group.end_date) && (
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
@@ -750,13 +786,19 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </div>
         </div>
 
+        {archivedStudentsCount > 0 && (
+          <p role="status" className="mt-4 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            В архиве этой группы: {archivedStudentsCount}. Здесь показаны активные ученики; архивные доступны в разделе «Ученики → Архив».
+          </p>
+        )}
+
         {showMembers && (
           <div className="mt-4 overflow-hidden rounded-xl border border-border">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
               <div>
                 <div className="font-medium">Участники группы</div>
                 <div className="text-xs text-muted-foreground">
-                  {students.length > 0 ? `${students.length} ученик(ов) добавлено` : "Добавьте учеников, чтобы начать обучение"}
+                  {students.length > 0 ? `${students.length} активных ученик(ов)` : "Нет активных учеников"}
                 </div>
               </div>
               {canManageParticipants && (
@@ -770,7 +812,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                 <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
                   <Users className="h-5 w-5 text-muted-foreground" />
                 </span>
-                <div className="font-medium">В группе пока нет учеников</div>
+                <div className="font-medium">В группе нет активных учеников</div>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
                   Выберите существующих учеников без группы или создайте нового прямо здесь.
                 </p>
@@ -982,7 +1024,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
 
             <div className="mt-5 rounded-lg border border-border bg-background/70 p-3 text-xs text-muted-foreground">
               <div className="font-medium text-foreground">{group.name}</div>
-              <div className="mt-1">{students.length} учеников</div>
+              <div className="mt-1">{students.length} активных учеников</div>
               <div>{resolvedProgramHours ? `${resolvedProgramHours} часов` : "Часы не указаны"}</div>
             </div>
           </aside>

@@ -47,6 +47,8 @@ interface CourseSettingsTabbedProps {
   courseStudents?: Array<{ id?: string; user_id?: string; name?: string; full_name?: string; email?: string }>;
   skipVideoId: boolean;
   onToggleSkipVideoId: (v: boolean) => void;
+  requireFinalTestPhoto: boolean;
+  onToggleRequireFinalTestPhoto: (v: boolean) => void;
   sequentialLessons: boolean;
   onToggleSequentialLessons: (v: boolean) => void;
   allowVideoSeek: boolean;
@@ -92,6 +94,7 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
     course, courseStudents = [],
     isFrdoEnabled, isSavingSettings,
     skipVideoId, onToggleSkipVideoId,
+    requireFinalTestPhoto, onToggleRequireFinalTestPhoto,
     sequentialLessons, onToggleSequentialLessons,
     allowVideoSeek, onToggleAllowVideoSeek,
     copyProtection, onToggleCopyProtection,
@@ -141,6 +144,9 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
           <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
             <SettingRow icon={Video} iconColor="bg-primary/10 text-primary" label="Отключить видеоидентификацию" desc="Если включено, слушатели этого курса смогут начать обучение без прохождения видеоидентификации">
               <Switch checked={skipVideoId} onCheckedChange={onToggleSkipVideoId} disabled={isSavingSettings} />
+            </SettingRow>
+            <SettingRow icon={Video} iconColor="bg-primary/10 text-primary" label="Фото перед итоговым тестом" desc="Новое фото с камеры перед каждой попыткой последнего теста курса. Фото при входе в курс не заменяет эту проверку.">
+              <Switch aria-label="Фото перед итоговым тестом" checked={requireFinalTestPhoto} onCheckedChange={onToggleRequireFinalTestPhoto} disabled={isSavingSettings} />
             </SettingRow>
             <SettingRow icon={Lock} iconColor="bg-amber-500/10 text-amber-500" label="Последовательное прохождение уроков" desc="Если включено, ученики смогут открывать следующий урок только после завершения предыдущего">
               <Switch checked={sequentialLessons} onCheckedChange={onToggleSequentialLessons} disabled={isSavingSettings} />

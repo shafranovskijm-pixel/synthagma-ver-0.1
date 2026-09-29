@@ -10,6 +10,7 @@ export interface TestAttemptStatusProps {
   blocked: boolean;
   error: string | null;
   manualCredit?: { creditedAt: string; creditedBy: string } | null;
+  photoRequired?: boolean;
   onStart: () => void;
   onRefresh: () => void;
 }
@@ -24,7 +25,7 @@ export function TestAttemptStatus(props: TestAttemptStatusProps) {
     {props.active && <p className="text-sm text-muted-foreground">Вы продолжаете начатую попытку. Обновление страницы не расходует новую попытку.</p>}
     {props.blocked && !props.active && <p role="status" className="text-sm text-destructive">{props.maxAttempts != null && props.attemptsUsed >= props.maxAttempts ? 'Использованы все попытки теста.' : 'На сегодня попытки закончились. Следующая попытка доступна после 00:00 по Москве.'}</p>}
     {!props.active && !props.submitted && !props.error && <Button onClick={props.onStart} disabled={props.busy || props.blocked}>Начать тест</Button>}
-    {!props.active && !props.submitted && !props.error && <p className="text-xs text-muted-foreground">Попытка учитывается после нажатия «Начать тест».</p>}
+    {!props.active && !props.submitted && !props.error && <p className="text-xs text-muted-foreground">{props.photoRequired ? 'Сначала откроется фотоидентификация. Попытка учитывается после сохранения фото и начала теста.' : 'Попытка учитывается после нажатия «Начать тест».'}</p>}
     {props.error && <Button variant="outline" onClick={props.onRefresh} disabled={props.busy}>Обновить состояние теста</Button>}
   </div>;
 }

@@ -1,0 +1,104 @@
+{
+  "task": "S-029",
+  "sourceCommit": "3fccd49bd3f45137362f4e0e30024d431156b125",
+  "checkedRemoteMain": "70e6694a9f72618bda61fc046e4ce8fe7fe90547",
+  "branch": "codex/final-test-photo",
+  "repository": "https://github.com/shafranovskijm-pixel/synthagma-ver-0.1",
+  "userApproval": {
+    "status": "approved",
+    "message": "разрешаю",
+    "scope": "Release the final-test photo feature: one SQL migration and frontend on синтагма.рф; switch stays off by default."
+  },
+  "targets": {
+    "lovableProject": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+    "databaseRef": "atxwvjxbqjgkbjlhsdch",
+    "timewebAppFromPriorRelease": 229827,
+    "domain": "https://xn--80aaiswd0ak.xn--p1ai"
+  },
+  "local": {
+    "status": "passed",
+    "report": "../../final-test-photo-2026-09-29.md",
+    "vitestPassed": 65,
+    "sqlAssertionsPassed": 70,
+    "scopedSemanticTypeScript": "passed",
+    "fullTypeScript": "interrupted_without_result",
+    "productionBuild": "passed",
+    "integratedBuild": {
+      "duration": "2m21s",
+      "pwaPrecacheEntries": 298,
+      "exitCode": 0,
+      "commit": "db609be920c833103290e8a999ee11a868ae7060",
+      "log": "D:/Codex/work/sintagma-queue/work/s029-merged-vite-build.log"
+    },
+    "providerSourceFixValidation": {
+      "credentialAndDemoTestsPassed": 34,
+      "changes": "4 type/import/test-compatibility fixes added by Lovable during explicitly read-only diagnostic; generation stopped; diff reviewed and preserved from canonical main",
+      "nodePlatformTestsPassed": 25,
+      "initialWrongJsdomRunner": "4 platform tests failed in default jsdom; existing required node config passed25/25",
+      "reviewedCommit": "70e6694a9f72618bda61fc046e4ce8fe7fe90547"
+    }
+  },
+  "release": {
+    "status": "published_camera_smoke_pending",
+    "databasePreflight": "19/19 passed on 2026-09-29; catalog and ledger confirmed previously absent before execution",
+    "freshDatabaseBackup": "not_created",
+    "migration": "supabase/migrations/20260929120000_final_test_photo.sql",
+    "migrationApplied": true,
+    "sourcePushed": true,
+    "frontendPublished": true,
+    "cameraAndStorageSmoke": "not_run",
+    "publishedCommit": "72b1db9fcfa5a2ae8846f7aa4b7e5cb995058add",
+    "evidence": [
+      "D:/Codex/work/sintagma-queue/work/s029-timeweb-deploy-20260929.txt",
+      "D:/Codex/work/sintagma-queue/work/s029-domain-after-20260929.json",
+      "D:/Codex/work/sintagma-queue/work/s029-live-settings-20260929.txt"
+    ]
+  },
+  "accessEvidence": [
+    "Lovable get_database_status for the exact project returned 404 project_not_found.",
+    "Browser inventory exposed an existing ORIGINAL SINTAGMA SQL tab owned by another Codex session; that tab was not changed.",
+    "Creating a separate Chrome release tab timed out, including after a kernel reset.",
+    "Recovery inventory failed with Unable to load browser request-header policy.",
+    "Connecting the existing Timeweb IAB tab failed with Accessibility capture belongs to a previous page.",
+    "User was asked to reconnect browser access. Existing publication approval remains valid.",
+    "User reconnected browser; new Chrome release tab successfully opened ORIGINAL SINTAGMA SQL editor and Timeweb SINTAGMA_FORK.",
+    "Live public RPC hashes match original attempt migration; S029 table/bucket/policies/columns/version absent.",
+    "Live postgres role owns courses and test_attempt_sessions; storage.objects owner is supabase_storage_admin, inherited ownership false. No role/owner/grant changes attempted.",
+    "Three replaced function definitions and ACL saved privately on D; Lovable native migration-role read-only diagnosis requested.",
+    "Ownership-only preflight was too strict: official Supabase supautils policy_grants already delegates policy management for storage.objects to postgres; corrected local admission check, 270 synthetic assertions passed.",
+    "SQL editor Run opened confirmation due DELETE in policy/function source. Run anyway click returned Input.dispatchMouseEvent timeout; subsequent browser policy loading failed. User reconnect requested again.",
+    "Public REST read-only probe at2026-09-28T17:47:16Z: courses.require_final_test_photo missing42703; photo relation schema-cache404. Does not replace migration ledger postcheck."
+  ],
+  "domainBaseline": {
+    "observedAt": "2026-09-28T17:22:45.459166Z",
+    "httpStatus": 200,
+    "entryAsset": "/assets/index-CQhScCW1.js",
+    "revisionConfirmed": false,
+    "evidenceFile": "D:/Codex/work/sintagma-queue/work/s029-domain-before.json"
+  },
+  "remaining": [
+    "Hardware camera capture/upload/learner attempt smoke in an authorized test course remains unverified; no live course switch enabled."
+  ],
+  "integrationCommit": "0b494101a5bc77d317da264a29dba9f0259e6098",
+  "providerBackupObserved": {
+    "downloaded": false,
+    "timestamp": "2026-09-29T00:33:07Z",
+    "source": "Cloud Database Backups UI",
+    "restored": false
+  },
+  "recoveryMetadataFile": "D:/Codex/work/sintagma-queue/work/s029-live-functions-before-20260929.json",
+  "migrationAttempt": {
+    "wrapperSha256": "faa9b205b5cba7e8aad7c66c07881c8734b3aeec7383ed36c862484e1970b7e7",
+    "preflightPassed": 19,
+    "editorTextExact": true,
+    "publicApiProbe": "D:/Codex/work/sintagma-queue/work/s029-public-schema-probe.json",
+    "step": "29.09 wrapper execution confirmed by exact ledger source and independent schema/functions/policies checks; source migration applied once."
+  },
+  "databasePostcheck": {
+    "pg17Review": "D:/Codex/work/sintagma-queue/reports/s029-postgres17-catalog-check.md",
+    "caveat": "Raw postcheck expects PostgreSQL18 NOT NULL catalog rows; live17.6 stores all9 NOT NULL flags in pg_attribute.attnotnull, all verified.11 remaining exact constraints matched. No migration or expected source hash changed.",
+    "verified": true,
+    "evidence": "D:/Codex/work/sintagma-queue/work/s029-live-postcheck-20260929.json",
+    "versionEvidence": "D:/Codex/work/sintagma-queue/work/s029-live-postgres-version-20260929.json"
+  }
+}

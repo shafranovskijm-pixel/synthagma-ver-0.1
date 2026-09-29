@@ -72,7 +72,7 @@ export function courseCreationErrorMessage(error: unknown): string {
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
   const { data: coursesData, error } = await supabase
     .from("courses")
-    .select("id, title, description, is_published, created_at, updated_at, organization_id, system_key, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price, hidden_from_catalog")
+    .select("id, title, description, is_published, created_at, updated_at, organization_id, system_key, category_id, duration, skip_video_identification, require_final_test_photo, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price, hidden_from_catalog")
     .eq("organization_id", organizationId)
     .order("catalog_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -98,6 +98,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     lessonsCount: 0,
     studentsCount: 0,
     skip_video_identification: course.skip_video_identification ?? false,
+    require_final_test_photo: course.require_final_test_photo === true,
     sequential_lessons: course.sequential_lessons ?? false,
     allow_video_seek: course.allow_video_seek ?? true,
     training_form: course.training_form ?? "Очная",
@@ -247,6 +248,7 @@ export async function duplicateCourse(
       sequential_lessons: original.sequential_lessons,
       allow_video_seek: original.allow_video_seek,
       skip_video_identification: original.skip_video_identification,
+      require_final_test_photo: original.require_final_test_photo === true,
       training_form: original.training_form,
       notify_on_completion: original.notify_on_completion,
       completion_notify_emails: original.completion_notify_emails,
