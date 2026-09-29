@@ -12,8 +12,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
+import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "../_shared/student-registration-details.ts";
 
-const REGISTER_STUDENT_REVISION = "enrollment-persistence-v3";
+const REGISTER_STUDENT_REVISION = "student-details-v4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +77,7 @@ serve(async (req) => {
     let callerRoles: string[] = [];
     let callerUserId: string | null = null;
     let callerProfile: { organization_id: string | null } | null = null;
+    let callerStaffAuthorized = false;
 
     if (registration_token) {
       const { data: link, error: linkError } = await supabaseAdmin
@@ -125,7 +127,18 @@ serve(async (req) => {
       callerRoles = (rd || []).map((r: any) => r.role);
 
       const allowed = callerRoles.some((r) => ["admin", "organization", "company", "sales_manager"].includes(r));
-      if (!allowed) {
+      // Staff may intentionally retain only the global student role.
+      if (!allowed && organization_id) {
+        const { data: staff, error: staffError } = await supabaseAdmin.from("org_staff")
+          .select("expires_at").eq("user_id", user.id).eq("organization_id", organization_id).maybeSingle();
+        if (!staffError && staff && (!staff.expires_at || new Date(staff.expires_at) > new Date())) {
+          const { data: canWrite, error: permissionError } = await supabaseAdmin.rpc("has_org_staff_permission", {
+            _user_id: user.id, _organization_id: organization_id, _permission: "students.write",
+          });
+          callerStaffAuthorized = !permissionError && canWrite === true;
+        }
+      }
+      if (!allowed && !callerStaffAuthorized) {
         return j({
           error: "Недостаточно прав. Требуется роль организации, компании или администратора.",
         }, 403);
@@ -138,7 +151,7 @@ serve(async (req) => {
         .maybeSingle();
       callerProfile = cp;
 
-      if (!cp && !callerRoles.includes("admin")) {
+      if (!cp && !callerRoles.includes("admin") && !callerStaffAuthorized) {
         return j({
           error: "Ваша сессия устарела. Пожалуйста, выйдите и войдите снова.",
           code: "PROFILE_NOT_FOUND",
@@ -177,6 +190,7 @@ serve(async (req) => {
         effectiveCompanyId = companyData.id;
       } else if (
         !callerRoles.includes("admin") &&
+        !callerStaffAuthorized &&
         callerProfile?.organization_id !== effectiveOrgId
       ) {
         return j({ error: "Вы можете создавать учеников только в своей организации" }, 403);
@@ -219,6 +233,36 @@ serve(async (req) => {
 
     if (!effectiveOrgId) {
       return j({ error: "Не удалось определить организацию для ученика" }, 400);
+    }
+
+    let registrationDetails;
+    try {
+      registrationDetails = normalizeStudentRegistrationDetails(payload || {});
+    } catch (error) {
+      return j({ error: error instanceof Error ? error.message : "Некорректные сведения ученика", code: "INVALID_STUDENT_DETAILS" }, 400);
+    }
+    const hasRegistrationDetails = hasStudentRegistrationDetails(registrationDetails);
+    let canResolveByLogin = !publicRegistration && callerRoles.includes("admin");
+    // New staff-only fields cannot turn public/company registration into an approval path.
+    if (hasRegistrationDetails || (!publicRegistration && custom_login)) {
+      if (publicRegistration || !callerUserId) {
+        return j({ error: "Дополнительные сведения и подтверждение доступны сотруднику организации", code: "STUDENT_DETAILS_FORBIDDEN" }, 403);
+      }
+      if (!callerRoles.includes("admin")) {
+        const [ownerCheck, staffCheck, staffStatus] = await Promise.all([
+          supabaseAdmin.rpc("is_org_owner", { _user_id: callerUserId, _organization_id: effectiveOrgId }),
+          supabaseAdmin.rpc("has_org_staff_permission", { _user_id: callerUserId, _organization_id: effectiveOrgId, _permission: "students.write" }),
+          supabaseAdmin.from("org_staff").select("expires_at").eq("user_id", callerUserId).eq("organization_id", effectiveOrgId).maybeSingle(),
+        ]);
+        if (ownerCheck.error || staffCheck.error || staffStatus.error) {
+          return j({ error: "Не удалось проверить права на сведения ученика", code: "STUDENT_DETAILS_PERMISSION_UNCONFIRMED" }, 500);
+        }
+        canResolveByLogin = ownerCheck.data === true || (staffCheck.data === true && !!staffStatus.data &&
+          (!staffStatus.data.expires_at || new Date(staffStatus.data.expires_at) > new Date()));
+        if (hasRegistrationDetails && !canResolveByLogin) {
+          return j({ error: "Недостаточно прав для сохранения сведений и подтверждения идентификации", code: "STUDENT_DETAILS_FORBIDDEN" }, 403);
+        }
+      }
     }
 
     if (effectiveCourseId) {
@@ -268,32 +312,50 @@ serve(async (req) => {
     let existingArchived = false;
     let existingBlocked = false;
 
-    if (email) {
-      const { data: existingProfiles, error: existingLookupError } = await supabaseAdmin
-        .from("profiles")
-        .select("user_id, full_name, login, organization_id, archived_at, blocked_at")
-        .eq("email", email)
-        .limit(2);
+    if (email || (canResolveByLogin && custom_login)) {
+      let candidates: any[] = [];
+      if (email) {
+        const { data: existingProfiles, error: existingLookupError } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, full_name, email, login, organization_id, archived_at, blocked_at")
+          .eq("email", email)
+          .limit(2);
 
-      if (existingLookupError) {
-        console.error("[register-student] existing profile lookup failed:", existingLookupError);
-        return j({
-          error: "Не удалось безопасно проверить существующего ученика.",
-          code: "PROFILE_LOOKUP_FAILED",
-        }, 500);
-      }
-      if ((existingProfiles || []).length > 1) {
-        return j({
-          error: "Найдено несколько профилей с таким email. Обратитесь к администратору СИНТАГМЫ.",
-          code: "EMAIL_PROFILE_AMBIGUOUS",
-        }, 409);
-      }
+        if (existingLookupError) {
+          console.error("[register-student] existing profile lookup failed:", existingLookupError);
+          return j({
+            error: "Не удалось безопасно проверить существующего ученика.",
+            code: "PROFILE_LOOKUP_FAILED",
+          }, 500);
+        }
+        if ((existingProfiles || []).length > 1) {
+          return j({
+            error: "Найдено несколько профилей с таким email. Обратитесь к администратору СИНТАГМЫ.",
+            code: "EMAIL_PROFILE_AMBIGUOUS",
+          }, 409);
+        }
 
-      const existing = existingProfiles?.[0] || null;
+        candidates = existingProfiles || [];
+      }
+      // Staff imports frequently have no email. Resolve an exact supplied login,
+      // then apply the same tenant/type/archive/auth-account checks as email.
+      if (canResolveByLogin && custom_login) {
+        if (typeof custom_login !== "string" || !/^[a-zA-Z0-9._-]+$/.test(custom_login)) {
+          return j({ error: "Логин может содержать только латинские буквы, цифры и знаки . _ -" }, 400);
+        }
+        const { data: byLogin, error: loginLookupError } = await supabaseAdmin.from("profiles")
+          .select("user_id, full_name, email, login, organization_id, archived_at, blocked_at")
+          .eq("login", custom_login).limit(2);
+        if (loginLookupError) return j({ error: "Не удалось безопасно проверить логин ученика", code: "PROFILE_LOOKUP_FAILED" }, 500);
+        candidates.push(...(byLogin || []));
+      }
+      let existing;
+      try { existing = resolveRegistrationProfile(candidates, email, canResolveByLogin ? custom_login : undefined); }
+      catch (error) { return j({ error: error instanceof Error ? error.message : "Данные относятся к разным ученикам", code: "STUDENT_IDENTITY_CONFLICT" }, 409); }
       if (existing) {
         if (existing.organization_id !== effectiveOrgId) {
           return j({
-            error: "Пользователь с таким email уже привязан к другой организации.",
+            error: "Пользователь с такими данными уже привязан к другой организации.",
             code: "PROFILE_IN_OTHER_ORG",
           }, 409);
         }
@@ -311,7 +373,7 @@ serve(async (req) => {
         }
         if (isStudentProfile !== true) {
           return j({
-            error: "Пользователь с таким email является сотрудником или администратором и не может быть зачислен как ученик.",
+            error: "Пользователь с такими данными является сотрудником или администратором и не может быть зачислен как ученик.",
             code: "PROFILE_NOT_STUDENT",
           }, 409);
         }
@@ -636,6 +698,32 @@ serve(async (req) => {
       }
     }
 
+    // The RPC merges only nonempty staff fields atomically, without replacing the FRDO row.
+    if (hasRegistrationDetails) {
+      const { data: detailsResult, error: detailsError } = await supabaseAdmin.rpc("save_student_registration_details", {
+        p_organization_id: effectiveOrgId,
+        p_user_id: userId,
+        p_actor_id: callerUserId,
+        p_department: registrationDetails.department ?? null,
+        p_snils: registrationDetails.snils ?? null,
+        p_birth_date: registrationDetails.birth_date ?? null,
+        p_confirm_identity: registrationDetails.confirm_identity === true,
+      });
+      if (detailsError || detailsResult?.success !== true || detailsResult?.user_id !== userId || detailsResult?.organization_id !== effectiveOrgId) {
+        console.error("[register-student] staff details not confirmed:", detailsError);
+        return j({
+          success: false, partial_success: true, profile_persisted: true,
+          student_created: createdAuthUserThisAttempt, created_auth_user: createdAuthUserThisAttempt,
+          enrollment_confirmed: false,
+          details_confirmed: false, user_id: userId, is_existing: isExisting,
+          login: generatedLogin || undefined,
+          password: !isExisting ? (generatedPassword || undefined) : undefined,
+          code: "STUDENT_DETAILS_NOT_CONFIRMED",
+          error: "Ученик сохранён, но дополнительные сведения и идентификация не подтверждены. Проверьте карточку или повторите импорт с тем же логином. Зачисление на курс не проверено.",
+        });
+      }
+    }
+
     // ── Enrollment (idempotent) ──
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
@@ -813,6 +901,7 @@ serve(async (req) => {
 
     return j({
       success: true,
+      details_confirmed: hasRegistrationDetails ? true : undefined,
       user_id: userId,
       is_existing: isExisting,
       enrollment_created: enrollmentCreated,

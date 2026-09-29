@@ -1,8 +1,9 @@
 // Excel/CSV parser + template generator for bulk student import.
 // Template columns (case-insensitive, order-independent):
 //   Логин | Пароль | Табельный номер | Фамилия | Имя | Отчество | ФИО | Email | Группа | Курс, Курс, Курс …
+import { normalizeStudentRegistrationDetails, type StudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
 
-export interface ParsedStudentRow {
+export interface ParsedStudentRow extends StudentRegistrationDetails {
   rowIndex: number; // 1-based (excludes header)
   login?: string;
   password?: string;
@@ -15,6 +16,7 @@ export interface ParsedStudentRow {
   group_name?: string;
   course_titles: string[];
   warnings: string[];
+  detailsError?: string;
 }
 
 export interface ParseResult {
@@ -30,6 +32,10 @@ export interface ParseResult {
     middle: boolean;
     email: boolean;
     group: boolean;
+    department: boolean;
+    snils: boolean;
+    birth_date: boolean;
+    confirm_identity: boolean;
     courses: number;
   };
   uniqueGroups: string[];
@@ -49,7 +55,7 @@ function matchAllIdx(headers: string[], predicate: (h: string) => boolean): numb
   return out;
 }
 
-export function parseRows(rawHeader: any[], rawRows: any[][]): ParseResult {
+export function parseRows(rawHeader: any[], rawRows: any[][], date1904 = false): ParseResult {
   const headers = rawHeader.map(h => norm(h));
 
   const iLogin = matchIdx(headers, h => h === "логин" || h === "login");
@@ -61,6 +67,10 @@ export function parseRows(rawHeader: any[], rawRows: any[][]): ParseResult {
   const iFio = matchIdx(headers, h => h === "фио" || h === "full name" || h === "full_name" || h === "fullname");
   const iEmail = matchIdx(headers, h => h === "email" || h === "e-mail" || h === "почта");
   const iGroup = matchIdx(headers, h => h === "группа" || h === "group");
+  const iDepartment = matchIdx(headers, h => h === "подразделение" || h === "department");
+  const iSnils = matchIdx(headers, h => h === "снилс" || h === "snils");
+  const iBirthDate = matchIdx(headers, h => h === "дата рождения" || h === "birth_date");
+  const iIdentity = matchIdx(headers, h => h === "идентификация подтверждена" || h === "confirm_identity");
   const iCourses = matchAllIdx(headers, h => h === "курс" || h.startsWith("курс ") || h === "course" || h.startsWith("course "));
 
   const rows: ParsedStudentRow[] = [];
@@ -84,6 +94,33 @@ export function parseRows(rawHeader: any[], rawRows: any[][]): ParseResult {
 
     const warnings: string[] = [];
     if (!composed) warnings.push("Пустое ФИО");
+    let details: StudentRegistrationDetails = {};
+    let detailsError: string | undefined;
+    try {
+      const identityText = nkey(get(iIdentity));
+      if (identityText && !["да", "нет", "true", "false", "1", "0"].includes(identityText)) {
+        throw new Error("Идентификация подтверждена: укажите Да или Нет");
+      }
+      let birthDate: unknown = iBirthDate >= 0 ? row[iBirthDate] : undefined;
+      if (birthDate instanceof Date) {
+        birthDate = Number.isFinite(birthDate.getTime()) ? birthDate.toISOString().slice(0, 10) : "некорректная дата";
+      } else if (typeof birthDate === "number") {
+        if (!Number.isFinite(birthDate) || birthDate < 0 || (!date1904 && Math.floor(birthDate) === 60)) {
+          throw new Error("Дата рождения: некорректная дата Excel");
+        }
+        const days = Math.floor(birthDate);
+        const offset = date1904 ? days : days - (days >= 60 ? 1 : 0);
+        const base = date1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 31);
+        birthDate = new Date(base + offset * 86_400_000).toISOString().slice(0, 10);
+      }
+      details = normalizeStudentRegistrationDetails({
+        department: get(iDepartment), snils: get(iSnils), birth_date: birthDate,
+        confirm_identity: ["да", "true", "1"].includes(identityText),
+      });
+    } catch (error) {
+      detailsError = error instanceof Error ? error.message : "Некорректные сведения ученика";
+      warnings.push(detailsError);
+    }
 
     const group = get(iGroup);
     if (group) groupsSet.add(group);
@@ -102,6 +139,8 @@ export function parseRows(rawHeader: any[], rawRows: any[][]): ParseResult {
       group_name: group || undefined,
       course_titles: courseTitles,
       warnings,
+      ...details,
+      ...(detailsError ? { detailsError } : {}),
     });
   });
 
@@ -118,6 +157,10 @@ export function parseRows(rawHeader: any[], rawRows: any[][]): ParseResult {
       middle: iMid >= 0,
       email: iEmail >= 0,
       group: iGroup >= 0,
+      department: iDepartment >= 0,
+      snils: iSnils >= 0,
+      birth_date: iBirthDate >= 0,
+      confirm_identity: iIdentity >= 0,
       courses: iCourses.length,
     },
     uniqueGroups: Array.from(groupsSet),
@@ -143,7 +186,14 @@ export async function parseExcelOrCsv(file: File): Promise<ParseResult> {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
   if (rows.length === 0) return parseRows([], []);
-  return parseRows(rows[0] as any[], rows.slice(1) as any[][]);
+  // A numeric cell may have an explicit 00000000000 format. Keep that displayed value.
+  const snilsColumn = matchIdx(rows[0], h => h === "снилс" || h === "snils");
+  const origin = ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]).s : { r: 0, c: 0 };
+  if (snilsColumn >= 0) rows.slice(1).forEach((row, index) => {
+    const cell = ws[XLSX.utils.encode_cell({ r: origin.r + index + 1, c: origin.c + snilsColumn })];
+    if (cell?.w && /^[\d\s-]+$/.test(cell.w) && cell.w.replace(/[\s-]/g, "").length === 11) row[snilsColumn] = cell.w;
+  });
+  return parseRows(rows[0] as any[], rows.slice(1) as any[][], wb.Workbook?.WBProps?.date1904 === true);
 }
 
 export async function downloadStudentsTemplate() {
@@ -151,6 +201,7 @@ export async function downloadStudentsTemplate() {
   const headers = [
     "Логин", "Пароль", "Табельный номер",
     "Фамилия", "Имя", "Отчество", "Email", "Группа",
+    "Подразделение", "СНИЛС", "Дата рождения", "Идентификация подтверждена",
     "Курс 1", "Курс 2", "Курс 3", "Курс 4", "Курс 5",
   ];
   const example = [
@@ -162,6 +213,7 @@ export async function downloadStudentsTemplate() {
     "Евгеньевич",
     "vladimir@example.com",
     "СГТ",
+    "Участок № 2", "001-001-998 32", "15.06.1990", "Нет",
     "Эксплуатация самосвала БелАЗ 75131",
     "Действия в аварийных ситуациях и оказание первой помощи",
     "",
@@ -178,6 +230,7 @@ export async function downloadStudentsTemplate() {
 export type ImportResultStatus =
   | "created"
   | "existing"
+  | "partial"
   | "student_limit_exceeded"
   | "archived"
   | "profile_in_other_org"
@@ -201,6 +254,7 @@ export async function downloadImportResults(results: ImportResultRow[]) {
   const statusLabel: Record<ImportResultStatus, string> = {
     created: "Создан",
     existing: "Уже существовал",
+    partial: "Операция завершена частично; требуется проверка",
     student_limit_exceeded: "Превышен месячный лимит",
     archived: "В архиве",
     profile_in_other_org: "В другой организации",
@@ -213,7 +267,7 @@ export async function downloadImportResults(results: ImportResultRow[]) {
     Пароль: r.password || "",
     Email: r.email || "",
     Группа: r.group_name || "",
-    "Зачислено курсов": r.courses_enrolled,
+    "Зачислено курсов": r.status === "partial" ? "Не проверено" : r.courses_enrolled,
     "Курсы не найдены": r.courses_missing.join("; "),
     Ошибка: r.error || "",
   }));

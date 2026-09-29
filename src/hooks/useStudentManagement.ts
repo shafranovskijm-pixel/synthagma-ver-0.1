@@ -4,6 +4,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { generateStrongPassword, isValidEmail } from "@/utils/credentials";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
 import {
   EnrollmentAccessExpiredError,
   EnrollmentPersistenceError,
@@ -56,6 +57,10 @@ export function useStudentManagement({
     groupId?: string;
     login?: string;
     password?: string;
+    department?: string;
+    snils?: string;
+    birth_date?: string;
+    confirm_identity?: boolean;
   }) => {
     if (checkStudentLimit) {
       const result = checkStudentLimit();
@@ -83,6 +88,9 @@ export function useStudentManagement({
       toast.error("Введите корректный email адрес");
       return false;
     }
+    let details;
+    try { details = normalizeStudentRegistrationDetails(overrides || {}); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Проверьте сведения ученика"); return false; }
 
     setIsCreatingStudent(true);
     let registeredStudent: any = null;
@@ -105,18 +113,20 @@ export function useStudentManagement({
           custom_login: customLogin || null,
           custom_password: customPassword || null,
           enrollment_request_source: "organization_add_student",
+          ...details,
         },
       });
 
       if (error) throw error;
-      if (data?.partial_success) {
-        const credentials = data.student_created && data.login && data.password
+      const detailsUnconfirmed = hasStudentRegistrationDetails(details) && data?.user_id && data?.details_confirmed !== true;
+      if (data?.partial_success || detailsUnconfirmed) {
+        const credentials = (data.student_created || data.is_existing === false) && data.login && data.password
           ? ` Логин: ${data.login}, пароль: ${data.password}.`
           : "";
         onRefresh();
         setShowAddStudentDialog(false);
         toast.warning(
-          `${data.message || data.error || "Операция завершилась частично; проверьте карточку ученика."}${credentials}`,
+          `${data.error || (detailsUnconfirmed ? "Ученик сохранён, но сервер не подтвердил дополнительные сведения и идентификацию. Проверьте карточку ученика." : data.message) || "Операция завершилась частично; проверьте карточку ученика."}${credentials}`,
         );
         return false;
       }

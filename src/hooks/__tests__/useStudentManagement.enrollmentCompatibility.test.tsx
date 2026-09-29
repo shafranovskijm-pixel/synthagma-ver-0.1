@@ -133,6 +133,36 @@ describe("useStudentManagement enrollment release compatibility", () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it("passes validated details and requires the updated server to confirm them", async () => {
+    mocks.safeInvoke.mockResolvedValueOnce({ data: { success: true, user_id: "student-1", is_existing: true, details_confirmed: true }, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    let created = false;
+    await act(async () => { created = await result.current.createStudent({ name: "Иванов", department: " Участок 2 ", snils: "00100199832", birth_date: "15.06.1990", confirm_identity: true }); });
+    expect(created).toBe(true);
+    expect(mocks.safeInvoke).toHaveBeenCalledWith("register-student", expect.objectContaining({ body: expect.objectContaining({ department: "Участок 2", snils: "001-001-998 32", birth_date: "1990-06-15", confirm_identity: true }) }));
+  });
+
+  it("does not claim new fields saved against an older Edge deployment", async () => {
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh }));
+    let created = true;
+    await act(async () => { created = await result.current.createStudent({ name: "Иванов", department: "Участок 2" }); });
+    expect(created).toBe(false);
+    expect(mocks.toastWarning).toHaveBeenCalledWith(expect.stringContaining("сервер не подтвердил"));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it("retains new credentials when staff detail persistence returns partial success", async () => {
+    mocks.safeInvoke.mockResolvedValueOnce({ data: { success: false, partial_success: true, student_created: true, user_id: "student-1", login: "test_login", password: "test_password", error: "Сведения не подтверждены" }, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    await act(async () => { await result.current.createStudent({ name: "Иванов", confirm_identity: true, courseIds: ["course-1"] }); });
+    expect(mocks.toastWarning).toHaveBeenCalledWith(expect.stringContaining("test_login"));
+    expect(mocks.toastWarning).toHaveBeenCalledWith(expect.stringContaining("test_password"));
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
   it("passes the selected group and proves membership before reporting success", async () => {
     const onRefresh = vi.fn();
     const { result } = renderHook(() => useStudentManagement({

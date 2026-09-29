@@ -16,6 +16,7 @@ import { Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertCircle }
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { hasStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
 import {
   parseExcelOrCsv,
   downloadStudentsTemplate,
@@ -254,6 +255,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
 
         try {
           if (!row.full_name) throw new Error("Пустое ФИО");
+          if (row.detailsError) throw new Error(row.detailsError);
 
           let groupId: string | undefined;
           if (row.group_name) {
@@ -282,6 +284,10 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
               custom_password: row.password || undefined,
               student_group_id: groupId,
               no_login: !row.email,
+              department: row.department,
+              snils: row.snils,
+              birth_date: row.birth_date,
+              confirm_identity: row.confirm_identity === true,
             },
           });
 
@@ -291,7 +297,15 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
 
           if (error && !data) throw error;
 
-          if (serverCode === "STUDENT_LIMIT_EXCEEDED") {
+          if (data?.partial_success || (data?.user_id && hasStudentRegistrationDetails(row) && data?.details_confirmed !== true)) {
+            out.push({
+              success: false, status: "partial", full_name: row.full_name,
+              login: data?.login || row.login, password: data?.password,
+              email: row.email, group_name: row.group_name,
+              courses_enrolled: 0, courses_missing: missing,
+              error: serverError || "Ученик сохранён, но сервер не подтвердил дополнительные сведения. Проверьте карточку и повторите импорт с тем же логином.",
+            });
+          } else if (serverCode === "STUDENT_LIMIT_EXCEEDED") {
             out.push({
               success: false, status: "student_limit_exceeded",
               full_name: row.full_name, login: row.login, email: row.email,
@@ -406,26 +420,25 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
                   <div className="text-xs text-muted-foreground truncate">
                     {r.login && <>Логин: <code className="bg-secondary px-1 rounded">{r.login}</code> · </>}
                     {r.group_name && <>Группа: {r.group_name} · </>}
-                    Курсов: {r.courses_enrolled}
+                    {r.status === "partial" ? "Операция завершена частично · Зачисление требует проверки" : `Курсов: ${r.courses_enrolled}`}
                     {r.courses_missing.length > 0 && <span className="text-amber-500"> · не найдено: {r.courses_missing.join(", ")}</span>}
                   </div>
                 </div>
-                {r.success ? (
-                  r.password ? (
+                <div className="shrink-0 max-w-[45%] text-right">
+                  {r.password && (
                     <div className="text-xs text-muted-foreground shrink-0">
                       Пароль: <code className="bg-secondary px-1 rounded">{r.password}</code>
                     </div>
-                  ) : null
-                ) : (
-                  <div className="text-xs text-destructive shrink-0 max-w-[45%] text-right">{r.error}</div>
-                )}
+                  )}
+                  {!r.success && <div className="text-xs text-destructive">{r.error}</div>}
+                </div>
               </div>
             </div>
           ))}
         </div>
 
         <div className="flex gap-3 pt-2">
-          {ok > 0 && (
+          {results.length > 0 && (
             <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => downloadImportResults(results)}>
               <Download className="w-4 h-4" />
               Скачать результаты (.xlsx)
@@ -446,7 +459,8 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
           <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Формат файла (.xlsx, .csv):</p>
-            <p>Колонки: <b>Логин, Пароль, Табельный номер, Фамилия, Имя, Отчество, Email, Группа, Курс 1, Курс 2, Курс 3 …</b></p>
+            <p>Колонки: <b>Логин, Пароль, Табельный номер, Фамилия, Имя, Отчество, Email, Группа, Подразделение, СНИЛС, Дата рождения, Идентификация подтверждена, Курс 1, Курс 2, Курс 3 …</b></p>
+            <p>Новые поля необязательны: пустые ячейки сохраняют прежние сведения. Для СНИЛС используйте текстовый формат, для даты — ДД.ММ.ГГГГ или дату Excel. В колонке идентификации ставьте «Да» только после личной проверки; «Нет» и пустая ячейка не меняют статус. Сохраняются сотрудник и время проверки.</p>
             <p>Порядок и регистр не важны. Колонок <b>«Курс»</b> можно добавлять сколько нужно (Курс 1, Курс 2, Курс 3 … Курс N) — все указанные курсы будут назначены ученику.</p>
           </div>
         </div>
@@ -488,6 +502,10 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             {d.employee_number && <Badge variant="outline">табельный</Badge>}
             {d.email && <Badge variant="outline">email</Badge>}
             {d.group && <Badge variant="outline">группа</Badge>}
+            {d.department && <Badge variant="outline">подразделение</Badge>}
+            {d.snils && <Badge variant="outline">СНИЛС</Badge>}
+            {d.birth_date && <Badge variant="outline">дата рождения</Badge>}
+            {d.confirm_identity && <Badge variant="outline">идентификация</Badge>}
             {d.courses > 0 && <Badge variant="outline">курсов колонок: {d.courses}</Badge>}
           </div>
           {!d.fio && !d.last && (
@@ -515,6 +533,9 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
                   <th className="text-left p-2">ФИО</th>
                   <th className="text-left p-2">Логин</th>
                   <th className="text-left p-2">Группа</th>
+                  <th className="text-left p-2">Подразделение</th>
+                  <th className="text-left p-2">СНИЛС / дата рождения</th>
+                  <th className="text-left p-2">Идентификация</th>
                   <th className="text-left p-2">Курсы</th>
                 </tr>
               </thead>
@@ -524,6 +545,9 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
                     <td className="p-2">{r.full_name || <span className="text-destructive">—</span>}</td>
                     <td className="p-2 text-muted-foreground">{r.login || "—"}</td>
                     <td className="p-2 text-muted-foreground">{r.group_name || "—"}</td>
+                    <td className="p-2">{r.department || "—"}</td>
+                    <td className="p-2">{r.snils || "—"} / {r.birth_date || "—"}{r.detailsError && <span className="block text-destructive">{r.detailsError}</span>}</td>
+                    <td className="p-2">{r.confirm_identity ? "Подтвердить" : "Без изменения"}</td>
                     <td className="p-2 text-muted-foreground">{r.course_titles.length}</td>
                   </tr>
                 ))}

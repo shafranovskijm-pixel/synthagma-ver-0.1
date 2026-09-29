@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Key } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { normalizeStudentRegistrationDetails } from "../../../../supabase/functions/_shared/student-registration-details";
 
 interface Company {
   id: string;
@@ -32,6 +33,10 @@ export interface AddStudentInput {
   groupId: string;
   login: string;
   password: string;
+  department?: string;
+  snils?: string;
+  birth_date?: string;
+  confirm_identity?: boolean;
 }
 
 interface AddStudentDialogProps {
@@ -67,11 +72,17 @@ export function AddStudentDialog({
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [courseSearch, setCourseSearch] = useState("");
+  const [department, setDepartment] = useState("");
+  const [snils, setSnils] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [confirmIdentity, setConfirmIdentity] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
 
   useEffect(() => {
     if (open) {
       setName(""); setEmail(""); setCourseIds([]); setCompanyId(""); setGroupId("");
       setLogin(""); setPassword(""); setCourseSearch("");
+      setDepartment(""); setSnils(""); setBirthDate(""); setConfirmIdentity(false); setDetailsError("");
     }
   }, [open]);
 
@@ -105,7 +116,13 @@ export function AddStudentDialog({
       alert("Пароль должен быть не короче 6 символов");
       return;
     }
-    onSubmit({ name, email, courseIds, companyId, groupId, login, password });
+    try {
+      const details = normalizeStudentRegistrationDetails({ department, snils, birth_date: birthDate, confirm_identity: confirmIdentity });
+      setDetailsError("");
+      onSubmit({ name, email, courseIds, companyId, groupId, login, password, ...details });
+    } catch (error) {
+      setDetailsError(error instanceof Error ? error.message : "Проверьте сведения ученика");
+    }
   };
 
   return (
@@ -167,6 +184,26 @@ export function AddStudentDialog({
               </Select>
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="new-student-department">Подразделение (необязательно)</Label>
+            <Input id="new-student-department" value={department} maxLength={200} onChange={e => setDepartment(e.target.value)} placeholder="Например, участок № 2" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-student-snils">СНИЛС (необязательно)</Label>
+            <Input id="new-student-snils" value={snils} onChange={e => setSnils(e.target.value)} placeholder="000-000-000 00" inputMode="numeric" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-student-birth-date">Дата рождения (необязательно)</Label>
+            <Input id="new-student-birth-date" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+          </div>
+          <div className="space-y-1 rounded-xl border p-3">
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" checked={confirmIdentity} onChange={e => setConfirmIdentity(e.target.checked)} className="mt-1" />
+              Личность ученика проверена мной — подтвердить идентификацию
+            </label>
+            <p className="text-xs text-muted-foreground">Отметка сохраняет сотрудника и время проверки. Фотография при этом не создаётся.</p>
+          </div>
+          {detailsError && <p role="alert" className="text-sm text-destructive">{detailsError}</p>}
           <div className="space-y-2">
             <Label>Группа (необязательно)</Label>
             {groupsLoading ? (
