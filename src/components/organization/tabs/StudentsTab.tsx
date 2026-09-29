@@ -138,6 +138,15 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     setSearchParams((prev) => resolveStudentsViewParams(prev, mode));
   }, [setSearchParams]);
 
+  const groupCountLabel = (groupId: string) => {
+    const count = groupCounts.get(groupId);
+    if (groupCountsLoading && !count) return "…";
+    if (groupCountsErrorKind) return "—";
+    const active = count?.active_count ?? 0;
+    const archived = count?.archived_count ?? 0;
+    return `${active} активных${archived > 0 ? ` · ${archived} в архиве` : ""}`;
+  };
+
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -454,12 +463,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               {studentGroups.map(group => {
                 // Card count comes from the server RPC — DO NOT count already-loaded
                 // rows, that ignores students on later pages / other filters.
-                const serverCount = groupCounts.get(group.id)?.total_count;
-                const countLabel = groupCountsLoading && serverCount === undefined
-                  ? "…"
-                  : groupCountsErrorKind
-                    ? "—"
-                    : String(serverCount ?? 0);
+                const countLabel = groupCountLabel(group.id);
                 return (
                   <div key={group.id} className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card">
                     <a
@@ -797,13 +801,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
             {studentGroups.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {studentGroups.map(group => {
-                  const serverCount = groupCounts.get(group.id)?.total_count;
-                  const countLabel = groupCountsLoading && serverCount === undefined
-                    ? "…"
-                    : groupCountsErrorKind
-                      ? "—"
-                      : String(serverCount ?? 0);
-                  return <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} /><div><div className="font-medium text-sm">{group.name}</div><div className="text-xs text-muted-foreground">{countLabel} уч.{group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}{group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}</div></div></div><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="w-4 h-4" /></Button></div>;
+                  const countLabel = groupCountLabel(group.id);
+                  return <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} /><div><div className="font-medium text-sm">{group.name}</div><div className="text-xs text-muted-foreground">{countLabel}{group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}{group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}</div></div></div><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="w-4 h-4" /></Button></div>;
                 })}
               </div>
             )}
