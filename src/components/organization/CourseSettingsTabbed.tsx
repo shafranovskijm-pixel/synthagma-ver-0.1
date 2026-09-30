@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -89,7 +90,7 @@ const tabs: { value: SettingsSubTab; label: string; icon: React.ElementType }[] 
 ];
 
 export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
-  const [subTab, setSubTab] = useState<SettingsSubTab>("general");
+  const [subTab, setSubTab] = useUrlQueryState<SettingsSubTab>("courseSettingsSection", "general", props.isFrdoEnabled ? ["general", "access", "documents", "frdo"] : ["general", "access", "documents"]);
   const {
     course, courseStudents = [],
     isFrdoEnabled, isSavingSettings,

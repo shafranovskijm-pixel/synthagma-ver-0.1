@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useUrlNavigation, useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { MessageCircle, Search, ArrowLeft, Shield, Plus, UserPlus, X, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,12 +33,13 @@ import {
 export function OrgChatsTab() {
   const d = useOrgDashboard();
   const isMobile = useIsMobile();
-  const [activeSection, setActiveSection] = useState<ChatSection>("chats");
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [selectedStudentName, setSelectedStudentName] = useState<string>("");
-  const [selectedAdminChat, setSelectedAdminChat] = useState(false);
-  const [selectedGeneralChat, setSelectedGeneralChat] = useState(false);
-  const [chatSubTab, setChatSubTab] = useState<"personal" | "service" | "groups">("personal");
+  const { params, updateParams } = useUrlNavigation();
+  const [activeSection, setActiveSection] = useUrlQueryState<ChatSection>("chatSection", "chats", ["chats", "ai", "colleagues", "requests", "contacts", "settings"], { clear: ["chatId", "chatTab"] });
+  const [chatSubTab, setChatSubTab] = useUrlQueryState<"personal" | "service" | "groups">("chatTab", "personal", ["personal", "service", "groups"], { clear: ["chatId"] });
+  const selectedChatId = params.get("chatId");
+  const selectedAdminChat = selectedChatId === "admin";
+  const selectedGeneralChat = selectedChatId === "general";
+  const requestedStudentId = selectedChatId && !selectedAdminChat && !selectedGeneralChat ? selectedChatId : null;
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
@@ -51,6 +53,44 @@ export function OrgChatsTab() {
   const { conversations, isLoading } = d.orgChats;
   const organizationId = d.organizationId;
   const currentUserId = d.user?.id;
+  const [restoredStudent, setRestoredStudent] = useState<{ user_id: string; full_name: string | null; organization_id: string } | null>(null);
+  const knownConversation = conversations.find(conversation => conversation.studentUserId === requestedStudentId);
+  const knownStudent = orgStudents.find(student => student.user_id === requestedStudentId);
+  const hasKnownStudent = Boolean(knownConversation || knownStudent);
+  const restoredMatches = restoredStudent?.user_id === requestedStudentId && restoredStudent?.organization_id === organizationId;
+  const selectedStudentId = requestedStudentId && (knownConversation || knownStudent || restoredMatches) ? requestedStudentId : null;
+  const selectedStudentName = knownConversation?.studentName || knownStudent?.full_name
+    || (restoredMatches ? restoredStudent?.full_name : "") || "Ученик";
+
+  // A reload can restore a conversation before its first message exists. Resolve
+  // the name within this organization; a URL alone must not select a foreign user.
+  useEffect(() => {
+    if (!requestedStudentId || !organizationId || hasKnownStudent) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.from("profiles")
+          .select("user_id, full_name, organization_id")
+          .eq("organization_id", organizationId).eq("user_id", requestedStudentId).maybeSingle();
+        if (!cancelled) setRestoredStudent(!error && data?.organization_id === organizationId && data.user_id === requestedStudentId
+          ? { user_id: data.user_id, full_name: data.full_name, organization_id: organizationId } : null);
+      } catch {
+        if (!cancelled) setRestoredStudent(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [requestedStudentId, organizationId, hasKnownStudent]);
+
+  const openChat = (chatId: string | null) => updateParams(current => {
+    const next = new URLSearchParams(current);
+    if (chatId) {
+      next.delete("chatSection");
+      if (chatId === "admin" || chatId === "general") next.set("chatTab", "service");
+      else next.delete("chatTab");
+      next.set("chatId", chatId);
+    } else next.delete("chatId");
+    return next;
+  });
 
   // Load user profile
   useEffect(() => {
@@ -112,15 +152,12 @@ export function OrgChatsTab() {
   };
 
   const handleSelectStudent = (studentId: string, name?: string) => {
-    setSelectedAdminChat(false);
-    setSelectedGeneralChat(false);
-    setSelectedStudentId(studentId);
-    if (name) setSelectedStudentName(name);
+    openChat(studentId);
     setTimeout(() => d.orgChats.refresh(), 1500);
   };
 
-  const handleSelectAdminChat = () => { setSelectedStudentId(null); setSelectedGeneralChat(false); setSelectedAdminChat(true); };
-  const handleSelectGeneralChat = () => { setSelectedStudentId(null); setSelectedAdminChat(false); setSelectedGeneralChat(true); };
+  const handleSelectAdminChat = () => openChat("admin");
+  const handleSelectGeneralChat = () => openChat("general");
   const handleNewChatWithStudent = (studentId: string, name: string) => { setShowNewChatDialog(false); setNewChatSearch(""); handleSelectStudent(studentId, name); };
   const handleOpenNewChat = () => { setShowNewChatDialog(true); loadOrgStudents(); };
 
@@ -133,7 +170,7 @@ export function OrgChatsTab() {
     if (isMobile && selectedAdminChat && organizationId && currentUserId) {
       return (
         <div className="space-y-3">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedAdminChat(false)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
+          <Button variant="ghost" size="sm" onClick={() => openChat(null)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
           <div className="flex items-center gap-2 px-1">
             <ChatAvatar name="Администрация" size="sm" isAdmin />
             <h3 className="font-semibold text-lg flex-1">Администрация платформы</h3>
@@ -147,13 +184,13 @@ export function OrgChatsTab() {
     if (isMobile && selectedGeneralChat && organizationId && currentUserId) {
       return (
         <div className="space-y-3">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedGeneralChat(false)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
+          <Button variant="ghost" size="sm" onClick={() => openChat(null)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
           <div className="flex items-center gap-2 px-1">
             <ChatAvatar name="Общий чат" size="sm" />
             <h3 className="font-semibold text-lg flex-1">Общий чат</h3>
             <ChatNotificationToggle chatType="general" />
           </div>
-          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={(userId, name) => { setSelectedGeneralChat(false); setChatSubTab("personal"); handleSelectStudent(userId, name); }} />
+          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={handleSelectStudent} />
         </div>
       );
     }
@@ -161,7 +198,7 @@ export function OrgChatsTab() {
     if (isMobile && selectedStudentId && organizationId && currentUserId) {
       return (
         <div className="space-y-3">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedStudentId(null)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
+          <Button variant="ghost" size="sm" onClick={() => openChat(null)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
           <div className="flex items-center gap-2 px-1">
             <ChatAvatar name={selectedConvo?.studentName || selectedStudentName} size="sm" />
             <h3 className="font-semibold text-lg flex-1">{selectedConvo?.studentName || selectedStudentName}</h3>
@@ -298,7 +335,7 @@ export function OrgChatsTab() {
                   <ChatNotificationToggle chatType="general" />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
-                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={(userId, name) => { setSelectedGeneralChat(false); setChatSubTab("personal"); handleSelectStudent(userId, name); }} />
+                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={handleSelectStudent} />
                 </div>
               </div>
             ) : selectedStudentId && organizationId && currentUserId ? (
@@ -325,7 +362,7 @@ export function OrgChatsTab() {
       case "ai": return <div className="border border-border rounded-xl bg-card p-4 h-full"><AiChatPanel /></div>;
       case "colleagues": return <ColleagueChatPanel role="organization" organizationId={organizationId} />;
       case "requests": return <div className="border border-border rounded-xl bg-card overflow-hidden h-full"><ChatRequestsPanel role="organization" organizationId={organizationId} /></div>;
-      case "contacts": return <div className="border border-border rounded-xl bg-card overflow-hidden h-full"><ChatContactsPanel role="organization" organizationId={organizationId} onStartChat={(userId, name) => { setActiveSection("chats"); handleSelectStudent(userId, name); }} /></div>;
+      case "contacts": return <div className="border border-border rounded-xl bg-card overflow-hidden h-full"><ChatContactsPanel role="organization" organizationId={organizationId} onStartChat={handleSelectStudent} /></div>;
       case "settings": return <div className="border border-border rounded-xl bg-card overflow-hidden h-full"><ChatSettingsPanel userName={userName} email={userEmail} avatarUrl={userAvatar} onAvatarUpdated={setUserAvatar} /></div>;
       default: return renderStudentChats();
     }

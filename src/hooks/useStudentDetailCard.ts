@@ -9,6 +9,9 @@ import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers"
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Student } from "@/types/shared";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { normalizeStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 
 // ─── Dashboard-level useStudentDetailCard() hook removed in phase 4B.1.c.1.
 // The organization dashboard now navigates to /organization/student/:id via
@@ -125,6 +128,7 @@ interface UseStudentDetailCardLogicProps {
 export function useStudentDetailCardLogic({
   isOpen, student, organizationId, enrollments = [], onStudentUpdated, onStudentDocumentsUpdated,
 }: UseStudentDetailCardLogicProps) {
+  const { can, loading: permissionsLoading } = useStaffPermissions();
   const identityKey = isOpen && student?.user_id && organizationId
     ? `${organizationId}:${student.user_id}`
     : null;
@@ -135,7 +139,9 @@ export function useStudentDetailCardLogic({
   // interval before the B effect cleanup runs.
   activeIdentityKeyRef.current = identityKey;
 
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useUrlQueryState<string>("studentSection", "profile", [
+    "profile", "identification", "courses", "documents", "activity", "testing", "chat",
+  ]);
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
   const [pepAgreements, setPepAgreements] = useState<PepAgreementRecord[]>([]);
   const [generatedConsents, setGeneratedConsents] = useState<GeneratedConsentRecord[]>([]);
@@ -191,6 +197,10 @@ export function useStudentDetailCardLogic({
   const [savingRegion, setSavingRegion] = useState(false);
   const [jobPosition, setJobPosition] = useState<string>("");
   const [savingJobPosition, setSavingJobPosition] = useState(false);
+  const [department, setDepartment] = useState("");
+  const [savingDepartment, setSavingDepartment] = useState(false);
+  const departmentSaveSequenceRef = useRef(0);
+  const departmentSavePendingRef = useRef<string | null>(null);
 
   // Block/unblock state
   const [blockedAt, setBlockedAt] = useState<string | null>(null);
@@ -211,13 +221,13 @@ export function useStudentDetailCardLogic({
     setPhone("");
     setRegion("");
     setJobPosition("");
+    setDepartment("");
     setBlockedAt(null);
     setBlockedReason(null);
   }, []);
 
   const resetStudentIdentityState = useCallback(() => {
     resetLoadedStudentData();
-    setActiveTab("profile");
     setUploadingType(null);
     setSelectedDocType(null);
     setPreviewDoc(null);
@@ -243,6 +253,9 @@ export function useStudentDetailCardLogic({
     setSavingPhone(false);
     setSavingRegion(false);
     setSavingJobPosition(false);
+    setSavingDepartment(false);
+    departmentSaveSequenceRef.current += 1;
+    departmentSavePendingRef.current = null;
     setIsTogglingBlock(false);
   }, [resetLoadedStudentData]);
 
@@ -272,7 +285,7 @@ export function useStudentDetailCardLogic({
         supabase.from("student_identity_documents").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).maybeSingle(),
         supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("accepted_at", { ascending: false }),
-        supabase.from("profiles").select("phone, region, job_position, blocked_at, blocked_reason").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).maybeSingle(),
+        supabase.from("profiles").select("phone, region, job_position, department, blocked_at, blocked_reason").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).maybeSingle(),
       ]);
 
       if (!isCurrentRequest()) return;
@@ -304,6 +317,7 @@ export function useStudentDetailCardLogic({
       setPhone((profileRes.data as any)?.phone || "");
       setRegion((profileRes.data as any)?.region || "");
       setJobPosition((profileRes.data as any)?.job_position || "");
+      setDepartment(profileRes.data?.department || "");
       setBlockedAt((profileRes.data as any)?.blocked_at || null);
       setBlockedReason((profileRes.data as any)?.blocked_reason || null);
       setLoadedIdentityKey(requestIdentityKey);
@@ -549,6 +563,59 @@ export function useStudentDetailCardLogic({
     finally { setSavingJobPosition(false); }
   };
 
+  const saveDepartment = async (value: string): Promise<boolean> => {
+    const requestIdentityKey = identityKey;
+    const requestUserId = student?.user_id;
+    const requestOrganizationId = organizationId;
+    if (!requestIdentityKey || !requestUserId || !requestOrganizationId || !hasCurrentIdentityData
+      || activeIdentityKeyRef.current !== requestIdentityKey) {
+      toast.error("Сначала повторите загрузку личного дела ученика");
+      return false;
+    }
+    if (permissionsLoading || !can("students.write")) {
+      toast.error("Нет доступа к изменению учеников");
+      return false;
+    }
+    if (departmentSavePendingRef.current === requestIdentityKey) return false;
+
+    const requestSequence = ++departmentSaveSequenceRef.current;
+    const isCurrentRequest = () => activeIdentityKeyRef.current === requestIdentityKey
+      && departmentSaveSequenceRef.current === requestSequence;
+    departmentSavePendingRef.current = requestIdentityKey;
+    setSavingDepartment(true);
+    try {
+      // Unlike import, an explicitly cleared field must remove the old value.
+      const normalized = normalizeStudentRegistrationDetails({ department: value }).department || null;
+      const { data, error } = await supabase.from("profiles")
+        .update({ department: normalized })
+        .eq("user_id", requestUserId)
+        .eq("organization_id", requestOrganizationId)
+        .select("user_id, organization_id, department")
+        .single();
+      if (error) throw error;
+      if (!data || data.user_id !== requestUserId || data.organization_id !== requestOrganizationId
+        || data.department !== normalized) {
+        throw new Error("Не удалось подтвердить сохранение подразделения");
+      }
+      if (!isCurrentRequest()) return false;
+      setDepartment(data.department || "");
+      toast.success("Подразделение сохранено");
+      onStudentUpdated?.();
+      return true;
+    } catch (error) {
+      if (isCurrentRequest()) {
+        console.error("Save department error:", error);
+        toast.error(error instanceof Error ? error.message : "Не удалось сохранить подразделение");
+      }
+      return false;
+    } finally {
+      if (isCurrentRequest()) {
+        departmentSavePendingRef.current = null;
+        setSavingDepartment(false);
+      }
+    }
+  };
+
   const copyToClipboard = async (text: string, field: string) => {
     try { await navigator.clipboard.writeText(text); setCopiedField(field); setTimeout(() => setCopiedField(null), 2000); toast.success("Скопировано"); } catch { toast.error("Не удалось скопировать"); }
   };
@@ -773,6 +840,7 @@ export function useStudentDetailCardLogic({
     phone: hasCurrentIdentityData ? phone : "", savePhone, savingPhone,
     region: hasCurrentIdentityData ? region : "", saveRegion, savingRegion,
     jobPosition: hasCurrentIdentityData ? jobPosition : "", saveJobPosition, savingJobPosition,
+    department: hasCurrentIdentityData ? department : "", saveDepartment, savingDepartment,
     autoLoginToken: hasCurrentIdentityData ? autoLoginToken : null,
     isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,

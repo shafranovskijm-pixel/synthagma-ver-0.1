@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createQueryWrapper } from "@/test/queryWrapper";
 import { renderHook, act } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 
 // Mock all external dependencies
-vi.mock("react-router-dom", () => ({
-  useNavigate: () => vi.fn(),
-  useSearchParams: () => [new URLSearchParams(), vi.fn()],
-  useLocation: () => ({ pathname: "/", search: "", hash: "", state: null }),
-}));
+function createRouterQueryWrapper() {
+  const QueryWrapper = createQueryWrapper();
+  return ({ children }: { children: ReactNode }) => createElement(MemoryRouter, { initialEntries: ["/student"] }, createElement(QueryWrapper, { children }));
+}
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "dark", setTheme: vi.fn() }),
@@ -80,7 +81,7 @@ describe("useStudentDashboard", () => {
   });
 
   it("initializes with correct default state", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
 
     expect(typeof result.current.activeTab).toBe("string");
     expect(typeof result.current.loading).toBe("boolean");
@@ -96,7 +97,7 @@ describe("useStudentDashboard", () => {
   });
 
   it("initializes with default dashboard settings", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     expect(result.current.dashboardSettings).toMatchObject({
       showLibrary: true,
       showAchievements: true,
@@ -105,13 +106,13 @@ describe("useStudentDashboard", () => {
   });
 
   it("has initial AI chat message", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].role).toBe("assistant");
   });
 
   it("can toggle active tab", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     act(() => { result.current.setActiveTab("chat"); });
     expect(result.current.activeTab).toBe("chat");
     act(() => { result.current.setActiveTab("store"); });
@@ -119,7 +120,7 @@ describe("useStudentDashboard", () => {
   });
 
   it("can toggle modal states", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     act(() => { result.current.setShowVideoIdentification(true); });
     expect(result.current.showVideoIdentification).toBe(true);
     act(() => { result.current.setShowAchievements(true); });
@@ -129,19 +130,19 @@ describe("useStudentDashboard", () => {
   });
 
   it("can update input value", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     act(() => { result.current.setInputValue("Привет!"); });
     expect(result.current.inputValue).toBe("Привет!");
   });
 
   it("detects preview mode from localStorage", () => {
     localStorage.setItem("previewStudentDashboard", "true");
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     expect(typeof result.current.isPreviewMode).toBe("boolean");
   });
 
   it("provides formatTime utility", () => {
-    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createQueryWrapper() });
+    const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     expect(typeof result.current.formatTime).toBe("function");
   });
 });

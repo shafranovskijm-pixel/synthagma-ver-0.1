@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -79,17 +79,13 @@ interface JournalsManagerProps {
 }
 
 export function JournalsManager({ organizationId, groupId, courseId, returnToGroupId }: JournalsManagerProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
   const educationDocumentFocus = readEducationDocumentsJournalFocus(searchParams);
   const focusedEducationEnrollmentId = educationDocumentFocus?.enrollmentId ?? null;
   const focusedEducationRecordId = educationDocumentFocus?.recordId ?? null;
   const hasEducationDocumentFocus = Boolean(focusedEducationEnrollmentId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [activeJournal, setActiveJournal] = useState<{ type: string; title: string } | null>(null);
-  const [activeAutoJournal, setActiveAutoJournal] = useState<string | null>(
-    hasEducationDocumentFocus ? "education_documents" : null,
-  );
   const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
   const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
@@ -99,23 +95,30 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const [groupStatus, setGroupStatus] = useState<"loading" | "ready" | "error">("loading");
   const [groupError, setGroupError] = useState<string | null>(null);
 
-  const clearEducationDocumentFocus = useCallback(() => {
-    setSearchParams(
-      (current) => clearEducationDocumentsJournalFocusParams(current),
-      { replace: true },
-    );
+  const journalType = searchParams.get("journalType");
+  const journalView = searchParams.get("journalView");
+  const knownManualJournal = JOURNAL_CATEGORIES.flatMap(category => category.journals).find(journal => journal.id === journalType)
+    ?? customJournals.find(journal => journal.id === journalType);
+  const activeJournal = journalView === "manual" && knownManualJournal
+    ? { type: knownManualJournal.id, title: knownManualJournal.title } : null;
+  const activeAutoJournal = journalView === "auto" && journalType
+    && (AUTO_JOURNALS[journalType] || SPECIAL_JOURNALS.has(journalType) || journalType === "identification")
+    ? journalType : hasEducationDocumentFocus ? "education_documents" : null;
+
+  const navigateJournal = useCallback((type: string | null, view?: "auto" | "manual") => {
+    setSearchParams(current => {
+      const next = clearEducationDocumentsJournalFocusParams(current);
+      if (type && view) {
+        next.set("journalType", type);
+        next.set("journalView", view);
+      } else {
+        next.delete("journalType");
+        next.delete("journalView");
+      }
+      return next;
+    });
   }, [setSearchParams]);
-
-  const openAutoJournal = useCallback((journalId: string) => {
-    if (journalId !== "education_documents" && hasEducationDocumentFocus) {
-      clearEducationDocumentFocus();
-    }
-    setActiveAutoJournal(journalId);
-  }, [clearEducationDocumentFocus, hasEducationDocumentFocus]);
-
-  useEffect(() => {
-    if (hasEducationDocumentFocus) setActiveAutoJournal("education_documents");
-  }, [focusedEducationEnrollmentId, focusedEducationRecordId, hasEducationDocumentFocus]);
+  const openAutoJournal = (journalId: string) => navigateJournal(journalId, "auto");
 
   // Фактические участники группы (не по совпадению курса): нужны для фильтрации авто-журналов.
   // Важно: loading и «нет контекста» — разные состояния, иначе журнал успеет показать всю организацию.
@@ -162,7 +165,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
 
   const openManualJournal = (type: string, title: string) => {
     if (manualEditorGuard.blocked) { toast.error(manualEditorGuard.reason!); return; }
-    setActiveJournal({ type, title });
+    navigateJournal(type, "manual");
   };
 
   const handleSaveJournal = (data: { id?: string; title: string; description: string; fields: string[] }) => {
@@ -211,10 +214,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
         {node}
       </GroupJournalGate>
     );
-    const closeAuto = () => {
-      setActiveAutoJournal(null);
-      if (hasEducationDocumentFocus) clearEducationDocumentFocus();
-    };
+    const closeAuto = () => navigateJournal(null);
     if (activeAutoJournal === "attendance") return gate("attendance", <AutoAttendanceJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "current_control") return gate("current_control", <AutoGradesJournal organizationId={organizationId} initialCourseId={courseId || undefined} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
     if (activeAutoJournal === "final_attestation") return gate("final_attestation", <AutoFinalAttestationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
@@ -230,8 +230,8 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       />
     ), closeAuto);
     if (activeAutoJournal === "identification") return gate("identification", <IdentificationJournal organizationId={organizationId} groupContext={groupContext} onClose={closeAuto} />, closeAuto);
-    if (activeJournal) {
-      const close = () => setActiveJournal(null);
+    if (activeJournal && !manualEditorGuard.blocked) {
+      const close = () => navigateJournal(null);
       return gate(activeJournal.type, <JournalEditor organizationId={organizationId} journalType={activeJournal.type} journalTitle={activeJournal.title} onClose={close} />, close);
     }
     return null;

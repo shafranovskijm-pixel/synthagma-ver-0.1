@@ -15,6 +15,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { FRDO_EDUCATION_LEVELS } from "@/constants/frdo";
+import { StudentDepartmentEditor } from "./StudentDepartmentEditor";
 
 
 interface ProfileTabProps {
@@ -97,6 +98,8 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
       </div>
 
       {/* Персональные данные для ФИС ФРДО */}
+      <StudentDepartmentEditor key={student.user_id} value={h.department || ""}
+        saving={h.savingDepartment} onSave={h.saveDepartment} />
       <PersonalFrdoSection h={h} />
 
 

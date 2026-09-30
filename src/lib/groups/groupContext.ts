@@ -99,6 +99,31 @@ export function resolveTabParams(
   // A canonical Companies deep link keeps its companyId. Top-level sidebar
   // navigation explicitly clears it in useTabNavigation.setActiveTab.
   if (tab !== "organizations") next.delete("companyId");
+  if (tab !== "journals" && tab !== "documents") {
+    next.delete("journalView");
+    next.delete("journalType");
+  }
+  if (tab !== "chats") {
+    next.delete("chatSection");
+    next.delete("chatTab");
+    next.delete("chatId");
+  }
+  if (tab !== "services") next.delete("marketplaceSection");
+  if (tab !== "profile") next.delete("section");
+  if (tab !== "course-details") {
+    next.delete("courseSection");
+    next.delete("courseSettingsSection");
+  }
+  if (tab !== "student-details") next.delete("studentSection");
+  if (tab !== "group-folder") {
+    next.delete("groupView");
+    next.delete("department");
+    next.delete("participantSearch");
+  }
+  if (tab !== "subscription") {
+    next.delete("checkout");
+    next.delete("plan");
+  }
   if (tab !== "students" && tab !== "group-folder") next.delete("studentsView");
   if (tab !== "students") {
     next.delete("createGroup");

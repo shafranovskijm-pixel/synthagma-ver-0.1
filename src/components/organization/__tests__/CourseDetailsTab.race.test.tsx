@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,11 +27,12 @@ const testState = vi.hoisted(() => ({
   canWriteCourses: true,
 }));
 
-vi.mock("@/contexts/OrgDashboardContext", () => ({
-  useOrgDashboard: () => ({
+vi.mock("@/contexts/OrgDashboardContext", async () => {
+  const { useSearchParams } = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return { useOrgDashboard: () => ({
     organizationId: "org-1",
     tabNavigation: {
-      selectedCourseId: testState.selectedCourseId,
+      selectedCourseId: useSearchParams()[0].get("courseId") ?? testState.selectedCourseId,
       setSelectedCourseId: vi.fn(),
       setActiveTab: vi.fn(),
     },
@@ -41,8 +42,8 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     refreshStudentPopulation: vi.fn(),
     refreshGroupDirectory: vi.fn(),
     setCourses: testState.setCourses,
-  }),
-}));
+  }) };
+});
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({}),
@@ -76,10 +77,12 @@ vi.mock("@/components/organization/CourseDetailsContent", () => ({
     course,
     activeTab,
     onCourseUpdated,
+    onTabChange,
   }: {
     course: { title: string; is_published?: boolean; lessonsCount?: number };
     activeTab: string;
     onCourseUpdated: () => void;
+    onTabChange: (tab: "students" | "settings" | "editor") => void;
   }) => (
     <div data-testid="course-details">
       <span>{course.title}</span>
@@ -87,6 +90,9 @@ vi.mock("@/components/organization/CourseDetailsContent", () => ({
       <span data-testid="publication-state">{course.is_published ? "Опубликован" : "Черновик"}</span>
       <span data-testid="lessons-count">{course.lessonsCount ?? "unknown"}</span>
       <button type="button" onClick={onCourseUpdated}>Обновить сведения курса</button>
+      <button type="button" onClick={() => onTabChange("students")}>Вкладка ученики</button>
+      <button type="button" onClick={() => onTabChange("settings")}>Вкладка настройки</button>
+      <button type="button" onClick={() => onTabChange("editor")}>Вкладка редактор</button>
     </div>
   ),
 }));
@@ -132,9 +138,19 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import { CourseDetailsTab } from "@/components/organization/tabs/CourseDetailsTab";
 
+function HistoryControls() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return <><span data-testid="history-url">{location.search}</span>
+    <button onClick={() => navigate(-1)}>History back</button>
+    <button onClick={() => navigate(1)}>History forward</button>
+    <button onClick={() => navigate("?courseId=course-b&courseSection=library")}>Open course B library</button>
+  </>;
+}
+
 function renderCourseDetailsTab(initialEntry = "/") {
   const RouterWrapper = ({ children }: { children: ReactNode }) => (
-    <MemoryRouter initialEntries={[initialEntry]}>{children}</MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}><HistoryControls />{children}</MemoryRouter>
   );
   return render(<CourseDetailsTab />, { wrapper: RouterWrapper });
 }
@@ -151,6 +167,38 @@ describe("CourseDetailsTab URL request ordering", () => {
     testState.toastSuccess.mockClear();
     testState.toastError.mockClear();
     testState.canWriteCourses = true;
+  });
+
+  it("restores course sections with Back and Forward, including a direct settings link", async () => {
+    testState.courseResponses.set("course-a", Promise.resolve({ data: { id: "course-a", title: "Course A" }, error: null }));
+    renderCourseDetailsTab("/?courseId=course-a&courseSection=settings");
+    expect(await screen.findByTestId("active-course-tab")).toHaveTextContent("settings");
+    fireEvent.click(screen.getByRole("button", { name: "Вкладка ученики" }));
+    fireEvent.click(screen.getByRole("button", { name: "Вкладка ученики" }));
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("students");
+    fireEvent.click(screen.getByRole("button", { name: "History back" }));
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("settings");
+    fireEvent.click(screen.getByRole("button", { name: "History forward" }));
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("students");
+  });
+
+  it("does not apply course A library settings while restoring course B from history", async () => {
+    testState.courseResponses.set("course-a", Promise.resolve({ data: { id: "course-a", title: "Course A" }, error: null }));
+    const courseB = deferred<{ data: any; error: null }>();
+    testState.courseResponses.set("course-b", courseB.promise);
+    renderCourseDetailsTab("/?courseId=course-a&courseSection=settings");
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open course B library" }));
+    expect(screen.getByTestId("history-url")).toHaveTextContent("courseSection=library");
+    await act(async () => courseB.resolve({ data: { id: "course-b", title: "Course B", landing_content: { electronic_library: { enabled: true } } }, error: null }));
+    expect(await screen.findByText("Course B")).toBeInTheDocument();
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("materials");
+    fireEvent.click(screen.getByRole("button", { name: "History back" }));
+    expect(await screen.findByText("Course A")).toBeInTheDocument();
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("settings");
+    fireEvent.click(screen.getByRole("button", { name: "History forward" }));
+    expect(await screen.findByText("Course B")).toBeInTheDocument();
+    expect(screen.getByTestId("active-course-tab")).toHaveTextContent("materials");
   });
 
   it("keeps the course available and clears its count when a background lesson request fails", async () => {

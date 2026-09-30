@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { safeInvoke } from "@/utils/safeInvoke";
@@ -72,7 +73,7 @@ export interface UsageHistoryItem {
 }
 
 export function useOrgDetailsView(organization: Organization) {
-  const [activeTab, setActiveTab] = useState("courses");
+  const [activeTab, setActiveTab] = useUrlQueryState<string>("organizationSection", "courses", ["students", "courses", "tariffs", "documents", "history", "comments", "reminders", "settings"]);
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
   const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
   const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -116,16 +117,11 @@ const initialMessages: ChatMessage[] = [
 
 export function useStudentDashboard() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<"catalog" | "library" | "chat" | "store" | "profile">(() => {
-    const tabFromUrl = searchParams.get("tab");
-    if (tabFromUrl === "profile") return "profile";
-    return "catalog";
-  });
+  const [activeTab, setActiveTab] = useUrlQueryState<"catalog" | "library" | "chat" | "store" | "profile">("tab", "catalog", ["catalog", "library", "chat", "store", "profile"], { clear: ["section"] });
   const [initialTabApplied, setInitialTabApplied] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
