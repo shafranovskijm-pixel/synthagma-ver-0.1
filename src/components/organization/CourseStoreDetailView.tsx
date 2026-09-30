@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CourseComments } from "./CourseComments";
+import { getPaidProgram } from "@/constants/paidPrograms20260922";
 
 interface CourseStoreDetailViewProps {
   course: any;
@@ -17,7 +18,17 @@ interface CourseStoreDetailViewProps {
 
 export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrder }: CourseStoreDetailViewProps) {
   const navigate = useNavigate();
-  const price = userRole === 'organization' ? course.price_organization : course.price_student;
+  const paidProgram = getPaidProgram(course.course_id);
+  const price = paidProgram || userRole === 'organization' ? course.price_organization : course.price_student;
+  const benefits = paidProgram ? [
+    { icon: Building2, text: "Комплект для учебного центра" },
+    { icon: BookOpen, text: "Уроки, тесты и файлы программы" },
+    { icon: Award, text: "Обучение и аттестацию организует УЦ" },
+  ] : [
+    { icon: Zap, text: "Доступ сразу после получения" },
+    { icon: BookOpen, text: "Все материалы и тесты включены" },
+    { icon: Award, text: "Удостоверение по завершении" },
+  ];
 
   return (
     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
@@ -50,11 +61,7 @@ export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrde
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { icon: Zap, text: "Доступ сразу после получения" },
-          { icon: BookOpen, text: "Все материалы и тесты включены" },
-          { icon: Award, text: "Удостоверение по завершении" },
-        ].map((b, i) => (
+        {benefits.map((b, i) => (
           <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/50 border border-border">
             <b.icon className="w-4 h-4 text-green-600 shrink-0" />
             <span className="text-sm">{b.text}</span>
@@ -67,16 +74,22 @@ export function CourseStoreDetailView({ course, userRole, userId, onBack, onOrde
           <div className={`text-2xl font-bold ${price > 0 ? 'text-primary' : 'text-green-600'}`}>
             {price > 0 ? `${price.toLocaleString()} ₽` : 'БЕСПЛАТНО'}
           </div>
-          <p className="text-xs text-muted-foreground">{price > 0 ? 'Ограниченное предложение' : 'Доступно всем организациям'}</p>
+          <p className="text-xs text-muted-foreground">{paidProgram ? 'Разовая цена комплекта для одного учебного центра' : price > 0 ? 'Ограниченное предложение' : 'Доступно всем организациям'}</p>
         </CardContent>
       </Card>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { onBack(); navigate(`/course-preview/${course.course_id}?from=store`); }}>
-          <Eye className="w-4 h-4" />Просмотр
-        </Button>
-        <Button className="flex-1 rounded-xl gap-2 text-base py-5 bg-green-600 hover:bg-green-700 text-white" onClick={() => onOrder(course)}>
-          <Plus className="w-4 h-4" />Получить курс
+        {paidProgram ? (
+          <Button asChild variant="outline" className="flex-1 rounded-xl gap-2">
+            <a href={paidProgram.landingPath}><Eye className="w-4 h-4" />Просмотр</a>
+          </Button>
+        ) : (
+          <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { onBack(); navigate(`/course-preview/${course.course_id}?from=store`); }}>
+            <Eye className="w-4 h-4" />Просмотр
+          </Button>
+        )}
+        <Button className="flex-1 rounded-xl gap-2 text-base py-5 bg-green-600 hover:bg-green-700 text-white" onClick={() => onOrder(course)} disabled={!!paidProgram && userRole !== 'organization'}>
+          <Plus className="w-4 h-4" />{paidProgram ? 'Приобрести комплект' : 'Получить курс'}
         </Button>
       </div>
 

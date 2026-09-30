@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, CheckCircle, Info } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getPaidProgram } from "@/constants/paidPrograms20260922";
 
 interface AddCourseDialogProps {
   open: boolean;
@@ -57,17 +58,18 @@ interface OrderDialogProps {
 }
 
 export function OrderDialog({ open, onOpenChange, course, userRole, studentsCount, setStudentsCount, orderNotes, setOrderNotes, isOrdering, onOrder }: OrderDialogProps) {
-  const orderPrice = course ? (userRole === 'organization' ? course.price_organization : course.price_student) : 0;
-  const totalPrice = userRole === 'organization' ? orderPrice * studentsCount : orderPrice;
+  const paidProgram = getPaidProgram(course?.course_id);
+  const orderPrice = course ? (paidProgram || userRole === 'organization' ? course.price_organization : course.price_student) : 0;
+  const totalPrice = !paidProgram && userRole === 'organization' ? orderPrice * studentsCount : orderPrice;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-md">
-        <DialogHeader><DialogTitle>Получить курс</DialogTitle><DialogDescription>{course?.course?.title}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{paidProgram ? 'Приобрести комплект для учебного центра' : 'Получить курс'}</DialogTitle><DialogDescription>{course?.course?.title}</DialogDescription></DialogHeader>
         <div className="space-y-4 py-4">
           {userRole === 'organization' && (
             <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
               <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-muted-foreground">Курс будет скопирован в вашу организацию.</p>
+              <p className="text-sm text-muted-foreground">{paidProgram ? 'Комплект приобретается для одного учебного центра. Курс будет скопирован в вашу организацию; цена не зависит от планируемого числа слушателей.' : 'Курс будет скопирован в вашу организацию.'}</p>
             </div>
           )}
           <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
@@ -82,11 +84,11 @@ export function OrderDialog({ open, onOpenChange, course, userRole, studentsCoun
             )}
           </div>
           {userRole === 'organization' && (
-            <div className="space-y-2"><Label>Количество студентов</Label><Input type="number" min={1} value={studentsCount} onChange={(e) => setStudentsCount(Number(e.target.value) || 1)} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label htmlFor="store-students-count">{paidProgram ? 'Планируемое количество слушателей' : 'Количество студентов'}</Label><Input id="store-students-count" type="number" min={1} value={studentsCount} onChange={(e) => setStudentsCount(Number(e.target.value) || 1)} className="rounded-xl" />{paidProgram && <p className="text-xs text-muted-foreground">Для планирования обучения. Стоимость комплекта не умножается на это число.</p>}</div>
           )}
           <div className="space-y-2"><Label>Комментарий</Label><Textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
         </div>
-        <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={onOrder} disabled={isOrdering}>{isOrdering ? <><SigmaSpinner size="sm" className="mr-2" />Оформление...</> : <><Plus className="w-4 h-4" />Получить курс</>}</Button></DialogFooter>
+        <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={onOrder} disabled={isOrdering || (!!paidProgram && userRole !== 'organization')}>{isOrdering ? <><SigmaSpinner size="sm" className="mr-2" />Оформление...</> : <><Plus className="w-4 h-4" />{paidProgram ? 'Приобрести комплект' : 'Получить курс'}</>}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

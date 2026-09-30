@@ -19,6 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
+import { usePaidProgramDeepLink } from "@/hooks/usePaidProgramDeepLink";
 import { CourseComments } from "./CourseComments";
 import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
@@ -41,6 +42,17 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any>(null);
+  const paidDeepLink = usePaidProgramDeepLink({
+    catalog: h.catalogCourses,
+    isLoading: h.isLoading,
+    organizationId,
+    onSelect: setSelectedCourseDetail,
+    onOpenCatalog: h.setActiveTab,
+  });
+  const closeCourseDetail = () => {
+    setSelectedCourseDetail(null);
+    paidDeepLink.clearRequestedCourse();
+  };
 
   if (h.isLoading) {
     return (
@@ -90,13 +102,19 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
         {/* Catalog Tab */}
         <TabsContent value="catalog" className="space-y-6">
+          {paidDeepLink.unavailable && (
+            <div role="status" className="rounded-xl border p-4 text-sm">
+              Эта программа пока недоступна в каталоге вашей организации.
+              <Button variant="link" onClick={paidDeepLink.clearRequestedCourse}>Перейти к каталогу</Button>
+            </div>
+          )}
           {selectedCourseDetail ? (
             <CourseStoreDetailView
               course={selectedCourseDetail}
               userRole={h.userRole}
               userId={userId}
-              onBack={() => setSelectedCourseDetail(null)}
-              onOrder={(item) => { setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}
+              onBack={closeCourseDetail}
+              onOrder={(item) => { closeCourseDetail(); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}
             />
           ) : (
              <>
@@ -115,7 +133,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                      <div className="flex gap-2 mt-2">
                        <Badge variant="secondary" className="text-xs">ДПО</Badge>
                        <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
-                       <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
+                       <Badge variant="secondary" className="text-xs">Бесплатные и платные программы</Badge>
                      </div>
                    </div>
                  </div>
