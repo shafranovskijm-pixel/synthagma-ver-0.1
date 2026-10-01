@@ -12360,6 +12360,63 @@ export type Database = {
         }
         Relationships: []
       }
+      student_group_memberships: {
+        Row: {
+          created_at: string
+          group_id: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_group_memberships_group_id_organization_id_fkey"
+            columns: ["group_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "student_group_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_group_memberships_user_id_organization_id_fkey"
+            columns: ["user_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "student_group_memberships_user_id_organization_id_fkey"
+            columns: ["user_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["user_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "student_group_memberships_user_id_organization_id_fkey"
+            columns: ["user_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "student_group_profiles_effective"
+            referencedColumns: ["user_id", "organization_id"]
+          },
+        ]
+      }
       student_groups: {
         Row: {
           block_resubmit: boolean
@@ -13956,6 +14013,80 @@ export type Database = {
           },
         ]
       }
+      student_group_memberships_effective: {
+        Row: {
+          group_id: string | null
+          organization_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      student_group_profiles_effective: {
+        Row: {
+          archived_at: string | null
+          avatar_url: string | null
+          bio: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
+          chat_privacy: Json | null
+          city: string | null
+          company_id: string | null
+          contact_email: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          full_name: string | null
+          generated_password: string | null
+          group_id: string | null
+          id: string | null
+          job_position: string | null
+          last_seen_announcement_at: string | null
+          last_visit_at: string | null
+          lead_source: string | null
+          lead_utm: Json | null
+          login: string | null
+          onboarding_completed: boolean | null
+          organization_id: string | null
+          phone: string | null
+          region: string | null
+          student_group_id: string | null
+          telegram_link: string | null
+          updated_at: string | null
+          user_id: string | null
+          vk_link: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_group_organization_registration_fkey"
+            columns: ["student_group_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_student_group_id_fkey"
+            columns: ["student_group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_questions_for_students: {
         Row: {
           correct_answer: number | null
@@ -14002,18 +14133,6 @@ export type Database = {
       }
     }
     Functions: {
-      add_students_to_groups: {
-        Args: { p_organization_id: string; p_user_ids: string[]; p_group_ids: string[] }
-        Returns: { organization_id: string; group_id: string; user_id: string }[]
-      }
-      cancel_course_assignment: {
-        Args: { p_enrollment_id: string; p_organization_id: string }
-        Returns: Json
-      }
-      student_import_identity_preflight: {
-        Args: { p_organization_id: string; p_rows: Json; p_actor_id?: string }
-        Returns: { row_index: number; login_taken: boolean; name_matches: number; email_matches: number }[]
-      }
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string
@@ -14151,6 +14270,18 @@ export type Database = {
         }
         Returns: string
       }
+      add_students_to_groups: {
+        Args: {
+          p_group_ids: string[]
+          p_organization_id: string
+          p_user_ids: string[]
+        }
+        Returns: {
+          group_id: string
+          organization_id: string
+          user_id: string
+        }[]
+      }
       admin_collect_media_references: {
         Args: never
         Returns: {
@@ -14277,6 +14408,10 @@ export type Database = {
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
+      }
+      cancel_course_assignment: {
+        Args: { p_enrollment_id: string; p_organization_id: string }
+        Returns: Json
       }
       checkpoint_ordinary_inbox_scan: {
         Args: {
@@ -16022,6 +16157,15 @@ export type Database = {
           p_uid_validity: number
         }
         Returns: Json
+      }
+      student_import_identity_preflight: {
+        Args: { p_actor_id?: string; p_organization_id: string; p_rows: Json }
+        Returns: {
+          email_matches: number
+          login_taken: boolean
+          name_matches: number
+          row_index: number
+        }[]
       }
       submit_test_attempt: {
         Args: { p_answers: Json; p_attempt_id: string }
