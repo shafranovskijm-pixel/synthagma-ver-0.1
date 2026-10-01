@@ -43,7 +43,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
     </div>
   );
 
-  if (h.viewingOrg) return <OrganizationDetailsView organization={h.viewingOrg} onBack={() => { h.setViewingOrg(null); h.fetchOrganizations(); }} />;
+  if (h.viewingOrg) return <OrganizationDetailsView key={h.viewingOrg.id} organization={h.viewingOrg} onBack={() => { h.setViewingOrg(null); h.fetchOrganizations(); }} />;
 
   return (
     <div className="space-y-6">

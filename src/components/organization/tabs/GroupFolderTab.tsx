@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useUrlNavigation, useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { ArrowLeft, Folder, FolderOpen, Home, FileText, IdCard, FileSignature, GraduationCap, Users, UserPlus, Calendar, LayoutGrid, List, Table as TableIcon, Settings, BookOpen, ClipboardList, Shield, ExternalLink, ChevronUp, ChevronRight, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -142,16 +143,37 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const d = useOrgDashboard();
   const { can, canSeeOrgTab, loading: permissionsLoading } = useStaffPermissions();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [showMembers, setShowMembers] = useState(false);
+  const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
+  const [groupView, setGroupView] = useUrlQueryState("groupView", "folders", ["folders", "members"]);
+  const showMembers = groupView === "members";
+  const setShowMembers = (value: boolean | ((current: boolean) => boolean)) => {
+    setGroupView((typeof value === "function" ? value(showMembers) : value) ? "members" : "folders");
+  };
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [archivedStudentsCount, setArchivedStudentsCount] = useState(0);
-  const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [participantSearch, setParticipantSearch] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useUrlQueryState<string>("department", "all", undefined, { replace: true });
+  const [participantSearch, setParticipantSearch] = useUrlQueryState<string>("participantSearch", "", undefined, { replace: true });
+  const previousScopeRef = useRef({ organizationId, groupId });
+  useEffect(() => {
+    const previous = previousScopeRef.current;
+    previousScopeRef.current = { organizationId, groupId };
+    // A tenant switch cannot inherit the previous organization's filters.
+    // For normal group URL navigation, including Back/Forward, the URL owns
+    // the filters. Only a prop-only group switch needs the same reset.
+    if (previous.organizationId !== organizationId
+        || (previous.groupId !== groupId && searchParams.get("groupId") !== groupId)) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("department");
+        next.delete("participantSearch");
+        return next;
+      }, { replace: true });
+    }
+  }, [organizationId, groupId, searchParams, setSearchParams]);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
   const [courseEnrollments, setCourseEnrollments] = useState<EnrollmentEvidence[]>([]);
@@ -166,15 +188,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (f) next.set("folder", f); else next.delete("folder");
+      next.delete("groupView");
       return next;
     });
   }, [setSearchParams]);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem("groupFolderView") as ViewMode) || "grid");
-
-  useEffect(() => {
-    setDepartmentFilter("all");
-    setParticipantSearch("");
-  }, [organizationId, groupId]);
 
   const departmentNames = useMemo(() => Array.from(new Set(
     students.map(student => student.department).filter((department): department is string => Boolean(department)),
@@ -192,8 +210,12 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     });
   }, [students, departmentFilter, selectedDepartment, participantSearch]);
   const resetParticipantFilters = () => {
-    setDepartmentFilter("all");
-    setParticipantSearch("");
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("department");
+      next.delete("participantSearch");
+      return next;
+    }, { replace: true });
   };
 
   // Deep-link «Изменить в настройках группы»: ?groupSettings=1 открывает диалог
@@ -212,11 +234,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   // the URL until this workspace mounts, so slow rendering cannot lose it.
   useEffect(() => {
     if (searchParams.get("addStudents") !== "1") return;
-    setShowMembers(true);
     setAddStudentsOpen(true);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete("addStudents");
+      next.set("groupView", "members");
       return next;
     }, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -230,6 +252,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
       next.set("studentsView", "groups");
       next.delete("groupId");
       next.delete("folder");
+      next.delete("groupView");
+      next.delete("department");
+      next.delete("participantSearch");
       return next;
     });
   }, [setSearchParams]);
@@ -664,7 +689,6 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     return false;
   };
   const focusWorkspace = (folder: FolderKey | null) => {
-    setShowMembers(false);
     setOpenFolder(folder);
     workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -912,7 +936,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                       <tr
                         key={s.user_id}
                         className="hover:bg-muted/40 cursor-pointer"
-                        onClick={() => navigate(studentDetailsPath(s.user_id))}
+                        onClick={() => navigate(studentDetailsPath(s.user_id, { groupId, department: departmentFilter, participantSearch }))}
                       >
                         <td className="px-3 py-2.5">
                           <div className="font-medium truncate">{s.full_name}</div>
@@ -945,7 +969,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                             variant="ghost"
                             size="sm"
                             className="rounded-xl gap-1"
-                            onClick={(e) => { e.stopPropagation(); navigate(studentDetailsPath(s.user_id)); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(studentDetailsPath(s.user_id, { groupId, department: departmentFilter, participantSearch })); }}
                           >
                             Открыть карточку <ExternalLink className="w-3.5 h-3.5" />
                           </Button>

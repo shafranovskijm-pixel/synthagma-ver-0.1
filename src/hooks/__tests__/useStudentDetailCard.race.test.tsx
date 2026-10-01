@@ -2,6 +2,10 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { useStudentDetailCardLogic } from "@/hooks/useStudentDetailCard";
+import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
+
+const wrapper = ({ children }: { children: ReactNode }) => <MemoryRouter>{children}</MemoryRouter>;
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -21,6 +25,13 @@ const queryState = vi.hoisted(() => ({
   tokenResponses: new Map<string, Promise<QueryResponse>>(),
   filters: [] as Array<{ table: string; values: Record<string, unknown> }>,
   rpcCalls: [] as string[],
+}));
+
+vi.mock("@/utils/safeInvoke", () => ({
+  safeInvoke: async (_name: string, { body }: any) => {
+    const response = await (queryState.tokenResponses.get(body.user_id) ?? Promise.resolve({ data: null, error: null }));
+    return { data: { token: response.data?.token ?? null, user_id: body.user_id, organization_id: body.organization_id }, error: response.error };
+  },
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -68,6 +79,7 @@ vi.mock("@/integrations/supabase/client", () => ({
               phone: `phone-${id}`,
               region: `region-${id}`,
               job_position: `job-${id}`,
+              department: `department-${id}`,
               blocked_at: null,
               blocked_reason: null,
             },
@@ -133,7 +145,7 @@ describe("useStudentDetailCardLogic identity races", () => {
       student: student("student-a") as any,
       organizationId: "org-1",
       enrollments: [],
-    }));
+    }), { wrapper });
 
     await waitFor(() => {
       expect(result.current.dataLoadError).toMatch(/не удалось подтвердить/i);
@@ -184,7 +196,7 @@ describe("useStudentDetailCardLogic identity races", () => {
         organizationId: "org-1",
         enrollments: [],
       }),
-      { initialProps: { selectedStudent: student("student-a") } },
+      { initialProps: { selectedStudent: student("student-a") }, wrapper },
     );
 
     rerender({ selectedStudent: student("student-b") });
@@ -195,6 +207,7 @@ describe("useStudentDetailCardLogic identity races", () => {
     expect(result.current.decryptedPassword).toBeNull();
     expect(result.current.autoLoginToken).toBeNull();
     expect(result.current.isLoading).toBe(true);
+    expect(result.current.department).toBe("");
 
     await act(async () => {
       coreB.resolve({ data: [{ id: "consent-student-b" }], error: null });
@@ -208,6 +221,7 @@ describe("useStudentDetailCardLogic identity races", () => {
       expect(result.current.documents.map((item: any) => item.id))
         .toEqual(["document-student-b"]);
       expect(result.current.phone).toBe("phone-student-b");
+      expect(result.current.department).toBe("department-student-b");
       expect(result.current.decryptedPassword).toBe("password-student-b");
       expect(result.current.autoLoginToken).toBe("token-student-b");
     });
@@ -223,6 +237,7 @@ describe("useStudentDetailCardLogic identity races", () => {
     expect(result.current.documents.map((item: any) => item.id))
       .toEqual(["document-student-b"]);
     expect(result.current.phone).toBe("phone-student-b");
+    expect(result.current.department).toBe("department-student-b");
     expect(result.current.decryptedPassword).toBe("password-student-b");
     expect(result.current.autoLoginToken).toBe("token-student-b");
     expect(queryState.rpcCalls).toEqual(["student-b"]);

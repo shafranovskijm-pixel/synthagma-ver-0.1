@@ -24,6 +24,7 @@ export function normalizeOrganizationWorkspaceTab(
 ): TabType {
   if (tab === "payments") return "subscription";
   if (tab === "sales") return "home";
+  if (tab === "ai-tutors" || tab === "webinars") return "courses";
   return tab ?? "home";
 }
 

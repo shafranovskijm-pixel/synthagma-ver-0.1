@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { User, FileText, Users, Sun, Moon, Monitor, Bell, Eye, EyeOff, Camera, HelpCircle } from "lucide-react";
@@ -40,31 +39,7 @@ const TAB_ICONS: Record<string, typeof User> = {
 export function StudentProfileContent({ effectiveUserId, isAdminView = false, pendingDocsCount = 0 }: StudentProfileContentProps) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialSection = searchParams.get("section");
-  const [activeTab, setActiveTab] = useState(() => {
-    if (initialSection && PROFILE_TABS.some(t => t.id === initialSection)) return initialSection;
-    return "profile";
-  });
-
-  // Re-apply ?section=… when it changes (e.g. user navigates from header again).
-  useEffect(() => {
-    if (initialSection && PROFILE_TABS.some(t => t.id === initialSection)) {
-      setActiveTab(initialSection);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSection]);
-
-  const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId);
-    // Clean the section param from the URL after a manual switch so it doesn't
-    // override future navigation back to "profile".
-    if (searchParams.has("section")) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("section");
-      setSearchParams(next, { replace: true });
-    }
-  };
+  const [activeTab, handleTabClick] = useUrlQueryState<string>("section", "profile", PROFILE_TABS.map(t => t.id));
 
   const sp = useStudentProfile(effectiveUserId, isAdminView, user?.id);
 

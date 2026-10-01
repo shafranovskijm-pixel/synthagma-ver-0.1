@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { AdminSidebar, type AdminTabType } from "@/components/admin/AdminSidebar";
 import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
 import { AdminDashboardFooter } from "@/components/admin/AdminDashboardFooter";
@@ -45,8 +47,11 @@ const ADMIN_NOTIFICATION_POLL_MS = 30_000;
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
+  const { loading: permissionsLoading, canSeeAdminTab } = useStaffPermissions();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<AdminTabType>("organizations");
+  const [activeTab, setActiveTab] = useUrlQueryState<AdminTabType>("tab", "organizations", [
+    "analytics", "organizations", "users", "companies", "content", "marketplace", "sales", "billing", "finance", "ai", "broadcast", "chats", "referrals", "support", "devtools", "client-errors", "updates", "webinars-admin", "documents", "settings",
+  ], { clear: ["organizationId", "organizationSection", "marketplaceSection", "chatSection", "chatTab", "chatId"] });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -131,8 +136,7 @@ const AdminDashboard = () => {
     if (n.type === "demo_request_delivery") {
       setActiveTab("sales");
     } else if (n.type === "invoice" && n.related_entity_id) {
-      setOpenOrgId(n.related_entity_id);
-      setActiveTab("organizations");
+      navigate(`/admin?organizationId=${encodeURIComponent(n.related_entity_id)}`);
     } else if (n.type === "signature") {
       // Открываем нужный договор инлайн внутри вкладки "Биллинг"
       if (n.related_entity_id) {
@@ -257,6 +261,9 @@ const AdminDashboard = () => {
 
         {/* Content */}
         <div className="p-4 lg:p-8 flex-1">
+          {permissionsLoading ? <LazyLoadFallback /> : !canSeeAdminTab(activeTab) ? (
+            <p role="alert">Нет доступа к этому разделу. Выберите доступный раздел в меню.</p>
+          ) : <>
           {/* Eager: дефолтные «Организации» и «Пользователи» — открываются часто */}
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "users" && <UsersManager />}
@@ -284,6 +291,7 @@ const AdminDashboard = () => {
             {activeTab === "settings" && <AdminSettings />}
             {activeTab === "documents" && <AdminDocumentsManager />}
           </Suspense>
+          </>}
         </div>
 
         {/* Footer */}

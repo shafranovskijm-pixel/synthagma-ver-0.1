@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { courseDetailsPathForGroup, groupFolderPath } from "@/lib/groups/groupContext";
+import { courseDetailsPathForGroup, studentGroupReturnPath } from "@/lib/groups/groupContext";
 import { educationDocumentsJournalPath } from "@/lib/organization/documentWorkspaceNavigation";
 import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck, AlertTriangle, RefreshCw } from "lucide-react";
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
@@ -74,10 +74,15 @@ export function StudentDetailsTab() {
   const [searchParams] = useSearchParams();
   // Обратный путь появляется только у карточек, открытых из папки группы.
   const returnToGroupId = searchParams.get("returnToGroupId");
+  const groupReturnPath = studentGroupReturnPath(searchParams);
   const d = useOrgDashboard();
   const { user } = useAuth();
   const organizationId = d.organizationId;
   const studentId = d.tabNavigation.selectedStudentId;
+  const returnToStudents = () => {
+    if (groupReturnPath) navigate(groupReturnPath);
+    else d.tabNavigation.setActiveTab("students");
+  };
 
   const [student, setStudent] = useState<StudentData | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
@@ -224,7 +229,7 @@ export function StudentDetailsTab() {
   if (profileLoadError) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
+        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={returnToStudents}>
           <ArrowLeft className="w-4 h-4" /> Назад к ученикам
         </Button>
         <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
@@ -242,7 +247,7 @@ export function StudentDetailsTab() {
   if (!student) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
+        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={returnToStudents}>
           <ArrowLeft className="w-4 h-4" /> Назад к ученикам
         </Button>
       {returnToGroupId && (
@@ -251,7 +256,7 @@ export function StudentDetailsTab() {
           size="sm"
           className="gap-1.5 rounded-xl h-8 text-xs"
           data-testid="return-to-group"
-          onClick={() => navigate(groupFolderPath(returnToGroupId))}
+          onClick={returnToStudents}
         >
           <FolderOpen className="w-3.5 h-3.5" /> Вернуться в группу
         </Button>
@@ -266,7 +271,7 @@ export function StudentDetailsTab() {
       {/* Header with back button and login-as */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
+          <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={returnToStudents}>
             <ArrowLeft className="w-4 h-4" /> Назад к ученикам
           </Button>
       {returnToGroupId && (
@@ -275,7 +280,7 @@ export function StudentDetailsTab() {
           size="sm"
           className="gap-1.5 rounded-xl h-8 text-xs"
           data-testid="return-to-group"
-          onClick={() => navigate(groupFolderPath(returnToGroupId))}
+          onClick={returnToStudents}
         >
           <FolderOpen className="w-3.5 h-3.5" /> Вернуться в группу
         </Button>

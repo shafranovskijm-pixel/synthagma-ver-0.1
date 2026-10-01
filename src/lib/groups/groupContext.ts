@@ -9,6 +9,8 @@ export interface GroupContextParams {
   groupId?: string | null;
   courseId?: string | null;
   returnToGroupId?: string | null;
+  department?: string | null;
+  participantSearch?: string | null;
 }
 
 /**
@@ -23,8 +25,25 @@ export function studentDetailsPath(userId: string, ctx?: GroupContextParams): st
   const back = ctx?.returnToGroupId ?? ctx?.groupId;
   // courseId сюда не прокидывается: карточка ученика показывает все его курсы,
   // а групповой фильтр не должен ограничивать/подменять её данные.
-  if (back) params.set("returnToGroupId", back);
+  if (back) {
+    params.set("returnToGroupId", back);
+    if (ctx?.department && ctx.department !== "all") params.set("returnDepartment", ctx.department);
+    if (ctx?.participantSearch) params.set("returnParticipantSearch", ctx.participantSearch);
+  }
   return `/organization?${params.toString()}`;
+}
+
+/** Back from a student card restores the participant list, including its filters. */
+export function studentGroupReturnPath(params: URLSearchParams): string | null {
+  const groupId = params.get("returnToGroupId");
+  if (!groupId) return null;
+  const back = new URLSearchParams(groupFolderPath(groupId).split("?")[1]);
+  back.set("groupView", "members");
+  const department = params.get("returnDepartment");
+  const search = params.get("returnParticipantSearch");
+  if (department && department !== "all") back.set("department", department);
+  if (search) back.set("participantSearch", search);
+  return `/organization?${back.toString()}`;
 }
 
 /**
@@ -99,6 +118,35 @@ export function resolveTabParams(
   // A canonical Companies deep link keeps its companyId. Top-level sidebar
   // navigation explicitly clears it in useTabNavigation.setActiveTab.
   if (tab !== "organizations") next.delete("companyId");
+  if (tab !== "journals" && tab !== "documents") {
+    next.delete("journalView");
+    next.delete("journalType");
+  }
+  if (tab !== "chats") {
+    next.delete("chatSection");
+    next.delete("chatTab");
+    next.delete("chatId");
+  }
+  if (tab !== "services") next.delete("marketplaceSection");
+  if (tab !== "profile") next.delete("section");
+  if (tab !== "course-details") {
+    next.delete("courseSection");
+    next.delete("courseSettingsSection");
+  }
+  if (tab !== "student-details") {
+    next.delete("studentSection");
+    next.delete("returnDepartment");
+    next.delete("returnParticipantSearch");
+  }
+  if (tab !== "group-folder") {
+    next.delete("groupView");
+    next.delete("department");
+    next.delete("participantSearch");
+  }
+  if (tab !== "subscription") {
+    next.delete("checkout");
+    next.delete("plan");
+  }
   if (tab !== "students" && tab !== "group-folder") next.delete("studentsView");
   if (tab !== "students") {
     next.delete("createGroup");

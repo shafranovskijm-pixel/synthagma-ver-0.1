@@ -3,7 +3,7 @@ import { hasStudentRegistrationDetails, normalizeBirthDate, normalizeStudentRegi
 
 describe("staff registration details", () => {
   it("omits blanks and false without instructions to erase saved data", () => {
-    const details = normalizeStudentRegistrationDetails({ department: "  ", snils: null, birth_date: "", confirm_identity: false });
+    const details = normalizeStudentRegistrationDetails({ department: "  ", job_position: "  ", snils: null, birth_date: "", confirm_identity: false });
     expect(details).toEqual({});
     expect(hasStudentRegistrationDetails(details)).toBe(false);
   });
@@ -11,6 +11,14 @@ describe("staff registration details", () => {
     expect(normalizeStudentRegistrationDetails({ department: " Участок 2 ", snils: "00100199832", birth_date: "15.06.1990", confirm_identity: true })).toEqual({
       department: "Участок 2", snils: "001-001-998 32", birth_date: "1990-06-15", confirm_identity: true,
     });
+  });
+  it("recognizes a current job position as a staff-only detail", () => {
+    const details = normalizeStudentRegistrationDetails({ job_position: " Водитель ", qualification: "Квалификация после обучения" });
+    expect(details).toEqual({ job_position: "Водитель" });
+    expect(hasStudentRegistrationDetails(details)).toBe(true);
+  });
+  it.each([123, "x".repeat(201), "Водитель\nМеханик"])("rejects an invalid job position %j", (job_position) => {
+    expect(() => normalizeStudentRegistrationDetails({ job_position })).toThrow("Должность");
   });
   it.each(["да", "true", 1, {}, []])("refuses implicit approval %j", (confirm_identity) => {
     expect(() => normalizeStudentRegistrationDetails({ confirm_identity })).toThrow("явной отметкой");

@@ -304,7 +304,7 @@ export function useCourseBuilder(propCourseId?: string) {
       .single();
     if (error || !newCourse) return null;
     setSavedCourseIdState(newCourse.id);
-    window.history.replaceState(null, '', `/course-builder/${newCourse.id}`);
+    navigate(`/course-builder/${newCourse.id}`, { replace: true });
     return newCourse.id;
   };
 
@@ -505,7 +505,7 @@ export function useCourseBuilder(propCourseId?: string) {
     try {
       let savedCourseId = courseId;
       if (courseId) { const { error } = await supabase.from("courses").update({ title: courseTitle.trim(), description: courseDescription.trim() || null }).eq("id", courseId); if (error) throw error; }
-      else { const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single(); if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`); }
+      else { const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single(); if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); navigate(`/course-builder/${savedCourseId}`, { replace: true }); }
 
       if (lessons.length > 0 && savedCourseId) {
         const currentLessonIds = lessons.map(l => l.id);
@@ -606,7 +606,7 @@ export function useCourseBuilder(propCourseId?: string) {
       if (!savedCourseId) {
         if (!courseTitle.trim()) setCourseTitle(lesson.title || "Новый курс");
         const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim() || lesson.title || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId, is_published: false }).select().single();
-        if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
+        if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); navigate(`/course-builder/${savedCourseId}`, { replace: true });
       }
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
       if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, test_max_attempts: lesson.testMaxAttempts ?? null, test_max_attempts_per_day: lesson.testMaxAttemptsPerDay ?? null, test_show_answers: lesson.testShowAnswers ?? true, module_id: lesson.module_id ?? null, metadata: lesson.metadata ?? {} }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }

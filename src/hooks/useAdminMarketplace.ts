@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
@@ -55,7 +56,7 @@ export interface DbCategory {
 }
 
 export function useAdminMarketplace() {
-  const [activeTab, setActiveTab] = useState<"catalog" | "create" | "import" | "orders" | "programs" | "knowledge" | "generator">("catalog");
+  const [activeTab, setActiveTab] = useUrlQueryState<"catalog" | "create" | "import" | "orders" | "programs" | "knowledge" | "generator">("marketplaceSection", "catalog", ["catalog", "create", "import", "orders", "programs", "knowledge", "generator"]);
   const [isLoading, setIsLoading] = useState(true);
   const [courses, setCourses] = useState<MarketplaceCourseWithDetails[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);

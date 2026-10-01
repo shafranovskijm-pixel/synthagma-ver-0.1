@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,25 +14,25 @@ import { RequirePerm } from "@/hooks/useStaffPermissions";
 import { classifyDataError } from "@/utils/isTransientNetworkError";
 import { invalidateOrganizationCourseOverview } from "@/lib/invalidateOrganizationQueries";
 import { isCourseElectronicLibraryEnabled } from "@/lib/courseLibrary";
+import { resolveTabParams } from "@/lib/groups/groupContext";
 
 type LoadState = "loading" | "success" | "not_found" | "error";
+const COURSE_SECTIONS = ["students", "materials", "history", "tests", "landing", "settings", "reminders", "groups", "requests", "achievements", "editor", "preview"] as const;
+type CourseSection = typeof COURSE_SECTIONS[number];
 
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
   const qc = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
   const courseId = d.tabNavigation.selectedCourseId;
   const organizationId = d.organizationId;
   const courseSection = searchParams.get("courseSection");
   const setDashboardActiveTab = d.tabNavigation.setActiveTab;
-  const setSelectedCourseId = d.tabNavigation.setSelectedCourseId;
   const refreshDashboardData = d.refreshData;
 
   const [course, setCourse] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<
-    | "students" | "materials" | "history" | "tests" | "landing" | "settings"
-    | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview"
-  >(courseSection === "library" ? "materials" : "editor");
+  const activeTab: CourseSection = courseSection === "library" ? "materials"
+    : COURSE_SECTIONS.includes(courseSection as CourseSection) ? courseSection as CourseSection : "editor";
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isPublicationChanging, setIsPublicationChanging] = useState(false);
@@ -41,16 +41,11 @@ export function CourseDetailsTab() {
   const electronicLibraryEnabled = isCourseElectronicLibraryEnabled(course?.landing_content);
 
   useEffect(() => {
-    setActiveTab(courseSection === "library" ? "materials" : "editor");
-  }, [courseId, courseSection]);
-
-  useEffect(() => {
-    if (!course || courseSection !== "library" || electronicLibraryEnabled) return;
-    setActiveTab("editor");
+    if (state !== "success" || course?.id !== courseId || activeTab !== "materials" || electronicLibraryEnabled) return;
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("courseSection");
     setSearchParams(nextParams, { replace: true });
-  }, [course, courseSection, electronicLibraryEnabled, searchParams, setSearchParams]);
+  }, [course, courseId, state, activeTab, electronicLibraryEnabled, searchParams, setSearchParams]);
 
   useEffect(() => {
     // A pending mutation belongs to the course URL from which it started.
@@ -61,21 +56,18 @@ export function CourseDetailsTab() {
   }, [courseId]);
 
   const handleTabChange = useCallback((nextTab: typeof activeTab) => {
+    if (nextTab === activeTab) return;
     const nextParams = new URLSearchParams(searchParams);
-    if (nextTab === "materials" && !electronicLibraryEnabled) {
-      setActiveTab("editor");
-      nextParams.delete("courseSection");
-    } else {
-      setActiveTab(nextTab);
-      if (nextTab === "materials") nextParams.set("courseSection", "library");
-      else nextParams.delete("courseSection");
-    }
-    setSearchParams(nextParams, { replace: true });
-  }, [electronicLibraryEnabled, searchParams, setSearchParams]);
+    const section = nextTab === "materials" && !electronicLibraryEnabled ? "editor" : nextTab;
+    if (section === "editor") nextParams.delete("courseSection");
+    else nextParams.set("courseSection", section === "materials" ? "library" : section);
+    if (section !== "settings") nextParams.delete("courseSettingsSection");
+    setSearchParams(nextParams);
+  }, [activeTab, electronicLibraryEnabled, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!courseId) setDashboardActiveTab("courses");
-  }, [courseId, setDashboardActiveTab]);
+    if (!courseId) setSearchParams((prev) => resolveTabParams(prev, "courses"), { replace: true });
+  }, [courseId, setSearchParams]);
 
   const loadCourse = useCallback(async (withSpinner = true) => {
     if (!courseId || !organizationId) return;
@@ -150,9 +142,8 @@ export function CourseDetailsTab() {
   }, [loadCourse]);
 
   const handleBack = useCallback(() => {
-    setSelectedCourseId(null);
     setDashboardActiveTab("courses");
-  }, [setDashboardActiveTab, setSelectedCourseId]);
+  }, [setDashboardActiveTab]);
 
   // Deleting a course affects the base course list, dashboard summary,
   // course overview, and enrollment-derived rows simultaneously — refresh

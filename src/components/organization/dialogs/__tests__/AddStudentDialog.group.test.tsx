@@ -38,11 +38,12 @@ describe("AddStudentDialog group assignment", () => {
     expect(checkbox).not.toBeChecked();
     fireEvent.change(screen.getByPlaceholderText("Иванов Иван Иванович"), { target: { value: "Иванов Иван" } });
     fireEvent.change(screen.getByLabelText("Подразделение (необязательно)"), { target: { value: "Участок 2" } });
+    fireEvent.change(screen.getByLabelText("Должность (необязательно)"), { target: { value: " Водитель " } });
     fireEvent.change(screen.getByLabelText("СНИЛС (необязательно)"), { target: { value: "00100199832" } });
     fireEvent.change(screen.getByLabelText("Дата рождения (необязательно)"), { target: { value: "1990-06-15" } });
     fireEvent.click(checkbox);
     fireEvent.click(screen.getByRole("button", { name: "Добавить ученика" }));
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ department: "Участок 2", snils: "001-001-998 32", birth_date: "1990-06-15", confirm_identity: true }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ department: "Участок 2", job_position: "Водитель", snils: "001-001-998 32", birth_date: "1990-06-15", confirm_identity: true }));
   });
 
   it("does not submit malformed SNILS", () => {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -47,7 +48,7 @@ const CompanyDashboard = () => {
   const { company, employees, stats, loading, addingEmployee, addEmployee, refresh } =
     useCompanyDashboard(viewAsData?.userId || undefined);
   const { signOut, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [activeTab, setActiveTab] = useUrlQueryState<TabId>("tab", "home", tabs.map(tab => tab.id));
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const exitOrgView = () => {

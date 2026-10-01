@@ -15,6 +15,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { FRDO_EDUCATION_LEVELS } from "@/constants/frdo";
+import { StudentDepartmentEditor } from "./StudentDepartmentEditor";
 
 
 interface ProfileTabProps {
@@ -97,6 +98,8 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
       </div>
 
       {/* Персональные данные для ФИС ФРДО */}
+      <StudentDepartmentEditor key={student.user_id} value={h.department || ""}
+        saving={h.savingDepartment} onSave={h.saveDepartment} />
       <PersonalFrdoSection h={h} />
 
 
@@ -314,6 +317,13 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
               <Send className="w-4 h-4" />Отправить на email
             </Button>
           </div>
+          {h.autoLoginCopyFallback && (
+            <div className="mt-3 space-y-1">
+              <Label htmlFor="student-auto-login-copy">Ссылка для ручного копирования</Label>
+              <Input id="student-auto-login-copy" value={h.autoLoginCopyFallback} readOnly onFocus={(event) => event.currentTarget.select()} />
+              <p className="text-xs text-muted-foreground">Выделите ссылку и нажмите Ctrl+C. Передавайте её только этому ученику.</p>
+            </div>
+          )}
         </div>
       )}
 

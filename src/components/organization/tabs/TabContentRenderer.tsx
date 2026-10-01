@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
 import { CourseDetailsTab } from "./CourseDetailsTab";
@@ -45,12 +44,6 @@ export function TabContentRenderer() {
   const ctxGroupId = searchParams.get("groupId");
   const ctxCourseId = searchParams.get("courseId");
   const ctxReturnToGroupId = searchParams.get("returnToGroupId");
-
-  useEffect(() => {
-    if (activeTab === "ai-tutors" || activeTab === "webinars") {
-      d.tabNavigation.setActiveTab("courses" as any);
-    }
-  }, [activeTab, d.tabNavigation]);
 
   const shouldShowStatsCards = activeTab !== "organizations" && 
     activeTab !== "home" &&

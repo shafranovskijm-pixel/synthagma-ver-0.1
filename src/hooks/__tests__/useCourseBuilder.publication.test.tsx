@@ -293,6 +293,9 @@ describe("useCourseBuilder publication safety", () => {
       organization_id: "org-admin-view",
       is_published: false,
     }));
+    // Persisting a new draft replaces its temporary editor location. Back
+    // must return to the course list, never to a second empty draft editor.
+    expect(mocks.navigate).toHaveBeenCalledWith("/course-builder/new-course-1", { replace: true });
     hook.unmount();
   });
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   studentDetailsPath,
+  studentGroupReturnPath,
   courseDetailsPathForGroup,
   groupFolderPath,
   groupContextPath,
@@ -10,6 +11,34 @@ import {
 } from "@/lib/groups/groupContext";
 
 describe("groupContext", () => {
+  it("restores participants and encoded filters from a student link", () => {
+    const url = studentDetailsPath("u-1", { groupId: "g-1", department: "department:Цех & Склад", participantSearch: "Иван + Петр" });
+    const q = new URLSearchParams(url.split("?")[1]);
+    const back = new URLSearchParams(studentGroupReturnPath(q)!.split("?")[1]);
+    expect(back.get("tab")).toBe("group-folder");
+    expect(back.get("groupId")).toBe("g-1");
+    expect(back.get("groupView")).toBe("members");
+    expect(back.get("department")).toBe("department:Цех & Склад");
+    expect(back.get("participantSearch")).toBe("Иван + Петр");
+    expect(back.has("studentId")).toBe(false);
+    expect(q.has("department")).toBe(false);
+  });
+
+  it("uses the known group for legacy card links and ignores arbitrary redirect input", () => {
+    expect(studentGroupReturnPath(new URLSearchParams("returnUrl=https://example.test"))).toBeNull();
+    const back = studentGroupReturnPath(new URLSearchParams("returnToGroupId=g-1"));
+    expect(back).toContain("groupView=members");
+    expect(back).toContain("groupId=g-1");
+  });
+
+  it("clears participant return filters on leaving the student workspace", () => {
+    const prev = new URLSearchParams(studentDetailsPath("u", { groupId: "g", department: "none", participantSearch: "Иван" }).split("?")[1]);
+    expect(resolveTabParams(prev, "student-details").get("returnDepartment")).toBe("none");
+    const next = resolveTabParams(prev, "courses");
+    expect(next.has("returnToGroupId")).toBe(false);
+    expect(next.has("returnDepartment")).toBe(false);
+    expect(next.has("returnParticipantSearch")).toBe(false);
+  });
   it("builds student and course paths", () => {
     expect(studentDetailsPath("u-1")).toBe("/organization?tab=student-details&studentId=u-1");
     expect(courseDetailsPathForGroup("c-1")).toBe("/organization?tab=course-details&courseId=c-1");

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,8 +83,8 @@ interface ProfileTabProps {
 
 export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const { user } = useAuth();
-  const initialKey = (SECTIONS.find(s => s.key === initialSubTab)?.key as SectionKey) || "profile";
-  const [activeSection, setActiveSection] = useState<SectionKey>(initialKey);
+  const initialKey = SECTIONS.find(s => s.key === initialSubTab)?.key ?? "profile";
+  const [activeSection, setActiveSection] = useUrlQueryState<SectionKey>("section", initialKey, SECTIONS.map(s => s.key));
   const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData>({

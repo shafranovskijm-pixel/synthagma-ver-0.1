@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback } from "react";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
 /** Тарифы, для которых доступно оформление (бесплатный оформлять нечего). */
@@ -59,21 +59,16 @@ export function checkoutParams(
  * Состояние мастера «Оформление тарифа»:
  *  — основной источник истины — URL (checkout=1&plan=…), поэтому выбранный тариф
  *    не теряется при F5/hot reload, а закрытие возвращает ровно на вкладку тарифа;
- *  — дублируется локальным состоянием: если внешний рендер перезапишет search-параметры,
- *    диалог всё равно откроется (живой тест показал, что URL-переход может быть потерян);
+ *  — browser Back/Forward открывает и закрывает мастер вместе с URL;
  *  — повторный клик идемпотентен: второй диалог не появляется.
  */
 export function useTariffCheckout(currentPlan?: string | null) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
   const urlState = resolveCheckoutState(searchParams, currentPlan);
-  const [local, setLocal] = useState<{ open: boolean; plan?: SubscriptionPlan }>({ open: false });
-
-  const open = urlState.open || local.open;
-  const plan = local.open && local.plan ? local.plan : urlState.plan;
+  const { open, plan } = urlState;
 
   const openCheckout = useCallback(
     (nextPlan?: SubscriptionPlan) => {
-      setLocal((prev) => ({ open: true, plan: nextPlan ?? prev.plan }));
       setSearchParams(
         (prev) => checkoutParams(prev, { open: true, plan: nextPlan ?? resolveCheckoutState(prev, currentPlan).plan }),
         { replace: false },
@@ -84,14 +79,12 @@ export function useTariffCheckout(currentPlan?: string | null) {
 
   const setPlan = useCallback(
     (nextPlan: SubscriptionPlan) => {
-      setLocal((prev) => (prev.open ? { open: true, plan: nextPlan } : prev));
       setSearchParams((prev) => checkoutParams(prev, { open: true, plan: nextPlan }), { replace: true });
     },
     [setSearchParams],
   );
 
   const closeCheckout = useCallback(() => {
-    setLocal({ open: false });
     setSearchParams((prev) => checkoutParams(prev, { open: false }), { replace: true });
   }, [setSearchParams]);
 

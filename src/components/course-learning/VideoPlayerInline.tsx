@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import DOMPurify from "dompurify";
 import {
@@ -37,6 +37,14 @@ export const VideoPlayerInline = ({
   onFinishLesson, userId, lessonId, courseId, savedPosition = 0, onSavePosition, onPlayerTypeDetected
 }: VideoPlayerInlineProps) => {
   const embedResult = getVideoEmbedUrl(content);
+  const kinescopeId = getKinescopeVideoId(content);
+  // A time-dependent token must stay stable during playback. Changing iframe.src
+  // on fullscreen/progress renders reloads the player and exits fullscreen.
+  const kinescopeSrc = useMemo(() => {
+    if (!kinescopeId) return undefined;
+    const drmToken = userId && courseId ? generateKinescopeDrmToken(userId, courseId) : undefined;
+    return getKinescopeEmbedUrl(kinescopeId, drmToken);
+  }, [kinescopeId, userId, courseId]);
   const directVideoSrc = embedResult?.url && isDirectVideoFileUrl(embedResult.url) ? embedResult.url : null;
   const resolvedContent = directVideoSrc ?? content;
   const playableContent = isDirectVideoFileUrl(resolvedContent) || isMpegTsFileUrl(resolvedContent)
@@ -189,7 +197,7 @@ export const VideoPlayerInline = ({
 
   // Determine player mode (native vs embed) once and report up.
   // Native = HTML5 <video> with timeupdate; Embed = iframe (Kinescope, KonturTalk, YouTube etc.)
-  const _isKinescope = !!getKinescopeVideoId(content);
+  const _isKinescope = !!kinescopeId;
   const _isIframe = isIframeEmbed(content);
   const _isExternalEmbed = !!embedResult && !directVideoSrc;
   const _isEmbedMode = _isKinescope || _isIframe || _isExternalEmbed;
@@ -200,14 +208,11 @@ export const VideoPlayerInline = ({
   if (!content) return null;
 
   // Kinescope video with DRM auth (uses shared helpers)
-  const kinescopeId = getKinescopeVideoId(content);
   if (kinescopeId) {
-    const drmToken = userId && courseId ? generateKinescopeDrmToken(userId, courseId) : undefined;
-    const embedSrc = getKinescopeEmbedUrl(kinescopeId, drmToken);
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
         <iframe
-          src={embedSrc}
+          src={kinescopeSrc}
           className="w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen

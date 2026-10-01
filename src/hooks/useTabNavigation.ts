@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import type { TabType } from "@/components/organization/OrgSidebar";
 import { resolveTabParams } from "@/lib/groups/groupContext";
 import { normalizeOrganizationWorkspaceTab } from "@/lib/organization/workspaceNavigation";
@@ -33,7 +34,7 @@ export function useTabNavigation({
   isEnabled,
 }: UseTabNavigationProps) {
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
 
   // URL is the source of truth for the active tab so that reload and
   // browser Back/Forward correctly restore the previous section.
@@ -47,9 +48,15 @@ export function useTabNavigation({
       // Selecting the top-level Companies item means its list, while a
       // companiesPath(companyId) deep link remains independently reloadable.
       if (normalizedTab === "organizations") next.delete("companyId");
+      if (normalizedTab === activeTab) {
+        const canonicalPrevious = new URLSearchParams(prev);
+        if (normalizedTab === "home") canonicalPrevious.delete("tab");
+        else canonicalPrevious.set("tab", normalizedTab);
+        if (canonicalPrevious.toString() === next.toString()) return prev;
+      }
       return next;
     });
-  }, [setSearchParams]);
+  }, [activeTab, setSearchParams]);
 
   // Old bookmarks must not reopen unfinished CRM or the demo course-payment
   // workspace. Replace their URL once, without adding a history entry.
@@ -70,10 +77,12 @@ export function useTabNavigation({
   useEffect(() => {
     const state = location.state as { tab?: TabType } | null;
     if (state?.tab) {
-      setActiveTab(state.tab);
-      window.history.replaceState({}, document.title);
+      setSearchParams((prev) => resolveTabParams(prev, normalizeOrganizationWorkspaceTab(state.tab)), {
+        replace: true,
+        state: null,
+      });
     }
-  }, [location.state, setActiveTab]);
+  }, [location.state, setSearchParams]);
 
   // Entity selection is derived from this window's URL. Setters update only
   // the URL, avoiding a one-render stale A value while Back/Forward selects B.
@@ -104,6 +113,10 @@ export function useTabNavigation({
   const openCourseDetails = useCallback((courseId: string) => {
     setSearchParams((prev) => {
       const next = resolveTabParams(prev, "course-details");
+      if (next.get("courseId") !== courseId) {
+        next.delete("courseSection");
+        next.delete("courseSettingsSection");
+      }
       next.set("courseId", courseId);
       return next;
     });
@@ -112,6 +125,7 @@ export function useTabNavigation({
   const openStudentDetails = useCallback((studentId: string) => {
     setSearchParams((prev) => {
       const next = resolveTabParams(prev, "student-details");
+      if (next.get("studentId") !== studentId) next.delete("studentSection");
       next.set("studentId", studentId);
       return next;
     });
@@ -120,6 +134,11 @@ export function useTabNavigation({
   const openGroupFolder = useCallback((groupId: string) => {
     setSearchParams((prev) => {
       const next = resolveTabParams(prev, "group-folder");
+      if (next.get("groupId") !== groupId) {
+        next.delete("groupView");
+        next.delete("department");
+        next.delete("participantSearch");
+      }
       next.set("studentsView", "groups");
       next.set("groupId", groupId);
       next.delete("folder");

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -44,7 +45,9 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
   const [editOrg, setEditOrg] = useState<Organization | null>(null);
-  const [viewingOrg, setViewingOrg] = useState<Organization | null>(null);
+  const [viewingOrgId, setViewingOrgId] = useUrlQueryState<string>("organizationId", "", undefined, { clear: ["organizationSection"] });
+  const viewingOrg = organizations.find(org => org.id === viewingOrgId) ?? null;
+  const setViewingOrg = (org: Organization | null) => setViewingOrgId(org?.id ?? "");
   const [resetPasswordOrg, setResetPasswordOrg] = useState<Organization | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
