@@ -9560,6 +9560,100 @@ export type Database = {
           },
         ]
       }
+      paid_umk_20260922_assets: {
+        Row: {
+          audience: string
+          enabled: boolean
+          id: string
+          library_document_id: string
+          release_version: string
+          sha256: string
+          size_bytes: number
+          source_course_id: string
+        }
+        Insert: {
+          audience: string
+          enabled?: boolean
+          id?: string
+          library_document_id: string
+          release_version?: string
+          sha256: string
+          size_bytes: number
+          source_course_id: string
+        }
+        Update: {
+          audience?: string
+          enabled?: boolean
+          id?: string
+          library_document_id?: string
+          release_version?: string
+          sha256?: string
+          size_bytes?: number
+          source_course_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_umk_20260922_assets_library_document_id_fkey"
+            columns: ["library_document_id"]
+            isOneToOne: true
+            referencedRelation: "library_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_umk_20260922_assets_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paid_umk_20260922_grants: {
+        Row: {
+          asset_id: string
+          buyer_course_id: string
+          created_at: string
+          order_id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          asset_id: string
+          buyer_course_id: string
+          created_at?: string
+          order_id: string
+          revoked_at?: string | null
+        }
+        Update: {
+          asset_id?: string
+          buyer_course_id?: string
+          created_at?: string
+          order_id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_umk_20260922_grants_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "paid_umk_20260922_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_umk_20260922_grants_buyer_course_id_fkey"
+            columns: ["buyer_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_umk_20260922_grants_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_applications: {
         Row: {
           comment: string | null
@@ -13958,6 +14052,23 @@ export type Database = {
         Returns: string
       }
       _org_email_warmup_limit: { Args: { _day: number }; Returns: number }
+      _paid_20260922_course_read: {
+        Args: { p_allow_learner: boolean; p_course_id: string }
+        Returns: boolean
+      }
+      _paid_20260922_course_scope: {
+        Args: { p_course_id: string }
+        Returns: boolean
+      }
+      _paid_20260922_lesson_read: {
+        Args: {
+          p_allow_demo: boolean
+          p_allow_learner: boolean
+          p_lesson_id: string
+        }
+        Returns: boolean
+      }
+      _paid_20260922_original_ids: { Args: never; Returns: string[] }
       _phase_5c1c1_merge_legacy_quotas: {
         Args: never
         Returns: {
@@ -15448,6 +15559,22 @@ export type Database = {
       org_role_default_permissions: {
         Args: { _role: string }
         Returns: string[]
+      }
+      paid_umk_20260922_can_read_assignment: {
+        Args: { _course_id: string; _document_id: string; _visible: boolean }
+        Returns: boolean
+      }
+      paid_umk_20260922_can_read_document: {
+        Args: { _document_id: string }
+        Returns: boolean
+      }
+      paid_umk_20260922_is_asset: {
+        Args: { _document_id: string }
+        Returns: boolean
+      }
+      paid_umk_20260922_valid_grant: {
+        Args: { _course_id: string; _document_id: string }
+        Returns: boolean
       }
       pick_next_email_sender:
         | {
