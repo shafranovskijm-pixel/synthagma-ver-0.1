@@ -157,6 +157,23 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   const [archivedStudentsCount, setArchivedStudentsCount] = useState(0);
   const [departmentFilter, setDepartmentFilter] = useUrlQueryState<string>("department", "all", undefined, { replace: true });
   const [participantSearch, setParticipantSearch] = useUrlQueryState<string>("participantSearch", "", undefined, { replace: true });
+  const previousScopeRef = useRef({ organizationId, groupId });
+  useEffect(() => {
+    const previous = previousScopeRef.current;
+    previousScopeRef.current = { organizationId, groupId };
+    // A tenant switch cannot inherit the previous organization's filters.
+    // For normal group URL navigation, including Back/Forward, the URL owns
+    // the filters. Only a prop-only group switch needs the same reset.
+    if (previous.organizationId !== organizationId
+        || (previous.groupId !== groupId && searchParams.get("groupId") !== groupId)) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("department");
+        next.delete("participantSearch");
+        return next;
+      }, { replace: true });
+    }
+  }, [organizationId, groupId, searchParams, setSearchParams]);
   const [orgInfo, setOrgInfo] = useState<any | null>(null);
   const [courseInfo, setCourseInfo] = useState<CourseInfo | null>(null);
   const [courseEnrollments, setCourseEnrollments] = useState<EnrollmentEvidence[]>([]);
@@ -919,7 +936,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                       <tr
                         key={s.user_id}
                         className="hover:bg-muted/40 cursor-pointer"
-                        onClick={() => navigate(studentDetailsPath(s.user_id, { groupId }))}
+                        onClick={() => navigate(studentDetailsPath(s.user_id, { groupId, department: departmentFilter, participantSearch }))}
                       >
                         <td className="px-3 py-2.5">
                           <div className="font-medium truncate">{s.full_name}</div>
@@ -952,7 +969,7 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
                             variant="ghost"
                             size="sm"
                             className="rounded-xl gap-1"
-                            onClick={(e) => { e.stopPropagation(); navigate(studentDetailsPath(s.user_id, { groupId })); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(studentDetailsPath(s.user_id, { groupId, department: departmentFilter, participantSearch })); }}
                           >
                             Открыть карточку <ExternalLink className="w-3.5 h-3.5" />
                           </Button>

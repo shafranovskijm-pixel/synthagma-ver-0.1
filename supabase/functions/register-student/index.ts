@@ -13,8 +13,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "../_shared/student-registration-details.ts";
+import { persistStudentJobPosition } from "../_shared/student-job-position.ts";
 
-const REGISTER_STUDENT_REVISION = "student-details-v4";
+const REGISTER_STUDENT_REVISION = "student-details-v5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -724,6 +725,26 @@ serve(async (req) => {
       }
     }
 
+    const jobPositionConfirmed = await persistStudentJobPosition(supabaseAdmin, {
+      organizationId: effectiveOrgId,
+      userId: userId!,
+      jobPosition: registrationDetails.job_position,
+      staffAuthorized: canResolveByLogin,
+      publicRegistration,
+    });
+    if (jobPositionConfirmed === false) {
+      return j({
+        success: false, partial_success: true, profile_persisted: true,
+        student_created: createdAuthUserThisAttempt, created_auth_user: createdAuthUserThisAttempt,
+        enrollment_confirmed: false, details_confirmed: false, job_position_confirmed: false,
+        user_id: userId, is_existing: isExisting,
+        login: generatedLogin || undefined,
+        password: !isExisting ? (generatedPassword || undefined) : undefined,
+        code: "STUDENT_JOB_POSITION_NOT_CONFIRMED",
+        error: "Ученик сохранён, но должность не подтверждена. Проверьте карточку или повторите импорт с тем же логином. Зачисление на курс не проверено.",
+      });
+    }
+
     // ── Enrollment (idempotent) ──
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
@@ -902,6 +923,7 @@ serve(async (req) => {
     return j({
       success: true,
       details_confirmed: hasRegistrationDetails ? true : undefined,
+      job_position_confirmed: jobPositionConfirmed,
       user_id: userId,
       is_existing: isExisting,
       enrollment_created: enrollmentCreated,

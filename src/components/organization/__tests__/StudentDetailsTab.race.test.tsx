@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface Deferred<T> {
@@ -24,6 +24,7 @@ const testState = vi.hoisted(() => ({
   retryStudentData: vi.fn(),
   studentPageError: null as Error | null,
   studentPageCalls: [] as Array<Record<string, unknown>>,
+  setActiveTab: vi.fn(),
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -31,7 +32,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     organizationId: "org-1",
     tabNavigation: {
       selectedStudentId: testState.selectedStudentId,
-      setActiveTab: vi.fn(),
+      setActiveTab: testState.setActiveTab,
     },
     refreshStudentRows: vi.fn(),
   }),
@@ -183,6 +184,11 @@ const renderDetails = () => render(
   </MemoryRouter>,
 );
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="current-route">{location.search}</output>;
+}
+
 describe("StudentDetailsTab URL request ordering and tenant scope", () => {
   beforeEach(() => {
     testState.selectedStudentId = "student-a";
@@ -195,6 +201,32 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.retryStudentData.mockClear();
     testState.studentPageError = null;
     testState.studentPageCalls.length = 0;
+    testState.setActiveTab.mockClear();
+  });
+
+  it.each(["loaded", "missing", "failed"])("Back to students returns to the same filtered participants (%s profile)", async (state) => {
+    testState.profileResponses.set("student-a", Promise.resolve({
+      data: state === "loaded" ? profile("student-a", "Student A") : null,
+      error: state === "failed" ? new Error("lookup failed") : null,
+    }));
+    render(<MemoryRouter initialEntries={["/organization?tab=student-details&studentId=student-a&returnToGroupId=group-1&returnDepartment=none&returnParticipantSearch=Иван"]}>
+      <StudentDetailsTab /><LocationProbe />
+    </MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Назад к ученикам" }));
+    const params = new URLSearchParams(screen.getByTestId("current-route").textContent!);
+    expect(params.get("tab")).toBe("group-folder");
+    expect(params.get("groupId")).toBe("group-1");
+    expect(params.get("groupView")).toBe("members");
+    expect(params.get("department")).toBe("none");
+    expect(params.get("participantSearch")).toBe("Иван");
+    expect(testState.setActiveTab).not.toHaveBeenCalled();
+  });
+
+  it("Back without group context still opens the students workspace", async () => {
+    testState.profileResponses.set("student-a", Promise.resolve({ data: null, error: null }));
+    renderDetails();
+    fireEvent.click(await screen.findByRole("button", { name: "Назад к ученикам" }));
+    expect(testState.setActiveTab).toHaveBeenCalledWith("students");
   });
 
   it("keeps student B when the slower student A lookup resolves last", async () => {

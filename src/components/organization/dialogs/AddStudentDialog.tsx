@@ -34,6 +34,7 @@ export interface AddStudentInput {
   login: string;
   password: string;
   department?: string;
+  job_position?: string;
   snils?: string;
   birth_date?: string;
   confirm_identity?: boolean;
@@ -73,6 +74,7 @@ export function AddStudentDialog({
   const [password, setPassword] = useState("");
   const [courseSearch, setCourseSearch] = useState("");
   const [department, setDepartment] = useState("");
+  const [jobPosition, setJobPosition] = useState("");
   const [snils, setSnils] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [confirmIdentity, setConfirmIdentity] = useState(false);
@@ -82,7 +84,7 @@ export function AddStudentDialog({
     if (open) {
       setName(""); setEmail(""); setCourseIds([]); setCompanyId(""); setGroupId("");
       setLogin(""); setPassword(""); setCourseSearch("");
-      setDepartment(""); setSnils(""); setBirthDate(""); setConfirmIdentity(false); setDetailsError("");
+      setDepartment(""); setJobPosition(""); setSnils(""); setBirthDate(""); setConfirmIdentity(false); setDetailsError("");
     }
   }, [open]);
 
@@ -117,7 +119,7 @@ export function AddStudentDialog({
       return;
     }
     try {
-      const details = normalizeStudentRegistrationDetails({ department, snils, birth_date: birthDate, confirm_identity: confirmIdentity });
+      const details = normalizeStudentRegistrationDetails({ department, job_position: jobPosition, snils, birth_date: birthDate, confirm_identity: confirmIdentity });
       setDetailsError("");
       onSubmit({ name, email, courseIds, companyId, groupId, login, password, ...details });
     } catch (error) {
@@ -187,6 +189,10 @@ export function AddStudentDialog({
           <div className="space-y-2">
             <Label htmlFor="new-student-department">Подразделение (необязательно)</Label>
             <Input id="new-student-department" value={department} maxLength={200} onChange={e => setDepartment(e.target.value)} placeholder="Например, участок № 2" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-student-job-position">Должность (необязательно)</Label>
+            <Input id="new-student-job-position" value={jobPosition} maxLength={200} onChange={e => setJobPosition(e.target.value)} placeholder="Текущая должность сотрудника" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-student-snils">СНИЛС (необязательно)</Label>

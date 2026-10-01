@@ -58,6 +58,7 @@ export function useStudentManagement({
     login?: string;
     password?: string;
     department?: string;
+    job_position?: string;
     snils?: string;
     birth_date?: string;
     confirm_identity?: boolean;
@@ -119,14 +120,15 @@ export function useStudentManagement({
 
       if (error) throw error;
       const detailsUnconfirmed = hasStudentRegistrationDetails(details) && data?.user_id && data?.details_confirmed !== true;
-      if (data?.partial_success || detailsUnconfirmed) {
+      const jobPositionUnconfirmed = details.job_position && data?.user_id && data?.job_position_confirmed !== true;
+      if (data?.partial_success || detailsUnconfirmed || jobPositionUnconfirmed) {
         const credentials = (data.student_created || data.is_existing === false) && data.login && data.password
           ? ` Логин: ${data.login}, пароль: ${data.password}.`
           : "";
         onRefresh();
         setShowAddStudentDialog(false);
         toast.warning(
-          `${data.error || (detailsUnconfirmed ? "Ученик сохранён, но сервер не подтвердил дополнительные сведения и идентификацию. Проверьте карточку ученика." : data.message) || "Операция завершилась частично; проверьте карточку ученика."}${credentials}`,
+          `${data.error || (jobPositionUnconfirmed ? "Ученик сохранён, но сервер не подтвердил должность. Проверьте карточку ученика или повторите импорт с тем же логином." : detailsUnconfirmed ? "Ученик сохранён, но сервер не подтвердил дополнительные сведения и идентификацию. Проверьте карточку ученика." : data.message) || "Операция завершилась частично; проверьте карточку ученика."}${credentials}`,
         );
         return false;
       }

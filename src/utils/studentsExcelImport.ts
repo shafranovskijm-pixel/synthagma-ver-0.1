@@ -33,6 +33,7 @@ export interface ParseResult {
     email: boolean;
     group: boolean;
     department: boolean;
+    job_position: boolean;
     snils: boolean;
     birth_date: boolean;
     confirm_identity: boolean;
@@ -68,6 +69,7 @@ export function parseRows(rawHeader: any[], rawRows: any[][], date1904 = false):
   const iEmail = matchIdx(headers, h => h === "email" || h === "e-mail" || h === "почта");
   const iGroup = matchIdx(headers, h => h === "группа" || h === "group");
   const iDepartment = matchIdx(headers, h => h === "подразделение" || h === "department");
+  const iJobPosition = matchIdx(headers, h => h === "должность" || h === "job_position" || h === "job position");
   const iSnils = matchIdx(headers, h => h === "снилс" || h === "snils");
   const iBirthDate = matchIdx(headers, h => h === "дата рождения" || h === "birth_date");
   const iIdentity = matchIdx(headers, h => h === "идентификация подтверждена" || h === "confirm_identity");
@@ -114,7 +116,7 @@ export function parseRows(rawHeader: any[], rawRows: any[][], date1904 = false):
         birthDate = new Date(base + offset * 86_400_000).toISOString().slice(0, 10);
       }
       details = normalizeStudentRegistrationDetails({
-        department: get(iDepartment), snils: get(iSnils), birth_date: birthDate,
+        department: get(iDepartment), job_position: get(iJobPosition), snils: get(iSnils), birth_date: birthDate,
         confirm_identity: ["да", "true", "1"].includes(identityText),
       });
     } catch (error) {
@@ -158,6 +160,7 @@ export function parseRows(rawHeader: any[], rawRows: any[][], date1904 = false):
       email: iEmail >= 0,
       group: iGroup >= 0,
       department: iDepartment >= 0,
+      job_position: iJobPosition >= 0,
       snils: iSnils >= 0,
       birth_date: iBirthDate >= 0,
       confirm_identity: iIdentity >= 0,
@@ -201,7 +204,7 @@ export async function downloadStudentsTemplate() {
   const headers = [
     "Логин", "Пароль", "Табельный номер",
     "Фамилия", "Имя", "Отчество", "Email", "Группа",
-    "Подразделение", "СНИЛС", "Дата рождения", "Идентификация подтверждена",
+    "Подразделение", "Должность", "СНИЛС", "Дата рождения", "Идентификация подтверждена",
     "Курс 1", "Курс 2", "Курс 3", "Курс 4", "Курс 5",
   ];
   const example = [
@@ -213,7 +216,7 @@ export async function downloadStudentsTemplate() {
     "Евгеньевич",
     "vladimir@example.com",
     "СГТ",
-    "Участок № 2", "001-001-998 32", "15.06.1990", "Нет",
+    "Участок № 2", "Водитель", "001-001-998 32", "15.06.1990", "Нет",
     "Эксплуатация самосвала БелАЗ 75131",
     "Действия в аварийных ситуациях и оказание первой помощи",
     "",

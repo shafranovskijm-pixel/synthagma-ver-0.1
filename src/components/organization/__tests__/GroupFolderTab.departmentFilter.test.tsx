@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
 
@@ -52,6 +52,18 @@ function tree(organizationId = "org-1", groupId = "group-1") {
     <GroupFolderTab organizationId={organizationId} groupId={groupId} />
   </MemoryRouter>;
 }
+function RoutedGroups() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = new URLSearchParams(location.search);
+  return <>
+    <button onClick={() => navigate("/organization?tab=group-folder&groupId=group-2&groupView=members&department=department:Новый участок&participantSearch=Новый")}>Другая группа</button>
+    <button onClick={() => navigate(-1)}>Browser Back</button>
+    <button onClick={() => navigate(1)}>Browser Forward</button>
+    <output data-testid="group-route">{location.search}</output>
+    {params.get("tab") === "student-details" ? null : <GroupFolderTab organizationId="org-1" groupId={params.get("groupId") || "group-1"} />}
+  </>;
+}
 async function openParticipants() {
   fireEvent.click(await screen.findByRole("button", { name: /^Участники \d+ активных$/ }));
   return screen.findByRole("combobox", { name: "Подразделение" });
@@ -94,6 +106,26 @@ afterEach(() => {
 });
 
 describe("group participants department filter", () => {
+  it("restores each group's own filters on Back/Forward and carries them into a student link", async () => {
+    db.rows.student_groups.push({ id: "group-2", organization_id: "org-1", name: "Другая группа", course_id: null });
+    db.rows.profiles.push(profile("s7", "Новый ученик", "Новый участок", { student_group_id: "group-2" }));
+    render(<MemoryRouter initialEntries={["/organization?tab=group-folder&groupId=group-1&groupView=members&department=department:Карьер 1&participantSearch=Анна"]}><RoutedGroups /></MemoryRouter>);
+    expect(await screen.findByRole("combobox", { name: "Подразделение" })).toHaveValue("department:Карьер 1");
+    fireEvent.click(screen.getByRole("button", { name: "Другая группа" }));
+    expect(await screen.findByRole("combobox", { name: "Подразделение" })).toHaveValue("department:Новый участок");
+    expect(participantRows()[0]).toContain("Новый ученик");
+    fireEvent.click(screen.getByRole("button", { name: "Browser Back" }));
+    expect(await screen.findByRole("combobox", { name: "Подразделение" })).toHaveValue("department:Карьер 1");
+    expect(screen.getByRole("textbox", { name: "Поиск участников" })).toHaveValue("Анна");
+    expect(participantRows()[0]).toContain("Анна Иванова");
+    fireEvent.click(screen.getByRole("button", { name: "Browser Forward" }));
+    expect(await screen.findByRole("combobox", { name: "Подразделение" })).toHaveValue("department:Новый участок");
+    fireEvent.click(screen.getByText("Новый ученик"));
+    const route = new URLSearchParams(screen.getByTestId("group-route").textContent!);
+    expect(route.get("returnToGroupId")).toBe("group-2");
+    expect(route.get("returnDepartment")).toBe("department:Новый участок");
+    expect(route.get("returnParticipantSearch")).toBe("Новый");
+  });
   it("displays departments, includes an explicit missing value and excludes archived/foreign options", async () => {
     render(tree());
     const select = await openParticipants();

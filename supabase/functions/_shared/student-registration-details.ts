@@ -1,6 +1,7 @@
 /** Shared validation for staff registration and spreadsheet imports. Empty fields mean no change. */
 export interface StudentRegistrationDetails {
   department?: string;
+  job_position?: string;
   snils?: string;
   birth_date?: string;
   confirm_identity?: boolean;
@@ -32,6 +33,10 @@ export function normalizeStudentRegistrationDetails(input: Record<string, unknow
   if (department && (department.length > 200 || /[\u0000-\u001f]/.test(department))) {
     throw new Error("Подразделение: не более 200 символов без переносов строк");
   }
+  const job_position = optionalText(input.job_position, "Должность");
+  if (job_position && (job_position.length > 200 || /[\u0000-\u001f]/.test(job_position))) {
+    throw new Error("Должность: не более 200 символов без переносов строк");
+  }
   const rawSnils = optionalText(input.snils, "СНИЛС");
   let snils: string | undefined;
   if (rawSnils) {
@@ -47,6 +52,7 @@ export function normalizeStudentRegistrationDetails(input: Record<string, unknow
   }
   return {
     ...(department ? { department } : {}),
+    ...(job_position ? { job_position } : {}),
     ...(snils ? { snils } : {}),
     ...(birth_date ? { birth_date } : {}),
     ...(input.confirm_identity === true ? { confirm_identity: true } : {}),
@@ -54,7 +60,7 @@ export function normalizeStudentRegistrationDetails(input: Record<string, unknow
 }
 
 export function hasStudentRegistrationDetails(details: StudentRegistrationDetails): boolean {
-  return Boolean(details.department || details.snils || details.birth_date || details.confirm_identity);
+  return Boolean(details.department || details.job_position || details.snils || details.birth_date || details.confirm_identity);
 }
 
 export function resolveRegistrationProfile<T extends { user_id: string; login?: string | null; email?: string | null }>(

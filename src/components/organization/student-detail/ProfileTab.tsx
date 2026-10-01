@@ -317,6 +317,13 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
               <Send className="w-4 h-4" />Отправить на email
             </Button>
           </div>
+          {h.autoLoginCopyFallback && (
+            <div className="mt-3 space-y-1">
+              <Label htmlFor="student-auto-login-copy">Ссылка для ручного копирования</Label>
+              <Input id="student-auto-login-copy" value={h.autoLoginCopyFallback} readOnly onFocus={(event) => event.currentTarget.select()} />
+              <p className="text-xs text-muted-foreground">Выделите ссылку и нажмите Ctrl+C. Передавайте её только этому ученику.</p>
+            </div>
+          )}
         </div>
       )}
 

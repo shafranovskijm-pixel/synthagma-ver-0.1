@@ -285,6 +285,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
               student_group_id: groupId,
               no_login: !row.email,
               department: row.department,
+              job_position: row.job_position,
               snils: row.snils,
               birth_date: row.birth_date,
               confirm_identity: row.confirm_identity === true,
@@ -297,13 +298,16 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
 
           if (error && !data) throw error;
 
-          if (data?.partial_success || (data?.user_id && hasStudentRegistrationDetails(row) && data?.details_confirmed !== true)) {
+          const jobPositionUnconfirmed = row.job_position && data?.user_id && data?.job_position_confirmed !== true;
+          if (data?.partial_success || jobPositionUnconfirmed || (data?.user_id && hasStudentRegistrationDetails(row) && data?.details_confirmed !== true)) {
             out.push({
               success: false, status: "partial", full_name: row.full_name,
               login: data?.login || row.login, password: data?.password,
               email: row.email, group_name: row.group_name,
               courses_enrolled: 0, courses_missing: missing,
-              error: serverError || "Ученик сохранён, но сервер не подтвердил дополнительные сведения. Проверьте карточку и повторите импорт с тем же логином.",
+              error: serverError || (jobPositionUnconfirmed
+                ? "Ученик сохранён, но сервер не подтвердил должность. Проверьте карточку и повторите импорт с тем же логином."
+                : "Ученик сохранён, но сервер не подтвердил дополнительные сведения. Проверьте карточку и повторите импорт с тем же логином."),
             });
           } else if (serverCode === "STUDENT_LIMIT_EXCEEDED") {
             out.push({
@@ -459,7 +463,8 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
           <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Формат файла (.xlsx, .csv):</p>
-            <p>Колонки: <b>Логин, Пароль, Табельный номер, Фамилия, Имя, Отчество, Email, Группа, Подразделение, СНИЛС, Дата рождения, Идентификация подтверждена, Курс 1, Курс 2, Курс 3 …</b></p>
+            <p>Колонки: <b>Логин, Пароль, Табельный номер, Фамилия, Имя, Отчество, Email, Группа, Подразделение, Должность, СНИЛС, Дата рождения, Идентификация подтверждена, Курс 1, Курс 2, Курс 3 …</b></p>
+            <p>В колонке «Должность» укажите текущую должность сотрудника.</p>
             <p>Новые поля необязательны: пустые ячейки сохраняют прежние сведения. Для СНИЛС используйте текстовый формат, для даты — ДД.ММ.ГГГГ или дату Excel. В колонке идентификации ставьте «Да» только после личной проверки; «Нет» и пустая ячейка не меняют статус. Сохраняются сотрудник и время проверки.</p>
             <p>Порядок и регистр не важны. Колонок <b>«Курс»</b> можно добавлять сколько нужно (Курс 1, Курс 2, Курс 3 … Курс N) — все указанные курсы будут назначены ученику.</p>
           </div>
@@ -503,6 +508,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             {d.email && <Badge variant="outline">email</Badge>}
             {d.group && <Badge variant="outline">группа</Badge>}
             {d.department && <Badge variant="outline">подразделение</Badge>}
+            {d.job_position && <Badge variant="outline">должность</Badge>}
             {d.snils && <Badge variant="outline">СНИЛС</Badge>}
             {d.birth_date && <Badge variant="outline">дата рождения</Badge>}
             {d.confirm_identity && <Badge variant="outline">идентификация</Badge>}
@@ -534,6 +540,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
                   <th className="text-left p-2">Логин</th>
                   <th className="text-left p-2">Группа</th>
                   <th className="text-left p-2">Подразделение</th>
+                  <th className="text-left p-2">Должность</th>
                   <th className="text-left p-2">СНИЛС / дата рождения</th>
                   <th className="text-left p-2">Идентификация</th>
                   <th className="text-left p-2">Курсы</th>
@@ -546,6 +553,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
                     <td className="p-2 text-muted-foreground">{r.login || "—"}</td>
                     <td className="p-2 text-muted-foreground">{r.group_name || "—"}</td>
                     <td className="p-2">{r.department || "—"}</td>
+                    <td className="p-2">{r.job_position || "—"}</td>
                     <td className="p-2">{r.snils || "—"} / {r.birth_date || "—"}{r.detailsError && <span className="block text-destructive">{r.detailsError}</span>}</td>
                     <td className="p-2">{r.confirm_identity ? "Подтвердить" : "Без изменения"}</td>
                     <td className="p-2 text-muted-foreground">{r.course_titles.length}</td>

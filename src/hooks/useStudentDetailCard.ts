@@ -129,6 +129,7 @@ export function useStudentDetailCardLogic({
   isOpen, student, organizationId, enrollments = [], onStudentUpdated, onStudentDocumentsUpdated,
 }: UseStudentDetailCardLogicProps) {
   const { can, loading: permissionsLoading } = useStaffPermissions();
+  const canManageLoginLinks = !permissionsLoading && can("students.write");
   const identityKey = isOpen && student?.user_id && organizationId
     ? `${organizationId}:${student.user_id}`
     : null;
@@ -178,6 +179,9 @@ export function useStudentDetailCardLogic({
     value: string | null;
   } | null>(null);
   const [isLoginLinkBusy, setIsLoginLinkBusy] = useState(false);
+  const loginLinkActionRef = useRef<object | null>(null);
+  const tokenRequestRef = useRef<{ identityKey: string; promise: Promise<string | null> } | null>(null);
+  const [copyLinkFallback, setCopyLinkFallback] = useState<{ identityKey: string; url: string } | null>(null);
   const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
   const [studentDataLoadError, setStudentDataLoadError] = useState<string | null>(null);
 
@@ -369,72 +373,90 @@ export function useStudentDetailCardLogic({
     };
   }, [identityKey, loadStudentData, resetStudentIdentityState]);
 
-  // Load an identity-tagged token. A token from student A is never exposed in
-  // the render for student B, even before effects have reset local state.
-  useEffect(() => {
+  // The dedicated endpoint authorizes owners as well as permitted staff. It
+  // never sends mail; a read failure must never become permission to create.
+  const requestLoginToken = useCallback(async (action: "get" | "create"): Promise<string | null> => {
     const requestIdentityKey = identityKey;
-    const requestUserId = student?.user_id;
-    const requestOrganizationId = organizationId;
-    const requestSequence = ++tokenLoadSequenceRef.current;
-    setAutoLoginTokenResult(null);
-    if (!requestIdentityKey || !requestUserId || !requestOrganizationId) return;
-
-    const isCurrentRequest = () => (
-      tokenLoadSequenceRef.current === requestSequence
-      && activeIdentityKeyRef.current === requestIdentityKey
-    );
-    void (async () => {
-      const { data } = await supabase
-        .from("student_login_tokens")
-        .select("token")
-        .eq("user_id", requestUserId)
-        .eq("organization_id", requestOrganizationId)
-        .is("revoked_at", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (isCurrentRequest()) {
-        setAutoLoginTokenResult({
-          identityKey: requestIdentityKey,
-          value: (data as any)?.token ?? null,
-        });
-      }
-    })();
-
-    return () => {
-      if (tokenLoadSequenceRef.current === requestSequence) {
-        tokenLoadSequenceRef.current += 1;
-      }
-    };
+    const requestSequence = tokenLoadSequenceRef.current;
+    if (!requestIdentityKey || !student?.user_id || activeIdentityKeyRef.current !== requestIdentityKey) return null;
+    const { data, error } = await safeInvoke<{ token: string | null; user_id: string; organization_id: string; error?: string }>("student-login-link", {
+      body: { action, user_id: student.user_id, organization_id: organizationId },
+    });
+    if (error || data?.error) throw error || new Error(data?.error);
+    if (!data || data.user_id !== student.user_id || data.organization_id !== organizationId
+        || (data.token !== null && (typeof data.token !== "string" || !data.token))) {
+      throw new Error("Не удалось подтвердить ссылку ученика");
+    }
+    if (action === "create" && !data.token) throw new Error("Не удалось создать ссылку");
+    if (activeIdentityKeyRef.current === requestIdentityKey && tokenLoadSequenceRef.current === requestSequence) {
+      setAutoLoginTokenResult({ identityKey: requestIdentityKey, value: data.token });
+    }
+    return data.token;
   }, [identityKey, organizationId, student?.user_id]);
+
+  useEffect(() => {
+    ++tokenLoadSequenceRef.current;
+    const requestIdentityKey = identityKey;
+    setAutoLoginTokenResult(null);
+    setCopyLinkFallback(null);
+    loginLinkActionRef.current = null;
+    setIsLoginLinkBusy(false);
+    if (!requestIdentityKey || !canManageLoginLinks) return;
+    const request = { identityKey: requestIdentityKey, promise: requestLoginToken("get") };
+    tokenRequestRef.current = request;
+    // The action displays a useful error on retry. Do not show a toast simply
+    // because the user opened a card without access to credential management.
+    void request.promise.catch(() => {}).finally(() => {
+      if (tokenRequestRef.current === request) tokenRequestRef.current = null;
+    });
+  }, [identityKey, requestLoginToken, canManageLoginLinks]);
 
   const ensureAutoLoginToken = useCallback(async (): Promise<string | null> => {
     const requestIdentityKey = identityKey;
-    const requestUserId = student?.user_id;
-    if (!requestIdentityKey || !requestUserId) return null;
+    const requestSequence = tokenLoadSequenceRef.current;
+    if (!requestIdentityKey || activeIdentityKeyRef.current !== requestIdentityKey) return null;
     if (autoLoginToken) return autoLoginToken;
-    const { data, error } = await supabase
-      .from("student_login_tokens")
-      .insert({ user_id: requestUserId, organization_id: organizationId })
-      .select("token")
-      .single();
-    if (error || !data) { toast.error("Не удалось создать ссылку"); return null; }
-    if (activeIdentityKeyRef.current !== requestIdentityKey) return null;
-    const token = data.token as string;
-    setAutoLoginTokenResult({ identityKey: requestIdentityKey, value: token });
-    return token;
-  }, [autoLoginToken, identityKey, organizationId, student?.user_id]);
+    const pending = tokenRequestRef.current;
+    if (pending?.identityKey === requestIdentityKey) {
+      const loaded = await pending.promise;
+      if (loaded) return loaded;
+    }
+    if (activeIdentityKeyRef.current !== requestIdentityKey || tokenLoadSequenceRef.current !== requestSequence) return null;
+    return requestLoginToken("create");
+  }, [autoLoginToken, identityKey, requestLoginToken]);
 
   const copyAutoLoginLink = useCallback(async () => {
+    const requestIdentityKey = identityKey;
+    const requestSequence = tokenLoadSequenceRef.current;
+    const isCurrentRequest = () => activeIdentityKeyRef.current === requestIdentityKey && tokenLoadSequenceRef.current === requestSequence;
+    if (!requestIdentityKey || activeIdentityKeyRef.current !== requestIdentityKey || loginLinkActionRef.current) return;
+    if (permissionsLoading || !can("students.write")) { toast.error("Недостаточно прав для управления ссылкой ученика"); return; }
+    const action = {};
+    loginLinkActionRef.current = action;
     setIsLoginLinkBusy(true);
     try {
-      const t = await ensureAutoLoginToken();
-      if (!t) return;
+      // Do not yield before clipboard.writeText when the token is already loaded.
+      const t = autoLoginToken || await ensureAutoLoginToken();
+      if (!t || !isCurrentRequest()) return;
       const url = `${getBaseUrl()}/auto-login?token=${encodeURIComponent(t)}`;
-      await navigator.clipboard.writeText(url);
-      toast.success("Ссылка автовхода скопирована");
-    } finally { setIsLoginLinkBusy(false); }
-  }, [ensureAutoLoginToken]);
+      try {
+        await navigator.clipboard.writeText(url);
+        if (isCurrentRequest()) {
+          setCopyLinkFallback(null);
+          toast.success("Ссылка автовхода скопирована");
+        }
+      } catch {
+        if (isCurrentRequest()) {
+          setCopyLinkFallback({ identityKey: requestIdentityKey, url });
+          toast.error("Браузер запретил копирование. Скопируйте ссылку из поля ниже.");
+        }
+      }
+    } catch (error) {
+      if (isCurrentRequest()) toast.error(error instanceof Error ? error.message : "Не удалось создать ссылку");
+    } finally {
+      if (loginLinkActionRef.current === action) { loginLinkActionRef.current = null; setIsLoginLinkBusy(false); }
+    }
+  }, [autoLoginToken, can, ensureAutoLoginToken, identityKey, permissionsLoading]);
 
   const copyCredentialsLink = useCallback(async () => {
     if (!student?.login) { toast.error("У ученика нет логина"); return; }
@@ -456,40 +478,39 @@ export function useStudentDetailCardLogic({
       if (data?.error) throw new Error(data.error);
       toast.success(`Ссылка отправлена на ${requestStudent.email}`);
       // Refresh token if newly created
-      const { data: t } = await supabase
-        .from("student_login_tokens")
-        .select("token")
-        .eq("user_id", requestStudent.user_id)
-        .eq("organization_id", organizationId)
-        .is("revoked_at", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (activeIdentityKeyRef.current === requestIdentityKey) {
-        setAutoLoginTokenResult({
-          identityKey: requestIdentityKey,
-          value: (t as any)?.token ?? null,
-        });
-      }
+      if (activeIdentityKeyRef.current === requestIdentityKey) await requestLoginToken("get").catch(() => {});
     } catch (e: any) {
       toast.error(e?.message || "Ошибка отправки");
     } finally { setIsLoginLinkBusy(false); }
-  }, [identityKey, organizationId, student]);
+  }, [identityKey, requestLoginToken, student]);
 
   const revokeAutoLoginToken = useCallback(async () => {
-    if (!student || !autoLoginToken) return;
+    const requestIdentityKey = identityKey;
+    const requestSequence = tokenLoadSequenceRef.current;
+    const isCurrentRequest = () => activeIdentityKeyRef.current === requestIdentityKey && tokenLoadSequenceRef.current === requestSequence;
+    if (!student || !autoLoginToken || !requestIdentityKey || activeIdentityKeyRef.current !== requestIdentityKey || loginLinkActionRef.current) return;
+    if (permissionsLoading || !can("students.write")) { toast.error("Недостаточно прав для управления ссылкой ученика"); return; }
     if (!confirm("Отозвать ссылку автовхода? Старая ссылка перестанет работать.")) return;
-    const { error } = await supabase
-      .from("student_login_tokens")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("token", autoLoginToken)
-      .eq("organization_id", organizationId);
-    if (error) { toast.error("Не удалось отозвать"); return; }
-    if (identityKey) {
-      setAutoLoginTokenResult({ identityKey, value: null });
+    const action = {};
+    loginLinkActionRef.current = action;
+    setIsLoginLinkBusy(true);
+    try {
+      const { data, error } = await safeInvoke<{ revoked: boolean; user_id: string; organization_id: string }>("student-login-link", {
+        body: { action: "revoke", user_id: student.user_id, organization_id: organizationId, token: autoLoginToken },
+      });
+      if (error) throw error;
+      if (!data?.revoked || data.user_id !== student.user_id || data.organization_id !== organizationId) throw new Error("Не удалось подтвердить отзыв ссылки");
+      if (isCurrentRequest()) {
+        setAutoLoginTokenResult({ identityKey: requestIdentityKey, value: null });
+        setCopyLinkFallback(null);
+        toast.success("Ссылка отозвана");
+      }
+    } catch (error) {
+      if (isCurrentRequest()) toast.error(error instanceof Error ? error.message : "Не удалось отозвать ссылку");
+    } finally {
+      if (loginLinkActionRef.current === action) { loginLinkActionRef.current = null; setIsLoginLinkBusy(false); }
     }
-    toast.success("Ссылка отозвана");
-  }, [autoLoginToken, identityKey, organizationId, student]);
+  }, [autoLoginToken, can, identityKey, organizationId, permissionsLoading, student]);
 
 
   const saveFrdoField = async (field: string, value: string) => {
@@ -842,6 +863,7 @@ export function useStudentDetailCardLogic({
     jobPosition: hasCurrentIdentityData ? jobPosition : "", saveJobPosition, savingJobPosition,
     department: hasCurrentIdentityData ? department : "", saveDepartment, savingDepartment,
     autoLoginToken: hasCurrentIdentityData ? autoLoginToken : null,
+    autoLoginCopyFallback: hasCurrentIdentityData && copyLinkFallback?.identityKey === identityKey ? copyLinkFallback.url : null,
     isLoginLinkBusy,
     copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
     blockedAt: hasCurrentIdentityData ? blockedAt : null,

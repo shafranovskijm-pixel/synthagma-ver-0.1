@@ -22,6 +22,9 @@ vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({ can: () => state.canWrite, loading: state.permissionsLoading }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/utils/safeInvoke", () => ({
+  safeInvoke: async (_name: string, { body }: any) => ({ data: { token: null, user_id: body.user_id, organization_id: body.organization_id }, error: null }),
+}));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: () => Promise.resolve({ data: null, error: null }),

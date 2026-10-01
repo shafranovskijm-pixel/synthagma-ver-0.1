@@ -152,6 +152,24 @@ describe("useStudentManagement enrollment release compatibility", () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalled();
   });
+  it("does not treat the v4 details flag as confirmation of a current job position", async () => {
+    mocks.safeInvoke.mockResolvedValueOnce({ data: { success: true, user_id: "student-1", is_existing: true, details_confirmed: true }, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    let created = true;
+    await act(async () => { created = await result.current.createStudent({ name: "Иванов", job_position: "Водитель", courseIds: ["course-1"] }); });
+    expect(created).toBe(false);
+    expect(mocks.toastWarning).toHaveBeenCalledWith(expect.stringContaining("сервер не подтвердил должность"));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
+  });
+  it("submits a current job position and requires its own server confirmation", async () => {
+    mocks.safeInvoke.mockResolvedValueOnce({ data: { success: true, user_id: "student-1", is_existing: true, details_confirmed: true, job_position_confirmed: true }, error: null });
+    const { result } = renderHook(() => useStudentManagement({ organizationId: "org-1", onRefresh: vi.fn() }));
+    let created = false;
+    await act(async () => { created = await result.current.createStudent({ name: "Иванов", job_position: " Водитель " }); });
+    expect(created).toBe(true);
+    expect(mocks.safeInvoke).toHaveBeenCalledWith("register-student", expect.objectContaining({ body: expect.objectContaining({ job_position: "Водитель" }) }));
+  });
 
   it("retains new credentials when staff detail persistence returns partial success", async () => {
     mocks.safeInvoke.mockResolvedValueOnce({ data: { success: false, partial_success: true, student_created: true, user_id: "student-1", login: "test_login", password: "test_password", error: "Сведения не подтверждены" }, error: null });

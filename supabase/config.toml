@@ -187,6 +187,10 @@ verify_jwt = false
 [functions.student-auto-login]
 verify_jwt = false
 
+# The handler validates the caller with auth.getUser and tenant-scoped permissions.
+[functions.student-login-link]
+verify_jwt = false
+
 [functions.novofon-webhook]
 verify_jwt = false
 

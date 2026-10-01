@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { parseRows, parseExcelOrCsv } from "../studentsExcelImport";
+import { describe, expect, it, vi } from "vitest";
+import { parseRows, parseExcelOrCsv, downloadStudentsTemplate } from "../studentsExcelImport";
+
+vi.mock("xlsx", async (importOriginal) => ({ ...await importOriginal<typeof import("xlsx")>(), writeFile: vi.fn() }));
 
 describe("student spreadsheet import", () => {
   it("keeps the previous template compatible", () => {
@@ -14,6 +16,22 @@ describe("student spreadsheet import", () => {
     const parsed = parseRows(["СНИЛС", "Дата рождения", "ФИО", "Подразделение", "Идентификация подтверждена"], [["00100199832", "15.06.1990", "Иванов Иван", "Участок 2", "Да"]]);
     expect(parsed.rows[0]).toMatchObject({ department: "Участок 2", snils: "001-001-998 32", birth_date: "1990-06-15", confirm_identity: true });
     expect(parsed.detectedColumns.department).toBe(true);
+  });
+  it("parses a current job position in a reordered CSV and does not infer qualification", async () => {
+    const parsed = await parseExcelOrCsv({ name: "students.csv", text: async () => "ФИО;ДОЛЖНОСТЬ;Квалификация\nИванов Иван; Водитель ;Механик" } as File);
+    expect(parsed.rows[0].job_position).toBe("Водитель");
+    expect(parsed.detectedColumns.job_position).toBe(true);
+    expect(parseRows(["ФИО", "Должность"], [["Иванов", ""]]).rows[0].job_position).toBeUndefined();
+  });
+  it("includes a usable position column in the downloadable Excel template", async () => {
+    const XLSX = await import("xlsx");
+    await downloadStudentsTemplate();
+    const workbook = vi.mocked(XLSX.writeFile).mock.calls.at(-1)![0];
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets.students_template, { header: 1 });
+    const positionColumn = rows[0].indexOf("Должность");
+    expect(positionColumn).toBeGreaterThan(-1);
+    expect(rows[1][positionColumn]).toBe("Водитель");
+    expect(parseRows(rows[0], rows.slice(1)).rows[0].job_position).toBe("Водитель");
   });
   it.each(["", "Нет", "false", "0"])("does not reset verification for %s", (value) => {
     expect(parseRows(["ФИО", "Идентификация подтверждена"], [["Иванов", value]]).rows[0].confirm_identity).toBeUndefined();

@@ -27,6 +27,13 @@ const queryState = vi.hoisted(() => ({
   rpcCalls: [] as string[],
 }));
 
+vi.mock("@/utils/safeInvoke", () => ({
+  safeInvoke: async (_name: string, { body }: any) => {
+    const response = await (queryState.tokenResponses.get(body.user_id) ?? Promise.resolve({ data: null, error: null }));
+    return { data: { token: response.data?.token ?? null, user_id: body.user_id, organization_id: body.organization_id }, error: response.error };
+  },
+}));
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => {
