@@ -81,7 +81,7 @@ export function StudentDetailsTab() {
   const studentId = d.tabNavigation.selectedStudentId;
   const returnToStudents = () => {
     if (groupReturnPath) navigate(groupReturnPath);
-    else d.tabNavigation.setActiveTab("students");
+    else navigate("/organization?tab=students&studentsView=active");
   };
 
   const [student, setStudent] = useState<StudentData | null>(null);

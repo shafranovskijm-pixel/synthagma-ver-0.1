@@ -222,11 +222,19 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     expect(testState.setActiveTab).not.toHaveBeenCalled();
   });
 
-  it("Back without group context still opens the students workspace", async () => {
-    testState.profileResponses.set("student-a", Promise.resolve({ data: null, error: null }));
-    renderDetails();
+  it.each(["loaded", "missing", "failed"])("Back without group context opens active students (%s profile)", async (state) => {
+    testState.profileResponses.set("student-a", Promise.resolve({
+      data: state === "loaded" ? profile("student-a", "Student A") : null,
+      error: state === "failed" ? new Error("lookup failed") : null,
+    }));
+    render(<MemoryRouter initialEntries={["/organization?tab=student-details&studentId=student-a"]}>
+      <StudentDetailsTab /><LocationProbe />
+    </MemoryRouter>);
     fireEvent.click(await screen.findByRole("button", { name: "Назад к ученикам" }));
-    expect(testState.setActiveTab).toHaveBeenCalledWith("students");
+    const params = new URLSearchParams(screen.getByTestId("current-route").textContent!);
+    expect(params.get("tab")).toBe("students");
+    expect(params.get("studentsView")).toBe("active");
+    expect(testState.setActiveTab).not.toHaveBeenCalled();
   });
 
   it("keeps student B when the slower student A lookup resolves last", async () => {
