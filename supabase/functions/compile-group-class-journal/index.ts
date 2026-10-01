@@ -6,6 +6,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
 import JSZip from "npm:jszip@3.10.1";
 import { z } from "npm:zod@3.23.8";
 import {
@@ -256,13 +257,7 @@ Deno.serve(async (req) => {
         .select("id, name, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, email, phone")
         .eq("id", body.organizationId)
         .maybeSingle(),
-      admin
-        .from("profiles")
-        .select("user_id, full_name, organization_id, student_group_id")
-        .eq("organization_id", body.organizationId)
-        .eq("student_group_id", body.groupId)
-        .is("archived_at", null)
-        .order("full_name"),
+      readEffectiveGroupProfiles(admin, body.organizationId, body.groupId, "user_id, full_name, organization_id, student_group_id"),
     ]);
     if (groupResult.error) throw groupResult.error;
     if (orgResult.error) throw orgResult.error;

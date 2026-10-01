@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import {
   renderTemplate,
   extractVariables,
@@ -184,7 +185,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         (supabase as any).from("organizations").select("name, inn, kpp, ogrn, legal_address, email, phone, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account").eq("id", organizationId).maybeSingle(),
         (supabase as any).from("courses").select("id, title, duration").eq("organization_id", organizationId).order("title"),
         // В profiles паспорта/адреса нет — только телефон.
-        (supabase as any).from("profiles").select("user_id, phone").eq("organization_id", organizationId).eq("student_group_id", groupId),
+        fetchEffectiveGroupProfiles(supabase, organizationId, groupId, { activeOnly: true, select: "user_id, phone" }).then(data => ({ data, error: null })),
         // Паспортные данные живут в student_frdo_data (user_id + organization_id).
         (supabase as any).from("student_frdo_data").select("user_id, passport_series, passport_number").eq("organization_id", organizationId),
       ]);

@@ -15,7 +15,7 @@ import { isEnrollmentAccessExpired } from "../_shared/enrollment-access.ts";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, resolveRegistrationProfile } from "../_shared/student-registration-details.ts";
 import { persistStudentJobPosition } from "../_shared/student-job-position.ts";
 
-const REGISTER_STUDENT_REVISION = "student-details-v5";
+const REGISTER_STUDENT_REVISION = "student-import-v6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -245,7 +245,7 @@ serve(async (req) => {
     const hasRegistrationDetails = hasStudentRegistrationDetails(registrationDetails);
     let canResolveByLogin = !publicRegistration && callerRoles.includes("admin");
     // New staff-only fields cannot turn public/company registration into an approval path.
-    if (hasRegistrationDetails || (!publicRegistration && custom_login)) {
+    if (hasRegistrationDetails || (!publicRegistration && custom_login) || payload?.reject_existing_login === true) {
       if (publicRegistration || !callerUserId) {
         return j({ error: "Дополнительные сведения и подтверждение доступны сотруднику организации", code: "STUDENT_DETAILS_FORBIDDEN" }, 403);
       }
@@ -295,6 +295,21 @@ serve(async (req) => {
     }
 
     console.log(`[register-student] ${publicRegistration ? "public" : "auth"} → org ${effectiveOrgId}`);
+
+    // Imports must never silently resolve an occupied login to an existing account.
+    // Recheck immediately before any Auth/profile/course write; the database also
+    // enforces normalized login uniqueness for concurrent creation attempts.
+    if (payload?.reject_existing_login === true) {
+      if (!canResolveByLogin || !callerUserId) return j({ error: "Недостаточно прав для проверки импорта", code: "IMPORT_PREFLIGHT_FORBIDDEN" }, 403);
+      const { data: importChecks, error: importCheckError } = await supabaseAdmin.rpc("student_import_identity_preflight", {
+        p_organization_id: effectiveOrgId, p_actor_id: callerUserId,
+        p_rows: [{ row_index: 1, login: custom_login || null, full_name, email: email || null }],
+      });
+      if (importCheckError || !Array.isArray(importChecks) || importChecks.length !== 1 || typeof importChecks[0].login_taken !== "boolean") {
+        return j({ error: "Не удалось подтвердить проверку дублей. Импорт остановлен.", code: "IMPORT_PREFLIGHT_FAILED" }, 500);
+      }
+      if (importChecks[0].login_taken) return j({ error: "Логин уже занят. Измените логин или выберите существующего ученика в списке.", code: "IMPORT_LOGIN_TAKEN" }, 409);
+    }
 
     // Email format
     if (email) {
@@ -922,6 +937,7 @@ serve(async (req) => {
 
     return j({
       success: true,
+      import_preflight_confirmed: payload?.reject_existing_login === true ? true : undefined,
       details_confirmed: hasRegistrationDetails ? true : undefined,
       job_position_confirmed: jobPositionConfirmed,
       user_id: userId,

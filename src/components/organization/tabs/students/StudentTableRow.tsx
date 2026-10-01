@@ -26,6 +26,8 @@ interface StudentTableRowProps {
   frdoStatus: Map<string, StudentFRDOStatus>;
   studentGroups: Array<{ id: string; name: string; color: string }>;
   studentGroupMap: Map<string, string | null>;
+  membershipGroupIds?: string[];
+  onManageGroups?: () => void;
   onAssignGroup: (userId: string, groupId: string | null) => void;
   onViewTestResults?: (userId: string) => void;
   isArchiveView?: boolean;
@@ -38,6 +40,7 @@ interface StudentTableRowProps {
 export const StudentTableRow = React.memo(function StudentTableRow({
   student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials,
   onRemoveStudent, studentDocsByUser, frdoStatus, studentGroups, studentGroupMap, onAssignGroup,
+  membershipGroupIds, onManageGroups,
   isArchiveView = false, onArchive, onUnarchive, onRequestCredentials, onViewTestResults,
 }: StudentTableRowProps) {
   const [loadingPw, setLoadingPw] = React.useState(false);
@@ -116,7 +119,7 @@ export const StudentTableRow = React.memo(function StudentTableRow({
       </td>
       <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
         <Select value={gId || "none"} onValueChange={v => onAssignGroup(student.user_id, v === "none" ? null : v)}>
-          <SelectTrigger className="w-28 h-7 text-xs rounded-lg"><SelectValue placeholder="—" /></SelectTrigger>
+          <SelectTrigger title="Основная группа" aria-label="Основная группа" className="w-28 h-7 text-xs rounded-lg"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="none">—</SelectItem>
             {studentGroups.map(g => (
@@ -126,6 +129,11 @@ export const StudentTableRow = React.memo(function StudentTableRow({
             ))}
           </SelectContent>
         </Select>
+        {(membershipGroupIds ?? []).filter(id => id !== gId).map(id => {
+          const group = studentGroups.find(item => item.id === id);
+          return group && <div key={id} className="mt-1 max-w-32 truncate text-xs text-muted-foreground" title={group.name}>+ {group.name}</div>;
+        })}
+        {!isArchiveView && onManageGroups && <button type="button" className="mt-1 text-xs text-primary hover:underline" onClick={onManageGroups}>Добавить в группы</button>}
       </td>
       <td className="px-4 py-4">
         <div className="flex items-center gap-1">

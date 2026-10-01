@@ -18,7 +18,12 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
     const result = () => {
       if (db.rejectedTables.has(table)) throw new Error("Connection dropped");
       const error = db.errors[`${table}:${query.from}`] ?? db.errors[table] ?? null;
-      let rows = (db.rows[table] || []).filter(row => query.filters.every(
+      const source = table === "student_group_profiles_effective"
+        ? (db.rows.profiles ?? []).flatMap(profile => [...new Set([profile.student_group_id,
+          ...(db.rows.student_group_memberships ?? []).filter(member => member.user_id === profile.user_id && member.organization_id === profile.organization_id).map(member => member.group_id),
+        ].filter(Boolean))].map(group_id => ({ ...profile, group_id })))
+        : (db.rows[table] || []);
+      let rows = source.filter(row => query.filters.every(
         ([field, value]) => Array.isArray(value) ? value.includes(row[field]) : row[field] === value,
       ));
       if (query.order) rows = [...rows].sort((a, b) => String(a[query.order!]).localeCompare(String(b[query.order!])));
@@ -80,6 +85,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("GroupFolderTab roster loading", () => {
+  it("shows an additional-group member once and preserves their original primary group", async () => {
+    db.rows.student_groups.push({ id: "group-2", organization_id: "org-1", name: "Второе обучение", course_id: null });
+    db.rows.student_group_memberships = [{ user_id: "student-0001", organization_id: "org-1", group_id: "group-2" }];
+    const mounted = mount("group-2");
+    expect((await context()).students.map((student: any) => student.user_id)).toEqual(["student-0001"]);
+    expect(db.rows.profiles[0].student_group_id).toBe("group-1");
+    mounted.unmount();
+    mount("group-1");
+    expect((await context()).students.map((student: any) => student.user_id)).toEqual(["student-0001"]);
+  });
+
   it("renders all 79 active learners independently of the organization list page", async () => {
     db.rows.profiles = Array.from({ length: 79 }, (_, index) => profile(index));
     mount();
@@ -107,16 +123,16 @@ describe("GroupFolderTab roster loading", () => {
     mount();
     expect((await context()).students.map((row: { user_id: string }) => row.user_id)).toEqual(["student-1000"]);
     expect(screen.getByRole("status")).toHaveTextContent("В архиве этой группы: 1000");
-    expect(db.queries.filter(query => query.table === "profiles").map(query => [query.from, query.order])).toEqual([[0, "user_id"], [1000, "user_id"]]);
+    expect(db.queries.filter(query => query.table === "student_group_profiles_effective").map(query => [query.from, query.order])).toEqual([[0, "user_id"], [1000, "user_id"]]);
   });
 
   it("shows a retryable error for a failed profiles query and recovers", async () => {
-    db.errors.profiles = { code: "42501", message: "Permission denied" };
+    db.errors.student_group_profiles_effective = { code: "42501", message: "Permission denied" };
     mount();
     expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось загрузить данные группы");
     expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
     expect(screen.queryByText(/0 активных учеников/)).not.toBeInTheDocument();
-    delete db.errors.profiles;
+    delete db.errors.student_group_profiles_effective;
     fireEvent.click(screen.getByRole("button", { name: "Повторить загрузку" }));
     expect((await context()).students).toHaveLength(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -124,14 +140,14 @@ describe("GroupFolderTab roster loading", () => {
 
   it("does not expose partial results when a later profile page fails", async () => {
     db.rows.profiles = Array.from({ length: 1001 }, (_, index) => profile(index));
-    db.errors["profiles:1000"] = { message: "Interrupted" };
+    db.errors["student_group_profiles_effective:1000"] = { message: "Interrupted" };
     mount();
     await screen.findByRole("alert");
     expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
   });
 
   it("handles a rejected request without showing an empty group", async () => {
-    db.rejectedTables.add("profiles");
+    db.rejectedTables.add("student_group_profiles_effective");
     mount();
     await screen.findByRole("alert");
     expect(screen.queryByTestId("document-context")).not.toBeInTheDocument();
@@ -157,7 +173,7 @@ describe("GroupFolderTab roster loading", () => {
     db.rows.student_groups = [{ id: "group-2", organization_id: "org-2", name: "Чужая группа" }];
     mount("group-2");
     await screen.findByText("Группа не найдена.");
-    expect(db.queries.some(query => query.table === "profiles")).toBe(false);
+    expect(db.queries.some(query => query.table === "student_group_profiles_effective")).toBe(false);
   });
 
   it("keeps a genuinely empty group distinct from a loading failure", async () => {

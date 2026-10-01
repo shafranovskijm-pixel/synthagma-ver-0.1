@@ -11,6 +11,8 @@ import {
   SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { insertEnrollmentsVerified } from "@/api/enrollments";
+import { assertStudentImportBackendRevision, checkStudentImportRows } from "@/api/studentImportPreflight";
+import type { ImportRowCheck } from "@/utils/studentImportPreflight";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -110,6 +112,29 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
   const [showResults, setShowResults] = useState(false);
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [rowChecks, setRowChecks] = useState<ImportRowCheck[] | null>(null);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [duplicateError, setDuplicateError] = useState("");
+  const [warningsConfirmed, setWarningsConfirmed] = useState(false);
+  const [checkAttempt, setCheckAttempt] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    setRowChecks(null);
+    setWarningsConfirmed(false);
+    setDuplicateError("");
+    if (!parsed || !organizationId || parsed.rows.length === 0) { setCheckingDuplicates(false); return; }
+    setCheckingDuplicates(true);
+    checkStudentImportRows(organizationId, parsed.rows).then(checks => {
+      if (alive) setRowChecks(checks);
+    }).catch(error => {
+      if (alive) setDuplicateError(getErrorMessage(error));
+    }).finally(() => { if (alive) setCheckingDuplicates(false); });
+    return () => { alive = false; };
+  }, [parsed, organizationId, checkAttempt]);
+
+  const importableCount = rowChecks?.filter(row => row.blocked.length === 0).length || 0;
+  const hasDuplicateWarnings = rowChecks?.some(row => row.blocked.length === 0 && row.warnings.length > 0) || false;
 
   // Load student groups for the org (used for name→id matching)
   useEffect(() => {
@@ -149,6 +174,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
+    setParsed(null);
     setResults([]);
     setShowResults(false);
     try {
@@ -191,18 +217,32 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       return;
     }
 
-    // Dedup within file by email/login (trim + lowercase). Rows without both
-    // email and login are NOT deduplicated (homonymy is possible).
-    const seenEmail = new Set<string>();
-    const seenLogin = new Set<string>();
+    if (!rowChecks || checkingDuplicates || (hasDuplicateWarnings && !warningsConfirmed)) {
+      toast.error("Сначала завершите проверку дублей и проверьте предупреждения");
+      return;
+    }
+    setIsImporting(true);
+    let freshChecks: ImportRowCheck[];
+    try {
+      await assertStudentImportBackendRevision();
+      freshChecks = await checkStudentImportRows(organizationId, parsed.rows);
+    } catch (error) {
+      setDuplicateError(getErrorMessage(error)); setIsImporting(false); return;
+    }
+    const newWarnings = freshChecks.some(fresh => fresh.warnings.some(message =>
+      !rowChecks.find(previous => previous.rowIndex === fresh.rowIndex)?.warnings.includes(message)));
+    setRowChecks(freshChecks);
+    if (newWarnings) {
+      setWarningsConfirmed(false); setIsImporting(false);
+      toast.warning("При повторной проверке появились новые совпадения. Проверьте их перед импортом.");
+      return;
+    }
+    const checksByRow = new Map(freshChecks.map(row => [row.rowIndex, row]));
     const dedupedRows: typeof parsed.rows = [];
     const dupSkipped: ImportResultRow[] = [];
     for (const row of parsed.rows) {
-      const emailKey = (row.email || "").trim().toLowerCase();
-      const loginKey = (row.login || "").trim().toLowerCase();
-      const hasKey = !!(emailKey || loginKey);
-      if (hasKey) {
-        if ((emailKey && seenEmail.has(emailKey)) || (loginKey && seenLogin.has(loginKey))) {
+      const check = checksByRow.get(row.rowIndex);
+      if (!check || check.blocked.length > 0) {
           dupSkipped.push({
             success: false,
             status: "other_error",
@@ -212,17 +252,14 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             group_name: row.group_name,
             courses_enrolled: 0,
             courses_missing: [],
-            error: "Дубликат в файле (email/логин уже встречались выше)",
+            error: check?.blocked.join("; ") || "Строка не прошла проверку дублей",
           });
           continue;
-        }
-        if (emailKey) seenEmail.add(emailKey);
-        if (loginKey) seenLogin.add(loginKey);
       }
       dedupedRows.push(row);
     }
     if (dupSkipped.length > 0) {
-      toast.warning(`В файле найдено ${dupSkipped.length} дублей по email/логину — они пропущены`);
+      toast.warning(`Строк с ошибками: ${dupSkipped.length} — они пропущены`);
     }
 
     setIsImporting(true);
@@ -282,6 +319,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
               company_id: selectedCompanyId || null,
               custom_login: row.login || undefined,
               custom_password: row.password || undefined,
+              reject_existing_login: true,
               student_group_id: groupId,
               no_login: !row.email,
               department: row.department,
@@ -333,6 +371,9 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
           } else if (data?.error || (!data?.user_id && !data?.success)) {
             throw new Error(serverError || "Ошибка создания");
           } else {
+            if (data?.import_preflight_confirmed !== true) {
+              throw new Error("Сервер не подтвердил защиту от дублей. Проверьте карточку ученика перед повторной загрузкой.");
+            }
             const userId: string | undefined = data?.user_id;
             const isExisting = !!data?.is_existing;
 
@@ -382,6 +423,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
         setResults([...out]);
       }
 
+      setResults([...out]);
       setProgress({ current: dedupedRows.length, total: dedupedRows.length });
       setShowResults(true);
       const ok = out.filter(r => r.success).length;
@@ -481,7 +523,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${file ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
           onClick={() => fileInputRef.current?.click()}
         >
-          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.txt" className="hidden" onChange={handleFileChange} />
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.txt" className="hidden" onChange={handleFileChange} disabled={isImporting} />
           {file ? (
             <div className="flex items-center justify-center gap-2">
               <FileSpreadsheet className="w-6 h-6 text-primary" />
@@ -565,6 +607,31 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
         </div>
       )}
 
+      {parsed && (
+        <div className="space-y-3 rounded-xl border border-border p-4" aria-live="polite">
+          <p className="font-medium">Проверка перед импортом</p>
+          {checkingDuplicates && <p>Проверяем логины и совпадения ФИО…</p>}
+          {duplicateError && <div className="space-y-2"><p className="text-destructive">{duplicateError}</p>
+            <Button variant="outline" onClick={() => setCheckAttempt(value => value + 1)} disabled={isImporting}>Повторить проверку</Button></div>}
+          {rowChecks && <>
+            <p className="text-sm">Можно импортировать: {importableCount}. Пропускаются: {parsed.rows.length - importableCount}.</p>
+            <div className="max-h-64 overflow-auto space-y-2 text-sm">
+              {rowChecks.filter(row => row.blocked.length > 0 || row.warnings.length > 0).map(row => (
+                <div key={row.rowIndex} className="rounded-lg bg-muted/50 p-2">
+                  <p className="font-medium">Строка {row.rowIndex}: {parsed.rows.find(item => item.rowIndex === row.rowIndex)?.full_name}</p>
+                  {row.blocked.map(message => <p key={message} className="text-destructive">Не импортируется: {message}</p>)}
+                  {row.warnings.map(message => <p key={message} className="text-muted-foreground">{message}</p>)}
+                </div>
+              ))}
+            </div>
+            {hasDuplicateWarnings && <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <Checkbox checked={warningsConfirmed} onCheckedChange={value => setWarningsConfirmed(value === true)} disabled={isImporting} />
+              Я проверил совпадения: указанные ученики и сведения верны
+            </label>}
+          </>}
+        </div>
+      )}
+
       {companies.length > 0 && (
         <div className="space-y-2">
           <Label>Компания для всех (опционально)</Label>
@@ -592,7 +659,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       <Button
         className="w-full btn-gradient rounded-xl gap-2"
         onClick={handleImport}
-        disabled={!parsed || parsed.rows.length === 0 || isImporting}
+        disabled={!parsed || parsed.rows.length === 0 || isImporting || checkingDuplicates || !rowChecks || !!duplicateError || importableCount === 0 || (hasDuplicateWarnings && !warningsConfirmed)}
       >
         {isImporting ? (
           <>

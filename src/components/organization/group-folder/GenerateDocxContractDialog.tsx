@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { localDateIso } from "@/lib/date/localDate";
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,12 +190,9 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
           fetchDocxTemplates("legal"),
           supabase.from("companies").select("*").eq("organization_id", organizationId).order("name"),
           supabase.from("student_groups").select("*").eq("id", groupId).maybeSingle(),
-          supabase
-            .from("profiles")
-            .select("user_id, full_name, email, contact_email, phone, city, region, job_position")
-            .eq("organization_id", organizationId)
-            .eq("student_group_id", groupId)
-            .is("archived_at", null),
+          fetchEffectiveGroupProfiles(supabase, organizationId, groupId, {
+            activeOnly: true, select: "user_id, full_name, email, contact_email, phone, city, region, job_position",
+          }).then(data => ({ data, error: null })),
           supabase
             .from("student_frdo_data")
             .select("user_id, education_level, last_name, first_name, middle_name")

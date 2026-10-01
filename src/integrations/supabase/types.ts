@@ -14002,6 +14002,18 @@ export type Database = {
       }
     }
     Functions: {
+      add_students_to_groups: {
+        Args: { p_organization_id: string; p_user_ids: string[]; p_group_ids: string[] }
+        Returns: { organization_id: string; group_id: string; user_id: string }[]
+      }
+      cancel_course_assignment: {
+        Args: { p_enrollment_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      student_import_identity_preflight: {
+        Args: { p_organization_id: string; p_rows: Json; p_actor_id?: string }
+        Returns: { row_index: number; login_taken: boolean; name_matches: number; email_matches: number }[]
+      }
       _assert_goreltech_enrollment_order_access: {
         Args: {
           p_actor_id: string

@@ -50,10 +50,10 @@ vi.mock("@/integrations/supabase/client", () => ({
         count: table === "enrollments" ? testState.enrollmentCount : testState.documentCount,
         data: table === "student_groups"
           ? testState.groupIds.map((id) => ({ id }))
-          : table === "profiles"
+          : table === "profiles" || table === "student_group_profiles_effective"
             ? testState.groupStudents
               .filter((profile) => !excludeArchivedProfiles || profile.archived_at === null)
-              .map(({ student_group_id }) => ({ student_group_id }))
+              .map(({ student_group_id }) => ({ student_group_id, group_id: student_group_id }))
           : table === "group_documents"
             ? testState.documentGroupIds.map((group_id) => ({ group_id }))
             : null,
@@ -65,7 +65,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         neq: () => builder,
         in: () => builder,
         is: (column: string, value: unknown) => {
-          if (table === "profiles" && column === "archived_at" && value === null) {
+          if ((table === "profiles" || table === "student_group_profiles_effective") && column === "archived_at" && value === null) {
             excludeArchivedProfiles = true;
           }
           return builder;

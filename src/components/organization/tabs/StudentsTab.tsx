@@ -26,6 +26,8 @@ import { StudentConfirmDialogs } from "./students/StudentConfirmDialogs";
 import { StudentTestResultsDialog } from "./students/StudentTestResultsDialog";
 import { groupCourseDefaults } from "@/lib/groups/groupSettings";
 import { groupFolderPath } from "@/lib/groups/groupContext";
+import { fetchEffectiveGroupMemberships } from "@/api/studentGroupMemberships";
+import { AddStudentsToGroupsDialog } from "@/components/organization/groups/AddStudentsToGroupsDialog";
 import {
   fetchOrganizationStudentResults,
   type OrganizationStudentCourseResult,
@@ -74,6 +76,9 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const [showTestResults, setShowTestResults] = useState(false);
   const [testResultsStudentId, setTestResultsStudentId] = useState<string | null>(null);
+  const [groupsDialogUserIds, setGroupsDialogUserIds] = useState<string[] | null>(null);
+  const [membershipRevision, setMembershipRevision] = useState(0);
+  const [membershipMap, setMembershipMap] = useState<Map<string, string[]>>(new Map());
   const [studentResultRows, setStudentResultRows] = useState<OrganizationStudentCourseResult[]>([]);
   const [isLoadingStudentResults, setIsLoadingStudentResults] = useState(false);
   const [isExportingStudentResults, setIsExportingStudentResults] = useState(false);
@@ -133,6 +138,27 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     enabled: panelMode !== "groups",
     viewMode: panelMode === "archive" ? "archive" : "active",
   });
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setMembershipMap(new Map());
+    setGroupsDialogUserIds(null);
+    void fetchEffectiveGroupMemberships(supabase, organizationId).then(rows => {
+      if (cancelled) return;
+      const map = new Map<string, string[]>();
+      for (const row of rows) map.set(row.user_id, [...(map.get(row.user_id) ?? []), row.group_id]);
+      setMembershipMap(map);
+    }).catch(error => {
+      if (!cancelled) { console.error("Failed to load student group memberships", error); toast.error("Не удалось загрузить дополнительные группы учеников"); }
+    });
+    return () => { cancelled = true; };
+  }, [organizationId, membershipRevision]);
+
+  const refreshMemberships = () => {
+    setMembershipRevision(value => value + 1);
+    refreshGroups();
+    refreshRows();
+  };
 
   const setPanelMode = useCallback((mode: PanelMode) => {
     setSearchParams((prev) => resolveStudentsViewParams(prev, mode));
@@ -223,8 +249,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       // Deleting a group nulls student_group_id on referenced profiles —
       // refresh the groups directory / counts and the paginated rows only.
       // Student totals, dashboard summary and course overview don't change.
-      refreshGroups();
-      refreshRows();
+      refreshMemberships();
     } catch { toast.error("Ошибка удаления группы"); }
   };
 
@@ -235,8 +260,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       // Refresh group counts (source of truth on the card) AND the paginated
       // rows so the Select value / row group binding is up to date. Reassigning
       // a group doesn't change org totals, summary or course overview.
-      refreshGroups();
-      refreshRows();
+      refreshMemberships();
     } catch { toast.error("Ошибка назначения группы"); }
   };
 
@@ -592,6 +616,9 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     <DropdownMenuItem onClick={() => props.onShowEnrollDialog?.(Array.from(selectedStudentIds))}>
                       <GraduationCap className="w-4 h-4 mr-2" />Зачислить на курс
                     </DropdownMenuItem>
+                    {panelMode === "active" && <DropdownMenuItem onClick={() => setGroupsDialogUserIds(Array.from(selectedStudentIds))}>
+                      <Users className="w-4 h-4 mr-2" />Добавить в группы
+                    </DropdownMenuItem>}
                     <DropdownMenuItem onClick={() => setShowLoginsConfirm(true)} disabled={isCreatingBulkCredentials}>
                       <Key className="w-4 h-4 mr-2" />Создать логины и пароли
                     </DropdownMenuItem>
@@ -713,7 +740,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                           </tr></thead>
                           <tbody>
                             {group.students.map(student => (
-                              <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} />
+                              <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} membershipGroupIds={membershipMap.get(student.user_id)} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} />
                             ))}
                           </tbody>
                         </table>
@@ -755,7 +782,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                   </tr></thead>
                   <tbody>
                     {paginatedStudents.map(student => (
-                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onViewTestResults={(userId) => { setTestResultsStudentId(userId); setShowTestResults(true); }} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
+                      <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onViewTestResults={(userId) => { setTestResultsStudentId(userId); setShowTestResults(true); }} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} membershipGroupIds={membershipMap.get(student.user_id)} onManageGroups={() => setGroupsDialogUserIds([student.user_id])} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
                     ))}
                   </tbody>
                 </table>
@@ -826,6 +853,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       />
 
       <StudentConfirmDialogs showSendConfirm={showSendConfirm} setShowSendConfirm={setShowSendConfirm} showLoginsConfirm={showLoginsConfirm} setShowLoginsConfirm={setShowLoginsConfirm} selectedCount={selectedStudentIds.size} getSelectedUserIds={getSelectedUserIds} onBulkSendCredentials={props.onBulkSendCredentials} onBulkCreateCredentials={props.onBulkCreateCredentials} />
+      <AddStudentsToGroupsDialog open={groupsDialogUserIds !== null} onOpenChange={open => { if (!open) setGroupsDialogUserIds(null); }} organizationId={organizationId} userIds={groupsDialogUserIds ?? []} groups={studentGroups} onSaved={refreshMemberships} />
     </div>
   );
 });

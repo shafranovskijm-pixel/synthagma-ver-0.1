@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
+import { CancelCourseAssignmentButton } from "@/components/organization/CancelCourseAssignmentButton";
 import { CourseLibraryManager } from "@/components/course-library/CourseLibraryManager";
 import { RequirePerm } from "@/hooks/useStaffPermissions";
 // EnrollmentHistory pulls in recharts (~200KB) — load it only when the history tab is opened
@@ -405,7 +406,7 @@ export function CourseDetailsContent({
               })}
             </aside>
             <div className="min-w-0">
-              {activeTab === "students" && <StudentsSection h={h} />}
+              {activeTab === "students" && <StudentsSection h={h} organizationId={organizationId} courseTitle={course.title} />}
               {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
               {activeTab === "history" && (
                 <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
@@ -434,7 +435,7 @@ export function CourseDetailsContent({
       {/* Content panel for non-students groups */}
       {!(showSubTabs && activeGroup === "students") && (
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
-          {activeTab === "students" && <StudentsSection h={h} />}
+          {activeTab === "students" && <StudentsSection h={h} organizationId={organizationId} courseTitle={course.title} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onEnrollmentChanged} />}
         {activeTab === "materials" && electronicLibraryEnabled && organizationId && (
           <div className="space-y-6">
@@ -525,7 +526,11 @@ export function CourseDetailsContent({
   );
 }
 
-function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
+function StudentsSection({ h, organizationId, courseTitle }: {
+  h: ReturnType<typeof useCourseDetails>;
+  organizationId: string | null;
+  courseTitle: string;
+}) {
   const courseStudents = h.courseStudents;
   const total = h.totalFilteredStudents;
   const remaining = Math.max(0, total - courseStudents.length);
@@ -696,7 +701,8 @@ function StudentsSection({ h }: { h: ReturnType<typeof useCourseDetails> }) {
       ) : (
         <>
           <div className="space-y-2">{courseStudents.map((s: any) => (
-            <CourseStudentRow key={s.enrollment_id || s.id} student={s} onOpenDetails={setDetailsStudent} onResetProgress={h.setResetConfirmStudent} />
+            <CourseStudentRow key={s.enrollment_id || s.id} student={s} onOpenDetails={setDetailsStudent} onResetProgress={h.setResetConfirmStudent}
+              organizationId={organizationId} courseTitle={courseTitle} onAssignmentCancelled={h.refreshStudents} />
           ))}</div>
           <div className="flex flex-col items-center gap-2 pt-2">
             <div className="text-xs text-muted-foreground">Показано {courseStudents.length} из {total}</div>
@@ -734,11 +740,14 @@ function toneClass(tone: "success" | "danger" | "neutral" | "muted"): string {
 }
 
 function CourseStudentRow({
-  student, onOpenDetails, onResetProgress,
+  student, onOpenDetails, onResetProgress, organizationId, courseTitle, onAssignmentCancelled,
 }: {
   student: CourseStudentPageRow;
   onOpenDetails: (s: CourseStudentPageRow) => void;
   onResetProgress: (s: CourseStudentPageRow) => void;
+  organizationId: string | null;
+  courseTitle: string;
+  onAssignmentCancelled: () => void;
 }) {
   const badge = formatCourseTestResult(student);
   const progressPct = Math.min(student.progress ?? 0, 100);
@@ -754,7 +763,12 @@ function CourseStudentRow({
             : `Пройдено ${Math.round(progressPct)}% курса`}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {organizationId && student.enrollment_id && <CancelCourseAssignmentButton
+          enrollmentId={student.enrollment_id} organizationId={organizationId} courseTitle={courseTitle} studentName={student.name}
+          progress={student.progress} timeSpent={student.time_spent || 0} status={student.status} completedAt={student.completed_at}
+          hasTestAttempts={student.tests_attempted > 0} onCancelled={onAssignmentCancelled}
+        />}
         <button
           type="button"
           disabled={!isClickable}

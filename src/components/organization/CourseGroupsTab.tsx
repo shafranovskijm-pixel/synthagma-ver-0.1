@@ -27,7 +27,7 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
         <DialogHeader>
           <DialogTitle>Добавить учеников в «{h.selectedGroupForAdd?.name}»</DialogTitle>
           <DialogDescription>
-            Это действие добавляет учеников только в группу. На текущий курс их нужно зачислить отдельной кнопкой.
+            Можно добавить учеников из других групп. Прежние группы сохранятся; на текущий курс зачисление выполняется отдельной кнопкой.
           </DialogDescription>
         </DialogHeader>
         {h.showNewStudentForm ? (
@@ -49,7 +49,7 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
         )}
         <div className="flex-1 overflow-y-auto space-y-1 py-2">
           {h.loadingStudents ? <div className="flex justify-center py-8"><SigmaSpinner /></div>
-            : h.unassignedStudents.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Нет учеников без группы</p>
+            : h.unassignedStudents.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Все активные ученики уже в этой группе</p>
             : h.unassignedStudents.map(s => (
               <label key={s.user_id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer">
                 <Checkbox checked={h.selectedStudentIds.has(s.user_id)} onCheckedChange={() => h.toggleStudent(s.user_id)} />
@@ -92,6 +92,9 @@ export function CourseGroupsTab({ courseId, organizationId, refreshCallbacks }: 
   );
 
   if (h.loading) return <div className="flex items-center justify-center py-12"><SigmaSpinner />{createGroupDialog}</div>;
+  if (h.groupsError) return <div className="space-y-3 rounded-xl border p-4" role="alert">
+    <p>{h.groupsError}</p><Button variant="outline" onClick={() => void h.retryGroups()}>Повторить</Button>
+  </div>;
 
   if (h.groups.length === 0) return (
     <><div className="flex flex-col items-center justify-center py-16 px-6">

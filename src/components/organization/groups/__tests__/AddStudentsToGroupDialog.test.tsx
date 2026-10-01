@@ -5,6 +5,8 @@ import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddSt
 
 const apiMocks = vi.hoisted(() => ({
   fetchOrganizationStudentsPage: vi.fn(),
+  fetchEffectiveGroupProfiles: vi.fn(),
+  addStudentsToGroups: vi.fn(),
 }));
 
 const supabaseMocks = vi.hoisted(() => {
@@ -34,6 +36,10 @@ const toastMocks = vi.hoisted(() => ({
 vi.mock("@/api/students", () => ({
   fetchOrganizationStudentsPage: apiMocks.fetchOrganizationStudentsPage,
 }));
+vi.mock("@/api/studentGroupMemberships", () => ({
+  fetchEffectiveGroupProfiles: apiMocks.fetchEffectiveGroupProfiles,
+  addStudentsToGroups: apiMocks.addStudentsToGroups,
+}));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -61,13 +67,15 @@ function renderDialog(overrides?: Partial<React.ComponentProps<typeof AddStudent
 describe("AddStudentsToGroupDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.fetchEffectiveGroupProfiles.mockResolvedValue([]);
+    apiMocks.addStudentsToGroups.mockResolvedValue([{ organization_id: "org-1", group_id: "group-1", user_id: "student-1" }]);
     supabaseMocks.builder.update.mockReturnValue(supabaseMocks.builder);
     supabaseMocks.builder.eq.mockReturnValue(supabaseMocks.builder);
     supabaseMocks.builder.is.mockReturnValue(supabaseMocks.builder);
     supabaseMocks.builder.in.mockReturnValue(supabaseMocks.builder);
     apiMocks.fetchOrganizationStudentsPage.mockResolvedValue({
       rows: [
-        { user_id: "student-1", name: "Иванов Иван", email: "ivan@example.ru", login: "ivan", student_group_id: null },
+        { user_id: "student-1", name: "Иванов Иван", email: "ivan@example.ru", login: "ivan", student_group_id: "previous-group" },
         { user_id: "student-2", name: "Петров Пётр", email: "", login: "petr", student_group_id: null },
       ],
       totalFiltered: 2,
@@ -77,14 +85,14 @@ describe("AddStudentsToGroupDialog", () => {
     });
   });
 
-  it("loads only active students without a group and adds selected rows with organization scope", async () => {
+  it("adds an existing student with a previous group through the atomic membership RPC", async () => {
     supabaseMocks.builder.select.mockResolvedValue({ data: [{ user_id: "student-1" }], error: null });
     const props = renderDialog();
 
     expect(await screen.findByText("Иванов Иван")).toBeInTheDocument();
     expect(apiMocks.fetchOrganizationStudentsPage).toHaveBeenCalledWith({
       organizationId: "org-1",
-      groupFilter: "no_group",
+      groupFilter: "all",
       archiveMode: "active",
       limit: 100,
       offset: 0,
@@ -93,11 +101,8 @@ describe("AddStudentsToGroupDialog", () => {
     fireEvent.click(screen.getByLabelText("Выбрать Иванов Иван"));
     fireEvent.click(screen.getByRole("button", { name: "Добавить только в группу (1)" }));
 
-    await waitFor(() => expect(supabaseMocks.from).toHaveBeenCalledWith("profiles"));
-    expect(supabaseMocks.builder.update).toHaveBeenCalledWith({ student_group_id: "group-1" });
-    expect(supabaseMocks.builder.eq).toHaveBeenCalledWith("organization_id", "org-1");
-    expect(supabaseMocks.builder.is).toHaveBeenCalledWith("student_group_id", null);
-    expect(supabaseMocks.builder.in).toHaveBeenCalledWith("user_id", ["student-1"]);
+    await waitFor(() => expect(apiMocks.addStudentsToGroups).toHaveBeenCalledWith(expect.anything(), "org-1", ["student-1"], ["group-1"]));
+    expect(supabaseMocks.builder.update).not.toHaveBeenCalled();
     expect(props.onStudentsChanged).toHaveBeenCalledWith("grouping");
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
     expect(toastMocks.success).toHaveBeenCalledWith("1 ученик добавлен только в группу", {
@@ -106,8 +111,8 @@ describe("AddStudentsToGroupDialog", () => {
     expect(supabaseMocks.invoke).not.toHaveBeenCalled();
   });
 
-  it("fails closed when the scoped update changes fewer students than selected", async () => {
-    supabaseMocks.builder.select.mockResolvedValue({ data: [], error: null });
+  it("does not claim success when persistence is unconfirmed", async () => {
+    apiMocks.addStudentsToGroups.mockRejectedValue(new Error("Unconfirmed membership"));
     const props = renderDialog();
 
     fireEvent.click(await screen.findByLabelText("Выбрать Иванов Иван"));
@@ -116,6 +121,13 @@ describe("AddStudentsToGroupDialog", () => {
     await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith("Не удалось добавить учеников в группу"));
     expect(props.onStudentsChanged).not.toHaveBeenCalled();
     expect(props.onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("excludes current members but retains students assigned to other groups", async () => {
+    apiMocks.fetchEffectiveGroupProfiles.mockResolvedValue([{ user_id: "student-2" }]);
+    renderDialog();
+    expect(await screen.findByLabelText("Выбрать Иванов Иван")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Выбрать Петров Пётр")).not.toBeInTheDocument();
   });
 
   it("creates a new student directly in the exact organization and group without enrollment side effects", async () => {

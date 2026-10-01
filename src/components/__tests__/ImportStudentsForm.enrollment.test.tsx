@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ safeInvoke: vi.fn(), enroll: vi.fn(), toastSuccess: vi.fn(), toastError: vi.fn() }));
 vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: mocks.safeInvoke }));
 vi.mock("@/api/enrollments", () => ({ insertEnrollmentsVerified: mocks.enroll }));
+vi.mock("@/api/studentImportPreflight", () => ({
+  assertStudentImportBackendRevision: async () => {},
+  checkStudentImportRows: async (_org: string, rows: any[]) => rows.map(row => ({ rowIndex: row.rowIndex, blocked: [], warnings: [] })),
+}));
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError, warning: vi.fn() } }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -31,7 +35,7 @@ async function importPosition() {
 describe("student position import confirmation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.safeInvoke.mockResolvedValue({ data: { success: true, user_id: "student-1", is_existing: true, details_confirmed: true }, error: null });
+    mocks.safeInvoke.mockResolvedValue({ data: { success: true, import_preflight_confirmed: true, user_id: "student-1", is_existing: true, details_confirmed: true }, error: null });
     mocks.enroll.mockResolvedValue([]);
   });
 
@@ -45,7 +49,7 @@ describe("student position import confirmation", () => {
   });
 
   it("reports a confirmed position and completes course enrollment", async () => {
-    mocks.safeInvoke.mockResolvedValueOnce({ data: { success: true, user_id: "student-1", is_existing: true, details_confirmed: true, job_position_confirmed: true }, error: null });
+    mocks.safeInvoke.mockResolvedValueOnce({ data: { success: true, import_preflight_confirmed: true, user_id: "student-1", is_existing: true, details_confirmed: true, job_position_confirmed: true }, error: null });
     await importPosition();
     expect(screen.getByText("1 успешно")).toBeInTheDocument();
     await waitFor(() => expect(mocks.enroll).toHaveBeenCalledWith([expect.objectContaining({ user_id: "student-1", course_id: "course-1" })]));

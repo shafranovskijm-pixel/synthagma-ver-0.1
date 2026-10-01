@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ClipboardList, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Search, FileText, Users, BookOpen, Award, FileCheck, Shield, Copy, UserCheck, Briefcase, ClipboardCheck, Download, Plus, Edit, BarChart3, Trash2, Settings, Camera, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { toast } from "sonner";
 import { JournalEditor } from "./JournalEditor";
 import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
@@ -129,15 +130,14 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     setGroupStatus("loading");
     setGroupError(null);
     (async () => {
-      const { data, error } = await (supabase as any)
-        .from("profiles")
-        .select("user_id")
-        .eq("organization_id", organizationId)
-        .eq("student_group_id", groupId);
-      if (cancelled) return;
-      if (error) { setGroupStatus("error"); setGroupError(error.message || "Ошибка загрузки состава группы"); return; }
-      setGroupMemberUserIds(((data as any[]) || []).map((r) => r.user_id));
-      setGroupStatus("ready");
+      try {
+        const data = await fetchEffectiveGroupProfiles<{ user_id: string }>(supabase, organizationId, groupId, { select: "user_id" });
+        if (cancelled) return;
+        setGroupMemberUserIds(data.map(r => r.user_id));
+        setGroupStatus("ready");
+      } catch (error) {
+        if (!cancelled) { setGroupStatus("error"); setGroupError(error instanceof Error ? error.message : "Ошибка загрузки состава группы"); }
+      }
     })();
     return () => { cancelled = true; };
   }, [groupId, organizationId]);
