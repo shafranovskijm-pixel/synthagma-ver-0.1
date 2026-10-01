@@ -21,7 +21,7 @@ describe("register-student enrollment deployment contract", () => {
   it("fails closed unless the first course enrollment is persisted", () => {
     const source = readSource();
 
-    expect(source).toContain('const REGISTER_STUDENT_REVISION = "student-details-v5"');
+    expect(source).toContain('const REGISTER_STUDENT_REVISION = "student-import-v6"');
     expect(source).toContain('"X-Sintagma-Register-Student-Revision"');
     expect(source).toContain('.select("id, user_id, course_id")');
     expect(source).toContain('.eq("id", insertedEnrollment.id)');
@@ -216,11 +216,14 @@ describe("register-student enrollment deployment contract", () => {
 });
 
 // Execute the real handler with local SDK responses. No auth users or remote rows are created.
-function edgeFixture(options: { role?: string; staff?: boolean; expires?: string; studentOrg?: string; existing?: boolean; detailsError?: boolean; email?: string; jobPositionError?: boolean } = {}) {
+function edgeFixture(options: { role?: string; staff?: boolean; expires?: string; studentOrg?: string; existing?: boolean; detailsError?: boolean; email?: string; jobPositionError?: boolean; importCheckError?: boolean } = {}) {
   const role = options.role || "organization";
   const existing = options.existing !== false;
   const profiles: Record<string, any>[] = [{ user_id: "actor", organization_id: "org-1" }, ...(existing ? [{ user_id: "student", organization_id: options.studentOrg || "org-1", login: "Sgt001", email: options.email || null, full_name: "Иванов", job_position: "Механик", archived_at: null }] : [])];
   const rpc = vi.fn(async (name: string, args: any) => {
+    if (name === "student_import_identity_preflight") return options.importCheckError
+      ? { data: null, error: { message: "synthetic lookup failure" } }
+      : { data: [{ row_index: 1, login_taken: existing, name_matches: existing ? 1 : 0, email_matches: 0 }], error: null };
     if (name === "is_org_owner") return { data: role === "organization", error: null };
     if (name === "has_org_staff_permission") return { data: !!options.staff, error: null };
     if (name === "is_student_profile") return { data: args._target_user_id === "student", error: null };
@@ -273,11 +276,26 @@ function edgeFixture(options: { role?: string; staff?: boolean; expires?: string
 }
 
 describe("register-student staff details execution", () => {
+  it("blocks an occupied import login before Auth/profile/course mutations", async () => {
+    const fixture = edgeFixture();
+    const result = await fixture.call({ reject_existing_login: true });
+    expect(result.status).toBe(409);
+    expect(result.body.code).toBe("IMPORT_LOGIN_TAKEN");
+    expect(fixture.createUser).not.toHaveBeenCalled();
+    expect(fixture.profileUpdate).not.toHaveBeenCalled();
+    expect(fixture.rpc).not.toHaveBeenCalledWith("save_student_registration_details", expect.anything());
+  });
+  it("fails closed if server import preflight cannot be confirmed", async () => {
+    const fixture = edgeFixture({ existing: false, importCheckError: true });
+    const result = await fixture.call({ reject_existing_login: true });
+    expect(result.status).toBe(500); expect(result.body.code).toBe("IMPORT_PREFLIGHT_FAILED");
+    expect(fixture.createUser).not.toHaveBeenCalled(); expect(fixture.profileUpdate).not.toHaveBeenCalled();
+  });
   it("updates repeated imports without email instead of creating another account", async () => {
     const fixture = edgeFixture();
     const result = await fixture.call({ confirm_identity: true });
     expect(result.body).toMatchObject({ success: true, user_id: "student", is_existing: true, details_confirmed: true });
-    expect(result.revision).toBe("student-details-v5");
+    expect(result.revision).toBe("student-import-v6");
     expect(fixture.createUser).not.toHaveBeenCalled();
     expect(result.body.password).toBeUndefined();
     expect(fixture.rpc).toHaveBeenCalledWith("save_student_registration_details", expect.objectContaining({ p_actor_id: "actor", p_user_id: "student", p_confirm_identity: true }));

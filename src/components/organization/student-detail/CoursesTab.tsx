@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { format, differenceInDays, isPast } from "date-fns";
+import { CancelCourseAssignmentButton } from "@/components/organization/CancelCourseAssignmentButton";
+import { fetchEffectiveGroupMemberships } from "@/api/studentGroupMemberships";
+import { AddStudentsToGroupsDialog } from "@/components/organization/groups/AddStudentsToGroupsDialog";
 
 interface CoursesTabProps {
   enrollments: {
@@ -51,19 +54,33 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState(false);
+  const [membershipGroupIds, setMembershipGroupIds] = useState<string[]>([]);
+  const [membershipRevision, setMembershipRevision] = useState(0);
+  const [showAddGroups, setShowAddGroups] = useState(false);
 
   useEffect(() => {
     if (!organizationId || !studentUserId) return;
+    let cancelled = false;
+    setGroups([]); setCurrentGroupId(null); setMembershipGroupIds([]); setShowAddGroups(false);
     const load = async () => {
+      try {
       const [groupsRes, profileRes] = await Promise.all([
         supabase.from("student_groups").select("id, name, color").eq("organization_id", organizationId).order("name"),
-        supabase.from("profiles").select("student_group_id").eq("user_id", studentUserId).single(),
+        supabase.from("profiles").select("student_group_id").eq("organization_id", organizationId).eq("user_id", studentUserId).single(),
       ]);
+      if (cancelled) return;
+      if (groupsRes.error || profileRes.error) throw groupsRes.error || profileRes.error;
       setGroups(groupsRes.data || []);
       setCurrentGroupId((profileRes.data as any)?.student_group_id || null);
+      const memberships = await fetchEffectiveGroupMemberships(supabase, organizationId, [studentUserId]);
+      if (!cancelled) setMembershipGroupIds(memberships.map(row => row.group_id));
+      } catch (error) {
+        if (!cancelled) { console.error("Failed to load student groups", error); toast.error("Не удалось загрузить группы ученика"); }
+      }
     };
-    load();
-  }, [organizationId, studentUserId]);
+    void load();
+    return () => { cancelled = true; };
+  }, [organizationId, studentUserId, membershipRevision]);
 
   const handleGroupChange = async (groupId: string) => {
     const value = groupId === "__none__" ? null : groupId;
@@ -72,10 +89,12 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
       const { error } = await supabase
         .from("profiles")
         .update({ student_group_id: value } as any)
+        .eq("organization_id", organizationId)
         .eq("user_id", studentUserId);
       if (error) throw error;
       setCurrentGroupId(value);
-      toast.success(value ? "Ученик добавлен в группу" : "Ученик удалён из группы");
+      setMembershipRevision(revision => revision + 1);
+      toast.success(value ? "Основная группа изменена" : "Основная группа снята; дополнительные группы сохранены");
       h.onStudentUpdated?.();
     } catch (e: any) {
       toast.error("Ошибка: " + e.message);
@@ -174,7 +193,7 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-sm">Группа</span>
+              <span className="font-semibold text-sm">Основная группа</span>
               {currentGroup && (
                 <Badge variant="outline" className="ml-1" style={currentGroup.color ? { borderColor: currentGroup.color, color: currentGroup.color } : {}}>
                   {currentGroup.name}
@@ -190,7 +209,7 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
                 <SelectValue placeholder="Выберите группу" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Без группы</SelectItem>
+                <SelectItem value="__none__">Без основной группы</SelectItem>
                 {groups.map(g => (
                   <SelectItem key={g.id} value={g.id}>
                     <span className="flex items-center gap-2">
@@ -202,8 +221,16 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
               </SelectContent>
             </Select>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {membershipGroupIds.filter(id => id !== currentGroupId).map(id => {
+              const group = groups.find(item => item.id === id);
+              return group && <Badge key={id} variant="outline">{group.name}</Badge>;
+            })}
+            <Button variant="outline" size="sm" onClick={() => setShowAddGroups(true)}>Добавить в группы</Button>
+          </div>
         </div>
       )}
+      <AddStudentsToGroupsDialog open={showAddGroups} onOpenChange={setShowAddGroups} organizationId={organizationId} userIds={[studentUserId]} groups={groups} onSaved={() => { setMembershipRevision(revision => revision + 1); h.onStudentUpdated?.(); }} />
 
       {/* Courses */}
       <div className="bg-card rounded-2xl border border-border p-6">
@@ -291,7 +318,12 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
                     <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${Math.min(e.progress, 100)}%` }} />
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">Очный зачёт завершает курс и его тесты. Онлайн-попытки и ответы сохраняются.</p>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <CancelCourseAssignmentButton
+                      enrollmentId={e.id} organizationId={organizationId} courseTitle={e.course_title}
+                      progress={e.progress} timeSpent={e.time_spent} status={e.status} completedAt={e.completed_at}
+                      onCancelled={() => h.onStudentUpdated?.()}
+                    />
                     {(
                       <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => handleManualComplete(e.id)} disabled={completingId === e.id}>
                         <CheckCircle className="w-4 h-4" />

@@ -8,6 +8,8 @@
  *  - «Экзамены»          → public.test_attempts по ученикам группы
  */
 
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
+
 export interface GroupFolderCounts {
   contracts: number;
   passports: number;
@@ -52,11 +54,7 @@ export async function fetchGroupFolderCounts(
 ): Promise<GroupFolderCounts> {
   if (!organizationId || !groupId) return { ...EMPTY_GROUP_FOLDER_COUNTS };
 
-  const { data: profiles } = await client
-    .from("profiles")
-    .select("user_id")
-    .eq("organization_id", organizationId)
-    .eq("student_group_id", groupId);
+  const profiles = await fetchEffectiveGroupProfiles<{ user_id: string }>(client, organizationId, groupId, { activeOnly: true, select: "user_id" });
   const userIds: string[] = ((profiles as any[]) || []).map(p => p.user_id).filter(Boolean);
 
   let contractsQuery = client

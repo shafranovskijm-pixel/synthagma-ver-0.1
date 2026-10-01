@@ -1,5 +1,8 @@
 import DOMPurify from "dompurify";
 import { Video, ExternalLink } from "lucide-react";
+import { CourseVideoPlayer } from "@/components/video/CourseVideoPlayer";
+import { getKinescopeEmbedUrl, getKinescopeVideoId, isDirectVideoFileUrl } from "@/utils/courseBuilderHelpers";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 function isIframeEmbed(content: string): boolean {
   return content.trim().startsWith('<iframe') && content.includes('</iframe>');
@@ -52,6 +55,10 @@ function getEmbedFromContent(content: string): { type: 'iframe' | 'url' | 'direc
 
 export function VideoPreview({ videoUrl }: { videoUrl: string }) {
   const embedResult = getEmbedFromContent(videoUrl);
+  const kinescopeId = getKinescopeVideoId(videoUrl);
+
+  if (kinescopeId) return <CourseVideoPlayer key={kinescopeId} src={getKinescopeEmbedUrl(kinescopeId)} kinescope preload="none" />;
+  if (isDirectVideoFileUrl(videoUrl)) return <CourseVideoPlayer key={videoUrl} src={proxiedAssetUrl(videoUrl)} preload="none" />;
 
   if (embedResult.type === null) {
     return (
@@ -62,7 +69,7 @@ export function VideoPreview({ videoUrl }: { videoUrl: string }) {
   }
 
   if (embedResult.type === 'direct') {
-    return <div className="aspect-video bg-black rounded-xl overflow-hidden"><video src={embedResult.value || ''} controls className="w-full h-full" controlsList="nodownload" /></div>;
+    return <CourseVideoPlayer key={videoUrl} src={proxiedAssetUrl(embedResult.value || '')} preload="none" />;
   }
 
   if (embedResult.type === 'no-embed') {

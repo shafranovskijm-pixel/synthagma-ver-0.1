@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, UserPlus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { fetchOrganizationStudentsPage } from "@/api/students";
+import { addStudentsToGroups, fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -44,22 +45,26 @@ export function AddStudentsToGroupDialog({
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentEmail, setNewStudentEmail] = useState("");
   const [creating, setCreating] = useState(false);
+  const requestId = useRef(0);
 
   const loadAvailableStudents = useCallback(async () => {
+    const request = ++requestId.current;
     setLoading(true);
     try {
+      const members = await fetchEffectiveGroupProfiles<{ user_id: string }>(supabase, organizationId, groupId, { select: "user_id" });
+      const memberIds = new Set(members.map(member => member.user_id));
       const rows: AvailableStudent[] = [];
       let offset = 0;
       let nextOffset: number | null = 0;
       while (nextOffset !== null) {
         const page = await fetchOrganizationStudentsPage({
           organizationId,
-          groupFilter: "no_group",
+          groupFilter: "all",
           archiveMode: "active",
           limit: 100,
           offset,
         });
-        rows.push(...page.rows.map((student) => ({
+        rows.push(...page.rows.filter(student => !memberIds.has(student.user_id)).map((student) => ({
           user_id: student.user_id,
           full_name: student.name,
           email: student.email || null,
@@ -68,15 +73,16 @@ export function AddStudentsToGroupDialog({
         nextOffset = page.nextOffset;
         if (nextOffset !== null) offset = nextOffset;
       }
-      setAvailableStudents(rows);
+      if (request === requestId.current) setAvailableStudents(rows);
     } catch (error) {
+      if (request !== requestId.current) return;
       console.error("Failed to load students available for group", error);
-      toast.error("Не удалось загрузить учеников без группы");
+      toast.error("Не удалось загрузить учеников для добавления в группу");
       setAvailableStudents([]);
     } finally {
-      setLoading(false);
+      if (request === requestId.current) setLoading(false);
     }
-  }, [organizationId]);
+  }, [organizationId, groupId]);
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +92,7 @@ export function AddStudentsToGroupDialog({
     setNewStudentName("");
     setNewStudentEmail("");
     void loadAvailableStudents();
+    return () => { requestId.current += 1; };
   }, [open, loadAvailableStudents]);
 
   const filteredStudents = useMemo(() => {
@@ -112,19 +119,8 @@ export function AddStudentsToGroupDialog({
     setAdding(true);
     try {
       const userIds = Array.from(selectedIds);
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ student_group_id: groupId } as never)
-        .eq("organization_id", organizationId)
-        .is("student_group_id", null)
-        .in("user_id", userIds)
-        .select("user_id");
-      if (error) throw error;
-
-      const updatedCount = (data as Array<{ user_id: string }> | null)?.length ?? 0;
-      if (updatedCount !== userIds.length) {
-        throw new Error(`Updated ${updatedCount} of ${userIds.length} student profiles`);
-      }
+      const confirmed = await addStudentsToGroups(supabase, organizationId, userIds, [groupId]);
+      const updatedCount = confirmed.length;
 
       toast.success(`${updatedCount} ${updatedCount === 1 ? "ученик добавлен" : "ученика добавлено"} только в группу`, {
         description: "На курс ещё не зачислены. Следующий шаг — «Зачислить на курс».",
@@ -174,7 +170,7 @@ export function AddStudentsToGroupDialog({
         <DialogHeader>
           <DialogTitle>Добавить учеников в «{groupName}»</DialogTitle>
           <DialogDescription>
-            Выберите учеников без группы или создайте нового. Это добавит их только в группу — зачисление на курс выполняется отдельно на этапе «Обучение».
+            Выберите существующих учеников или создайте нового. Текущие группы сохранятся. Зачисление на курс выполняется отдельно на этапе «Обучение».
           </DialogDescription>
         </DialogHeader>
 
@@ -227,7 +223,7 @@ export function AddStudentsToGroupDialog({
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Найти ученика без группы..."
+                  placeholder="Найти существующего ученика..."
                   className="rounded-xl pl-9"
                 />
               </div>
@@ -247,7 +243,7 @@ export function AddStudentsToGroupDialog({
                     <Users className="h-5 w-5 text-muted-foreground" />
                   </span>
                   <div className="font-medium">
-                    {availableStudents.length === 0 ? "Нет учеников без группы" : "Ничего не найдено"}
+                    {availableStudents.length === 0 ? "Все активные ученики уже в этой группе" : "Ничего не найдено"}
                   </div>
                   <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                     {availableStudents.length === 0

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { toast } from "sonner";
 
 export interface GroupContractRow {
@@ -44,12 +45,8 @@ export function useGroupContracts(organizationId: string | null, groupId: string
     try {
       // Собираем ID учеников группы, чтобы захватить и договоры, привязанные
       // к ученику без явного student_group_id.
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .eq("organization_id", organizationId)
-        .eq("student_group_id", groupId)
-        .is("archived_at", null);
+      const profiles = await fetchEffectiveGroupProfiles<{ user_id: string; full_name: string | null }>(supabase, organizationId, groupId,
+        { activeOnly: true, select: "user_id, full_name" });
       const userIds = (profiles || []).map((p: any) => p.user_id);
       const nameByUser = new Map<string, string>((profiles || []).map((p: any) => [p.user_id, p.full_name || "—"]));
 

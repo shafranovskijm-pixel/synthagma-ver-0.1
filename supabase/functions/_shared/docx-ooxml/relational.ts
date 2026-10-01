@@ -12,6 +12,8 @@ export interface RelationalInput {
   company: { id: string; organization_id: string } | null;
   group: { id: string; organization_id: string } | null;
   profiles: Array<{ user_id: string; organization_id: string | null; student_group_id: string | null }>;
+  /** Effective roster read from the database for this exact group and tenant. */
+  groupMemberUserIds?: string[];
 }
 
 export interface RelationalResult {
@@ -48,7 +50,9 @@ export function validateRelations(input: RelationalInput): RelationalResult {
   const invalid = unique.filter((id) => {
     const p = byUser.get(id);
     if (!p || p.organization_id !== input.organizationId) return true;
-    if (input.groupId && p.student_group_id !== input.groupId) return true;
+    if (input.groupId && !(input.groupMemberUserIds
+      ? input.groupMemberUserIds.includes(id)
+      : p.student_group_id === input.groupId)) return true;
     return false;
   });
   if (invalid.length) {

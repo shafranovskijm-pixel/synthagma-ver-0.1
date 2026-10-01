@@ -5,6 +5,8 @@ import { VideoPlayerInline } from '../VideoPlayerInline';
 
 // Use the real video URL helpers: their time-dependent DRM token caused the reload.
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
+// Continuity here must hold even while the provider API is still loading.
+vi.mock('@/components/video/kinescopeApi', () => ({ loadKinescopeApi: () => new Promise(() => {}) }));
 
 const props = {
   content: 'kinescope:qa-video',

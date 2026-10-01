@@ -4,6 +4,7 @@ import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { logStudentDeletion } from "@/utils/logStudentDeletion";
 import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
 import { insertEnrollmentsVerified } from "@/api/enrollments";
+import { cancelCourseAssignment, courseAssignmentCancellationError } from "@/api/courseAssignmentCancellation";
 
 // ============= Students API =============
 
@@ -332,13 +333,22 @@ export async function enrollStudent(userId: string, courseId: string): Promise<{
   }
 }
 
-export async function unenrollStudent(enrollmentId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from("enrollments")
-    .delete()
-    .eq("id", enrollmentId);
+async function resolveCancellationOrganization(enrollmentId: string, organizationId?: string | null): Promise<string> {
+  if (organizationId) return organizationId;
+  const { data, error } = await supabase.from("enrollments")
+    .select("courses!inner(organization_id)").eq("id", enrollmentId).maybeSingle();
+  const course = data?.courses as { organization_id?: string | null } | null;
+  if (error || !course?.organization_id) throw new Error("assignment_not_found");
+  return course.organization_id;
+}
 
-  return !error;
+export async function unenrollStudent(enrollmentId: string, organizationId?: string | null): Promise<boolean> {
+  try {
+    await cancelCourseAssignment({ enrollmentId, organizationId: await resolveCancellationOrganization(enrollmentId, organizationId) });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function bulkEnrollStudents(userIds: string[], courseId: string): Promise<{ success: number; failed: number }> {
@@ -357,20 +367,22 @@ export async function bulkEnrollStudents(userIds: string[], courseId: string): P
   return { success, failed };
 }
 
-export async function bulkUnenrollStudents(enrollmentIds: string[]): Promise<{ success: number; failed: number }> {
+export async function bulkUnenrollStudents(enrollmentIds: string[], organizationId?: string | null): Promise<{ success: number; failed: number; errors: string[] }> {
   let success = 0;
   let failed = 0;
+  const errors: string[] = [];
 
-  for (const enrollmentId of enrollmentIds) {
-    const result = await unenrollStudent(enrollmentId);
-    if (result) {
+  for (const enrollmentId of new Set(enrollmentIds)) {
+    try {
+      await cancelCourseAssignment({ enrollmentId, organizationId: await resolveCancellationOrganization(enrollmentId, organizationId) });
       success++;
-    } else {
+    } catch (error) {
       failed++;
+      errors.push(courseAssignmentCancellationError(error));
     }
   }
 
-  return { success, failed };
+  return { success, failed, errors };
 }
 
 export async function updateStudentCompany(userId: string, companyId: string | null): Promise<boolean> {

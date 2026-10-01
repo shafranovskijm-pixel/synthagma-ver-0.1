@@ -15,7 +15,9 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: (table: string) => {
       const query = { table, filters: [] as Array<[string, unknown]> };
       db.queries.push(query);
-      const rows = () => (db.rows[table] || []).filter((row) => query.filters.every(
+      const rows = () => (table === "student_group_profiles_effective"
+        ? (db.rows.profiles ?? []).map(profile => ({ ...profile, group_id: profile.student_group_id }))
+        : (db.rows[table] || [])).filter((row) => query.filters.every(
         ([field, value]) => Array.isArray(value) ? value.includes(row[field]) : row[field] === value,
       ));
       const builder = {

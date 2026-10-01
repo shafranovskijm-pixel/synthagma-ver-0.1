@@ -6,9 +6,15 @@ const mocks = vi.hoisted(() => ({ rpc: vi.fn(), success: vi.fn(), error: vi.fn()
 vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   rpc: mocks.rpc,
-  from: () => ({ select: () => ({ eq: () => ({
-    order: async () => ({ data: [] }), single: async () => ({ data: {} }),
-  }) }) }),
+  from: () => {
+    const builder: any = {
+      select: () => builder, eq: () => builder, in: () => builder, order: () => builder,
+      single: async () => ({ data: {}, error: null }),
+      range: async () => ({ data: [], error: null }),
+      then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+    };
+    return builder;
+  },
 } }));
 
 const enrollment = {

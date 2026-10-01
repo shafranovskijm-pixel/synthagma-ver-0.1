@@ -13,6 +13,8 @@ import { Video, Upload, FolderOpen, Trash2, Lock, ExternalLink, Download } from 
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { DirectVideoBlock } from "./DirectVideoBlock";
+import { CourseVideoPlayer } from "@/components/video/CourseVideoPlayer";
+import { getKinescopeEmbedUrl, getKinescopeVideoId, isDirectVideoFileUrl } from "@/utils/courseBuilderHelpers";
 
 export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; organizationId?: string; courseId?: string; lessonId?: string }) {
   const [showLibrary, setShowLibrary] = useState(false);
@@ -57,9 +59,9 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
 
   const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | 'no-embed' | null; value: string | null; serviceLabel?: string } => {
     if (!content) return { type: null, value: null };
+    if (getKinescopeVideoId(content)) return { type: 'direct', value: content };
     if (isIframeEmbed(content)) return { type: 'iframe', value: content };
-    if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru") || content.includes("selstorage")) return { type: 'direct', value: content };
-    if (content.startsWith("kinescope:")) return { type: 'direct', value: content };
+    if (isDirectVideoFileUrl(content) || content.includes("selstorage")) return { type: 'direct', value: content };
     const ytMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
     if (ytMatch) return { type: 'url', value: `https://www.youtube.com/embed/${ytMatch[1]}` };
     const vimeoMatch = content.match(/vimeo\.com\/(\d+)/);
@@ -92,15 +94,8 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
         <div className="space-y-2">
           {embedResult.type === 'direct' ? (
             <div className="relative group/video">
-              {embedResult.value?.startsWith('kinescope:') ? (
-                <div className="aspect-video not-prose rounded-lg overflow-hidden bg-black">
-                  <iframe
-                    src={`https://kinescope.io/embed/${embedResult.value.replace('kinescope:', '')}`}
-                    className="w-full h-full border-0"
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                    allowFullScreen
-                  />
-                </div>
+              {getKinescopeVideoId(embedResult.value || '') ? (
+                <CourseVideoPlayer key={embedResult.value} src={getKinescopeEmbedUrl(getKinescopeVideoId(embedResult.value || '')!)} kinescope preload="none" />
               ) : (
                 <DirectVideoBlock url={embedResult.value || ''} />
               )}

@@ -1,9 +1,9 @@
-import { useState } from "react";
 import DOMPurify from "dompurify";
 import { Video, Play } from "lucide-react";
 import { getVideoEmbedUrl, isIframeEmbed, getKinescopeVideoId, getKinescopeEmbedUrl, isDirectVideoFileUrl } from "@/utils/courseBuilderHelpers";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
+import { CourseVideoPlayer } from "@/components/video/CourseVideoPlayer";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 interface VideoPreviewInlineProps {
@@ -12,23 +12,10 @@ interface VideoPreviewInlineProps {
 }
 
 function DirectVideoPreview({ url }: { url: string }) {
-  const [error, setError] = useState(false);
   const playableUrl = proxiedAssetUrl(url);
-  if (error) {
-    return (
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted flex flex-col items-center justify-center gap-3">
-        <Video className="w-12 h-12 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Браузер не может воспроизвести это видео</p>
-        <a href={playableUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
-          <Play className="w-4 h-4" /> Открыть видео
-        </a>
-      </div>
-    );
-  }
   return (
     <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
-      <HlsVideoPlayer src={playableUrl} className="w-full h-full bg-black" controls preload="none" controlsList="nodownload" onError={() => setError(true)} />
+      <HlsVideoPlayer src={playableUrl} className="w-full h-full bg-black" controls preload="none" controlsList="nodownload" />
     </div>
   );
 }
@@ -41,14 +28,7 @@ export function VideoPreviewInline({ content, eager = false }: VideoPreviewInlin
   if (kinescopeId) {
     return (
       <LazyMediaPreview type="video" defaultActivated={eager}>
-        <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
-          <iframe
-            src={getKinescopeEmbedUrl(kinescopeId)}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
-        </div>
+        <CourseVideoPlayer key={kinescopeId} src={getKinescopeEmbedUrl(kinescopeId)} kinescope preload="none" />
       </LazyMediaPreview>
     );
   }

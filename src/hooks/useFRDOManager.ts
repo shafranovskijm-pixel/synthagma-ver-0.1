@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import { fetchUserRolesBatched } from "@/utils/fetchUserRolesBatched";
 import { toast } from "sonner";
 import { detectGenderFromMiddleName, generateDocumentNumber, generateRegNumber } from "@/constants/frdo";
@@ -48,7 +49,7 @@ function withExportTimeout<T>(promise: Promise<T>): Promise<T> {
 }
 
 export interface FRDOGroupContext {
-  /** Ограничить список фактическими участниками группы (по profiles.student_group_id). */
+  /** Ограничить список фактическими участниками основной или дополнительной группы. */
   groupId?: string | null;
   /** Курс группы: сразу выставляется в фильтр курса. */
   courseId?: string | null;
@@ -80,9 +81,9 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      let profilesQuery = supabase.from("profiles").select("user_id, full_name, email, student_group_id").eq("organization_id", organizationId);
-      if (groupId) profilesQuery = profilesQuery.eq("student_group_id", groupId);
-      const { data: profilesData, error: profilesError } = await profilesQuery;
+      const { data: profilesData, error: profilesError } = groupId
+        ? { data: await fetchEffectiveGroupProfiles(supabase, organizationId, groupId, { select: "user_id, full_name, email, student_group_id" }), error: null }
+        : await supabase.from("profiles").select("user_id, full_name, email, student_group_id").eq("organization_id", organizationId);
       if (profilesError) throw profilesError;
       const userIds = profilesData?.map(p => p.user_id) || [];
       setGroupMemberIds(userIds);

@@ -12,7 +12,11 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: (table: string) => {
     const filters: Array<[string, unknown]> = [];
     let start = 0; let end = 999;
-    const rows = () => (db.rows[table] || []).filter(row => filters.every(
+    const rows = () => (table === "student_group_profiles_effective"
+      ? (db.rows.profiles ?? []).flatMap(profile => [...new Set([profile.student_group_id,
+        ...(db.rows.student_group_memberships ?? []).filter(member => member.user_id === profile.user_id && member.organization_id === profile.organization_id).map(member => member.group_id),
+      ].filter(Boolean))].map(group_id => ({ ...profile, group_id })))
+      : (db.rows[table] || [])).filter(row => filters.every(
       ([key, value]) => Array.isArray(value) ? value.includes(row[key]) : row[key] === value,
     )).slice(start, end + 1);
     const result = () => ({ data: db.errors[table] ? null : rows(), error: db.errors[table] ?? null });
@@ -228,11 +232,11 @@ describe("group participants department filter", () => {
     render(tree());
     await openParticipants();
     chooseDepartment("department:Карьер 1");
-    db.errors.profiles = { code: "502", message: "Bad gateway" };
+    db.errors.student_group_profiles_effective = { code: "502", message: "Bad gateway" };
     fireEvent.click(screen.getByRole("button", { name: "Обновить папки" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось загрузить данные группы");
     expect(screen.queryByRole("combobox", { name: "Подразделение" })).not.toBeInTheDocument();
-    delete db.errors.profiles;
+    delete db.errors.student_group_profiles_effective;
     fireEvent.click(screen.getByRole("button", { name: "Повторить загрузку" }));
     expect(await screen.findByRole("combobox", { name: "Подразделение" })).toHaveValue("department:Карьер 1");
     expect(participantRows()).toHaveLength(1);

@@ -6,6 +6,7 @@ const GROUP = "0cd9dd54-af40-4899-bd94-9d3c1a728d38";
 
 interface FakeData {
   profiles: any[];
+  student_group_profiles_effective?: any[];
   org_contracts: any[];
   group_documents: any[];
   student_identity_documents: any[];
@@ -20,9 +21,12 @@ function makeClient(data: FakeData, calls: any[] = []) {
     const api: any = {
       select: (cols: string) => { rec.select = cols; return api; },
       eq: (c: string, v: any) => { rec.filters.push(`eq:${c}=${v}`); return api; },
+      is: (c: string, v: any) => { rec.filters.push(`is:${c}=${v}`); return api; },
+      order: () => api,
+      range: () => api,
       in: (c: string, v: any[]) => { rec.filters.push(`in:${c}=${v.join(",")}`); return api; },
       or: (expr: string) => { rec.filters.push(`or:${expr}`); return api; },
-      then: (resolve: any) => resolve({ data: data[table] }),
+      then: (resolve: any) => resolve({ data: table === "student_group_profiles_effective" ? (data.student_group_profiles_effective ?? data.profiles) : data[table] }),
     };
     return api;
   };
@@ -57,6 +61,8 @@ describe("group folder counts", () => {
     expect(counts).toEqual({ contracts: 3, docs: 19, passports: 2, snils: 1, exams: 1 });
 
     const contracts = calls.find(c => c.table === "org_contracts");
+    const members = calls.find(c => c.table === "student_group_profiles_effective");
+    expect(members.filters).toEqual(expect.arrayContaining([`eq:organization_id=${ORG}`, `eq:group_id=${GROUP}`, "is:archived_at=null"]));
     expect(contracts.filters).toContain(`eq:organization_id=${ORG}`);
     expect(contracts.filters.some((f: string) => f.startsWith("or:student_group_id.eq."))).toBe(true);
 

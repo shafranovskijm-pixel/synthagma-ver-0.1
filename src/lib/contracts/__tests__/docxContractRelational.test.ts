@@ -58,6 +58,18 @@ describe("validateRelations", () => {
     expect(r.status).toBe(422);
   });
 
+  it("accepts an additional member with database roster evidence without changing the primary group", () => {
+    expect(validateRelations({ ...base(),
+      profiles: [{ user_id: S1, organization_id: ORG, student_group_id: OTHER_GROUP }],
+      groupMemberUserIds: [S1],
+    }).ok).toBe(true);
+    expect(validateRelations({ ...base(), groupMemberUserIds: [] }).ok).toBe(false);
+    expect(validateRelations({ ...base(),
+      profiles: [{ user_id: S1, organization_id: OTHER_ORG, student_group_id: GROUP }],
+      groupMemberUserIds: [S1],
+    }).ok).toBe(false);
+  });
+
   it("отклоняет неизвестного слушателя (нет профиля)", () => {
     const r = validateRelations({ ...base(), studentUserIds: [S1, S2], studentsMetaIds: [S1, S2] });
     expect(r.status).toBe(422);

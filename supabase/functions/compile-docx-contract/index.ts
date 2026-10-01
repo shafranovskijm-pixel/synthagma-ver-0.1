@@ -13,6 +13,7 @@ import JSZip from "npm:jszip@3.10.1";
 import { compileDocumentXml, numberStudents, validateSnapshot, type TemplateManifest } from "../_shared/docx-ooxml/compile.ts";
 import { formatMoneyRu, moneyToWordsRu } from "../_shared/docx-ooxml/money.ts";
 import { validateExactContractRoster, validateRelations, validateTemplateConsistency } from "../_shared/docx-ooxml/relational.ts";
+import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
 import { sha256CanonicalJson } from "../_shared/docx-ooxml/idempotency.ts";
 import {
   GORELTECH_COMPANY_CONTRACT_MANIFEST_JSON,
@@ -204,12 +205,7 @@ Deno.serve(async (req) => {
     const [companyRes, groupRes, profilesRes] = await Promise.all([
       admin.from("companies").select("id, organization_id").eq("id", body.companyId).maybeSingle(),
       admin.from("student_groups").select("id, organization_id").eq("id", body.groupId).maybeSingle(),
-      admin
-        .from("profiles")
-        .select("user_id, organization_id, student_group_id, full_name")
-        .eq("organization_id", body.organizationId)
-        .eq("student_group_id", body.groupId)
-        .is("archived_at", null),
+      readEffectiveGroupProfiles(admin, body.organizationId, body.groupId, "user_id, organization_id, student_group_id, full_name"),
     ]);
     if (companyRes.error) throw companyRes.error;
     if (groupRes.error) throw groupRes.error;
@@ -240,6 +236,7 @@ Deno.serve(async (req) => {
       company: (companyRes.data as any) ?? null,
       group: (groupRes.data as any) ?? null,
       profiles: activeProfiles,
+      groupMemberUserIds: activeUserIds,
     });
     if (!relational.ok) {
       return json({ error: relational.error, issues: relational.issues }, relational.status);

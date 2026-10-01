@@ -35,7 +35,7 @@ import { resolveGroupDocumentClientProfile } from "@/lib/group-docs/clientProfil
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
 import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddStudentsToGroupDialog";
-import { fetchAllRows } from "@/utils/retryFetch";
+import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 
 
 
@@ -295,16 +295,10 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         // Курс группы: явная привязка, иначе — общий курс по зачислениям учеников
         const linkedCourseId = (groupData as any)?.course_id as string | null;
 
-        const groupProfiles = await fetchAllRows<{
+        const groupProfiles = await fetchEffectiveGroupProfiles<{
           user_id: string; full_name: string | null; email: string | null;
           login: string | null; phone: string | null; archived_at: string | null; department: string | null;
-        }>(({ from, to }) => (supabase as any)
-          .from("profiles")
-          .select("user_id, full_name, email, login, phone, archived_at, department")
-          .eq("organization_id", organizationId)
-          .eq("student_group_id", groupId)
-          .order("user_id")
-          .range(from, to));
+        }>(supabase, organizationId, groupId, { select: "user_id, full_name, email, login, phone, archived_at, department" });
         if (cancelled) return;
         // Archived learners remain visible in the group counter, but must not
         // enter the active roster or document-generation batch.

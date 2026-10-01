@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { fetchAllRows } from "@/utils/retryFetch";
+import { fetchOrganizationStudentsPage } from "@/api/students";
+import { addStudentsToGroups, fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
 import {
   EnrollmentPersistenceError,
   insertEnrollmentsVerified,
@@ -30,10 +33,22 @@ export interface CourseGroupRefreshCallbacks {
   onGroupDirectoryChanged?: () => void;
 }
 
+async function fetchCourseEnrollmentUsers(courseId: string, userIds: string[]) {
+  const rows: { user_id: string }[] = [];
+  const distinct = [...new Set(userIds)];
+  for (let offset = 0; offset < distinct.length; offset += 200) {
+    rows.push(...await fetchAllRows<{ user_id: string }>(({ from, to }) => supabase.from("enrollments")
+      .select("user_id").eq("course_id", courseId).in("user_id", distinct.slice(offset, offset + 200))
+      .order("user_id").range(from, to)));
+  }
+  return rows;
+}
+
 export function useCourseGroups(courseId: string, organizationId: string, callbacks?: CourseGroupRefreshCallbacks) {
   const { onEnrollmentChanged, onGroupingChanged, onStudentPopulationChanged, onGroupDirectoryChanged } = callbacks || {};
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
   const [enrollingGroupId, setEnrollingGroupId] = useState<string | null>(null);
   const [groupStudentCounts, setGroupStudentCounts] = useState<Record<string, number>>({});
   const [enrolledCounts, setEnrolledCounts] = useState<Record<string, number>>({});
@@ -57,46 +72,67 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentEmail, setNewStudentEmail] = useState("");
   const [creatingStudent, setCreatingStudent] = useState(false);
+  const groupLoadRequest = useRef(0);
+  const studentLoadRequest = useRef(0);
 
   const loadGroups = useCallback(async () => {
+    const request = ++groupLoadRequest.current;
     setLoading(true);
+    setGroupsError(null);
+    setGroupStudentCounts({}); setEnrolledCounts({}); setGroupLinks({});
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("student_groups")
         .select("*")
         .eq("organization_id", organizationId)
         .eq("course_id", courseId)
         .order("name");
+      if (request !== groupLoadRequest.current) return;
+      if (error) throw error;
       const groupsList = (data as any[] || []) as StudentGroup[];
       setGroups(groupsList);
 
       if (groupsList.length > 0) {
         const groupIds = groupsList.map(g => g.id);
-        const { data: links } = await supabase.from("registration_links").select("token, student_group_id").in("student_group_id", groupIds);
+        const { data: links, error: linksError } = await supabase.from("registration_links").select("token, student_group_id").in("student_group_id", groupIds);
+        if (request !== groupLoadRequest.current) return;
+        if (linksError) throw linksError;
         const linksMap: Record<string, string> = {};
         for (const l of (links as any[] || [])) { if (l.student_group_id) linksMap[l.student_group_id] = `${window.location.origin}/join/${l.token}`; }
         setGroupLinks(linksMap);
 
-        const { data: profiles } = await supabase.from("profiles").select("user_id, student_group_id").eq("organization_id", organizationId).not("student_group_id", "is", null);
+        const profiles = await fetchAllRows<{ user_id: string; group_id: string }>(({ from, to }) => (supabase as any)
+          .from("student_group_profiles_effective").select("user_id, group_id")
+          .eq("organization_id", organizationId).in("group_id", groupIds)
+          .is("archived_at", null)
+          .order("group_id").order("user_id").range(from, to));
+        if (request !== groupLoadRequest.current) return;
         const counts: Record<string, number> = {};
         const usersByGroup: Record<string, string[]> = {};
-        for (const p of (profiles as any[]) || []) { const gid = p.student_group_id; counts[gid] = (counts[gid] || 0) + 1; if (!usersByGroup[gid]) usersByGroup[gid] = []; usersByGroup[gid].push(p.user_id); }
+        for (const p of profiles) { const gid = p.group_id; counts[gid] = (counts[gid] || 0) + 1; if (!usersByGroup[gid]) usersByGroup[gid] = []; usersByGroup[gid].push(p.user_id); }
         setGroupStudentCounts(counts);
 
-        const allUserIds = (profiles as any[] || []).map((p: any) => p.user_id);
+        const allUserIds = [...new Set(profiles.map(p => p.user_id))];
         if (allUserIds.length > 0) {
-          const { data: enrollments } = await supabase.from("enrollments").select("user_id").eq("course_id", courseId).in("user_id", allUserIds);
-          const enrolledSet = new Set((enrollments || []).map((e: any) => e.user_id));
+          const enrollments = await fetchCourseEnrollmentUsers(courseId, allUserIds);
+          if (request !== groupLoadRequest.current) return;
+          const enrolledSet = new Set(enrollments.map(e => e.user_id));
           const eCounts: Record<string, number> = {};
           for (const [gid, users] of Object.entries(usersByGroup)) { eCounts[gid] = users.filter(uid => enrolledSet.has(uid)).length; }
           setEnrolledCounts(eCounts);
         }
       }
-    } catch (e) { console.error("Error loading groups:", e); }
-    finally { setLoading(false); }
+    } catch (e) {
+      if (request === groupLoadRequest.current) { console.error("Error loading groups:", e); setGroupsError("Не удалось загрузить группы и их состав"); }
+    }
+    finally { if (request === groupLoadRequest.current) setLoading(false); }
   }, [organizationId, courseId]);
 
-  useEffect(() => { loadGroups(); }, [loadGroups]);
+  useEffect(() => {
+    setShowAddStudentsDialog(false); setSelectedGroupForAdd(null); setUnassignedStudents([]);
+    void loadGroups();
+    return () => { groupLoadRequest.current += 1; studentLoadRequest.current += 1; };
+  }, [loadGroups]);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) { toast.error("Введите название группы"); return; }
@@ -159,12 +195,10 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
   const handleEnrollGroup = async (groupId: string) => {
     setEnrollingGroupId(groupId);
     try {
-      const { data: profiles, error: profilesError } = await supabase.from("profiles").select("user_id").eq("organization_id", organizationId).eq("student_group_id", groupId);
-      if (profilesError) throw profilesError;
+      const profiles = await fetchEffectiveGroupProfiles<{ user_id: string }>(supabase, organizationId, groupId, { activeOnly: true, select: "user_id" });
       const userIds = (profiles as any[] || []).map((p: any) => p.user_id);
       if (userIds.length === 0) { const group = groups.find(g => g.id === groupId); if (group) handleOpenAddStudents(group); return; }
-      const { data: existing, error: existingError } = await supabase.from("enrollments").select("user_id").eq("course_id", courseId).in("user_id", userIds);
-      if (existingError) throw existingError;
+      const existing = await fetchCourseEnrollmentUsers(courseId, userIds);
       const existingSet = new Set((existing || []).map((e: any) => e.user_id));
       const toEnroll = userIds.filter((uid: string) => !existingSet.has(uid));
       if (toEnroll.length === 0) { toast.info("Все ученики группы уже зачислены на этот курс"); return; }
@@ -200,12 +234,23 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
   };
 
   const handleOpenAddStudents = async (group: StudentGroup) => {
+    const request = ++studentLoadRequest.current;
     setSelectedGroupForAdd(group); setSelectedStudentIds(new Set()); setShowAddStudentsDialog(true); setLoadingStudents(true);
+    setUnassignedStudents([]);
     try {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, email").eq("organization_id", organizationId).is("student_group_id", null);
-      setUnassignedStudents((data as any[] || []).map((p: any) => ({ user_id: p.user_id, full_name: p.full_name, email: p.email })));
-    } catch { toast.error("Ошибка загрузки учеников"); }
-    finally { setLoadingStudents(false); }
+      const members = await fetchEffectiveGroupProfiles<{ user_id: string }>(supabase, organizationId, group.id, { select: "user_id" });
+      const memberIds = new Set(members.map(member => member.user_id));
+      const available: { user_id: string; full_name: string; email: string }[] = [];
+      let offset: number | null = 0;
+      while (offset !== null) {
+        const page = await fetchOrganizationStudentsPage({ organizationId, archiveMode: "active", limit: 100, offset });
+        available.push(...page.rows.filter(student => !memberIds.has(student.user_id))
+          .map(student => ({ user_id: student.user_id, full_name: student.name, email: student.email })));
+        offset = page.nextOffset;
+      }
+      if (request === studentLoadRequest.current) setUnassignedStudents(available);
+    } catch { if (request === studentLoadRequest.current) toast.error("Ошибка загрузки учеников"); }
+    finally { if (request === studentLoadRequest.current) setLoadingStudents(false); }
   };
 
   const handleAddStudentsToGroup = async () => {
@@ -213,18 +258,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
     setAddingStudents(true);
     try {
       const userIds = Array.from(selectedStudentIds);
-      const { data: updatedProfiles, error: updateError } = await supabase
-        .from("profiles")
-        .update({ student_group_id: selectedGroupForAdd.id } as any)
-        .eq("organization_id", organizationId)
-        .in("user_id", userIds)
-        .select("user_id");
-      if (updateError) throw updateError;
-
-      const updatedCount = (updatedProfiles as { user_id: string }[] | null)?.length ?? 0;
-      if (updatedCount !== userIds.length) {
-        throw new Error(`Updated ${updatedCount} of ${userIds.length} student profiles`);
-      }
+      await addStudentsToGroups(supabase, organizationId, userIds, [selectedGroupForAdd.id]);
 
       toast.success(`${userIds.length} уч. добавлено только в группу`, {
         description: "На курс ещё не зачислены. Следующий шаг — «Зачислить на курс».",
@@ -270,7 +304,7 @@ export function useCourseGroups(courseId: string, organizationId: string, callba
   };
 
   return {
-    groups, loading, enrollingGroupId, groupStudentCounts, enrolledCounts, groupLinks,
+    groups, loading, groupsError, retryGroups: loadGroups, enrollingGroupId, groupStudentCounts, enrolledCounts, groupLinks,
     showAddStudentsDialog, setShowAddStudentsDialog, selectedGroupForAdd, unassignedStudents,
     selectedStudentIds, loadingStudents, addingStudents,
     showCreateDialog, setShowCreateDialog, newGroupName, setNewGroupName, newGroupColor, setNewGroupColor,

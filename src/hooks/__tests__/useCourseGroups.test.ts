@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
+  rpc: vi.fn(),
+  groupProfiles: vi.fn(),
+  studentsPage: vi.fn(),
   groupOrder: vi.fn(),
   groupOrganizationEq: vi.fn(),
   groupCourseEq: vi.fn(),
@@ -26,9 +29,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: mocks.from,
+    rpc: mocks.rpc,
     functions: { invoke: vi.fn() },
   },
 }));
+vi.mock("@/api/studentGroupMemberships", async importOriginal => ({
+  ...await importOriginal<typeof import("@/api/studentGroupMemberships")>(),
+  fetchEffectiveGroupProfiles: mocks.groupProfiles,
+}));
+vi.mock("@/api/students", () => ({ fetchOrganizationStudentsPage: mocks.studentsPage }));
 
 vi.mock("sonner", () => ({
   toast: {
@@ -59,6 +68,12 @@ describe("useCourseGroups", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.groupProfiles.mockResolvedValue([]);
+    mocks.studentsPage.mockResolvedValue({ rows: [
+      { user_id: "student-1", name: "Student 1", email: null, student_group_id: "previous-group" },
+      { user_id: "student-2", name: "Student 2", email: null, student_group_id: null },
+    ], nextOffset: null });
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
 
     mocks.groupOrder.mockResolvedValue({ data: [], error: null });
     mocks.groupCourseEq.mockReturnValue({ order: mocks.groupOrder });
@@ -286,28 +301,29 @@ describe("useCourseGroups", () => {
     expect(onGroupDirectoryChanged).toHaveBeenCalledOnce();
   });
 
-  it("keeps the dialog open when Supabase rejects the profile update", async () => {
+  it("keeps the dialog open when Supabase rejects membership creation", async () => {
     const { result, onGroupingChanged } = await renderCourseGroups();
-    mocks.profileUpdateSelect.mockResolvedValue({ data: null, error: { message: "denied" } });
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "denied" } });
     await openGroupAndSelectStudents(result, ["student-1"]);
 
     await act(async () => {
       await result.current.handleAddStudentsToGroup();
     });
 
-    expect(mocks.profileUpdateEq).toHaveBeenCalledWith("organization_id", "org-1");
-    expect(mocks.profileUpdateIn).toHaveBeenCalledWith("user_id", ["student-1"]);
-    expect(mocks.profileUpdateSelect).toHaveBeenCalledWith("user_id");
+    expect(mocks.rpc).toHaveBeenCalledWith("add_students_to_groups", {
+      p_organization_id: "org-1", p_user_ids: ["student-1"], p_group_ids: ["group-1"],
+    });
+    expect(mocks.profileUpdate).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
     expect(mocks.toastError).toHaveBeenCalled();
     expect(result.current.showAddStudentsDialog).toBe(true);
     expect(onGroupingChanged).not.toHaveBeenCalled();
   });
 
-  it("keeps the dialog open when fewer profiles were updated than selected", async () => {
+  it("keeps the dialog open when fewer memberships were confirmed than selected", async () => {
     const { result, onGroupingChanged } = await renderCourseGroups();
-    mocks.profileUpdateSelect.mockResolvedValue({
-      data: [{ user_id: "student-1" }],
+    mocks.rpc.mockResolvedValue({
+      data: [{ organization_id: "org-1", group_id: "group-1", user_id: "student-1" }],
       error: null,
     });
     await openGroupAndSelectStudents(result, ["student-1", "student-2"]);
@@ -322,10 +338,10 @@ describe("useCourseGroups", () => {
     expect(onGroupingChanged).not.toHaveBeenCalled();
   });
 
-  it("reports success only after every selected profile is returned", async () => {
+  it("reports success only after every selected membership is returned", async () => {
     const { result, onGroupingChanged } = await renderCourseGroups();
-    mocks.profileUpdateSelect.mockResolvedValue({
-      data: [{ user_id: "student-1" }, { user_id: "student-2" }],
+    mocks.rpc.mockResolvedValue({
+      data: [{ organization_id: "org-1", group_id: "group-1", user_id: "student-1" }, { organization_id: "org-1", group_id: "group-1", user_id: "student-2" }],
       error: null,
     });
     await openGroupAndSelectStudents(result, ["student-1", "student-2"]);

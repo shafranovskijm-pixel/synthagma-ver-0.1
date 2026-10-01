@@ -140,11 +140,11 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
 
       const [memberResult, documentResult] = await Promise.allSettled([
         supabase
-          .from("profiles")
-          .select("student_group_id")
+          .from("student_group_profiles_effective" as never)
+          .select("group_id")
           .eq("organization_id", orgId)
           .is("archived_at", null)
-          .in("student_group_id", groupIds),
+          .in("group_id", groupIds),
         supabase
           .from("group_documents")
           .select("group_id")
@@ -156,7 +156,7 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
       const memberGroupIds = new Set(
         memberResult.status === "fulfilled" && !memberResult.value.error
           ? (memberResult.value.data ?? [])
-            .map((profile) => profile.student_group_id)
+            .map((profile: any) => profile.group_id)
             .filter((groupId): groupId is string => !!groupId)
           : [],
       );

@@ -61,7 +61,8 @@ describe("DOCX contract idempotency", () => {
     const edge = fs.readFileSync(FUNCTION_SOURCE, "utf8");
 
     expect(edge).toContain("validateExactContractRoster");
-    expect(edge).toContain('.eq("student_group_id", body.groupId)');
+    expect(edge).toContain('readEffectiveGroupProfiles(admin, body.organizationId, body.groupId,');
+    expect(edge).toContain('groupMemberUserIds: activeUserIds');
     expect(edge).not.toContain('.in("user_id", uniqueStudentIds)');
   });
 });

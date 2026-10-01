@@ -11,7 +11,6 @@ import {
   type OrgStudentGroupCount,
   createStudent,
   enrollStudent,
-  unenrollStudent as apiUnenrollStudent,
   bulkEnrollStudents,
   bulkUnenrollStudents,
   updateStudentCompany,
@@ -20,6 +19,7 @@ import {
   isValidEmail,
 } from "@/api/students";
 import { toast } from "sonner";
+import { cancelCourseAssignment, courseAssignmentCancellationError } from "@/api/courseAssignmentCancellation";
 import { qk } from "@/lib/queryKeys";
 import {
   invalidateOrganizationStudentRows,
@@ -398,12 +398,16 @@ export function useStudents(
   }, [invalidateEnrollment]);
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
-    const success = await apiUnenrollStudent(enrollmentId);
-    if (!success) { toast.error("Ошибка отчисления"); return false; }
-    toast.success("Ученик отчислен с курса");
+    try {
+      await cancelCourseAssignment({ enrollmentId, organizationId });
+    } catch (error) {
+      toast.error(courseAssignmentCancellationError(error));
+      return false;
+    }
+    toast.success("Назначение курса отменено");
     invalidateEnrollment();
     return true;
-  }, [invalidateEnrollment]);
+  }, [organizationId, invalidateEnrollment]);
 
   const bulkEnroll = useCallback(async (courseId: string) => {
     const userIds = getSelectedUserIds();
@@ -416,17 +420,22 @@ export function useStudents(
   }, [getSelectedUserIds, invalidateEnrollment]);
 
   const bulkUnenroll = useCallback(async () => {
-    const enrollmentIds = Array.from(selectedStudentIds).map(id => {
+    const selectedEnrollments = Array.from(selectedStudentIds).map(id => {
       const student = students.find(s => s.user_id === id);
+      if (courseFilter !== "all") return student?.enrollments?.find(e => e.course_id === courseFilter)?.id ||
+        (student?.course_id === courseFilter ? student.enrollment_id : null);
       return student?.enrollment_id;
-    }).filter(Boolean) as string[];
-    const result = await bulkUnenrollStudents(enrollmentIds);
-    if (result.success > 0) toast.success(`Отчислено: ${result.success} учеников`);
-    if (result.failed > 0) toast.error(`Ошибок: ${result.failed}`);
+    });
+    const unresolved = selectedEnrollments.filter(id => !id).length;
+    const result = await bulkUnenrollStudents(selectedEnrollments.filter(Boolean) as string[], organizationId);
+    result.failed += unresolved;
+    if (result.success > 0) toast.success(`Назначений отменено: ${result.success}`);
+    if (unresolved > 0) toast.error("Для учеников с несколькими курсами выберите курс в фильтре или отмените назначение в карточке ученика.");
+    if (result.errors.length > 0) toast.error(result.errors[0]);
     setSelectedStudentIds(new Set());
-    invalidateEnrollment();
+    if (result.success > 0) invalidateEnrollment();
     return result;
-  }, [selectedStudentIds, students, invalidateEnrollment]);
+  }, [selectedStudentIds, students, courseFilter, organizationId, invalidateEnrollment]);
 
   const bulkDelete = useCallback(async () => {
     const userIds = getSelectedUserIds();
