@@ -1,0 +1,39 @@
+gzip on;
+gzip_static on;
+gzip_vary on;
+gzip_min_length 1024;
+gzip_comp_level 5;
+gzip_types text/plain text/css application/javascript application/json application/manifest+json image/svg+xml application/wasm;
+
+# Only names with Vite/Workbox hashes are immutable; history preserves old PWA chunks.
+location ~ "^/(?:assets/(?:[^/]+/)*[^/]+-[A-Za-z0-9_-]{8}\.(?:js|css|woff2?|ttf|otf|png|jpg|jpeg|svg|webp|avif|gif|ico|wasm)|workbox-[A-Za-z0-9_-]{8}\.js)$" {
+    root __ROOT__/asset-history;
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+location = /index.html {
+    try_files $uri =404;
+    add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+}
+location = /sw.js {
+    try_files $uri =404;
+    add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+    add_header Service-Worker-Allowed "/" always;
+}
+location = /registerSW.js {
+    try_files $uri =404;
+    add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+}
+location = /manifest.webmanifest {
+    try_files $uri =404;
+    add_header Cache-Control "no-cache" always;
+}
+# Missing static resources must not receive SPA HTML.
+location ~ \.(?:js|css|map|json|xml|txt|webmanifest|wasm|woff2?|ttf|otf|png|jpg|jpeg|svg|webp|avif|gif|ico|pdf|docx?|xlsx?|zip|mp[34]|ogg|wav)$ {
+    try_files $uri =404;
+    add_header Cache-Control "no-cache" always;
+}
+location / {
+    try_files $uri $uri/ /index.html;
+    add_header Cache-Control "no-cache" always;
+}

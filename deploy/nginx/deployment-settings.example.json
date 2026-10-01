@@ -1,0 +1,8 @@
+{
+  "deploymentRoot": "/srv/sintagma",
+  "allowedRoots": ["/srv/sintagma"],
+  "nginxBinary": "/usr/sbin/nginx",
+  "nginxConfig": "/etc/nginx/nginx.conf",
+  "reloadCommand": ["systemctl", "reload", "nginx"],
+  "mimeTypes": "/etc/nginx/mime.types"
+}

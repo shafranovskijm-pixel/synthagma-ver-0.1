@@ -1,0 +1,13 @@
+# TEMPLATE ONLY. Reconcile with the existing server and nginx -T before installing.
+# Keep the existing API server/upstream locations and proxy buffer directives.
+# Replace each placeholder with an audited value; this file is never auto-installed.
+server {
+    listen 443 ssl;
+    server_name __SERVER_NAME__;
+    ssl_certificate __TLS_CERTIFICATE__;
+    ssl_certificate_key __TLS_PRIVATE_KEY__;
+    # Preserve current TLS/security directives here, without copying any private key.
+    # Preserve current API locations/upstreams/buffers here if they share this server.
+    root __ROOT__/current;
+    __LOCATIONS__
+}

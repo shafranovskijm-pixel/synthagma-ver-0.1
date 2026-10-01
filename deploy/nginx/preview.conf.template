@@ -1,0 +1,16 @@
+worker_processes 1;
+pid __ROOT__/run/nginx.pid;
+error_log __ROOT__/logs/error.log;
+events { worker_connections 256; }
+http {
+    include __MIME_TYPES__;
+    default_type application/octet-stream;
+    sendfile on;
+    access_log __ROOT__/logs/access.log;
+    server {
+        listen 127.0.0.1:8088;
+        server_name localhost;
+        root __ROOT__/current;
+        __LOCATIONS__
+    }
+}
