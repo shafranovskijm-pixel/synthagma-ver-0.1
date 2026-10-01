@@ -3,13 +3,16 @@ import { createStudentLoginLinkHandler } from "./student-login-link";
 
 const id = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 const actor = id(1), learner = id(2), org = id(3), token = id(4);
-let role: string, queryFailure: string | null, profile: any, staff: any, tokens: any[], writes: any[], calls: any[];
+let role: string, queryFailure: string | null, profile: any, staff: any, userRoles: any[], tokens: any[], writes: any[], calls: any[];
 const authenticate = vi.fn();
 const db = {
   rpc: async (name: string, args: any) => {
     calls.push({ name, args });
     if (queryFailure === name) return { data: null, error: new Error("private database detail") };
-    return { data: name === "has_role" ? role === "admin" : name === "is_org_owner" ? role === "owner"
+    // Reproduce the production schema: has_role(uuid, app_role) and
+    // has_role(app_role, uuid) have indistinguishable PostgREST argument names.
+    if (name === "has_role") return { data: null, error: { code: "PGRST203", message: "Could not choose the best candidate function" } };
+    return { data: name === "is_org_owner" ? role === "owner"
       : name === "has_org_staff_permission" ? role === "staff" : name === "is_student_profile" ? role !== "target-not-student" : false, error: null };
   },
   from: (table: string) => {
@@ -19,6 +22,12 @@ const db = {
     const run = async () => {
       calls.push({ table, operation, filters: { ...filters } });
       if (queryFailure === table || queryFailure === `${table}.${operation}`) return { data: null, error: new Error("private database detail") };
+      if (table === "user_roles") {
+        const found = userRoles.filter(matches).slice(0, max);
+        return found.length > 1
+          ? { data: null, error: new Error("Multiple rows returned") }
+          : { data: found[0] ?? null, error: null };
+      }
       if (table === "profiles") return { data: profile && matches(profile) ? profile : null, error: null };
       if (table === "org_staff") return { data: staff, error: null };
       if (operation === "insert") {
@@ -60,17 +69,41 @@ const invoke = async (action = "create", extra = {}, auth = "Bearer synthetic") 
 describe("student-login-link authorization and actions", () => {
   beforeEach(() => {
     role = "owner"; queryFailure = null; profile = { user_id: learner, organization_id: org, archived_at: null };
-    staff = null; tokens = []; writes = []; calls = [];
+    staff = null; userRoles = []; tokens = []; writes = []; calls = [];
     authenticate.mockReset().mockResolvedValue({ userId: actor, error: null });
   });
   it.each(["admin", "owner", "staff"])("permits %s and attributes creation to authenticated actor", async allowedRole => {
     role = allowedRole;
+    if (role === "admin") userRoles = [{ user_id: actor, role: "admin" }];
     if (role === "staff") staff = { expires_at: "2026-10-02T00:00:00Z" };
     const result = await invoke("create", { created_by: id(99), actor_id: id(99) });
     expect(result.status).toBe(200);
     expect(result.body).toEqual({ token, user_id: learner, organization_id: org });
     expect(writes).toEqual([{ table: "student_login_tokens", operation: "insert", values: { user_id: learner, organization_id: org, created_by: actor } }]);
     expect(result.headers.get("cache-control")).toBe("no-store");
+    expect(result.headers.get("x-sintagma-student-login-link-revision")).toBe("student-login-link-v2");
+  });
+  it("works with ambiguous has_role overloads without calling that RPC", async () => {
+    const result = await invoke();
+    expect(result.status).toBe(200);
+    expect(calls.some(call => call.name === "has_role")).toBe(false);
+  });
+  it("recognizes an actor's admin role among multiple roles", async () => {
+    role = "readonly";
+    userRoles = [
+      { user_id: actor, role: "student" },
+      { user_id: id(99), role: "admin" },
+      { user_id: actor, role: "admin" },
+    ];
+    expect((await invoke()).status).toBe(200);
+    expect(calls.some(call => call.name === "is_org_owner")).toBe(false);
+  });
+  it("does not use another user's admin role or the actor's non-admin roles", async () => {
+    role = "readonly";
+    userRoles = [{ user_id: actor, role: "student" }, { user_id: id(99), role: "admin" }];
+    expect((await invoke()).status).toBe(403);
+    expect(writes).toEqual([]);
+    expect(calls.some(call => call.table === "student_login_tokens")).toBe(false);
   });
   it.each(["get", "create", "revoke"])("denies read-only staff for %s", async action => {
     role = "readonly"; staff = { expires_at: null };
@@ -105,7 +138,7 @@ describe("student-login-link authorization and actions", () => {
     mock.mockRestore();
     expect(writes).toEqual([]);
   });
-  it.each(["has_role", "is_org_owner", "profiles", "is_student_profile", "student_login_tokens", "student_login_tokens.insert"])("fails closed on %s failure", async failed => {
+  it.each(["user_roles", "is_org_owner", "profiles", "is_student_profile", "student_login_tokens", "student_login_tokens.insert"])("fails closed on %s failure", async failed => {
     queryFailure = failed;
     const result = await invoke();
     expect(result.status).toBe(503);

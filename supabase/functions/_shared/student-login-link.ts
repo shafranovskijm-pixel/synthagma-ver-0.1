@@ -1,5 +1,5 @@
 // Login-link management only. This endpoint never sends email or signs a user in.
-export const STUDENT_LOGIN_LINK_REVISION = "student-login-link-v1";
+export const STUDENT_LOGIN_LINK_REVISION = "student-login-link-v2";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -42,7 +42,12 @@ export function createStudentLoginLinkHandler({ authenticate, db, now = () => ne
         throw new RequestError(400, "Некорректный запрос");
       }
       const actor = auth.userId;
-      let allowed = confirmed(await db.rpc("has_role", { _user_id: actor, _role: "admin" })) === true;
+      // The database has two has_role overloads with the same named arguments,
+      // which makes a PostgREST RPC call ambiguous. Read only this actor's admin
+      // role through the service client; other roles must not grant access.
+      const adminRole = confirmed(await db.from("user_roles").select("role")
+        .eq("user_id", actor).eq("role", "admin").limit(1).maybeSingle());
+      let allowed = adminRole?.role === "admin";
       if (!allowed) allowed = confirmed(await db.rpc("is_org_owner", { _user_id: actor, _organization_id: organization_id })) === true;
       if (!allowed) {
         const staff = confirmed(await db.from("org_staff").select("expires_at")
