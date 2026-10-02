@@ -191,17 +191,18 @@ export function SubscriptionTab() {
                 </CardContent></Card>
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-medium"><Users className="w-4 h-4 text-primary" />Новых учеников в месяце</div>
+                    <div className="flex items-center gap-2 text-sm font-medium"><Users className="w-4 h-4 text-primary" />Активные ученики</div>
                     <span className="text-sm text-muted-foreground">{s.subscriptionLimits.usage.studentsCount} / {s.subscriptionLimits.limits.maxStudents === -1 ? "∞" : s.subscriptionLimits.limits.maxStudents}</span>
                   </div>
                   <Progress value={s.subscriptionLimits.limits.maxStudents === -1 ? 0 : s.studentsPercent} className="h-2" />
                 </CardContent></Card>
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="w-4 h-4 text-primary" />Обучено в этом месяце</div>
+                    <div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="w-4 h-4 text-primary" />Завершено обучений в этом месяце</div>
                     <span className="text-sm text-muted-foreground">{s.subscriptionLimits.usage.trainedThisMonth || 0} / {s.subscriptionLimits.limits.maxTrainedPerMonth === -1 ? "∞" : s.subscriptionLimits.limits.maxTrainedPerMonth}</span>
                   </div>
                   <Progress value={s.subscriptionLimits.limits.maxTrainedPerMonth === -1 ? 0 : s.trainedPercent} className="h-2" />
+                  <p className="text-xs text-muted-foreground">Один ученик завершил один курс — одно обучение. Считаем за календарный месяц.</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">

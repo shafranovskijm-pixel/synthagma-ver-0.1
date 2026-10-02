@@ -1,6 +1,8 @@
 import { Crown, Check } from "lucide-react";
-import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER, formatPriceRu } from "@/lib/pricingFeatureRows";
+
+const START_PLAN_LIMITS = SUBSCRIPTION_PLANS.start.limits;
 
 const HIGHLIGHTS: Record<string, string[]> = {
   free: [
@@ -10,10 +12,10 @@ const HIGHLIGHTS: Record<string, string[]> = {
     "Видеоидентификация и брендирование",
   ],
   start: [
-    "До 15 курсов и 100 учеников",
-    "60 завершённых обучений в месяц",
+    `До ${START_PLAN_LIMITS.maxCourses} курсов и ${START_PLAN_LIMITS.maxStudents} учеников`,
+    `${START_PLAN_LIMITS.maxTrainedPerMonth} завершённых обучений в месяц`,
     "Email-рассылки с SMTP, drip и A/B",
-    "Безлимитное хранилище файлов",
+    `Хранилище файлов — ${formatStorageSize(START_PLAN_LIMITS.storageBytes)}`,
   ],
   standard: [
     "До 30 курсов и 200 учеников",
