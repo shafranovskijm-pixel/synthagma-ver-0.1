@@ -53,6 +53,8 @@ python3 deploy.py deploy --settings preview-settings.json --archive RELEASE_ID.t
 
 Не выполнять `systemctl reload nginx` с localhost preview settings: это относится к основному системному instance. Проверить фактический PID preview и конфигурацию перед командой. Существующий production Nginx остаётся самостоятельной целью.
 
+Шаблон preview задаёт `user www-data;` для существующего Debian/Ubuntu сервера. Перед запуском сверить пользователя с директивой `user` системного Nginx и наличием учётной записи. Два экземпляра используют скомпилированные временные каталоги Nginx; запуск preview от другого пользователя может изменить владельца общего каталога и вызвать `Permission denied` при передаче больших ответов через системный reverse proxy. При другом системном пользователе адаптировать preview к фактической конфигурации сервера до запуска. Не исправлять это рекурсивным `chmod` или расширением доступа для всех пользователей.
+
 ## Проверка HTTP и откат
 
 После локального `--apply` проверить `/`, вложенный SPA route, текущие entry JS/CSS, `sw.js`, `manifest.webmanifest`, один PDF/download и несуществующий `.js` (404, не HTML). Запрос с `Accept-Encoding: gzip` должен вернуть `Content-Encoding: gzip` для JS/CSS/HTML. Только `/assets/*-HASH.ext` и `/workbox-HASH.js` получают `max-age=31536000, immutable`; HTML, SW, регистрация SW и manifest обновляются без долгого HTTP cache.

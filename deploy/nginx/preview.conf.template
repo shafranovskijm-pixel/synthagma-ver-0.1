@@ -1,3 +1,6 @@
+# Match the existing Debian/Ubuntu Nginx worker user to avoid changing ownership
+# of the compiled-in temporary directories used by the system instance.
+user www-data;
 worker_processes 1;
 pid __ROOT__/run/nginx.pid;
 error_log __ROOT__/logs/error.log;
