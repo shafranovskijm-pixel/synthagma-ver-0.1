@@ -1,11 +1,32 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Crown, Sparkles, Info, FileText, ArrowRight } from "lucide-react";
+import { Check, X, Crown, Sparkles, Info, FileText, FileSpreadsheet, Palette, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FloatingParticles } from "./FloatingParticles";
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
+
+const includedBenefits = [
+  {
+    title: "Документы и журналы",
+    description: "Шаблоны договоров, приказов, протоколов и журналов учебного центра.",
+    href: "/feature/documents",
+    icon: FileText,
+  },
+  {
+    title: "XLSX для ФИС ФРДО",
+    description: "Подготовка файлов для ДПО и ПО с проверкой данных перед выгрузкой.",
+    href: "/feature/frdo",
+    icon: FileSpreadsheet,
+  },
+  {
+    title: "Ваш логотип и цвета",
+    description: "Кабинет в стиле вашей организации, в том числе на бесплатном тарифе.",
+    href: "/feature/branding",
+    icon: Palette,
+  },
+];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
   "Завершённых обучений в месяц": { description: "Лимит за календарный месяц. Когда один ученик завершает один курс, это считается одним обучением.", minPlan: "Бесплатный" },
@@ -41,7 +62,6 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxTrainedPerMonth === -1 ? "Безлимит" : String(l.maxTrainedPerMonth);
   }},
-  { label: "Хранилище файлов", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
   { label: "Настройки курсов", link: "/feature/course-settings", getValue: () => true },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('services') },
   { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: () => true },
@@ -186,9 +206,23 @@ export function PricingPlans() {
           </h2>
           <div className="divider mb-6" />
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Начните бесплатно и масштабируйтесь по мере роста учебного центра.
+            Обучение, документы и подготовка данных для ФРДО — в одной подписке.
+            Выберите тариф под объём обучения.
           </p>
         </motion.div>
+
+        <div className="mb-10">
+          <p className="text-center text-sm text-muted-foreground mb-4">Входят в каждый тариф</p>
+          <div className="grid gap-4 md:grid-cols-3 max-w-5xl mx-auto">
+            {includedBenefits.map(({ title, description, href, icon: Icon }) => (
+              <Link key={title} to={href} className="rounded-2xl border border-border bg-card/60 p-5 transition-colors hover:border-accent/40">
+                <Icon className="h-5 w-5 text-accent mb-3" aria-hidden="true" />
+                <h3 className="font-medium mb-2">{title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
 
         {/* Billing toggle */}
         <motion.div

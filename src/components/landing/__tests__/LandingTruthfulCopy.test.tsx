@@ -80,7 +80,8 @@ describe("truthful landing copy", () => {
     expect(card.getByText("Активные ученики")).toBeInTheDocument();
     expect(card.getByText("Завершённых обучений в месяц")).toBeInTheDocument();
     expect(card.getAllByText("100")).toHaveLength(2);
-    expect(card.getByText("3 ГБ")).toBeInTheDocument();
+    expect(screen.queryByText("Хранилище файлов")).not.toBeInTheDocument();
+    expect(card.queryByText("3 ГБ")).not.toBeInTheDocument();
 
     const proposal = getPublicPlanSummaries().find(plan => plan.id === "start")!;
     expect(proposal.students).toBe("100");
