@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo } from "@/constants/subscriptionPlans";
+import { formatStorageSize, getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo } from "@/constants/subscriptionPlans";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -53,7 +53,9 @@ export interface FeatureRow {
 
 export const featureRows: FeatureRow[] = [
   { label: "Курсы", key: "maxCourses", format: (v: number) => v === -1 ? "∞" : String(v) },
-  { label: "Ученики", key: "maxStudents", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Активные ученики", key: "maxStudents", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Завершённых обучений в месяц", key: "maxTrainedPerMonth", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Хранилище файлов", key: "storageBytes", format: formatStorageSize },
   { label: "Настройки курсов", key: "courseSettings", format: (v: boolean) => v, link: "/feature/course-settings" },
   { label: "Чек-лист документов", key: "documentChecklist", format: (v: boolean) => v, link: "/feature/document-checklist" },
   { label: "Видео-идентификация", key: "videoIdentification", format: (v: boolean) => v, link: "/feature/video-id" },
@@ -69,7 +71,6 @@ export const featureRows: FeatureRow[] = [
   { label: "Охрана труда", getValue: (plan) => plan.enabledCategories.includes('labor_safety'), format: (v: boolean) => v, link: "/feature/labor-safety" },
   { label: "ФИС ФРДО", getValue: (plan) => plan.enabledCategories.includes('frdo'), format: (v: boolean) => v, link: "/feature/frdo" },
   { label: "Магазин курсов", getValue: (plan) => plan.enabledCategories.includes('services'), format: (v: boolean) => v, link: "/feature/course-store" },
-  { label: "Хранилище файлов", getValue: (plan) => plan.enabledCategories.includes('library'), format: (v: boolean) => v },
   { label: "Вебинары", getValue: (plan) => plan.enabledCategories.includes('webinars'), format: (v: boolean) => v },
 ];
 

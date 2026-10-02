@@ -8,6 +8,7 @@ import { FloatingParticles } from "./FloatingParticles";
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
+  "Завершённых обучений в месяц": { description: "Лимит за календарный месяц. Когда один ученик завершает один курс, это считается одним обучением.", minPlan: "Бесплатный" },
   "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Бесплатный" },
   "Магазин курсов": { description: "Витрина курсов для самостоятельной записи учеников. Настройте цены и описания.", minPlan: "Бесплатный" },
   "Чек-лист документов": { description: "Автоматический сбор документов от учеников. Настройте список необходимых документов для каждого курса.", minPlan: "Бесплатный" },
@@ -32,10 +33,15 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxCourses === -1 ? "Безлимит" : String(l.maxCourses);
   }},
-  { label: "Ученики", getValue: (p: SubscriptionPlan) => {
+  { label: "Активные ученики", getValue: (p: SubscriptionPlan) => {
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxStudents === -1 ? "Безлимит" : String(l.maxStudents);
   }},
+  { label: "Завершённых обучений в месяц", getValue: (p: SubscriptionPlan) => {
+    const l = SUBSCRIPTION_PLANS[p].limits;
+    return l.maxTrainedPerMonth === -1 ? "Безлимит" : String(l.maxTrainedPerMonth);
+  }},
+  { label: "Хранилище файлов", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
   { label: "Настройки курсов", link: "/feature/course-settings", getValue: () => true },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('services') },
   { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: () => true },

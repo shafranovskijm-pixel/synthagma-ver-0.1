@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,9 @@ import { Hero } from "@/components/landing/Hero";
 import { MobileApp } from "@/components/landing/MobileApp";
 import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses";
 import { Testimonials } from "@/components/landing/Testimonials";
+import { PricingPlans } from "@/components/landing/PricingPlans";
+import { getPublicPlanSummaries } from "@/lib/proposal/proposalContent";
+import { PLAN_CONTRACT_SUBJECTS } from "@/lib/adminDocTemplates";
 import Install from "@/pages/Install";
 
 const testimonialQueryMocks = vi.hoisted(() => ({
@@ -69,6 +72,24 @@ afterEach(() => {
 });
 
 describe("truthful landing copy", () => {
+  it("shows separate Start student and completion quotas consistent with the proposal and contract", () => {
+    render(<MemoryRouter><PricingPlans /></MemoryRouter>);
+
+    const startCard = screen.getByRole("heading", { name: "Старт" }).closest(".group") as HTMLElement;
+    const card = within(startCard);
+    expect(card.getByText("Активные ученики")).toBeInTheDocument();
+    expect(card.getByText("Завершённых обучений в месяц")).toBeInTheDocument();
+    expect(card.getAllByText("100")).toHaveLength(2);
+    expect(card.getByText("3 ГБ")).toBeInTheDocument();
+
+    const proposal = getPublicPlanSummaries().find(plan => plan.id === "start")!;
+    expect(proposal.students).toBe("100");
+    expect(proposal.trainedPerMonth).toBe("100");
+    expect(proposal.storage).toBe("3 ГБ");
+    expect(proposal.price).toBe(4490);
+    expect(PLAN_CONTRACT_SUBJECTS.start).toContain("до 100 завершённых обучений в месяц");
+  });
+
   it("describes the core workflow without an unconditional launch deadline", () => {
     render(<MemoryRouter><Hero /></MemoryRouter>);
 
