@@ -19,4 +19,15 @@ describe("NGINX proxy Edge Functions CORS contract", () => {
     expect(block).toContain("x-sintagma-compiler-revision");
     expect(block).toContain("x-sintagma-request-id");
   });
+
+  it("lets the browser read the registration revision even from a 400 probe", () => {
+    const directive = edgeFunctionsBlock().match(
+      /add_header\s+Access-Control-Expose-Headers\s+"([^"]+)"\s+always;/,
+    );
+    // Nginx hides the upstream CORS headers. A header present on the wire is
+    // still invisible to browser fetch unless the proxy exposes it on errors.
+    expect(directive).not.toBeNull();
+    expect(directive![1].split(",").map(header => header.trim().toLowerCase()))
+      .toContain("x-sintagma-register-student-revision");
+  });
 });
