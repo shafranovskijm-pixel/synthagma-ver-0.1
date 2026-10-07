@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { Capacitor } from '@capacitor/core';
+import { NativeWebMaterial } from '@/mobile/NativeWebMaterial';
 import DOMPurify from "dompurify";
 import {
   AlertCircle, Lightbulb, HelpCircle, ChevronDown, ChevronRight, ChevronLeft,
@@ -284,6 +286,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       );
     }
     case "embed": {
+      if (Capacitor.isNativePlatform()) return <NativeWebMaterial />;
       const src = getEmbedSrc(block.embedUrl || "");
       if (!src) return null;
       const height = block.embedHeight || 480;

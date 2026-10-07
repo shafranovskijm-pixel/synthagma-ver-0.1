@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Capacitor } from '@capacitor/core';
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -226,6 +227,7 @@ function CatalogContent({
 }
 
 export default function StudentDashboard() {
+  const isNativeLearner = Capacitor.isNativePlatform();
   const { userRole } = useAuth();
   const isMobile = useIsMobile();
 
@@ -373,7 +375,7 @@ export default function StudentDashboard() {
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
     { id: "catalog", icon: BookOpen, label: "Курсы" },
-    ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
+    ...(!isNativeLearner && dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
     { id: "profile" as StudentTab, icon: User, label: "Профиль" },
   ];
 
@@ -451,7 +453,7 @@ export default function StudentDashboard() {
           setActiveTab={setActiveTab}
           branding={branding}
           orgName={profile?.organization_name || null}
-          showAiChat={dashboardSettings.showAiChat}
+          showAiChat={!isNativeLearner && dashboardSettings.showAiChat}
           isPreviewMode={isPreviewMode}
           isAdminView={isAdminView}
         />
@@ -469,8 +471,8 @@ export default function StudentDashboard() {
           pendingCount={pendingDocsCount}
           pendingReasons={pendingReasons}
           isVideoIdentified={isVideoIdentified}
-          showAchievements={dashboardSettings.showAchievements}
-          showRadio={dashboardSettings.showRadio}
+          showAchievements={!isNativeLearner && dashboardSettings.showAchievements}
+          showRadio={!isNativeLearner && dashboardSettings.showRadio}
           showAnnouncements={dashboardSettings.showAnnouncements}
 
           onShowVideoId={() => setShowVideoIdentification(true)}
@@ -504,7 +506,7 @@ export default function StudentDashboard() {
 
               {currentTab === "catalog" && (
                 <CatalogContent
-                  catalogCourses={dashboardSettings.catalogMode === "assigned" ? [] : catalogCourses}
+                  catalogCourses={isNativeLearner || dashboardSettings.catalogMode === "assigned" ? [] : catalogCourses}
                   categories={categories}
                   handleCourseClick={handleCourseClick}
                   enrolledCourses={courses}
@@ -519,7 +521,7 @@ export default function StudentDashboard() {
                 />
               )}
 
-              {currentTab === "chat" && (
+              {!isNativeLearner && currentTab === "chat" && (
                 <StudentChatsTab
                   organizationId={profile?.organization_id}
                   organizationName={profile?.organization_name || "Организация"}
@@ -601,7 +603,7 @@ export default function StudentDashboard() {
           requiredTypes={documentsProgress.requiredTypes}
         />
       )}
-      {showAchievements && user && (
+      {!isNativeLearner && showAchievements && user && (
         <AchievementsPanel
           userId={user.id}
           isOpen={showAchievements}

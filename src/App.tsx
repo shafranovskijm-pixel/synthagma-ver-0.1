@@ -24,6 +24,7 @@ import { captureUtmFromUrl } from "@/utils/utmCapture";
 import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
 import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
 import { SupportChatWidget } from "@/components/support/SupportChatWidget";
+import { NativeLearnerScope } from "@/mobile/NativeLearnerScopeGate";
 
 import {
   publicRoutes,
@@ -80,6 +81,7 @@ const App = () => (
                   <SupportChatWidget />
                   <TwoFactorChallenge />
                   
+                  <NativeLearnerScope>
                   <Suspense fallback={<LazyLoadFallback />}>
                     <Routes>
                       {publicRoutes}
@@ -90,6 +92,7 @@ const App = () => (
                       {companyRoutes}
                     </Routes>
                   </Suspense>
+                  </NativeLearnerScope>
                 </TooltipProvider>
               </BackgroundUploadsProvider>
               </StaffPermissionsProvider>
