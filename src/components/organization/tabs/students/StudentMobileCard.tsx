@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { BarChart3, Copy, CheckCircle2, XCircle, ChevronRight, Loader2 } from "lucide-react";
+import { ArchiveRestore, BarChart3, Copy, CheckCircle2, XCircle, ChevronRight, Loader2 } from "lucide-react";
 import type { Student } from "@/types";
 import { studentDetailsPath } from "@/lib/groups/groupContext";
+import { ArchiveRemovalButton } from "./ArchiveRemovalButton";
+import { Button } from "@/components/ui/button";
 
 interface StudentMobileCardProps {
   student: Student;
@@ -11,11 +13,13 @@ interface StudentMobileCardProps {
   onCopyCredentials: (login: string, password: string) => void;
   onRequestCredentials?: (userId: string) => Promise<string | null>;
   onViewTestResults?: (userId: string) => void;
+  onRemoveArchived?: (userId: string) => unknown | Promise<unknown>;
+  onUnarchive?: (userId: string) => unknown;
   studentDocsByUser?: Map<string, string[]>;
 }
 
 export const StudentMobileCard = React.memo(function StudentMobileCard({
-  student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, onRequestCredentials, onViewTestResults, studentDocsByUser,
+  student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials, onRequestCredentials, onViewTestResults, studentDocsByUser, onRemoveArchived, onUnarchive,
 }: StudentMobileCardProps) {
   const userDocs = studentDocsByUser?.get(student.user_id) || [];
   const hasPassport = student.has_passport ?? userDocs.some(t => t === "passport" || t === "birth_certificate");
@@ -88,6 +92,10 @@ export const StudentMobileCard = React.memo(function StudentMobileCard({
               </div>
             ))}
           </div>
+          {onRemoveArchived && <div className="mt-3 flex gap-2" onClick={event => event.stopPropagation()}>
+            {onUnarchive && <Button variant="outline" size="sm" title="Вернуть из архива" onClick={() => onUnarchive(student.user_id)}><ArchiveRestore className="w-4 h-4 mr-2" />Вернуть</Button>}
+            <ArchiveRemovalButton studentName={student.name} onRemove={() => onRemoveArchived(student.user_id)} />
+          </div>}
           {enrollmentsCount > 0 && onViewTestResults && (
             <button
               type="button"

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, Copy, Trash2, CheckCircle2, XCircle, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
 import type { Student, StudentFRDOStatus } from "@/types";
 import { studentDetailsPath } from "@/lib/groups/groupContext";
+import { ArchiveRemovalButton } from "./ArchiveRemovalButton";
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -21,7 +22,7 @@ interface StudentTableRowProps {
   onToggleSelection: () => void;
   onViewStudent: () => void;
   onCopyCredentials: (login: string, password: string) => void;
-  onRemoveStudent: (userId: string) => void;
+  onRemoveStudent: (userId: string) => unknown | Promise<unknown>;
   studentDocsByUser?: Map<string, string[]>;
   frdoStatus: Map<string, StudentFRDOStatus>;
   studentGroups: Array<{ id: string; name: string; color: string }>;
@@ -201,7 +202,9 @@ export const StudentTableRow = React.memo(function StudentTableRow({
           ) : (
             onArchive && <Button variant="outline" size="sm" className="rounded-lg" onClick={() => onArchive(student.user_id)} title="В архив"><Archive className="w-4 h-4" /></Button>
           )}
-          <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => onRemoveStudent(student.user_id)} title="Удалить ученика"><Trash2 className="w-4 h-4" /></Button>
+          {isArchiveView
+            ? <ArchiveRemovalButton studentName={student.name} onRemove={() => onRemoveStudent(student.user_id)} />
+            : <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => onRemoveStudent(student.user_id)} title="Перенести в архив"><Trash2 className="w-4 h-4" /></Button>}
         </div>
       </td>
     </tr>
