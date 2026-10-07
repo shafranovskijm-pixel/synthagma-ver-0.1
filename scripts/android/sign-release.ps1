@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 if (!(Test-Path -LiteralPath $UnsignedApk)) { throw 'Unsigned APK was not found.' }
 if (Test-Path -LiteralPath $SignedApk) { throw 'Refusing to overwrite an existing signed release.' }
-$secure = Get-Content -LiteralPath (Join-Path $SigningDirectory 'password.dpapi') -Raw | ConvertTo-SecureString
+$secure = (Get-Content -LiteralPath (Join-Path $SigningDirectory 'password.dpapi') -Raw).Trim() | ConvertTo-SecureString
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
     $env:SINTAGMA_SIGNING_PASS = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
