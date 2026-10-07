@@ -137,7 +137,7 @@ function studentsTree() {
         onViewStudent={vi.fn()}
         onCopyCredentials={vi.fn()}
       />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 function renderStudentsTab() { return render(studentsTree()); }
