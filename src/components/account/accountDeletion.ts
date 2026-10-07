@@ -1,8 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type DeletionAction = "delete" | "anonymize" | "retain" | "block";
+export const deletionConsentVersion = "full-personal-data-v1" as const;
 export interface DeletionPreview {
-  revision: string;
+  revision: "account-deletion-v2";
+  consentVersion: typeof deletionConsentVersion;
+  warning: string;
   canDelete: boolean;
   planToken: string | null;
   expiresAt: string | null;
@@ -26,7 +29,7 @@ export class AccountDeletionError extends Error {
 
 const rejectionCodes = new Set([
   "AUTH_REQUIRED", "REAUTH_FAILED", "MFA_REAUTH_REQUIRED", "PLAN_EXPIRED", "PLAN_CHANGED",
-  "OWNERSHIP_TRANSFER_REQUIRED", "RETENTION_POLICY_REQUIRED", "DELETION_UNAVAILABLE",
+  "OWNERSHIP_TRANSFER_REQUIRED", "RETENTION_POLICY_REQUIRED", "CONSENT_REQUIRED", "DELETION_UNAVAILABLE",
 ]);
 const isObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object";
 const nonempty = (value: unknown): value is string => typeof value === "string" && value.length > 0;
@@ -62,7 +65,8 @@ async function callDeletion(body: Record<string, unknown>, confirming = false): 
 
 export async function getDeletionPreview(): Promise<DeletionPreview> {
   const data = await callDeletion({ action: "preview" });
-  if (!isObject(data) || data.revision !== "account-deletion-v1" || typeof data.canDelete !== "boolean"
+  if (!isObject(data) || data.revision !== "account-deletion-v2" || data.consentVersion !== deletionConsentVersion
+    || !nonempty(data.warning) || !data.warning.trim() || typeof data.canDelete !== "boolean"
     || !Array.isArray(data.categories) || !Array.isArray(data.blockers)
     || !(data.planToken === null || nonempty(data.planToken))
     || !(data.expiresAt === null || validDate(data.expiresAt))
@@ -74,7 +78,7 @@ export async function getDeletionPreview(): Promise<DeletionPreview> {
     || !data.blockers.every(b => isObject(b) && nonempty(b.code) && nonempty(b.message)
       && (b.actionHref === undefined || typeof b.actionHref === "string"))
     || (data.canDelete && (!data.planToken || !data.expiresAt || !data.requestId || !data.statusToken || data.blockers.length > 0
-      || data.categories.some(c => c.action === "block")))) {
+      || data.categories.length === 0 || data.categories.some(c => c.action === "block")))) {
     throw new AccountDeletionError("INVALID_PREVIEW", "Сервер не подтвердил условия удаления. Обновите проверку или обратитесь в поддержку.");
   }
   return data as unknown as DeletionPreview;
@@ -91,9 +95,10 @@ export async function getDeletionStatus(capability: StatusCapability): Promise<D
   throw new AccountDeletionError("UNCONFIRMED_STATUS", "Не удалось подтвердить текущее состояние операции. Попробуйте проверить статус ещё раз.", "unknown");
 }
 
-export async function confirmAccountDeletion(planToken: string, password: string, capability: StatusCapability): Promise<DeletionStatus> {
+export async function confirmAccountDeletion(planToken: string, password: string, capability: StatusCapability, consentVersion: typeof deletionConsentVersion): Promise<DeletionStatus> {
+  if (consentVersion !== deletionConsentVersion) throw new AccountDeletionError("INVALID_CONSENT", "Условия удаления изменились. Обновите проверку и ознакомьтесь с последствиями заново.");
   try {
-    await callDeletion({ action: "confirm", planToken, password, confirmation: "DELETE_MY_ACCOUNT" }, true);
+    await callDeletion({ action: "confirm", planToken, password, consentVersion, confirmation: "DELETE_MY_ACCOUNT_AND_PERSONAL_DATA" }, true);
   } catch (cause) {
     if (cause instanceof AccountDeletionError && cause.outcome === "rejected") throw cause;
     // A lost confirmation reply may still mean the operation started. Only read its status.

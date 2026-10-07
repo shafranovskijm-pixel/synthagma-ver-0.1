@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({ getDeletionPreview: vi.fn(), confirmAccountDeletion: vi.fn() }));
@@ -6,7 +6,7 @@ vi.mock("../accountDeletion", async importOriginal => ({ ...(await importOrigina
 import { AccountDeletionError, type DeletionPreview } from "../accountDeletion";
 import { AccountDeletionPanel } from "../AccountDeletionPanel";
 
-const preview: DeletionPreview = { revision: "account-deletion-v1", canDelete: true, planToken: "plan", requestId: "request-1", statusToken: "opaque-capability", expiresAt: "2099-01-01T00:00:00Z", categories: [{ key: "profile", label: "Личный профиль", count: 1, action: "delete" }], blockers: [] };
+const preview: DeletionPreview = { revision: "account-deletion-v2", consentVersion: "full-personal-data-v1", warning: "Будут удалены аккаунт и перечисленные личные данные.", canDelete: true, planToken: "plan", requestId: "request-1", statusToken: "opaque-capability", expiresAt: "2099-01-01T00:00:00Z", categories: [{ key: "profile", label: "Личный профиль", count: 1, action: "delete" }], blockers: [] };
 const receipt = { status: "deleted", requestId: "request-1", completedAt: "2026-10-07T07:00:00Z" };
 function show(onDeleted = vi.fn()) { render(<MemoryRouter><AccountDeletionPanel accountId="user-1" accountLabel="qa@example.test" onDeleted={onDeleted} /></MemoryRouter>); return onDeleted; }
 async function confirm() {
@@ -24,20 +24,92 @@ describe("account deletion confirmation", () => {
     const onDeleted = show();
     fireEvent.click(await screen.findByRole("button", { name: "Продолжить удаление" }));
     expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("Удаление необратимо")).toBeVisible();
+    expect(dialog.getByText(preview.warning)).toBeVisible();
+    expect(dialog.getByText(/Вы потеряете доступ к аккаунту/)).toHaveTextContent("Восстановить их после завершения операции нельзя.");
+    expect(dialog.getByText("До подтверждения скачайте нужные вам документы и учебные материалы.")).toBeVisible();
+    expect(dialog.getByRole("list", { name: "Последствия для данных" })).toHaveTextContent("Личный профиль: 1Будет удалено");
+    expect(dialog.getByRole("checkbox", { name: /Я понимаю, что удаление аккаунта/ })).not.toBeChecked();
     expect(screen.getByRole("button", { name: "Удалить мой аккаунт" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Текущий пароль"), { target: { value: "my-password" } });
     expect(screen.getByRole("button", { name: "Удалить мой аккаунт" })).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Удалить мой аккаунт" }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(receipt));
-    expect(api.confirmAccountDeletion).toHaveBeenCalledWith("plan", "my-password", { requestId: "request-1", statusToken: "opaque-capability" });
+    expect(api.confirmAccountDeletion).toHaveBeenCalledWith("plan", "my-password", { requestId: "request-1", statusToken: "opaque-capability" }, "full-personal-data-v1");
+  });
+
+  it("requires the password even after acknowledgement and disables confirmation when acknowledgement is withdrawn", async () => {
+    show();
+    fireEvent.click(await screen.findByRole("button", { name: "Продолжить удаление" }));
+    const button = screen.getByRole("button", { name: "Удалить мой аккаунт" });
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Текущий пароль"), { target: { value: "my-password" } });
+    expect(button).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(button).toBeDisabled();
+  });
+
+  it("shows retained and anonymized categories inside the final dialog without promising their deletion", async () => {
+    api.getDeletionPreview.mockResolvedValue({ ...preview, categories: [
+      ...preview.categories,
+      { key: "history", label: "История обучения", count: 3, action: "anonymize" },
+      { key: "records", label: "Сохраняемые записи", count: 2, action: "retain" },
+    ] });
+    show();
+    fireEvent.click(await screen.findByRole("button", { name: "Продолжить удаление" }));
+    const dialog = within(screen.getByRole("dialog"));
+    const rows = within(dialog.getByRole("list", { name: "Последствия для данных" })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Личный профиль: 1Будет удалено");
+    expect(rows[1]).toHaveTextContent("История обучения: 3Будет обезличено, записи останутся");
+    expect(rows[2]).toHaveTextContent("Сохраняемые записи: 2Будет сохранено");
+    expect(dialog.getByText(/Часть данных останется в системе/)).toBeVisible();
+    expect(dialog.getByRole("checkbox")).toHaveAccessibleName(/данных, отмеченных «Будет удалено»/);
+    expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
+  });
+
+  it("requires new acknowledgement and a password when the dialog is reopened", async () => {
+    show();
+    fireEvent.click(await screen.findByRole("button", { name: "Продолжить удаление" }));
+    fireEvent.change(screen.getByLabelText("Текущий пароль"), { target: { value: "my-password" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Отмена" }));
+    fireEvent.click(screen.getByRole("button", { name: "Продолжить удаление" }));
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByLabelText("Текущий пароль")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Удалить мой аккаунт" })).toBeDisabled();
+    expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
+  });
+
+  it("does not offer confirmation without a list of consequences", async () => {
+    api.getDeletionPreview.mockResolvedValue({ ...preview, categories: [] });
+    show();
+    expect(await screen.findByRole("button", { name: "Продолжить удаление" })).toBeDisabled();
+    expect(screen.getByText(/Сервер не указал последствия для данных/)).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
+  });
+
+  it("does not offer confirmation without the current server warning", async () => {
+    api.getDeletionPreview.mockResolvedValue({ ...preview, warning: "" });
+    show();
+    expect(await screen.findByRole("button", { name: "Продолжить удаление" })).toBeDisabled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
   });
 
   it("shows exact blockers without linking to an untrusted external destination", async () => {
-    api.getDeletionPreview.mockResolvedValue({ ...preview, canDelete: false, planToken: null, expiresAt: null, blockers: [{ code: "OWNER", message: "Сначала передайте владение организацией", actionHref: "//attacker.example" }] });
+    api.getDeletionPreview.mockResolvedValue({ ...preview, canDelete: false, planToken: null, expiresAt: null,
+      categories: [{ key: "org", label: "Организация", count: 1, action: "block" }],
+      blockers: [{ code: "OWNER", message: "Сначала передайте владение организацией", actionHref: "//attacker.example" }] });
     show();
     expect(await screen.findByText("Сначала передайте владение организацией")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Продолжить удаление" })).toBeDisabled();
+    expect(screen.getByText("Требует решения до удаления")).toBeVisible();
     expect(screen.queryByRole("link", { name: "Перейти к решению" })).not.toBeInTheDocument();
     expect(api.confirmAccountDeletion).not.toHaveBeenCalled();
   });
@@ -49,6 +121,22 @@ describe("account deletion confirmation", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("Текущий пароль")).toHaveValue("");
     expect(onDeleted).not.toHaveBeenCalled();
+  });
+
+  it("requires a fresh preview and acknowledgement after a pre-mutation consent refusal", async () => {
+    api.confirmAccountDeletion.mockRejectedValue(new AccountDeletionError("CONSENT_REQUIRED", "Подтвердите новые условия удаления"));
+    const onDeleted = show(); await confirm();
+    expect(await screen.findByText("Подтвердите новые условия удаления")).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Продолжить удаление" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("sintagma-account-deletion-pending-v1")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Обновить проверку" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Продолжить удаление" }));
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByLabelText("Текущий пароль")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Удалить мой аккаунт" })).toBeDisabled();
+    expect(onDeleted).not.toHaveBeenCalled();
+    expect(api.confirmAccountDeletion).toHaveBeenCalledTimes(1);
   });
 
   it.each(["cleanup", "network"])("does not claim success or offer another destructive attempt on %s uncertainty", async mode => {
