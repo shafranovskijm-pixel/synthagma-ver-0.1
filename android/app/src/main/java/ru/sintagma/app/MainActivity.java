@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NativeFilesPlugin.class);
+        registerPlugin(NativeSpeechPlugin.class);
         super.onCreate(savedInstanceState);
         if (bridge == null) return; // Capacitor shows its missing-WebView screen.
 

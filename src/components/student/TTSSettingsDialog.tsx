@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Volume2, Settings2 } from 'lucide-react';
+import { getNativeSpeechStatus, isNativeSpeechPlatform, nativeSpeechMessage, resolveTTSProvider, type NativeSpeechStatus } from '@/mobile/nativeSpeech';
 
 interface TTSSettingsDialogProps {
   open: boolean;
@@ -24,7 +25,7 @@ interface TTSSettingsDialogProps {
   onSettingsChange: (settings: TTSSettings) => void;
 }
 
-export type TTSProvider = 'salutespeech' | 'browser';
+export type TTSProvider = 'salutespeech' | 'browser' | 'native';
 
 export interface TTSSettings {
   provider: TTSProvider;
@@ -72,10 +73,7 @@ export function getStoredTTSSettings(adminDefaults?: AdminTTSDefaults): TTSSetti
       const parsed = JSON.parse(stored);
       // Silent migration: ElevenLabs has been removed → switch to SaluteSpeech.
       const rawProvider = parsed.provider as string | undefined;
-      const provider: TTSProvider =
-        rawProvider === 'salutespeech' || rawProvider === 'browser'
-          ? rawProvider
-          : 'salutespeech';
+      const provider = resolveTTSProvider(rawProvider, isNativeSpeechPlatform(), true);
       return {
         provider,
         saluteVoice: parsed.saluteVoice || DEFAULT_SALUTE_VOICE,
@@ -87,8 +85,7 @@ export function getStoredTTSSettings(adminDefaults?: AdminTTSDefaults): TTSSetti
 
   // No user override — use admin defaults if available
   const rawAdmin = (adminDefaults?.provider as string | undefined) || 'salutespeech';
-  const defaultProvider: TTSProvider =
-    rawAdmin === 'salutespeech' || rawAdmin === 'browser' ? rawAdmin : 'salutespeech';
+  const defaultProvider = resolveTTSProvider(rawAdmin, isNativeSpeechPlatform(), false);
   const adminVoiceRaw = adminDefaults?.saluteVoice || '';
   const defaultSaluteVoice = ADMIN_TO_CLIENT_VOICE[adminVoiceRaw] || adminVoiceRaw || DEFAULT_SALUTE_VOICE;
 
@@ -109,6 +106,16 @@ export function TTSSettingsDialog({
   onSettingsChange,
 }: TTSSettingsDialogProps) {
   const [localSettings, setLocalSettings] = useState<TTSSettings>(settings);
+  const native = isNativeSpeechPlatform();
+  const [nativeStatus, setNativeStatus] = useState<NativeSpeechStatus | null>(null);
+
+  useEffect(() => {
+    if (!open || !native || localSettings.provider !== 'native') return;
+    let current = true;
+    setNativeStatus(null);
+    void getNativeSpeechStatus().then(status => { if (current) setNativeStatus(status); });
+    return () => { current = false; };
+  }, [open, native, localSettings.provider]);
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -147,8 +154,8 @@ export function TTSSettingsDialog({
                 <SelectValue placeholder="Выберите провайдер" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="salutespeech">SaluteSpeech (Сбер, рекомендуется)</SelectItem>
-                <SelectItem value="browser">Браузер (встроенный)</SelectItem>
+                <SelectItem value="salutespeech">SaluteSpeech (Сбер)</SelectItem>
+                {native ? <SelectItem value="native">Android (голос устройства)</SelectItem> : <SelectItem value="browser">Браузер (встроенный)</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -183,6 +190,12 @@ export function TTSSettingsDialog({
             </div>
           )}
 
+          {localSettings.provider === 'native' && (
+            <div className="rounded-lg bg-muted p-3" role="status">
+              <p className="text-sm text-muted-foreground">{nativeSpeechMessage(nativeStatus)}</p>
+              <p className="text-xs text-muted-foreground mt-2">Приложение не скачивает голоса автоматически и не включает платную озвучку вместо выбранной.</p>
+            </div>
+          )}
           {localSettings.provider === 'browser' && (
             <div className="rounded-lg bg-muted p-3">
               <p className="text-sm text-muted-foreground">

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { TTSSettings, getStoredTTSSettings, AdminTTSDefaults } from "@/components/student/TTSSettingsDialog";
+import { TTSSettings, getStoredTTSSettings, saveTTSSettings, AdminTTSDefaults } from "@/components/student/TTSSettingsDialog";
 import type { ContentBlock } from "@/components/course-builder/block-editor";
 import type { Lesson, TestQuestion } from "./types";
 import { getOptionText } from "./types";
+import { useNativeSpeech } from '@/mobile/useNativeSpeech';
+import { isNativeSpeechPlatform } from '@/mobile/nativeSpeech';
 
 interface UseLessonTTSParams {
   currentLesson: Lesson | undefined;
@@ -24,6 +26,7 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
   const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
   const saluteAbortRef = useRef<AbortController | null>(null);
   const saluteCacheRef = useRef<Map<string, string>>(new Map());
+  const nativeSpeech = useNativeSpeech(ttsSettings.provider === 'native', currentLesson?.id ?? currentLessonIndex, message => toast.error(message));
 
   // Load admin TTS defaults
   useEffect(() => {
@@ -45,7 +48,7 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
     })();
   }, []);
 
-  const isSpeaking = ttsSettings.provider === 'salutespeech'
+  const isSpeaking = ttsSettings.provider === 'native' ? nativeSpeech.isSpeaking : ttsSettings.provider === 'salutespeech'
     ? (isSaluteSpeaking || isSaluteLoading)
     : isBrowserSpeaking;
 
@@ -91,6 +94,22 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
     setIsSaluteLoading(false);
   }, []);
 
+  const reportSaluteError = useCallback((message: string) => {
+    toast.error(message, isNativeSpeechPlatform() ? {
+      description: 'Можно использовать голос Android без платного API. Для этого нужен установленный русский голос.',
+      action: {
+        label: 'Голос Android',
+        onClick: () => {
+          stopSaluteSpeech();
+          const next: TTSSettings = { ...ttsSettings, provider: 'native' };
+          setTtsSettings(next);
+          saveTTSSettings(next);
+          setTtsSettingsOpen(true);
+        },
+      },
+    } : undefined);
+  }, [ttsSettings, stopSaluteSpeech]);
+
   const speakSalute = useCallback(async (text: string) => {
     if (isSaluteSpeaking || isSaluteLoading) { stopSaluteSpeech(); return; }
     const hashText = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return h.toString(36); };
@@ -122,7 +141,7 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
       );
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        toast.error(err.error || `Ошибка SaluteSpeech: ${response.status}`);
+        reportSaluteError(err.error || `Ошибка SaluteSpeech: ${response.status}`);
         setIsSaluteLoading(false);
         return;
       }
@@ -137,17 +156,19 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
       await audio.play();
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') return;
-      toast.error('Ошибка озвучивания SaluteSpeech');
+      reportSaluteError('Ошибка озвучивания SaluteSpeech');
       setIsSaluteLoading(false);
     }
-  }, [ttsSettings.saluteVoice, isSaluteSpeaking, isSaluteLoading, stopSaluteSpeech]);
+  }, [ttsSettings.saluteVoice, isSaluteSpeaking, isSaluteLoading, stopSaluteSpeech, reportSaluteError]);
 
   const speakText = () => {
     if (!currentLesson) return;
     const textToSpeak = getTextToSpeak();
     if (!textToSpeak) { toast.error('Нет текста для озвучивания'); return; }
 
-    if (ttsSettings.provider === 'salutespeech') {
+    if (ttsSettings.provider === 'native') {
+      void nativeSpeech.toggle(textToSpeak);
+    } else if (ttsSettings.provider === 'salutespeech') {
       speakSalute(textToSpeak);
     } else {
       if (isBrowserSpeaking) { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); return; }
@@ -166,7 +187,7 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
   };
 
   // Stop speaking when lesson changes
-  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); stopSaluteSpeech(); }, [currentLessonIndex, stopSaluteSpeech]);
+  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); stopSaluteSpeech(); }, [currentLessonIndex, ttsSettings.provider, stopSaluteSpeech]);
   useEffect(() => {
     return () => { window.speechSynthesis?.cancel(); stopSaluteSpeech(); saluteCacheRef.current.forEach(url => URL.revokeObjectURL(url)); saluteCacheRef.current.clear(); };
   }, [stopSaluteSpeech]);
