@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_jobs: {
+        Row: {
+          completed_at: string | null
+          consent_version: string
+          created_at: string
+          data_erased: boolean
+          expires_at: string
+          files: Json
+          id: string
+          plan_hash: string
+          receipt_hash: string
+          snapshot: Json
+          state: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          consent_version: string
+          created_at?: string
+          data_erased?: boolean
+          expires_at?: string
+          files?: Json
+          id?: string
+          plan_hash: string
+          receipt_hash: string
+          snapshot: Json
+          state?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          consent_version?: string
+          created_at?: string
+          data_erased?: boolean
+          expires_at?: string
+          files?: Json
+          id?: string
+          plan_hash?: string
+          receipt_hash?: string
+          snapshot?: Json
+          state?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      account_deletion_revocations: {
+        Row: {
+          revoked_at: string
+          user_id: string
+        }
+        Insert: {
+          revoked_at?: string
+          user_id: string
+        }
+        Update: {
+          revoked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       achievements: {
         Row: {
           category: string
@@ -12672,6 +12732,35 @@ export type Database = {
         }
         Relationships: []
       }
+      student_roster_removals: {
+        Row: {
+          organization_id: string
+          removed_at: string
+          removed_by: string
+          user_id: string
+        }
+        Insert: {
+          organization_id: string
+          removed_at?: string
+          removed_by: string
+          user_id: string
+        }
+        Update: {
+          organization_id?: string
+          removed_at?: string
+          removed_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_roster_removals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_invoices: {
         Row: {
           amount: number
@@ -14245,6 +14334,47 @@ export type Database = {
         }
         Returns: Json
       }
+      account_deletion_access_allowed: { Args: never; Returns: boolean }
+      account_deletion_begin: {
+        Args: {
+          p_consent_version: string
+          p_plan_hash: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      account_deletion_complete: {
+        Args: { p_receipt_hash: string; p_request_id: string }
+        Returns: Json
+      }
+      account_deletion_erase_data: {
+        Args: { p_receipt_hash: string; p_request_id: string }
+        Returns: Json
+      }
+      account_deletion_files: { Args: { p_user_id: string }; Returns: Json }
+      account_deletion_personal_row_counts: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      account_deletion_prepare: {
+        Args: {
+          p_consent_version: string
+          p_plan_hash: string
+          p_receipt_hash: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      account_deletion_request_guard: { Args: never; Returns: undefined }
+      account_deletion_snapshot: { Args: { p_user_id: string }; Returns: Json }
+      account_deletion_status: {
+        Args: { p_receipt_hash: string; p_request_id: string }
+        Returns: Json
+      }
+      account_deletion_work: {
+        Args: { p_receipt_hash: string; p_request_id: string }
+        Returns: Json
+      }
       activate_verified_mailing_senders: {
         Args: { p_organization_id: string }
         Returns: number
@@ -15429,6 +15559,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_student_learning_results: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: Json
+      }
       get_student_test_questions: {
         Args: { p_lesson_id: string }
         Returns: {
@@ -16084,6 +16218,14 @@ export type Database = {
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
         Returns: undefined
+      }
+      set_archived_student_removed: {
+        Args: {
+          p_organization_id: string
+          p_removed?: boolean
+          p_user_id: string
+        }
+        Returns: Json
       }
       set_exolve_sip_credentials: {
         Args: {
