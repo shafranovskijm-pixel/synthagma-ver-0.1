@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   fetchResults: vi.fn(),
   exportToExcel: vi.fn(),
+  activeCount: 0 as number | null,
+  archivedCount: 0 as number | null,
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -51,8 +53,8 @@ vi.mock("@/hooks/useStudents", () => ({
     searchQuery: "",
     setSearchQuery: vi.fn(),
     removeStudent: vi.fn(),
-    activeStudentsCount: 0,
-    archivedCount: 0,
+    activeStudentsCount: mocks.activeCount,
+    archivedCount: mocks.archivedCount,
     archiveByMonth: [],
     archiveStudent: vi.fn(),
     unarchiveStudent: vi.fn(),
@@ -125,18 +127,20 @@ const resultRow = {
   course_tests: [{ id: "test-1", title: "Итоговый тест", passingScore: 70, orderIndex: 0 }],
 };
 
-function renderStudentsTab() {
-  return render(
+const testCourses = [{ id: "course-1", title: "Пожарная безопасность" }];
+function studentsTree() {
+  return (
     <MemoryRouter initialEntries={["/organization?tab=students&studentsView=active"]}>
       <StudentsTab
         organizationId="org-1"
-        courses={[{ id: "course-1", title: "Пожарная безопасность" }] as any}
+        courses={testCourses as any}
         onViewStudent={vi.fn()}
         onCopyCredentials={vi.fn()}
       />
     </MemoryRouter>,
   );
 }
+function renderStudentsTab() { return render(studentsTree()); }
 
 describe("StudentsTab result actions", () => {
   beforeEach(() => {
@@ -144,6 +148,8 @@ describe("StudentsTab result actions", () => {
     mocks.exportToExcel.mockReset();
     mocks.fetchResults.mockResolvedValue([resultRow]);
     mocks.exportToExcel.mockResolvedValue(undefined);
+    mocks.activeCount = 0;
+    mocks.archivedCount = 0;
   });
 
   it("opens the dialog and renders factual existing test results", async () => {
@@ -188,5 +194,28 @@ describe("StudentsTab result actions", () => {
     expect(screen.getByText("Причина: database unavailable")).toBeInTheDocument();
     expect(screen.queryByText("Результаты не найдены")).not.toBeInTheDocument();
     expect(mocks.exportToExcel).not.toHaveBeenCalled();
+  });
+
+  it("keeps a loaded report when the initial student counters arrive later", async () => {
+    mocks.activeCount = null;
+    mocks.archivedCount = null;
+    const view = renderStudentsTab();
+    fireEvent.click(screen.getByRole("button", { name: "Результаты тестирования" }));
+    expect(await screen.findByText("8/10 · 80%")).toBeInTheDocument();
+    mocks.activeCount = 1;
+    mocks.archivedCount = 0;
+    view.rerender(studentsTree());
+    expect(screen.getByText("8/10 · 80%")).toBeInTheDocument();
+    expect(screen.queryByText("Результаты не найдены")).not.toBeInTheDocument();
+  });
+
+  it("asks to refresh after the learner population changes, without displaying stale results", async () => {
+    const view = renderStudentsTab();
+    fireEvent.click(screen.getByRole("button", { name: "Результаты тестирования" }));
+    expect(await screen.findByText("8/10 · 80%")).toBeInTheDocument();
+    mocks.archivedCount = 1;
+    view.rerender(studentsTree());
+    expect(await screen.findByText(/Причина: Состав учеников изменился/)).toBeInTheDocument();
+    expect(screen.queryByText("8/10 · 80%")).not.toBeInTheDocument();
   });
 });
