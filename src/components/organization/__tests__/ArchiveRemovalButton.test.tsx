@@ -8,7 +8,7 @@ describe("archive removal confirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Удалить из архива: Тестовый ученик" }));
     expect(remove).not.toHaveBeenCalled();
     expect(screen.getByText(/История обучения, результаты тестов и выданные документы сохранятся/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Удалить из архива", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Удалить из архива" }));
     await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
