@@ -212,3 +212,7 @@ verify_jwt = false
 verify_jwt = false
 
 
+
+[functions.account-deletion]
+verify_jwt = false
+
