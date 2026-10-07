@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -75,6 +75,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
   const [showTestResults, setShowTestResults] = useState(false);
+  const [showArchiveRemoval, setShowArchiveRemoval] = useState(false);
+  const [isRemovingArchive, setIsRemovingArchive] = useState(false);
   const [testResultsStudentId, setTestResultsStudentId] = useState<string | null>(null);
   const [groupsDialogUserIds, setGroupsDialogUserIds] = useState<string[] | null>(null);
   const [membershipRevision, setMembershipRevision] = useState(0);
@@ -129,7 +131,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     countsLoading, countsErrorKind, countsInconsistent, retryCounts,
     groupCountsLoading, groupCountsErrorKind, retryGroupCounts,
     docsFilter, setDocsFilter, searchQuery, setSearchQuery,
-    removeStudent, activeStudentsCount, archivedCount, archiveByMonth,
+    removeStudent, bulkDelete, activeStudentsCount, archivedCount, archiveByMonth,
     archiveStudent, unarchiveStudent, refresh, refreshRows,
     loadMore, hasNextPage, isFetchingNextPage, loadedCount, totalFiltered,
     retryNextPage,
@@ -138,6 +140,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     enabled: panelMode !== "groups",
     viewMode: panelMode === "archive" ? "archive" : "active",
   });
+
+  React.useEffect(() => {
+    // Removing/restoring an archived learner changes the report population too.
+    studentResultsAbortRef.current?.abort();
+    studentResultsAbortRef.current = null;
+    studentResultsRequestRef.current = null;
+    studentResultsCacheRef.current = null;
+    setStudentResultRows([]);
+    setStudentResultsError(null);
+    setIsLoadingStudentResults(false);
+  }, [activeStudentsCount, archivedCount]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -657,8 +670,8 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                         <XCircle className="w-4 h-4 mr-2" />Отчислить с курса ({enrollmentsCount})
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => props.onShowBulkDeleteConfirm?.(getSelectedUserIds())} className="text-destructive focus:text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" />Перенести в архив
+                    <DropdownMenuItem onClick={() => panelMode === "archive" ? setShowArchiveRemoval(true) : props.onShowBulkDeleteConfirm?.(getSelectedUserIds())} className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />{panelMode === "archive" ? "Удалить из архива" : "Перенести в архив"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -734,13 +747,14 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                             <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Документы</th>
                             <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">ФРДО</th>
                             <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Курсы</th>
+                            <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">Результаты</th>
                             <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Прогресс</th>
                             <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Статус</th>
                             <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Действия</th>
                           </tr></thead>
                           <tbody>
                             {group.students.map(student => (
-                              <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} membershipGroupIds={membershipMap.get(student.user_id)} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} />
+                              <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} membershipGroupIds={membershipMap.get(student.user_id)} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} onViewTestResults={(userId) => { setTestResultsStudentId(userId); setShowTestResults(true); }} />
                             ))}
                           </tbody>
                         </table>
@@ -749,7 +763,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
                     {isOpen && (
                       <div className="lg:hidden divide-y divide-border border-t border-border bg-muted/10">
                         {group.students.map(student => (
-                          <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} studentDocsByUser={studentDocsByUser} />
+                          <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRequestCredentials={fetchStudentCredentialsOnDemand} studentDocsByUser={studentDocsByUser} onRemoveArchived={removeStudent} onUnarchive={unarchiveStudent} onViewTestResults={(userId) => { setTestResultsStudentId(userId); setShowTestResults(true); }} />
 
                         ))}
                       </div>
@@ -807,6 +821,17 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       )}
 
       {/* Dialogs */}
+      <Dialog open={showArchiveRemoval} onOpenChange={value => { if (!isRemovingArchive) setShowArchiveRemoval(value); }}>
+        <DialogContent><DialogHeader><DialogTitle>Удалить выбранных учеников из архива?</DialogTitle>
+          <DialogDescription>Выбрано: {selectedStudentIds.size}. Они исчезнут из архива и текущих счётчиков. История обучения, результаты тестов и выданные документы сохранятся.</DialogDescription>
+        </DialogHeader><div className="flex justify-end gap-2">
+          <Button variant="outline" disabled={isRemovingArchive} onClick={() => setShowArchiveRemoval(false)}>Отмена</Button>
+          <Button variant="destructive" disabled={isRemovingArchive || selectedStudentIds.size === 0} onClick={() => {
+            setIsRemovingArchive(true);
+            void bulkDelete().then(() => setShowArchiveRemoval(false)).finally(() => setIsRemovingArchive(false));
+          }}>{isRemovingArchive ? "Удаление…" : "Удалить из архива"}</Button>
+        </div></DialogContent>
+      </Dialog>
       <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Управление группами</DialogTitle></DialogHeader>

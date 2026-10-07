@@ -141,7 +141,7 @@ export function useStudentDetailCardLogic({
   activeIdentityKeyRef.current = identityKey;
 
   const [activeTab, setActiveTab] = useUrlQueryState<string>("studentSection", "profile", [
-    "profile", "identification", "courses", "documents", "activity", "testing", "chat",
+    "profile", "identification", "courses", "results", "documents", "activity", "testing", "chat",
   ]);
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
   const [pepAgreements, setPepAgreements] = useState<PepAgreementRecord[]>([]);

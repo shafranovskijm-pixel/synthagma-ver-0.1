@@ -19,6 +19,7 @@ import {
   isValidEmail,
 } from "@/api/students";
 import { toast } from "sonner";
+import { setArchivedStudentRemoved } from "@/api/studentArchiveRemoval";
 import { cancelCourseAssignment, courseAssignmentCancellationError } from "@/api/courseAssignmentCancellation";
 import { qk } from "@/lib/queryKeys";
 import {
@@ -441,15 +442,23 @@ export function useStudents(
     const userIds = getSelectedUserIds();
     let success = 0, failed = 0;
     for (const userId of userIds) {
-      const ok = await deleteStudent(userId);
+      let ok = false;
+      try {
+        if (viewMode === "archive" && organizationId) {
+          await setArchivedStudentRemoved(organizationId, userId, true);
+          ok = true;
+        } else {
+          ok = await deleteStudent(userId);
+        }
+      } catch { /* Failed rows stay visible and are counted below. */ }
       if (ok) success++; else failed++;
     }
-    if (success > 0) toast.success(`Удалено: ${success} учеников`);
+    if (success > 0) toast.success(`${viewMode === "archive" ? "Удалено из архива" : "Перенесено в архив"}: ${success}`);
     if (failed > 0) toast.error(`Ошибок: ${failed}`);
     setSelectedStudentIds(new Set());
     invalidatePopulation();
     return { success, failed };
-  }, [getSelectedUserIds, invalidatePopulation]);
+  }, [getSelectedUserIds, invalidatePopulation, viewMode, organizationId]);
 
   const updateCompany = useCallback(async (userId: string, companyId: string | null) => {
     const ok = await updateStudentCompany(userId, companyId);
@@ -469,13 +478,36 @@ export function useStudents(
   }, []);
 
   const removeStudent = useCallback(async (userId: string) => {
+    if (viewMode === "archive") {
+      if (!organizationId) { toast.error("Организация не найдена"); return false; }
+      try {
+        await setArchivedStudentRemoved(organizationId, userId, true);
+        toast.success("Ученик удалён из архива. История обучения сохранена.", {
+          duration: 10000,
+          action: { label: "Вернуть в архив", onClick: () => {
+            void setArchivedStudentRemoved(organizationId, userId, false).then(() => {
+              toast.success("Ученик возвращён в архив"); invalidatePopulation();
+            }).catch(() => toast.error("Не удалось вернуть ученика в архив"));
+          } },
+        });
+        dropFromSelection(userId);
+        invalidatePopulation();
+        return true;
+      } catch (error) {
+        const message = (error as { message?: string })?.message;
+        toast.error(message?.includes("student_must_be_archived")
+          ? "Ученик уже не в архиве. Обновите список."
+          : "Не удалось удалить из архива. Изменение не подтверждено сервером.");
+        return false;
+      }
+    }
     const ok = await deleteStudent(userId);
     if (!ok) { toast.error("Ошибка удаления ученика"); return false; }
-    toast.success("Ученик удалён");
+    toast.success("Ученик перенесён в архив");
     dropFromSelection(userId);
     invalidatePopulation();
     return true;
-  }, [invalidatePopulation, dropFromSelection]);
+  }, [invalidatePopulation, dropFromSelection, viewMode, organizationId]);
 
   const refresh = useCallback(() => { invalidatePopulation(); }, [invalidatePopulation]);
 
