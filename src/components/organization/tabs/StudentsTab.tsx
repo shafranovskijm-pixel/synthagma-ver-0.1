@@ -141,16 +141,23 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
     viewMode: panelMode === "archive" ? "archive" : "active",
   });
 
+  const previousPopulationRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     // Removing/restoring an archived learner changes the report population too.
+    // The initial counters may arrive after a report; that is not a mutation.
+    if (activeStudentsCount === null || archivedCount === null) return;
+    const population = `${organizationId}:${activeStudentsCount}:${archivedCount}`;
+    const previous = previousPopulationRef.current;
+    previousPopulationRef.current = population;
+    if (previous === null || previous === population) return;
     studentResultsAbortRef.current?.abort();
     studentResultsAbortRef.current = null;
     studentResultsRequestRef.current = null;
     studentResultsCacheRef.current = null;
     setStudentResultRows([]);
-    setStudentResultsError(null);
+    setStudentResultsError(new Error("Состав учеников изменился. Обновите результаты."));
     setIsLoadingStudentResults(false);
-  }, [activeStudentsCount, archivedCount]);
+  }, [organizationId, activeStudentsCount, archivedCount]);
 
   React.useEffect(() => {
     let cancelled = false;
