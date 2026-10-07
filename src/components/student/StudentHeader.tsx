@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { AccountSettingsMenuItem } from "@/components/account/AccountSettingsLink";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
@@ -153,6 +154,7 @@ export function StudentHeader({
               )}
             </DropdownMenuItem>
 
+            <AccountSettingsMenuItem />
             <DropdownMenuItem onClick={() => navigate("/student/whats-new")}>
               <Sparkles className="w-4 h-4 mr-2" />
               Что нового?

@@ -17,6 +17,7 @@ import { CompanyCard } from "./CompanyCard";
 import { salesExtraItems } from "./SalesSidebar";
 import { ADMIN_THEMES, getStoredThemeId, storeThemeId } from "@/constants/admin-themes";
 import { useAuth } from "@/hooks/useAuth";
+import { AccountSettingsMenuItem } from "@/components/account/AccountSettingsLink";
 
 interface Props {
   activeLabel: string;
@@ -110,6 +111,7 @@ export function SalesDashboardHeader({ activeLabel, onSignOut }: Props) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="truncate">{user?.email || "Менеджер"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <AccountSettingsMenuItem />
                 <DropdownMenuLabel className="text-xs text-muted-foreground">Разделы</DropdownMenuLabel>
                 {salesExtraItems.map(item => {
                   const Icon = item.icon;

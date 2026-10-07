@@ -22,6 +22,7 @@ import type { AdminTabType } from "./AdminSidebar";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
+import { AccountSettingsMenuItem } from "@/components/account/AccountSettingsLink";
 
 interface AdminDashboardHeaderProps {
   activeTab: AdminTabType;
@@ -226,6 +227,7 @@ export function AdminDashboardHeader({
               <TooltipContent>Профиль</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-52 rounded-xl">
+              <AccountSettingsMenuItem />
               <DropdownMenuItem onClick={() => setActiveTab("settings")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <User className="w-4 h-4" />
                 Профиль

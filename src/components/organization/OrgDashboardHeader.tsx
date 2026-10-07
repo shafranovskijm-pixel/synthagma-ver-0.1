@@ -22,6 +22,7 @@ import { QuickActionChips } from "./QuickActionChips";
 import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
 import { hasOrganizationCourse } from "@/lib/organization/firstRun";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { AccountSettingsMenuItem } from "@/components/account/AccountSettingsLink";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -274,6 +275,7 @@ export function OrgDashboardHeader() {
               <TooltipContent>Профиль</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-52 rounded-xl">
+              <AccountSettingsMenuItem />
               <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("profile" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <User className="w-4 h-4" />
                 Профиль

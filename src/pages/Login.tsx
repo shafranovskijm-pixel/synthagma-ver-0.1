@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { PendingAccountDeletionLink } from "@/components/account/PendingAccountDeletionLink";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
@@ -366,6 +367,7 @@ const Login = () => {
               )}
             </Button>
           </form>
+          <PendingAccountDeletionLink />
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

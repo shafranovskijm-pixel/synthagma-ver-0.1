@@ -18,6 +18,7 @@ import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { PartnerNetworkTree } from "@/components/partner/PartnerNetworkTree";
 import { PartnerMaterials } from "@/components/partner/PartnerMaterials";
 import { PartnerHowItWorks } from "@/components/partner/PartnerHowItWorks";
+import { AccountSettingsLink } from "@/components/account/AccountSettingsLink";
 
 const PartnerDashboard = () => {
   const { user } = useAuth();
@@ -158,6 +159,7 @@ const PartnerDashboard = () => {
             <Badge variant="secondary">Партнёрский кабинет</Badge>
           </div>
           <div className="flex items-center gap-2">
+            <AccountSettingsLink />
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/partner/offer")}>
               <FileText className="w-3.5 h-3.5" /> Оферта
             </Button>
