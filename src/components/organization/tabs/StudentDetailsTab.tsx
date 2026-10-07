@@ -15,6 +15,7 @@ import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { ProfileTab } from "@/components/organization/student-detail/ProfileTab";
 import { IdentificationTab } from "@/components/organization/student-detail/IdentificationTab";
 import { CoursesTab } from "@/components/organization/student-detail/CoursesTab";
+import { LearningResultsTab } from "@/components/organization/student-detail/LearningResultsTab";
 import { DocumentsTab } from "@/components/organization/student-detail/DocumentsTab";
 import { ActivityTab } from "@/components/organization/student-detail/ActivityTab";
 import { ChatTab } from "@/components/organization/student-detail/ChatTab";
@@ -28,6 +29,7 @@ const TABS = [
   { key: "profile", label: "Личное дело", icon: User },
   { key: "identification", label: "Идентификация", icon: Video },
   { key: "courses", label: "Курсы", icon: BookOpen },
+  { key: "results", label: "Результаты обучения", icon: ClipboardCheck },
   { key: "documents", label: "Документы", icon: FileText },
   { key: "activity", label: "Активность", icon: Clock },
   { key: "testing", label: "Тестирование", icon: ClipboardCheck },
@@ -445,6 +447,7 @@ export function StudentDetailsTab() {
                 />
               )}
               {h.activeTab === "activity" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />}
+              {h.activeTab === "results" && <LearningResultsTab key={`${organizationId}:${student.user_id}`} userId={student.user_id} organizationId={organizationId} />}
               {h.activeTab === "testing" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} defaultSubTab="tests" onlySubTab />}
               {h.activeTab === "chat" && user && <ChatTab studentUserId={student.user_id} organizationId={organizationId} currentUserId={user.id} studentName={student.name} />}
             </>
