@@ -12,6 +12,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "android:debug": "node scripts/android/build.mjs",
+    "android:release:unsigned": "node scripts/android/build.mjs --release",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",

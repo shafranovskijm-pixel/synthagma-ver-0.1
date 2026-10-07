@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Capacitor } from '@capacitor/core';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const isNative = typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined';
+const isNative = Capacitor.isNativePlatform();
 const Router = isNative ? HashRouter : BrowserRouter;
 
 function ThemeInit() { useThemePersonalization(); return null; }
