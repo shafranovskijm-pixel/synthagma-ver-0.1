@@ -426,7 +426,7 @@ END;$fn$;
 
 CREATE FUNCTION public.account_deletion_subject_write_guard() RETURNS trigger
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
-DECLARE column_name text; target_id uuid; targets uuid[];
+DECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];
 BEGIN
  -- Sort locks to avoid deadlocks in two-person message rows.
  -- UPDATE may not move a revoked subject's data outside the deletion scope.
@@ -435,6 +435,16 @@ BEGIN
   VALUES (to_jsonb(NEW)->>c),
          (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)
  ) subjects(subject_id) WHERE subject_id IS NOT NULL;
+ -- A signature may refer to a person's PEP agreement even if its party UUIDs
+ -- differ. Keep that exact indirect relationship inside the same write fence.
+ IF TG_TABLE_NAME='document_signatures' THEN
+  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p
+  WHERE p.user_id IS NOT NULL AND p.id IN (
+   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,
+   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);
+  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets
+  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;
+ END IF;
  FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP
   PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));
   IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN
@@ -526,7 +536,7 @@ CREATE FUNCTION public.account_deletion_snapshot(p_user_id uuid) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public,storage AS $fn$
 DECLARE p public.profiles%ROWTYPE; v_org uuid; v_owner boolean:=false;
  v_blockers jsonb:='[]'; v_categories jsonb:='[]'; v_files jsonb;
- v_count bigint; v_learning bigint; v_docs bigint:=0; v_shared bigint:=0;
+ v_count bigint; v_learning bigint; v_docs bigint:=0; v_shared bigint:=0; v_documentary bigint:=0;
  v_org_shared bigint:=0; v_courses bigint:=0; r record; v_fingerprint jsonb;
 BEGIN
  SELECT * INTO p FROM public.profiles WHERE user_id=p_user_id;
@@ -782,13 +792,23 @@ BEGIN
   -- Only the audited seeded course is auto-removable in the first release.
   SELECT count(*) INTO v_courses FROM public.courses WHERE organization_id=v_org;
   v_org_shared:=v_org_shared+(SELECT count(*) FROM public.courses WHERE organization_id=v_org AND system_key IS DISTINCT FROM 'welcome');
-  IF v_org_shared>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','OWNERSHIP_TRANSFER_REQUIRED','message','Организация содержит пользователей, обучение, платежи или рабочие записи. Сначала передайте управление организацией.','actionHref','/organization?tab=staff')); END IF;
+ IF v_org_shared>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','OWNERSHIP_TRANSFER_REQUIRED','message','Организация содержит пользователей, обучение, платежи или рабочие записи. Сначала передайте управление организацией.','actionHref','/organization?tab=staff')); END IF;
  END IF;
+ -- PEP is deletable only when it is the person's standalone agreement, not
+ -- evidence attached to a document signature (the live FK is SET NULL).
+ SELECT count(*) INTO v_documentary FROM public.pep_agreements pa
+ WHERE pa.user_id=p_user_id AND EXISTS(SELECT 1 FROM public.document_signatures d WHERE d.pep_agreement_id=pa.id);
+ -- An organization's offer acceptance belongs to the organization lifecycle.
+ -- Remove it only together with the verified unused sole-owner organization.
+ SELECT v_documentary+count(*) INTO v_documentary FROM public.organization_offer_acceptances a
+ WHERE a.user_id=p_user_id AND NOT (v_owner AND v_org_shared=0 AND a.organization_id=v_org);
+ IF v_documentary>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','DOCUMENTARY_RELATION_REVIEW_REQUIRED','message','Есть соглашение ПЭП, связанное с подписью документа, или акцепт оферты действующей организации. Эти общие документальные записи требуют отдельной обработки; удаление аккаунта не начато.')); END IF;
  v_categories:=jsonb_build_array(
   jsonb_build_object('key','account','label','Вход в аккаунт, пароль, профиль и личные настройки','count',1,'action','delete'),
   jsonb_build_object('key','private_files','label','Личные фотографии и загруженные документы','count',jsonb_array_length(v_files),'action','delete'),
   jsonb_build_object('key','learning_results','label','Назначения курсов, прогресс, попытки, ответы и результаты обучения','count',v_learning,'action','delete'),
   jsonb_build_object('key','institutional_documents','label','Оформленные документы','count',v_docs,'action',CASE WHEN v_docs>0 THEN 'block' ELSE 'delete' END));
+ IF v_documentary>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','documentary_relations','label','Соглашения ПЭП и акцепты оферт, связанные с документами или действующей организацией','count',v_documentary,'action','block')); END IF;
  IF v_owner THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','empty_organization','label','Неиспользованная организация и ознакомительный курс','count',1,'action',CASE WHEN v_org_shared>0 THEN 'block' ELSE 'delete' END)); END IF;
  SELECT count(*) INTO v_count FROM public.audit_logs WHERE user_id=p_user_id;
  IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','common_audit','label','Общие события организации: запись события сохраняется, имя и ссылка на аккаунт удаляются','count',v_count,'action','anonymize')); END IF;

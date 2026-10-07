@@ -94,6 +94,7 @@ if len(sys.argv)>5:
  for f in progress:parts.append(f['definition'].rstrip().rstrip(';')+';')
  parts.append("CREATE TRIGGER trg_recalc_enrollment_progress AFTER DELETE ON public.lesson_progress FOR EACH ROW EXECUTE FUNCTION public.recalc_enrollment_progress();")
  parts.append("CREATE TRIGGER zzzz_csz_lesson_progress_guard BEFORE DELETE ON public.lesson_progress FOR EACH ROW EXECUTE FUNCTION public.csz_guard_lesson_progress();")
-parts.append((root/'supabase/migrations/20261007160000_self_account_deletion.sql').read_text(encoding='utf-8'))
+if '--schema-only' not in sys.argv:
+ parts.append((root/'supabase/migrations/20261007160000_self_account_deletion.sql').read_text(encoding='utf-8'))
 out.write_text('\n\n'.join(parts),encoding='utf-8')
 print(out)

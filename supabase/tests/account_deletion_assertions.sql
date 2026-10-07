@@ -32,6 +32,8 @@ INSERT INTO public.test_attempts(id,user_id,lesson_id,score,max_score,answers,co
 INSERT INTO public.course_manual_credits(enrollment_id,credited_by,credited_at) VALUES('40000000-0000-4000-8000-000000000001','22222222-2222-4222-8222-222222222222','2026-10-06T12:00:00Z');
 INSERT INTO public.lesson_progress(user_id,lesson_id,completed) VALUES('11111111-1111-4111-8111-111111111111','30000000-0000-4000-8000-000000000001',true);
 INSERT INTO public.student_frdo_data(user_id,organization_id,snils) VALUES('11111111-1111-4111-8111-111111111111','10000000-0000-4000-8000-000000000001','SYNTHETIC');
+INSERT INTO public.pep_agreements(id,user_id,organization_id,agreement_text) VALUES('60000000-0000-4000-8000-000000000001','11111111-1111-4111-8111-111111111111','10000000-0000-4000-8000-000000000001','Synthetic standalone personal agreement');
+INSERT INTO public.organization_offer_acceptances(user_id,organization_id) VALUES('44444444-4444-4444-8444-444444444444','10000000-0000-4000-8000-000000000003');
 -- Self-attributed events must be deleted, not UPDATE-scrubbed through the fence.
 INSERT INTO public.role_audit_log(target_user_id,performed_by,performed_by_name) VALUES('11111111-1111-4111-8111-111111111111','11111111-1111-4111-8111-111111111111','Synthetic learner');
 INSERT INTO public.student_deletion_log(student_id,deleted_by,deleted_by_name) VALUES('11111111-1111-4111-8111-111111111111','11111111-1111-4111-8111-111111111111','Synthetic learner');
@@ -50,6 +52,16 @@ SELECT set_config('request.jwt.claims','{"role":"service_role"}',false);
 SELECT fixture_assert(public.account_deletion_prepare('11111111-1111-4111-8111-111111111111',repeat('7',64),repeat('8',64),'account-deletion-v1')->>'code'='CONSENT_REQUIRED','v1 prepare cannot mint a full-delete plan');
 SELECT fixture_assert(public.account_deletion_begin('11111111-1111-4111-8111-111111111111',repeat('7',64),NULL)->>'code'='CONSENT_REQUIRED','missing consent cannot revoke access');
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM account_deletion_revocations),'old consent made no mutation');
+-- The PEP FK must not be silently SET NULL on a document even if its party
+-- UUIDs do not match the deleted account. This was missed by party-only checks.
+INSERT INTO public.document_signatures(id,organization_id,sender_user_id,recipient_user_id,pep_agreement_id,status)
+ VALUES('61000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333','60000000-0000-4000-8000-000000000001','pending');
+SELECT fixture_assert((public.account_deletion_prepare('11111111-1111-4111-8111-111111111111',repeat('7',64),repeat('8',64),'full-personal-data-v1')->'blockers') @> '[{"code":"DOCUMENTARY_RELATION_REVIEW_REQUIRED"}]','indirect PEP document relationship blocks before start');
+SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM account_deletion_revocations),'documentary refusal did not revoke anyone');
+DELETE FROM public.document_signatures WHERE id='61000000-0000-4000-8000-000000000001';
+INSERT INTO public.organization_offer_acceptances(user_id,organization_id) VALUES('11111111-1111-4111-8111-111111111111','10000000-0000-4000-8000-000000000001');
+SELECT fixture_assert((public.account_deletion_prepare('11111111-1111-4111-8111-111111111111',repeat('7',64),repeat('8',64),'full-personal-data-v1')->'blockers') @> '[{"code":"DOCUMENTARY_RELATION_REVIEW_REQUIRED"}]','active organization offer is not disposable personal data');
+DELETE FROM public.organization_offer_acceptances WHERE user_id='11111111-1111-4111-8111-111111111111';
 INSERT INTO test_state VALUES('old',public.account_deletion_prepare('11111111-1111-4111-8111-111111111111',repeat('a',64),repeat('b',64),'full-personal-data-v1'));
 SELECT fixture_assert((SELECT value->>'canDelete'='true' FROM test_state WHERE key='old'),'ordinary learner with completed history may delete');
 INSERT INTO test_state VALUES('new',public.account_deletion_prepare('11111111-1111-4111-8111-111111111111',repeat('c',64),repeat('d',64),'full-personal-data-v1'));
@@ -83,6 +95,11 @@ END; $$;
 RESET ROLE;
 SELECT set_config('request.jwt.claims','{"role":"service_role"}',false);
 DO $$ BEGIN
+ INSERT INTO public.document_signatures(organization_id,sender_user_id,recipient_user_id,pep_agreement_id,status)
+ VALUES('10000000-0000-4000-8000-000000000001','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333','60000000-0000-4000-8000-000000000001','pending');
+ RAISE EXCEPTION 'late indirect PEP attachment was accepted';
+EXCEPTION WHEN insufficient_privilege THEN IF SQLERRM<>'Account personal data writes are closed' THEN RAISE; END IF; END; $$;
+DO $$ BEGIN
  UPDATE storage.objects SET updated_at=now() WHERE name='11111111-1111-4111-8111-111111111111/photo.jpg';
  RAISE EXCEPTION 'upsert after begin was accepted';
 EXCEPTION WHEN insufficient_privilege THEN
@@ -103,6 +120,7 @@ SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM enrollments WHERE user_id='111111
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM test_attempts WHERE user_id='11111111-1111-4111-8111-111111111111'),'scores and essays physically removed');
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM course_manual_credits WHERE enrollment_id='40000000-0000-4000-8000-000000000001'),'own credit removed with enrollment, not a reset of another learner');
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM profiles WHERE user_id='11111111-1111-4111-8111-111111111111'),'own profile physically removed');
+SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM pep_agreements WHERE user_id='11111111-1111-4111-8111-111111111111'),'unattached personal PEP removed with account');
 SELECT fixture_assert(public.account_deletion_personal_row_counts('11111111-1111-4111-8111-111111111111')='[]'::jsonb,'no own rows remain in the full audited direct map');
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM enrollment_history WHERE user_id='11111111-1111-4111-8111-111111111111'),'real delete-trigger-generated history cleared');
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM role_audit_log WHERE target_user_id='11111111-1111-4111-8111-111111111111') AND NOT EXISTS(SELECT 1 FROM student_deletion_log WHERE student_id='11111111-1111-4111-8111-111111111111'),'self-attributed audit rows removed without fence deadlock');
@@ -151,6 +169,7 @@ SELECT fixture_assert((SELECT value->>'canDelete'='true' FROM test_state WHERE k
 SELECT public.account_deletion_begin('44444444-4444-4444-8444-444444444444',repeat('5',64),'full-personal-data-v1');
 SELECT public.account_deletion_erase_data((SELECT (value->>'requestId')::uuid FROM test_state WHERE key='empty'),repeat('6',64));
 SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM organizations WHERE id='10000000-0000-4000-8000-000000000003'),'unused organization removed');
+SELECT fixture_assert(NOT EXISTS(SELECT 1 FROM organization_offer_acceptances WHERE user_id='44444444-4444-4444-8444-444444444444'),'unused own organization offer removed with organization');
 DELETE FROM auth.users WHERE id='44444444-4444-4444-8444-444444444444';
 SELECT fixture_assert(public.account_deletion_complete((SELECT (value->>'requestId')::uuid FROM test_state WHERE key='empty'),repeat('6',64))->>'status'='deleted','unused owner deletion completed');
 -- The exact production immutable trigger is installed in this fixture.
