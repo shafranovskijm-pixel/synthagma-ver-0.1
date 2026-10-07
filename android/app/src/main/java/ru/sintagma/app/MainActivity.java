@@ -15,13 +15,20 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NativeFilesPlugin.class);
         super.onCreate(savedInstanceState);
+        if (bridge == null) return; // Capacitor shows its missing-WebView screen.
 
         // HashRouter navigation must participate in the Android Back gesture.
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (bridge.getWebView().canGoBack()) bridge.getWebView().goBack();
-                else moveTaskToBack(true);
+                // Radix dialogs do not create a history entry. Give the visible
+                // dialog its ordinary Escape action before navigating/exiting.
+                String dismissDialog = "(function(){var dialog=Array.from(document.querySelectorAll('[role=dialog],[role=alertdialog]')).find(function(e){return e.getClientRects().length>0;});if(!dialog)return false;(document.activeElement||document.body).dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true}));return true;})()";
+                bridge.getWebView().evaluateJavascript(dismissDialog, handled -> {
+                    if ("true".equals(handled)) return;
+                    if (bridge.getWebView().canGoBack()) bridge.getWebView().goBack();
+                    else moveTaskToBack(true);
+                });
             }
         });
 
