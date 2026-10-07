@@ -11,13 +11,16 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 /** Saves generated learning documents through Android's user-controlled picker. */
 @CapacitorPlugin(name = "NativeFiles")
 public class NativeFilesPlugin extends Plugin {
     private static final int MAX_BASE64_LENGTH = 28 * 1024 * 1024;
-    private boolean saving = false;
+    private volatile boolean saving = false;
 
     @PluginMethod
     public void save(PluginCall call) {
@@ -37,36 +40,64 @@ public class NativeFilesPlugin extends Plugin {
         intent.setType(mimeType.trim().isEmpty() ? "application/octet-stream" : mimeType);
         intent.putExtra(Intent.EXTRA_TITLE, name);
         saving = true;
+        File temporaryFile = null;
         try {
+            byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+            if (bytes.length > 20 * 1024 * 1024) throw new IllegalArgumentException("Файл превышает 20 МБ");
+            temporaryFile = File.createTempFile("sintagma-export-", ".tmp", getContext().getCacheDir());
+            try (OutputStream output = new FileOutputStream(temporaryFile)) {
+                output.write(bytes);
+            }
+            // Capacitor persists PluginCall options while the picker is open.
+            // Large base64 data exceeds Android's Binder saved-state limit.
+            // Persist only a cache filename so recreation can resume the copy.
+            call.getData().remove("data");
+            call.getData().put("temporaryFileName", temporaryFile.getName());
             startActivityForResult(call, intent, "documentCreated");
         } catch (Exception error) {
             saving = false;
+            if (temporaryFile != null) temporaryFile.delete();
             call.reject("Не удалось открыть выбор файла.", error);
         }
     }
 
     @ActivityCallback
     private void documentCreated(PluginCall call, ActivityResult result) {
-        saving = false;
-        if (call == null) return;
+        if (call == null) { saving = false; return; }
+        String temporaryFileName = call.getString("temporaryFileName", "");
+        if (!temporaryFileName.matches("sintagma-export-[A-Za-z0-9_-]+\\.tmp")) {
+            saving = false;
+            call.reject("Не удалось восстановить файл. Повторите загрузку.");
+            return;
+        }
+        File temporaryFile = new File(getContext().getCacheDir(), temporaryFileName);
         Intent resultData = result.getData();
         Uri uri = resultData == null ? null : resultData.getData();
         if (result.getResultCode() != Activity.RESULT_OK || uri == null) {
+            temporaryFile.delete();
+            saving = false;
             JSObject response = new JSObject();
             response.put("saved", false);
             call.resolve(response);
             return;
         }
         getBridge().execute(() -> {
-            try (OutputStream output = getContext().getContentResolver().openOutputStream(uri)) {
-                if (output == null) throw new IllegalStateException("Недоступен выбранный файл");
-                byte[] bytes = Base64.decode(call.getString("data", ""), Base64.DEFAULT);
-                output.write(bytes);
+            try {
+                try (FileInputStream input = new FileInputStream(temporaryFile);
+                     OutputStream output = getContext().getContentResolver().openOutputStream(uri)) {
+                    if (output == null) throw new IllegalStateException("Недоступен выбранный файл");
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                }
                 JSObject response = new JSObject();
                 response.put("saved", true);
                 call.resolve(response);
             } catch (Exception error) {
                 call.reject("Не удалось сохранить файл. Повторите загрузку.", error);
+            } finally {
+                temporaryFile.delete();
+                saving = false;
             }
         });
     }
