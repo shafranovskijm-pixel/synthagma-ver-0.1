@@ -1,6 +1,9 @@
 /** S-042. Only the verified caller can create/confirm a plan. Receipt capabilities
  * expose no personal data and may only resume an already confirmed operation. */
-export const ACCOUNT_DELETION_REVISION = "account-deletion-v1";
+export const ACCOUNT_DELETION_REVISION = "account-deletion-v2";
+// Expand the purge scope or warning semantics only with a new consent version.
+export const ACCOUNT_DELETION_CONSENT = "full-personal-data-v1";
+export const ACCOUNT_DELETION_WARNING = "Удаление аккаунта необратимо. Профиль, доступ, личные файлы, переписка, прогресс и результаты из списка «Будет удалено» будут удалены из рабочей СИНТАГМЫ. Восстановить аккаунт и эти данные нельзя. Заранее скачайте нужные материалы. Отдельно указаны данные, которые сохраняются или требуют отдельной обработки. Эта операция не удаляет резервные копии и ранее выгруженные другими пользователями документы.";
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -29,10 +32,11 @@ const isObject = (value: unknown): value is Record<string, unknown> => !!value &
 const defaultRandom = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
 const defaultHash = async (token: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))), b => b.toString(16).padStart(2, "0")).join("");
 const knownCodes: Record<string, [number, string]> = {
+  CONSENT_REQUIRED: [409, "Нужно заново прочитать предупреждение и подтвердить удаление аккаунта и связанных данных."],
   PLAN_EXPIRED: [409, "Проверка устарела. Проверьте условия удаления заново."],
   PLAN_CHANGED: [409, "Данные аккаунта изменились. Проверьте условия удаления заново."],
   OWNERSHIP_TRANSFER_REQUIRED: [409, "Сначала передайте управление организацией с другими пользователями или общими данными."],
-  RETENTION_POLICY_REQUIRED: [409, "У аккаунта есть оформленные документы. Порядок их обработки ещё не установлен."],
+  RETENTION_POLICY_REQUIRED: [409, "У аккаунта есть документы организации, которые требуют отдельной проверки перед удалением."],
   INVALID_RECEIPT: [404, "Сведения об операции не найдены."],
   NOT_CONFIRMED: [409, "Удаление ещё не было подтверждено."],
   DELETION_UNAVAILABLE: [503, "Не удалось проверить удаление. Повторите проверку состояния."],
@@ -103,21 +107,24 @@ export function createAccountDeletionHandler(deps: AccountDeletionDependencies) 
       if (!actor || !idPattern.test(actor.id)) throw new Failure(401, "AUTH_REQUIRED", "Требуется вход в аккаунт.");
       if (body.action === "preview") {
         checkKeys(body, ["action"]);
-        if (actor.hasVerifiedMfa) return reply({ revision: ACCOUNT_DELETION_REVISION, canDelete: false, planToken: null, statusToken: null, requestId: null, expiresAt: null,
+        if (actor.hasVerifiedMfa) return reply({ revision: ACCOUNT_DELETION_REVISION, consentVersion: ACCOUNT_DELETION_CONSENT, warning: ACCOUNT_DELETION_WARNING, canDelete: false, planToken: null, statusToken: null, requestId: null, expiresAt: null,
           categories: [], blockers: [{ code: "MFA_REAUTH_REQUIRED", message: "Для аккаунта включена многофакторная защита. Подтверждение удаления с дополнительным фактором пока не подключено." }] });
         const planToken = randomToken();
         const statusToken = randomToken();
-        const plan = await rpc("account_deletion_prepare", { p_user_id: actor.id, p_plan_hash: await hash(planToken), p_receipt_hash: await hash(statusToken) });
-        return reply({ ...plan, revision: ACCOUNT_DELETION_REVISION, planToken: plan.canDelete ? planToken : null, statusToken: plan.canDelete ? statusToken : null });
+        const plan = await rpc("account_deletion_prepare", { p_user_id: actor.id, p_plan_hash: await hash(planToken), p_receipt_hash: await hash(statusToken), p_consent_version: ACCOUNT_DELETION_CONSENT });
+        return reply({ ...plan, revision: ACCOUNT_DELETION_REVISION, consentVersion: ACCOUNT_DELETION_CONSENT, warning: ACCOUNT_DELETION_WARNING, planToken: plan.canDelete ? planToken : null, statusToken: plan.canDelete ? statusToken : null });
       }
       if (body.action !== "confirm") throw new Failure(400, "INVALID_REQUEST", "Некорректный запрос.");
-      checkKeys(body, ["action", "planToken", "password", "confirmation"]);
-      if (typeof body.planToken !== "string" || !tokenPattern.test(body.planToken) || typeof body.password !== "string" || body.password.length < 1 || body.password.length > 4096 || body.confirmation !== "DELETE_MY_ACCOUNT") {
+      checkKeys(body, ["action", "planToken", "password", "confirmation", "consentVersion"]);
+      if (body.consentVersion !== ACCOUNT_DELETION_CONSENT || body.confirmation !== "DELETE_MY_ACCOUNT_AND_PERSONAL_DATA") {
+        throw new Failure(409, "CONSENT_REQUIRED", knownCodes.CONSENT_REQUIRED[1]);
+      }
+      if (typeof body.planToken !== "string" || !tokenPattern.test(body.planToken) || typeof body.password !== "string" || body.password.length < 1 || body.password.length > 4096) {
         throw new Failure(400, "INVALID_REQUEST", "Некорректный запрос.");
       }
       if (actor.hasVerifiedMfa) throw new Failure(403, "MFA_REAUTH_REQUIRED", "Нужно подтверждение дополнительным фактором. Удаление не начато.");
       if (!actor.email || !await deps.reauthenticate(actor, body.password)) throw new Failure(403, "REAUTH_FAILED", "Пароль не подтверждён. Удаление не начато.");
-      const work = await rpc("account_deletion_begin", { p_user_id: actor.id, p_plan_hash: await hash(body.planToken) });
+      const work = await rpc("account_deletion_begin", { p_user_id: actor.id, p_plan_hash: await hash(body.planToken), p_consent_version: ACCOUNT_DELETION_CONSENT });
       if (!idPattern.test(work.requestId) || typeof work.receiptHash !== "string") throw new Failure(503, "DELETION_UNAVAILABLE", knownCodes.DELETION_UNAVAILABLE[1]);
       const state = await continueDeletion(work.requestId, work.receiptHash);
       return reply(state, state.status === "cleanup_pending" ? 202 : 200);

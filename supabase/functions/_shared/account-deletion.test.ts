@@ -23,7 +23,7 @@ function setup() {
   randomToken:vi.fn().mockReturnValueOnce(planToken).mockReturnValueOnce(statusToken),hashToken:async t=>"hash:"+t,
  };
  const call=(body:unknown,auth=true)=>createAccountDeletionHandler(deps)(new Request("https://example.invalid",{method:"POST",headers:auth?{authorization:"Bearer verified"}:{},body:JSON.stringify(body)}));
- const confirm=()=>call({action:"confirm",planToken,password:"technical-password",confirmation:"DELETE_MY_ACCOUNT"});
+ const confirm=()=>call({action:"confirm",planToken,password:"technical-password",confirmation:"DELETE_MY_ACCOUNT_AND_PERSONAL_DATA",consentVersion:"full-personal-data-v1"});
  return{deps,call,confirm,calls,rpc,setState:(s:string)=>{state=s;}};
 }
 describe("self-account deletion security and durable outcomes",()=>{
@@ -36,8 +36,8 @@ describe("self-account deletion security and durable outcomes",()=>{
  });
  it("binds preview to verified caller and exposes separate random capabilities",async()=>{
   const t=setup();const data=await(await t.call({action:"preview"})).json();
-  expect(t.rpc).toHaveBeenCalledWith("account_deletion_prepare",{p_user_id:uid,p_plan_hash:"hash:"+planToken,p_receipt_hash:"hash:"+statusToken});
-  expect(data).toMatchObject({revision:"account-deletion-v1",planToken,statusToken,requestId});
+  expect(t.rpc).toHaveBeenCalledWith("account_deletion_prepare",{p_user_id:uid,p_plan_hash:"hash:"+planToken,p_receipt_hash:"hash:"+statusToken,p_consent_version:"full-personal-data-v1"});
+  expect(data).toMatchObject({revision:"account-deletion-v2",consentVersion:"full-personal-data-v1",planToken,statusToken,requestId});
  });
  it("does not issue capabilities for a blocked plan",async()=>{
   const t=setup();t.rpc.mockResolvedValueOnce({data:{canDelete:false,requestId:null,expiresAt:null,categories:[],blockers:[{code:"RETENTION_POLICY_REQUIRED",message:"docs"}]},error:null});
@@ -52,7 +52,19 @@ describe("self-account deletion security and durable outcomes",()=>{
   expect((await t.confirm()).status).toBe(403);expect(t.rpc).not.toHaveBeenCalled();expect(t.deps.deleteAuthUser).not.toHaveBeenCalled();
  });
  it("requires explicit confirmation text",async()=>{
-  const t=setup();expect((await t.call({action:"confirm",planToken,password:"x",confirmation:"YES"})).status).toBe(400);expect(t.rpc).not.toHaveBeenCalled();
+  const t=setup();expect((await t.call({action:"confirm",planToken,password:"x",confirmation:"YES",consentVersion:"full-personal-data-v1"})).status).toBe(409);expect(t.rpc).not.toHaveBeenCalled();
+ });
+ it.each([undefined,"account-deletion-v1","full-personal-data-v0"])("rejects legacy/missing consent %s before password verification or mutation",async consentVersion=>{
+  const t=setup();const response=await t.call({action:"confirm",planToken,password:"secret",consentVersion,confirmation:"DELETE_MY_ACCOUNT"});
+  expect(response.status).toBe(409);expect(await response.json()).toMatchObject({code:"CONSENT_REQUIRED"});
+  expect(t.deps.reauthenticate).not.toHaveBeenCalled();expect(t.rpc).not.toHaveBeenCalled();expect(t.deps.revoke).not.toHaveBeenCalled();
+ });
+ it("shows warning and retained exceptions for the current consent",async()=>{
+  const t=setup();const data=await(await t.call({action:"preview"})).json();expect(data.warning).toContain("необратимо");expect(data.warning).toContain("резервные копии");
+ });
+ it("a legacy receipt cannot escalate into v2 deletion",async()=>{
+  const t=setup();t.rpc.mockResolvedValueOnce({data:{code:"CONSENT_REQUIRED"},error:null});
+  expect((await t.call({action:"resume",requestId,statusToken},false)).status).toBe(409);expect(t.deps.revoke).not.toHaveBeenCalled();
  });
  it("returns expired/changed plans without destructive calls",async()=>{
   const t=setup();t.rpc.mockResolvedValueOnce({data:{code:"PLAN_EXPIRED"},error:null});

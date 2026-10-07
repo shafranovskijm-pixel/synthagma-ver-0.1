@@ -67,7 +67,7 @@ for f in a['ownership_functions']:
 # A regression in history identity/status editing aborts, rather than merely
 # asserting that a mock was called. Actual production has stricter 15 triggers.
 parts.append('''CREATE FUNCTION fixture_no_learning_rewrite() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Do not rewrite enrollment identity/progress/history'; END; $$;
-CREATE TRIGGER fixture_learning_tripwire BEFORE UPDATE OR DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION fixture_no_learning_rewrite();
+CREATE TRIGGER fixture_learning_tripwire BEFORE UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION fixture_no_learning_rewrite();
 CREATE POLICY fixture_profile_self ON public.profiles TO authenticated USING(user_id=auth.uid()) WITH CHECK(user_id=auth.uid());
 CREATE POLICY fixture_attempt_self ON public.test_attempts TO authenticated USING(user_id=auth.uid()) WITH CHECK(user_id=auth.uid());
 GRANT USAGE ON SCHEMA public,auth,storage TO anon,authenticated,service_role;
@@ -82,6 +82,18 @@ if len(sys.argv)>4:
  parts.append("CREATE TRIGGER group_completion_history_immutable BEFORE UPDATE OR DELETE ON public.group_completion_decision_history FOR EACH ROW EXECUTE FUNCTION public.protect_group_completion_history();")
  parts.append("CREATE TRIGGER group_completion_decision_audit AFTER INSERT OR UPDATE ON public.group_completion_decisions FOR EACH ROW EXECUTE FUNCTION public.audit_group_completion_decision();")
  parts.append("CREATE TRIGGER zzzz_csz_homework_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.homework_submissions FOR EACH ROW EXECUTE FUNCTION public.csz_guard_homework_submission();")
+for f in s['function_definitions']:
+ if f['name'] in ('log_enrollment_change','auto_audit_log','log_org_staff_changes'):
+  parts.append(f['definition'].rstrip().rstrip(';')+';')
+parts.append("CREATE TRIGGER on_enrollment_delete AFTER DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION public.log_enrollment_change();")
+parts.append("CREATE TRIGGER audit_profiles AFTER DELETE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.auto_audit_log();")
+parts.append("CREATE TRIGGER trg_log_org_staff_changes AFTER DELETE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION public.log_org_staff_changes();")
+if len(sys.argv)>5:
+ progress=json.loads(Path(sys.argv[5]).read_text(encoding='utf-8-sig'))
+ if isinstance(progress,dict):progress=progress.get('functions',progress.get('rows',[]))
+ for f in progress:parts.append(f['definition'].rstrip().rstrip(';')+';')
+ parts.append("CREATE TRIGGER trg_recalc_enrollment_progress AFTER DELETE ON public.lesson_progress FOR EACH ROW EXECUTE FUNCTION public.recalc_enrollment_progress();")
+ parts.append("CREATE TRIGGER zzzz_csz_lesson_progress_guard BEFORE DELETE ON public.lesson_progress FOR EACH ROW EXECUTE FUNCTION public.csz_guard_lesson_progress();")
 parts.append((root/'supabase/migrations/20261007160000_self_account_deletion.sql').read_text(encoding='utf-8'))
 out.write_text('\n\n'.join(parts),encoding='utf-8')
 print(out)

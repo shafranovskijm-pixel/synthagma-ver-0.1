@@ -9,6 +9,7 @@ CREATE TABLE public.account_deletion_jobs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid,
  plan_hash text UNIQUE NOT NULL CHECK(length(plan_hash)=64),
  receipt_hash text NOT NULL CHECK(length(receipt_hash)=64),
+ consent_version text NOT NULL,
  state text NOT NULL DEFAULT 'planned' CHECK(state IN ('planned','cleanup_pending','deleted','superseded')),
  expires_at timestamptz NOT NULL DEFAULT clock_timestamp()+interval '10 minutes',
  snapshot jsonb NOT NULL, files jsonb NOT NULL DEFAULT '[]',
@@ -344,6 +345,180 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public,storage A
       OR EXISTS(SELECT 1 FROM public.account_deletion_jobs j WHERE j.user_id=p_user_id AND j.state='cleanup_pending' AND split_part(o.name,'/',1)=j.snapshot->>'organizationId')));
 $fn$;
 
+CREATE FUNCTION public.account_deletion_personal_row_counts(p_user_id uuid) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+DECLARE r record; n bigint; result jsonb:='[]';
+BEGIN
+ FOR r IN SELECT * FROM (VALUES
+  ('admin_org_messages','sender_user_id'),
+  ('admin_staff','user_id'),
+  ('ai_prompt_templates','user_id'),
+  ('ai_tutor_sessions','user_id'),
+  ('ai_usage_log','user_id'),
+  ('call_log_listens','listener_user_id'),
+  ('chat_group_members','user_id'),
+  ('chat_group_messages','sender_user_id'),
+  ('chat_messages','user_id'),
+  ('chat_notification_settings','user_id'),
+  ('client_error_logs','user_id'),
+  ('company_staff','user_id'),
+  ('consent_documents','student_user_id'),
+  ('course_access_log','user_id'),
+  ('course_reminders','user_id'),
+  ('course_requests','user_id'),
+  ('course_review_grants','user_id'),
+  ('data_subject_requests','user_id'),
+  ('document_signatures','recipient_user_id'),
+  ('document_signatures','sender_user_id'),
+  ('enrollment_history','user_id'),
+  ('enrollments','user_id'),
+  ('exolve_sip_accounts','user_id'),
+  ('final_test_photo_challenges','user_id'),
+  ('group_class_journal_marks','user_id'),
+  ('group_completion_decision_history','user_id'),
+  ('group_completion_decisions','user_id'),
+  ('homework_submissions','student_id'),
+  ('journal_entries','user_id'),
+  ('lesson_progress','user_id'),
+  ('module_access_overrides','user_id'),
+  ('notification_preferences','user_id'),
+  ('org_contracts','student_user_id'),
+  ('org_general_messages','sender_user_id'),
+  ('org_notifications','user_id'),
+  ('org_staff','user_id'),
+  ('org_student_messages','sender_user_id'),
+  ('org_student_messages','student_user_id'),
+  ('organization_offer_acceptances','user_id'),
+  ('partner_applications','user_id'),
+  ('pending_enrollments','user_id'),
+  ('pep_agreements','user_id'),
+  ('pipeline_runs','user_id'),
+  ('profiles','user_id'),
+  ('registration_attempts','user_id'),
+  ('role_audit_log','target_user_id'),
+  ('student_consents','user_id'),
+  ('student_deletion_log','student_id'),
+  ('student_frdo_data','user_id'),
+  ('student_group_memberships','user_id'),
+  ('student_identity_documents','user_id'),
+  ('student_login_history','user_id'),
+  ('student_login_tokens','user_id'),
+  ('student_notifications','user_id'),
+  ('student_roster_removals','user_id'),
+  ('support_conversations','user_id'),
+  ('support_messages','sender_user_id'),
+  ('support_requests','user_id'),
+  ('test_attempt_sessions','user_id'),
+  ('test_attempt_start_requests','user_id'),
+  ('test_attempts','user_id'),
+  ('testimonials','user_id'),
+  ('training_plans','user_id'),
+  ('user_achievements','user_id'),
+  ('user_roles','user_id'),
+  ('video_identifications','user_id'),
+  ('webinar_participants','user_id')
+ ) x(t,c) LOOP
+  EXECUTE format('SELECT count(*) FROM public.%I WHERE %I=$1',r.t,r.c) INTO n USING p_user_id;
+  IF n>0 THEN result:=result||jsonb_build_array(jsonb_build_object('table',r.t,'column',r.c,'count',n)); END IF;
+ END LOOP;
+ RETURN result;
+END;$fn$;
+
+CREATE FUNCTION public.account_deletion_subject_write_guard() RETURNS trigger
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+DECLARE column_name text; target_id uuid; targets uuid[];
+BEGIN
+ -- Sort locks to avoid deadlocks in two-person message rows.
+ -- UPDATE may not move a revoked subject's data outside the deletion scope.
+ SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets
+ FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (
+  VALUES (to_jsonb(NEW)->>c),
+         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)
+ ) subjects(subject_id) WHERE subject_id IS NOT NULL;
+ FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP
+  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));
+  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN
+   -- Only these two real DELETE-trigger event rows may be generated during
+   -- service cleanup. The same transaction erases them at the tail. The flag
+   -- is transaction-local and never bypasses profile/learning/document writes.
+   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')
+    AND auth.role()='service_role'
+    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;
+   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';
+  END IF;
+ END LOOP;
+ RETURN NEW;
+END;$fn$;
+REVOKE ALL ON FUNCTION public.account_deletion_subject_write_guard() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."admin_org_messages" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('sender_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."admin_staff" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."ai_prompt_templates" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."ai_tutor_sessions" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."ai_usage_log" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."call_log_listens" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('listener_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."chat_group_members" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."chat_group_messages" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('sender_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."chat_messages" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."chat_notification_settings" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."client_error_logs" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."company_staff" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."consent_documents" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('student_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."course_access_log" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."course_reminders" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."course_requests" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."course_review_grants" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."data_subject_requests" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."document_issuance_log" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."document_signatures" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('recipient_user_id','sender_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."education_document_records" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."enrollment_history" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."enrollments" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."exolve_sip_accounts" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."final_test_photo_challenges" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."group_class_journal_marks" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."group_completion_decision_history" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."group_completion_decisions" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."group_documents" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('student_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."homework_submissions" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('student_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."journal_entries" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."lesson_progress" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."module_access_overrides" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."notification_preferences" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."org_contracts" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('student_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."org_general_messages" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('sender_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."org_notifications" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."org_staff" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."org_student_messages" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('sender_user_id','student_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."organization_offer_acceptances" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."partner_applications" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."pending_enrollments" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."pep_agreements" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."pipeline_runs" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."profiles" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."registration_attempts" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."role_audit_log" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('target_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_consents" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_deletion_log" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('student_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_frdo_data" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_group_memberships" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_identity_documents" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_login_history" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_login_tokens" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_notifications" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."student_roster_removals" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."support_conversations" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."support_messages" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('sender_user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."support_requests" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."test_attempt_sessions" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."test_attempt_start_requests" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."test_attempts" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."testimonials" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."training_plans" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."user_achievements" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."user_roles" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."video_identifications" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public."webinar_participants" FOR EACH ROW EXECUTE FUNCTION public.account_deletion_subject_write_guard('user_id');
+
 -- Returns counts/identifiers only. Institutional documents are a concrete
 -- temporary blocker until the operator approves their treatment; merely being
 -- enrolled or having test results is never itself a blocker.
@@ -369,13 +544,15 @@ BEGIN
    (SELECT count(*) FROM public.org_contracts WHERE (student_user_id=p_user_id OR students::text LIKE '%'||p_user_id::text||'%') AND (approved_at IS NOT NULL OR signed_at IS NOT NULL OR status NOT IN ('draft','cancelled')))+
    (SELECT count(*) FROM public.group_documents WHERE (student_user_id=p_user_id OR variables::text LIKE '%'||p_user_id::text||'%' OR variables_snapshot::text LIKE '%'||p_user_id::text||'%') AND (file_path IS NOT NULL OR doc_status<>'draft'))
  INTO v_docs;
- IF v_docs>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','RETENTION_POLICY_REQUIRED','message','У аккаунта есть оформленные учебные или подписанные документы. Порядок их обработки нужно установить отдельно; удаление аккаунта пока не начато.')); END IF;
+ IF v_docs>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','RETENTION_POLICY_REQUIRED','message','У аккаунта есть оформленные учебные или подписанные документы организации. Для этих записей требуется отдельная проверка возможности удаления; она не заменяется подтверждением удаления аккаунта.')); END IF;
  IF EXISTS(SELECT 1 FROM public.group_completion_decision_history WHERE user_id=p_user_id) OR EXISTS(SELECT 1 FROM public.group_completion_decisions WHERE user_id=p_user_id) THEN
-  v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','PROTECTED_HISTORY_REVIEW_REQUIRED','message','Есть неизменяемая история итоговых решений организации. Нужно отдельно определить обработку этих записей; удаление не начато.'));
+  v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','PROTECTED_HISTORY_REVIEW_REQUIRED','message','Есть неизменяемая история итоговых решений организации. Их автоматическое удаление сейчас не поддержано без нарушения целостности общей истории; удаление не начато.'));
  END IF;
  -- CSZ preserves accepted homework by a dedicated immutable-history trigger.
  -- Do not bypass that guard just to scrub a personal free-text attachment.
- IF EXISTS(SELECT 1 FROM public.homework_submissions WHERE student_id=p_user_id AND course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a')) THEN
+ IF EXISTS(SELECT 1 FROM public.homework_submissions WHERE student_id=p_user_id AND course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a'))
+ OR EXISTS(SELECT 1 FROM public.enrollments WHERE user_id=p_user_id AND course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a'))
+ OR EXISTS(SELECT 1 FROM public.lesson_progress lp JOIN public.lessons l ON l.id=lp.lesson_id WHERE lp.user_id=p_user_id AND l.course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a')) THEN
   v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','PROTECTED_HISTORY_REVIEW_REQUIRED','message','Есть защищённые работы ЦСЗ. Их обработка требует отдельного решения; результаты обучения сейчас не изменяются.'));
  END IF;
  -- These records have other stakeholders or privileged ownership. Never let
@@ -463,6 +640,9 @@ BEGIN
   EXECUTE format('SELECT count(*) FROM public.%I WHERE %I=$1',r.t,r.c) INTO v_count USING p_user_id;
   v_shared:=v_shared+v_count;
  END LOOP;
+ v_shared:=v_shared+(SELECT count(*) FROM public.document_signatures WHERE (sender_user_id=p_user_id OR recipient_user_id=p_user_id) AND (sender_user_id IS DISTINCT FROM p_user_id OR recipient_user_id IS DISTINCT FROM p_user_id));
+ v_shared:=v_shared+(SELECT count(*) FROM public.org_contracts WHERE student_user_id IS DISTINCT FROM p_user_id AND students::text LIKE '%'||p_user_id::text||'%');
+ v_shared:=v_shared+(SELECT count(*) FROM public.group_documents WHERE student_user_id IS DISTINCT FROM p_user_id AND (variables::text LIKE '%'||p_user_id::text||'%' OR variables_snapshot::text LIKE '%'||p_user_id::text||'%'));
  IF v_shared>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','SHARED_DATA_REVIEW_REQUIRED','message','Аккаунт связан с общими рабочими записями. Сначала нужно передать ответственность за них; данные других пользователей не удаляются.')); END IF;
  IF EXISTS(SELECT 1 FROM storage.objects o WHERE (o.owner=p_user_id OR o.owner_id=p_user_id::text)
    AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_files) f WHERE f->>'bucket'=o.bucket_id AND f->>'path'=o.name)) THEN
@@ -607,35 +787,41 @@ BEGIN
  v_categories:=jsonb_build_array(
   jsonb_build_object('key','account','label','Вход в аккаунт, пароль, профиль и личные настройки','count',1,'action','delete'),
   jsonb_build_object('key','private_files','label','Личные фотографии и загруженные документы','count',jsonb_array_length(v_files),'action','delete'),
-  jsonb_build_object('key','learning_results','label','Записи о прохождении курсов: результат и даты без имени, контактов и текста ответов','count',v_learning,'action','anonymize'),
+  jsonb_build_object('key','learning_results','label','Назначения курсов, прогресс, попытки, ответы и результаты обучения','count',v_learning,'action','delete'),
   jsonb_build_object('key','institutional_documents','label','Оформленные документы','count',v_docs,'action',CASE WHEN v_docs>0 THEN 'block' ELSE 'delete' END));
  IF v_owner THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','empty_organization','label','Неиспользованная организация и ознакомительный курс','count',1,'action',CASE WHEN v_org_shared>0 THEN 'block' ELSE 'delete' END)); END IF;
+ SELECT count(*) INTO v_count FROM public.audit_logs WHERE user_id=p_user_id;
+ IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','common_audit','label','Общие события организации: запись события сохраняется, имя и ссылка на аккаунт удаляются','count',v_count,'action','anonymize')); END IF;
+ v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record','label','Техническая запись запрета старого доступа и квитанция об удалении без имени и контактов','count',1,'action','retain'));
  -- The snapshot is compared atomically just before the first mutation. Counts
  -- and manifest cover additions during the confirmation dialog; no PII stored.
  RETURN jsonb_build_object('organizationId',v_org,'emptyOrganization',v_owner AND v_org_shared=0,'learningCount',v_learning,
-  'categories',v_categories,'blockers',v_blockers,'files',v_files,'sharedCount',v_shared,
+  'categories',v_categories,'blockers',v_blockers,'files',v_files,'sharedCount',v_shared,'personalRows',public.account_deletion_personal_row_counts(p_user_id),
   'profileRevision',p.updated_at,'role',(SELECT role::text FROM public.user_roles WHERE user_id=p_user_id LIMIT 1));
 END;$fn$;
 
-CREATE FUNCTION public.account_deletion_prepare(p_user_id uuid,p_plan_hash text,p_receipt_hash text) RETURNS jsonb
+CREATE FUNCTION public.account_deletion_prepare(p_user_id uuid,p_plan_hash text,p_receipt_hash text,p_consent_version text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
 DECLARE s jsonb; j public.account_deletion_jobs%ROWTYPE;
 BEGIN
+ IF p_consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text,42007));
  IF length(p_plan_hash)<>64 OR length(p_receipt_hash)<>64 OR NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_user_id) THEN RETURN jsonb_build_object('code','DELETION_UNAVAILABLE'); END IF;
  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user_id) THEN RETURN jsonb_build_object('code','DELETION_UNAVAILABLE'); END IF;
  UPDATE public.account_deletion_jobs SET state='superseded',user_id=NULL,snapshot='{}',files='[]' WHERE user_id=p_user_id AND state='planned';
  s:=public.account_deletion_snapshot(p_user_id);
  IF jsonb_array_length(s->'blockers')>0 THEN RETURN jsonb_build_object('canDelete',false,'requestId',NULL,'expiresAt',NULL,'categories',s->'categories','blockers',s->'blockers'); END IF;
- INSERT INTO public.account_deletion_jobs(user_id,plan_hash,receipt_hash,snapshot,files) VALUES(p_user_id,p_plan_hash,p_receipt_hash,s,s->'files') RETURNING * INTO j;
+ INSERT INTO public.account_deletion_jobs(user_id,plan_hash,receipt_hash,consent_version,snapshot,files) VALUES(p_user_id,p_plan_hash,p_receipt_hash,p_consent_version,s,s->'files') RETURNING * INTO j;
  RETURN jsonb_build_object('canDelete',true,'requestId',j.id,'expiresAt',j.expires_at,'categories',s->'categories','blockers',s->'blockers');
 END;$fn$;
-CREATE FUNCTION public.account_deletion_begin(p_user_id uuid,p_plan_hash text) RETURNS jsonb
+CREATE FUNCTION public.account_deletion_begin(p_user_id uuid,p_plan_hash text,p_consent_version text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
 DECLARE j public.account_deletion_jobs%ROWTYPE; s jsonb;
 BEGIN
+ IF p_consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text,42007));
  SELECT * INTO j FROM public.account_deletion_jobs WHERE user_id=p_user_id AND plan_hash=p_plan_hash FOR UPDATE;
+ IF FOUND AND j.consent_version IS DISTINCT FROM p_consent_version THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;
  IF NOT FOUND OR j.state<>'planned' OR j.expires_at<=clock_timestamp() THEN RETURN jsonb_build_object('code','PLAN_EXPIRED'); END IF;
  PERFORM 1 FROM auth.users WHERE id=p_user_id FOR UPDATE;
  IF NOT FOUND THEN RETURN jsonb_build_object('code','PLAN_CHANGED'); END IF;
@@ -654,7 +840,7 @@ DECLARE j public.account_deletion_jobs%ROWTYPE;
 BEGIN
  SELECT * INTO j FROM public.account_deletion_jobs WHERE id=p_request_id AND receipt_hash=p_receipt_hash;
  IF NOT FOUND THEN RETURN jsonb_build_object('code','INVALID_RECEIPT'); END IF;
- RETURN jsonb_strip_nulls(jsonb_build_object('requestId',j.id,'status',CASE WHEN j.state='superseded' THEN 'planned' ELSE j.state END,'completedAt',j.completed_at));
+ RETURN jsonb_strip_nulls(jsonb_build_object('requestId',j.id,'status',CASE WHEN j.state='superseded' THEN 'planned' ELSE j.state END,'completedAt',j.completed_at,'consentVersion',j.consent_version));
 END;$fn$;
 CREATE FUNCTION public.account_deletion_work(p_request_id uuid,p_receipt_hash text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,storage AS $fn$
@@ -662,6 +848,7 @@ DECLARE j public.account_deletion_jobs%ROWTYPE; manifest jsonb; remaining jsonb;
 BEGIN
  SELECT * INTO j FROM public.account_deletion_jobs WHERE id=p_request_id AND receipt_hash=p_receipt_hash FOR UPDATE;
  IF NOT FOUND THEN RETURN jsonb_build_object('code','INVALID_RECEIPT'); END IF;
+ IF j.consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;
  IF j.state='deleted' THEN RETURN public.account_deletion_status(p_request_id,p_receipt_hash); END IF;
  IF j.state<>'cleanup_pending' THEN RETURN jsonb_build_object('code','NOT_CONFIRMED'); END IF;
  -- A late in-flight upload to the same audited personal folder is still part
@@ -684,6 +871,7 @@ DECLARE j public.account_deletion_jobs%ROWTYPE; u uuid; r record; v_org uuid; cu
 BEGIN
  SELECT * INTO j FROM public.account_deletion_jobs WHERE id=p_request_id AND receipt_hash=p_receipt_hash FOR UPDATE;
  IF NOT FOUND THEN RETURN jsonb_build_object('code','INVALID_RECEIPT'); END IF;
+ IF j.consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;
  IF j.state='deleted' THEN RETURN jsonb_build_object('erased',true); END IF;
  IF j.state<>'cleanup_pending' THEN RETURN jsonb_build_object('code','NOT_CONFIRMED'); END IF;
  u:=j.user_id;
@@ -691,17 +879,28 @@ BEGIN
  IF jsonb_array_length(public.account_deletion_files(u))>0 OR EXISTS(SELECT 1 FROM storage.objects o JOIN jsonb_array_elements(j.files) f ON f->>'bucket'=o.bucket_id AND f->>'path'=o.name) THEN RETURN jsonb_build_object('code','DELETION_UNAVAILABLE'); END IF;
  current_snapshot:=public.account_deletion_snapshot(u);
  IF jsonb_array_length(current_snapshot->'blockers')>0 THEN RETURN jsonb_build_object('code','PLAN_CHANGED'); END IF;
- -- Never alter enrollments.user_id/status or turn off its 15 history guards.
- -- Scores/progress/time remain, while learner-authored answers/PII are removed.
- UPDATE public.test_attempts SET answers='{}'::jsonb WHERE user_id=u;
- UPDATE public.homework_submissions SET content=NULL,attachments=NULL,reviewer_comment=NULL WHERE student_id=u;
- UPDATE public.journal_entries SET notes=NULL,value=NULL WHERE user_id=u;
- UPDATE public.training_plans SET notes=NULL WHERE user_id=u;
- UPDATE public.audit_logs SET user_name=CASE WHEN user_id=u THEN NULL ELSE user_name END,entity_name=NULL,details=NULL,ip_address=NULL,user_agent=NULL WHERE user_id=u OR entity_id=u::text;
- UPDATE public.role_audit_log SET target_name=NULL,target_email=NULL,details=NULL WHERE target_user_id=u;
- UPDATE public.role_audit_log SET performed_by_name=NULL,details=NULL WHERE performed_by=u;
- UPDATE public.student_deletion_log SET student_full_name=NULL,student_login=NULL,student_email=NULL,reason=NULL,metadata=NULL WHERE student_id=u;
- UPDATE public.student_deletion_log SET deleted_by_name=NULL,deleted_by_email=NULL WHERE deleted_by=u;
+ -- Delete the enrollment before lesson progress: the live progress trigger
+ -- then has no enrollment to reset. CSZ/issued/shared cases failed in preview.
+ PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);
+ DELETE FROM public.audit_logs WHERE entity_id=u::text OR (entity_type='enrollment' AND entity_id IN(SELECT id::text FROM public.enrollments WHERE user_id=u));
+ UPDATE public.audit_logs SET user_id='00000000-0000-0000-0000-000000000000',user_name=NULL,ip_address=NULL,user_agent=NULL WHERE user_id=u;
+ UPDATE public.role_audit_log SET performed_by=NULL,performed_by_name=NULL,details=CASE WHEN details->>'from_user_id'=u::text THEN details-'from_user_id' ELSE details END WHERE performed_by=u AND target_user_id IS DISTINCT FROM u;
+ UPDATE public.student_deletion_log SET deleted_by=NULL,deleted_by_name=NULL,deleted_by_email=NULL WHERE deleted_by=u AND student_id IS DISTINCT FROM u;
+ DELETE FROM public.final_test_photo_challenges WHERE user_id=u;
+ DELETE FROM public.test_attempts WHERE user_id=u;
+ DELETE FROM public.test_attempt_start_requests WHERE user_id=u;
+ DELETE FROM public.test_attempt_sessions WHERE user_id=u;
+ DELETE FROM public.homework_submissions WHERE student_id=u;
+ DELETE FROM public.journal_entries WHERE user_id=u;
+ DELETE FROM public.group_class_journal_marks WHERE user_id=u;
+ DELETE FROM public.training_plans WHERE user_id=u;
+ DELETE FROM public.student_group_memberships WHERE user_id=u;
+ DELETE FROM public.student_roster_removals WHERE user_id=u;
+ DELETE FROM public.enrollments WHERE user_id=u;
+ DELETE FROM public.lesson_progress WHERE user_id=u;
+ -- on_enrollment_delete inserts an event; remove it after that trigger.
+ DELETE FROM public.enrollment_history WHERE user_id=u;
+ DELETE FROM public.student_deletion_log WHERE student_id=u;
  DELETE FROM public.support_messages WHERE conversation_id IN (SELECT id FROM public.support_conversations WHERE user_id=u) OR sender_user_id=u;
  DELETE FROM public.support_conversations WHERE user_id=u;
  DELETE FROM public.document_signatures WHERE (sender_user_id=u OR recipient_user_id=u) AND signed_at IS NULL AND sender_signed_at IS NULL AND status<>'signed';
@@ -778,14 +977,11 @@ BEGIN
   EXECUTE format('UPDATE public.%I SET %I=NULL WHERE %I=$1',r.t,r.c,r.c) USING u;
  END LOOP;
  DELETE FROM public.user_roles WHERE user_id=u;
- UPDATE public.profiles SET full_name='Удалённый пользователь',email=NULL,avatar_url=NULL,login=NULL,generated_password=NULL,
- phone=NULL,city=NULL,bio=NULL,vk_link=NULL,telegram_link=NULL,chat_privacy=NULL,lead_source=NULL,lead_utm=NULL,
- last_visit_at=NULL,last_seen_announcement_at=NULL,blocked_by=NULL,region=NULL,contact_email=NULL,job_position=NULL,department=NULL,
- archived_at=coalesce(archived_at,clock_timestamp()),blocked_at=coalesce(blocked_at,clock_timestamp()),blocked_reason='Аккаунт удалён'
- WHERE user_id=u;
- -- Profile-name sync may update FRDO; delete it AFTER the profile scrub too.
- DELETE FROM public.student_frdo_data WHERE user_id=u;
- IF (j.snapshot->>'learningCount')::bigint=0 THEN DELETE FROM public.profiles WHERE user_id=u; END IF;
+ DELETE FROM public.profiles WHERE user_id=u;
+ -- org_staff DELETE creates a role-audit event: clear it after all staff/profile
+ -- triggers; never leave the target UUID hidden in its own account history.
+ DELETE FROM public.role_audit_log WHERE target_user_id=u;
+ DELETE FROM public.audit_logs WHERE entity_id=u::text;
  IF (j.snapshot->>'emptyOrganization')::boolean THEN
   v_org:=(j.snapshot->>'organizationId')::uuid;
   -- Recheck under the organization lock; a concurrent invitation/registration
@@ -794,6 +990,7 @@ BEGIN
   IF EXISTS(SELECT 1 FROM public.profiles WHERE organization_id=v_org AND user_id<>u) OR EXISTS(SELECT 1 FROM public.org_staff WHERE organization_id=v_org) THEN RAISE EXCEPTION 'Organization changed during deletion'; END IF;
   DELETE FROM public.organizations WHERE id=v_org;
  END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0) THEN RAISE EXCEPTION 'Personal data erasure is incomplete'; END IF;
  UPDATE public.account_deletion_jobs SET data_erased=true WHERE id=j.id;
  RETURN jsonb_build_object('erased',true);
 END;$fn$;
@@ -803,11 +1000,13 @@ DECLARE j public.account_deletion_jobs%ROWTYPE;
 BEGIN
  SELECT * INTO j FROM public.account_deletion_jobs WHERE id=p_request_id AND receipt_hash=p_receipt_hash FOR UPDATE;
  IF NOT FOUND THEN RETURN jsonb_build_object('code','INVALID_RECEIPT'); END IF;
+ IF j.consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;
  IF j.state='deleted' THEN RETURN public.account_deletion_status(p_request_id,p_receipt_hash); END IF;
  IF j.state<>'cleanup_pending' OR NOT j.data_erased OR EXISTS(SELECT 1 FROM auth.users WHERE id=j.user_id)
   OR EXISTS(SELECT 1 FROM storage.objects o JOIN jsonb_array_elements(j.files) f ON f->>'bucket'=o.bucket_id AND f->>'path'=o.name)
   OR jsonb_array_length(public.account_deletion_files(j.user_id))>0
   OR EXISTS(SELECT 1 FROM storage.objects WHERE owner=j.user_id OR owner_id=j.user_id::text)
+  OR EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(j.user_id)) n WHERE (n->>'count')::bigint>0)
   OR EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=j.user_id)
   OR EXISTS(SELECT 1 FROM public.student_login_tokens WHERE user_id=j.user_id) THEN RETURN jsonb_build_object('code','DELETION_UNAVAILABLE'); END IF;
  UPDATE public.account_deletion_jobs SET state='deleted',completed_at=clock_timestamp(),user_id=NULL,snapshot='{}',files='[]' WHERE id=j.id;
@@ -818,10 +1017,12 @@ REVOKE ALL ON FUNCTION public.account_deletion_files(uuid) FROM PUBLIC,anon,auth
 GRANT EXECUTE ON FUNCTION public.account_deletion_files(uuid) TO service_role;
 REVOKE ALL ON FUNCTION public.account_deletion_snapshot(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.account_deletion_snapshot(uuid) TO service_role;
-REVOKE ALL ON FUNCTION public.account_deletion_prepare(uuid,text,text) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.account_deletion_prepare(uuid,text,text) TO service_role;
-REVOKE ALL ON FUNCTION public.account_deletion_begin(uuid,text) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.account_deletion_begin(uuid,text) TO service_role;
+REVOKE ALL ON FUNCTION public.account_deletion_personal_row_counts(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.account_deletion_personal_row_counts(uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.account_deletion_prepare(uuid,text,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.account_deletion_prepare(uuid,text,text,text) TO service_role;
+REVOKE ALL ON FUNCTION public.account_deletion_begin(uuid,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.account_deletion_begin(uuid,text,text) TO service_role;
 REVOKE ALL ON FUNCTION public.account_deletion_status(uuid,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.account_deletion_status(uuid,text) TO service_role;
 REVOKE ALL ON FUNCTION public.account_deletion_work(uuid,text) FROM PUBLIC,anon,authenticated;
