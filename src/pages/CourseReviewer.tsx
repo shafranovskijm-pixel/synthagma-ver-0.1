@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -20,6 +20,8 @@ import { useReviewerCoursePreview } from "@/hooks/useReviewerCoursePreview";
 import { ReviewerLessonContent } from "@/components/course-reviewer/ReviewerLessonContent";
 import { CourseReviewRegister } from "@/components/course-reviewer/CourseReviewRegister";
 import type { CourseReviewLessonSummary } from "@/api/courseReviewer";
+import { createLibrarySignedUrl } from "@/api/courseLibrary";
+import { isValidHttpsUrl } from "@/lib/courseLibrary";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -50,6 +52,44 @@ function lessonTypeLabel(type: string) {
   if (type === "test") return "Тест";
   if (type === "homework") return "Письменное задание";
   return "Учебный материал";
+}
+
+function ReviewerLibraryFile({ storagePath }: { storagePath: string }) {
+  const [opening, setOpening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const openFile = async () => {
+    if (opening) return;
+    // Open during the click, before the asynchronous signed-URL request, so
+    // ordinary popup protection does not turn a successful request into a dead link.
+    const pendingWindow = window.open("about:blank", "_blank");
+    if (!pendingWindow) {
+      setError("Разрешите открытие новой вкладки и повторите попытку.");
+      return;
+    }
+    pendingWindow.opener = null;
+    setOpening(true);
+    setError(null);
+    try {
+      const url = await createLibrarySignedUrl(storagePath);
+      if (!isValidHttpsUrl(url)) throw new Error("Invalid file URL");
+      pendingWindow.location.replace(url);
+    } catch {
+      pendingWindow.close();
+      setError("Не удалось открыть материал. Повторите попытку или обратитесь к администратору.");
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  return (
+    <div className="mt-3">
+      <Button type="button" variant="outline" size="sm" onClick={() => void openFile()} disabled={opening}>
+        {opening ? "Открываем…" : "Открыть материал"}<ExternalLink className="ml-1 h-3.5 w-3.5" />
+      </Button>
+      {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+    </div>
+  );
 }
 
 function AccessUnavailable({ invalidCourse = false }: { invalidCourse?: boolean }) {
@@ -287,7 +327,7 @@ export default function CourseReviewer() {
                       {resource.edition_label && <p className="text-xs text-muted-foreground">Редакция: {resource.edition_label}</p>}
                       {resource.description && <p className="mt-2 text-sm text-muted-foreground">{resource.description}</p>}
                       {href && <a href={href} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm text-primary underline">Открыть материал<ExternalLink className="h-3.5 w-3.5" /></a>}
-                      {!href && resource.storage_path && <p className="mt-3 text-xs text-muted-foreground">Файл находится в защищённом хранилище.</p>}
+                      {!href && resource.storage_path && <ReviewerLibraryFile storagePath={resource.storage_path} />}
                     </article>
                   );
                 })}

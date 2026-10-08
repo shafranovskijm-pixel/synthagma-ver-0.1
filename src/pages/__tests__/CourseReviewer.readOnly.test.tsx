@@ -1,8 +1,10 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const fileApi = vi.hoisted(() => ({ createLibrarySignedUrl: vi.fn() }));
+vi.mock("@/api/courseLibrary", () => fileApi);
 
 vi.mock("@/components/course-reviewer/CourseReviewRegister", () => ({
   CourseReviewRegister: ({ courseId: scope }: { courseId: string }) => <section aria-label="Учёт слушателей" data-course-id={scope} />,
@@ -113,6 +115,11 @@ vi.mock("@/hooks/useReviewerCoursePreview", () => ({
         last_checked_at: null,
         usage_basis: "official_open_source",
         library_status: "active",
+      }, {
+        id: "50000000-0000-4000-8000-000000000002",
+        name: "Внутренний PDF",
+        resource_url: null,
+        storage_path: "library/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/law.pdf",
       }],
     },
     lesson: {
@@ -146,9 +153,77 @@ vi.mock("@/hooks/useReviewerCoursePreview", () => ({
 
 import CourseReviewer from "@/pages/CourseReviewer";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+});
+
+function renderReview() {
+  return render(
+    <MemoryRouter initialEntries={[`/review/course/${courseId}`]}>
+      <Routes><Route path="/review/course/:courseId" element={<CourseReviewer />} /></Routes>
+    </MemoryRouter>,
+  );
+}
 
 describe("read-only course reviewer screen", () => {
+  it("opens an internal file with a fresh signed URL and isolates the new tab", async () => {
+    let resolveUrl!: (url: string) => void;
+    fileApi.createLibrarySignedUrl.mockReturnValue(new Promise<string>((resolve) => { resolveUrl = resolve; }));
+    const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+    vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    renderReview();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    expect(window.open).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(tab.opener).toBeNull();
+    expect(fileApi.createLibrarySignedUrl).toHaveBeenCalledWith(
+      "library/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/law.pdf",
+    );
+    expect(screen.getByRole("button", { name: "Открываем…" })).toBeDisabled();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    resolveUrl("https://signed.example.test/law.pdf?token=test");
+    await waitFor(() => expect(tab.location.replace).toHaveBeenCalledWith("https://signed.example.test/law.pdf?token=test"));
+    expect(tab.close).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Открыть материал" })).toBeEnabled();
+    expect(screen.getByRole("link", { name: "Открыть материал" })).toHaveAttribute("href", "https://example.test/document");
+  });
+
+  it("closes the pending tab on denied signing and lets the reviewer retry", async () => {
+    fileApi.createLibrarySignedUrl.mockRejectedValueOnce(new Error("Access denied"))
+      .mockResolvedValueOnce("https://signed.example.test/retry.pdf");
+    const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+    vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    renderReview();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось открыть материал");
+    expect(tab.close).toHaveBeenCalledOnce();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    await waitFor(() => expect(tab.location.replace).toHaveBeenCalledWith("https://signed.example.test/retry.pdf"));
+    expect(fileApi.createLibrarySignedUrl).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("does not request a signed URL if the browser blocks the new tab", () => {
+    vi.spyOn(window, "open").mockReturnValue(null);
+    renderReview();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Разрешите открытие новой вкладки");
+    expect(fileApi.createLibrarySignedUrl).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unsafe signed URL without navigating the tab", async () => {
+    fileApi.createLibrarySignedUrl.mockResolvedValue("javascript:alert(1)");
+    const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+    vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    renderReview();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть материал" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось открыть материал");
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    expect(tab.close).toHaveBeenCalledOnce();
+  });
+
   it("shows the complete structure and masked test options without write controls", () => {
     const view = render(
       <MemoryRouter initialEntries={[`/review/course/${courseId}`]}>
