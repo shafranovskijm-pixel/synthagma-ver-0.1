@@ -35,6 +35,7 @@ import {
 import { CreditCard, ClipboardCheck } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
+import { CourseReviewDashboardGate } from "@/components/course-reviewer/CourseReviewDashboardGate";
 
 // T-Bank SDK loader
 let tbankSdkPromise: Promise<void> | null = null;
@@ -227,6 +228,10 @@ function CatalogContent({
 }
 
 export default function StudentDashboard() {
+  return <CourseReviewDashboardGate><LearnerDashboard /></CourseReviewDashboardGate>;
+}
+
+function LearnerDashboard() {
   const isNativeLearner = Capacitor.isNativePlatform();
   const { userRole } = useAuth();
   const isMobile = useIsMobile();

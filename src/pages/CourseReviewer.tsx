@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookCheck,
@@ -72,7 +72,13 @@ export default function CourseReviewer() {
   const { courseId } = useParams();
   const validCourseId = Boolean(courseId && UUID_PATTERN.test(courseId));
   const review = useReviewerCoursePreview(validCourseId ? courseId : undefined);
+  const { hash } = useLocation();
   const snapshotLessons = review.snapshot?.lessons;
+
+  useEffect(() => {
+    if (hash !== "#course-library" || review.snapshotLoading || !review.snapshot) return;
+    document.getElementById("course-library")?.scrollIntoView?.({ block: "start" });
+  }, [hash, review.snapshotLoading, review.snapshot?.course.id]);
 
   const lessonsByModule = useMemo(() => {
     const result = new Map<string, CourseReviewLessonSummary[]>();
@@ -265,7 +271,7 @@ export default function CourseReviewer() {
 
           <CourseReviewRegister courseId={course.id} />
 
-          <section className="mx-auto mt-12 max-w-5xl border-t-2 border-border pt-8" aria-label="Электронная библиотека курса">
+          <section id="course-library" className="mx-auto mt-12 max-w-5xl border-t-2 border-border pt-8" aria-label="Электронная библиотека курса">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold">Электронная библиотека</h2>
               <Badge variant="secondary">{library.length} материалов</Badge>
