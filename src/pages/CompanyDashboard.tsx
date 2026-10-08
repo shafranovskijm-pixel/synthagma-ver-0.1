@@ -22,6 +22,7 @@ import { CompanyRemindersTab } from "@/components/company/CompanyRemindersTab";
 import { CompanyRequestsTab } from "@/components/company/CompanyRequestsTab";
 import { CompanyStaffManager } from "@/components/company/CompanyStaffManager";
 import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
+import { AccountSettingsLink } from "@/components/account/AccountSettingsLink";
 
 type TabId = "home" | "employees" | "planning" | "requests" | "documents" | "reminders" | "team";
 
@@ -138,6 +139,7 @@ const CompanyDashboard = () => {
           ))}
         </nav>
         <div className="p-4 border-t border-border">
+          <AccountSettingsLink />
           <Button variant="ghost" size="sm" onClick={signOut} className="w-full gap-2 justify-start">
             <LogOut className="w-4 h-4" />
             Выйти

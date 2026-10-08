@@ -59,6 +59,8 @@ export default function DocumentPage() {
   }
 
   const shortDesc = doc.summary.slice(0, 155);
+  const [updatedDay, updatedMonth, updatedYear] = doc.updatedAt.split(".");
+  const dateModified = `${updatedYear}-${updatedMonth}-${updatedDay}`;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -83,7 +85,7 @@ export default function DocumentPage() {
             name: doc.title,
             description: doc.summary,
             version: doc.version,
-            dateModified: "2026-07-19",
+            dateModified,
             inLanguage: "ru-RU",
             publisher: {
               "@type": "Organization",

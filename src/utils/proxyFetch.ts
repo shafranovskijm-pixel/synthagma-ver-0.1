@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 /**
  * Proxy Fetch — глобальный перехватчик fetch + WebSocket.
  *
@@ -72,6 +74,9 @@ const PROXY_ALLOWED_HOSTS_EXACT = new Set<string>([
 ]);
 
 function isForcedProxyHost(): boolean {
+  // Packaged Android runs on https://localhost, but still needs the production
+  // proxy in Russian networks. Desktop localhost remains a development host.
+  if (Capacitor.isNativePlatform()) return true;
   if (typeof window === 'undefined') return false;
   const h = window.location.hostname;
   if (FORCE_PROXY_HOSTS_EXACT.has(h)) return true;
@@ -83,6 +88,7 @@ function isForcedProxyHost(): boolean {
 
 
 function isProxyAllowedHost(): boolean {
+  if (Capacitor.isNativePlatform()) return true;
   if (typeof window === 'undefined') return false;
   return PROXY_ALLOWED_HOSTS_EXACT.has(window.location.hostname);
 }

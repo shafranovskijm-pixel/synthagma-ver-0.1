@@ -1,7 +1,10 @@
 import "./index.css";
+import { Capacitor } from '@capacitor/core';
 import { installProxyFetch } from "./utils/proxyFetch";
 import { installLegacyProxyBadgeKiller } from "./utils/legacyProxyBadgeKiller";
 import { installErrorReporter } from "./utils/errorReporter";
+import { installNativeDownloads } from "./mobile/nativeDownloads";
+import { nativeStartupUrl } from "./mobile/nativeNavigation";
 
 // Перехватчик fetch для обхода корпоративных блокировок Supabase-доменов
 // через резервные субдомены (api/functions/storage.sintagma.com.ru)
@@ -15,6 +18,7 @@ installLegacyProxyBadgeKiller();
 // чтобы админ мог диагностировать проблемы клиентов без скриншотов.
 // Должен ставиться ПОСЛЕ installProxyFetch, чтобы видеть финальный URL после прокси.
 installErrorReporter();
+installNativeDownloads();
 
 // Cyrillic domain (синтагма.рф) больше НЕ редиректится автоматически —
 // пользователь сам решает, куда направить DNS этого домена (Timeweb / Lovable / Worker).
@@ -23,7 +27,13 @@ installErrorReporter();
 
 declare const __BUILD_TIMESTAMP__: string;
 
-const isNative = typeof (window as any).Capacitor !== 'undefined';
+const isNative = Capacitor.isNativePlatform();
+// Start at sign-in, but preserve ordinary /privacy and other same-app links
+// when the native server serves them as a fresh hashless document.
+const nativeRoute = isNative ? nativeStartupUrl(window.location) : null;
+if (nativeRoute) {
+  window.history.replaceState(null, '', nativeRoute);
+}
 const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
 
 const BUILD_GUARD_KEY = '__build_refresh_guard';

@@ -1,4 +1,7 @@
 import DOMPurify from "dompurify";
+import { Capacitor } from '@capacitor/core';
+import { NativeWebMaterial } from '@/mobile/NativeWebMaterial';
+import { nativeInlineVideoAllowed } from '@/mobile/nativeLearnerScope';
 import { Video, Play } from "lucide-react";
 import { getVideoEmbedUrl, isIframeEmbed, getKinescopeVideoId, getKinescopeEmbedUrl, isDirectVideoFileUrl } from "@/utils/courseBuilderHelpers";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
@@ -43,6 +46,7 @@ export function VideoPreviewInline({ content, eager = false }: VideoPreviewInlin
   }
 
   if (isIframeEmbed(content)) {
+    if (Capacitor.isNativePlatform()) return <NativeWebMaterial label="Внешний видеоматериал" />;
     const sanitized = DOMPurify.sanitize(content, {
       ADD_TAGS: ['iframe'],
       ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
@@ -67,6 +71,9 @@ export function VideoPreviewInline({ content, eager = false }: VideoPreviewInlin
           <DirectVideoPreview url={embedResult.url} />
         </LazyMediaPreview>
       );
+    }
+    if (Capacitor.isNativePlatform() && !nativeInlineVideoAllowed(embedResult.url)) {
+      return <NativeWebMaterial label="Внешний видеоматериал" />;
     }
     if (!embedResult.canEmbed) {
       return (

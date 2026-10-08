@@ -130,8 +130,8 @@ export const DOCUMENT_GROUPS: DocumentGroup[] = [
         summary:
           "Цели, основания, состав данных, сроки, права субъектов и общие меры защиты.",
         audience: "Все посетители, пользователи и представители клиентов",
-        version: DOCUMENTS_VERSION,
-        updatedAt: DOCUMENTS_UPDATED_AT,
+        version: "1.1",
+        updatedAt: "07.10.2026",
         pdfPath:
           "/legal-files/02_Политика_обработки_персональных_данных.pdf",
         content: personalDataPolicyMd,

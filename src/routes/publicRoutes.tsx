@@ -1,6 +1,6 @@
 import { Navigate, Route } from "react-router-dom";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
-import { PaymentResult } from "./helpers";
+import { PaymentResult, protectedRoute } from "./helpers";
 
 const Index = lazyWithRetry(() => import("@/pages/Index"));
 const Login = lazyWithRetry(() => import("@/pages/Login"));
@@ -51,6 +51,9 @@ const DemoStudentLogin = lazyWithRetry(() => import("@/pages/DemoStudentLogin"))
 const AutoLogin = lazyWithRetry(() => import("@/pages/AutoLogin"));
 const DemonstrationPage = lazyWithRetry(() => import("@/pages/DemonstrationPage"));
 const OAuthConsent = lazyWithRetry(() => import("@/pages/OAuthConsent"));
+const AccountSettings = lazyWithRetry(() => import("@/pages/AccountSettings"));
+const AccountDeletionComplete = lazyWithRetry(() => import("@/pages/AccountDeletionComplete"));
+const AccountDeletionStatus = lazyWithRetry(() => import("@/pages/AccountDeletionStatus"));
 const MailingLanding = lazyWithRetry(() => import("@/pages/MailingLanding"));
 const MailingReportPublic = lazyWithRetry(() => import("@/pages/MailingReportPublic"));
 const AutoSchools = lazyWithRetry(() => import("@/pages/AutoSchools"));
@@ -61,6 +64,9 @@ export const publicRoutes = (
     <Route path="/" element={<Index />} />
     <Route path="/auto-schools" element={<AutoSchools />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/account" element={protectedRoute(<AccountSettings />)} />
+    <Route path="/account/deletion-complete" element={<AccountDeletionComplete />} />
+    <Route path="/account/deletion-status" element={<AccountDeletionStatus />} />
     <Route path="/login/:slug" element={<BrandedLogin />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/register" element={<RegisterOrganization />} />

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Capacitor } from '@capacitor/core';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ import { captureUtmFromUrl } from "@/utils/utmCapture";
 import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
 import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
 import { SupportChatWidget } from "@/components/support/SupportChatWidget";
+import { NativeLearnerScope } from "@/mobile/NativeLearnerScopeGate";
 
 import {
   publicRoutes,
@@ -52,7 +54,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const isNative = typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined';
+const isNative = Capacitor.isNativePlatform();
 const Router = isNative ? HashRouter : BrowserRouter;
 
 function ThemeInit() { useThemePersonalization(); return null; }
@@ -79,6 +81,7 @@ const App = () => (
                   <SupportChatWidget />
                   <TwoFactorChallenge />
                   
+                  <NativeLearnerScope>
                   <Suspense fallback={<LazyLoadFallback />}>
                     <Routes>
                       {publicRoutes}
@@ -89,6 +92,7 @@ const App = () => (
                       {companyRoutes}
                     </Routes>
                   </Suspense>
+                  </NativeLearnerScope>
                 </TooltipProvider>
               </BackgroundUploadsProvider>
               </StaffPermissionsProvider>

@@ -1,4 +1,7 @@
 import { useEffect, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { NativeWebMaterial } from '@/mobile/NativeWebMaterial';
+import { nativeInlineVideoAllowed } from '@/mobile/nativeLearnerScope';
 import DOMPurify from 'dompurify';
 import { Play, Video } from 'lucide-react';
 import { CourseVideoPlayer } from '@/components/video/CourseVideoPlayer';
@@ -41,6 +44,9 @@ export const VideoPlayerInline = ({ content, allowSeek = true, userId, courseId,
     return <CourseVideoPlayer key={playable} src={playable} allowSeek={allowSeek} {...playback} />;
   }
   const iframeSrc = isIframeEmbed(content) ? content.match(/<iframe[^>]*src=["']([^"']+)["']/i)?.[1] : embedResult?.url;
+  if (Capacitor.isNativePlatform() && (isIframeEmbed(content) || !nativeInlineVideoAllowed(iframeSrc))) {
+    return <NativeWebMaterial label="Внешний видеоматериал" />;
+  }
   if (!allowSeek || embedResult?.canEmbed === false) {
     return <div className="aspect-video flex w-full flex-col items-center justify-center gap-4 rounded-xl border border-primary/20 bg-primary/5 px-4 text-center">
       <Video className="h-16 w-16 text-primary/60" />

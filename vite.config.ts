@@ -14,7 +14,9 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
 }> => {
   const mcpPlugin = await loadMcpPlugin(__dirname);
   return ({
-  base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',
+  // Capacitor serves bundled files at https://localhost, including deep routes.
+  // Relative assets would resolve under /documents/assets after ordinary links.
+  base: '/',
   server: {
     host: "::",
     port: 8080,

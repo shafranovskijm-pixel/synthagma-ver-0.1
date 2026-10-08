@@ -1,4 +1,6 @@
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
+import { Capacitor } from '@capacitor/core';
+import { NATIVE_PROFILE_SECTIONS } from '@/mobile/nativeLearnerScope';
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { User, FileText, Users, Sun, Moon, Monitor, Bell, Eye, EyeOff, Camera, HelpCircle } from "lucide-react";
@@ -44,6 +46,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false, pe
   const sp = useStudentProfile(effectiveUserId, isAdminView, user?.id);
 
   const visibleTabs = PROFILE_TABS.filter(t => {
+    if (Capacitor.isNativePlatform() && !(NATIVE_PROFILE_SECTIONS as readonly string[]).includes(t.id)) return false;
     if ((t.id as string) === "achievements") return sp.orgSettings?.showAchievements;
     return true;
   });

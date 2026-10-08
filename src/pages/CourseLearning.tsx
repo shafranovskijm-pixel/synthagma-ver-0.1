@@ -1,4 +1,6 @@
 import { TestAttemptStatus } from '@/components/course-learning/TestAttemptStatus';
+import { Capacitor } from '@capacitor/core';
+import { NativeWebMaterial } from '@/mobile/NativeWebMaterial';
 import { VideoIdentification } from '@/components/student/VideoIdentification';
 import { useRef, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -344,7 +346,9 @@ const CourseLearning = () => {
 
             {/* AI Avatar lesson */}
             {currentLesson?.type === 'ai_avatar' && (
-              <LessonAIAvatar lesson={currentLesson as any} onComplete={() => markLessonComplete(false)} isMobile={!!isMobile} />
+              Capacitor.isNativePlatform()
+                ? <NativeWebMaterial label="Занятие с ИИ-преподавателем" />
+                : <LessonAIAvatar lesson={currentLesson as any} onComplete={() => markLessonComplete(false)} isMobile={!!isMobile} />
             )}
             {currentLesson?.type === 'test' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
