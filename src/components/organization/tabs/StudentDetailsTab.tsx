@@ -12,9 +12,11 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudentDetailCardLogic } from "@/hooks/useStudentDetailCard";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { ProfileTab } from "@/components/organization/student-detail/ProfileTab";
 import { IdentificationTab } from "@/components/organization/student-detail/IdentificationTab";
 import { CoursesTab } from "@/components/organization/student-detail/CoursesTab";
+import { EnrollDialog } from "@/components/organization/dialogs/EnrollDialog";
 import { LearningResultsTab } from "@/components/organization/student-detail/LearningResultsTab";
 import { DocumentsTab } from "@/components/organization/student-detail/DocumentsTab";
 import { ActivityTab } from "@/components/organization/student-detail/ActivityTab";
@@ -24,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { fetchOrganizationStudentEnrollments } from "@/api/students";
+import { toast } from "sonner";
 
 const TABS = [
   { key: "profile", label: "Личное дело", icon: User },
@@ -79,6 +82,8 @@ export function StudentDetailsTab() {
   const groupReturnPath = studentGroupReturnPath(searchParams);
   const d = useOrgDashboard();
   const { user } = useAuth();
+  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const canAssignCourse = !permissionsLoading && can("students.write");
   const organizationId = d.organizationId;
   const studentId = d.tabNavigation.selectedStudentId;
   const returnToStudents = () => {
@@ -93,6 +98,13 @@ export function StudentDetailsTab() {
   const [enrollmentsError, setEnrollmentsError] = useState<string | null>(null);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [sendDocOpen, setSendDocOpen] = useState(false);
+  const [addCourseOpen, setAddCourseOpen] = useState(false);
+  const [isAddingCourse, setIsAddingCourse] = useState(false);
+  const enrollmentPendingRef = useRef(false);
+  const studentViewActiveRef = useRef(true);
+  const studentContextGenerationRef = useRef(0);
+  const studentContextRef = useRef({ organizationId, studentId, canAssignCourse });
+  studentContextRef.current = { organizationId, studentId, canAssignCourse };
   const loadSequenceRef = useRef(0);
 
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
@@ -176,6 +188,7 @@ export function StudentDetailsTab() {
 
         if (!isCurrentRequest()) return;
         setEnrollments(confirmedEnrollments);
+        return confirmedEnrollments;
       } catch (error) {
         if (!isCurrentRequest()) return;
         console.error("[StudentDetailsTab] enrollment load failed:", error);
@@ -198,11 +211,66 @@ export function StudentDetailsTab() {
   }, [studentId, organizationId]);
 
   useEffect(() => {
+    studentContextGenerationRef.current += 1;
+    studentViewActiveRef.current = true;
+    setAddCourseOpen(false);
     void loadStudent(true);
     return () => {
+      studentContextGenerationRef.current += 1;
+      studentViewActiveRef.current = false;
       loadSequenceRef.current += 1;
     };
   }, [loadStudent]);
+
+  const availableCourses = (d.courses ?? []).filter(course =>
+    course.is_published && !enrollments.some(enrollment => enrollment.course_id === course.id),
+  );
+  const handleAddCourse = async (courseId: string) => {
+    if (enrollmentPendingRef.current || d.enrollmentActions?.isEnrolling || !canAssignCourse
+      || !student || student.user_id !== studentId || !organizationId) return;
+    if (!availableCourses.some(course => course.id === courseId)) return;
+    const context = { organizationId, studentId: student.user_id };
+    const contextGeneration = studentContextGenerationRef.current;
+    const isCurrentStudent = () => studentViewActiveRef.current
+      && studentContextGenerationRef.current === contextGeneration
+      && studentContextRef.current.organizationId === context.organizationId
+      && studentContextRef.current.studentId === context.studentId;
+    enrollmentPendingRef.current = true;
+    setIsAddingCourse(true);
+    try {
+      // Recheck the course at submit time: the organization or publication
+      // state may have changed since the course directory was loaded.
+      const { data: course, error } = await supabase.from("courses")
+        .select("id").eq("id", courseId).eq("organization_id", context.organizationId)
+        .eq("is_published", true).maybeSingle();
+      if (!isCurrentStudent()) return;
+      if (!studentContextRef.current.canAssignCourse) return;
+      if (error) throw error;
+      if (course?.id !== courseId) {
+        toast.error("Курс недоступен для зачисления в этой организации. Обновите список курсов.");
+        return;
+      }
+      const saved = await d.enrollmentActions.bulkEnroll(courseId, [context.studentId], d.courses);
+      if (!isCurrentStudent()) return;
+      if (saved) setAddCourseOpen(false);
+      // Reconcile concurrent or unconfirmed writes using the authoritative
+      // list. A confirmed existing assignment no longer needs this dialog;
+      // failed writes with no assignment keep their course selected for retry.
+      const confirmedEnrollments = await loadStudent(false);
+      if (!isCurrentStudent()) return;
+      if (!saved && confirmedEnrollments?.some(enrollment => enrollment.course_id === courseId)) {
+        setAddCourseOpen(false);
+      }
+    } catch (error) {
+      if (isCurrentStudent()) {
+        console.error("[StudentDetailsTab] course enrollment failed:", error);
+        toast.error("Не удалось проверить курс. Зачисление не выполнено, повторите попытку.");
+      }
+    } finally {
+      enrollmentPendingRef.current = false;
+      setIsAddingCourse(false);
+    }
+  };
 
   const qc = useQueryClient();
   const h = useStudentDetailCardLogic({
@@ -326,6 +394,20 @@ export function StudentDetailsTab() {
         />
       )}
 
+      {addCourseOpen && organizationId && canAssignCourse && (
+        <EnrollDialog
+          key={`${organizationId}:${student.user_id}`}
+          open={addCourseOpen}
+          onOpenChange={open => { if (!enrollmentPendingRef.current) setAddCourseOpen(open); }}
+          selectedCount={1}
+          courses={availableCourses}
+          categories={d.categories ?? []}
+          getCategoryById={d.getCategoryById}
+          isEnrolling={isAddingCourse || !!d.enrollmentActions?.isEnrolling}
+          onEnroll={courseId => { void handleAddCourse(courseId); }}
+        />
+      )}
+
       {/* Student info header */}
       <div className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border">
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center relative">
@@ -420,7 +502,11 @@ export function StudentDetailsTab() {
                     </Button>
                   </div>
                 ) : (
-                  <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />
+                  <CoursesTab
+                    enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id}
+                    onAddCourse={canAssignCourse ? () => setAddCourseOpen(true) : undefined}
+                    isAddingCourse={isAddingCourse || !!d.enrollmentActions?.isEnrolling}
+                  />
                 )
               )}
               {h.activeTab === "documents" && (
@@ -442,7 +528,7 @@ export function StudentDetailsTab() {
                     onOpenEducationDocument: ({ enrollmentId, recordId }) => navigate(
                       educationDocumentsJournalPath({ enrollmentId, recordId }),
                     ),
-                    onCompanyChanged: () => loadStudent(false),
+                    onCompanyChanged: async () => { await loadStudent(false); },
                   }}
                 />
               )}

@@ -1,4 +1,4 @@
-import { BookOpen, FileSpreadsheet, CheckCircle, CalendarIcon, Save, Users, Clock, Timer } from "lucide-react";
+import { BookOpen, FileSpreadsheet, CheckCircle, CalendarIcon, Save, Users, Clock, Timer, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +28,8 @@ interface CoursesTabProps {
   h: any;
   organizationId: string;
   studentUserId: string;
+  onAddCourse?: () => void;
+  isAddingCourse?: boolean;
 }
 
 interface StudentGroup {
@@ -42,7 +44,7 @@ export function formatEnrollmentAccessLabel(accessDays: number | null | undefine
   return `Доступ: ${accessDays} дн.`;
 }
 
-export function CoursesTab({ enrollments, h, organizationId, studentUserId }: CoursesTabProps) {
+export function CoursesTab({ enrollments, h, organizationId, studentUserId, onAddCourse, isAddingCourse = false }: CoursesTabProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
@@ -234,7 +236,14 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
 
       {/* Courses */}
       <div className="bg-card rounded-2xl border border-border p-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Курсы ({enrollments.length})</h3>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Курсы ({enrollments.length})</h3>
+          {onAddCourse && (
+            <Button size="sm" className="rounded-lg gap-2" onClick={onAddCourse} disabled={isAddingCourse}>
+              <Plus className="w-4 h-4" />Добавить курс
+            </Button>
+          )}
+        </div>
         {enrollments.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground"><BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Ученик не зачислен на курсы</p></div>
         ) : (
