@@ -1,0 +1,24 @@
+{
+  "task": "S-044",
+  "baseline": "010b38e19",
+  "source": "Yana SGT email of 2026-10-08: branding upload and course assignment from learner profile",
+  "changes": [
+    "Branding uploads and public URLs use the existing org-branding bucket with organization-prefixed paths.",
+    "Learner Courses tab exposes Add course for students.write staff; only additional published organization courses are offered.",
+    "Assignment reuses the existing bulk enrollment action and authoritative reload; stale profile operations, duplicate submissions and failed writes are handled."
+  ],
+  "databaseMigration": "not required",
+  "preflight": {
+    "tests": { "passed": 41, "failed": 0 },
+    "typecheckExitCode": 0,
+    "webBuildExitCode": 0,
+    "independentReview": "No remaining actionable findings after fixes",
+    "storage": {
+      "checkedAt": "2026-10-08T17:18:08.530Z",
+      "org-branding": "Exists, public",
+      "organization-assets": "Bucket not found"
+    }
+  },
+  "localEvidenceDirectory": "D:/Codex/work/sintagma-queue/work/s044-yana-20261009",
+  "release": "Remote Git, hosting and live domain must be verified after merge."
+}

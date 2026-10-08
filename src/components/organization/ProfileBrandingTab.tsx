@@ -96,11 +96,11 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
       const ext = file.name.split('.').pop();
       const filePath = `${organizationId}/${type}_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from("organization-assets")
+        .from("org-branding")
         .upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage
-        .from("organization-assets")
+        .from("org-branding")
         .getPublicUrl(filePath);
       const key = type === 'cover' ? 'coverUrl' : 'logoUrl';
       setBrandingSettings(prev => ({ ...prev, [key]: urlData.publicUrl }));
