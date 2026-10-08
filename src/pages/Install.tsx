@@ -8,6 +8,8 @@ import { ArrowLeft, Download, Smartphone, RefreshCw, Copy, Globe } from "lucide-
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getBrowserName, getOS, getBrowserInstallInfo, type BrowserName } from "@/utils/browserDetect";
+import { ANDROID_APP } from "@/constants/androidApp";
+import { useRuStoreAvailability } from "@/hooks/useRuStoreAvailability";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -15,6 +17,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Install() {
+  const storeUrl = useRuStoreAvailability();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [browser, setBrowser] = useState<BrowserName>('unknown');
@@ -140,27 +143,6 @@ export default function Install() {
                 <InstructionCard info={isDesktop ? iosInfo : installInfo} label={isDesktop ? "iPhone / iPad (PWA)" : installInfo.name} />
               )}
 
-              {/* APK download */}
-              <Card className="border-accent/30 bg-accent/5">
-                <CardContent className="py-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                    <span className="text-sm font-medium text-accent">Версия для Android</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Отдельный APK для Android находится в разработке. Сейчас используйте веб-приложение PWA.
-                  </p>
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl border border-foreground/20 text-muted-foreground bg-muted/40 cursor-not-allowed text-base font-medium"
-                  >
-                    <Download className="w-5 h-5" />
-                    APK в разработке
-                  </button>
-                </CardContent>
-              </Card>
-
               {/* Utility buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button variant="outline" onClick={handleCopyLink} className="gap-2">
@@ -174,6 +156,34 @@ export default function Install() {
               </div>
             </motion.div>
           )}
+
+          <Card className="mb-12 border-accent/30 bg-accent/5">
+            <CardContent className="py-6">
+              <p className="mb-3 text-sm font-medium text-accent">Приложение ученика для Android</p>
+              <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                Проходите назначенные курсы и тесты, смотрите результаты, сохраняйте документы
+                и управляйте аккаунтом. Для входа используйте логин учебного центра. Нужен интернет.
+              </p>
+              <a
+                href={ANDROID_APP.downloadUrl}
+                download={ANDROID_APP.filename}
+                className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl bg-foreground text-background hover:bg-foreground/90 transition-colors text-base font-medium"
+              >
+                <Download className="w-5 h-5" aria-hidden="true" />
+                Скачать APK для Android
+              </a>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Версия {ANDROID_APP.version} · Android {ANDROID_APP.minAndroidVersion}+ · {ANDROID_APP.sizeLabel}
+              </p>
+              {storeUrl ? (
+                <a href={storeUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-medium underline underline-offset-4">
+                  Открыть в RuStore
+                </a>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">Ссылка на RuStore появится после публикации.</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Features */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>

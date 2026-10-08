@@ -13,6 +13,10 @@ import { PricingPlans } from "@/components/landing/PricingPlans";
 import { getPublicPlanSummaries } from "@/lib/proposal/proposalContent";
 import { PLAN_CONTRACT_SUBJECTS } from "@/lib/adminDocTemplates";
 import Install from "@/pages/Install";
+import { ANDROID_APP, RUSTORE_PUBLIC_URL } from "@/constants/androidApp";
+
+const storeAvailabilityMocks = vi.hoisted(() => ({ useRuStoreAvailability: vi.fn() }));
+vi.mock("@/hooks/useRuStoreAvailability", () => storeAvailabilityMocks);
 
 const testimonialQueryMocks = vi.hoisted(() => ({
   from: vi.fn(),
@@ -60,6 +64,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  storeAvailabilityMocks.useRuStoreAvailability.mockReturnValue(null);
   testimonialQueryMocks.order.mockResolvedValue({ data: [], error: null });
   testimonialQueryMocks.eq.mockReturnValue({ order: testimonialQueryMocks.order });
   testimonialQueryMocks.select.mockReturnValue({ eq: testimonialQueryMocks.eq });
@@ -115,16 +120,18 @@ describe("truthful landing copy", () => {
     expect(screen.queryByText("24/7")).not.toBeInTheDocument();
   });
 
-  it("identifies the mobile experience as a PWA", () => {
+  it("offers the signed learner APK while keeping browser installation separate", () => {
     render(<MemoryRouter><MobileApp /></MemoryRouter>);
 
-    expect(screen.getByText("Веб-приложение (PWA)")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Скачать APK для Android" })).toHaveAttribute("href", ANDROID_APP.downloadUrl);
+    expect(screen.getByRole("link", { name: "Скачать APK для Android" })).toHaveAttribute("download", ANDROID_APP.filename);
     expect(screen.getByRole("link", { name: /Установить веб-приложение/ })).toHaveAttribute("href", "/install");
-    expect(screen.getByText("Уведомления внутри платформы")).toBeInTheDocument();
+    expect(screen.getByText(/Для работы нужен интернет/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /RuStore/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Курсы офлайн/)).not.toBeInTheDocument();
   });
 
-  it("does not offer an APK that is not available", () => {
+  it("offers the same APK on the browser installation page without an unverified store link", () => {
     render(
       <HelmetProvider>
         <MemoryRouter><Install /></MemoryRouter>
@@ -132,9 +139,19 @@ describe("truthful landing copy", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Установите веб-приложение" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "APK в разработке" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Скачать APK для Android" })).toHaveAttribute("href", ANDROID_APP.downloadUrl);
+    expect(screen.queryByText("APK в разработке")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /RuStore/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Доступ без интернета")).not.toBeInTheDocument();
     expect(screen.queryByText(/Push-уведомления/)).not.toBeInTheDocument();
+  });
+
+  it("shows the public store link after availability has been verified", () => {
+    storeAvailabilityMocks.useRuStoreAvailability.mockReturnValue(RUSTORE_PUBLIC_URL);
+    render(<MemoryRouter><MobileApp /></MemoryRouter>);
+
+    expect(screen.getByRole("link", { name: "Открыть в RuStore" })).toHaveAttribute("href", RUSTORE_PUBLIC_URL);
+    expect(screen.queryByText(/Ссылка на RuStore появится/)).not.toBeInTheDocument();
   });
 
   it("shows only approved database testimonials and a neutral empty state", async () => {
