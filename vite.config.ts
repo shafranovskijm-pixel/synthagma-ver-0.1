@@ -5,6 +5,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { loadMcpPlugin } from "./scripts/mcp-sdk-windows.mjs";
+import { excludeAndroidDownloads } from "./scripts/rustore/exclude-android-downloads.mjs";
 
 const pwaCacheVersion = "sintagma-1.0.81";
 
@@ -22,6 +23,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
     port: 8080,
   },
   plugins: [
+    excludeAndroidDownloads(process.env.CAPACITOR_BUILD === "true"),
     react(),
     mcpPlugin(),
     mode === "development" && componentTagger(),
@@ -66,13 +68,13 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/downloads\//],
         additionalManifestEntries: [
           { url: "/manifest.webmanifest", revision: pwaCacheVersion },
         ],
         runtimeCaching: [
           {
-            urlPattern: ({request}) => request.mode === 'navigate',
+            urlPattern: ({request, url}) => request.mode === 'navigate' && !url.pathname.startsWith('/downloads/'),
             handler: "NetworkFirst",
             options: {
               cacheName: `${pwaCacheVersion}-pages-cache`,

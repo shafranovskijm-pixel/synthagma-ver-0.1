@@ -1,0 +1,11 @@
+[Unit]
+Description=Check public SINTAGMA RuStore card hourly
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1h
+AccuracySec=1min
+Unit=sintagma-rustore-public-check.service
+
+[Install]
+WantedBy=timers.target

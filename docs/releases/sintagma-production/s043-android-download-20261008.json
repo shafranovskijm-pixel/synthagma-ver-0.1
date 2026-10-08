@@ -1,0 +1,38 @@
+{
+  "scope": "Existing MobileApp landing section and /install; exact signed learner APK; optional verified RuStore button via existing VPS hourly public checker. No new paid resources.",
+  "rustore": {
+    "publicUrl": "https://www.rustore.ru/catalog/app/ru.sintagma.app",
+    "observedStatus": "HTTP404, waiting moderation",
+    "notPublishedYet": true
+  },
+  "apk": {
+    "sha256": "d29705240b1046b67f4353fa61fb2f21719078e5a80fe6f127d68c66d282bdc3",
+    "bytes": 22169015,
+    "versionCode": 5,
+    "packageName": "ru.sintagma.app",
+    "version": "1.0",
+    "path": "/downloads/SINTAGMA-1.0-5.apk"
+  },
+  "baseline": "ebe8a14244ee3a24cb28ad22fa613e10a90f0ea9",
+  "authorizedBy": "готовый apk еще добавь на лендинг и ссылку на rustore когда она будет готова",
+  "local": {
+    "probeTests": 19,
+    "peerReview": "No actionable defects; production gates pending",
+    "capacitorWebBuild": "passed, downloadable APK excluded",
+    "frontendTests": 36,
+    "typecheck": "passed",
+    "webBuild": "passed, exact APK"
+  },
+  "checkedAt": "2026-10-08T04:05:57.57357Z",
+  "hosting": "pending",
+  "domain": "pending",
+  "task": "S-043",
+  "statusEndpoint": {
+    "timer": "active and hourly",
+    "installedNginxSha256": "130ad68979f933e9c38f10f19f9486256df924a07837bb45f5051394e814f44d",
+    "url": "https://api.xn--80aaiswd0ak.xn--p1ai/mobile/rustore-availability.json",
+    "httpsCors": "200 application/json, exact permitted main Origin",
+    "firstProbe": "not_found/404",
+    "state": "passed"
+  }
+}
