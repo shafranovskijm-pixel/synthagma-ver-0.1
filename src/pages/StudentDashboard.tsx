@@ -499,6 +499,7 @@ function LearnerDashboard() {
                 orgName={profile?.organization_name || null}
                 orgDescription={profile?.org_description}
                 coverUrl={branding?.coverUrl}
+                coverPosition={branding?.coverPosition}
                 logoUrl={branding?.logoUrl}
                 primaryColor={branding?.primaryColor}
                 secondaryColor={branding?.secondaryColor}

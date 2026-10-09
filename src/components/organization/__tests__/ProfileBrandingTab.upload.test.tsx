@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { getProxyStatus } from "@/utils/proxyFetch";
 
 const testState = vi.hoisted(() => ({
   single: vi.fn(),
@@ -12,6 +14,10 @@ const testState = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useSubscriptionLimits", () => ({
   useSubscriptionLimits: () => ({ plan: "start" }),
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ setQueryData: vi.fn(), invalidateQueries: vi.fn() }),
 }));
 
 vi.mock("sonner", () => ({
@@ -31,7 +37,8 @@ import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab
 
 const ORGANIZATION_ID = "ba57e10a-3f87-4f81-82b5-ff4958367840";
 const USER_ID = "f4a507bf-7269-4d7f-8bb0-5d0bfc2376d7";
-const PUBLIC_BASE = "https://storage.example.test/storage/v1/object/public/org-branding/";
+const PUBLIC_BASE = `https://${getProxyStatus().supabaseHost}/storage/v1/object/public/org-branding/`;
+const PROXY_BASE = "https://api.xn--80aaiswd0ak.xn--p1ai/sb-storage/object/public/org-branding/";
 
 async function renderBranding() {
   const result = render(
@@ -45,6 +52,7 @@ async function renderBranding() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
   testState.single.mockResolvedValue({ data: { branding: {} }, error: null });
   testState.upload.mockResolvedValue({ error: null });
   testState.getPublicUrl.mockImplementation((path: string) => ({
@@ -60,7 +68,7 @@ beforeEach(() => {
   }));
 });
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("ProfileBrandingTab image uploads", () => {
   it.each([
@@ -82,7 +90,7 @@ describe("ProfileBrandingTab image uploads", () => {
     expect(uploadedFile).toBe(file);
     expect(options).toEqual({ upsert: true });
     expect(testState.getPublicUrl).toHaveBeenCalledWith(path);
-    expect(image.getAttribute("src")).toBe(PUBLIC_BASE + path);
+    expect(image.getAttribute("src")).toBe(PROXY_BASE + path);
     expect(testState.toastError).not.toHaveBeenCalled();
     expect(input.value).toBe("");
   });

@@ -2,11 +2,14 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Clock, CheckCircle2 } from "lucide-react";
 import { ADMIN_THEMES, getStoredThemeId, getThemeById, storeThemeId } from "@/constants/admin-themes";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
+import { getOrganizationCoverPresentation } from "@/lib/organization/branding";
 
 interface OrgBannerProps {
   orgName: string | null;
   orgDescription?: string | null;
   coverUrl?: string;
+  coverPosition?: string;
   logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
@@ -19,11 +22,13 @@ interface OrgBannerProps {
 }
 
 export function OrgBanner({
-  orgName, orgDescription, coverUrl, logoUrl, primaryColor, secondaryColor,
+  orgName, orgDescription, coverUrl, coverPosition, logoUrl, primaryColor, secondaryColor,
   totalProgress = 0, totalTimeSpent = 0, totalCompletedLessons = 0,
   enrolledCount = 0, formatTime = (m) => `${Math.floor(m / 60)}ч ${m % 60}м`,
 }: OrgBannerProps) {
   const hasCustomColors = primaryColor && secondaryColor;
+  const customCover = proxiedAssetUrl(coverUrl);
+  const coverPresentation = getOrganizationCoverPresentation(coverPosition);
 
   // Theme swiper state
   const [currentIndex, setCurrentIndex] = useState(() => {
@@ -38,6 +43,7 @@ export function OrgBanner({
   const touchStartY = useRef<number | null>(null);
 
   const applyTheme = useCallback((idx: number) => {
+    if (customCover) return;
     const theme = ADMIN_THEMES[idx];
     if (!theme) return;
     setPrevIndex(currentIndex);
@@ -46,7 +52,7 @@ export function OrgBanner({
     storeThemeId(theme.id);
     window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: theme.id }));
     setTimeout(() => setTransitioning(false), 700);
-  }, [currentIndex]);
+  }, [currentIndex, customCover]);
 
   const goNext = useCallback(() => {
     applyTheme((currentIndex + 1) % ADMIN_THEMES.length);
@@ -89,7 +95,7 @@ export function OrgBanner({
 
   const current = ADMIN_THEMES[currentIndex];
   const prev = ADMIN_THEMES[prevIndex];
-  const displayCover = current?.bannerUrl || coverUrl;
+  const displayCover = customCover || current?.bannerUrl;
   const hasProgress = enrolledCount > 0;
 
   return (
@@ -98,11 +104,11 @@ export function OrgBanner({
         "relative w-full rounded-2xl overflow-hidden select-none",
         hasProgress ? "h-48 md:h-52" : "h-36 md:h-44"
       )}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      onTouchStart={customCover ? undefined : handleTouchStart}
+      onTouchEnd={customCover ? undefined : handleTouchEnd}
     >
       {/* Previous layer (fades out) */}
-      {transitioning && prev && (
+      {!customCover && transitioning && prev && (
         <div
           className="absolute inset-0 transition-opacity duration-700 opacity-0"
           style={{
@@ -113,7 +119,17 @@ export function OrgBanner({
         />
       )}
       {/* Current layer */}
-      <div
+      {customCover ? (
+        <img
+          src={customCover}
+          alt="Обложка организации"
+          className="absolute inset-0 w-full h-full bg-muted"
+          width={1920}
+          height={400}
+          decoding="async"
+          style={{ objectFit: coverPresentation.fit, objectPosition: coverPresentation.position }}
+        />
+      ) : <div
         className="absolute inset-0 transition-opacity duration-700"
         style={
           displayCover
@@ -127,7 +143,7 @@ export function OrgBanner({
               ? { opacity: 1, background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }
               : undefined
         }
-      />
+      />}
       {!displayCover && !hasCustomColors && (
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary/70" />
       )}
@@ -136,6 +152,7 @@ export function OrgBanner({
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
 
       {/* Arrow buttons */}
+      {!customCover && <>
       <button
         onClick={goPrev}
         className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all flex items-center justify-center"
@@ -150,6 +167,7 @@ export function OrgBanner({
       >
         <ChevronRight className="w-4 h-4" />
       </button>
+      </>}
 
       {/* Content overlay */}
       <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 flex items-end justify-between gap-4 z-[1]">
@@ -184,7 +202,7 @@ export function OrgBanner({
       </div>
 
       {/* Dot indicators */}
-      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 flex gap-1">
+      {!customCover && <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 flex gap-1">
         {ADMIN_THEMES.map((t, i) => (
           <button
             key={t.id}
@@ -195,7 +213,7 @@ export function OrgBanner({
             aria-label={t.label}
           />
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
