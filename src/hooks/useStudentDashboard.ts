@@ -54,6 +54,7 @@ interface Profile {
 
 interface Branding {
   coverUrl: string;
+  coverPosition?: string;
   primaryColor: string;
   secondaryColor: string;
   logoUrl: string;
@@ -200,6 +201,7 @@ export function useStudentDashboard() {
       const b = snapshot.org.branding as Record<string, unknown>;
       setBranding({
         coverUrl: (b.coverUrl as string) || '',
+        coverPosition: typeof b.coverPosition === 'string' ? b.coverPosition : undefined,
         primaryColor: (b.primaryColor as string) || '#0d9488',
         secondaryColor: (b.secondaryColor as string) || '#14b8a6',
         logoUrl: (b.logoUrl as string) || '',
@@ -345,7 +347,7 @@ export function useStudentDashboard() {
 
       if (effectiveBranding && typeof effectiveBranding === 'object') {
         const b = effectiveBranding as Record<string, unknown>;
-        setBranding({ coverUrl: (b.coverUrl as string) || '', primaryColor: (b.primaryColor as string) || '#0d9488', secondaryColor: (b.secondaryColor as string) || '#14b8a6', logoUrl: (b.logoUrl as string) || '', showOrgName: b.showOrgName !== false });
+        setBranding({ coverUrl: (b.coverUrl as string) || '', coverPosition: typeof b.coverPosition === 'string' ? b.coverPosition : undefined, primaryColor: (b.primaryColor as string) || '#0d9488', secondaryColor: (b.secondaryColor as string) || '#14b8a6', logoUrl: (b.logoUrl as string) || '', showOrgName: b.showOrgName !== false });
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;

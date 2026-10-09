@@ -23,6 +23,8 @@ import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
 import { hasOrganizationCourse } from "@/lib/organization/firstRun";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { AccountSettingsMenuItem } from "@/components/account/AccountSettingsLink";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
+import { getOrganizationCoverPresentation } from "@/lib/organization/branding";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -53,6 +55,8 @@ export function OrgDashboardHeader() {
   const organizationId = d.organizationId;
   const customName = d.branding.brandingSettings.customName;
   const logoUrl = d.branding.brandingSettings.logoUrl;
+  const coverUrl = proxiedAssetUrl(d.branding.brandingSettings.coverUrl);
+  const coverPresentation = getOrganizationCoverPresentation(d.branding.brandingSettings.coverPosition);
 
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
@@ -154,6 +158,7 @@ export function OrgDashboardHeader() {
 
 
   return (
+    <>
     <header data-org-sticky-header className="sticky top-0 z-30 bg-card border-b border-border group/orgheader">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-14">
@@ -371,5 +376,19 @@ export function OrgDashboardHeader() {
         </div>
       )}
     </header>
+    {coverUrl && (
+      <div data-org-branding-cover className="relative w-full h-28 sm:h-36 lg:h-40 overflow-hidden bg-muted border-b border-border">
+        <img
+          src={coverUrl}
+          alt="Обложка организации"
+          className="w-full h-full"
+          width={1920}
+          height={400}
+          decoding="async"
+          style={{ objectFit: coverPresentation.fit, objectPosition: coverPresentation.position }}
+        />
+      </div>
+    )}
+    </>
   );
 }

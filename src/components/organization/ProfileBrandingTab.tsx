@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import type { OrganizationCore } from "@/hooks/useOrganizationCore";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -34,6 +37,27 @@ const DEFAULT_BRANDING: BrandingSettings = {
   customName: '',
   customSubtitle: '' };
 
+function brandingRecord(value: unknown): Record<string, unknown> {
+  if (value == null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('Некорректные настройки брендирования');
+  return value as Record<string, unknown>;
+}
+
+function editorSettings(value: unknown): BrandingSettings {
+  const b = brandingRecord(value);
+  return {
+    primaryColor: typeof b.primaryColor === 'string' ? b.primaryColor : DEFAULT_BRANDING.primaryColor,
+    secondaryColor: typeof b.secondaryColor === 'string' ? b.secondaryColor : DEFAULT_BRANDING.secondaryColor,
+    logoUrl: typeof b.logoUrl === 'string' ? b.logoUrl : '',
+    coverUrl: typeof b.coverUrl === 'string' ? b.coverUrl : '',
+    coverPosition: ['cover', 'contain', 'center', 'top', 'bottom'].includes(String(b.coverPosition))
+      ? b.coverPosition as BrandingSettings['coverPosition'] : 'cover',
+    showOrgName: typeof b.showOrgName === 'boolean' ? b.showOrgName : true,
+    customName: typeof b.customName === 'string' ? b.customName : '',
+    customSubtitle: typeof b.customSubtitle === 'string' ? b.customSubtitle : '',
+  };
+}
+
 interface Props {
   organizationId: string;
   userId: string;
@@ -41,55 +65,107 @@ interface Props {
 
 export function ProfileBrandingTab({ organizationId, userId }: Props) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { plan } = useSubscriptionLimits(organizationId);
   const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>(DEFAULT_BRANDING);
+  const [savedSettings, setSavedSettings] = useState<BrandingSettings>(DEFAULT_BRANDING);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const savingRef = useRef<number | null>(null);
+  const uploadingRef = useRef(new Map<'cover' | 'logo', number>());
+  const contextGenerationRef = useRef(0);
+  const hasUnsavedChanges = Object.keys(DEFAULT_BRANDING).some(key =>
+    brandingSettings[key as keyof BrandingSettings] !== savedSettings[key as keyof BrandingSettings],
+  );
 
   useEffect(() => {
+    const generation = ++contextGenerationRef.current;
+    savingRef.current = null;
+    uploadingRef.current.clear();
+    setIsSaving(false);
+    setIsUploadingCover(false);
+    setIsUploadingLogo(false);
+    setBrandingSettings(DEFAULT_BRANDING);
+    setSavedSettings(DEFAULT_BRANDING);
+    setIsLoading(true);
+    setLoadError(false);
     const load = async () => {
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("branding")
-        .eq("id", organizationId)
-        .single();
-      if (org?.branding) {
-        const b = org.branding as any;
-        setBrandingSettings({
-          primaryColor: b.primaryColor || '#0d9488',
-          secondaryColor: b.secondaryColor || '#8b5cf6',
-          logoUrl: b.logoUrl || '',
-          coverUrl: b.coverUrl || '',
-          coverPosition: b.coverPosition || 'cover',
-          showOrgName: b.showOrgName ?? true,
-          customName: b.customName || '',
-          customSubtitle: b.customSubtitle || '' });
+      try {
+        const { data: org, error } = await supabase
+          .from("organizations")
+          .select("branding")
+          .eq("id", organizationId)
+          .single();
+        if (generation !== contextGenerationRef.current) return;
+        if (error || !org) throw error || new Error('Организация не найдена');
+        const settings = editorSettings(org.branding);
+        setBrandingSettings(settings);
+        setSavedSettings(settings);
+      } catch {
+        if (generation === contextGenerationRef.current) setLoadError(true);
+      } finally {
+        if (generation === contextGenerationRef.current) setIsLoading(false);
       }
     };
-    load();
+    void load();
+    return () => { contextGenerationRef.current += 1; };
   }, [organizationId]);
 
   const handleSave = async () => {
+    if (savingRef.current !== null || uploadingRef.current.size || isLoading || loadError) return;
+    const generation = contextGenerationRef.current;
+    savingRef.current = generation;
+    const settingsToSave = { ...brandingSettings };
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      const { data: current, error: currentError } = await supabase
+        .from('organizations').select('id, branding').eq('id', organizationId).single();
+      if (generation !== contextGenerationRef.current) return;
+      if (currentError || current?.id !== organizationId) throw currentError || new Error('Организация не подтверждена');
+      const mergedBranding = { ...brandingRecord(current.branding), ...settingsToSave };
+      const { data: updated, error } = await supabase
         .from('organizations')
-        .update({ branding: brandingSettings as any })
-        .eq('id', organizationId);
+        .update({ branding: mergedBranding as any })
+        .eq('id', organizationId)
+        .select('id, branding').maybeSingle();
       if (error) throw error;
-      toast.success('Брендирование сохранено');
+      if (updated?.id !== organizationId) throw new Error('Сервер не подтвердил сохранение');
+      const { data: persisted, error: readError } = await supabase
+        .from('organizations').select('id, branding').eq('id', organizationId).single();
+      if (readError || persisted?.id !== organizationId) throw readError || new Error('Сохранение не подтверждено');
+      const persistedBranding = brandingRecord(persisted.branding);
+      if (Object.keys(settingsToSave).some(key => persistedBranding[key] !== settingsToSave[key as keyof BrandingSettings])) {
+        throw new Error('Сервер не подтвердил новые настройки');
+      }
+      qc.setQueryData<OrganizationCore | null>(['org-core', organizationId], currentCore =>
+        currentCore ? { ...currentCore, branding: persistedBranding } : currentCore,
+      );
+      void qc.invalidateQueries({ queryKey: ['org-core', organizationId], exact: true });
+      if (generation === contextGenerationRef.current) {
+        setSavedSettings(settingsToSave);
+        toast.success('Брендирование сохранено');
+      }
     } catch {
-      toast.error('Ошибка сохранения');
+      if (generation === contextGenerationRef.current) {
+        toast.error('Не удалось подтвердить сохранение. Изменения остаются в форме — повторите попытку.');
+      }
     } finally {
-      setIsSaving(false);
+      if (savingRef.current === generation) {
+        savingRef.current = null;
+        if (generation === contextGenerationRef.current) setIsSaving(false);
+      }
     }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'logo') => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || savingRef.current !== null || uploadingRef.current.has(type) || isLoading || loadError) return;
+    const generation = contextGenerationRef.current;
+    uploadingRef.current.set(type, generation);
     const setter = type === 'cover' ? setIsUploadingCover : setIsUploadingLogo;
     setter(true);
     try {
@@ -103,11 +179,16 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
         .from("org-branding")
         .getPublicUrl(filePath);
       const key = type === 'cover' ? 'coverUrl' : 'logoUrl';
-      setBrandingSettings(prev => ({ ...prev, [key]: urlData.publicUrl }));
+      if (generation === contextGenerationRef.current) {
+        setBrandingSettings(prev => ({ ...prev, [key]: urlData.publicUrl }));
+      }
     } catch (err: any) {
-      toast.error("Ошибка загрузки: " + err.message);
+      if (generation === contextGenerationRef.current) toast.error("Ошибка загрузки: " + err.message);
     } finally {
-      setter(false);
+      if (uploadingRef.current.get(type) === generation) {
+        uploadingRef.current.delete(type);
+        if (generation === contextGenerationRef.current) setter(false);
+      }
       if (e.target) e.target.value = "";
     }
   };
@@ -142,7 +223,8 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
           Настройте внешний вид кабинета с вашим фирменным стилем
         </p>
 
-        <div className="space-y-6">
+        {loadError && <p role="alert" className="mb-4 text-sm text-destructive">Не удалось загрузить брендирование. Обновите страницу перед сохранением.</p>}
+        <fieldset disabled={isSaving || isLoading || loadError} className="space-y-6">
           {/* Cover Image */}
           <div>
             <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
@@ -154,7 +236,7 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
             <div className="relative">
               {brandingSettings.coverUrl ? (
                 <div className="relative rounded-xl overflow-hidden border border-border">
-                  <img src={brandingSettings.coverUrl} alt="Обложка" className="w-full h-32"
+                  <img src={proxiedAssetUrl(brandingSettings.coverUrl)} alt="Обложка" className="w-full h-32"
                     style={{
                       objectFit: brandingSettings.coverPosition === 'contain' ? 'contain' : 'cover',
                       objectPosition: brandingSettings.coverPosition === 'top' ? 'center top' : brandingSettings.coverPosition === 'bottom' ? 'center bottom' : 'center center',
@@ -203,7 +285,7 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
             <div className="flex items-start gap-4">
               {brandingSettings.logoUrl ? (
                 <div className="relative">
-                  <img src={brandingSettings.logoUrl} alt="Логотип" className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2" />
+                  <img src={proxiedAssetUrl(brandingSettings.logoUrl)} alt="Логотип" className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2" />
                   <button onClick={() => setBrandingSettings(prev => ({ ...prev, logoUrl: '' }))} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80">
                     <X className="w-3 h-3" />
                   </button>
@@ -261,10 +343,18 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
               </div>
             </div>
           </div>
-        </div>
+        </fieldset>
+
+        {!isLoading && !loadError && (
+          <p role="status" className="mt-4 text-sm text-muted-foreground">
+            {isUploadingCover || isUploadingLogo ? 'Изображение загружается. Дождитесь окончания загрузки.'
+              : hasUnsavedChanges ? 'Изменения не сохранены. Нажмите «Сохранить брендирование», чтобы обновить кабинет.'
+                : 'Все изменения сохранены.'}
+          </p>
+        )}
 
         <div className="mt-6 pt-4 border-t border-border flex gap-3">
-          <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
+          <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving || isLoading || loadError || isUploadingCover || isUploadingLogo}>
             {isSaving ? <><SigmaSpinner size="sm" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить брендирование</>}
           </Button>
           <TooltipProvider delayDuration={300}>
