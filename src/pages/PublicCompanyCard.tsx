@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Building2, User, MapPin, Mail, Globe, CreditCard, Calendar, Hash, Copy, Check, Loader2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import companyCardBg from '@/assets/company-card-bg.jpg';
+import { useCompanyCardOperatorRequisites } from '@/hooks/useCompanyCardOperatorRequisites';
 
 
 
@@ -14,11 +15,6 @@ const KNOWN_DATA = {
   birthDate: '25.10.1988',
   email: '24@24zxc.ru',
   domain: 'sintagma.com.ru',
-  bankName: 'ООО «Озон Банк»',
-  bik: '044525068',
-  account1: '40914810200040551529',
-  account2: '40802810200000522079',
-  corrAccount: '30101810645374525068',
 };
 
 function Field({ label, value, icon: Icon }: { label: string; value: string; icon: React.ElementType }) {
@@ -53,6 +49,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function PublicCompanyCard() {
   const { token } = useParams<{ token: string }>();
+  const { requisites, loading: requisitesLoading, error: requisitesError, refresh: refreshRequisites } = useCompanyCardOperatorRequisites();
   const [valid, setValid] = useState<boolean | null>(null);
   const [address, setAddress] = useState<string | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -79,6 +76,7 @@ export default function PublicCompanyCard() {
   }, [token]);
 
   const handleExport = async (format: 'pdf' | 'docx') => {
+    if (!requisites || requisitesLoading) return;
     setExporting(format);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('generate-company-card', {
@@ -143,7 +141,7 @@ export default function PublicCompanyCard() {
           <div className="flex items-center justify-center gap-3 mt-4">
             <button
               onClick={() => handleExport('pdf')}
-              disabled={!!exporting}
+              disabled={!!exporting || requisitesLoading || !requisites}
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 text-white text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
             >
               {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -151,7 +149,7 @@ export default function PublicCompanyCard() {
             </button>
             <button
               onClick={() => handleExport('docx')}
-              disabled={!!exporting}
+              disabled={!!exporting || requisitesLoading || !requisites}
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 text-white text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
             >
               {exporting === 'docx' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -184,11 +182,19 @@ export default function PublicCompanyCard() {
           </Section>
 
           <Section title="Банковские реквизиты">
-            <Field label="Банк" value={KNOWN_DATA.bankName} icon={CreditCard} />
-            <Field label="БИК" value={KNOWN_DATA.bik} icon={Hash} />
-            <Field label="Расчётный счёт №1" value={KNOWN_DATA.account1} icon={Hash} />
-            <Field label="Расчётный счёт №2" value={KNOWN_DATA.account2} icon={Hash} />
-            <Field label="Корр. счёт" value={KNOWN_DATA.corrAccount} icon={Hash} />
+            {requisitesLoading ? <p className="text-sm text-white/70 p-3">Загрузка актуальных реквизитов…</p> : requisites ? (
+              <>
+                <Field label="Банк" value={requisites.bankName} icon={CreditCard} />
+                <Field label="БИК" value={requisites.bik} icon={Hash} />
+                <Field label="Расчётный счёт" value={requisites.bankAccount} icon={Hash} />
+                <Field label="Корр. счёт" value={requisites.corrAccount} icon={Hash} />
+              </>
+            ) : (
+              <div className="p-3 text-sm text-white/70">
+                <p>{requisitesError}</p>
+                <button onClick={() => void refreshRequisites()} className="mt-2 underline">Повторить загрузку</button>
+              </div>
+            )}
           </Section>
         </div>
 

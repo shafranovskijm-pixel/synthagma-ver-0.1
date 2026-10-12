@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Building2, User, MapPin, Mail, Globe, Copy, Check, CreditCard, Calendar, Hash, FileText, Loader2, AlertCircle, Download, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCompanyCardOperatorRequisites } from '@/hooks/useCompanyCardOperatorRequisites';
 
 const KNOWN_DATA = {
   inn: '253615392404',
@@ -13,11 +14,6 @@ const KNOWN_DATA = {
   birthDate: '25.10.1988',
   email: '24@24zxc.ru',
   domain: 'sintagma.com.ru',
-  bankName: 'ООО «Озон Банк»',
-  bik: '044525068',
-  account1: '40914810200040551529',
-  account2: '40802810200000522079',
-  corrAccount: '30101810645374525068',
 };
 
 interface DaDataCompany {
@@ -58,6 +54,7 @@ function CopyField({ label, value, icon: Icon }: { label: string; value: string 
 }
 
 export function CompanyCard() {
+  const { requisites, loading: requisitesLoading, error: requisitesError, refresh: refreshRequisites } = useCompanyCardOperatorRequisites();
   const [company, setCompany] = useState<DaDataCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +86,7 @@ export function CompanyCard() {
   }, []);
 
   const handleExport = async (format: 'pdf' | 'docx') => {
+    if (!requisites || requisitesLoading) return;
     setExporting(format);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('generate-company-card', {
@@ -150,11 +148,11 @@ export function CompanyCard() {
           {company && <Badge className={statusColor}>{statusLabel}</Badge>}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={!!exporting}>
+          <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={!!exporting || requisitesLoading || !requisites}>
             {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
             PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={!!exporting}>
+          <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={!!exporting || requisitesLoading || !requisites}>
             {exporting === 'docx' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
             Word
           </Button>
@@ -236,11 +234,19 @@ export function CompanyCard() {
       <Card className="shadow-lg border-0 bg-card">
         <CardContent className="p-5 space-y-1">
           <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">Банковские реквизиты</h3>
-          <CopyField label="Банк" value={KNOWN_DATA.bankName} icon={CreditCard} />
-          <CopyField label="БИК" value={KNOWN_DATA.bik} icon={Hash} />
-          <CopyField label="Расчётный счёт №1" value={KNOWN_DATA.account1} icon={Hash} />
-          <CopyField label="Расчётный счёт №2" value={KNOWN_DATA.account2} icon={Hash} />
-          <CopyField label="Корр. счёт" value={KNOWN_DATA.corrAccount} icon={Hash} />
+          {requisitesLoading ? <p className="text-sm text-muted-foreground p-3">Загрузка актуальных реквизитов…</p> : requisites ? (
+            <>
+              <CopyField label="Банк" value={requisites.bankName} icon={CreditCard} />
+              <CopyField label="БИК" value={requisites.bik} icon={Hash} />
+              <CopyField label="Расчётный счёт" value={requisites.bankAccount} icon={Hash} />
+              <CopyField label="Корр. счёт" value={requisites.corrAccount} icon={Hash} />
+            </>
+          ) : (
+            <div className="p-3 text-sm text-destructive">
+              <p>{requisitesError}</p>
+              <Button variant="outline" size="sm" className="mt-2" onClick={() => void refreshRequisites()}>Повторить загрузку</Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
