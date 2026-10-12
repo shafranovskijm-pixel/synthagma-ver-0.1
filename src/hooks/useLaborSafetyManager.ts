@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 import { insertEnrollmentsVerified } from "@/api/enrollments";
+import { fetchLaborSafetyGroups } from "@/api/laborSafetyGroups";
 import {
   buildLaborSafetyXmlFilename,
   getLaborSafetyInvalidFields,
@@ -57,6 +58,12 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
   const [selectedGroup, setSelectedGroup] = useState<LaborSafetyGroup | null>(null);
   const [records, setRecords] = useState<LaborSafetyRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [groupsLoadError, setGroupsLoadError] = useState<string | null>(null);
+  const [groupCountsUnavailable, setGroupCountsUnavailable] = useState(false);
+  const groupsRequestId = useRef(0);
+  const recordsRequestId = useRef(0);
+  const activeOrganizationId = useRef<string | null>(organizationId);
+  const activeGroupId = useRef<string | null>(null);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
 
   const [groupSearch, setGroupSearch] = useState("");
@@ -101,6 +108,13 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
 
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
 
+  // Mutation callbacks can finish after navigation and call an old loader.
+  useLayoutEffect(() => {
+    activeOrganizationId.current = organizationId;
+    activeGroupId.current = selectedGroup?.organization_id === organizationId ? selectedGroup.id : null;
+    return () => { activeOrganizationId.current = null; activeGroupId.current = null; };
+  }, [organizationId, selectedGroup]);
+
   // Filtered groups
   const filteredGroups = useMemo(() => {
     let result = [...groups];
@@ -113,12 +127,14 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
       switch (groupSortField) {
         case 'name': comparison = a.name.localeCompare(b.name, 'ru'); break;
         case 'created_at': comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); break;
-        case 'records_count': comparison = (a.records_count || 0) - (b.records_count || 0); break;
+        case 'records_count':
+          if (groupCountsUnavailable) return 0;
+          comparison = (a.records_count ?? 0) - (b.records_count ?? 0); break;
       }
       return groupSortDirection === 'asc' ? comparison : -comparison;
     });
     return result;
-  }, [groups, groupSearch, groupSortField, groupSortDirection]);
+  }, [groups, groupSearch, groupSortField, groupSortDirection, groupCountsUnavailable]);
 
   // Filtered records
   const filteredRecords = useMemo(() => {
@@ -136,29 +152,36 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
   const allFilteredSelected = filteredRecords.length > 0 && filteredRecords.every(r => selectedRecordIds.has(r.id));
 
   const fetchGroups = useCallback(async () => {
+    if (activeOrganizationId.current !== organizationId) return;
+    const requestId = ++groupsRequestId.current;
+    const isCurrent = () => requestId === groupsRequestId.current && activeOrganizationId.current === organizationId;
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("labor_safety_groups")
-        .select("*, labor_safety_records(count)")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setGroups((data || []).map(g => ({ ...g, records_count: g.labor_safety_records?.[0]?.count || 0 })));
+      setGroupsLoadError(null);
+      const result = await fetchLaborSafetyGroups(organizationId);
+      if (!isCurrent()) return;
+      setGroups(result.groups);
+      setGroupCountsUnavailable(result.countsUnavailable);
+      if (result.countsError) console.warn("Labor safety group counts unavailable:", result.countsError);
     } catch (error) {
+      if (!isCurrent()) return;
       console.error("Error fetching groups:", error);
-      toast.error("Ошибка загрузки групп");
+      setGroupsLoadError("Не удалось загрузить группы. Повторите попытку.");
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   }, [organizationId]);
 
   const fetchRecords = useCallback(async (groupId: string) => {
+    if (activeGroupId.current !== groupId) return;
+    const requestId = ++recordsRequestId.current;
+    const isCurrent = () => requestId === recordsRequestId.current && activeGroupId.current === groupId;
     try {
       setIsLoadingRecords(true);
       const { data, error } = await supabase
         .from("labor_safety_records").select("*").eq("group_id", groupId).order("full_name", { ascending: true });
       if (error) throw error;
+      if (!isCurrent()) return;
 
       const recordsWithCourses = await Promise.all((data || []).map(async (record) => {
         const { data: profile } = await supabase.from("labor_safety_profiles").select("user_id").eq("record_id", record.id).maybeSingle();
@@ -171,19 +194,40 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
         }
         return { ...record, courses: [], enrollments: [], averageProgress: 0, hasActiveEnrollment: false };
       }));
-      setRecords(recordsWithCourses);
+      if (isCurrent()) setRecords(recordsWithCourses);
     } catch (error) {
+      if (!isCurrent()) return;
       console.error("Error fetching records:", error);
       toast.error("Ошибка загрузки записей");
     } finally {
-      setIsLoadingRecords(false);
+      if (isCurrent()) setIsLoadingRecords(false);
     }
   }, []);
 
-  useEffect(() => { fetchGroups(); }, [fetchGroups]);
   useEffect(() => {
-    if (selectedGroup) { fetchRecords(selectedGroup.id); setSelectedRecordIds(new Set()); }
-    else { setRecords([]); setSelectedRecordIds(new Set()); }
+    setGroups([]);
+    setSelectedGroup(null);
+    setRecords([]);
+    setGroupCountsUnavailable(false);
+    setGroupSearch("");
+    setIsGroupSearchOpen(false);
+    setShowGroupDialog(false);
+    setEditingGroup(null);
+    setShowDeleteGroupConfirm(false);
+    setGroupToDelete(null);
+    setShowRecordDialog(false);
+    setShowStudentDetailCard(false);
+    setSelectedRecordForDetail(null);
+    setShowEnrollDialog(false);
+    void fetchGroups();
+    return () => { groupsRequestId.current++; recordsRequestId.current++; };
+  }, [fetchGroups]);
+  useEffect(() => {
+    setRecords([]);
+    setSelectedRecordIds(new Set());
+    if (selectedGroup) { void fetchRecords(selectedGroup.id); }
+    else { setIsLoadingRecords(false); }
+    return () => { recordsRequestId.current++; };
   }, [selectedGroup, fetchRecords]);
 
   const handleCreateGroup = async () => {
@@ -481,6 +525,7 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
   return {
     // Groups
     groups, filteredGroups, selectedGroup, setSelectedGroup, isLoading,
+    groupsLoadError, groupCountsUnavailable,
     groupSearch, setGroupSearch, groupSortField, setGroupSortField,
     groupSortDirection, setGroupSortDirection, isGroupSearchOpen, setIsGroupSearchOpen,
     showGroupDialog, setShowGroupDialog, groupName, setGroupName,
