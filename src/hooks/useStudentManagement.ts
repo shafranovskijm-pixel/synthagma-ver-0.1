@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { generateStrongPassword, isValidEmail } from "@/utils/credentials";
-import { getBaseUrl } from "@/utils/getBaseUrl";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
 import {
   EnrollmentAccessExpiredError,
@@ -242,11 +241,8 @@ export function useStudentManagement({
         try {
           const { error: mailError } = await safeInvoke<any>("send-credentials", {
             body: {
-              email: effectiveEmail,
-              name: effectiveName,
-              login: displayLogin,
-              password: displayPassword,
-              loginUrl: `${getBaseUrl()}/login`,
+              user_id: data.user_id,
+              organization_id: organizationId,
             },
           });
           if (mailError) {

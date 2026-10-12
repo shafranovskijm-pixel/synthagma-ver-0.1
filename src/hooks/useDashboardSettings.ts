@@ -108,6 +108,7 @@ export function useDashboardSettings(organizationId: string | null) {
   // Берём menu_settings из общего кэша core (fallback на localStorage-миграцию ниже)
   useEffect(() => {
     if (!orgCore) return;
+    let active = true;
     const ms = orgCore.menu_settings;
     if (ms && typeof ms === 'object' && Object.keys(ms as object).length > 0) {
       setMenuSettings(normalizeMenuSettings(ms as Record<string, unknown>));
@@ -115,25 +116,32 @@ export function useDashboardSettings(organizationId: string | null) {
       // Migrate from localStorage if DB is empty (one-time)
       const saved = localStorage.getItem('orgMenuSettings');
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const migrated = normalizeMenuSettings(parsed);
-          setMenuSettings(migrated);
-          supabase
-            .from('organizations')
-            .update({ menu_settings: migrated as any })
-            .eq('id', organizationId)
-            .then(() => {
-              qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
+        void (async () => {
+          try {
+            const migrated = normalizeMenuSettings(JSON.parse(saved));
+            const { data, error } = await supabase
+              .from('organizations')
+              .update({ menu_settings: migrated as any })
+              .eq('id', organizationId)
+              .select('id')
+              .single();
+            if (error) throw error;
+            if (!data) throw new Error('Настройки меню не сохранены');
+            if (!active) return;
+            setMenuSettings(migrated);
+            if (localStorage.getItem('orgMenuSettings') === saved) {
               localStorage.removeItem('orgMenuSettings');
-            });
-        } catch (e) {
-          console.error('Error migrating menu settings:', e);
-        }
+            }
+            void qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
+          } catch (e) {
+            console.error('Error migrating menu settings:', e);
+          }
+        })();
       } else {
         setMenuSettings({ ...defaultMenuSettings });
       }
     }
+    return () => { active = false; };
   }, [orgCore, organizationId, qc]);
 
   // Берём student_dashboard_settings из общего кэша core
@@ -156,17 +164,23 @@ export function useDashboardSettings(organizationId: string | null) {
 
   // Reset menu to defaults and save to DB
   const resetMenuSettings = useCallback(async () => {
-    if (!organizationId) return;
+    if (!organizationId) return false;
     const defaults = { ...defaultMenuSettings };
-    setMenuSettings(defaults);
     try {
-      await supabase
+      const { data, error } = await supabase
         .from('organizations')
         .update({ menu_settings: defaults as any })
-        .eq('id', organizationId);
-      qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
+        .eq('id', organizationId)
+        .select('id')
+        .single();
+      if (error) throw error;
+      if (!data) throw new Error('Настройки меню не сохранены');
+      setMenuSettings(defaults);
+      void qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
+      return true;
     } catch (error) {
       console.error('Error resetting menu settings:', error);
+      return false;
     }
   }, [organizationId, qc]);
 

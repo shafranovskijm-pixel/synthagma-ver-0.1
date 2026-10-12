@@ -319,7 +319,7 @@ export const LessonEditor = ({
                         Профессиональный видеохостинг с CDN и DRM-защитой доступен на тарифе «Профессиональный» и выше.
                       </p>
                       <Button variant="outline" size="sm" className="gap-2"
-                        onClick={() => navigate(organizationId ? `/organization/${organizationId}?tab=tariffs` : '/settings')}>
+                        onClick={() => navigate('/organization?tab=subscription')}>
                         Перейти к тарифам →
                       </Button>
                     </div>
@@ -359,7 +359,7 @@ export const LessonEditor = ({
                   )}
                 </div>
 
-                <MediaLibraryDialog open={e.showMediaLibrary} onClose={() => e.setShowMediaLibrary(false)} onSelect={(url) => e.setVideoUrl(url)} filter="video" />
+                <MediaLibraryDialog open={e.showMediaLibrary} onClose={() => e.setShowMediaLibrary(false)} onSelect={(url) => e.setVideoUrl(url)} filter="video" organizationId={organizationId} />
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>

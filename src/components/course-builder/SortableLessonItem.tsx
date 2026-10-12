@@ -247,7 +247,7 @@ export function SortableLessonItem({
                       variant="outline"
                       size="sm"
                       className="gap-2"
-                      onClick={() => navigate(organizationId ? `/organization/${organizationId}?tab=tariffs` : '/settings')}
+                      onClick={() => navigate('/organization?tab=subscription')}
                     >
                       Перейти к тарифам →
                     </Button>
@@ -284,6 +284,7 @@ export function SortableLessonItem({
                       onClose={() => setShowMediaLibrary(false)}
                       onSelect={(url) => onUpdate({ content: url })}
                       filter="video"
+                      organizationId={organizationId}
                     />
                   </div>
                 )}

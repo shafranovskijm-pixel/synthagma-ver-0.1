@@ -62,23 +62,19 @@ export function useStudentActions(
     try {
       const { error } = await safeInvoke<any>("send-credentials", {
         body: {
-          email: student.email,
-          name: student.name,
-          login: student.login,
-          password: student.generated_password,
-          loginUrl: `${getBaseUrl()}/login`,
-          organizationName
+          user_id: student.user_id,
+          organization_id: organizationId,
         }
       });
       if (error) throw error;
       toast.success(`Данные для входа отправлены на ${student.email}`);
     } catch (error) {
       console.error("Error sending credentials:", error);
-      toast.error("Ошибка отправки email");
+      toast.error(error instanceof Error ? error.message : "Ошибка отправки email");
     } finally {
       setIsSendingCredentialsEmail(false);
     }
-  }, [organizationName]);
+  }, [organizationId]);
 
   const createCredentials = useCallback(async (student: Student) => {
     if (student.login && student.generated_password) {
@@ -94,6 +90,7 @@ export function useStudentActions(
       const { data, error } = await safeInvoke<any>("update-student-credentials", {
         body: {
           user_id: student.user_id,
+          organization_id: organizationId,
           new_login: login,
           new_password: password
         }
@@ -112,7 +109,7 @@ export function useStudentActions(
     } finally {
       setIsCreatingCredentials(false);
     }
-  }, [onRefreshRows]);
+  }, [onRefreshRows, organizationId]);
 
   const deleteStudentCompletely = useCallback(async (userId: string) => {
     setIsDeletingStudent(true);
@@ -148,12 +145,8 @@ export function useStudentActions(
         try {
           const { error } = await safeInvoke<any>("send-credentials", {
             body: {
-              email: student.email,
-              name: student.name,
-              login: student.login!,
-              password: student.generated_password!,
-              loginUrl: `${getBaseUrl()}/login`,
-              organizationName
+              user_id: student.user_id,
+              organization_id: organizationId,
             }
           });
           if (error) {
@@ -174,7 +167,7 @@ export function useStudentActions(
     } finally {
       setIsSendingBulkCredentials(false);
     }
-  }, [organizationName]);
+  }, [organizationId]);
 
   const bulkCreateCredentials = useCallback(async (students: Student[], sendEmails: boolean = false) => {
     const studentsToCreate = students.filter(s => !s.login || !s.generated_password);
@@ -198,6 +191,7 @@ export function useStudentActions(
           const { data, error } = await safeInvoke<any>("update-student-credentials", {
             body: {
               user_id: student.user_id,
+              organization_id: organizationId,
               new_login: login,
               new_password: password
             }
@@ -215,20 +209,14 @@ export function useStudentActions(
       
       // Send emails if requested
       if (sendEmails && createdCredentials.length > 0) {
-        const loginUrl = `${getBaseUrl()}/login`;
-        
-        for (const { student, login, password } of createdCredentials) {
+        for (const { student } of createdCredentials) {
           if (!student.email) continue;
           
           try {
             const { error } = await safeInvoke<any>("send-credentials", {
               body: {
-                email: student.email,
-                name: student.name,
-                login,
-                password,
-                loginUrl,
-                organizationName
+                user_id: student.user_id,
+                organization_id: organizationId,
               }
             });
             
@@ -257,7 +245,7 @@ export function useStudentActions(
     } finally {
       setIsCreatingBulkCredentials(false);
     }
-  }, [onRefreshRows, organizationName]);
+  }, [onRefreshRows, organizationId]);
 
   const bulkSendDocReminders = useCallback(async () => {
     if (!organizationId) return;

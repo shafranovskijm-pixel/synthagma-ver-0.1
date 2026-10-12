@@ -1,0 +1,15 @@
+{
+  "isolatedInMemory": true,
+  "liveApplied": false,
+  "passed": true,
+  "assertions": 45,
+  "postchecks": 7,
+  "exactBundleCommit": true,
+  "exactLedgerSource": true,
+  "replayRefused": true,
+  "policyDriftRefused": true,
+  "helperDriftRefused": true,
+  "ledgerFailureRollsBackDDL": true,
+  "bundleSha256": "f7dbb3b641ccf98b09765a8b1b59cfdf90c0f066d5dfcfefa2d22695ff70d44c",
+  "limitation": "In-memory PostgreSQL only. Does not prove hosted apply, concurrent locks, API schema reload or browser workflow."
+}

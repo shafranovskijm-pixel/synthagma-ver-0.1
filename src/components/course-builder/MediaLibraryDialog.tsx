@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useLayoutEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { runBoundedStorageScans } from "@/lib/storage/boundedStorageScans";
+import { resolveStaffOrganization } from "@/utils/resolveStaffOrganization";
 
 interface MediaLibraryDialogProps {
   open: boolean;
@@ -209,31 +210,48 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
   const [showOnlyUnused, setShowOnlyUnused] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<StorageFile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [scanWarning, setScanWarning] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const generation = useRef(0);
 
-  useEffect(() => {
-    if (open) {
-      loadFiles();
-      setSelectedFile(null);
-      setSearch("");
-      setShowOnlyUnused(false);
-    }
-  }, [open]);
+  useLayoutEffect(() => {
+    const requestGeneration = ++generation.current;
+    setFiles([]);
+    setSelectedFile(null);
+    setFileToDelete(null);
+    setDeleting(false);
+    setSearch("");
+    setShowOnlyUnused(false);
+    setLoadError(null);
+    setScanWarning(false);
+    setLoading(open);
+    if (open) void loadFiles(requestGeneration);
+    return () => { generation.current += 1; };
+  }, [open, organizationId, refreshKey]);
 
-  const resolveOrgContext = async (): Promise<{ orgId: string | null; courseIds: string[]; courseTitles: Map<string, string> }> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { orgId: null, courseIds: [], courseTitles: new Map() };
+  const handleClose = () => {
+    generation.current += 1;
+    setSelectedFile(null);
+    setFileToDelete(null);
+    onClose();
+  };
+
+  const resolveOrgContext = async (): Promise<{ orgId: string; courseIds: string[]; courseTitles: Map<string, string> }> => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Не удалось подтвердить вход. Войдите заново и откройте медиатеку.");
 
     let orgId = organizationId || null;
     if (!orgId) {
-      const { data: profile } = await supabase
-        .from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      orgId = profile?.organization_id || null;
+      const workspace = await resolveStaffOrganization(user.id);
+      orgId = workspace.organizationId;
     }
 
-    if (!orgId) return { orgId: null, courseIds: [], courseTitles: new Map() };
+    if (!orgId) throw new Error("Активная организация не найдена. Откройте медиатеку из редактора курса своей организации.");
 
-    const { data: courses } = await supabase
+    const { data: courses, error: coursesError } = await supabase
       .from("courses").select("id, title").eq("organization_id", orgId);
+    if (coursesError) throw new Error("Не удалось загрузить курсы организации. Проверьте доступ и повторите попытку.");
 
     const titles = new Map<string, string>();
     const ids: string[] = [];
@@ -241,14 +259,15 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     return { orgId, courseIds: ids, courseTitles: titles };
   };
 
-  const loadFiles = async () => {
-    setLoading(true);
+  const loadFiles = async (requestGeneration: number) => {
+    const isCurrent = () => requestGeneration === generation.current;
     const allFiles: StorageFile[] = [];
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    let incomplete = false;
 
     try {
       const { orgId, courseIds, courseTitles } = await resolveOrgContext();
-      if (!orgId) { setFiles([]); setLoading(false); return; }
+      if (!isCurrent()) return;
 
       // Scan a single bucket prefix (one folder level deep)
       const scanPrefix = async (
@@ -256,7 +275,8 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       ): Promise<StorageFile[]> => {
         const out: StorageFile[] = [];
         try {
-          const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
+          const { data: items, error } = await client.storage.from(bucket).list(prefix, { limit: 500 });
+          if (error) throw error;
           if (!items) return out;
           for (const f of items) {
             if (f.id === null) continue; // subfolder
@@ -273,7 +293,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
               courseName: courseTitles.get(prefix),
             });
           }
-        } catch { /* missing folder */ }
+        } catch { incomplete = true; }
         return out;
       };
 
@@ -293,25 +313,32 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       internalScans.push(() => scanPrefix(supabase, "library-files", `library/${orgId}`, baseUrl));
 
       const internalResults = await runBoundedStorageScans(internalScans, 3);
+      if (!isCurrent()) return;
       for (const arr of internalResults) allFiles.push(...arr);
 
       // 2. External storage (course-videos): only this org's course folders
       try {
-        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
+        const { data: config, error: configError } = await supabase.functions.invoke("get-external-storage-config");
+        if (!isCurrent()) return;
+        if (configError) throw configError;
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
+          if (!isCurrent()) return;
           const extClient = createClient(config.url, config.key);
           const extScans = courseIds.map(cid => () => scanPrefix(extClient, "course-videos", cid, config.url));
           const extResults = await runBoundedStorageScans(extScans, 3);
+          if (!isCurrent()) return;
           for (const arr of extResults) allFiles.push(...arr);
         }
-      } catch { /* external not configured */ }
+      } catch { incomplete = true; }
 
       // 3. Lightweight enrichment: mark files used in lessons (org-scoped)
       if (allFiles.length > 0 && courseIds.length > 0) {
-        const { data: lessons } = await supabase
+        const { data: lessons, error: lessonsError } = await supabase
           .from("lessons").select("title, content, course_id")
           .in("course_id", courseIds);
+        if (!isCurrent()) return;
+        if (lessonsError) throw new Error("Файлы найдены, но не удалось проверить их использование в уроках. Повторите загрузку.");
         const lessonsArr = lessons || [];
         for (const file of allFiles) {
           const match = lessonsArr.find(l => l.content && file.url && (l.content as string).includes(file.name));
@@ -323,24 +350,38 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
           }
         }
       }
-    } catch (err) {
-      console.error("Error loading media library:", err);
+      if (isCurrent()) {
+        setFiles(allFiles);
+        setScanWarning(incomplete);
+        if (incomplete && allFiles.length === 0) {
+          setLoadError("Не удалось загрузить файлы из хранилища. Проверьте соединение и доступ, затем повторите попытку.");
+        }
+      }
+    } catch (error) {
+      if (!isCurrent()) return;
+      setFiles([]);
+      setLoadError(error instanceof Error
+        ? error.message : "Не удалось загрузить медиатеку. Повторите попытку.");
+    } finally {
+      if (isCurrent()) setLoading(false);
     }
-
-    setFiles(allFiles);
-    setLoading(false);
   };
 
   const handleDeleteFile = async (file: StorageFile) => {
+    const requestGeneration = generation.current;
+    const isCurrent = () => requestGeneration === generation.current;
     setDeleting(true);
     try {
       const path = `${file.folder}/${file.name}`;
       let removeError: any = null;
 
       if (file.bucket === "course-videos") {
-        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
+        const { data: config, error: configError } = await supabase.functions.invoke("get-external-storage-config");
+        if (!isCurrent()) return;
+        if (configError) throw new Error("Не удалось проверить доступ к внешнему хранилищу. Повторите попытку.");
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
+          if (!isCurrent()) return;
           const extClient = createClient(config.url, config.key);
           const { error } = await extClient.storage.from(file.bucket).remove([path]);
           removeError = error;
@@ -353,6 +394,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       }
 
       if (removeError) throw removeError;
+      if (!isCurrent()) return;
 
       setFiles(prev => prev.filter(f => !(f.bucket === file.bucket && f.folder === file.folder && f.name === file.name)));
       if (selectedFile && selectedFile.bucket === file.bucket && selectedFile.folder === file.folder && selectedFile.name === file.name) {
@@ -360,11 +402,14 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       }
       toast.success("Файл удалён");
     } catch (err: any) {
+      if (!isCurrent()) return;
       console.error("Delete error:", err);
       toast.error("Ошибка удаления", { description: err?.message || "Не удалось удалить файл" });
     } finally {
-      setDeleting(false);
-      setFileToDelete(null);
+      if (isCurrent()) {
+        setDeleting(false);
+        setFileToDelete(null);
+      }
     }
   };
 
@@ -382,7 +427,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={next => { if (!next) handleClose(); }}>
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
@@ -421,6 +466,13 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
           />
         </div>
 
+        {!loading && !loadError && scanWarning && (
+          <div role="alert" className="rounded-xl border border-amber-500/30 p-3 text-sm space-y-2">
+            <p>Часть файлов не удалось загрузить. Показаны доступные файлы; список может быть неполным.</p>
+            <Button variant="outline" size="sm" onClick={() => setRefreshKey(key => key + 1)}>Повторить загрузку</Button>
+          </div>
+        )}
+
         {!loading && unusedCount > 0 && (
           <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/20">
             <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -434,6 +486,11 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
           <div className="flex items-center justify-center py-16">
             <SigmaSpinner />
             <span className="ml-2 text-sm text-muted-foreground">Загрузка файлов...</span>
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="rounded-xl border border-destructive/30 p-6 space-y-3">
+            <p className="text-sm">{loadError}</p>
+            <Button variant="outline" onClick={() => setRefreshKey(key => key + 1)}>Повторить загрузку</Button>
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
@@ -515,15 +572,15 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
         )}
 
         <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Отмена
           </Button>
           <Button
-            disabled={!selectedFile}
+            disabled={!selectedFile || loading || !!loadError}
             onClick={() => {
               if (selectedFile) {
                 onSelect(selectedFile.url);
-                onClose();
+                handleClose();
               }
             }}
           >
