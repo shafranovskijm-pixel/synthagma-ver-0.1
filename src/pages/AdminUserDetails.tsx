@@ -159,13 +159,15 @@ export default function AdminUserDetails() {
     if (!student) return;
     setCredEdit(prev => ({ ...prev, saving: true }));
     try {
-      const { error } = await safeInvoke<any>("update-student-credentials", {
+      const { data, error } = await safeInvoke<any>("update-student-credentials", {
         body: {
-          userId: student.user_id,
-          login: credEdit.login.trim(),
-          password: credEdit.password.trim() } });
+          user_id: student.user_id,
+          organization_id: organizationId || undefined,
+          new_login: credEdit.login.trim() || undefined,
+          new_password: credEdit.password.trim() || undefined } });
       if (error) throw error;
-      setStudent(prev => prev ? { ...prev, login: credEdit.login.trim(), generated_password: credEdit.password.trim() } : prev);
+      setStudent(prev => prev ? { ...prev, login: data?.login ?? prev.login,
+        generated_password: data?.password ?? prev.generated_password } : prev);
       setCredEdit(prev => ({ ...prev, editing: false, saving: false }));
       toast.success("Учётные данные обновлены");
     } catch (error: any) {
@@ -275,7 +277,7 @@ export default function AdminUserDetails() {
                     ) : (
                       <p className="mt-1">Не заданы</p>
                     )}
-                    <Button variant="ghost" size="sm" className="h-6 text-xs mt-2 w-full" onClick={() => setCredEdit({ login: student.login || "", password: student.generated_password || "", editing: true, saving: false })}>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs mt-2 w-full" onClick={() => setCredEdit({ login: student.login || "", password: "", editing: true, saving: false })}>
                       {student.login ? <><Pencil className="w-3 h-3 mr-1" />Изменить</> : <><Plus className="w-3 h-3 mr-1" />Добавить</>}
                     </Button>
                   </>
@@ -286,12 +288,12 @@ export default function AdminUserDetails() {
                       <Input value={credEdit.login} onChange={e => setCredEdit(p => ({ ...p, login: e.target.value }))} className="h-7 text-xs" />
                     </div>
                     <div>
-                      <Label className="text-xs">Пароль</Label>
-                      <Input type="text" value={credEdit.password} onChange={e => setCredEdit(p => ({ ...p, password: e.target.value }))} className="h-7 text-xs" />
+                      <Label className="text-xs">Новый пароль</Label>
+                      <Input type="text" value={credEdit.password} placeholder="Пусто — оставить прежний" onChange={e => setCredEdit(p => ({ ...p, password: e.target.value }))} className="h-7 text-xs" />
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" className="h-6 text-xs flex-1" onClick={() => setCredEdit(p => ({ ...p, editing: false }))}>Отмена</Button>
-                      <Button size="sm" className="h-6 text-xs flex-1" disabled={credEdit.saving || !credEdit.login.trim() || !credEdit.password.trim()} onClick={handleSaveCredentials}>
+                      <Button size="sm" className="h-6 text-xs flex-1" disabled={credEdit.saving || (!credEdit.login.trim() && !credEdit.password.trim())} onClick={handleSaveCredentials}>
                         {credEdit.saving ? <SigmaSpinner size="xs" /> : <Save className="w-3 h-3 mr-1" />}Сохранить
                       </Button>
                     </div>

@@ -130,14 +130,21 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
 
   const handleSaveMenuSettings = async () => {
     if (!organizationId) return;
-    const { error } = await supabase.from("organizations").update({ menu_settings: menuSettings as any }).eq("id", organizationId);
-    if (error) { toast.error("Ошибка сохранения"); return; }
-    toast.success("Настройки меню сохранены");
+    try {
+      const { data, error } = await supabase.from("organizations").update({ menu_settings: menuSettings as any }).eq("id", organizationId).select("id").single();
+      if (error || !data) { toast.error("Ошибка сохранения"); return; }
+      toast.success("Настройки меню сохранены");
+    } catch {
+      toast.error("Ошибка сохранения");
+    }
   };
 
   const handleResetMenuSettings = async () => {
-    await resetMenu();
-    toast.success("Меню восстановлено по умолчанию");
+    if (await resetMenu()) {
+      toast.success("Меню восстановлено по умолчанию");
+    } else {
+      toast.error("Не удалось восстановить меню");
+    }
   };
 
   const handleReloadMenuSettings = async () => {
@@ -196,12 +203,23 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     }
   };
 
+  const loadOrgBranding = async () => {
+    const { data: org, error } = await supabase.from("organizations").select("branding").eq("id", organizationId).single();
+    if (error) throw error;
+    if (!org) throw new Error("Не удалось прочитать настройки организации");
+    return (org.branding as Record<string, unknown>) || {};
+  };
+
+  const saveOrgLogo = async (logoUrl: string) => {
+    const current = await loadOrgBranding();
+    const { data, error } = await supabase.from("organizations").update({ branding: { ...current, logoUrl, ...(!logoUrl ? { logo_url: "" } : {}) } }).eq("id", organizationId).select("id").single();
+    if (error) throw error;
+    if (!data) throw new Error("Значок организации не сохранён");
+  };
+
   const loadOrgIcon = async () => {
-    const { data: org } = await supabase.from("organizations").select("branding").eq("id", organizationId).single();
-    if (org?.branding) {
-      const b = org.branding as any;
-      setOrgLogoUrl(b.logoUrl || b.logo_url || "");
-    }
+    const branding = await loadOrgBranding();
+    setOrgLogoUrl(String(branding.logoUrl || branding.logo_url || ""));
   };
 
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,9 +233,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("org-branding").getPublicUrl(filePath);
       const publicUrl = proxiedAssetUrl(urlData.publicUrl) || urlData.publicUrl;
-      const { data: org } = await supabase.from("organizations").select("branding").eq("id", organizationId).single();
-      const current = (org?.branding as Record<string, unknown>) || {};
-      await supabase.from("organizations").update({ branding: { ...current, logoUrl: publicUrl } }).eq("id", organizationId);
+      await saveOrgLogo(publicUrl);
       setOrgLogoUrl(publicUrl);
       toast.success("Значок организации обновлён");
     } catch (err: any) {
@@ -228,11 +244,13 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
   };
 
   const handleRemoveIcon = async () => {
-    const { data: org } = await supabase.from("organizations").select("branding").eq("id", organizationId).single();
-    const current = (org?.branding as Record<string, unknown>) || {};
-    await supabase.from("organizations").update({ branding: { ...current, logoUrl: "" } }).eq("id", organizationId);
-    setOrgLogoUrl("");
-    toast.success("Значок удалён");
+    try {
+      await saveOrgLogo("");
+      setOrgLogoUrl("");
+      toast.success("Значок удалён");
+    } catch (err: any) {
+      toast.error("Не удалось удалить значок", { description: err?.message || "Неизвестная ошибка" });
+    }
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

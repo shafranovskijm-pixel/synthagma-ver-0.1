@@ -183,7 +183,7 @@ export function useLaborSafetyStudent(
     if (!newLogin && !newPassword) { toast.error("Укажите новый логин или пароль"); return; }
     setIsUpdatingCredentials(true);
     try {
-      const { data, error } = await safeInvoke<any>('update-student-credentials', { body: { user_id: profile.user_id, new_login: newLogin || undefined, new_password: newPassword || undefined } });
+      const { data, error } = await safeInvoke<any>('update-student-credentials', { body: { user_id: profile.user_id, organization_id: organizationId, new_login: newLogin || undefined, new_password: newPassword || undefined } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success("Учетные данные обновлены");
