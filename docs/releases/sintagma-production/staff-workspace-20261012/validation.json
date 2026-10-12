@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-12",
+  "runner": "supabase/tests/test-staff-workspace-access.mjs",
+  "database": "isolated in-memory PGlite",
+  "sqlAssertions": 127,
+  "roleMatrixChecks": 6,
+  "postflightChecks": 41,
+  "preservedDefinitionChecks": 2,
+  "unreviewedHelperDenied": true,
+  "baselineDocumentFalseResultsReproduced": 2,
+  "baselineRecycleAmbiguityReproduced": true,
+  "passed": true,
+  "rolledBack": true,
+  "liveApplied": false,
+  "businessRowsChanged": false,
+  "limitations": [
+    "Read-only live before-metadata now reconciled separately; this file describes isolated regression, not production apply",
+    "No hosted database or concurrent sessions used",
+    "No real employee login or invitation acceptance verified by these tests"
+  ]
+}

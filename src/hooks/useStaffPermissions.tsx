@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { resolveStaffOrganization, type StaffOrganizationResolution } from '@/utils/resolveStaffOrganization';
+import { toast } from 'sonner';
 import {
   Permission,
   OrgStaffRole,
@@ -13,6 +15,8 @@ import {
 
 interface StaffPermissionsContextValue {
   loading: boolean;
+  error: string | null;
+  organizationId: string | null;
   /** Роль сотрудника организации (если пользователь — сотрудник) */
   orgRole: OrgStaffRole | null;
   /** Роль сотрудника платформы (если пользователь — админ-сотрудник) */
@@ -32,52 +36,81 @@ interface StaffPermissionsContextValue {
 }
 
 const StaffPermissionsContext = createContext<StaffPermissionsContextValue | undefined>(undefined);
+const PERMISSIONS_ERROR_TOAST = 'staff-permissions-error';
 
 export function StaffPermissionsProvider({ children }: { children: ReactNode }) {
-  const { user, userRole } = useAuth();
-  const [orgRole, setOrgRole] = useState<OrgStaffRole | null>(null);
-  const [overrides, setOverrides] = useState<string[]>([]);
-  const [adminRole, setAdminRole] = useState<AdminStaffRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, userRole, loading: authLoading = false } = useAuth();
+  const userId = user?.id;
+  const accessKey = `${userId || ''}:${userRole || ''}`;
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [access, setAccess] = useState<{
+    key: string;
+    workspace: StaffOrganizationResolution | null;
+    adminRole: AdminStaffRole | null;
+    error: string | null;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      if (!user) {
-        setOrgRole(null);
-        setOverrides([]);
-        setAdminRole(null);
-        setLoading(false);
+      if (!userId) {
+        toast.dismiss(PERMISSIONS_ERROR_TOAST);
         return;
       }
-      setLoading(true);
-
-      // Параллельно тянем admin_staff и org_staff
-      const [adminRes, orgRes] = await Promise.all([
-        supabase.from('admin_staff').select('role').eq('user_id', user.id).maybeSingle(),
-        supabase.from('org_staff').select('role, sections_access').eq('user_id', user.id).maybeSingle(),
-      ]);
-      if (cancelled) return;
-
-      setAdminRole((adminRes.data?.role as AdminStaffRole) || null);
-      setOrgRole((orgRes.data?.role as OrgStaffRole) || null);
-      const so = orgRes.data?.sections_access;
-      setOverrides(Array.isArray(so) ? (so as string[]) : []);
-      setLoading(false);
+      if (authLoading) return;
+      if (userRole !== 'organization' && userRole !== 'admin') {
+        // get_user_role resolves active organization staff to 'organization'.
+        // Ordinary learners/company users do not need staff permission reads.
+        setAccess({ key: accessKey, workspace: null, adminRole: null, error: null });
+        toast.dismiss(PERMISSIONS_ERROR_TOAST);
+        return;
+      }
+      setAccess(null);
+      try {
+        if (userRole === 'admin') {
+          // A global admin keeps the platform section restrictions from
+          // admin_staff; only a successful empty result means the legacy
+          // unrestricted administrator. A failed query grants no UI rights.
+          const { data, error } = await supabase.from('admin_staff')
+            .select('role').eq('user_id', userId).maybeSingle();
+          if (error) throw error;
+          if (data?.role && !Object.prototype.hasOwnProperty.call(ADMIN_ROLE_SECTIONS, data.role)) {
+            throw new Error('Не удалось определить роль сотрудника платформы.');
+          }
+          if (!cancelled) setAccess({ key: accessKey, workspace: null, adminRole: (data?.role as AdminStaffRole) || null, error: null });
+        } else {
+          const workspace = await resolveStaffOrganization(userId);
+          if (!cancelled) setAccess({ key: accessKey, workspace, adminRole: null, error: null });
+        }
+        if (!cancelled) toast.dismiss(PERMISSIONS_ERROR_TOAST);
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Не удалось подтвердить права. Повторите загрузку.';
+          setAccess({ key: accessKey, workspace: null, adminRole: null, error: message });
+          toast.error(message, {
+            id: PERMISSIONS_ERROR_TOAST,
+            duration: Infinity,
+            action: { label: 'Повторить', onClick: () => setRefreshKey(key => key + 1) },
+          });
+        }
+      }
     };
-    load();
+    void load();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [userId, userRole, accessKey, authLoading, refreshKey]);
 
   const value = useMemo<StaffPermissionsContextValue>(() => {
-    // Владелец организации = глобальная роль 'organization' БЕЗ записи в org_staff (он и есть owner).
-    // Если запись есть — используем её роль. Глобальный admin получает все права автоматически.
-    const isGlobalAdmin = userRole === 'admin';
-    const isOrgOwner = userRole === 'organization' && !orgRole;
-
+    const currentAccess = userId && access?.key === accessKey ? access : null;
+    const loading = !!userId && (authLoading || !currentAccess);
+    const ready = !loading && !!currentAccess && !currentAccess.error;
+    const workspace = ready ? currentAccess.workspace : null;
+    const orgRole = workspace?.kind === 'staff' ? workspace.role : null;
+    const adminRole = ready ? currentAccess.adminRole : null;
+    const isGlobalAdmin = ready && userRole === 'admin';
+    const isOrgOwner = workspace?.kind === 'owner';
     const orgPermissions = isOrgOwner || isGlobalAdmin
       ? computeOrgPermissions('owner', null)
-      : computeOrgPermissions(orgRole, overrides);
+      : computeOrgPermissions(orgRole, workspace?.sectionsAccess);
 
     const adminSections = isGlobalAdmin
       ? new Set(ADMIN_ROLE_SECTIONS[adminRole || 'super_admin'])
@@ -85,6 +118,8 @@ export function StaffPermissionsProvider({ children }: { children: ReactNode }) 
 
     return {
       loading,
+      error: currentAccess?.error || null,
+      organizationId: workspace?.organizationId || null,
       orgRole,
       adminRole,
       orgPermissions,
@@ -93,6 +128,7 @@ export function StaffPermissionsProvider({ children }: { children: ReactNode }) 
       can: (perm) => orgPermissions.has(perm),
       canSeeOrgTab: (tabId) => {
         if (isOrgOwner || isGlobalAdmin) return true;
+        if (workspace?.kind !== 'staff') return false;
         const required = ORG_TAB_TO_PERMISSION[tabId];
         if (!required) return true; // вкладки без явного маппинга показываем всем сотрудникам
         return orgPermissions.has(required);
@@ -104,7 +140,7 @@ export function StaffPermissionsProvider({ children }: { children: ReactNode }) 
         return adminSections.has(tabId as AdminSection);
       },
     };
-  }, [loading, orgRole, overrides, adminRole, userRole]);
+  }, [access, accessKey, userId, userRole, authLoading]);
 
   return (
     <StaffPermissionsContext.Provider value={value}>
@@ -116,6 +152,8 @@ export function StaffPermissionsProvider({ children }: { children: ReactNode }) 
 // Стабильный фолбек: создаём один раз, чтобы потребители не получали новый объект на каждом рендере.
 const FALLBACK_VALUE: StaffPermissionsContextValue = {
   loading: false,
+  error: null,
+  organizationId: null,
   orgRole: null,
   adminRole: null,
   orgPermissions: new Set(),

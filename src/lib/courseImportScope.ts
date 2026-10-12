@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAdminViewOrg } from "@/utils/adminViewOrg";
+import { resolveStaffOrganization } from "@/utils/resolveStaffOrganization";
 
 export type CourseImportScopeErrorCode =
   | "scope_unavailable"
@@ -46,7 +47,7 @@ function scopeError(code: CourseImportScopeErrorCode): CourseImportScopeError {
  *
  * The organizationId query parameter is deliberately treated only as a
  * consistency check. The active tenant comes from the server-backed admin
- * view resolver or current_organization_id(), and courses.write is verified
+ * view resolver or the confirmed owner/active staff workspace. courses.write is verified
  * by the canonical authorization RPC before the caller can read into editor
  * state or persist course content.
  */
@@ -79,11 +80,17 @@ export async function resolveCourseWriteScope({
       throw scopeError("admin_view_required");
     }
 
-    const { data, error } = await supabase.rpc("current_organization_id");
-    if (error) throw scopeError("scope_unavailable");
-    if (!data) throw scopeError("organization_not_found");
+    let resolvedOrganizationId: string | null;
+    try {
+      const workspace = await resolveStaffOrganization(userId);
+      resolvedOrganizationId = workspace.organizationId;
+    } catch {
+      // Preserve the caller's scope-error contract for failed/ambiguous reads.
+      throw scopeError("scope_unavailable");
+    }
+    if (!resolvedOrganizationId) throw scopeError("organization_not_found");
 
-    organizationId = data;
+    organizationId = resolvedOrganizationId;
     source = "current_organization";
   }
 

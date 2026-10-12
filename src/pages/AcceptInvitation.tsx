@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { CheckCircle2, AlertCircle, Mail, LogIn, UserPlus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { safeInternalNext } from "@/utils/authReturn";
 
 type Stage =
   | "checking"
@@ -85,6 +86,15 @@ export default function AcceptInvitation() {
   const [suPassword, setSuPassword] = useState("");
   const [suBusy, setSuBusy] = useState(false);
 
+  useEffect(() => {
+    if (stage !== "success") return;
+    // Accepting changes server-side membership without an auth event. A full
+    // navigation reloads both AuthProvider and StaffPermissionsProvider, so an
+    // existing student's cached role cannot send them back to /student.
+    const timer = setTimeout(() => window.location.replace(redirectPath), 1500);
+    return () => clearTimeout(timer);
+  }, [stage, redirectPath]);
+
   const failWith = (e: AcceptError) => {
     setErrorMsg(e.message);
     setErrorCode(e.code);
@@ -150,15 +160,15 @@ export default function AcceptInvitation() {
         failWith(await extractFunctionError(error, data));
         return;
       }
-      const redirect = (data as any)?.redirect || "/";
+      const rawRedirect = (data as any)?.redirect;
+      const redirect = safeInternalNext(typeof rawRedirect === "string" ? rawRedirect : null) || "/";
       setRedirectPath(redirect);
       setStage("success");
       toast.success("Приглашение принято");
-      setTimeout(() => navigate(redirect), 1500);
     } catch (e) {
       failWith(await extractFunctionError(e));
     }
-  }, [token, navigate]);
+  }, [token]);
 
   const handleSignUpAndAccept = async () => {
     const targetEmail = invitationType === "sales" ? suEmail.trim().toLowerCase() : invitationEmail;
@@ -308,7 +318,7 @@ export default function AcceptInvitation() {
             <CheckCircle2 className="w-12 h-12 text-primary" />
             <p className="font-medium">Готово! Перенаправляем…</p>
             <Button asChild variant="outline" size="sm">
-              <Link to={redirectPath}>Перейти сейчас</Link>
+              <a href={redirectPath}>Перейти сейчас</a>
             </Button>
           </div>
         )}

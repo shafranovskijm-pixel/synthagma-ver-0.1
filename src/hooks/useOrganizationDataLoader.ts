@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Course, Company, CourseCategory } from "@/types/shared";
 import { isTransientNetworkError, classifyDataError } from "@/utils/isTransientNetworkError";
 import { resolveAdminViewOrg } from "@/utils/adminViewOrg";
+import { resolveStaffOrganization, StaffOrganizationResolutionError } from "@/utils/resolveStaffOrganization";
 
 interface UseOrganizationDataLoaderProps {
   userId: string | undefined;
@@ -63,6 +64,7 @@ async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unkn
 }
 
 function describeError(error: unknown): string {
+  if (error instanceof StaffOrganizationResolutionError) return error.message;
   const kind = classifyDataError(error);
   if (kind === "network") return "Не удалось подключиться к серверу. Проверьте интернет / VPN / антивирус.";
   if (kind === "permission") return "Недостаточно прав. Обратитесь к владельцу организации.";
@@ -98,7 +100,12 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
     let cancelled = false;
 
     const fetchData = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setOrganizationId(null);
+        setIsLoadingCourses(false);
+        return;
+      }
+      let organizationResolved = false;
 
       try {
         const resolution = await resolveAdminViewOrg(userId);
@@ -129,55 +136,31 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           return;
         } else {
           // status: "none" | "not_admin" — normal profile / org_staff resolution.
-          if (!cancelled) setAdminResolutionUnknown(false);
+          if (!cancelled) {
+            setAdminResolutionUnknown(false);
+            setIsAdminView(false);
+            setAdminViewOrgId(null);
+          }
           toast.dismiss("admin-view-unknown");
-
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("organization_id")
-            .eq("user_id", userId)
-            .maybeSingle();
-
-          orgId = profile?.organization_id ?? null;
-
-          if (!orgId) {
-            const { data: staffRows } = await supabase
-              .from("org_staff")
-              .select("organization_id, role, expires_at")
-              .eq("user_id", userId)
-              .or("expires_at.is.null,expires_at.gt." + new Date().toISOString());
-
-            const active = (staffRows ?? []).filter(
-              (r: any) => !r.expires_at || new Date(r.expires_at) > new Date()
-            );
-            if (active.length === 1) {
-              orgId = active[0].organization_id;
-            } else if (active.length > 1) {
-              console.warn(
-                "[useOrganizationDataLoader] user has multiple active org_staff memberships; org selector required",
-              );
-            }
-          }
-
-          if (!orgId) {
-            if (!cancelled) setIsLoadingCourses(false);
-            return;
-          }
+          const workspace = await resolveStaffOrganization(userId);
+          orgId = workspace.organizationId;
+          if (!orgId) throw new StaffOrganizationResolutionError(
+            "NO_ORGANIZATION", "Активный доступ к кабинету организации не найден. Обратитесь к владельцу организации.",
+          );
         }
 
         if (cancelled || !orgId) return;
         toast.dismiss("admin-view-unknown");
         setOrganizationId(orgId);
+        organizationResolved = true;
 
-        // Organization row (name + frdo_enabled) — optional metadata.
-        const { data: selectedOrgData } = await supabase
-          .from("organizations")
-          .select("name, frdo_enabled")
-          .eq("id", orgId)
-          .maybeSingle();
+        // The scoped core projection is available to active staff without
+        // granting settings.read or SELECT access to the full organization row.
+        const { data: coreData } = await supabase.rpc("get_organization_core", { p_org_id: orgId });
+        const selectedOrgData = coreData as { name: string | null; frdo_enabled: boolean | null } | null;
 
         if (selectedOrgData && !cancelled) {
-          setOrganizationName(selectedOrgData.name);
+          setOrganizationName(selectedOrgData.name || "Организация");
           setIsFrdoEnabled(selectedOrgData.frdo_enabled || false);
         }
 
@@ -266,6 +249,11 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         }
       } catch (error) {
         if (cancelled) return;
+        if (!organizationResolved) {
+          setOrganizationId(null);
+          setOrganizationName("Организация");
+          setIsFrdoEnabled(false);
+        }
         console.error("Error fetching data:", error);
         setCoursesError(describeError(error));
         toast.error(describeError(error), {

@@ -27,9 +27,9 @@ export interface DocumentsKpi {
   contracts_pending: number;
 
   // КП
-  proposals_total: number;
-  proposals_accepted: number;
-  proposal_to_contract_conversion: number;
+  proposals_total: number | null;
+  proposals_accepted: number | null;
+  proposal_to_contract_conversion: number | null;
 
   // Запросы ПД
   pd_requests_open: number;

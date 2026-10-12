@@ -1,0 +1,18 @@
+{
+  "bundleSha256": "94ddda620051130cdc1f112c5cb8e25a56b58fa6f7338c4a3b90873eebcd5268",
+  "liveApplied": false,
+  "isolatedInMemory": true,
+  "failedSecondMigrationFullyRolledBack": true,
+  "liveDefinitionDriftRefused": true,
+  "exactBundleCommitted": true,
+  "postchecksPassed": 41,
+  "preservedFunctions": 10,
+  "preservedPolicies": 14,
+  "preservedTableSecurity": 6,
+  "exactLedgerSources": 2,
+  "replayRefused": true,
+  "roleRegressionAssertions": 127,
+  "syntheticBusinessChangesRolledBack": true,
+  "passed": true,
+  "limitations": "Disposable in-memory PostgreSQL using real before-metadata and synthetic rows. Does not prove hosted transport, concurrent locks, PostgREST notification delivery or browser outcome."
+}

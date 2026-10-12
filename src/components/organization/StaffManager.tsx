@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,9 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   const [isOwner, setIsOwner] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const loadGeneration = useRef(0);
+  const activeOrganization = useRef(organizationId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -96,17 +99,41 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
     return () => { cancelled = true; };
   }, [organizationId, user]);
 
-  useEffect(() => { loadStaff(); }, [organizationId]);
+  useLayoutEffect(() => {
+    activeOrganization.current = organizationId;
+    loadGeneration.current += 1;
+    setStaff([]);
+    setLoadError(false);
+    setLoading(true);
+    setDialogOpen(false);
+    setInviteOpen(false);
+    setCreateOpen(false);
+    return () => { loadGeneration.current += 1; };
+  }, [organizationId]);
+
+  useEffect(() => { void loadStaff(); }, [organizationId]);
 
   const loadStaff = async () => {
+    if (activeOrganization.current !== organizationId) return;
+    const generation = ++loadGeneration.current;
     setLoading(true);
-    const { data } = await supabase
-      .from("org_staff")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("created_at");
-    setStaff((data as any[]) || []);
-    setLoading(false);
+    setLoadError(false);
+    try {
+      const { data, error } = await supabase
+        .from("org_staff")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at");
+      if (generation !== loadGeneration.current) return;
+      if (error) throw error;
+      setStaff((data as StaffMember[]) || []);
+    } catch {
+      if (generation !== loadGeneration.current) return;
+      setStaff([]);
+      setLoadError(true);
+    } finally {
+      if (generation === loadGeneration.current) setLoading(false);
+    }
   };
 
   const handleAdd = async () => {
@@ -206,7 +233,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button className="btn-gradient rounded-xl gap-2" onClick={() => setInviteOpen(true)}>
-                <Mail className="w-4 h-4" />Пригласить по email
+                <Mail className="w-4 h-4" />Пригласить сотрудника
               </Button>
               <Button variant="outline" className="rounded-xl gap-2" onClick={() => { setCreatePassword(generateStrongPassword()); setCreateOpen(true); }}>
                 <KeyRound className="w-4 h-4" />Создать с паролем
@@ -219,6 +246,11 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
 
           {loading ? (
             <div className="flex justify-center py-12"><SigmaSpinner /></div>
+          ) : loadError ? (
+            <div role="alert" className="rounded-xl border border-destructive/30 p-6 space-y-3">
+              <p>Не удалось загрузить сотрудников. Проверьте соединение и повторите попытку.</p>
+              <Button variant="outline" onClick={() => void loadStaff()}>Повторить загрузку</Button>
+            </div>
           ) : staff.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="w-12 h-12 mx-auto mb-4 opacity-30" />
@@ -336,7 +368,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                 <Label>Email пользователя</Label>
                 <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
                 <p className="text-xs text-muted-foreground">
-                  Пользователь должен быть уже зарегистрирован. Иначе используйте «Пригласить по email».
+                  Пользователь должен быть уже зарегистрирован. Иначе используйте «Пригласить сотрудника».
                 </p>
               </div>
               <div className="space-y-2">
