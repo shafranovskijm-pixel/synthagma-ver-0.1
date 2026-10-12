@@ -14,16 +14,13 @@ export type MailingWorkspaceTab =
 /**
  * Organization workspaces that are intentionally hidden from the client UI.
  *
- * `payments` was a demo surface for course payments/T-Bank, while `sales`
- * exposed an unfinished CRM. Keep the legacy tab names in TabType so old
- * links and stored permissions remain reversible, but route them to stable
- * organization workspaces.
+ * Keep demo payments, webinars and AI tutors routed to stable workspaces.
+ * `sales` now opens the scoped CRM beta; it retains its existing URL contract.
  */
 export function normalizeOrganizationWorkspaceTab(
   tab: TabType | null | undefined,
 ): TabType {
   if (tab === "payments") return "subscription";
-  if (tab === "sales") return "home";
   if (tab === "ai-tutors" || tab === "webinars") return "courses";
   return tab ?? "home";
 }

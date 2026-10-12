@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "assertions": 92,
+  "postchecks": 38,
+  "atomicBundleTested": true,
+  "syntheticBusinessRowsRolledBack": true,
+  "liveApplied": false,
+  "mailSent": false,
+  "deletionPreviewValidation": "Exact original body plus four organization shared-record entries; contribution to blocker counted. Full legacy deletion workflow not executed in the isolated fixture."
+}

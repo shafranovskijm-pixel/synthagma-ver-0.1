@@ -12,6 +12,7 @@ import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useOrganizationDataLoader } from "@/hooks/useOrganizationDataLoader";
 import { useOrganizationSummary } from "@/hooks/useOrganizationSummary";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useOrgCrmAccess } from "@/hooks/useOrgCrmAccess";
 import { useOrganizationsTab } from "@/hooks/useOrganizationsTab";
 import { useStudentDocsDialog } from "@/hooks/useStudentDocsDialog";
 import { useCourseDocsDialog } from "@/hooks/useCourseDocsDialog";
@@ -62,6 +63,7 @@ export function useOrganizationDashboard() {
     isLoadingCourses,
     refreshData: refreshLoader,
   } = dataLoader;
+  const crmAccess = useOrgCrmAccess(organizationId);
 
   // React Query client — declared early so it can be referenced by the
   // unified refresh callback below.
@@ -398,7 +400,7 @@ export function useOrganizationDashboard() {
     hasSummaryData, isSummaryLoading, summaryErrorKind, retrySummary,
     hasCourseOverviewData, isCourseOverviewLoading, courseOverviewErrorKind, retryCourseOverview,
     // Features & limits
-    isEnabled, checkLimit, subscriptionLimits,
+    isEnabled, checkLimit, subscriptionLimits, crmAccess,
     // UI state
     showImportDialog, setShowImportDialog,
     isMobileSidebarOpen, setIsMobileSidebarOpen,

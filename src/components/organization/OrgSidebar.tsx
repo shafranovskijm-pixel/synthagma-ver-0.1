@@ -165,7 +165,7 @@ const COMPACT_RAIL_LABEL =
 export function OrgSidebar() {
   const d = useOrgDashboard();
   const canOpenDrivingSchool = useDrivingSchoolEntry(d.organizationId);
-  const { canSeeOrgTab, loading: permsLoading } = useStaffPermissions();
+  const { can, canSeeOrgTab, loading: permsLoading } = useStaffPermissions();
   const activeTab = d.tabNavigation.activeTab;
   const setActiveTab = d.tabNavigation.setActiveTab;
   const logoUrl = d.branding.brandingSettings.logoUrl;
@@ -340,7 +340,7 @@ export function OrgSidebar() {
     });
   };
 
-  // Seven stable roots. Existing workspaces remain available as children, so
+  // Stable roots. Existing workspaces remain available as children, so
   // the menu is calmer without removing a feature or bypassing staff rights.
   const mainItems: NavItem[] = [];
   if (canOpenDrivingSchool) mainItems.push({id: "driving-school", href: "/organization/driving-school", icon: BookOpen, label: "Автошкола", statusBadge: "Beta", description: "Расписание, практика и учёт автошколы"});
@@ -402,6 +402,15 @@ export function OrgSidebar() {
     mainItems.push(makeTabItem("organizations", {
       id: "organizations", icon: Building2, label: "Компании",
       description: "Корпоративные клиенты и их сотрудники", category: "companies", pinnable: false,
+    }));
+  }
+  if (!permsLoading && can("sales.read") && canSeeOrgTab("sales")) {
+    mainItems.push(makeTabItem("sales", {
+      id: "sales", icon: Handshake, label: "CRM", statusBadge: "Beta", pinnable: false,
+      description: d.crmAccess?.error ? "Доступность тарифа пока не подтверждена"
+        : d.crmAccess?.loading ? "Проверка доступа по тарифу…"
+        : d.crmAccess?.enabled ? "Клиенты, сделки, задачи и история" : "Доступно с тарифа «Стандарт»",
+      forceLocked: d.crmAccess?.enabled !== true && !d.crmAccess?.error && !d.crmAccess?.loading,
     }));
   }
 
@@ -542,6 +551,10 @@ export function OrgSidebar() {
         onClick={(event) => {
           if (locked) {
             event.preventDefault();
+            if (item.tab === "sales" && !can("billing.read")) {
+              toast.info("CRM доступна с тарифа «Стандарт». Обратитесь к администратору организации.");
+              return;
+            }
             setUpgradeDialogOpen(true);
             return;
           }
@@ -877,7 +890,7 @@ export function OrgSidebar() {
           )}
         </div>
 
-        {/* Seven semantic roots; details appear only inside the selected root. */}
+        {/* Semantic roots; details appear only inside the selected root. */}
         <div className={cn("flex flex-1 flex-col justify-start overflow-y-auto py-2 scrollbar-hide", effectiveExpanded ? "gap-0.5 px-2" : "items-center gap-1 px-2")}>
           <nav aria-label="Основные разделы" className={cn("flex w-full flex-col", effectiveExpanded ? "gap-0.5" : "items-center gap-1")}>
             {mainItems.filter((item) => item.id === "home").map((item) => renderNavItem(item))}
@@ -885,6 +898,7 @@ export function OrgSidebar() {
             {navGroups.find((group) => group.id === "courses") && renderNavGroup(navGroups.find((group) => group.id === "courses")!)}
             {navGroups.find((group) => group.id === "students") && renderNavGroup(navGroups.find((group) => group.id === "students")!)}
             {mainItems.filter((item) => item.id === "organizations").map((item) => renderNavItem(item))}
+            {mainItems.filter((item) => item.id === "sales").map((item) => renderNavItem(item))}
             {navGroups.find((group) => group.id === "communications") && renderNavGroup(navGroups.find((group) => group.id === "communications")!)}
             {navGroups.find((group) => group.id === "documents") && renderNavGroup(navGroups.find((group) => group.id === "documents")!)}
             {reportsItem && renderNavItem(reportsItem)}

@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 let activeTab = "journals";
 let permissionLoading = false;
 let granted = new Set<string>();
+let organizationId: string | null = "org-1";
+let crmAccess = { enabled: true, loading: false, error: null as string | null, mailingEnabled: true, refresh: vi.fn() };
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
-    organizationId: "org-1",
+    organizationId,
+    crmAccess,
     tabNavigation: { activeTab, setActiveTab: vi.fn() },
   }),
 }));
@@ -42,6 +45,13 @@ vi.mock("@/pages/MailingApp", () => ({
   ),
 }));
 
+vi.mock("@/components/organization/sales/OrgCrmBetaWorkspace", () => ({
+  OrgCrmBetaWorkspace: (props: { organizationId: string; canWrite: boolean; canOpenDocuments: boolean; canOpenMailing: boolean }) => (
+    <div data-testid="crm-workspace" data-org={props.organizationId} data-write={String(props.canWrite)}
+      data-documents={String(props.canOpenDocuments)} data-mailing={String(props.canOpenMailing)}>CRM beta</div>
+  ),
+}));
+
 import { TabContentRenderer } from "@/components/organization/tabs/TabContentRenderer";
 
 function renderRenderer() {
@@ -56,9 +66,71 @@ beforeEach(() => {
   activeTab = "journals";
   permissionLoading = false;
   granted = new Set();
+  organizationId = "org-1";
+  crmAccess = { enabled: true, loading: false, error: null, mailingEnabled: true, refresh: vi.fn() };
 });
 
 describe("TabContentRenderer document workspace permissions", () => {
+  it("blocks a direct CRM URL without sales.read", () => {
+    activeTab = "sales";
+    renderRenderer();
+    expect(screen.getByTestId("crm-workspace-permission-denied")).toBeInTheDocument();
+    expect(screen.queryByTestId("crm-workspace")).not.toBeInTheDocument();
+  });
+
+  it.each(["permission loading", "plan loading", "organization unresolved"])("never mounts CRM while %s", state => {
+    activeTab = "sales";
+    granted.add("sales.read");
+    if (state === "permission loading") permissionLoading = true;
+    if (state === "plan loading") crmAccess.loading = true;
+    if (state === "organization unresolved") organizationId = null;
+    renderRenderer();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByTestId("crm-workspace")).not.toBeInTheDocument();
+  });
+
+  it("passes read-only staff scope and separately restricted document links", () => {
+    activeTab = "sales";
+    granted.add("sales.read");
+    renderRenderer();
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-org", "org-1");
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-write", "false");
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-documents", "false");
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-mailing", "true");
+    expect(screen.queryByTestId("stats-cards")).not.toBeInTheDocument();
+  });
+
+  it("passes write and document permissions without inventing a mailing entitlement", () => {
+    activeTab = "sales";
+    granted = new Set(["sales.read", "sales.write", "documents.read"]);
+    crmAccess.mailingEnabled = false;
+    renderRenderer();
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-write", "true");
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-documents", "true");
+    expect(screen.getByTestId("crm-workspace")).toHaveAttribute("data-mailing", "false");
+  });
+
+  it("distinguishes a tariff error from an excluded plan", () => {
+    activeTab = "sales";
+    granted.add("sales.read");
+    crmAccess.error = "Не удалось проверить доступность CRM";
+    renderRenderer();
+    expect(screen.getByTestId("crm-workspace-plan-error")).toHaveTextContent(crmAccess.error);
+    expect(screen.queryByTestId("crm-workspace-plan-required")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("crm-workspace")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить проверку" }));
+    expect(crmAccess.refresh).toHaveBeenCalledOnce();
+  });
+
+  it("keeps an excluded plan locked even with sales.read and sales.write", () => {
+    activeTab = "sales";
+    granted = new Set(["sales.read", "sales.write"]);
+    crmAccess.enabled = false;
+    renderRenderer();
+    expect(screen.getByTestId("crm-workspace-plan-required")).toBeInTheDocument();
+    expect(screen.queryByTestId("crm-workspace")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Посмотреть тариф" })).not.toBeInTheDocument();
+  });
   it("blocks a direct Journals URL without journals.read", () => {
     renderRenderer();
 

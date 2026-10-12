@@ -13,6 +13,7 @@ let salesCrmEnabled = true;
 let activeTab = "home";
 let isMobile = false;
 let isMobileSidebarOpen = false;
+let permissionsLoading = false;
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -33,6 +34,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
       plan,
       limits: { emailCampaignsEnabled, salesCrmEnabled },
     },
+    crmAccess: { enabled: salesCrmEnabled, loading: false, error: null },
     dashboardSettings: { menuSettings },
     isEnabled: () => true,
     isMobileSidebarOpen,
@@ -43,7 +45,8 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
 
 vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({
-    loading: false,
+    loading: permissionsLoading,
+    can: (permission: string) => permission === "sales.read" && allowedTabs.has("sales"),
     canSeeOrgTab: (tab: string) => allowedTabs.has(tab),
   }),
 }));
@@ -61,6 +64,7 @@ vi.mock("@/hooks/useOrgSidebarPinned", () => ({
 }));
 
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => isMobile }));
+vi.mock("@/hooks/useDrivingSchoolEntry", () => ({ useDrivingSchoolEntry: () => false }));
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
@@ -94,6 +98,7 @@ beforeEach(() => {
   activeTab = "home";
   isMobile = false;
   isMobileSidebarOpen = false;
+  permissionsLoading = false;
   allowedTabs = new Set([
     "home",
     "students",
@@ -135,6 +140,33 @@ beforeEach(() => {
 });
 
 describe("OrgSidebar navigation", () => {
+  it("opens the CRM beta from its own main item and shows the beta marker", () => {
+    activeTab = "sales";
+    renderSidebar();
+    const link = screen.getByRole("link", { name: "CRM" });
+    expect(link).toHaveAttribute("href", "/organization?tab=sales");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(within(link).getByLabelText("Бета-версия")).toHaveTextContent("Beta");
+    fireEvent.click(link);
+    expect(setActiveTab).toHaveBeenCalledWith("sales");
+  });
+
+  it.each(["loading", "missing permission"])("does not expose CRM while %s", mode => {
+    if (mode === "loading") permissionsLoading = true;
+    else allowedTabs.delete("sales");
+    renderSidebar();
+    expect(screen.queryByLabelText("CRM")).not.toBeInTheDocument();
+  });
+
+  it("keeps CRM visible but locked when the existing plan excludes it", () => {
+    salesCrmEnabled = false;
+    renderSidebar();
+    const item = screen.getByLabelText("CRM");
+    expect(item).not.toHaveAttribute("href");
+    fireEvent.click(item);
+    expect(setActiveTab).not.toHaveBeenCalledWith("sales");
+    expect(screen.queryByRole("button", { name: "Перейти к тарифам" })).not.toBeInTheDocument();
+  });
   it("starts expanded for a new user and respects a saved compact mode", () => {
     localStorage.clear();
     const firstRender = renderSidebar();
@@ -346,7 +378,7 @@ describe("OrgSidebar navigation", () => {
     expect(screen.queryByRole("navigation", { name: "Главное меню" })).not.toBeInTheDocument();
   });
 
-  it("keeps every existing workspace inside seven semantic roots with canonical links", () => {
+  it("keeps existing workspaces grouped and CRM beta addressable with canonical links", () => {
     renderSidebar();
     const sidebar = screen.getByRole("navigation", { name: "Основная навигация" });
 
@@ -475,7 +507,7 @@ describe("OrgSidebar navigation", () => {
     expect(screen.queryByRole("link", { name: "Договоры и закрывающие" })).not.toBeInTheDocument();
   });
 
-  it("shows locked mailing on Free, enables it on Start, and never exposes Sales", () => {
+  it("shows locked mailing on Free and enables it on Start without the legacy Sales workspace", () => {
     plan = "free";
     // Free remains locked even if a stale/custom limit flag is accidentally true.
     emailCampaignsEnabled = true;
