@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { readCampaignRunFeedback } from "@/lib/mailing/campaignRunFeedback";
 import { Plus, Calendar, Link as LinkIcon, Video, Clock, Save } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -148,6 +149,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
   // Этап 3: явный аккаунт отправителя + seed-адреса тестовой отправки.
   const [senderAccounts, setSenderAccounts] = useState<SenderAccountOption[]>([]);
+  const [sendersLoading, setSendersLoading] = useState(false);
+  const [sendersError, setSendersError] = useState(false);
+  const [sendersRetry, setSendersRetry] = useState(0);
   const [senderAccountId, setSenderAccountId] = useState<string>("");
   const [platformSenders, setPlatformSenders] = useState<Array<{ id: string; email: string; from_name: string | null }>>([]);
   const [platformSenderPoolId, setPlatformSenderPoolId] = useState("");
@@ -159,6 +163,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [seedRaw, setSeedRaw] = useState("");
   const [seedSending, setSeedSending] = useState(false);
   const selectedSender = senderAccounts.find((s) => s.id === senderAccountId) || null;
+  const organizationSenderUnavailable = scope === "org"
+    && (sendersLoading || sendersError || !selectedSender || selectedSender.smtp_status !== "ok");
 
   // P0 edit-mode: существующая кампания обновляется, а не дублируется.
   const isEditMode = !!initial?.id;
@@ -169,21 +175,30 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     : false;
 
   useEffect(() => {
+    setSenderAccounts([]);
+    setSendersError(false);
+    setSendersLoading(false);
     if (!open || scope !== "org" || !organizationId) return;
     let cancelled = false;
+    setSendersLoading(true);
     (async () => {
-      const { data } = await supabase
-        .from("mailing_senders")
-        .select("id,label,from_email,smtp_status")
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      if (!cancelled) setSenderAccounts((data || []) as unknown as SenderAccountOption[]);
+      try {
+        const { data, error } = await supabase
+          .from("mailing_senders")
+          .select("id,label,from_email,smtp_status")
+          .eq("organization_id", organizationId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (!cancelled) setSenderAccounts((data || []) as unknown as SenderAccountOption[]);
+      } catch {
+        if (!cancelled) setSendersError(true);
+      } finally { if (!cancelled) setSendersLoading(false); }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, scope, organizationId]);
+  }, [open, scope, organizationId, sendersRetry]);
 
   useEffect(() => {
     if (!open || scope !== "platform") return;
@@ -203,7 +218,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       } finally { if (!cancelled) setPlatformSendersLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [open, scope]);
+  }, [open, scope, sendersRetry]);
 
   const sendSeedTest = async () => {
     const gate = validateSeedTest({
@@ -461,7 +476,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const handleSave = async (launch: boolean) => {
     // P0: черновик (без планирования) требует только контент письма.
     const isSendAction = launch || scheduleEnabled;
-    if (isSendAction && platformSenderUnavailable) {
+    if (isSendAction && (platformSenderUnavailable || organizationSenderUnavailable)) {
       toast.error("Выбранный отправитель недоступен. Проверьте активный ящик в настройках SMTP.");
       return;
     }
@@ -474,7 +489,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           variablesOk: variableCheck.ok,
           quotaBlocked: quotaBlocksLaunch,
           quotaReason: quotaBlockReason,
-          overDailyLimit: !!tooMany || senderOverLimit,
+          overDailyLimit: !!tooMany,
           senderAccountId: scope === "platform" ? (platformSenderPoolId || "system") : (senderAccountId || null),
         })
       : validateDraft({ name, subject, html });
@@ -614,9 +629,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
           // Явное заявление авторизованного пользователя о согласии получателей.
           body: { campaignId: data.id, consent_confirmed: true },
         });
-        if (runErr) throw runErr;
-        if (runRes?.error) throw new Error(runRes.error);
-        toast.success("Кампания запущена");
+        const feedback = await readCampaignRunFeedback(runRes, runErr);
+        toast[feedback.level](feedback.message);
       }
       if (isEditMode) {
         setSavedSnapshot(snapshotOf({ name, subject, html, fromName, replyTo, senderId: senderAccountId, platformSenderPoolId }));
@@ -915,11 +929,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
 
             {senderOverLimit && senderQuota && (
               <div
-                className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm"
+                className="p-3 rounded-lg bg-muted/40 border border-border text-sm"
                 data-testid="campaign-sender-over-limit"
               >
                 На сегодня у отправителя доступно <b>{senderQuota.remaining}</b> писем
                 (лимит {senderQuota.daily_limit}/день). Выбрано {recipients.count}.
+                Отправка идёт партиями до 25 писем в пределах доступной квоты. Остальные адресаты остаются в очереди.
               </div>
             )}
 
@@ -978,14 +993,20 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                 {platformSenderUnavailable && <p className="text-xs text-destructive">
                   Выбранный ящик пока не подтверждён в списке активных отправителей. Сохранить черновик можно; запуск заблокирован.
                 </p>}
+                {platformSendersError && <div role="alert" className="text-sm text-destructive">
+                  Не удалось загрузить отправителей.
+                  <Button variant="outline" size="sm" onClick={() => setSendersRetry(value => value + 1)} disabled={platformSendersLoading}>
+                    Повторить загрузку отправителей
+                  </Button>
+                </div>}
               </div>
             )}
 
             {scope === "org" && (
               <div className="space-y-2 rounded-lg border p-3">
-                <Label>Отправитель (аккаунт из «Отправители»)</Label>
+                <Label>Отправитель (аккаунт из раздела «Почта»)</Label>
                 <Select value={senderAccountId} onValueChange={setSenderAccountId}>
-                  <SelectTrigger data-testid="campaign-sender-select">
+                  <SelectTrigger data-testid="campaign-sender-select" disabled={sendersLoading || sendersError}>
                     <SelectValue placeholder="Не выбран" />
                   </SelectTrigger>
                   <SelectContent>
@@ -997,6 +1018,15 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                     ))}
                   </SelectContent>
                 </Select>
+                {sendersError ? <div role="alert" className="text-sm text-destructive">
+                  Не удалось загрузить отправителей. Запуск недоступен до успешной проверки списка.
+                  <Button variant="outline" size="sm" onClick={() => setSendersRetry(value => value + 1)} disabled={sendersLoading}>
+                    Повторить загрузку отправителей
+                  </Button>
+                </div> : sendersLoading ? <p className="text-xs text-muted-foreground">Загрузка отправителей…</p>
+                  : senderAccounts.length === 0 && <p className="text-xs text-muted-foreground">
+                    Активных отправителей нет. Добавьте и проверьте свой ящик во вкладке «Почта».
+                  </p>}
 
                 <Label className="pt-2">Seed-адреса для тестовой отправки (1–5, вручную)</Label>
                 <Input
@@ -1051,8 +1081,8 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               disabled={
                 saving ||
                 !!tooMany ||
-                senderOverLimit ||
                 platformSenderUnavailable ||
+                organizationSenderUnavailable ||
 
                 recipients.count === 0 ||
                 !consent ||

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useLayoutEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { classifyDataError, type UserFacingErrorKind } from "@/utils/isTransientNetworkError";
@@ -38,6 +38,7 @@ export function useOrgSmtp(organizationId: string | null) {
   const hasDataRef = useRef(false);
   const seqRef = useRef(0);
   const orgRef = useRef<string | null>(organizationId);
+  const contextGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!organizationId) return;
@@ -79,7 +80,8 @@ export function useOrgSmtp(organizationId: string | null) {
     }
   }, [organizationId]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    contextGeneration.current++;
     seqRef.current++;
     orgRef.current = organizationId;
     hasDataRef.current = false;
@@ -87,8 +89,11 @@ export function useOrgSmtp(organizationId: string | null) {
     setLoaded(false);
     setLoadErrorKind(null);
     setRefreshing(false);
-    setLoading(true);
-    refresh();
+    setLoading(!!organizationId);
+    setSaving(false);
+    setTesting(false);
+    void refresh();
+    return () => { seqRef.current++; contextGeneration.current++; };
   }, [refresh, organizationId]);
 
   const save = useCallback(async (input: {
@@ -98,6 +103,8 @@ export function useOrgSmtp(organizationId: string | null) {
     safe_warmup_enabled?: boolean;
   }) => {
     if (!organizationId) return false;
+    const generation = contextGeneration.current;
+    const isCurrent = () => generation === contextGeneration.current;
     setSaving(true);
     try {
       const cap = Math.max(1, Math.min(50, Math.round(input.provider_daily_limit ?? 50)));
@@ -116,39 +123,48 @@ export function useOrgSmtp(organizationId: string | null) {
       if (input.password && input.password.trim()) {
         payload.password_encrypted = input.password;
       }
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("org_smtp_settings")
-        .upsert(payload, { onConflict: "organization_id" });
+        .upsert(payload, { onConflict: "organization_id" })
+        .select("organization_id")
+        .single();
+      if (!isCurrent()) return false;
       if (error) throw error;
+      if (data?.organization_id !== organizationId) throw new Error("Сервер не подтвердил сохранение");
       toast.success("SMTP-настройки сохранены");
       await refresh();
       return true;
     } catch (e: any) {
-      toast.error("Ошибка сохранения: " + e.message);
+      if (isCurrent()) toast.error("Не удалось сохранить SMTP-настройки. Проверьте доступ и повторите попытку.");
       return false;
     } finally {
-      setSaving(false);
+      if (isCurrent()) setSaving(false);
     }
   }, [organizationId, refresh]);
 
   const testConnection = useCallback(async () => {
-    if (!organizationId) return;
+    if (!organizationId) return false;
+    const generation = contextGeneration.current;
+    const isCurrent = () => generation === contextGeneration.current;
     setTesting(true);
     try {
       const { data, error } = await supabase.functions.invoke("test-org-smtp", {
         body: { organizationId },
       });
+      if (!isCurrent()) return false;
       if (error) throw error;
-      if (data?.ok) {
-        toast.success("Тестовое письмо отправлено успешно");
+      if (data?.success === true) {
+        toast.success("Тестовое письмо принято SMTP-сервером");
       } else {
-        toast.error("Ошибка SMTP: " + (data?.error || "Unknown"));
+        toast.error("SMTP-проверка не прошла. Проверьте настройки ящика и повторите тест.");
       }
       await refresh();
+      return data?.success === true;
     } catch (e: any) {
-      toast.error("Не удалось проверить: " + e.message);
+      if (isCurrent()) toast.error("Не удалось проверить SMTP. Проверьте доступ и соединение, затем повторите попытку.");
+      return false;
     } finally {
-      setTesting(false);
+      if (isCurrent()) setTesting(false);
     }
   }, [organizationId, refresh]);
 

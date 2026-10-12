@@ -6,6 +6,7 @@ import { validateSeedTest } from "@/lib/mailing/senderPresets";
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
 
 const seedFn = read("supabase/functions/mailing-seed-send/index.ts");
+const mailingAuth = read("supabase/functions/_shared/mailing-authorization.ts");
 const migDir = "supabase/migrations";
 const corrective = readdirSync(resolve(process.cwd(), migDir))
   .filter((f) => f.endsWith(".sql"))
@@ -100,8 +101,13 @@ describe("P0: контракт mailing-seed-send", () => {
 
   it("проверяет совпадение организации кампании и отправителя + доступ вызывающего", () => {
     expect(seedFn).toContain("campaign.organization_id !== sender.organization_id");
-    expect(seedFn).toContain("can_access_organization");
-    expect(seedFn).toContain('has_role');
+    const gate = seedFn.indexOf("canManageMailing(userClient, sender.organization_id)");
+    expect(gate).toBeGreaterThan(-1);
+    expect(seedFn.indexOf('"reserve_mailing_seed_quota"')).toBeGreaterThan(gate);
+    expect(mailingAuth).toContain('client.rpc("can_access_organization"');
+    expect(mailingAuth).toContain('_permission: "sales.write"');
+    expect(mailingAuth).toContain("mailingAccountActive(client)");
+    expect(seedFn).not.toMatch(/canManageMailing\(admin\b|admin\.rpc\("can_access_organization"/);
   });
 
   it("smtp_status читается с сервера и обязателен, статус тут не выставляется", () => {

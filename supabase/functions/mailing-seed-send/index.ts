@@ -9,6 +9,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail } from "../_shared/smtp-sender.ts";
+import { canManageMailing } from "../_shared/mailing-authorization.ts";
 import {
   buildListUnsubscribeHeaders,
   buildSeedUnsubscribeMailto,
@@ -19,6 +20,9 @@ import {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -33,6 +37,7 @@ const COOLDOWN_SECONDS = 60;
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -89,19 +94,7 @@ serve(async (req: Request) => {
     }
 
     // Вызывающий обязан иметь доступ к этой организации (или быть админом).
-    const { data: isAdmin } = await userClient.rpc("has_role", {
-      _user_id: u.user.id,
-      _role: "admin",
-    });
-    let allowed = !!isAdmin;
-    if (!allowed) {
-      const { data: canAccess } = await userClient.rpc("can_access_organization", {
-        _organization_id: sender.organization_id,
-        _permission: "email.manage",
-      });
-      allowed = !!canAccess;
-    }
-    if (!allowed) return json({ error: "Forbidden" }, 403);
+    if (!await canManageMailing(userClient, sender.organization_id)) return json({ error: "Forbidden" }, 403);
 
     const subject = (campaign.subject || "").trim();
     const html = campaign.html_body || "";

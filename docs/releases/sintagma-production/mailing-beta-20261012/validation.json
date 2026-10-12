@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "assertions": 39,
+  "isolatedInMemory": true,
+  "liveApplied": false,
+  "mailSent": false,
+  "cryptoPrimitive": "Deterministic fixture stub; real trigger and RPC call path tested, production encryption not attested."
+}

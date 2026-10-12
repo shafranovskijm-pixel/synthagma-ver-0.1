@@ -84,13 +84,13 @@ describe("MailingApp shell", () => {
     renderAt("");
     for (const label of [
       "Обзор",
-      "Рассылки",
+      "Кампании",
       "База",
       "Шаблоны",
-      "Отправители",
+      "Почта",
       "Отчёты",
       "Ответы",
-      "Доставляемость",
+      "Прогрев и доставляемость",
     ]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
@@ -105,6 +105,13 @@ describe("MailingApp shell", () => {
   it("opens the centralized campaign replies tab", async () => {
     renderAt("?tab=replies");
     expect(await screen.findByText("replies-tab")).toBeInTheDocument();
+  });
+
+  it("opens the existing warmup workspace from its visible menu label", async () => {
+    renderAt("?tab=mailing&mailingTab=overview", true);
+    fireEvent.click(screen.getByRole("button", { name: "Прогрев и доставляемость" }));
+    expect(await screen.findByText("deliverability-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/organization?tab=mailing&mailingTab=deliverability");
   });
 
   it("renders a mailing subtab inside the organization shell without the standalone header", async () => {

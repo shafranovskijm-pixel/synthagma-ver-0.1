@@ -27,13 +27,13 @@ import { MailingFeatureGate } from "@/components/mailing/MailingFeatureGate";
 
 const MENU = [
   { key: "overview", label: "Обзор", icon: LayoutDashboard },
-  { key: "campaigns", label: "Рассылки", icon: Send },
+  { key: "senders", label: "Почта", icon: AtSign },
+  { key: "deliverability", label: "Прогрев и доставляемость", icon: Gauge },
   { key: "contacts", label: "База", icon: Users },
+  { key: "campaigns", label: "Кампании", icon: Send },
   { key: "templates", label: "Шаблоны", icon: FileText },
-  { key: "senders", label: "Отправители", icon: AtSign },
   { key: "reports", label: "Отчёты", icon: BarChart3 },
   { key: "replies", label: "Ответы", icon: MessageCircle },
-  { key: "deliverability", label: "Доставляемость", icon: Gauge },
 ] as const;
 
 type TabKey = (typeof MENU)[number]["key"];
@@ -120,6 +120,8 @@ export default function MailingApp({ embedded = false }: MailingAppProps) {
                     organizationId={organizationId}
                     onNewCampaign={() => setTab("campaigns")}
                     onGoToSenders={() => setTab("senders")}
+                    onGoToWarmup={() => setTab("deliverability")}
+                    onGoToContacts={() => setTab("contacts")}
                   />
                 )}
                 {tab === "campaigns" && <CampaignsManager scope="org" organizationId={organizationId} />}

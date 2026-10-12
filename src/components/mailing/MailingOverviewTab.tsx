@@ -11,34 +11,46 @@ interface Props {
   organizationId: string | null;
   onNewCampaign: () => void;
   onGoToSenders: () => void;
+  onGoToWarmup: () => void;
+  onGoToContacts: () => void;
 }
 
-export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSenders }: Props) {
+export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSenders, onGoToWarmup, onGoToContacts }: Props) {
   const { campaigns, loading } = useEmailCampaigns("org", organizationId);
-  const { settings, loading: smtpLoading } = useOrgSmtp(organizationId);
+  const { settings, loading: smtpLoading, loadErrorKind: smtpError, retryLoad: retrySmtp } = useOrgSmtp(organizationId);
 
   // Подключённые отправители («Отправители») — основной путь готовности.
   const [verifiedSender, setVerifiedSender] = useState<{ label: string; from_email: string } | null>(null);
   const [sendersLoading, setSendersLoading] = useState(true);
+  const [sendersError, setSendersError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     if (!organizationId) { setVerifiedSender(null); setSendersLoading(false); return; }
     let cancelled = false;
     setSendersLoading(true);
+    setVerifiedSender(null);
     (async () => {
-      const { data } = await supabase
-        .from("mailing_senders")
-        .select("label, from_email")
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .eq("smtp_status", "ok")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (cancelled) return;
-      setVerifiedSender(((data || [])[0] as { label: string; from_email: string }) || null);
-      setSendersLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from("mailing_senders")
+          .select("label, from_email")
+          .eq("organization_id", organizationId)
+          .eq("is_active", true)
+          .eq("smtp_status", "ok")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (cancelled) return;
+        if (error) throw error;
+        setVerifiedSender(((data || [])[0] as { label: string; from_email: string }) || null);
+        setSendersError(false);
+      } catch {
+        if (!cancelled) setSendersError(true);
+      } finally {
+        if (!cancelled) setSendersLoading(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, [organizationId]);
+  }, [organizationId, refreshKey]);
 
 
   const totals = campaigns.reduce(
@@ -60,6 +72,27 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">Своя почта и рассылки <Badge variant="outline">Beta</Badge></CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Подготовка рассылки">
+            {[
+              { title: "1. Почта", description: "Подключите свой ящик, проверьте SMTP и IMAP и включите отправителя.", action: onGoToSenders },
+              { title: "2. Прогрев", description: "Подключите контрольный ящик и проверьте, куда попадают ваши письма.", action: onGoToWarmup },
+              { title: "3. База", description: "Подготовьте адресатов и проверьте список контактов.", action: onGoToContacts },
+              { title: "4. Кампания", description: "Сохраните письмо, выполните тест и подтвердите запуск.", action: onNewCampaign },
+            ].map(item => (
+              <li key={item.title} className="rounded-xl border p-3 space-y-2">
+                <Button variant="link" className="h-auto p-0 text-sm" onClick={item.action}>{item.title}</Button>
+                <p className="text-xs leading-5 text-muted-foreground">{item.description}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-4 text-xs text-muted-foreground">Сохранение настроек и черновика не запускает рассылку. Отправка и прогрев включаются отдельными действиями.</p>
+        </CardContent>
+      </Card>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label}>
@@ -84,6 +117,11 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
         <CardContent className="space-y-2 text-sm">
           {sendersLoading || smtpLoading ? (
             <p className="text-muted-foreground">Проверяем…</p>
+          ) : sendersError || (!verifiedSender && smtpError) ? (
+            <div role="alert" className="space-y-2">
+              <p>Не удалось проверить отправителей. Это не означает, что почта не подключена.</p>
+              <Button variant="outline" size="sm" onClick={() => { setRefreshKey(key => key + 1); void retrySmtp(); }}>Повторить проверку</Button>
+            </div>
           ) : verifiedSender ? (
             <p className="flex items-center gap-2 text-emerald-600" data-testid="mailing-sender-ready">
               <CheckCircle2 className="h-4 w-4" />
@@ -92,12 +130,12 @@ export function MailingOverviewTab({ organizationId, onNewCampaign, onGoToSender
           ) : !settings ? (
             <p className="flex items-center gap-2 text-orange-600">
               <AlertTriangle className="h-4 w-4" />
-              Отправитель не подключён — рассылку запустить нельзя.
+              Нет включённого отправителя с успешной SMTP-проверкой. Откройте «Почта», проверьте и включите свой ящик.
             </p>
           ) : settings.is_verified ? (
             <p className="flex items-center gap-2 text-emerald-600">
               <CheckCircle2 className="h-4 w-4" />
-              {settings.from_email} — соединение проверено.
+              {settings.from_email} — старое SMTP-подключение проверено. Для новой кампании добавьте этот ящик в разделе «Почта».
             </p>
           ) : (
             <p className="flex items-center gap-2 text-orange-600">

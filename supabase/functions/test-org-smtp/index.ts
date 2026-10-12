@@ -1,37 +1,18 @@
-// =====================================================================
-// PENDING — Phase 5C.1.a (corrected in 5C.1.a.1). Do NOT deploy until
-// the accompanying RLS migration is planned.
-//
-// 5C.1.a.1 corrections vs 5C.1.a draft:
-//   • can_access_organization is invoked via the USER client
-//     (Authorization header propagated). The service-role client has no
-//     auth.uid(), so it always returned false → owners were being denied.
-//   • has_role is invoked via the user client with the JWT-resolved userId.
-//   • The service-role client is used ONLY after the authorization gate
-//     passes, to read decrypted SMTP and update is_verified/last_test_*.
-//   • body.to is IGNORED for org tests — the test always goes to the
-//     stored from_email, so a caller cannot exfiltrate via arbitrary
-//     recipient.
-//   • is_verified / last_test_at / last_test_error are only touched
-//     when the caller is authorized; a 401/403 leaves the row untouched.
-//   • Platform-scope test now requires admin (previously any authenticated user).
-//   • Org-scope test requires admin OR can_access_organization(org, 'sales.write').
-//
-// IMPORTANT — import path on promotion:
-//   This file uses "../_shared/smtp-sender.ts" because it
-//   physically lives in supabase/functions-pending-5c1a/test-org-smtp/.
-//   When promoted to supabase/functions/test-org-smtp/index.ts, the
-//   import MUST be rewritten to "../_shared/smtp-sender.ts". See
-//   supabase/functions-pending-5c1a/PROMOTION.md for the exact steps.
-// =====================================================================
+// Explicit SMTP send test: organization calls require active sales.write access;
+// platform calls require platform admin. Recipient is the stored sender address.
+// Caller-scoped authorization precedes service-role credential access.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail, sendPlatformEmail, getPlatformSmtpConfig } from "../_shared/smtp-sender.ts";
+import { canManageMailing, mailingAccountActive } from "../_shared/mailing-authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 
 interface ReqBody {
@@ -42,6 +23,7 @@ interface ReqBody {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -62,6 +44,7 @@ serve(async (req: Request) => {
     if (!isServiceRole) {
       const { data: userData } = await userClient.auth.getUser();
       if (!userData?.user) return json({ error: "Unauthorized" }, 401);
+      if (!await mailingAccountActive(userClient)) return json({ error: "Forbidden" }, 403);
       const userId = userData.user.id;
       const { data: adminRow } = await userClient.rpc("has_role", {
         _role: "admin", _user_id: userId,
@@ -102,13 +85,13 @@ serve(async (req: Request) => {
     if (isServiceRole || isAdmin) {
       orgAuthorized = true;
     } else {
-      const { data: writeRow } = await userClient.rpc("can_access_organization", {
-        _organization_id: body.organizationId,
-        _permission: "sales.write",
-      });
-      orgAuthorized = writeRow === true;
+      orgAuthorized = await canManageMailing(userClient, body.organizationId);
     }
     if (!orgAuthorized) return json({ error: "Forbidden" }, 403);
+
+    const { data: metadata, error: metadataError } = await admin.from("org_smtp_settings")
+      .select("updated_at").eq("organization_id", body.organizationId).maybeSingle();
+    if (metadataError || !metadata) return json({ error: "SMTP не настроен" }, 404);
 
     // Only after auth: use service_role to read decrypted SMTP.
     const { data: smtpData, error: smtpError } = await admin.rpc("get_decrypted_org_smtp", {
@@ -136,11 +119,13 @@ serve(async (req: Request) => {
     } catch (e) { testError = (e as Error).message; }
 
     // Touch is_verified only when authorized (we are, at this point).
-    await admin.from("org_smtp_settings").update({
+    const { data: verified, error: verifyError } = await admin.from("org_smtp_settings").update({
       is_verified: testError === null,
       last_test_at: new Date().toISOString(),
       last_test_error: testError,
-    }).eq("organization_id", body.organizationId);
+    }).eq("organization_id", body.organizationId).eq("updated_at", metadata.updated_at)
+      .select("organization_id").maybeSingle();
+    if (verifyError || !verified) return json({ success: false, error: "Настройки изменились. Повторите проверку.", retry_required: true }, 200);
 
     return json({ success: testError === null, error: testError, sent_to: recipient }, 200);
   } catch (e) {

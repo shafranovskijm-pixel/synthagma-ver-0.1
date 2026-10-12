@@ -1,10 +1,42 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle";
+import { dispatchOrdinaryBatch, requireQuotaDecision, reserveOrdinarySenderBatch } from "./run-lifecycle";
 
 const recipients = [{ id: "one" }, { id: "two" }];
 const wait = async () => {};
+
+describe("selected organization sender bounded reservation", () => {
+  it("reserves at most 25 and keeps its exact ledger", async () => {
+    const reserve = vi.fn().mockResolvedValue({ data: [{ allowed: true, ledger_id: "ledger" }], error: null });
+    expect(await reserveOrdinarySenderBatch(1000, reserve)).toMatchObject({ batchSize: 25, ledgerId: "ledger" });
+    expect(reserve).toHaveBeenCalledExactlyOnceWith(25);
+  });
+  it("retries only once with an explicitly unconsumed daily remainder", async () => {
+    const reserve = vi.fn().mockResolvedValueOnce({ data: [{ allowed: false, reason: "daily_limit", remaining: 7 }], error: null })
+      .mockResolvedValueOnce({ data: [{ allowed: true, ledger_id: "ledger" }], error: null });
+    expect((await reserveOrdinarySenderBatch(100, reserve)).batchSize).toBe(7);
+    expect(reserve.mock.calls).toEqual([[25], [7]]);
+  });
+  it("does not retry again if another campaign consumes the reported remainder", async () => {
+    const reserve = vi.fn().mockResolvedValue({ data: [{ allowed: false, reason: "daily_limit", remaining: 7 }], error: null });
+    expect((await reserveOrdinarySenderBatch(100, reserve)).batchSize).toBe(0);
+    expect(reserve).toHaveBeenCalledTimes(2);
+  });
+  it.each([
+    { data: null, error: new Error("timeout") }, { data: null, error: null },
+    { data: [{ allowed: true }], error: null }, { data: [{}], error: null },
+  ])("never retries an unknown or unconfirmed reservation %j", async result => {
+    const reserve = vi.fn().mockResolvedValue(result);
+    await expect(reserveOrdinarySenderBatch(100, reserve)).rejects.toThrow();
+    expect(reserve).toHaveBeenCalledOnce();
+  });
+  it("does not dispatch or retry with zero available quota", async () => {
+    const reserve = vi.fn().mockResolvedValue({ data: [{ allowed: false, reason: "daily_limit", remaining: 0 }], error: null });
+    expect((await reserveOrdinarySenderBatch(100, reserve)).batchSize).toBe(0);
+    expect(reserve).toHaveBeenCalledOnce();
+  });
+});
 
 describe("ordinary run fail-closed batching", () => {
   it.each([undefined, null, {}, { allowed: "true" }])("rejects unknown quota %s", (quota) => {

@@ -8,11 +8,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { closeImap, connectImap, placementForReadOnly } from "../_shared/imap-mini.ts";
 import { sendSmtpEmail } from "../_shared/smtp-sender.ts";
+import { canManageMailing } from "../_shared/mailing-authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-cron-secret",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -105,6 +109,7 @@ function probeHtml(probeId: string) {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const stats = {
     sent: 0,
@@ -146,19 +151,7 @@ serve(async (req: Request) => {
         .maybeSingle();
       if (!requestedSender) return json({ error: "Forbidden" }, 403);
 
-      const { data: isAdmin } = await userClient.rpc("has_role", {
-        _user_id: authData.user.id,
-        _role: "admin",
-      });
-      let allowed = !!isAdmin;
-      if (!allowed) {
-        const { data: canAccess } = await userClient.rpc("can_access_organization", {
-          _organization_id: requestedSender.organization_id,
-          _permission: "email.manage",
-        });
-        allowed = !!canAccess;
-      }
-      if (!allowed) return json({ error: "Forbidden" }, 403);
+      if (!await canManageMailing(userClient, requestedSender.organization_id)) return json({ error: "Forbidden" }, 403);
     }
 
     const now = new Date();

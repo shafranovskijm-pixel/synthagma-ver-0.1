@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { campaignPauseFeedback } from "@/lib/mailing/campaignRunFeedback";
 import { resolveFastCampaignError } from "@/lib/mailing/fastCampaignError";
 
 interface Props {
@@ -53,7 +54,7 @@ const FAST_ERROR_LABELS: Record<string, string> = {
 };
 
 export function CampaignsManager({ scope, organizationId }: Props) {
-  const { campaigns, loading, refresh, remove, launch } = useEmailCampaigns(scope, organizationId);
+  const { campaigns, loading, loadError, refresh, remove, launch } = useEmailCampaigns(scope, organizationId);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<ReturnType<typeof buildEditorInitial> | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
@@ -162,15 +163,24 @@ export function CampaignsManager({ scope, organizationId }: Props) {
           </Button>
         </CardHeader>
         <CardContent>
+          {loadError && (
+            <div role="alert" className="mb-3 rounded-lg border border-destructive/30 p-3 text-sm">
+              <p>{loadError}</p>
+              <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="mt-2 gap-1">
+                <RefreshCw className="w-3 h-3" /> Повторить загрузку
+              </Button>
+            </div>
+          )}
           {loading ? (
             <p className="text-sm text-muted-foreground">Загрузка...</p>
           ) : campaigns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Кампаний пока нет. Создайте первую.</p>
+            !loadError && <p className="text-sm text-muted-foreground">Кампаний пока нет. Создайте первую.</p>
           ) : (
             <div className="space-y-2">
               {campaigns.map(c => {
                 const startedAt = (c as any).started_at ? new Date((c as any).started_at) : null;
                 const stuck = c.status === 'sending' && startedAt && (Date.now() - startedAt.getTime() > 10 * 60 * 1000);
+                const pause = campaignPauseFeedback(c.paused_reason, c.user_paused);
                 return (
                 <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
                   <div className="flex-1 min-w-0">
@@ -188,19 +198,19 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Badge variant="outline" className="gap-1 bg-primary/10 text-primary border-primary/30">
-                                <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
-                                Продолжается автоматически
+                                <Clock className="w-3 h-3" />
+                                {pause.label}
                               </Badge>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs max-w-xs">Кампания будет дослана в течение 5 минут.<br/>Платформа автоматически отправит оставшимся получателям.</p>
+                              <p className="text-xs max-w-xs">{pause.description}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
                       {stuck && (
                         <Badge variant="outline" className="gap-1 bg-orange-500/10 text-orange-600 border-orange-500/30">
-                          Зависла — нажмите «Продолжить»
+                          Долгий запуск — проверьте отчёт
                         </Badge>
                       )}
                     </div>
@@ -232,7 +242,8 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                       </Button>
                     )}
                     {(() => {
-                      const action = campaignLaunchAction(c.status, !!stuck);
+                      const action = stuck || (c.status === "paused" && !pause.canResume)
+                        ? "none" : campaignLaunchAction(c.status, false);
                       if (action === "none") return null;
                       const label = launchActionLabel(action);
                       return (
