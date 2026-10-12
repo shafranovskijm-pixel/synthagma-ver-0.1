@@ -11,9 +11,11 @@ export const CRM_TASK_STATUSES = ["pending", "done", "cancelled"] as const;
 export const CRM_TASK_TYPES = ["call", "email", "meeting", "followup", "other"] as const;
 export const CRM_ACTIVITY_TYPES = ["note", "call", "meeting", "email"] as const;
 
-const clientSchema = z.object({
+export const crmClientSchema = z.object({
   ...editableBase, org_name: z.string().min(1), inn: nullableText,
   email: nullableText, phone: nullableText, address: nullableText, notes: nullableText,
+  company_id: id.nullable().optional(), student_user_id: id.nullable().optional(),
+  linked_at: timestamp.nullable().optional(),
 });
 const dealSchema = z.object({
   ...editableBase, client_id: id, title: z.string().min(1),
@@ -31,13 +33,13 @@ const activitySchema = z.object({
 const assigneeSchema = z.object({ user_id: id, full_name: z.string(), role: z.string(), email: nullableText.optional() });
 const count = z.number().int().nonnegative().safe();
 const snapshotSchema = z.object({
-  clients: z.array(clientSchema), deals: z.array(dealSchema), tasks: z.array(taskSchema),
+  clients: z.array(crmClientSchema), deals: z.array(dealSchema), tasks: z.array(taskSchema),
   activities: z.array(activitySchema), assignees: z.array(assigneeSchema),
   counts: z.object({ clients: count, deals: count, tasks: count, activities: count }),
   truncated: z.object({ clients: z.boolean(), deals: z.boolean(), tasks: z.boolean(), activities: z.boolean() }),
 });
 
-export type OrgCrmClient = z.infer<typeof clientSchema>;
+export type OrgCrmClient = z.infer<typeof crmClientSchema>;
 export type OrgCrmDeal = z.infer<typeof dealSchema>;
 export type OrgCrmTask = z.infer<typeof taskSchema>;
 export type OrgCrmActivity = z.infer<typeof activitySchema>;
@@ -78,6 +80,7 @@ export function crmError(error: unknown): OrgCrmError {
   if (code === "40001") return new OrgCrmError("Запись уже изменена. Обновите данные и повторите изменение.", code);
   if (code === "42501") return new OrgCrmError("Нет доступа к CRM этой организации. Проверьте роль и тариф.", code);
   if (code === "23503") return new OrgCrmError("Связанный клиент, сделка или сотрудник недоступен. Обновите данные.", code);
+  if (code === "23505") return new OrgCrmError("Карточка уже связана с CRM. Обновите данные перед повторной попыткой.", code);
   if (["22023", "22007", "22P02", "23514", "23502"].includes(code)) {
     return new OrgCrmError("Проверьте обязательные поля, сумму и срок задачи.", code);
   }

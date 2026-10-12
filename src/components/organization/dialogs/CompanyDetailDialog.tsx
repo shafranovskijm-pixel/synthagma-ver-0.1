@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { useUrlQueryState } from "@/hooks/useUrlNavigation";
+import { OrgCrmCardSection } from "../sales/OrgCrmCardSection";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
@@ -23,6 +26,7 @@ import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyDetailDialogProps {
+  organizationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   company: Company | null;
@@ -50,6 +54,9 @@ interface CompanyDetailDialogProps {
 export function CompanyDetailDialog(props: CompanyDetailDialogProps) {
   const { open, onOpenChange, company, documents, isLoadingDocuments, isUploadingDocument, isDeletingDocument } = props;
 
+  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const [section, setSection] = useUrlQueryState<string>("companySection", "documents", ["documents", "requests", "access", "actions", "crm"]);
+
   if (!company) return null;
 
   const getDocumentsByType = (type: 'contract' | 'invoice' | 'act') => documents.filter(doc => doc.type === type);
@@ -60,15 +67,17 @@ export function CompanyDetailDialog(props: CompanyDetailDialogProps) {
       <DialogContent className="rounded-2xl w-[95vw] max-w-6xl h-[90vh] overflow-hidden flex flex-col p-0">
         <CompanyHeader company={company} stats={stats} onEdit={props.onEdit} onDelete={props.onDelete} onOpenChange={onOpenChange} />
 
-        <Tabs defaultValue="documents" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-6 h-12">
+        <Tabs value={section} onValueChange={setSection} className="flex-1 overflow-hidden flex flex-col">
+          <TabsList className="w-full justify-start overflow-x-auto rounded-none border-b border-border bg-transparent px-6 h-12">
             <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-primary/10"><FileText className="w-4 h-4 mr-2" />Документы</TabsTrigger>
             <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-primary/10"><Send className="w-4 h-4 mr-2" />Заявки</TabsTrigger>
             <TabsTrigger value="access" className="rounded-lg data-[state=active]:bg-primary/10"><KeyRound className="w-4 h-4 mr-2" />Доступ</TabsTrigger>
             <TabsTrigger value="actions" className="rounded-lg data-[state=active]:bg-primary/10">Действия</TabsTrigger>
+            {!permissionsLoading && can("sales.read") && can("companies.read") && <TabsTrigger value="crm" className="rounded-lg data-[state=active]:bg-primary/10">CRM · Бета</TabsTrigger>}
           </TabsList>
 
           <div className="flex-1 overflow-y-auto p-6">
+            <TabsContent value="crm" className="m-0"><OrgCrmCardSection organizationId={props.organizationId} entityType="company" entityId={company.id} entityName={company.name} /></TabsContent>
             <TabsContent value="requests" className="m-0"><CompanyRequestsOrgView companyId={company.id} /></TabsContent>
             <TabsContent value="access" className="m-0"><CompanyAccessTab company={company} /></TabsContent>
             <TabsContent value="actions" className="m-0 space-y-4"><ActionsGrid company={company} {...props} /></TabsContent>
