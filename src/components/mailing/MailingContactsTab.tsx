@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,13 +26,18 @@ interface Row {
 export function MailingContactsTab({ organizationId }: Props) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [duplicates, setDuplicates] = useState(0);
   const [search, setSearch] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
+    setRows([]);
+    setDuplicates(0);
+    setLoadError(false);
+    setImportOpen(false);
     (async () => {
       if (!organizationId) {
         setRows([]);
@@ -40,47 +45,55 @@ export function MailingContactsTab({ organizationId }: Props) {
         return;
       }
       setLoading(true);
-      const { data: camps } = await supabase
-        .from("email_campaigns")
-        .select("id")
-        .eq("scope", "org")
-        .eq("organization_id", organizationId);
-      const ids = (camps || []).map((c) => c.id);
-      if (!ids.length) {
-        if (!cancelled) {
-          setRows([]);
-          setDuplicates(0);
-          setLoading(false);
-        }
-        return;
-      }
-      const { data } = await supabase
-        .from("email_campaign_recipients")
-        .select("email, status, sent_at, opened_at")
-        .in("campaign_id", ids)
-        .limit(5000);
-      if (cancelled) return;
-      const map = new Map<string, Row>();
-      let dup = 0;
-      for (const r of data || []) {
-        const key = (r.email || "").trim().toLowerCase();
-        if (!key) continue;
-        const at = (r.sent_at || r.opened_at) as string | null;
-        const existing = map.get(key);
-        if (existing) {
-          dup++;
-          existing.campaigns++;
-          if (at && (!existing.lastAt || at > existing.lastAt)) {
-            existing.lastAt = at;
-            existing.lastStatus = r.status || existing.lastStatus;
+      try {
+        const { data: camps, error: campaignError } = await supabase
+          .from("email_campaigns")
+          .select("id")
+          .eq("scope", "org")
+          .eq("organization_id", organizationId);
+        if (cancelled) return;
+        if (campaignError) throw campaignError;
+        const ids = (camps || []).map((c) => c.id);
+        if (!ids.length) {
+          if (!cancelled) {
+            setRows([]);
+            setDuplicates(0);
+            setLoading(false);
           }
-        } else {
-          map.set(key, { email: key, campaigns: 1, lastStatus: r.status || "—", lastAt: at });
+          return;
         }
+        const { data, error: recipientsError } = await supabase
+          .from("email_campaign_recipients")
+          .select("email, status, sent_at, opened_at")
+          .in("campaign_id", ids)
+          .limit(5000);
+        if (cancelled) return;
+        if (recipientsError) throw recipientsError;
+        const map = new Map<string, Row>();
+        let dup = 0;
+        for (const r of data || []) {
+          const key = (r.email || "").trim().toLowerCase();
+          if (!key) continue;
+          const at = (r.sent_at || r.opened_at) as string | null;
+          const existing = map.get(key);
+          if (existing) {
+            dup++;
+            existing.campaigns++;
+            if (at && (!existing.lastAt || at > existing.lastAt)) {
+              existing.lastAt = at;
+              existing.lastStatus = r.status || existing.lastStatus;
+            }
+          } else {
+            map.set(key, { email: key, campaigns: 1, lastStatus: r.status || "—", lastAt: at });
+          }
+        }
+        setRows([...map.values()].sort((a, b) => (b.lastAt || "").localeCompare(a.lastAt || "")));
+        setDuplicates(dup);
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setRows([...map.values()].sort((a, b) => (b.lastAt || "").localeCompare(a.lastAt || "")));
-      setDuplicates(dup);
-      setLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -114,8 +127,8 @@ export function MailingContactsTab({ organizationId }: Props) {
             placeholder="Поиск по email"
             className="max-w-xs"
           />
-          <Badge variant="outline">Уникальных: {rows.length}</Badge>
-          <Badge variant="outline">Дубликатов свёрнуто: {duplicates}</Badge>
+          <Badge variant="outline">Уникальных: {loading || loadError ? "—" : rows.length}</Badge>
+          <Badge variant="outline">Дубликатов свёрнуто: {loading || loadError ? "—" : duplicates}</Badge>
           <Button
             size="sm"
             variant="outline"
@@ -128,7 +141,12 @@ export function MailingContactsTab({ organizationId }: Props) {
           </Button>
         </div>
 
-        {loading ? (
+        {loadError ? (
+          <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3 text-sm">
+            <p>Не удалось загрузить базу контактов. Проверьте соединение и доступ к рассылкам.</p>
+            <Button variant="outline" size="sm" onClick={() => setReloadKey(key => key + 1)}>Повторить загрузку</Button>
+          </div>
+        ) : loading ? (
           <p className="text-sm text-muted-foreground">Загрузка…</p>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground">Получателей пока нет.</p>

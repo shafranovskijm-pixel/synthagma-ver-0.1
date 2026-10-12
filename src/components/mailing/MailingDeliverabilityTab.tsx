@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   AtSign,
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -119,6 +120,9 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
   const [seeds, setSeeds] = useState<SeedRow[]>([]);
   const [checks, setChecks] = useState<CheckRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const contextGeneration = useRef(0);
+  const loadSequence = useRef(0);
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [editingSeedId, setEditingSeedId] = useState<string | null>(null);
   const [seedDraft, setSeedDraft] = useState(emptyDeliverabilitySeedDraft());
@@ -131,39 +135,58 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
       setLoading(false);
       return;
     }
+    const context = contextGeneration.current;
+    const sequence = ++loadSequence.current;
+    const isCurrent = () => context === contextGeneration.current && sequence === loadSequence.current;
     setLoading(true);
-    const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
-    const [senderResult, seedResult, checkResult] = await Promise.all([
-      supabase
-        .from("mailing_senders")
-        .select(senderColumns)
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("mailing_deliverability_seeds")
-        .select(seedColumns)
-        .eq("organization_id", organizationId)
-        .order("provider", { ascending: true }),
-      supabase
-        .from("mailing_deliverability_checks")
-        .select("id,sender_id,seed_id,status,placement,sent_at,checked_at,error_category")
-        .eq("organization_id", organizationId)
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(100),
-    ]);
-    setLoading(false);
-    if (senderResult.error || seedResult.error || checkResult.error) {
-      toast.error("Не удалось загрузить данные доставляемости");
-      return;
+    try {
+      const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const [senderResult, seedResult, checkResult] = await Promise.all([
+        supabase
+          .from("mailing_senders")
+          .select(senderColumns)
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("mailing_deliverability_seeds")
+          .select(seedColumns)
+          .eq("organization_id", organizationId)
+          .order("provider", { ascending: true }),
+        supabase
+          .from("mailing_deliverability_checks")
+          .select("id,sender_id,seed_id,status,placement,sent_at,checked_at,error_category")
+          .eq("organization_id", organizationId)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(100),
+      ]);
+      if (!isCurrent()) return;
+      if (senderResult.error || seedResult.error || checkResult.error) throw new Error("Load failed");
+      setSenders((senderResult.data || []) as unknown as SenderRow[]);
+      setSeeds((seedResult.data || []) as unknown as SeedRow[]);
+      setChecks((checkResult.data || []) as unknown as CheckRow[]);
+      setLoadError(false);
+    } catch {
+      if (isCurrent()) setLoadError(true);
+    } finally {
+      if (isCurrent()) setLoading(false);
     }
-    setSenders((senderResult.data || []) as unknown as SenderRow[]);
-    setSeeds((seedResult.data || []) as unknown as SeedRow[]);
-    setChecks((checkResult.data || []) as unknown as CheckRow[]);
   }, [organizationId]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    contextGeneration.current++;
+    setSenders([]);
+    setSeeds([]);
+    setChecks([]);
+    setLoadError(false);
+    setSeedDialogOpen(false);
+    setEditingSeedId(null);
+    setSeedDraft(emptyDeliverabilitySeedDraft());
+    setSavingSeed(false);
+    setTestingSeedId(null);
+    setRunningSenderId(null);
     void load();
+    return () => { contextGeneration.current++; loadSequence.current++; };
   }, [load]);
 
   const verifiedSeeds = useMemo(
@@ -187,17 +210,21 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
     senderId: string,
     patch: { warmup_enabled?: boolean; warmup_daily_target?: number },
   ) => {
-    const { error } = await supabase.rpc("set_mailing_sender_warmup", {
-      p_sender_id: senderId,
-      p_enabled: patch.warmup_enabled ?? null,
-      p_daily_target: patch.warmup_daily_target ?? null,
-    });
-    if (error) {
-      toast.error("Не удалось сохранить настройки прогрева");
+    const context = contextGeneration.current;
+    try {
+      const { error } = await supabase.rpc("set_mailing_sender_warmup", {
+        p_sender_id: senderId,
+        p_enabled: patch.warmup_enabled ?? null,
+        p_daily_target: patch.warmup_daily_target ?? null,
+      });
+      if (context !== contextGeneration.current) return false;
+      if (error) throw error;
+      await load();
+      return context === contextGeneration.current;
+    } catch {
+      if (context === contextGeneration.current) toast.error("Не удалось сохранить настройки прогрева");
       return false;
     }
-    await load();
-    return true;
   };
 
   const toggleWarmup = async (sender: SenderRow, enabled: boolean) => {
@@ -220,38 +247,51 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
       toast.error(gate.reason);
       return;
     }
+    const context = contextGeneration.current;
+    const isCurrent = () => context === contextGeneration.current;
+    let saved = false;
     setSavingSeed(true);
-    const row = toDeliverabilitySeedRow(seedDraft, organizationId);
-    const saveQuery = editingSeedId
-      ? supabase
-          .from("mailing_deliverability_seeds")
-          .update(row as never)
-          .eq("id", editingSeedId)
-          .eq("organization_id", organizationId)
-      : supabase.from("mailing_deliverability_seeds").insert(row as never);
-    const { data, error } = await saveQuery.select("id").single();
-    setSeedDraft((draft) => ({ ...draft, appPassword: "" }));
-    if (error || !data) {
-      setSavingSeed(false);
-      toast.error(error?.code === "23505" ? "Этот контрольный адрес уже добавлен" : "Не удалось сохранить ящик");
-      return;
-    }
+    try {
+      const row = toDeliverabilitySeedRow(seedDraft, organizationId);
+      const saveQuery = editingSeedId
+        ? supabase
+            .from("mailing_deliverability_seeds")
+            .update(row as never)
+            .eq("id", editingSeedId)
+            .eq("organization_id", organizationId)
+        : supabase.from("mailing_deliverability_seeds").insert(row as never);
+      const { data, error } = await saveQuery.select("id").single();
+      if (!isCurrent()) return;
+      setSeedDraft((draft) => ({ ...draft, appPassword: "" }));
+      if (error || !data) {
+        toast.error(error?.code === "23505" ? "Этот контрольный адрес уже добавлен" : "Не удалось сохранить ящик");
+        return;
+      }
 
-    const seedId = (data as { id: string }).id;
-    const { data: testResult, error: testError } = await supabase.functions.invoke(
-      "mailing-deliverability-seed-test",
-      { body: { seed_id: seedId } },
-    );
-    setSavingSeed(false);
-    setSeedDialogOpen(false);
-    setEditingSeedId(null);
-    setSeedDraft(emptyDeliverabilitySeedDraft());
-    if (testError || !testResult?.success) {
-      toast.warning("Ящик сохранён, но IMAP-авторизация не прошла");
-    } else {
-      toast.success("Контрольный ящик подключён и проверен");
+      saved = true;
+      const seedId = (data as { id: string }).id;
+      const { data: testResult, error: testError } = await supabase.functions.invoke(
+        "mailing-deliverability-seed-test",
+        { body: { seed_id: seedId } },
+      );
+      if (!isCurrent()) return;
+      setSeedDialogOpen(false);
+      setEditingSeedId(null);
+      setSeedDraft(emptyDeliverabilitySeedDraft());
+      if (testError || testResult?.success !== true) {
+        toast.warning("Ящик сохранён, но IMAP-авторизация не прошла");
+      } else {
+        toast.success("Контрольный ящик подключён и проверен");
+      }
+      await load();
+    } catch {
+      if (isCurrent()) {
+        toast.error(saved ? "Ящик сохранён, но результат IMAP-проверки не получен. Повторите тест в списке." : "Не удалось подтвердить сохранение ящика. Обновите данные перед повторной попыткой.");
+        if (saved) { setSeedDialogOpen(false); setEditingSeedId(null); void load(); }
+      }
+    } finally {
+      if (isCurrent()) { setSavingSeed(false); setSeedDraft(draft => ({ ...draft, appPassword: "" })); }
     }
-    await load();
   };
 
   const openNewSeed = () => {
@@ -275,17 +315,24 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
   };
 
   const testSeed = async (seedId: string) => {
+    const context = contextGeneration.current;
     setTestingSeedId(seedId);
-    const { data, error } = await supabase.functions.invoke("mailing-deliverability-seed-test", {
-      body: { seed_id: seedId },
-    });
-    setTestingSeedId(null);
-    if (error || !data?.success) {
-      toast.error(errorLabel[data?.error_category || "unknown"]);
-    } else {
-      toast.success(`IMAP проверен (${data.latency_ms ?? 0} мс)`);
+    try {
+      const { data, error } = await supabase.functions.invoke("mailing-deliverability-seed-test", {
+        body: { seed_id: seedId },
+      });
+      if (context !== contextGeneration.current) return;
+      if (error || data?.success !== true) {
+        toast.error(errorLabel[data?.error_category || "unknown"]);
+      } else {
+        toast.success(`IMAP проверен (${data.latency_ms ?? 0} мс)`);
+      }
+      await load();
+    } catch {
+      if (context === contextGeneration.current) toast.error("Не удалось выполнить IMAP-проверку. Повторите попытку.");
+    } finally {
+      if (context === contextGeneration.current) setTestingSeedId(null);
     }
-    await load();
   };
 
   const runNow = async (sender: SenderRow) => {
@@ -293,19 +340,32 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
       toast.error("Сначала включите автопроверку для отправителя");
       return;
     }
+    const context = contextGeneration.current;
     setRunningSenderId(sender.id);
-    const { data, error } = await supabase.functions.invoke("mailing-deliverability-worker", {
-      body: { sender_id: sender.id, force: true },
-    });
-    setRunningSenderId(null);
-    if (error) {
-      toast.error("Воркер проверки не запустился");
-    } else if ((data?.sent || 0) > 0) {
-      toast.success("Контрольное письмо отправлено. Размещение проверится автоматически.");
-    } else {
-      toast.info("Новая отправка не требуется: дневной лимит уже выполнен или ящик приостановлен");
+    try {
+      const { data, error } = await supabase.functions.invoke("mailing-deliverability-worker", {
+        body: { sender_id: sender.id, force: true },
+      });
+      if (context !== contextGeneration.current) return;
+      if (error || data?.error || ![data?.sent, data?.failed, data?.checked].every(value => Number.isInteger(value) && value >= 0)
+        || !Array.isArray(data?.error_categories)) throw new Error("Unconfirmed worker result");
+      if (data.failed > 0 || data.error_categories.length > 0) {
+        const message = `Проверка завершилась с ошибками. Отправлено: ${data.sent}; не отправлено: ${data.failed}. Проверьте подключение ящиков и последние результаты.`;
+        if (data.sent > 0) toast.warning(message);
+        else toast.error(message);
+      } else if (data.sent > 0) {
+        toast.success(`Контрольных писем отправлено: ${data.sent}. Размещение будет видно после следующей проверки.`);
+      } else if (data.checked > 0) {
+        toast.success(`Проверено ранее отправленных писем: ${data.checked}. Результаты обновлены.`);
+      } else {
+        toast.info("Новых отправок и результатов проверки нет. Проверьте состояние ящика и доступную квоту.");
+      }
+      await load();
+    } catch {
+      if (context === contextGeneration.current) toast.error("Не удалось подтвердить результат проверки. Обновите данные перед повторным запуском.");
+    } finally {
+      if (context === contextGeneration.current) setRunningSenderId(null);
     }
-    await load();
   };
 
   const onSeedEmailChange = (email: string) => {
@@ -328,6 +388,17 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
     <div className="space-y-4">
       <DomainReputationCheck />
 
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || !organizationId}>
+          {loadError ? "Повторить загрузку" : "Обновить данные"}
+        </Button>
+      </div>
+      {loadError && (
+        <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm">
+          Не удалось загрузить данные прогрева. Проверьте соединение и доступ к рассылкам, затем повторите загрузку.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         {[
           ["Отправлено", summary.sent],
@@ -340,7 +411,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
           <Card key={label}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="mt-1 text-2xl font-semibold">{loading ? "—" : value}</p>
+              <p className="mt-1 text-2xl font-semibold">{loading || loadError ? "—" : value}</p>
             </CardContent>
           </Card>
         ))}
@@ -360,13 +431,13 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
             расположение своих писем через IMAP, не читает содержимое и ничего не перемещает.
           </p>
 
-          {!loading && senders.length === 0 && (
+          {!loading && !loadError && senders.length === 0 && (
             <p className="rounded-lg border p-3 text-sm text-muted-foreground">
               Сначала добавьте и проверьте SMTP-отправителя.
             </p>
           )}
 
-          {senders.map((sender) => {
+          {!loadError && senders.map((sender) => {
             const ownChecks = checks.filter((check) => check.sender_id === sender.id);
             const inboxCount = ownChecks.filter((check) => check.placement === "inbox").length;
             const spamCount = ownChecks.filter((check) => check.placement === "spam").length;
@@ -445,7 +516,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
             <Inbox className="h-4 w-4 text-primary" />
             Контрольные ящики
           </CardTitle>
-          <Button size="sm" className="gap-1" onClick={openNewSeed}>
+          <Button size="sm" className="gap-1" onClick={openNewSeed} disabled={!organizationId || loadError}>
             <Plus className="h-4 w-4" /> Добавить
           </Button>
         </CardHeader>
@@ -455,13 +526,13 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
             домена допустим пароль ящика, только если провайдер не поддерживает отдельные пароли.
           </p>
 
-          {!loading && seeds.length === 0 && (
+          {!loading && !loadError && seeds.length === 0 && (
             <p className="rounded-lg border p-3 text-sm text-muted-foreground">
               Добавьте Gmail, Яндекс, Mail.ru и собственный контрольный ящик.
             </p>
           )}
 
-          {seeds.map((seed) => (
+          {!loadError && seeds.map((seed) => (
             <div key={seed.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
               {seed.auth_status === "ok" ? (
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
@@ -506,7 +577,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {checks.slice(0, 12).map((check) => {
+          {!loadError && checks.slice(0, 12).map((check) => {
             const seed = seeds.find((row) => row.id === check.seed_id);
             const status = check.placement || check.status;
             return (
@@ -524,7 +595,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
               </div>
             );
           })}
-          {!loading && checks.length === 0 && (
+          {!loading && !loadError && checks.length === 0 && (
             <p className="text-sm text-muted-foreground">Контрольных отправок пока не было.</p>
           )}
         </CardContent>
@@ -533,6 +604,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
       <Dialog
         open={seedDialogOpen}
         onOpenChange={(open) => {
+          if (savingSeed) return;
           setSeedDialogOpen(open);
           if (!open) {
             setEditingSeedId(null);
@@ -543,6 +615,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingSeedId ? "Обновить доступ к ящику" : "Контрольный ящик"}</DialogTitle>
+            <DialogDescription>Настройки собственного контрольного ящика для IMAP-проверки.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -629,7 +702,7 @@ export function MailingDeliverabilityTab({ organizationId }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSeedDialogOpen(false)}>Отмена</Button>
+            <Button variant="outline" disabled={savingSeed} onClick={() => { setSeedDialogOpen(false); setEditingSeedId(null); setSeedDraft(emptyDeliverabilitySeedDraft()); }}>Отмена</Button>
             <Button onClick={() => void saveSeed()} disabled={savingSeed}>
               {savingSeed && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               {editingSeedId ? "Обновить и проверить" : "Сохранить и проверить"}
