@@ -2738,6 +2738,71 @@ export type Database = {
           },
         ]
       }
+      csz_signed_uploads: {
+        Row: {
+          actual_size_bytes: number | null
+          comment: string
+          content_type: string
+          created_at: string
+          declared_size_bytes: number
+          document_type: string
+          extension: string
+          object_path: string
+          organization_id: string
+          original_filename: string
+          receipt_id: string | null
+          received_at: string | null
+          request_id: string
+          status: string
+          storage_object_id: string | null
+          upload_id: string
+        }
+        Insert: {
+          actual_size_bytes?: number | null
+          comment?: string
+          content_type: string
+          created_at?: string
+          declared_size_bytes: number
+          document_type: string
+          extension: string
+          object_path: string
+          organization_id?: string
+          original_filename: string
+          receipt_id?: string | null
+          received_at?: string | null
+          request_id: string
+          status?: string
+          storage_object_id?: string | null
+          upload_id?: string
+        }
+        Update: {
+          actual_size_bytes?: number | null
+          comment?: string
+          content_type?: string
+          created_at?: string
+          declared_size_bytes?: number
+          document_type?: string
+          extension?: string
+          object_path?: string
+          organization_id?: string
+          original_filename?: string
+          receipt_id?: string | null
+          received_at?: string | null
+          request_id?: string
+          status?: string
+          storage_object_id?: string | null
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csz_signed_uploads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_subject_requests: {
         Row: {
           attachment_urls: string[] | null
@@ -14842,6 +14907,11 @@ export type Database = {
         Args: { p_course: string; p_lesson: string; p_student: string }
         Returns: boolean
       }
+      csz_signed_intake_can_insert: {
+        Args: { p_metadata: Json; p_path: string }
+        Returns: boolean
+      }
+      csz_signed_intake_is_admin: { Args: never; Returns: boolean }
       current_company_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
@@ -15063,6 +15133,10 @@ export type Database = {
           expired_company: number
           expired_org: number
         }[]
+      }
+      finalize_csz_signed_upload: {
+        Args: { p_request_id: string; p_upload_id: string }
+        Returns: Json
       }
       find_knowledge_bank_content: {
         Args: { p_min_similarity?: number; p_title: string }
@@ -15382,6 +15456,15 @@ export type Database = {
           smtp_port: number
           smtp_security: string
           smtp_username: string
+        }[]
+      }
+      get_my_course_reviews: {
+        Args: never
+        Returns: {
+          course_id: string
+          duration: string
+          grant_expires_at: string
+          title: string
         }[]
       }
       get_next_document_number: {
@@ -15882,6 +15965,17 @@ export type Database = {
               port: number
             }[]
           }
+      prepare_csz_signed_upload: {
+        Args: {
+          p_comment: string
+          p_document_type: string
+          p_extension: string
+          p_original_filename: string
+          p_request_id: string
+          p_size_bytes: number
+        }
+        Returns: Json
+      }
       prepare_final_test_photo: {
         Args: { p_lesson_id: string; p_request_id: string }
         Returns: Json
