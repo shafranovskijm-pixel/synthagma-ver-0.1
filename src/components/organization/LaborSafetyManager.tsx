@@ -50,6 +50,23 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     );
   }
 
+  if (h.groupsLoadError && !h.selectedGroup) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Охрана труда</h2>
+        <Card role="alert">
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+            <p>{h.groupsLoadError}</p>
+            <Button variant="outline" onClick={() => void h.fetchGroups()}>
+              <RefreshCw className="mr-2 h-4 w-4" />Повторить загрузку
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Groups list view
   if (!h.selectedGroup) {
     return (
@@ -81,7 +98,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                         <CommandItem key={group.id} onSelect={() => { h.setSelectedGroup(group); h.setIsGroupSearchOpen(false); h.setGroupSearch(""); }} className="cursor-pointer">
                           <FolderOpen className="mr-2 h-4 w-4 shrink-0" />
                           <span className="flex-1 truncate">{group.name}</span>
-                          <Badge variant="secondary" className="ml-2 shrink-0">{group.records_count || 0}</Badge>
+                          <Badge variant="secondary" className="ml-2 shrink-0" aria-label={group.records_count == null ? "Количество записей недоступно" : undefined}>{group.records_count ?? "—"}</Badge>
                         </CommandItem>
                       ))}
                       {h.filteredGroups.length > 15 && <div className="px-2 py-1.5 text-xs text-muted-foreground">И ещё {h.filteredGroups.length - 15}...</div>}
@@ -96,13 +113,21 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           </div>
         </div>
 
+        {h.groupCountsUnavailable && (
+          <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-sm">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" />
+            <p className="flex-1">Количество записей временно недоступно. Группы можно открывать.</p>
+            <Button variant="outline" size="sm" onClick={() => void h.fetchGroups()}>Повторить загрузку</Button>
+          </div>
+        )}
+
         {/* Sorting */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Сортировка:</span>
           {(['name', 'created_at', 'records_count'] as const).map(field => {
             const labels = { name: 'По названию', created_at: 'По дате', records_count: 'По кол-ву записей' };
             return (
-              <Button key={field} variant={h.groupSortField === field ? 'secondary' : 'ghost'} size="sm" onClick={() => {
+              <Button key={field} disabled={field === 'records_count' && h.groupCountsUnavailable} variant={h.groupSortField === field ? 'secondary' : 'ghost'} size="sm" onClick={() => {
                 if (h.groupSortField === field) h.setGroupSortDirection(d => d === 'asc' ? 'desc' : 'asc');
                 else { h.setGroupSortField(field); h.setGroupSortDirection(field === 'name' ? 'asc' : 'desc'); }
               }}>
@@ -178,7 +203,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                           {group.name}<ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </h3>
                         <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{group.records_count || 0}</span>
+                          <span className="flex items-center gap-1" aria-label={group.records_count == null ? "Количество записей недоступно" : undefined}><Users className="h-3.5 w-3.5" />{group.records_count ?? "—"}</span>
                           <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(new Date(group.created_at), 'dd.MM.yyyy')}</span>
                         </div>
                       </div>
@@ -223,7 +248,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Удалить группу?</AlertDialogTitle>
-              <AlertDialogDescription>Группа "{h.groupToDelete?.name}" и все записи ({h.groupToDelete?.records_count || 0}) в ней будут удалены.</AlertDialogDescription>
+              <AlertDialogDescription>Группа "{h.groupToDelete?.name}" и все записи{h.groupToDelete?.records_count != null ? ` (${h.groupToDelete.records_count})` : ""} в ней будут удалены.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Отмена</AlertDialogCancel>
