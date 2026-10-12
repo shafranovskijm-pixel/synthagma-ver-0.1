@@ -90,6 +90,7 @@ export function DocumentsKpiDashboard({ organizationId, onNavigate }: Props) {
   const expiringTone = kpi.expiring_soon > 0 ? "warning" : "default";
   const expiredTone = kpi.expired_count > 0 ? "danger" : "default";
   const pdOverdueTone = kpi.pd_requests_overdue > 0 ? "danger" : kpi.pd_requests_open > 0 ? "warning" : "default";
+  const canReadProposals = kpi.proposals_total != null;
 
   const handleExport = () => {
     if (!kpi) return;
@@ -110,9 +111,9 @@ export function DocumentsKpiDashboard({ organizationId, onNavigate }: Props) {
       ["Договоры — всего", kpi.contracts_total],
       ["Договоры — подписано", kpi.contracts_signed],
       ["Договоры — ожидает", kpi.contracts_pending],
-      ["КП — всего", kpi.proposals_total],
-      ["КП — принято", kpi.proposals_accepted],
-      ["Конверсия КП → договор, %", kpi.proposal_to_contract_conversion],
+      ["КП — всего", kpi.proposals_total ?? "Нет доступа"],
+      ["КП — принято", kpi.proposals_accepted ?? "Нет доступа"],
+      ["Конверсия КП → договор, %", kpi.proposal_to_contract_conversion ?? "Нет доступа"],
       ["Запросы ПД — открыто", kpi.pd_requests_open],
       ["Запросы ПД — просрочено", kpi.pd_requests_overdue],
       ["Входящие — всего", kpi.incoming_total],
@@ -210,10 +211,11 @@ export function DocumentsKpiDashboard({ organizationId, onNavigate }: Props) {
           <KpiCard title="Договоры" value={kpi.contracts_total} icon={Receipt} iconColor="text-primary"
             hint={`Подписано: ${kpi.contracts_signed} · Ожидает: ${kpi.contracts_pending}`}
             onClick={goCounter} />
-          <KpiCard title="Коммерческие предложения" value={kpi.proposals_total} icon={FileText} iconColor="text-cyan-500"
-            badge={kpi.proposals_total > 0 ? { text: `${kpi.proposal_to_contract_conversion}%`, tone: "success" } : undefined}
-            hint="Конверсия КП → договор"
-            onClick={goCounter} />
+          <KpiCard title="Коммерческие предложения" value={kpi.proposals_total ?? "Нет доступа"} icon={FileText} iconColor="text-cyan-500"
+            badge={kpi.proposals_total != null && kpi.proposals_total > 0 && kpi.proposal_to_contract_conversion != null
+              ? { text: `${kpi.proposal_to_contract_conversion}%`, tone: "success" } : undefined}
+            hint={canReadProposals ? "Конверсия КП → договор" : undefined}
+            onClick={canReadProposals ? goCounter : undefined} />
           <KpiCard title="Запросы субъектов ПД" value={kpi.pd_requests_open} icon={ShieldAlert}
             iconColor={kpi.pd_requests_overdue > 0 ? "text-destructive" : "text-emerald-500"}
             variant={pdOverdueTone}
