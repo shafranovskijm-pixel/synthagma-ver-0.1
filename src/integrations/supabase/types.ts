@@ -16257,6 +16257,15 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      save_mailing_sender: {
+        Args: {
+          p_organization_id: string
+          p_password?: string
+          p_sender_id: string
+          p_settings: Json
+        }
+        Returns: Json
+      }
       save_student_frdo_data: {
         Args: { p_data: Json; p_organization_id: string; p_user_id: string }
         Returns: {
@@ -16330,6 +16339,14 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      set_mailing_sender_active: {
+        Args: {
+          p_is_active: boolean
+          p_organization_id: string
+          p_sender_id: string
+        }
+        Returns: Json
       }
       set_mailing_sender_warmup: {
         Args: {
