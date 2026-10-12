@@ -1,10 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildFastCampaignSchedule, summarizeFastCampaignSchedule } from "../_shared/fast-campaign-schedule.ts";
+import { canManageMailing } from "../_shared/mailing-authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -59,6 +63,7 @@ serve(async (req: Request) => {
   const requestId = crypto.randomUUID();
   let stage: PrepareStage = "request";
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -85,19 +90,7 @@ serve(async (req: Request) => {
     if (campaignError || !campaign?.organization_id) return jsonError(requestId, stage, "campaign_not_found", 404);
 
     stage = "authorization";
-    const { data: isAdmin } = await userClient.rpc("has_role", {
-      _user_id: authData.user.id,
-      _role: "admin",
-    });
-    let allowed = isAdmin === true;
-    if (!allowed) {
-      const { data: canAccess } = await userClient.rpc("can_access_organization", {
-        _organization_id: campaign.organization_id,
-        _permission: "email.manage",
-      });
-      allowed = canAccess === true;
-    }
-    if (!allowed) return jsonError(requestId, stage, "Forbidden", 403);
+    if (!await canManageMailing(userClient, campaign.organization_id)) return jsonError(requestId, stage, "Forbidden", 403);
     if (campaign.campaign_mode !== "cold_outreach" || !campaign.operator_attested_at) {
       return jsonError(requestId, stage, "cold_outreach_attestation_required", 400);
     }

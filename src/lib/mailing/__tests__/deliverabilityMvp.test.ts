@@ -16,6 +16,7 @@ const anonRevokeMigration = read("supabase/migrations/20260809223500_revoke_anon
 const worker = read("supabase/functions/mailing-deliverability-worker/index.ts");
 const seedTest = read("supabase/functions/mailing-deliverability-seed-test/index.ts");
 const imap = read("supabase/functions/_shared/imap-mini.ts");
+const mailingAuth = read("supabase/functions/_shared/mailing-authorization.ts");
 
 describe("deliverability seed presets", () => {
   it("contain no credentials", () => {
@@ -97,7 +98,12 @@ describe("deliverability worker boundaries", () => {
 
   it("requires a long cron secret or an authorized organization user", () => {
     expect(worker).toContain("expectedCronSecret.length >= 24");
-    expect(worker).toContain("can_access_organization");
+    expect(worker).toContain("canManageMailing(userClient, requestedSender.organization_id)");
+    expect(mailingAuth).toContain('client.rpc("can_access_organization"');
+    expect(mailingAuth).toContain('_permission: "sales.write"');
+    expect(mailingAuth).toContain("mailingAccountActive(client)");
+    expect(worker).not.toMatch(/canManageMailing\(admin\b|admin\.rpc\("can_access_organization"/);
+    expect(mailingAuth).not.toMatch(/admin\.rpc|createClient|SERVICE_ROLE/);
     expect(worker).toContain('return json({ error: "Unauthorized" }, 401)');
     expect(worker).toContain('return json({ error: "Forbidden" }, 403)');
     expect(worker).toContain('pendingQuery.eq("sender_id", requestedSenderId)');
@@ -123,9 +129,11 @@ describe("deliverability worker boundaries", () => {
   });
 
   it("decrypts a seed secret only after tenant authorization", () => {
-    const authorizationGate = seedTest.indexOf('if (!allowed) return json({ error: "Forbidden" }, 403)');
+    const authorizationGate = seedTest.indexOf("canManageMailing(userClient, seedMeta.organization_id)");
     const decryptCall = seedTest.indexOf('"get_mailing_deliverability_seed_secret"');
     expect(authorizationGate).toBeGreaterThan(-1);
     expect(decryptCall).toBeGreaterThan(authorizationGate);
+    expect(seedTest.slice(authorizationGate, decryptCall)).toContain('return json({ error: "Forbidden" }, 403)');
+    expect(seedTest).not.toMatch(/canManageMailing\(admin\b|admin\.rpc\("can_access_organization"/);
   });
 });

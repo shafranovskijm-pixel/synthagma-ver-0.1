@@ -72,18 +72,18 @@ export interface SenderDraft {
 
 export function emptySenderDraft(): SenderDraft {
   return {
-    presetKey: TORGI_PRESET.key,
+    presetKey: CUSTOM_PRESET.key,
     label: "",
     fromName: "",
     fromEmail: "",
-    smtpHost: TORGI_PRESET.smtp_host,
-    smtpPort: TORGI_PRESET.smtp_port,
-    smtpSecurity: TORGI_PRESET.smtp_security,
+    smtpHost: CUSTOM_PRESET.smtp_host,
+    smtpPort: CUSTOM_PRESET.smtp_port,
+    smtpSecurity: CUSTOM_PRESET.smtp_security,
     smtpUsername: "",
     password: "",
-    imapHost: TORGI_PRESET.imap_host,
-    imapPort: TORGI_PRESET.imap_port,
-    imapSecurity: TORGI_PRESET.imap_security,
+    imapHost: CUSTOM_PRESET.imap_host,
+    imapPort: CUSTOM_PRESET.imap_port,
+    imapSecurity: CUSTOM_PRESET.imap_security,
     imapUsername: "",
     dailyLimit: 200,
   };
@@ -94,12 +94,22 @@ export function applyPreset(draft: SenderDraft, presetKey: string): SenderDraft 
   return {
     ...draft,
     presetKey: preset.key,
-    smtpHost: preset.smtp_host || draft.smtpHost,
+    smtpHost: preset.smtp_host,
     smtpPort: preset.smtp_port,
     smtpSecurity: preset.smtp_security,
-    imapHost: preset.imap_host || draft.imapHost,
+    imapHost: preset.imap_host,
     imapPort: preset.imap_port,
     imapSecurity: preset.imap_security,
+  };
+}
+
+/** Follow the address while the login is automatic; preserve a manually chosen login. */
+export function withSenderEmail(draft: SenderDraft, fromEmail: string): SenderDraft {
+  return {
+    ...draft,
+    fromEmail,
+    smtpUsername: !draft.smtpUsername || draft.smtpUsername === draft.fromEmail
+      ? fromEmail : draft.smtpUsername,
   };
 }
 

@@ -121,8 +121,10 @@ describe("run-email-campaign: серверный consent-guard", () => {
     expect(runner).toContain("Согласие получателей не подтверждено");
   });
 
-  it("подтверждение пишется server-side отдельным service-role RPC", () => {
-    expect(runner).toContain("confirm_campaign_send_consent_admin");
+  it("подтверждение передаётся server-side в атомарный захват запуска", () => {
+    expect(runner).toContain('admin.rpc("claim_ordinary_campaign_run"');
+    expect(runner).toContain("p_consent_confirmed: consentConfirmed, p_requested_by: requestedBy");
+    expect(runner).not.toContain('userClient.rpc("claim_ordinary_campaign_run"');
   });
 
   it("до materialize проверяются контент и источник получателей", () => {
@@ -136,10 +138,11 @@ describe("run-email-campaign: серверный consent-guard", () => {
     expect(runner).toContain("кампания оставлена черновиком");
   });
 
-  it("paused/resume с пустой очередью по-прежнему завершается", () => {
+  it("paused/resume с пустой очередью завершает принадлежащий запуск через RPC", () => {
     const idx = runner.indexOf("if (pendingCount === 0)");
     const tail = runner.slice(idx, idx + 900);
-    expect(tail).toContain('status: "completed"');
+    expect(tail).toContain('finishOwnedRun("completed", "no_selected_pending")');
+    expect(tail).not.toContain('status: "completed"');
   });
 
   it("unsubscribe продолжает добавляться server-side (не в этой функции)", () => {

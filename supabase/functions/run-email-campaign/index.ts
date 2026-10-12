@@ -20,11 +20,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { hasVerifiedAdminRole } from "./admin-role.ts";
 import { platformSenderId, platformSmtp } from "../_shared/platform-sender.ts";
-import { dispatchOrdinaryBatch, requireQuotaDecision } from "./run-lifecycle.ts";
+import { dispatchOrdinaryBatch, requireQuotaDecision, reserveOrdinarySenderBatch, ORDINARY_SENDER_BATCH_SIZE } from "./run-lifecycle.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 
 interface ReqBody { campaignId: string; consent_confirmed?: boolean; }
@@ -33,6 +35,7 @@ const SEND_DELAY_MS = 1500;
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   let finishOwnedRun: ((outcome: string, reason?: string) => Promise<any>) | null = null;
   let quotaRequested = false;
@@ -330,6 +333,10 @@ serve(async (req: Request) => {
       pendingQuery = pendingQuery.not("subject_variant", "is", null);
     }
 
+    // One extra row tells us whether an organization sender has more work after
+    // this batch, without reading the entire campaign or relying on API row caps.
+    if (mailingSenderId) pendingQuery = pendingQuery.order("id").limit(ORDINARY_SENDER_BATCH_SIZE + 1);
+
     const { data: pending, error: pendingErr } = await pendingQuery;
     // Critical: an error MUST NOT be interpreted as "0 pending, mark completed".
     if (pendingErr || !Array.isArray(pending)) {
@@ -357,6 +364,7 @@ serve(async (req: Request) => {
     // Org legacy (sender_id = null): keep claim_org_email_quota.
     let quota: any = null;
     let campaignLedgerId: string | null = null;
+    let batchSize = pendingCount;
     // Once requested, an RPC/network error is an UNKNOWN reservation, not a
     // reason to consume again or refund automatically on the next cron tick.
     quotaRequested = true;
@@ -368,20 +376,15 @@ serve(async (req: Request) => {
       if (pqErr) throw new Error("quota_unknown");
       quota = pq;
     } else if (mailingSenderId) {
-      const { data: rq, error: rqErr } = await admin.rpc("reserve_mailing_campaign_quota", {
+      const reservation = await reserveOrdinarySenderBatch(pendingCount, async count => admin.rpc("reserve_mailing_campaign_quota", {
         p_sender_id: mailingSenderId,
         p_campaign_id: campaignId,
-        p_count: pendingCount,
+        p_count: count,
         p_requested_by: requestedBy,
-      });
-      if (rqErr) throw new Error("quota_unknown");
-      const reservation = Array.isArray(rq) ? rq[0] : rq;
-      quota = reservation;
-      requireQuotaDecision(quota);
-      if (quota.allowed === true) {
-        if (typeof reservation.ledger_id !== "string" || !reservation.ledger_id) throw new Error("quota_ledger_unknown");
-        campaignLedgerId = reservation.ledger_id;
-      }
+      }));
+      quota = reservation.quota;
+      campaignLedgerId = reservation.ledgerId;
+      batchSize = reservation.batchSize;
     } else {
       if (!campaign.organization_id) {
         throw new Error("org_without_organization");
@@ -405,7 +408,8 @@ serve(async (req: Request) => {
     }
 
 
-    if (campaign.ab_test_enabled && campaign.subject_b && !campaign.ab_winner && !campaign.ab_sample_started_at) {
+    const startsAbSample = campaign.ab_test_enabled && campaign.subject_b && !campaign.ab_winner && !campaign.ab_sample_started_at;
+    if (!mailingSenderId && startsAbSample) {
       const { error: sampleError } = await admin.from("email_campaigns").update({
         ab_sample_started_at: new Date().toISOString(),
       }).eq("id", campaignId);
@@ -415,7 +419,7 @@ serve(async (req: Request) => {
     const finish = finishOwnedRun;
     const runner = (async () => {
       try {
-        const batch = await dispatchOrdinaryBatch(pending!, {
+        const batch = await dispatchOrdinaryBatch(pending!.slice(0, batchSize), {
           invoke: (recipientId) => admin.functions.invoke("send-campaign-email", {
             body: { campaignId, recipientId, runToken },
           }),
@@ -433,9 +437,21 @@ serve(async (req: Request) => {
           });
           if (error) throw new Error("result_accounting_unknown");
         }
+        // The winner worker starts its observation window at this timestamp.
+        // A sample spanning daily quotas must not start that clock after only
+        // its first partial batch; all selected sample outcomes must be durable.
+        if (mailingSenderId && startsAbSample && batchSize === pendingCount) {
+          const { error } = await admin.from("email_campaigns").update({
+            ab_sample_started_at: new Date().toISOString(),
+          }).eq("id", campaignId);
+          if (error) throw new Error("sample_timestamp_unknown");
+        }
         // Counts/status are recomputed under the claim lock; A/B leftovers,
         // in-flight attempts and uncertainty can never become 'completed'.
-        await finish("completed", "batch_finished");
+        // An explicit quota pause is resumable by the existing scheduler. The
+        // final batch still uses authoritative completion/A-B checks in SQL.
+        if (mailingSenderId && batchSize < pendingCount) await finish("paused", "quota_denied");
+        else await finish("completed", "batch_finished");
       } catch (error) {
         console.error("ordinary run stopped", error);
         try { await finish("uncertain", "run_result_unknown"); }
@@ -451,7 +467,7 @@ serve(async (req: Request) => {
       await runner;
     }
 
-    return json({ ok: true, started: pendingCount, quota }, 200);
+    return json({ ok: true, started: batchSize, deferred: batchSize < pendingCount, quota }, 200);
   } catch (e) {
     console.error("run-email-campaign error", e);
     if (finishOwnedRun) {

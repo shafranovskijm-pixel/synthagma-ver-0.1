@@ -11,6 +11,7 @@ import {
   validateSenderDraft,
   validateStep,
   MAX_SEED_EMAILS,
+  withSenderEmail,
 } from "@/lib/mailing/senderPresets";
 import { validateDraft, validateSend } from "@/lib/mailing/campaignDraftGate";
 
@@ -37,7 +38,7 @@ describe("пресет torgi.com.ru", () => {
 
 describe("мастер отправителя", () => {
   const full = () => ({
-    ...emptySenderDraft(),
+    ...applyPreset(emptySenderDraft(), "torgi.com.ru"),
     label: "Торги",
     fromEmail: "info@torgi.com.ru",
     smtpUsername: "info@torgi.com.ru",
@@ -52,6 +53,26 @@ describe("мастер отправителя", () => {
 
   it("валидный черновик проходит целиком", () => {
     expect(validateSenderDraft(full()).ok).toBe(true);
+  });
+
+  it("следует за полным email при посимвольном вводе и сохраняет ручной SMTP-логин", () => {
+    let draft = emptySenderDraft();
+    for (const letter of "user@example.org") draft = withSenderEmail(draft, draft.fromEmail + letter);
+    expect(draft.smtpUsername).toBe("user@example.org");
+    draft = withSenderEmail({ ...draft, smtpUsername: "custom-login" }, "new@example.org");
+    expect(draft.smtpUsername).toBe("custom-login");
+  });
+
+  it("не оставляет чужие почтовые серверы после выбора ручной настройки", () => {
+    const draft = applyPreset({ ...applyPreset(emptySenderDraft(), "torgi.com.ru"), smtpUsername: "user@example.org" }, "custom");
+    expect(draft.smtpHost).toBe("");
+    expect(draft.imapHost).toBe("");
+    expect(draft.smtpUsername).toBe("user@example.org");
+    expect(validateStep("smtp", { ...draft, password: "not-a-real-password" }).ok).toBe(false);
+  });
+
+  it("начинает с ручного подключения без чужих почтовых серверов", () => {
+    expect(emptySenderDraft()).toMatchObject({ presetKey: "custom", smtpHost: "", imapHost: "" });
   });
 
   it("строка для БД не содержит plaintext-пароля", () => {

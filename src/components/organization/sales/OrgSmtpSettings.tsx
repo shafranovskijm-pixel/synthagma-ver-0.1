@@ -56,13 +56,13 @@ export function OrgSmtpSettings({ organizationId }: Props) {
 
 
   const handleSave = async () => {
-    await save({
+    const saved = await save({
       host, port, username, password,
       from_email: fromEmail, from_name: fromName, encryption,
       provider_daily_limit: dailyLimit,
       safe_warmup_enabled: safeWarmup,
     });
-    setPassword("");
+    if (saved) setPassword("");
   };
 
   if (loading) return <p className="text-sm text-muted-foreground">Загрузка SMTP-настроек...</p>;
@@ -89,6 +89,12 @@ export function OrgSmtpSettings({ organizationId }: Props) {
 
   return (
     <div className="space-y-4">
+      {loadErrorKind && (
+        <div role="alert" className="rounded-lg border border-destructive/30 p-3 space-y-2 text-sm">
+          <p>Не удалось обновить SMTP-настройки. Показаны ранее загруженные данные.</p>
+          <Button variant="outline" size="sm" onClick={retryLoad}>Повторить загрузку</Button>
+        </div>
+      )}
       {loaded && !settings && (
         <Card className="border-orange-500/30 bg-orange-500/5">
           <CardContent className="p-4 space-y-2">

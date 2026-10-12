@@ -1,8 +1,8 @@
 /**
- * Contract tests for Phase 5C.1.a.1 pending Edge Functions.
+ * Source contracts for the deployed Edge Function paths.
  *
  * We cannot import Deno files from vitest, so these tests exercise
- * structural / textual contracts of the pending source. They catch
+ * structural / textual contracts of the source. They catch
  * regressions in:
  *
  *   1. Which Supabase client each RPC is invoked through
@@ -16,9 +16,7 @@
  *      subject_variant filter on pending).
  *   4. That body.to is not read in test-org-smtp (org-scope recipient
  *      is always the stored from_email).
- *   5. That test-org-smtp uses the pending-relative import path
- *      ("../../functions/_shared/smtp-sender.ts") — the PROMOTION.md
- *      procedure rewrites it to "../_shared/..." on copy.
+ *   5. That test-org-smtp uses the shared SMTP implementation.
  */
 
 import { describe, it, expect } from "vitest";
@@ -33,6 +31,14 @@ const SMTP = readFileSync(
   resolve(__dirname, "../../../supabase/functions/test-org-smtp/index.ts"),
   "utf8",
 );
+const MAILING_AUTH = readFileSync(
+  resolve(__dirname, "../../../supabase/functions/_shared/mailing-authorization.ts"),
+  "utf8",
+);
+const ADMIN_ROLE = readFileSync(
+  resolve(__dirname, "../../../supabase/functions/run-email-campaign/admin-role.ts"),
+  "utf8",
+);
 const CURRENT_RUN = RUN;
 
 
@@ -42,8 +48,13 @@ describe("5C.1.a.1 — RPC client routing (run-email-campaign)", () => {
     expect(RUN).not.toMatch(/admin\.rpc\("can_access_organization"/);
   });
 
-  it("has_role is invoked via userClient (never via admin)", () => {
-    expect(RUN).toMatch(/userClient\.rpc\("has_role"/);
+  it("admin role is read for the verified user through the caller client", () => {
+    expect(RUN).toContain("hasVerifiedAdminRole(userClient, userId)");
+    expect(ADMIN_ROLE).toContain("await userClient");
+    expect(ADMIN_ROLE).toContain('.from("user_roles")');
+    expect(ADMIN_ROLE).toContain('.eq("user_id", verifiedUserId)');
+    expect(ADMIN_ROLE).toContain('.eq("role", "admin")');
+    expect(RUN).not.toMatch(/hasVerifiedAdminRole\(admin\b/);
     expect(RUN).not.toMatch(/admin\.rpc\("has_role"/);
   });
 
@@ -58,8 +69,13 @@ describe("5C.1.a.1 — RPC client routing (run-email-campaign)", () => {
 
 describe("5C.1.a.1 — RPC client routing (test-org-smtp)", () => {
   it("can_access_organization is invoked via userClient", () => {
-    expect(SMTP).toMatch(/userClient\.rpc\("can_access_organization"/);
+    expect(SMTP).toContain("canManageMailing(userClient, body.organizationId)");
+    expect(MAILING_AUTH).toContain('client.rpc("can_access_organization"');
+    expect(MAILING_AUTH).toContain('_permission: "sales.write"');
+    expect(MAILING_AUTH).toContain("mailingAccountActive(client)");
+    expect(SMTP).not.toMatch(/canManageMailing\(admin\b/);
     expect(SMTP).not.toMatch(/admin\.rpc\("can_access_organization"/);
+    expect(MAILING_AUTH).not.toMatch(/admin\.rpc|createClient|SERVICE_ROLE/);
   });
 
   it("has_role is invoked via userClient", () => {

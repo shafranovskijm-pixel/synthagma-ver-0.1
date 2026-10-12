@@ -86,7 +86,7 @@ export function buildFastCampaignSchedule({
         chosenSlots = [candidates[senderIndex % candidates.length].slot];
       } else {
         let best: { pair: [number, number]; score: number[] } | null = null;
-        allowedPairs.forEach((pair, pairIndex) => {
+        for (const [pairIndex, pair] of allowedPairs.entries()) {
           const [first, second] = pair;
           const score = [
             Math.max(loads[first] + 1, loads[second] + 1),
@@ -97,7 +97,7 @@ export function buildFastCampaignSchedule({
           const better = !best || score.some((value, index) => value < best!.score[index]
             && score.slice(0, index).every((prior, priorIndex) => prior === best!.score[priorIndex]));
           if (better) best = { pair, score };
-        });
+        }
         if (!best) throw new Error("unable to allocate sender slots");
         chosenSlots = best.pair;
       }

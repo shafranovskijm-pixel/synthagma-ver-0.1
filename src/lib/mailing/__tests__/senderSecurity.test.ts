@@ -6,15 +6,21 @@ const read = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
 
 const testFn = read("supabase/functions/mailing-sender-test/index.ts");
 const seedFn = read("supabase/functions/mailing-seed-send/index.ts");
+const mailingAuth = read("supabase/functions/_shared/mailing-authorization.ts");
 const migration = read(
   "supabase/migrations/20260805075850_f00c352f-c398-46ee-907a-1e62265ec0d7.sql",
 );
 
 describe("mailing-sender-test: безопасность", () => {
-  it("проверяет membership организации аккаунта или роль админа", () => {
-    expect(testFn).toContain("can_access_organization");
+  it("проверяет право записи организации через JWT вызывающего до чтения секрета", () => {
+    const gate = testFn.indexOf("canManageMailing(userClient, sender.organization_id)");
+    expect(gate).toBeGreaterThan(-1);
+    expect(testFn.indexOf('"get_mailing_sender_secret"')).toBeGreaterThan(gate);
+    expect(mailingAuth).toContain('client.rpc("can_access_organization"');
+    expect(mailingAuth).toContain('_permission: "sales.write"');
+    expect(mailingAuth).toContain("mailingAccountActive(client)");
     expect(testFn).toContain("cfg.organization_id");
-    expect(testFn).toContain('has_role');
+    expect(testFn).not.toMatch(/canManageMailing\(admin\b|admin\.rpc\("can_access_organization"/);
     expect(testFn).toContain('return json({ error: "Forbidden" }, 403)');
   });
 

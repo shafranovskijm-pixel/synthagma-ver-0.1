@@ -4,10 +4,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { closeImap, connectImap } from "../_shared/imap-mini.ts";
+import { canManageMailing } from "../_shared/mailing-authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -29,6 +33,7 @@ function categorize(message: string): Category {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
@@ -49,24 +54,12 @@ serve(async (req: Request) => {
     const admin = createClient(url, serviceKey);
     const { data: seedMeta } = await admin
       .from("mailing_deliverability_seeds")
-      .select("organization_id")
+      .select("organization_id, updated_at")
       .eq("id", seedId)
       .maybeSingle();
     if (!seedMeta) return json({ error: "Forbidden" }, 403);
 
-    const { data: isAdmin } = await userClient.rpc("has_role", {
-      _user_id: authData.user.id,
-      _role: "admin",
-    });
-    let allowed = !!isAdmin;
-    if (!allowed) {
-      const { data: canAccess } = await userClient.rpc("can_access_organization", {
-        _organization_id: seedMeta.organization_id,
-        _permission: "email.manage",
-      });
-      allowed = !!canAccess;
-    }
-    if (!allowed) return json({ error: "Forbidden" }, 403);
+    if (!await canManageMailing(userClient, seedMeta.organization_id)) return json({ error: "Forbidden" }, 403);
 
     // Decrypt only after the caller's tenant permission has been established.
     const { data: secretRows, error: secretError } = await admin.rpc(
@@ -83,7 +76,7 @@ serve(async (req: Request) => {
         auth_status: "error",
         error_category: "config",
         last_tested_at: new Date().toISOString(),
-      }).eq("id", seedId);
+      }).eq("id", seedId).eq("organization_id", seedMeta.organization_id).eq("updated_at", seedMeta.updated_at);
       return json({ success: false, error_category: "config" });
     }
 
@@ -103,12 +96,14 @@ serve(async (req: Request) => {
 
     const latency = Date.now() - started;
     const success = category === "ok";
-    await admin.from("mailing_deliverability_seeds").update({
+    const { data: saved, error: saveError } = await admin.from("mailing_deliverability_seeds").update({
       auth_status: success ? "ok" : "error",
       error_category: success ? null : category,
       latency_ms: latency,
       last_tested_at: new Date().toISOString(),
-    }).eq("id", seedId);
+    }).eq("id", seedId).eq("organization_id", seedMeta.organization_id).eq("updated_at", seedMeta.updated_at)
+      .select("id").maybeSingle();
+    if (saveError || !saved) return json({ success: false, error_category: "config", retry_required: true });
 
     return json({
       success,

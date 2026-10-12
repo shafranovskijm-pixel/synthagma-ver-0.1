@@ -4,10 +4,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { connectImap, closeImap } from "../_shared/imap-mini.ts";
+import { smtpAuthOnly, type AuthConnection } from "../_shared/smtp-auth-only.ts";
+import { canManageMailing } from "../_shared/mailing-authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sintagma-Function-Revision",
+  "X-Sintagma-Function-Revision": "s004-mailing-beta-20261012",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -27,69 +32,9 @@ function categorize(message: string): Category {
   return "unknown";
 }
 
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-
-async function smtpAuthOnly(cfg: {
-  host: string;
-  port: number;
-  security: string;
-  username: string;
-  password: string;
-}): Promise<void> {
-  const useTls = cfg.security !== "starttls" && cfg.security !== "none";
-  let conn: Deno.Conn = useTls
-    ? await Deno.connectTls({ hostname: cfg.host, port: cfg.port })
-    : await Deno.connect({ hostname: cfg.host, port: cfg.port });
-
-  const buf = new Uint8Array(4096);
-  const read = async (): Promise<string> => {
-    const n = await conn.read(buf);
-    if (n === null) throw new Error("SMTP connection closed");
-    return dec.decode(buf.subarray(0, n));
-  };
-  const write = async (line: string) => {
-    await conn.write(enc.encode(line + "\r\n"));
-  };
-  const expect = async (codes: string[], step: string) => {
-    const resp = await read();
-    if (!codes.some((c) => resp.startsWith(c))) {
-      throw new Error(`SMTP ${step} failed: ${resp.slice(0, 120)}`);
-    }
-    return resp;
-  };
-
-  try {
-    await expect(["220"], "greeting");
-    await write(`EHLO ${cfg.host}`);
-    await expect(["250"], "EHLO");
-
-    if (cfg.security === "starttls") {
-      await write("STARTTLS");
-      await expect(["220"], "STARTTLS");
-      conn = await Deno.startTls(conn as Deno.TcpConn, { hostname: cfg.host });
-      await write(`EHLO ${cfg.host}`);
-      await expect(["250"], "EHLO");
-    }
-
-    await write("AUTH LOGIN");
-    await expect(["334"], "AUTH");
-    await write(btoa(cfg.username));
-    await expect(["334"], "AUTH username");
-    await write(btoa(cfg.password));
-    await expect(["235"], "authentication");
-    await write("QUIT");
-  } finally {
-    try {
-      conn.close();
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -104,31 +49,24 @@ serve(async (req: Request) => {
 
     const body = await req.json().catch(() => ({}));
     const senderId = typeof body?.sender_id === "string" ? body.sender_id : "";
-    const mode = body?.mode === "imap" ? "imap" : "smtp";
+    if (body?.mode !== "imap" && body?.mode !== "smtp") return json({ error: "Invalid mode" }, 400);
+    const mode = body.mode;
     if (!senderId) return json({ error: "sender_id required" }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-
+    // Resolve only non-secret tenant metadata before the caller permission gate.
+    const { data: sender, error: senderError } = await admin.from("mailing_senders")
+      .select("organization_id, updated_at").eq("id", senderId).maybeSingle();
+    if (senderError || !sender || !await canManageMailing(userClient, sender.organization_id)) {
+      return json({ error: "Forbidden" }, 403);
+    }
     const { data: rows, error: secretErr } = await admin.rpc("get_mailing_sender_secret", {
       p_sender_id: senderId,
     });
     const cfg = Array.isArray(rows) ? rows[0] : rows;
     if (secretErr || !cfg) return json({ success: false, error_category: "config" }, 200);
 
-    // Авторизация: администратор платформы ИЛИ участник организации аккаунта.
-    const { data: isAdmin } = await userClient.rpc("has_role", {
-      _user_id: u.user.id,
-      _role: "admin",
-    });
-    let allowed = !!isAdmin;
-    if (!allowed) {
-      const { data: canAccess } = await userClient.rpc("can_access_organization", {
-        _organization_id: cfg.organization_id,
-        _permission: "email.manage",
-      });
-      allowed = !!canAccess;
-    }
-    if (!allowed) return json({ error: "Forbidden" }, 403);
+    if (cfg.organization_id !== sender.organization_id) return json({ error: "Forbidden" }, 403);
 
     if (!cfg.secret) {
       await admin
@@ -138,7 +76,7 @@ serve(async (req: Request) => {
             ? { smtp_status: "error", smtp_error_category: "config", last_tested_at: new Date().toISOString() }
             : { imap_status: "error", imap_error_category: "config", imap_last_tested_at: new Date().toISOString() },
         )
-        .eq("id", senderId);
+        .eq("id", senderId).eq("organization_id", sender.organization_id).eq("updated_at", sender.updated_at);
       return json({ success: false, error_category: "config" }, 200);
     }
 
@@ -152,6 +90,9 @@ serve(async (req: Request) => {
           security: cfg.smtp_security || "ssl",
           username: cfg.smtp_username,
           password: cfg.secret,
+        }, {
+          connect: (tls, host, port) => tls ? Deno.connectTls({ hostname: host, port }) : Deno.connect({ hostname: host, port }),
+          startTls: (connection: AuthConnection, host) => Deno.startTls(connection as Deno.TcpConn, { hostname: host }),
         });
       } else {
         if (!cfg.imap_host) throw new Error("config: imap host missing");
@@ -185,7 +126,11 @@ serve(async (req: Request) => {
             imap_latency_ms: latency,
             imap_last_tested_at: new Date().toISOString(),
           };
-    await admin.from("mailing_senders").update(patch).eq("id", senderId);
+    const { data: saved, error: saveError } = await admin.from("mailing_senders").update(patch)
+      .eq("id", senderId).eq("organization_id", sender.organization_id).eq("updated_at", sender.updated_at)
+      .select("id").maybeSingle();
+    // A concurrent credential edit must never acquire an old successful test.
+    if (saveError || !saved) return json({ success: false, error_category: "config", retry_required: true }, 200);
 
     // Ответ содержит только success / error_category / latency_ms.
     return json({ success, error_category: success ? null : category, latency_ms: latency }, 200);
