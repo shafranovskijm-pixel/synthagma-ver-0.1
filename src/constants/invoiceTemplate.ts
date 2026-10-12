@@ -1,6 +1,6 @@
 import { CONTRACT_SIGNATURE_B64, CONTRACT_STAMP_B64 } from './contractAssets';
 import { clampRequisite, escapeHtml } from '@/lib/html/escapeHtml';
-import { DEFAULT_OPERATOR_REQUISITES, type OperatorRequisites } from './operatorDetails';
+import { DEFAULT_OPERATOR_REQUISITES, readStoredCompanyCardRequisites, type OperatorRequisites } from './operatorDetails';
 import { loadOperatorRequisites } from '@/hooks/useOperatorRequisites';
 
 export interface InvoiceData {
@@ -44,7 +44,8 @@ export function generateInvoiceHtmlSync(
   return renderInvoiceHtml(data, requisites);
 }
 
-function renderInvoiceHtml(data: InvoiceData, seller: OperatorRequisites): string {
+function renderInvoiceHtml(data: InvoiceData, requisites: OperatorRequisites): string {
+  const seller = readStoredCompanyCardRequisites(requisites);
   const serviceName = `Предоставление доступа к платформе «Синтагма». Тариф «${escapeHtml(clampRequisite(data.planName))}», ${pluralMonths(data.periodMonths)}`;
   const buyerName = escapeHtml(clampRequisite(data.buyerName));
   const buyerInn = escapeHtml(clampRequisite(data.buyerInn));

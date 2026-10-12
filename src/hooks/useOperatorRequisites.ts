@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DEFAULT_OPERATOR_REQUISITES,
+  readStoredCompanyCardRequisites,
   type OperatorRequisites,
 } from "@/constants/operatorDetails";
 
@@ -9,31 +10,35 @@ const SETTING_KEY = "operator_requisites";
 
 /**
  * Загружает реквизиты оператора (ИП Шафрановский М.М.) из app_settings.
- * Возвращает DEFAULT_OPERATOR_REQUISITES, если запись отсутствует или
- * запрос завершился ошибкой (офлайн, проблемы с сетью и т.п.).
+ * При недоступной/отсутствующей записи использует подтверждённый счёт 408….
+ * Успешно прочитанные некорректные или старые реквизиты не заменяет фолбэком.
  *
  * Может вызываться вне React-контекста (используется в генераторах счетов).
  */
-export async function loadOperatorRequisites(): Promise<OperatorRequisites> {
+async function fetchOperatorRequisites(): Promise<unknown> {
   try {
     const { data, error } = await supabase
       .from("app_settings")
       .select("setting_value")
       .eq("setting_key", SETTING_KEY)
       .maybeSingle();
-    if (error || !data?.setting_value) return DEFAULT_OPERATOR_REQUISITES;
-    const parsed = JSON.parse(data.setting_value) as Partial<OperatorRequisites>;
-    return { ...DEFAULT_OPERATOR_REQUISITES, ...parsed };
+    if (error || !data) return DEFAULT_OPERATOR_REQUISITES;
+    return data.setting_value;
   } catch {
     return DEFAULT_OPERATOR_REQUISITES;
   }
 }
 
+export async function loadOperatorRequisites(): Promise<OperatorRequisites> {
+  return readStoredCompanyCardRequisites(await fetchOperatorRequisites());
+}
+
 export async function saveOperatorRequisites(req: OperatorRequisites): Promise<void> {
+  const current = readStoredCompanyCardRequisites(req);
   const { error } = await supabase
     .from("app_settings")
     .upsert(
-      { setting_key: SETTING_KEY, setting_value: JSON.stringify(req), updated_at: new Date().toISOString() },
+      { setting_key: SETTING_KEY, setting_value: JSON.stringify(current), updated_at: new Date().toISOString() },
       { onConflict: "setting_key" }
     );
   if (error) throw error;
@@ -46,12 +51,36 @@ export async function saveOperatorRequisites(req: OperatorRequisites): Promise<v
 export function useOperatorRequisites() {
   const [requisites, setRequisites] = useState<OperatorRequisites>(DEFAULT_OPERATOR_REQUISITES);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await loadOperatorRequisites();
-    setRequisites(r);
-    setLoading(false);
+    setError(null);
+    try {
+      const stored = await fetchOperatorRequisites();
+      try {
+        setRequisites(readStoredCompanyCardRequisites(stored));
+      } catch (failure) {
+        // Only the settings editor uses this hook. Keep invalid saved fields editable;
+        // document generators call the strict loadOperatorRequisites instead.
+        let parsed: unknown = stored;
+        if (typeof stored === "string") {
+          try { parsed = JSON.parse(stored); } catch { parsed = null; }
+        }
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const editable = { ...DEFAULT_OPERATOR_REQUISITES };
+          for (const key of Object.keys(editable) as (keyof OperatorRequisites)[]) {
+            if (typeof parsed[key] === "string") editable[key] = parsed[key];
+          }
+          setRequisites(editable);
+        }
+        throw failure;
+      }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Не удалось загрузить реквизиты оператора.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -69,5 +98,5 @@ export function useOperatorRequisites() {
     };
   }, [refresh]);
 
-  return { requisites, loading, refresh, save: saveOperatorRequisites };
+  return { requisites, loading, error, refresh, save: saveOperatorRequisites };
 }

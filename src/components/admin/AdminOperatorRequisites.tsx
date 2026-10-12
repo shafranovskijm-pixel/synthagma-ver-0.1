@@ -49,7 +49,7 @@ const SECTIONS: { title: string; fields: { key: FieldKey; label: string; placeho
 ];
 
 export function AdminOperatorRequisites() {
-  const { requisites, loading } = useOperatorRequisites();
+  const { requisites, loading, error, refresh } = useOperatorRequisites();
   const [form, setForm] = useState<OperatorRequisites>(DEFAULT_OPERATOR_REQUISITES);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -70,6 +70,7 @@ export function AdminOperatorRequisites() {
     setSaving(true);
     try {
       await saveOperatorRequisites(form);
+      await refresh();
       toast.success("Реквизиты сохранены");
       setDirty(false);
     } catch (e: any) {
@@ -94,6 +95,12 @@ export function AdminOperatorRequisites() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <Card role="alert" className="p-4 border-destructive/30 bg-destructive/5 text-sm text-destructive">
+          <p>{error}</p>
+          <p className="mt-1">Исправьте реквизиты в форме ниже и сохраните. Документы с некорректными сохранёнными реквизитами не формируются.</p>
+        </Card>
+      )}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex gap-3">
           <div className="shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
