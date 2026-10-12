@@ -25,7 +25,7 @@ describe("approved organization navigation regressions", () => {
     expect(header).not.toContain("activeTab === \"sales\" && (");
   });
 
-  it("keeps unfinished CRM and demo course payments out of the organization shell", () => {
+  it("keeps the legacy sales manager and demo course payments out of the organization shell", () => {
     const sidebar = read("src/components/organization/OrgSidebar.tsx");
     expect(sidebar).not.toContain('label: "Продажи"');
 
@@ -34,6 +34,7 @@ describe("approved organization navigation regressions", () => {
 
     const renderer = read("src/components/organization/tabs/TabContentRenderer.tsx");
     expect(renderer).not.toContain("OrgSalesManager");
+    expect(renderer).toContain("OrgCrmBetaWorkspace");
     expect(renderer).not.toContain("PaymentsTab");
 
     const subscription = read("src/components/organization/SubscriptionTab.tsx");

@@ -45,6 +45,10 @@ export function useTabNavigation({
     const normalizedTab = normalizeOrganizationWorkspaceTab(tab);
     setSearchParams((prev) => {
       const next = resolveTabParams(prev, normalizedTab);
+      // A top-level menu selection resets CRM detail filters. Browser Back
+      // still restores the complete previous URL, including its CRM client.
+      next.delete("crmTab");
+      next.delete("crmClient");
       // Selecting the top-level Companies item means its list, while a
       // companiesPath(companyId) deep link remains independently reloadable.
       if (normalizedTab === "organizations") next.delete("companyId");
@@ -58,8 +62,8 @@ export function useTabNavigation({
     });
   }, [activeTab, setSearchParams]);
 
-  // Old bookmarks must not reopen unfinished CRM or the demo course-payment
-  // workspace. Replace their URL once, without adding a history entry.
+  // Old bookmarks must not reopen hidden demo workspaces. Replace their URL
+  // once, without adding a history entry. CRM beta keeps its `sales` URL.
   useEffect(() => {
     if (requestedTab === activeTab) return;
     setSearchParams(

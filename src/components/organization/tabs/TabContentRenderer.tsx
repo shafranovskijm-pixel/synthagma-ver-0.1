@@ -29,6 +29,7 @@ import { OrganizationHomeTab } from "@/components/organization/tabs/Organization
 
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
 import MailingApp from "@/pages/MailingApp";
+import { OrgCrmBetaWorkspace } from "@/components/organization/sales/OrgCrmBetaWorkspace";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -62,6 +63,7 @@ export function TabContentRenderer() {
     activeTab !== "staff" &&
     activeTab !== "webinars" &&
     activeTab !== "mailing" &&
+    activeTab !== "sales" &&
     activeTab !== "profile" &&
     activeTab !== "settings" &&
     activeTab !== "whats-new" &&
@@ -73,6 +75,33 @@ export function TabContentRenderer() {
     activeTab !== "group-folder";
 
   const directDocumentPermission = getDirectDocumentWorkspacePermission(activeTab);
+
+  if (activeTab === "sales") {
+    if (permissionsLoading || !organizationId || d.crmAccess?.loading) {
+      return <div className="py-12 text-center text-sm text-muted-foreground" role="status">Проверка доступа…</div>;
+    }
+    if (!can("sales.read")) {
+      return <div className="rounded-2xl border border-border bg-card p-8 text-center" role="alert" data-testid="crm-workspace-permission-denied">
+        <h2 className="font-semibold">Нет доступа к CRM</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Обратитесь к администратору организации, чтобы получить доступ.</p>
+      </div>;
+    }
+    if (d.crmAccess?.error) {
+      return <div className="rounded-2xl border border-border bg-card p-8 text-center" role="alert" data-testid="crm-workspace-plan-error">
+        <p>{d.crmAccess.error}</p>
+        <button type="button" className="mt-4 text-primary underline" onClick={() => void d.crmAccess.refresh()}>Повторить проверку</button>
+      </div>;
+    }
+    if (d.crmAccess?.enabled !== true) {
+      return <div className="rounded-2xl border border-border bg-card p-8 text-center" role="alert" data-testid="crm-workspace-plan-required">
+        <h2 className="font-semibold">CRM · Бета</h2>
+        <p className="mt-2 text-sm text-muted-foreground">CRM доступна с тарифа «Стандарт».</p>
+        {can("billing.read") && <a href="/organization?tab=subscription" className="mt-4 inline-block text-primary underline">Посмотреть тариф</a>}
+      </div>;
+    }
+    return <OrgCrmBetaWorkspace key={organizationId} organizationId={organizationId} canWrite={can("sales.write")}
+      canOpenDocuments={can("documents.read")} canOpenMailing={can("sales.read") && d.crmAccess.mailingEnabled} />;
+  }
 
   if (directDocumentPermission && permissionsLoading) {
     return (

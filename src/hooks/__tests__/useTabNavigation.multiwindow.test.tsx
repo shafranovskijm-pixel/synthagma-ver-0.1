@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
 
@@ -27,7 +27,8 @@ function useNavigation(isMobile = false) {
     isEnabled: () => true,
   });
   const location = useLocation();
-  return { ...navigation, search: location.search };
+  const navigate = useNavigate();
+  return { ...navigation, search: location.search, goBack: () => navigate(-1) };
 }
 
 describe("useTabNavigation per-window state", () => {
@@ -62,12 +63,35 @@ describe("useTabNavigation per-window state", () => {
 
   it.each([
     ["/organization?tab=payments", "subscription", "?tab=subscription"],
-    ["/organization?tab=sales", "home", ""],
+    ["/organization?tab=webinars", "courses", "?tab=courses"],
+    ["/organization?tab=ai-tutors", "courses", "?tab=courses"],
   ] as const)("normalizes hidden legacy workspace %s", async (entry, expectedTab, expectedSearch) => {
     const { result } = renderHook(() => useNavigation(), { wrapper: wrapper(entry) });
 
     expect(result.current.activeTab).toBe(expectedTab);
     await waitFor(() => expect(result.current.search).toBe(expectedSearch));
+  });
+
+  it("preserves a direct CRM beta URL and navigates back to it without redirecting Home", () => {
+    const { result } = renderHook(() => useNavigation(), { wrapper: wrapper("/organization?tab=sales") });
+    expect(result.current.activeTab).toBe("sales");
+    expect(result.current.search).toBe("?tab=sales");
+    act(() => result.current.setActiveTab("courses"));
+    act(() => result.current.goBack());
+    expect(result.current.activeTab).toBe("sales");
+    expect(result.current.search).toBe("?tab=sales");
+  });
+
+  it("clears CRM filters for a top-level selection and restores them on browser Back", () => {
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: wrapper("/organization?tab=sales&crmTab=tasks&crmClient=client-1"),
+    });
+    act(() => result.current.setActiveTab("courses"));
+    expect(result.current.search).toBe("?tab=courses");
+    act(() => result.current.goBack());
+    expect(result.current.search).toBe("?tab=sales&crmTab=tasks&crmClient=client-1");
+    act(() => result.current.setActiveTab("sales"));
+    expect(result.current.search).toBe("?tab=sales");
   });
 
   it("derives independent entities from two separate router windows", () => {

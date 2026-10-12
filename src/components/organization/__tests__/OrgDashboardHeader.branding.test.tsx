@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 const testState = vi.hoisted(() => ({
   coverUrl: "",
   coverPosition: "cover",
+  activeTab: "home",
   setActiveTab: vi.fn(),
   proxiedAssetUrl: vi.fn(),
 }));
@@ -15,7 +16,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     organizationId: "org-1",
     organizationName: "СГТ",
     branding: { brandingSettings: { customName: "", logoUrl: "", coverUrl: testState.coverUrl, coverPosition: testState.coverPosition } },
-    tabNavigation: { activeTab: "home", setActiveTab: testState.setActiveTab },
+    tabNavigation: { activeTab: testState.activeTab, setActiveTab: testState.setActiveTab },
     subscriptionLimits: { plan: "start" },
     user: { email: "admin@example.test" },
     setIsMobileSidebarOpen: vi.fn(),
@@ -50,12 +51,19 @@ beforeEach(() => {
   vi.clearAllMocks();
   testState.coverUrl = "";
   testState.coverPosition = "cover";
+  testState.activeTab = "home";
   testState.proxiedAssetUrl.mockImplementation((url: string) => url === COVER_URL ? PROXIED_COVER_URL : url || "");
 });
 
 afterEach(cleanup);
 
 describe("organization dashboard cover", () => {
+  it("labels the CRM beta in the client breadcrumb", () => {
+    testState.activeTab = "sales";
+    renderHeader();
+    expect(screen.getByText("CRM · Бета")).toBeInTheDocument();
+    expect(screen.getByText("Клиенты")).toBeInTheDocument();
+  });
   it("renders the saved image outside the sticky navigation and keeps navigation working", () => {
     testState.coverUrl = COVER_URL;
     const { container } = renderHeader();

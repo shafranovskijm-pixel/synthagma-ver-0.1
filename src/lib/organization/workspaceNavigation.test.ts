@@ -20,11 +20,13 @@ describe("organization multi-window navigation", () => {
     expect(organizationTabPath("organizations")).toBe("/organization?tab=organizations");
   });
 
-  it("keeps legacy Sales and demo payments out of organization URLs", () => {
-    expect(normalizeOrganizationWorkspaceTab("sales")).toBe("home");
+  it("keeps CRM beta addressable while hiding demo workspaces", () => {
+    expect(normalizeOrganizationWorkspaceTab("sales")).toBe("sales");
     expect(normalizeOrganizationWorkspaceTab("payments")).toBe("subscription");
-    expect(organizationTabPath("sales")).toBe("/organization");
+    expect(organizationTabPath("sales")).toBe("/organization?tab=sales");
     expect(organizationTabPath("payments")).toBe("/organization?tab=subscription");
+    expect(normalizeOrganizationWorkspaceTab("webinars")).toBe("courses");
+    expect(normalizeOrganizationWorkspaceTab("ai-tutors")).toBe("courses");
   });
 
   it("gives student, company and group records stable deep links", () => {

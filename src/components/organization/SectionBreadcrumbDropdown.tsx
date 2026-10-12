@@ -20,6 +20,7 @@ const SECTION_ITEMS: Record<SectionId, { tab: TabType; label: string }[]> = {
   clients: [
     { tab: "students", label: "Ученики" },
     { tab: "organizations", label: "Клиенты-компании" },
+    { tab: "sales", label: "CRM · Бета" },
     { tab: "mailing", label: "Рассылки" },
     { tab: "chats", label: "Чаты" },
   ],
@@ -47,7 +48,7 @@ interface SectionBreadcrumbDropdownProps {
 
 export function SectionBreadcrumbDropdown({ section, label, activeTab }: SectionBreadcrumbDropdownProps) {
   const d = useOrgDashboard();
-  const { canSeeOrgTab, loading: permissionsLoading } = useStaffPermissions();
+  const { can, canSeeOrgTab, loading: permissionsLoading } = useStaffPermissions();
 
   if (!section) {
     return <span className="text-muted-foreground/80">{label}</span>;
@@ -60,6 +61,8 @@ export function SectionBreadcrumbDropdown({ section, label, activeTab }: Section
     if (!permissionsLoading && !canSeeOrgTab(tab)) return false;
 
     switch (tab) {
+      case "sales":
+        return !permissionsLoading && can("sales.read") && d.crmAccess?.enabled === true;
       case "courses":
         return menu?.showCourses !== false && featureEnabled("courses");
       case "students":

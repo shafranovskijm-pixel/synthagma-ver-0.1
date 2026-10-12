@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let allowedTabs = new Set<string>();
 let menuSettings: Record<string, boolean> = {};
 let salesCrmEnabled = false;
+let permissionsLoading = false;
 const setActiveTab = vi.fn();
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -11,13 +12,15 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     tabNavigation: { setActiveTab },
     dashboardSettings: { menuSettings },
     subscriptionLimits: { limits: { salesCrmEnabled } },
+    crmAccess: { enabled: salesCrmEnabled, loading: false, error: null },
     isEnabled: () => true,
   }),
 }));
 
 vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({
-    loading: false,
+    loading: permissionsLoading,
+    can: (permission: string) => permission === "sales.read" && allowedTabs.has("sales"),
     canSeeOrgTab: (tab: string) => allowedTabs.has(tab),
   }),
 }));
@@ -44,16 +47,27 @@ beforeEach(() => {
     showFrdo: true,
   };
   salesCrmEnabled = true;
+  permissionsLoading = false;
 });
 
 describe("SectionBreadcrumbDropdown access", () => {
-  it("does not expose hidden Sales even when tariff and permission allow it", () => {
+  it("exposes CRM beta with its existing permission and never shows the legacy Sales label", () => {
     allowedTabs.delete("organizations");
     render(<SectionBreadcrumbDropdown section="clients" label="Клиенты" activeTab="students" />);
 
     expect(screen.getByRole("button", { name: "Ученики" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Клиенты-компании" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Продажи" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "CRM · Бета" }));
+    expect(setActiveTab).toHaveBeenCalledWith("sales");
+  });
+
+  it.each(["loading", "permission", "plan"])("hides CRM destination when %s blocks it", mode => {
+    if (mode === "loading") permissionsLoading = true;
+    if (mode === "permission") allowedTabs.delete("sales");
+    if (mode === "plan") salesCrmEnabled = false;
+    render(<SectionBreadcrumbDropdown section="clients" label="Клиенты" activeTab="students" />);
+    expect(screen.queryByRole("button", { name: "CRM · Бета" })).not.toBeInTheDocument();
   });
 
   it("honours document menu settings and keeps an allowed destination working", () => {
