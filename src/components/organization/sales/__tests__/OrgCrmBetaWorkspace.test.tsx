@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ hook: vi.fn(), saveClient: vi.fn(), saveDeal: 
 vi.mock("@/hooks/useOrgCrm", () => ({ useOrgCrm: mocks.hook }));
 const revision = "2026-10-12T08:00:00.123456+00:00";
 const base = { organization_id: "org-a", created_at: revision, updated_at: revision };
-const client = (id = "client-a", org_name = "Учебный центр") => ({ ...base, id, org_name, inn: "2540000000", email: "school@example.org", phone: null, address: null, notes: null });
+const client = (id = "client-a", org_name = "Учебный центр") => ({ ...base, id, org_name, inn: "2540000000", email: "school@example.org", phone: null, address: null, notes: null, company_id: null as string | null, student_user_id: null as string | null, linked_at: null as string | null });
 const deal = (id = "deal-a", title = "Обучение первой группы", client_id = "client-a") => ({ ...base, id, title, client_id, stage: "new", amount: 0 });
 const task = () => ({ ...base, id: "task-a", client_id: "client-a", deal_id: "deal-a", title: "Согласовать дату", description: "Уточнить состав группы", due_date: "2020-01-01T09:00:00Z", type: "call", status: "pending", assigned_user_id: null, completed_at: null });
 const snapshot = () => ({
@@ -50,6 +50,25 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("organization CRM beta", () => {
+  it("uses the linked student's user ID for reverse navigation and requires student access", () => {
+    data.clients.push({ ...client(), student_user_id: "student-user-id", linked_at: revision });
+    const view = mount({ canOpenStudents: false }, "/organization?tab=sales&crmClient=client-a");
+    expect(screen.getByText("Связан с учеником")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Карточка ученика и хронология" })).not.toBeInTheDocument();
+    view.rerender(<MemoryRouter><OrgCrmBetaWorkspace organizationId="org-a" canWrite canOpenStudents /></MemoryRouter>);
+    expect(screen.getByRole("link", { name: "Карточка ученика и хронология" })).toHaveAttribute("href", "/organization?tab=student-details&studentId=student-user-id&studentSection=crm");
+    expect(screen.queryByRole("link", { name: "Карточка компании и хронология" })).not.toBeInTheDocument();
+  });
+
+  it("uses the real companies workspace for reverse navigation and removes the shortcut when permission is revoked", () => {
+    data.clients.push({ ...client(), company_id: "company-a", linked_at: revision });
+    const view = mount({ canOpenCompanies: true }, "/organization?tab=sales&crmClient=client-a");
+    expect(screen.getByRole("link", { name: "Карточка компании и хронология" })).toHaveAttribute("href", "/organization?tab=organizations&companyId=company-a&companySection=crm");
+    view.rerender(<MemoryRouter><OrgCrmBetaWorkspace organizationId="org-a" canWrite canOpenCompanies={false} /></MemoryRouter>);
+    expect(screen.queryByRole("link", { name: "Карточка компании и хронология" })).not.toBeInTheDocument();
+    expect(screen.getByText("Связан с компанией")).toBeInTheDocument();
+  });
+
   it("reports a failed load instead of empty clients and offers retry", () => {
     hookState.error = new Error("network unavailable");
     mount();

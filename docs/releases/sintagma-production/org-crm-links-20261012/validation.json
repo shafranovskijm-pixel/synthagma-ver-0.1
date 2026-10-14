@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "assertions": 80,
+  "postchecks": 13,
+  "baselinePostchecks": 38,
+  "atomicBundleTested": true,
+  "syntheticBusinessRowsRolledBack": true,
+  "liveApplied": false,
+  "mailSent": false,
+  "limitations": [
+    "Full existing account deletion execution is not run; exact single-entry patch and contribution to existing shared-data count checked.",
+    "Concurrent connections not simulated; sequential replay, unique constraints and source/client lock code reviewed."
+  ]
+}

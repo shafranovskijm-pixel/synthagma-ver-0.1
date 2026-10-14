@@ -71,6 +71,12 @@ vi.mock("@/hooks/useStudentDetailCard", () => ({
   }),
 }));
 
+vi.mock("@/components/organization/sales/OrgCrmCardSection", () => ({
+  OrgCrmCardSection: ({ organizationId, entityType, entityId, entityName }: any) => (
+    <div data-testid="student-crm-context">{organizationId}/{entityType}/{entityId}/{entityName}</div>
+  ),
+}));
+
 vi.mock("@/components/organization/student-detail/ProfileTab", () => ({
   ProfileTab: ({ enrollmentsCount }: { enrollmentsCount: number | null }) => (
     <div>
@@ -202,6 +208,18 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.studentPageError = null;
     testState.studentPageCalls.length = 0;
     testState.setActiveTab.mockClear();
+  });
+
+  it("passes the confirmed auth user id and organization to CRM, not the profile row id", async () => {
+    testState.activeTab = "crm";
+    testState.profileResponses.set("student-a", Promise.resolve({
+      data: { ...profile("student-a", "Student A"), id: "different-profile-row-id" }, error: null,
+    }));
+    renderDetails();
+    expect(await screen.findByTestId("student-crm-context")).toHaveTextContent("org-1/student/student-a/Student A");
+    expect(screen.getByTestId("student-crm-context")).not.toHaveTextContent("different-profile-row-id");
+    expect(testState.profileLookups).toContainEqual({ user_id: "student-a", organization_id: "org-1" });
+    expect(screen.getAllByRole("button", { name: "CRM · Бета" })).toHaveLength(2);
   });
 
   it.each(["loaded", "missing", "failed"])("Back to students returns to the same filtered participants (%s profile)", async (state) => {

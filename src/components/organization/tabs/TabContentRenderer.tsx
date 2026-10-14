@@ -100,7 +100,8 @@ export function TabContentRenderer() {
       </div>;
     }
     return <OrgCrmBetaWorkspace key={organizationId} organizationId={organizationId} canWrite={can("sales.write")}
-      canOpenDocuments={can("documents.read")} canOpenMailing={can("sales.read") && d.crmAccess.mailingEnabled} />;
+      canOpenDocuments={can("documents.read")} canOpenMailing={can("sales.read") && d.crmAccess.mailingEnabled}
+      canOpenCompanies={can("companies.read")} canOpenStudents={can("students.read")} />;
   }
 
   if (directDocumentPermission && permissionsLoading) {

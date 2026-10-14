@@ -1,0 +1,250 @@
+{
+  "version": "20261012210000",
+  "migrationMd5": "5e211ac848084b3c0b6943c0819bd2ce",
+  "bundleSha256": "2eedd678aa6434e1e24d0f039be3a8fabdb8c7652e36c9106c040359dbd2cf67",
+  "postchecks": 13,
+  "helperGuards": [
+    {
+      "signature": "account_deletion_access_allowed()",
+      "body_md5": "6c078d0f1aa1f6b5af15485f0eaccb2a",
+      "definition_md5": "64b0a90b7db9813950ccca6dff208f3a",
+      "acl": [
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "account_deletion_snapshot(uuid)",
+      "body_md5": "1f973f5048873db00cf52e0293f14b71",
+      "definition_md5": "d78150e2f8544eb726a56c63f32c40ad",
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "can_access_organization(uuid,text)",
+      "body_md5": "ad720ba20dc32362ed009b2917cc2d9c",
+      "definition_md5": "2e11495f3d3e6ca261af8a08ed874269",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "get_org_staff_permissions(uuid,uuid)",
+      "body_md5": "f8d82709ae27730782dc4f455b35b7de",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "has_org_staff_permission(uuid,uuid,text)",
+      "body_md5": "b9c87ca03c3e95a57baf9122753792e2",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "has_role(app_role,uuid)",
+      "body_md5": "5457df2171dee5cee3641e64285928f2",
+      "definition_md5": "20c46f708cc2e7fa51b640290151a59e",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "has_role(uuid,app_role)",
+      "body_md5": "4e852b30ef52ba5263c4e11d1aec8cf0",
+      "definition_md5": "82a7fa1cd06301bb83b010bc315aee0b",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "is_org_owner(uuid,uuid)",
+      "body_md5": "5894db724b2a3cbc52701cabfb2cf73c",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2",
+      "acl": [
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "is_student_profile(uuid,uuid)",
+      "body_md5": "84081e97d17f223d9e2ffa4145bf8949",
+      "definition_md5": "92c79c1ec4600ef54941dc9590b39aa8",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "normalize_org_staff_permission(text)",
+      "body_md5": "2d47924fe022372f2dc128a979d56a53",
+      "definition_md5": "bb385c2b288bb966297a8504df1696ea",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_access_allowed(uuid,text)",
+      "body_md5": "395b7dd7b17fd70aa2d3a48b62bc689c",
+      "definition_md5": "cffa1ca2a147ed968f3470edf1aac164",
+      "acl": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_add_activity(uuid,uuid,uuid,text,text)",
+      "body_md5": "2501e3eb2daf97693e8f697c8a5c48f8",
+      "definition_md5": "3a012e860f3c70dae2e124cca34240e4",
+      "acl": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_require_write(uuid,jsonb,text[])",
+      "body_md5": "25068d464680549eb8c22fc6adf18122",
+      "definition_md5": "ab99e5e0103b9d5fa85aca9d49d52674",
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_save_client(uuid,uuid,jsonb,timestamp with time zone)",
+      "body_md5": "7b134fb064cfd07b023afdc4a442206a",
+      "definition_md5": "0ff79938766aab87e700655a739fc3a3",
+      "acl": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_save_deal(uuid,uuid,jsonb,timestamp with time zone)",
+      "body_md5": "ace205eaf6b7c7c02cf8d0e82cfc03fe",
+      "definition_md5": "02f514e4efe5a2650b96031b330c4d61",
+      "acl": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_save_task(uuid,uuid,jsonb,timestamp with time zone)",
+      "body_md5": "ca55d6b06d228f9360b02a3a07bbd496",
+      "definition_md5": "8ea971887f88e759151d28bae9e5083d",
+      "acl": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_snapshot(uuid)",
+      "body_md5": "bd2671fa878f290896ffda1f51e3f85c",
+      "definition_md5": "4950d9dcf9aaffc89ee235ea9f330baa",
+      "acl": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_crm_task_assignees(uuid)",
+      "body_md5": "87030d81a62da2191aca264eea8c5fff",
+      "definition_md5": "3673680fa2cf49768124353bf92848ce",
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    },
+    {
+      "signature": "org_role_default_permissions(text)",
+      "body_md5": "2e440ec2b8552f215d00bd88ad7af166",
+      "definition_md5": "f2b39953a0c439d75079d72d5e103247",
+      "acl": [
+        "=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "service_role=X/postgres"
+      ]
+    }
+  ],
+  "sourceFunctions": [
+    {
+      "name": "org_crm_resolve_subject",
+      "signature": "org_crm_resolve_subject(uuid,text,uuid)",
+      "body_md5": "8351237283ffa0dffc504577be7f425c"
+    },
+    {
+      "name": "org_crm_link_subject",
+      "signature": "org_crm_link_subject(uuid,text,uuid,uuid)",
+      "body_md5": "3b7ba6aa76f7afac45c97673ed682cd5"
+    },
+    {
+      "name": "org_crm_context",
+      "signature": "org_crm_context(uuid,text,uuid)",
+      "body_md5": "c9cebf28436ec578635dc1290dadaded"
+    }
+  ],
+  "deletionBodyMd5": "3c63dd990d2c0cd876c0fe10b2ee2f4a"
+}

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useOrgCrm } from "@/hooks/useOrgCrm";
 import type { OrgCrmActivity, OrgCrmDeal, OrgCrmTask } from "@/lib/organization/orgCrm";
 import { organizationMailingPath, organizationTabPath } from "@/lib/organization/workspaceNavigation";
+import { companiesPath, studentDetailsPath } from "@/lib/groups/groupContext";
 import { CRM_ACTIVITY_TYPES, CRM_STAGES, CRM_TASK_STATUSES, CRM_TASK_TYPES, OrgCrmEditor, crmErrorMessage, type OrgCrmEditorState } from "./OrgCrmEditor";
 
 const TABS = { clients: "Клиенты", deals: "Сделки", tasks: "Задачи", history: "История" } as const;
@@ -16,6 +17,8 @@ interface Props {
   canWrite: boolean;
   canOpenDocuments?: boolean;
   canOpenMailing?: boolean;
+  canOpenCompanies?: boolean;
+  canOpenStudents?: boolean;
 }
 
 const dateLabel = (value: string) => {
@@ -29,7 +32,7 @@ export function OrgCrmBetaWorkspace(props: Props) {
   return <OrgCrmWorkspace key={props.organizationId} {...props} />;
 }
 
-function OrgCrmWorkspace({ organizationId, canWrite, canOpenDocuments = false, canOpenMailing = false }: Props) {
+function OrgCrmWorkspace({ organizationId, canWrite, canOpenDocuments = false, canOpenMailing = false, canOpenCompanies = false, canOpenStudents = false }: Props) {
   const crm = useOrgCrm(organizationId);
   const [params, setParams] = useSearchParams();
   const context = params.toString();
@@ -136,6 +139,9 @@ function OrgCrmWorkspace({ organizationId, canWrite, canOpenDocuments = false, c
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-xl font-semibold break-words">{selectedClient.org_name}</h3>{selectedClient.inn && <p className="mt-1 text-sm text-muted-foreground">ИНН {selectedClient.inn}</p>}</div>{canWrite && <Button variant="outline" size="sm" onClick={() => openEditor({ kind: "client", record: selectedClient })}>Изменить клиента</Button>}</div>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">{selectedClient.email && <span>Email: {selectedClient.email}</span>}{selectedClient.phone && <span>Телефон: {selectedClient.phone}</span>}{selectedClient.address && <span>Адрес: {selectedClient.address}</span>}</div>
         {selectedClient.notes && <p className="whitespace-pre-wrap break-words text-sm">{selectedClient.notes}</p>}
+        {selectedClient.company_id && <div className="flex flex-wrap items-center gap-3 text-sm"><Badge variant="outline">Связан с компанией</Badge>{canOpenCompanies && <Link className="text-primary underline" to={`${companiesPath(selectedClient.company_id)}&companySection=crm`}>Карточка компании и хронология</Link>}</div>}
+        {selectedClient.student_user_id && <div className="flex flex-wrap items-center gap-3 text-sm"><Badge variant="outline">Связан с учеником</Badge>{canOpenStudents && <Link className="text-primary underline" to={`${studentDetailsPath(selectedClient.student_user_id)}&studentSection=crm`}>Карточка ученика и хронология</Link>}</div>}
+        {selectedClient.linked_at && !selectedClient.company_id && !selectedClient.student_user_id && <p className="text-sm text-muted-foreground">Исходная карточка удалена. Сохранена история клиента CRM.</p>}
       </div>}
 
       {tab === "clients" && !selectedClient && <>

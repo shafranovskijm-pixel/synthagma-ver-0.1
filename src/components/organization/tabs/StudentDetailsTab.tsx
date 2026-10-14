@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { OrgCrmCardSection } from "@/components/organization/sales/OrgCrmCardSection";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { courseDetailsPathForGroup, studentGroupReturnPath } from "@/lib/groups/groupContext";
 import { educationDocumentsJournalPath } from "@/lib/organization/documentWorkspaceNavigation";
-import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, FolderOpen, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send, ClipboardCheck, AlertTriangle, RefreshCw, Handshake } from "lucide-react";
 import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,7 @@ const TABS = [
   { key: "activity", label: "Активность", icon: Clock },
   { key: "testing", label: "Тестирование", icon: ClipboardCheck },
   { key: "chat", label: "Чат", icon: MessageCircle },
+  { key: "crm", label: "CRM · Бета", icon: Handshake },
 ];
 
 interface StudentData {
@@ -289,6 +291,7 @@ export function StudentDetailsTab() {
     },
   });
   const activeTabNeedsStudentData = ["profile", "identification"].includes(h.activeTab);
+  const visibleTabs = TABS.filter(tab => tab.key !== "crm" || (!permissionsLoading && can("sales.read") && can("students.read")));
 
   const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
 
@@ -429,7 +432,7 @@ export function StudentDetailsTab() {
       <div className="flex gap-6">
         {/* Vertical sidebar menu */}
         <nav className="hidden md:flex flex-col w-56 shrink-0 space-y-1">
-          {TABS.map(tab => {
+          {visibleTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = h.activeTab === tab.key;
             return (
@@ -448,7 +451,7 @@ export function StudentDetailsTab() {
 
         {/* Mobile horizontal tabs */}
         <div className="md:hidden flex overflow-x-auto gap-1 pb-4 -mx-4 px-4 scrollbar-hide">
-          {TABS.map(tab => {
+          {visibleTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = h.activeTab === tab.key;
             return (
@@ -532,6 +535,7 @@ export function StudentDetailsTab() {
                   }}
                 />
               )}
+              {h.activeTab === "crm" && <OrgCrmCardSection organizationId={organizationId} entityType="student" entityId={student.user_id} entityName={student.name} />}
               {h.activeTab === "activity" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />}
               {h.activeTab === "results" && <LearningResultsTab key={`${organizationId}:${student.user_id}`} userId={student.user_id} organizationId={organizationId} />}
               {h.activeTab === "testing" && <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} defaultSubTab="tests" onlySubTab />}

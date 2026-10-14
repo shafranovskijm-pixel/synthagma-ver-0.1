@@ -179,6 +179,21 @@ describe("existing student's department", () => {
     expect(state.writes).toHaveLength(0);
   });
 
+  it("opens CRM from studentSection and restores it with browser history without changing the learner", async () => {
+    const { result } = renderHook(() => ({
+      card: useStudentDetailCardLogic(props()), navigate: useNavigate(), location: useLocation(),
+    }), { wrapper });
+    await waitFor(() => expect(result.current.card.isLoading).toBe(false));
+    act(() => result.current.navigate("/organization?tab=student-details&studentId=old-student&studentSection=crm"));
+    expect(result.current.card.activeTab).toBe("crm");
+    act(() => result.current.card.setActiveTab("courses"));
+    expect(result.current.card.activeTab).toBe("courses");
+    act(() => result.current.navigate(-1));
+    expect(result.current.card.activeTab).toBe("crm");
+    expect(new URLSearchParams(result.current.location.search).get("studentId")).toBe("old-student");
+    expect(state.writes).toHaveLength(0);
+  });
+
   it("restores the previous student section with Back and Forward through real router history", async () => {
     const { result } = renderHook(() => ({
       card: useStudentDetailCardLogic(props()),

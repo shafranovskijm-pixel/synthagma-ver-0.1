@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +56,8 @@ const StatsGrid = ({ cm }: { cm: any }) => (
 
 export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const navigate = useNavigate();
+  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const canReadCompanies = !permissionsLoading && can("companies.read");
   const [searchParams, setSearchParams] = useSearchParams();
   const cm = useCompaniesManager(organizationId);
   const dm = useCompanyDetailManager(organizationId);
@@ -83,6 +86,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("companyId");
+        next.delete("companySection");
         return next;
       });
     }
@@ -100,6 +104,10 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   // dialog is open. This makes the company card reloadable and independent
   // in every browser tab/window.
   useEffect(() => {
+    if (!canReadCompanies) {
+      if (detailOpen) setCompanyDetailOpen(false);
+      return;
+    }
     const wanted = searchParams.get("companyId");
     if (!wanted) {
       if (detailOpen) setCompanyDetailOpen(false);
@@ -113,6 +121,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     if (detailOpen && selectedDetailId === wanted) return;
     void openCompanyDetail(company);
   }, [
+    canReadCompanies,
     searchParams,
     cm.companies,
     detailOpen,
@@ -376,7 +385,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
       {/* Dialogs */}
       <CompanyDetailDialog
-        open={dm.showCompanyDetail} onOpenChange={handleCompanyDetailOpenChange}
+        organizationId={organizationId}
+        open={canReadCompanies && dm.showCompanyDetail && selectedDetailId === searchParams.get("companyId") && cm.companies.some(company => company.id === selectedDetailId)} onOpenChange={handleCompanyDetailOpenChange}
         company={dm.selectedCompanyForDetail} documents={dm.companyDocuments}
         isLoadingDocuments={dm.isLoadingDocuments} isUploadingDocument={dm.isUploadingDocument}
         isDeletingDocument={dm.isDeletingDocument}

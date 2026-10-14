@@ -57,7 +57,10 @@ export function useOrgCrm(organizationId: string | null | undefined) {
       const receipt = parseCrmSaveReceipt(data);
       // The receipt confirms the write. A later read failure is displayed by the
       // query instead of inviting an accidental duplicate write.
-      await queryClient.invalidateQueries({ queryKey, exact: true });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey, exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["org-crm-context", userId, organizationId] }),
+      ]);
       ensureCurrent(generation);
       return receipt;
     } catch (error) {
