@@ -17,7 +17,7 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { ProfileTab } from "@/components/organization/student-detail/ProfileTab";
 import { IdentificationTab } from "@/components/organization/student-detail/IdentificationTab";
 import { CoursesTab } from "@/components/organization/student-detail/CoursesTab";
-import { EnrollDialog } from "@/components/organization/dialogs/EnrollDialog";
+import { StudentCoursesEnrollDialog, type StudentCourseEnrollmentResult } from "@/components/organization/dialogs/StudentCoursesEnrollDialog";
 import { LearningResultsTab } from "@/components/organization/student-detail/LearningResultsTab";
 import { DocumentsTab } from "@/components/organization/student-detail/DocumentsTab";
 import { ActivityTab } from "@/components/organization/student-detail/ActivityTab";
@@ -102,6 +102,7 @@ export function StudentDetailsTab() {
   const [sendDocOpen, setSendDocOpen] = useState(false);
   const [addCourseOpen, setAddCourseOpen] = useState(false);
   const [isAddingCourse, setIsAddingCourse] = useState(false);
+  const [courseEnrollmentResults, setCourseEnrollmentResults] = useState<StudentCourseEnrollmentResult[]>([]);
   const enrollmentPendingRef = useRef(false);
   const studentViewActiveRef = useRef(true);
   const studentContextGenerationRef = useRef(0);
@@ -216,6 +217,7 @@ export function StudentDetailsTab() {
     studentContextGenerationRef.current += 1;
     studentViewActiveRef.current = true;
     setAddCourseOpen(false);
+    setCourseEnrollmentResults([]);
     void loadStudent(true);
     return () => {
       studentContextGenerationRef.current += 1;
@@ -227,47 +229,64 @@ export function StudentDetailsTab() {
   const availableCourses = (d.courses ?? []).filter(course =>
     course.is_published && !enrollments.some(enrollment => enrollment.course_id === course.id),
   );
-  const handleAddCourse = async (courseId: string) => {
+  const handleAddCourses = async (courseIds: string[]) => {
     if (enrollmentPendingRef.current || d.enrollmentActions?.isEnrolling || !canAssignCourse
       || !student || student.user_id !== studentId || !organizationId) return;
-    if (!availableCourses.some(course => course.id === courseId)) return;
+    const selectedCourses = [...new Set(courseIds)].map(id => availableCourses.find(course => course.id === id)).filter(course => !!course);
+    if (selectedCourses.length === 0) return;
     const context = { organizationId, studentId: student.user_id };
     const contextGeneration = studentContextGenerationRef.current;
     const isCurrentStudent = () => studentViewActiveRef.current
       && studentContextGenerationRef.current === contextGeneration
       && studentContextRef.current.organizationId === context.organizationId
       && studentContextRef.current.studentId === context.studentId;
+    const canContinue = () => isCurrentStudent() && studentContextRef.current.canAssignCourse;
     enrollmentPendingRef.current = true;
     setIsAddingCourse(true);
+    const results: StudentCourseEnrollmentResult[] = [];
+    setCourseEnrollmentResults([]);
     try {
-      // Recheck the course at submit time: the organization or publication
-      // state may have changed since the course directory was loaded.
-      const { data: course, error } = await supabase.from("courses")
-        .select("id").eq("id", courseId).eq("organization_id", context.organizationId)
-        .eq("is_published", true).maybeSingle();
-      if (!isCurrentStudent()) return;
-      if (!studentContextRef.current.canAssignCourse) return;
-      if (error) throw error;
-      if (course?.id !== courseId) {
-        toast.error("Курс недоступен для зачисления в этой организации. Обновите список курсов.");
-        return;
+      for (const selectedCourse of selectedCourses) {
+        if (!canContinue()) return;
+        let result: StudentCourseEnrollmentResult = {
+          courseId: selectedCourse.id, title: selectedCourse.title, confirmed: false,
+          message: "Зачисление не подтверждено. Повтор проверит его перед добавлением.",
+        };
+        try {
+          // Recheck each course immediately before its existing verified
+          // enrollment flow. Never trust the directory's organization alone.
+          const { data: course, error } = await supabase.from("courses")
+            .select("id").eq("id", selectedCourse.id).eq("organization_id", context.organizationId)
+            .eq("is_published", true).maybeSingle();
+          if (!canContinue()) return;
+          if (error) {
+            result.message = "Не удалось проверить доступность курса. Зачисление не запускалось.";
+            toast.error("Не удалось проверить курс. Зачисление не выполнено, повторите попытку.");
+          } else if (course?.id !== selectedCourse.id) {
+            result.message = "Курс недоступен для зачисления в этой организации.";
+            toast.error("Курс недоступен для зачисления в этой организации. Обновите список курсов.");
+          } else {
+            const saved = await d.enrollmentActions.bulkEnroll(selectedCourse.id, [context.studentId], d.courses, { canContinue });
+            if (!isCurrentStudent()) return;
+            if (saved) result = { ...result, confirmed: true, message: "Добавлен" };
+          }
+        } catch (error) {
+          if (!isCurrentStudent()) return;
+          console.error("[StudentDetailsTab] course enrollment failed:", error);
+        }
+        results.push(result);
+        setCourseEnrollmentResults([...results]);
       }
-      const saved = await d.enrollmentActions.bulkEnroll(courseId, [context.studentId], d.courses);
       if (!isCurrentStudent()) return;
-      if (saved) setAddCourseOpen(false);
-      // Reconcile concurrent or unconfirmed writes using the authoritative
-      // list. A confirmed existing assignment no longer needs this dialog;
-      // failed writes with no assignment keep their course selected for retry.
+      // Reconcile every requested course once after the batch. A network
+      // error can follow a committed write; do not claim that it was undone.
       const confirmedEnrollments = await loadStudent(false);
       if (!isCurrentStudent()) return;
-      if (!saved && confirmedEnrollments?.some(enrollment => enrollment.course_id === courseId)) {
-        setAddCourseOpen(false);
-      }
-    } catch (error) {
-      if (isCurrentStudent()) {
-        console.error("[StudentDetailsTab] course enrollment failed:", error);
-        toast.error("Не удалось проверить курс. Зачисление не выполнено, повторите попытку.");
-      }
+      const reconciled = results.map(result => !result.confirmed && confirmedEnrollments?.some(enrollment => enrollment.course_id === result.courseId)
+        ? { ...result, confirmed: true, message: "Зачисление уже есть — подтверждено в списке курсов" }
+        : result);
+      setCourseEnrollmentResults(reconciled);
+      if (reconciled.every(result => result.confirmed)) setAddCourseOpen(false);
     } finally {
       enrollmentPendingRef.current = false;
       setIsAddingCourse(false);
@@ -398,16 +417,15 @@ export function StudentDetailsTab() {
       )}
 
       {addCourseOpen && organizationId && canAssignCourse && (
-        <EnrollDialog
+        <StudentCoursesEnrollDialog
           key={`${organizationId}:${student.user_id}`}
           open={addCourseOpen}
           onOpenChange={open => { if (!enrollmentPendingRef.current) setAddCourseOpen(open); }}
-          selectedCount={1}
           courses={availableCourses}
-          categories={d.categories ?? []}
           getCategoryById={d.getCategoryById}
           isEnrolling={isAddingCourse || !!d.enrollmentActions?.isEnrolling}
-          onEnroll={courseId => { void handleAddCourse(courseId); }}
+          results={courseEnrollmentResults}
+          onEnroll={courseIds => { void handleAddCourses(courseIds); }}
         />
       )}
 
@@ -507,7 +525,7 @@ export function StudentDetailsTab() {
                 ) : (
                   <CoursesTab
                     enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id}
-                    onAddCourse={canAssignCourse ? () => setAddCourseOpen(true) : undefined}
+                    onAddCourse={canAssignCourse ? () => { setCourseEnrollmentResults([]); setAddCourseOpen(true); } : undefined}
                     isAddingCourse={isAddingCourse || !!d.enrollmentActions?.isEnrolling}
                   />
                 )

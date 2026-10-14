@@ -104,7 +104,9 @@ export function useEnrollmentActions(
     courseId: string,
     selectedUserIds: string[],
     courses: Course[],
+    options?: { canContinue?: () => boolean },
   ) => {
+    if (options?.canContinue && !options.canContinue()) return false;
     if (!courseId) {
       toast.error("Выберите курс");
       return false;
@@ -136,6 +138,7 @@ export function useEnrollmentActions(
         toast.error("Не удалось загрузить профили выбранных учеников. Зачисление отменено.");
         return false;
       }
+      if (options?.canContinue && !options.canContinue()) return false;
       const nameByUser = new Map(fetched.students.map(s => [s.user_id, s.name]));
       const missingNames = userIds.filter(uid => {
         const n = nameByUser.get(uid);
@@ -170,6 +173,9 @@ export function useEnrollmentActions(
       }
 
       // ---------- Mutation ------------------------------------------------
+      // A student-card batch can be cancelled while either preflight is in
+      // flight (navigation, organization change, or revoked permissions).
+      if (options?.canContinue && !options.canContinue()) return false;
       await insertEnrollmentsVerified(
         newUserIds.map(userId => ({
           user_id: userId,
