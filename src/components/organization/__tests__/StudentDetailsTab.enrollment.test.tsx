@@ -24,6 +24,8 @@ const state = vi.hoisted(() => ({
   courseResult: null as Promise<Result> | null,
   insertResult: null as Promise<Result> | null,
   insertError: null as any,
+  insertErrors: new Map<string, unknown>(),
+  commitDespiteError: false,
   suppressReadback: false,
   insert: vi.fn(),
   fetchProfiles: vi.fn(),
@@ -123,9 +125,10 @@ vi.mock("@/integrations/supabase/client", () => ({
         then: (resolve: any, reject: any) => Promise.resolve(result()).then(resolve, reject),
         insert: (rows: Array<{ user_id: string; course_id: string }>) => {
           state.insert(rows);
-          const inserted = rows.map((row, index) => ({ id: `enrollment-new-${index}`, ...row }));
-          if (!state.insertError && !state.insertResult) state.rows.push(...inserted);
-          return { select: () => state.insertResult ?? Promise.resolve({ data: state.insertError ? null : inserted, error: state.insertError }) };
+          const inserted = rows.map((row, index) => ({ id: `enrollment-new-${state.rows.length + index}`, ...row }));
+          const error = state.insertErrors.get(rows[0].course_id) ?? state.insertError;
+          if ((!error && !state.insertResult) || state.commitDespiteError) state.rows.push(...inserted);
+          return { select: () => state.insertResult ?? Promise.resolve({ data: error ? null : inserted, error }) };
         },
       };
       return query;
@@ -140,13 +143,14 @@ const published = { id: "course-new", title: "Дополнительный ку�
 const existing = { ...published, id: "course-existing", title: "Прежний курс" };
 const draft = { ...published, id: "course-draft", title: "Черновик курса", is_published: false };
 const foreign = { ...published, id: "course-foreign", title: "Курс другой организации" };
+const second = { ...published, id: "course-second", title: "Второй новый курс" };
 const ui = () => <MemoryRouter><StudentDetailsTab /></MemoryRouter>;
 
 async function openCourseDialog(title = published.title) {
   fireEvent.click(await screen.findByRole("button", { name: "Добавить курс" }));
   expect(screen.getByRole("dialog")).toBeInTheDocument();
-  fireEvent.click(screen.getByText(title));
-  return screen.getByRole("button", { name: "Зачислить на курс" });
+  fireEvent.click(screen.getByRole("checkbox", { name: title }));
+  return screen.getByRole("button", { name: /Добавить выбранные курсы/ });
 }
 
 describe("course assignment from a student's Courses tab", () => {
@@ -163,6 +167,8 @@ describe("course assignment from a student's Courses tab", () => {
     state.courseResult = null;
     state.insertResult = null;
     state.insertError = null;
+    state.insertErrors.clear();
+    state.commitDespiteError = false;
     state.suppressReadback = false;
     state.fetchProfiles.mockImplementation(async (org: string, ids: string[]) => {
       if (org !== "org-1" || ids.some(id => !["student-1", "student-2"].includes(id))) throw new Error("profile outside organization");
@@ -209,7 +215,7 @@ describe("course assignment from a student's Courses tab", () => {
     await waitFor(() => expect(state.info).toHaveBeenCalledWith("Все выбранные ученики уже зачислены на этот курс"));
     await waitFor(() => expect(screen.getByText("Курсы (1)")).toBeInTheDocument());
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "Зачислить на курс" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Добавить выбранные курсы/ })).not.toBeInTheDocument();
     expect(state.insert).not.toHaveBeenCalled();
     expect(state.success).not.toHaveBeenCalled();
   });
@@ -253,9 +259,9 @@ describe("course assignment from a student's Courses tab", () => {
     expect(state.success).not.toHaveBeenCalled();
     expect(state.refresh).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Зачислить на курс" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Добавить выбранные курсы/ })).toBeEnabled());
     state.insertError = null;
-    fireEvent.click(screen.getByRole("button", { name: "Зачислить на курс" }));
+    fireEvent.click(screen.getByRole("button", { name: /Добавить выбранные курсы/ }));
     await waitFor(() => expect(state.insert).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Курсы (1)" })).toBeInTheDocument();
@@ -352,5 +358,124 @@ describe("course assignment from a student's Courses tab", () => {
     render(ui());
     expect(await screen.findByRole("heading", { name: "Курсы (0)" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Добавить курс" })).not.toBeInTheDocument();
+  });
+
+  it("adds multiple selected courses from one profile and preserves an existing enrollment", async () => {
+    state.courses.push(second);
+    state.publishedCourses.add(second.id);
+    state.rows = [{ id: "existing", user_id: "student-1", course_id: existing.id }];
+    render(ui());
+    await openCourseDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: second.title }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранные курсы (2)" }));
+    expect(await screen.findByRole("heading", { name: "Курсы (3)" })).toBeInTheDocument();
+    expect(state.insert).toHaveBeenCalledTimes(2);
+    expect(state.insert.mock.calls.map(([rows]) => rows[0].course_id)).toEqual([published.id, second.id]);
+    expect(state.rows.find(row => row.id === "existing")).toBeDefined();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps partial success and retries only the failed course", async () => {
+    state.courses.push(second);
+    state.publishedCourses.add(second.id);
+    state.insertErrors.set(published.id, { code: "42501", message: "Denied" });
+    render(ui());
+    await openCourseDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: second.title }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранные курсы (2)" }));
+    expect(await screen.findByText("Подтверждено курсов: 1 из 2")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Добавить выбранные курсы (1)" })).toBeEnabled());
+    expect(screen.getByRole("checkbox", { name: published.title })).toBeChecked();
+    expect(screen.queryByRole("checkbox", { name: second.title })).not.toBeInTheDocument();
+    state.insertErrors.clear();
+    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранные курсы (1)" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(state.insert.mock.calls.map(([rows]) => rows[0].course_id)).toEqual([published.id, second.id, published.id]);
+    expect(screen.getByRole("heading", { name: "Курсы (2)" })).toBeInTheDocument();
+  });
+
+  it("reconciles a committed write with a lost response without inserting it again", async () => {
+    state.insertError = { message: "Connection lost" };
+    state.commitDespiteError = true;
+    render(ui());
+    fireEvent.click(await openCourseDialog());
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(state.insert).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: "Курсы (1)" })).toBeInTheDocument();
+    expect(state.success).not.toHaveBeenCalled();
+  });
+
+  it("keeps an ambiguous result visible and reconciles it on explicit retry without a second INSERT", async () => {
+    state.insertError = { message: "Connection lost" };
+    state.commitDespiteError = true;
+    render(ui());
+    const submit = await openCourseDialog();
+    state.fetchEnrollments.mockRejectedValueOnce(new Error("Read-back unavailable"));
+    fireEvent.click(submit);
+    expect(await screen.findByText("Подтверждено курсов: 0 из 1")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Добавить выбранные курсы (1)" })).toBeEnabled());
+    expect(state.insert).toHaveBeenCalledTimes(1);
+    expect(state.success).not.toHaveBeenCalled();
+    state.insertError = null;
+    state.commitDespiteError = false;
+    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранные курсы (1)" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(state.insert).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: "Курсы (1)" })).toBeInTheDocument();
+  });
+
+  it("rechecks publication separately for each course and reports the unavailable one", async () => {
+    const write = deferred<Result>();
+    state.courses.push(second);
+    state.publishedCourses.add(second.id);
+    state.insertResult = write.promise;
+    render(ui());
+    await openCourseDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: second.title }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранные курсы (2)" }));
+    await waitFor(() => expect(state.insert).toHaveBeenCalledTimes(1));
+    state.publishedCourses.delete(second.id);
+    state.insertResult = null;
+    const row = { id: "saved", user_id: "student-1", course_id: published.id };
+    state.rows.push(row);
+    await act(async () => write.resolve({ data: [row], error: null }));
+    expect(await screen.findByText("Подтверждено курсов: 1 из 2")).toBeInTheDocument();
+    expect(state.insert).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(`${second.title}: Курс недоступен для зачисления в этой организации.`)).toBeInTheDocument();
+  });
+
+  it("does not start the remaining courses after switching students during a write", async () => {
+    const write = deferred<Result>();
+    state.courses.push(second);
+    state.publishedCourses.add(second.id);
+    state.insertResult = write.promise;
+    const view = render(ui());
+    await openCourseDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: second.title }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить выбранные курсы (2)" }));
+    await waitFor(() => expect(state.insert).toHaveBeenCalledTimes(1));
+    state.studentId = "student-2";
+    view.rerender(ui());
+    expect(await screen.findByText("Ученик student-2")).toBeInTheDocument();
+    const row = { id: "saved", user_id: "student-1", course_id: published.id };
+    state.rows.push(row);
+    await act(async () => write.resolve({ data: [row], error: null }));
+    expect(state.insert).toHaveBeenCalledTimes(1);
+    expect(state.courseLookups).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Курсы (0)" })).toBeInTheDocument();
+  });
+
+  it.each(["permission", "student"])("cancels before INSERT when %s changes inside enrollment preflight", async kind => {
+    const profiles = deferred<{ students: { user_id: string; name: string }[] }>();
+    state.fetchProfiles.mockReturnValueOnce(profiles.promise);
+    const view = render(ui());
+    fireEvent.click(await openCourseDialog());
+    await waitFor(() => expect(state.fetchProfiles).toHaveBeenCalledTimes(1));
+    if (kind === "permission") state.canWrite = false;
+    else state.studentId = "student-2";
+    view.rerender(ui());
+    await act(async () => profiles.resolve({ students: [{ user_id: "student-1", name: "Ученик student-1" }] }));
+    expect(state.insert).not.toHaveBeenCalled();
+    expect(state.success).not.toHaveBeenCalled();
   });
 });
