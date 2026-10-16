@@ -2,7 +2,7 @@
   "release": "payment-access-ui-20261016",
   "baseCommit": "a122066363461d9beb5247476dd26c89aef16040",
   "deployed": false,
-  "batchSha256": "9065a9dadd9b62ab7029baa44e6116cf0919e7e903452fa539b58b7f1f4c124a",
+  "batchSha256": "3e11aa39d0b7600cb674fb5697efdd3da4719c4d441e75d3f3e10239e2356d18",
   "newlineHashNormalization": "CRLF to LF only",
   "migrationCount": 11,
   "migrations": [
@@ -11,6 +11,7 @@
       "version": "20260822164000",
       "name": "atomic_tbank_balance_credit",
       "stripOuterTransaction": false,
+      "outerTransactionStart": null,
       "sourceSha256": "d36b86d8dcf6402da394d3f6d84a798909996dcb174cf41b966137819c171173",
       "sourceMd5": "46c6de4fbbb9fea6b4ecf3fa7757052c",
       "executableMd5": "46c6de4fbbb9fea6b4ecf3fa7757052c"
@@ -20,6 +21,7 @@
       "version": "20261016023000",
       "name": "create_org_user",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "690d92cf3d9858db264af91c840cb3665c68ef008a53be23cee8279dd73a89bb",
       "sourceMd5": "9561fb2e7c8fad68a533970d6072ab11",
       "executableMd5": "aff311e29b25ffea240b7c6b34581c00"
@@ -29,6 +31,7 @@
       "version": "20261016024000",
       "name": "org_theme_patch",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "86688dae488c080b59462be0c72973b699d5defed02446db8c225e721c599062",
       "sourceMd5": "2c9792d7569fc1bf37905d4052df1c74",
       "executableMd5": "42fe883d9ab9e88f3fb33472e54180db"
@@ -38,6 +41,7 @@
       "version": "20261016110000",
       "name": "atomic_payment_settlement",
       "stripOuterTransaction": false,
+      "outerTransactionStart": null,
       "sourceSha256": "8826190717972fa42dd8e0e7f5c7824c38d4ab6f948cf3dd1c4600e54595c07b",
       "sourceMd5": "c50c1ed21927eb772760b5de745905cf",
       "executableMd5": "c50c1ed21927eb772760b5de745905cf"
@@ -47,6 +51,7 @@
       "version": "20261016140000",
       "name": "legacy_crm_access",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "3575cf5608e56c3e14355b54d1bdba5143ca822be7e8316c58f5a15f0e2ab36d",
       "sourceMd5": "65d2b5fb409ce2d836dcff05a0922244",
       "executableMd5": "1432ce808a0730c90191a8d83578536d"
@@ -56,6 +61,7 @@
       "version": "20261016150000",
       "name": "skillspace_job_authorization",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "deecaf8269a70a871ad4058cac02961170abb88b279ff73263999bad89f1bb78",
       "sourceMd5": "f5e631b328d52dcbc164e9942bf14ab0",
       "executableMd5": "e948839ab2cbdd590ba7c75f934065cb"
@@ -65,6 +71,7 @@
       "version": "20261016160000",
       "name": "postpaid_billing",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "dbe9ebe24b43a03189690cbcddccb9a698d63a8aeaf20df5a9f5184834219614",
       "sourceMd5": "76b0d7f0b546c0b571094e88516cd6f9",
       "executableMd5": "d65f903f88a394ca0c65a7b33189be0a"
@@ -74,6 +81,7 @@
       "version": "20261016161000",
       "name": "manual_invoice_settlement",
       "stripOuterTransaction": false,
+      "outerTransactionStart": null,
       "sourceSha256": "d98189d681cd18f8015fa3f63933c7334670fd81d774df703032a1231110a952",
       "sourceMd5": "f269a34171a146997c462289a455c9e7",
       "executableMd5": "f269a34171a146997c462289a455c9e7"
@@ -83,6 +91,7 @@
       "version": "20261016162000",
       "name": "postpaid_access",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "33b854fb93cc0e85c3e97bfdd5bf8ba127bb636c24bfc59985743569386a3beb",
       "sourceMd5": "59a09047cec6e3c9184bb112928c1510",
       "executableMd5": "744dba2f993eba09fac806ee6b406c35"
@@ -92,15 +101,17 @@
       "version": "20261016163000",
       "name": "secure_billing_scheduler",
       "stripOuterTransaction": true,
-      "sourceSha256": "591317569ec70d11e67933fd00f49678ccec1e06e3f99fb7c3f34201c3cb99ae",
-      "sourceMd5": "0c4dec574742ebfb9001145ad66692f9",
-      "executableMd5": "3bfebb16dddcb1cd079c092fed686d94"
+      "outerTransactionStart": "BEGIN ISOLATION LEVEL REPEATABLE READ;",
+      "sourceSha256": "e75ea5cd804156bf1203e8e9736dab5080154c4f5945bc989cd2dc13774d77a0",
+      "sourceMd5": "a66fb4a33b15a8d4eca24b50a75448df",
+      "executableMd5": "e887eeff0151fd139155dea406e4c3d8"
     },
     {
       "file": "20261016164000_postpaid_bank_guard.sql",
       "version": "20261016164000",
       "name": "postpaid_bank_guard",
       "stripOuterTransaction": true,
+      "outerTransactionStart": "BEGIN;",
       "sourceSha256": "73aaf8102f3c20ae6a4d1b662cbde504860e8a731ed4323b1cd68cc794ada9ce",
       "sourceMd5": "980cd605092d5b18bb2628cbed40bf84",
       "executableMd5": "3513b21049ccbbb11ae38ac278c8f88b"

@@ -1,15 +1,41 @@
 -- Preserve the existing daily billing schedule and gateway anon token. The
 -- business authorization is a separate random secret stored only in Vault.
 -- No secret is printed or copied into a function definition / cron command.
-BEGIN;
+BEGIN ISOLATION LEVEL REPEATABLE READ;
 DO $preflight$
+DECLARE job_record record; locked_job jsonb;
 BEGIN
   IF to_regclass('cron.job') IS NULL OR to_regclass('vault.secrets') IS NULL
      OR to_regclass('vault.decrypted_secrets') IS NULL THEN
     RAISE EXCEPTION 'Billing scheduler requires existing pg_cron and Vault';
   END IF;
+  IF current_setting('transaction_isolation') NOT IN ('repeatable read','serializable') THEN
+    RAISE EXCEPTION 'Billing scheduler requires a repeatable-read release transaction';
+  END IF;
+  IF to_regprocedure('cron.alter_job(bigint,text,text,text,text,boolean)') IS NULL
+     OR to_regprocedure('vault.create_secret(text,text,text,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Billing scheduler requires supported pg_cron and Vault APIs';
+  END IF;
+  IF NOT has_function_privilege(current_user,'cron.alter_job(bigint,text,text,text,text,boolean)','EXECUTE')
+     OR NOT has_function_privilege(current_user,'vault.create_secret(text,text,text,uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'Billing scheduler extension API execution is not permitted';
+  END IF;
   IF (SELECT count(*) FROM cron.job WHERE jobname='check-subscription-expiry-daily')<>1 THEN
     RAISE EXCEPTION 'Expected exactly one existing daily billing job';
+  END IF;
+  SELECT j.*,to_jsonb(j) AS original INTO STRICT job_record
+    FROM cron.job j WHERE jobname='check-subscription-expiry-daily';
+  IF job_record.username IS DISTINCT FROM current_user
+     OR job_record.database IS DISTINCT FROM current_database() THEN
+    RAISE EXCEPTION 'Billing scheduler must belong to the release role and database';
+  END IF;
+  -- Hosted pg_cron does not grant direct UPDATE/LOCK rights on cron.job.
+  -- Its supported API locks this owned row until commit. Repeatable read makes
+  -- an intervening edit fail with serialization_failure instead of overwriting it.
+  PERFORM cron.alter_job(job_record.jobid,active:=job_record.active);
+  SELECT to_jsonb(j) INTO STRICT locked_job FROM cron.job j WHERE jobid=job_record.jobid;
+  IF locked_job IS DISTINCT FROM job_record.original THEN
+    RAISE EXCEPTION 'Billing scheduler changed while acquiring its release lock';
   END IF;
   IF EXISTS(SELECT 1 FROM vault.secrets WHERE name='sintagma_billing_cron_secret') THEN
     RAISE EXCEPTION 'Billing scheduler secret already exists; reconcile before deployment';

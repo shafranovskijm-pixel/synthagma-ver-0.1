@@ -32,6 +32,13 @@ describe('eleven-migration single-request release transaction', () => {
     db = await createReleaseBatchFixture();
     const manifest = JSON.parse(await read('release-manifest.json'));
     const batch = await read('release-transaction.sql');
+    expect(await scalar("SELECT has_table_privilege(current_user,'cron.job','UPDATE') AS value")).toBe(false);
+    expect(await scalar("SELECT has_table_privilege(current_user,'vault.secrets','INSERT') AS value")).toBe(false);
+    expect(await scalar("SELECT rolsuper AS value FROM pg_roles WHERE rolname=current_user")).toBe(false);
+    await expect(db.exec('UPDATE cron.job SET active=false')).rejects.toThrow('permission denied');
+    await expect(db.exec('BEGIN; LOCK TABLE cron.job IN SHARE ROW EXCLUSIVE MODE')).rejects.toThrow('permission denied');
+    await db.exec('ROLLBACK');
+    expect(batch).toContain('BEGIN ISOLATION LEVEL REPEATABLE READ;');
     expect(createHash('sha256').update(batch.replaceAll('\r\n','\n')).digest('hex')).toBe(manifest.batchSha256);
     expect(manifest.migrationCount).toBe(11);
     expect(manifest.edgeEntrypoints.some((entry:any)=>entry.name==='check-subscription-expiry')).toBe(true);
@@ -50,7 +57,7 @@ describe('eleven-migration single-request release transaction', () => {
       const normalized=source.replaceAll('\r\n','\n');
       expect(createHash('sha256').update(normalized).digest('hex')).toBe(migration.sourceSha256);
       expect(createHash('md5').update(normalized).digest('hex')).toBe(migration.sourceMd5);
-      const executable=migration.stripOuterTransaction ? normalized.replace(/^BEGIN;$/m,'').replace(/^COMMIT;$/m,'') : normalized;
+      const executable=migration.stripOuterTransaction ? normalized.replace(/^BEGIN(?: ISOLATION LEVEL REPEATABLE READ)?;$/m,'').replace(/^COMMIT;$/m,'') : normalized;
       expect(createHash('md5').update(executable).digest('hex')).toBe(migration.executableMd5);
       const stored = (await db.query<any>('SELECT statements[1] AS source FROM supabase_migrations.schema_migrations WHERE version=$1',[migration.version])).rows[0].source;
       expect(stored).toBe(source);
@@ -89,7 +96,7 @@ describe('eleven-migration single-request release transaction', () => {
   }, 30000);
   it('rolls back postpaid and earlier migrations when the tenth scheduler migration detects command drift',async()=>{
     db=await createReleaseBatchFixture();
-    await db.exec("UPDATE cron.job SET command=replace(command,'Bearer eyJ.fixture.signature','Bearer changed') WHERE jobname='check-subscription-expiry-daily'");
+    await db.exec("RESET ROLE; UPDATE cron.job SET command=replace(command,'Bearer eyJ.fixture.signature','Bearer changed') WHERE jobname='check-subscription-expiry-daily'; SET ROLE fixture_release");
     await expect(db.exec(await read('release-transaction.sql'))).rejects.toThrow('Unexpected billing scheduler headers');
     await assertRolledBack();
   },30000);

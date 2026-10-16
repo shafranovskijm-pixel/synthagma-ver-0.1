@@ -7,6 +7,7 @@ export async function createReleaseBatchFixture() {
   const db = new PGlite();
   await db.exec(`
     CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    CREATE ROLE fixture_release NOSUPERUSER; CREATE ROLE fixture_extension_owner NOSUPERUSER;
     CREATE SCHEMA auth; CREATE SCHEMA supabase_migrations;
     CREATE TABLE supabase_migrations.schema_migrations(version text PRIMARY KEY,name text,statements text[]);
     CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('request.jwt.claim.role',true),'')$$;
@@ -79,16 +80,52 @@ export async function createReleaseBatchFixture() {
   await db.exec(`CREATE SCHEMA vault; CREATE SCHEMA cron; CREATE SCHEMA net;
     CREATE TABLE vault.secrets(id uuid DEFAULT gen_random_uuid(),name text UNIQUE,secret text,description text);
     CREATE VIEW vault.decrypted_secrets AS SELECT name,secret AS decrypted_secret FROM vault.secrets;
-    CREATE FUNCTION vault.create_secret(new_secret text,new_name text,new_description text) RETURNS uuid LANGUAGE plpgsql AS $$
+    CREATE FUNCTION vault.create_secret(new_secret text,new_name text DEFAULT NULL,new_description text DEFAULT '',new_key_id uuid DEFAULT NULL) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
       DECLARE result uuid; BEGIN INSERT INTO vault.secrets(name,secret,description) VALUES(new_name,new_secret,new_description) RETURNING id INTO result; RETURN result; END$$;
-    CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text UNIQUE,schedule text,command text,active boolean);
-    CREATE FUNCTION cron.alter_job(job_id bigint,command text) RETURNS void LANGUAGE sql AS $$UPDATE cron.job j SET command=$2 WHERE jobid=$1$$;
+    CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text UNIQUE,schedule text,command text,active boolean,
+      username text DEFAULT 'fixture_release',database text DEFAULT current_database());
+    -- Models the C extension's internal owner switch, without granting direct
+    -- cron-table mutation rights to the synthetic release role.
+    CREATE FUNCTION cron.alter_job(job_id bigint,schedule text DEFAULT NULL,command text DEFAULT NULL,database text DEFAULT NULL,username text DEFAULT NULL,active boolean DEFAULT NULL)
+      RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+      BEGIN
+        IF schedule IS NULL AND command IS NULL AND database IS NULL AND username IS NULL AND active IS NULL THEN RAISE EXCEPTION 'no updates specified'; END IF;
+        UPDATE cron.job j SET command=coalesce($3,j.command),active=coalesce($6,j.active),schedule=coalesce($2,j.schedule),database=coalesce($4,j.database),username=coalesce($5,j.username)
+          WHERE j.jobid=$1 AND j.username=coalesce(nullif(current_setting('role'),'none'),session_user);
+        IF NOT FOUND THEN RAISE EXCEPTION 'Job does not exist or you do not own it'; END IF;
+      END$$;
     CREATE TABLE fixture_http(headers jsonb,timeout_ms integer,url text);
     CREATE FUNCTION net.http_post(url text,headers jsonb,body jsonb,timeout_milliseconds integer DEFAULT 1000) RETURNS bigint LANGUAGE plpgsql AS $$
       BEGIN INSERT INTO fixture_http VALUES(headers,timeout_milliseconds,url);RETURN 1;END$$;
     INSERT INTO vault.secrets(name,secret,description) VALUES('unrelated_fixture_secret','synthetic-not-live','Preservation witness');
-    INSERT INTO cron.job VALUES(1,'unrelated-fixture-job','0 1 * * *','SELECT 1',true);`);
-  await db.query('INSERT INTO cron.job VALUES(2,$1,$2,$3,true)', ['check-subscription-expiry-daily','0 9 * * *',
+    INSERT INTO cron.job(jobid,jobname,schedule,command,active) VALUES(1,'unrelated-fixture-job','0 1 * * *','SELECT 1',true);`);
+  await db.query('INSERT INTO cron.job(jobid,jobname,schedule,command,active) VALUES(2,$1,$2,$3,true)', ['check-subscription-expiry-daily','0 9 * * *',
     `SELECT net.http_post(url:='https://atxwvjxbqjgkbjlhsdch.supabase.co/functions/v1/check-subscription-expiry',headers:='{"Content-Type":"application/json","Authorization":"Bearer eyJ.fixture.signature"}'::jsonb,body:='{}'::jsonb) AS request_id;`]);
+  await db.exec(`
+    -- Existing business objects are owned by the release role, as in hosted
+    -- postgres. Extension objects have a separate owner and restricted grants.
+    DO $$ DECLARE item record; BEGIN
+      FOR item IN SELECT c.oid::regclass AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname IN('public','auth','supabase_migrations') AND c.relkind='r'
+      LOOP EXECUTE format('ALTER TABLE %s OWNER TO fixture_release',item.name); END LOOP;
+      FOR item IN SELECT p.oid::regprocedure AS name FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+        WHERE n.nspname IN('public','auth') AND p.prokind='f'
+      LOOP EXECUTE format('ALTER FUNCTION %s OWNER TO fixture_release',item.name); END LOOP;
+    END $$;
+    ALTER TABLE cron.job OWNER TO fixture_extension_owner;
+    ALTER TABLE vault.secrets OWNER TO fixture_extension_owner;
+    ALTER VIEW vault.decrypted_secrets OWNER TO fixture_extension_owner;
+    ALTER FUNCTION cron.alter_job(bigint,text,text,text,text,boolean) OWNER TO fixture_extension_owner;
+    ALTER FUNCTION vault.create_secret(text,text,text,uuid) OWNER TO fixture_extension_owner;
+    GRANT USAGE ON SCHEMA cron,vault TO fixture_extension_owner,fixture_release;
+    GRANT USAGE ON SCHEMA public,auth TO anon,authenticated,service_role,fixture_release;
+    GRANT USAGE ON SCHEMA supabase_migrations TO fixture_release;
+    GRANT CREATE ON SCHEMA public TO fixture_release;
+    GRANT SELECT ON cron.job,vault.secrets,vault.decrypted_secrets TO fixture_release;
+    GRANT DELETE ON vault.secrets TO fixture_release;
+    REVOKE ALL ON FUNCTION cron.alter_job(bigint,text,text,text,text,boolean),vault.create_secret(text,text,text,uuid) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION cron.alter_job(bigint,text,text,text,text,boolean),vault.create_secret(text,text,text,uuid) TO fixture_release;
+    SET ROLE fixture_release;
+  `);
   return db;
 }
