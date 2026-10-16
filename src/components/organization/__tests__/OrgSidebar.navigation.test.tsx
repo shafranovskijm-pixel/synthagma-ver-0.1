@@ -10,6 +10,7 @@ let pinnedIds: string[] = [];
 let allowedTabs = new Set<string>();
 let menuSettings: Record<string, boolean> = {};
 let plan = "standard";
+let isPostpaid = false;
 let emailCampaignsEnabled = true;
 let salesCrmEnabled = true;
 let activeTab = "home";
@@ -34,6 +35,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     },
     subscriptionLimits: {
       plan,
+      isPostpaid,
       limits: { emailCampaignsEnabled, salesCrmEnabled },
     },
     crmAccess: { enabled: salesCrmEnabled, loading: false, error: null },
@@ -96,6 +98,7 @@ beforeEach(() => {
   setTheme.mockClear();
   pinnedIds = [];
   plan = "standard";
+  isPostpaid = false;
   emailCampaignsEnabled = true;
   salesCrmEnabled = true;
   activeTab = "home";
@@ -143,6 +146,21 @@ beforeEach(() => {
 });
 
 describe("OrgSidebar navigation", () => {
+  it("shows the current billing mode without changing the stored prepaid plan", () => {
+    plan = "maximum";
+    const { rerender } = renderSidebar();
+    expect(screen.getByText("Максимальный тариф")).toBeInTheDocument();
+
+    isPostpaid = true;
+    rerender(<MemoryRouter initialEntries={["/organization"]}><TooltipProvider><OrgSidebar /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByText("Постоплата по договору")).toBeInTheDocument();
+    expect(screen.queryByText("Максимальный тариф")).not.toBeInTheDocument();
+
+    isPostpaid = false;
+    rerender(<MemoryRouter initialEntries={["/organization"]}><TooltipProvider><OrgSidebar /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByText("Максимальный тариф")).toBeInTheDocument();
+  });
+
   it("keeps shared appearance locked and restores the personal theme control when enforcement ends", () => {
     applySharedTheme(DEFAULT_THEME_PREFERENCES);
     renderSidebar();

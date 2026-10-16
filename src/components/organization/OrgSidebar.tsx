@@ -180,6 +180,7 @@ export function OrgSidebar() {
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
   const planName = d.subscriptionLimits?.plan;
+  const isPostpaid = d.subscriptionLimits?.isPostpaid === true;
   const mailingEnabled = isMailingEnabled(
     planName,
     d.subscriptionLimits?.limits.emailCampaignsEnabled,
@@ -887,9 +888,9 @@ export function OrgSidebar() {
               <div className="text-[13px] font-semibold text-foreground leading-tight truncate">
                 {customName || organizationName || "Школа"}
               </div>
-              {planLabel && (
+              {(isPostpaid || planLabel) && (
                 <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                  {planLabel} тариф
+                  {isPostpaid ? "Постоплата по договору" : `${planLabel} тариф`}
                 </div>
               )}
             </div>
