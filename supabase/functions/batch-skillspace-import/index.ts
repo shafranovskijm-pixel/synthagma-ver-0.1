@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { AccessError, accessErrorResponse, checked, readObject, requireActiveUser, requirePlatformAdmin, requireUuid } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,21 +18,24 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await req.json();
+    const actor = await requireActiveUser(req, supabase, supabaseServiceKey);
+    if (!actor.service) await requirePlatformAdmin(supabase, actor);
+    const body = await readObject(req);
 
     // === RECURSIVE PROCESSING MODE ===
     if (body.processBatchId) {
-      const batchId = body.processBatchId;
+      const batchId = requireUuid(body.processBatchId, "processBatchId");
       console.log(`[batch] Processing next pending job for batch ${batchId}`);
 
       // Pick next pending job
-      const { data: pendingJobs } = await supabase
+      const { data: pendingJobs, error: jobsError } = await supabase
         .from("skillspace_import_jobs")
-        .select("id, url, batch_id, organization_id")
+        .select("id, url, batch_id, organization_id, created_by, authorization_verified_at")
         .eq("batch_id", batchId)
         .eq("status", "pending")
         .order("created_at", { ascending: true })
         .limit(1);
+      checked({ data: pendingJobs, error: jobsError });
 
       if (!pendingJobs || pendingJobs.length === 0) {
         console.log(`[batch] No more pending jobs for batch ${batchId}`);
@@ -42,6 +46,13 @@ Deno.serve(async (req) => {
       }
 
       const job = pendingJobs[0];
+      if (!job.authorization_verified_at) throw new AccessError(409, "Старая очередь импорта требует проверки администратора");
+      // Background jobs retain their creator's authority, not a permanent
+      // anonymous bypass. Revocation stops the next job before credentials.
+      if (!job.created_by) throw new AccessError(403, "У задачи нет подтверждённого автора");
+      const revoked = checked(await supabase.from("account_deletion_revocations").select("user_id").eq("user_id", job.created_by).maybeSingle());
+      if (revoked) throw new AccessError(403, "Доступ автора задачи отозван");
+      await requirePlatformAdmin(supabase, { userId: job.created_by, service: false });
 
       try {
         await supabase
@@ -70,7 +81,7 @@ Deno.serve(async (req) => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${anonKey}`,
+              Authorization: `Bearer ${supabaseServiceKey}`,
               apikey: anonKey,
             },
             body: JSON.stringify({
@@ -116,7 +127,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${anonKey}`,
+            Authorization: `Bearer ${supabaseServiceKey}`,
             apikey: anonKey,
           },
           body: JSON.stringify({ processBatchId: batchId }),
@@ -130,29 +141,12 @@ Deno.serve(async (req) => {
     }
 
     // === INITIAL BATCH CREATION MODE ===
-    // Validate auth via user token
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Initial creation must have a verified human administrator identity.
+    await requirePlatformAdmin(supabase, actor);
+    const { urls, login, password } = body;
+    const organizationId = requireUuid(body.organizationId, "organizationId");
 
-    const supabaseAuth = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { urls, login, password, organizationId } = body;
-
-    if (!Array.isArray(urls) || urls.length === 0 || !login || !password || !organizationId) {
+    if (!Array.isArray(urls) || urls.length === 0 || urls.some(url => typeof url !== "string" || !url.trim()) || typeof login !== "string" || !login || typeof password !== "string" || !password) {
       return new Response(
         JSON.stringify({ error: "urls, login, password, organizationId обязательны" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -176,7 +170,7 @@ Deno.serve(async (req) => {
       login,
       password,
       status: "pending",
-      created_by: userData.user.id,
+      created_by: actor.userId,
     }));
 
     const { data: insertedJobs, error: insertError } = await supabase
@@ -198,7 +192,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${anonKey}`,
+          Authorization: `Bearer ${supabaseServiceKey}`,
           apikey: anonKey,
         },
         body: JSON.stringify({ processBatchId: batchId }),
@@ -210,10 +204,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Batch import error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return accessErrorResponse(err, corsHeaders);
   }
 });
