@@ -7,6 +7,8 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
 import { useTheme } from "next-themes";
+import { useThemeEnforcement } from "@/hooks/useThemeEnforcement";
+import { isSharedThemeEnforced } from "@/lib/themePreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { OrgNotifications } from "./OrgNotifications";
 import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
@@ -41,7 +43,9 @@ export function OrgDashboardHeader() {
   const d = useOrgDashboard();
   const { can } = useStaffPermissions();
   const { theme, setTheme } = useTheme();
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const themeEnforced = useThemeEnforcement();
+  const themeControlLabel = themeEnforced ? "Оформление задаётся организацией" : "Сменить тему";
+  const toggleTheme = () => { if (!isSharedThemeEnforced()) setTheme(theme === "dark" ? "light" : "dark"); };
 
   const activeTab = d.tabNavigation.activeTab;
   const isCoursesFirstRun =
@@ -176,20 +180,20 @@ export function OrgDashboardHeader() {
             {logoUrl ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                  <button onClick={toggleTheme} disabled={themeEnforced} aria-label={themeControlLabel} title={themeControlLabel} className="hover:opacity-80 transition-opacity">
                     <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Сменить тему</TooltipContent>
+                <TooltipContent>{themeControlLabel}</TooltipContent>
               </Tooltip>
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                  <button onClick={toggleTheme} disabled={themeEnforced} aria-label={themeControlLabel} title={themeControlLabel} className="hover:opacity-80 transition-opacity">
                     <SigmaLogo size="sm" showText={false} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Сменить тему</TooltipContent>
+                <TooltipContent>{themeControlLabel}</TooltipContent>
               </Tooltip>
             )}
             <span className="font-display font-bold text-sm hidden sm:inline">{customName || organizationName || "СИНТАГМА"}</span>

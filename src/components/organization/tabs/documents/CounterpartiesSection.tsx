@@ -41,6 +41,8 @@ interface ClientGroup {
 interface CounterpartiesSectionProps {
   organizationId: string;
   canWrite: boolean;
+  allowPrepaidInvoices?: boolean;
+  isPostpaid?: boolean;
   counterpartySubTab: CounterpartySubTab;
   setCounterpartySubTab: (v: CounterpartySubTab) => void;
   counterpartyDocs: CounterpartyDoc[];
@@ -60,6 +62,8 @@ interface CounterpartiesSectionProps {
 export function CounterpartiesSection({
   organizationId,
   canWrite,
+  allowPrepaidInvoices = false,
+  isPostpaid = false,
   counterpartySubTab,
   setCounterpartySubTab,
   counterpartyDocs,
@@ -426,7 +430,8 @@ export function CounterpartiesSection({
   const renderPlatformInvoices = () => {
     return (
       <div className="space-y-2">
-        {canWrite && <div className="flex items-center justify-end gap-2 pb-1">
+        {isPostpaid && <p className="text-xs text-muted-foreground pb-2">Счета по постоплате появляются после окончания месяца и проверки фактического использования.</p>}
+        {canWrite && allowPrepaidInvoices && <div className="flex items-center justify-end gap-2 pb-1">
           <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onShowInvoiceDialog}>
             <Receipt className="w-3.5 h-3.5" />Выставить счёт
           </Button>

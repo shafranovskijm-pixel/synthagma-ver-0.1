@@ -15,6 +15,58 @@ export interface InvoiceData {
   planName: string;
   periodMonths: number;
   amount: number;
+  postpaid?: PostpaidInvoiceCalculation;
+}
+
+export interface PostpaidInvoiceCalculation {
+  period_start: string;
+  period_end: string;
+  access_period_start: string;
+  access_period_end: string;
+  courses_count: number;
+  learners_count: number;
+  features: Record<string, boolean>;
+  access_days: number;
+  month_days: number;
+  contract_reference: string;
+  terms_version: string;
+  monthly_amount: number;
+  amount: number;
+}
+
+const billingDate = (value: string, previousDay = false) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('Некорректная дата расчёта');
+  const date = new Date(`${value}T12:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error('Некорректная дата расчёта');
+  if (previousDay) date.setUTCDate(date.getUTCDate() - 1);
+  return date.toLocaleDateString('ru-RU', { timeZone: 'UTC' });
+};
+
+function postpaidCalculationHtml(calculation: PostpaidInvoiceCalculation, amount: number): string {
+  const p = calculation;
+  if (p.terms_version !== '59-09-26-v1' || !Number.isFinite(p.amount) || p.amount !== amount
+    || ![4490, 6990, 16990].includes(p.monthly_amount)
+    || ![p.courses_count, p.learners_count, p.access_days, p.month_days].every(n => Number.isSafeInteger(n) && n >= 0)
+    || p.month_days < 28 || p.month_days > 31 || p.access_days < 1 || p.access_days > p.month_days
+    || p.period_end <= p.period_start || p.access_period_end <= p.access_period_start) {
+    throw new Error('Счёт не соответствует подтверждённому расчёту постоплаты');
+  }
+  const names: Record<string, string> = { crm: 'CRM и продажи', webinar: 'Вебинары', videoserviceplus: 'Видеосервис+', frdoplus: 'ФИС ФРДО+' };
+  const functions = Object.entries(p.features).filter(([,used]) => used === true).map(([key]) => names[key]).filter(Boolean);
+  const prorata = p.access_days !== p.month_days
+    ? `${p.monthly_amount.toLocaleString('ru-RU')} ₽ × ${p.access_days} / ${p.month_days} дней`
+    : `${p.monthly_amount.toLocaleString('ru-RU')} ₽ за полный месяц`;
+  return `<section style="margin-top:20px;font-size:11pt;break-inside:avoid">
+    <b>Расчёт по фактическому использованию</b>
+    <p>Основание: ${escapeHtml(clampRequisite(p.contract_reference, 500))}.<br>
+    Расчётный месяц: ${billingDate(p.period_start)} — ${billingDate(p.period_end, true)}.<br>
+    Доступ предоставлен: ${billingDate(p.access_period_start)} — ${billingDate(p.access_period_end, true)}.</p>
+    <p>Использованных курсов: ${p.courses_count}. Уникальных обучавшихся: ${p.learners_count}.<br>
+    Функции, учтённые с предварительным подтверждением: ${functions.length ? functions.join(', ') : 'нет'}.<br>
+    Стоимость доступа: ${prorata}. Применяется один тариф за месяц.<br>
+    Дополнительные услуги в этот счёт не включены.</p>
+    <p>Оплата в течение 5 рабочих дней с даты получения счёта и акта с расчётом.</p>
+  </section>`;
 }
 
 function pluralMonths(n: number): string {
@@ -46,7 +98,11 @@ export function generateInvoiceHtmlSync(
 
 function renderInvoiceHtml(data: InvoiceData, requisites: OperatorRequisites): string {
   const seller = readStoredCompanyCardRequisites(requisites);
-  const serviceName = `Предоставление доступа к платформе «Синтагма». Тариф «${escapeHtml(clampRequisite(data.planName))}», ${pluralMonths(data.periodMonths)}`;
+  const calculationHtml = data.postpaid ? postpaidCalculationHtml(data.postpaid, data.amount) : '';
+  const servicePeriod = data.postpaid
+    ? `постоплата за ${billingDate(data.postpaid.access_period_start)} — ${billingDate(data.postpaid.access_period_end, true)}`
+    : pluralMonths(data.periodMonths);
+  const serviceName = `Предоставление доступа к платформе «Синтагма». Тариф «${escapeHtml(clampRequisite(data.planName))}», ${servicePeriod}`;
   const buyerName = escapeHtml(clampRequisite(data.buyerName));
   const buyerInn = escapeHtml(clampRequisite(data.buyerInn));
   const buyerKpp = escapeHtml(clampRequisite(data.buyerKpp));
@@ -147,8 +203,10 @@ function renderInvoiceHtml(data: InvoiceData, requisites: OperatorRequisites): s
 
 <div style="text-align: right; margin-top: 10px; font-size: 12pt;">
   <div><b>Итого: ${amountFormatted} ₽</b></div>
-  <div style="font-size: 10pt; color: #555; margin-top: 4px;">НДС не облагается (УСН)</div>
+  <div style="font-size: 10pt; color: #555; margin-top: 4px;">${data.postpaid ? 'НДС не начисляется (НПД, п. 4.8 договора)' : 'НДС не облагается (УСН)'}</div>
 </div>
+
+${calculationHtml}
 
 <div class="sign-block" style="min-height: 180px;">
   <div style="margin-top: 30px;">

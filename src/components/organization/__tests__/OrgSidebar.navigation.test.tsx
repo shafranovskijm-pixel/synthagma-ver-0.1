@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { applySharedTheme, restorePersonalTheme, DEFAULT_THEME_PREFERENCES } from "@/lib/themePreferences";
 import { MemoryRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const setActiveTab = vi.fn();
+const setTheme = vi.fn();
 let pinnedIds: string[] = [];
 let allowedTabs = new Set<string>();
 let menuSettings: Record<string, boolean> = {};
@@ -67,7 +69,7 @@ vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => isMobile }));
 vi.mock("@/hooks/useDrivingSchoolEntry", () => ({ useDrivingSchoolEntry: () => false }));
 
 vi.mock("next-themes", () => ({
-  useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
+  useTheme: () => ({ theme: "light", setTheme }),
 }));
 
 import { OrgMobileBottomNav } from "@/components/organization/OrgMobileBottomNav";
@@ -91,6 +93,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem("org-sidebar-mode", "expanded");
   setActiveTab.mockClear();
+  setTheme.mockClear();
   pinnedIds = [];
   plan = "standard";
   emailCampaignsEnabled = true;
@@ -140,6 +143,17 @@ beforeEach(() => {
 });
 
 describe("OrgSidebar navigation", () => {
+  it("keeps shared appearance locked and restores the personal theme control when enforcement ends", () => {
+    applySharedTheme(DEFAULT_THEME_PREFERENCES);
+    renderSidebar();
+    const control = screen.getByRole("button", { name: "Оформление задаётся организацией" });
+    expect(control).toBeDisabled();
+    fireEvent.click(control);
+    expect(setTheme).not.toHaveBeenCalled();
+    act(() => restorePersonalTheme());
+    fireEvent.click(screen.getByRole("button", { name: "Сменить тему" }));
+    expect(setTheme).toHaveBeenCalledExactlyOnceWith("dark");
+  });
   it("opens the CRM beta from its own main item and shows the beta marker", () => {
     activeTab = "sales";
     renderSidebar();

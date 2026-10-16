@@ -12,8 +12,10 @@ import {
 import { AchievementsManager } from "./AchievementsManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
+import { StudentDashboardPreviewDialog, type StudentPreviewBranding } from "./StudentDashboardPreviewDialog";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
-interface StudentDashboardSettings {
+export interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   showRadio: boolean;
@@ -47,14 +49,38 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
   const [settings, setSettings] = useState<StudentDashboardSettings>(DEFAULT_STUDENT);
   const [isSaving, setIsSaving] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [organizationName, setOrganizationName] = useState("");
+  const [branding, setBranding] = useState<StudentPreviewBranding>({});
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const canWrite = !permissionsLoading && can('settings.write');
 
   useEffect(() => {
+    let cancelled = false;
+    setLoaded(false);
+    setLoadError(false);
+    setSettings(DEFAULT_STUDENT);
+    setOrganizationName("");
+    setBranding({});
+    setPreviewOpen(false);
     const load = async () => {
-      const { data: org } = await supabase
+      try {
+      const { data: org, error } = await supabase
         .from("organizations")
-        .select("student_dashboard_settings")
+        .select("student_dashboard_settings,name,branding")
         .eq("id", organizationId)
         .single();
+      if (cancelled) return;
+      if (error || !org) throw new Error('Settings not loaded');
+      setOrganizationName(org.name || "");
+      const savedBranding = org.branding as Record<string, unknown> | null;
+      setBranding({
+        coverUrl: typeof savedBranding?.coverUrl === 'string' ? savedBranding.coverUrl : undefined,
+        coverPosition: typeof savedBranding?.coverPosition === 'string' ? savedBranding.coverPosition : undefined,
+        logoUrl: typeof savedBranding?.logoUrl === 'string' ? savedBranding.logoUrl : undefined,
+      });
       if (org?.student_dashboard_settings) {
         const s = org.student_dashboard_settings as any;
         setSettings({
@@ -68,19 +94,23 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           catalogMode: s.catalogMode || "catalog",
           studentTheme: s.studentTheme ?? null });
       }
+      setLoaded(true);
+      } catch { if (!cancelled) setLoadError(true); }
     };
     load();
+    return () => { cancelled = true; };
   }, [organizationId]);
 
   const handleSave = async () => {
+    if (!canWrite || !loaded) return;
     setIsSaving(true);
     try {
       const safeSettings = { ...settings, showWebinars: false, showTrainers: false };
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('organizations')
         .update({ student_dashboard_settings: JSON.parse(JSON.stringify(safeSettings)) })
-        .eq('id', organizationId);
-      if (error) throw error;
+        .eq('id', organizationId).select('id').single();
+      if (error || !data || data.id !== organizationId) throw error || new Error('Save not confirmed');
       toast.success('Настройки сохранены');
     } catch {
       toast.error('Ошибка сохранения настроек');
@@ -119,7 +149,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => window.open("/student", "_blank")}>
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" disabled={!loaded} onClick={() => setPreviewOpen(true)}>
                 <ExternalLink className="w-4 h-4" /> Просмотр
               </Button>
             </TooltipTrigger>
@@ -127,7 +157,8 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           </Tooltip>
         </TooltipProvider>
       </div>
-      <div className="space-y-4">
+      {loadError && <p role="alert" className="text-sm text-destructive mb-4">Не удалось загрузить настройки. Обновите страницу.</p>}
+      <fieldset className="space-y-4 min-w-0" disabled={!canWrite || !loaded || isSaving}>
         <div className="flex items-center justify-between py-3 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -144,6 +175,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
             </Button>
             <button
               onClick={() => setSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
+              aria-label="Показывать достижения"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAchievements ? 'bg-primary' : 'bg-muted'}`}
             >
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -162,6 +194,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           </div>
           <button
             onClick={() => setSettings(prev => ({ ...prev, showAiChat: !prev.showAiChat }))}
+            aria-label="Показывать ИИ-помощника"
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAiChat ? 'bg-primary' : 'bg-muted'}`}
           >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAiChat ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -180,6 +213,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           </div>
           <button
             onClick={() => setSettings(prev => ({ ...prev, showRadio: !prev.showRadio }))}
+            aria-label="Показывать радио"
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showRadio ? 'bg-primary' : 'bg-muted'}`}
           >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showRadio ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -198,6 +232,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           </div>
           <button
             onClick={() => setSettings(prev => ({ ...prev, showAnnouncements: !prev.showAnnouncements }))}
+            aria-label="Показывать новости платформы"
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAnnouncements ? 'bg-primary' : 'bg-muted'}`}
           >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAnnouncements ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -240,13 +275,14 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
             Это тема по умолчанию для новых учеников. Каждый ученик сможет изменить её в своём профиле.
           </p>
         </div>
-      </div>
+      </fieldset>
       <div className="mt-6 pt-4 border-t border-border">
-        <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
+        <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving || !loaded || !canWrite}>
           {isSaving ? <><SigmaSpinner size="sm" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
         </Button>
       </div>
       <AchievementsManager organizationId={organizationId} isOpen={achievementsOpen} onOpenChange={setAchievementsOpen} />
+      {previewOpen && <StudentDashboardPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} settings={settings} organizationName={organizationName} branding={branding} />}
     </div>
   );
 }

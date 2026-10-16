@@ -15,6 +15,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
+import { useThemeEnforcement } from "@/hooks/useThemeEnforcement";
+import { isSharedThemeEnforced } from "@/lib/themePreferences";
 
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
@@ -192,7 +194,8 @@ export function OrgSidebar() {
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const { theme: currentTheme, setTheme } = useTheme();
-  const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
+  const themeEnforced = useThemeEnforcement();
+  const toggleTheme = () => { if (!isSharedThemeEnforced()) setTheme(currentTheme === "dark" ? "light" : "dark"); };
 
   // Sidebar mode: 3 states (expanded / compact-with-captions / icons-only).
   // Capture this before effects persist the initial state. Otherwise the
@@ -855,6 +858,9 @@ export function OrgSidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={logoUrl ? () => logoInputRef.current?.click() : toggleTheme}
+                disabled={!logoUrl && themeEnforced}
+                aria-label={logoUrl ? "Изменить значок" : themeEnforced ? "Оформление задаётся организацией" : "Сменить тему"}
+                title={!logoUrl && themeEnforced ? "Оформление задаётся организацией" : undefined}
                 className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-background/40 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
               >
                 {isUploadingLogo ? (
@@ -872,7 +878,7 @@ export function OrgSidebar() {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="z-[100]">
-              {logoUrl ? "Нажмите, чтобы изменить значок" : "Сменить тему"}
+              {logoUrl ? "Нажмите, чтобы изменить значок" : themeEnforced ? "Оформление задаётся организацией" : "Сменить тему"}
             </TooltipContent>
           </Tooltip>
 

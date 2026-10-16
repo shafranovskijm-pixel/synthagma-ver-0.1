@@ -13,6 +13,7 @@ import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS } from "@/const
 export interface Invoice {
   id: string; invoice_number: string; amount: number; status: string;
   plan: string; period_months: number; invoice_date: string;
+  billing_kind?: 'prepaid' | 'postpaid'; service_period_start?: string; service_period_end?: string; postpaid_statement_id?: string;
   organization_id: string; org_name?: string;
   buyer_name?: string; buyer_inn?: string; buyer_kpp?: string;
 }
@@ -190,6 +191,9 @@ export function useAdminBilling() {
     if (!selectedOrgId) return;
     setGeneratingInvoice(true);
     try {
+      const { data: postpaid, error: agreementError } = await supabase.rpc("has_active_postpaid_agreement" as any, { p_organization_id: selectedOrgId });
+      if (agreementError || typeof postpaid !== "boolean") throw agreementError || new Error("Не удалось проверить условия оплаты");
+      if (postpaid) throw new Error("Для постоплаты создайте расчёт прошедшего месяца в разделе «Постоплата по использованию»");
       const org = selectedOrg;
       const plan = org?.subscription_plan || "start";
       const amount = getSubscriptionInvoiceMonthlyAmount({
@@ -325,31 +329,19 @@ export function useAdminBilling() {
 
   const handleMarkPaid = async (inv: Invoice) => {
     try {
-      const { error: invErr } = await supabase.from("subscription_invoices").update({ status: "paid" } as any).eq("id", inv.id);
-      if (invErr) throw invErr;
-      const { data: orgData, error: orgErr } = await supabase.from("organizations").select("paid_until").eq("id", inv.organization_id).single();
-      if (orgErr) throw orgErr;
-      const now = new Date();
-      const currentPaidUntil = orgData?.paid_until ? new Date(orgData.paid_until) : null;
-      const base = currentPaidUntil && currentPaidUntil > now ? currentPaidUntil : now;
-      const newPaidUntil = new Date(base);
-      newPaidUntil.setMonth(newPaidUntil.getMonth() + (inv.period_months || 1));
-      const { error: updErr } = await supabase.from("organizations").update({ paid_until: newPaidUntil.toISOString() } as any).eq("id", inv.organization_id);
-      if (updErr) throw updErr;
-      // Начисление реферальной комиссии (не блокирует подтверждение)
-      try {
-        await supabase.functions.invoke("referral-commission", {
-          body: {
-            organization_id: inv.organization_id,
-            amount: Number(inv.amount) || 0,
-            payment_source: "manual",
-            invoice_id: inv.id,
-          },
-        });
-      } catch (e) {
-        console.warn("referral-commission invoke failed:", e);
+      const { data, error } = await supabase.rpc("confirm_manual_subscription_invoice" as any, { p_invoice_id: inv.id });
+      if (error) throw error;
+      const result = data as { applied: boolean; outcome: string; billing_kind: string; paid_until: string | null };
+      if (!result || typeof result.applied !== "boolean") throw new Error("Сервер не подтвердил оплату");
+      // The database paid-status trigger queues referral processing. A repeated
+      // click must not run a separate client-side commission or extend access.
+      if (!result.applied) {
+        toast.info(result.outcome === "historical_paid" ? "Счёт уже отмечен оплаченным. Повторное продление не выполнено." : "Оплата уже подтверждена");
+      } else {
+        toast.success("Оплата подтверждена", { description: result.billing_kind === "postpaid"
+          ? "Задолженность за прошедший период погашена"
+          : result.paid_until ? `Тариф продлён до ${format(new Date(result.paid_until), "d MMMM yyyy", { locale: ru })}` : undefined });
       }
-      toast.success("Оплата подтверждена", { description: `Тариф продлён до ${format(newPaidUntil, "d MMMM yyyy", { locale: ru })}` });
       loadData();
     } catch (e) { toast.error(getErrorMessage(e)); }
   };

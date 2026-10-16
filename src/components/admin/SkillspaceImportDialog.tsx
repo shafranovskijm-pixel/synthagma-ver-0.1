@@ -95,10 +95,12 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Сессия истекла. Войдите повторно.");
       const requestBody = JSON.stringify({ url, login, password, organizationId, ...(existingCourseId ? { existingCourseId } : {}) });
       const requestHeaders = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${supabaseKey}`,
+        "Authorization": `Bearer ${session.access_token}`,
         "apikey": supabaseKey };
       
       // Retry logic for network errors (antivirus/VPN blocks)

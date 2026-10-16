@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { applySharedTheme, DEFAULT_THEME_PREFERENCES } from "@/lib/themePreferences";
 
 const testState = vi.hoisted(() => ({
   coverUrl: "",
@@ -9,6 +10,7 @@ const testState = vi.hoisted(() => ({
   activeTab: "home",
   setActiveTab: vi.fn(),
   proxiedAssetUrl: vi.fn(),
+  setTheme: vi.fn(),
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -26,7 +28,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
 vi.mock("@/hooks/useStaffPermissions", () => ({ useStaffPermissions: () => ({ can: () => true }) }));
 vi.mock("@/hooks/useOrgNewIndicators", () => ({ useOrgNewIndicators: () => ({ whatsNew: 0 }) }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
-vi.mock("next-themes", () => ({ useTheme: () => ({ theme: "light", setTheme: vi.fn() }) }));
+vi.mock("next-themes", () => ({ useTheme: () => ({ theme: "light", setTheme: testState.setTheme }) }));
 vi.mock("@/components/organization/OrgNotifications", () => ({ OrgNotifications: () => null }));
 vi.mock("@/components/organization/QuickActionChips", () => ({ QuickActionChips: () => null }));
 vi.mock("@/components/organization/SectionBreadcrumbDropdown", () => ({ SectionBreadcrumbDropdown: ({ label }: { label: string }) => <span>{label}</span> }));
@@ -48,6 +50,7 @@ function renderHeader() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   vi.clearAllMocks();
   testState.coverUrl = "";
   testState.coverPosition = "cover";
@@ -58,6 +61,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("organization dashboard cover", () => {
+  it("does not override the shared mode through the header logo", () => {
+    applySharedTheme(DEFAULT_THEME_PREFERENCES);
+    renderHeader();
+    const control = screen.getByRole("button", { name: "Оформление задаётся организацией" });
+    expect(control).toBeDisabled();
+    fireEvent.click(control);
+    expect(testState.setTheme).not.toHaveBeenCalled();
+  });
   it("labels the CRM beta in the client breadcrumb", () => {
     testState.activeTab = "sales";
     renderHeader();

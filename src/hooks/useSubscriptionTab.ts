@@ -7,6 +7,7 @@ import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 
 export const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -78,6 +79,13 @@ export function useSubscriptionTab() {
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
   const subscriptionLimits = d.subscriptionLimits;
+  const postpaid = usePostpaidAccessProfile(organizationId);
+  const allowPrepaidActions = !!organizationId && !postpaid.isLoading && !postpaid.error && postpaid.data?.active === false;
+  const checkPrepaidAccess = () => {
+    if (allowPrepaidActions) return true;
+    toast.error(postpaid.data?.active ? "Для постоплаты счёт формируется после завершения месяца и проверки фактического использования." : "Сначала дождитесь проверки условий оплаты организации.");
+    return false;
+  };
   const nav = useNavigate();
 
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
@@ -126,7 +134,7 @@ export function useSubscriptionTab() {
   }, [daysRemaining]);
 
   const handleRequestUpgrade = async () => {
-    if (!organizationId || !selectedPlan) return;
+    if (!organizationId || !selectedPlan || !checkPrepaidAccess()) return;
     setSubmitting(true);
     const { data, error } = await supabase.functions.invoke("request-subscription-upgrade", {
       body: {
@@ -151,7 +159,7 @@ export function useSubscriptionTab() {
   };
 
   const handleGenerateInvoice = async () => {
-    if (!organizationId) return;
+    if (!organizationId || !checkPrepaidAccess()) return;
     setGeneratingInvoice(true);
     try {
       const { data: orgData } = await supabase
@@ -207,7 +215,7 @@ export function useSubscriptionTab() {
   };
 
   const handlePayOnline = async () => {
-    if (!organizationId || !selectedPlan) return;
+    if (!organizationId || !selectedPlan || !checkPrepaidAccess()) return;
     setPayingOnline(true);
     try {
       const { data, error } = await supabase.functions.invoke("tbank-init-subscription", {
@@ -240,6 +248,11 @@ export function useSubscriptionTab() {
     Math.round(((subscriptionLimits.usage.trainedThisMonth || 0) / subscriptionLimits.limits.maxTrainedPerMonth) * 100);
 
   return {
+    isPostpaid: postpaid.data?.active === true && !postpaid.error,
+    postpaidAccessLoading: !!organizationId && postpaid.isLoading,
+    postpaidAccessError: postpaid.error,
+    refreshPostpaidAccess: postpaid.refetch,
+    allowPrepaidActions,
     subscriptionLimits,
     currentPlan,
     currentPlanInfo,

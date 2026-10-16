@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Check, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
-import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
-import { getStoredAnimationLevel, storeAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
+import { useTheme } from "next-themes";
+import { applyThemePreferences, applyVisualThemeColors, readDeviceThemePreferences, initializeThemeSession, ORG_THEME_ENFORCE_KEY, THEME_MODE_EVENT, THEME_PREFERENCES_EVENT, type ThemePreferences } from "@/lib/themePreferences";
+import { type AnimationLevel } from "@/components/ui/ThemeAnimations";
 
 const ACCENT_COLORS = [
   { name: "Золотой", hsl: "38 75% 55%" },
@@ -34,12 +35,7 @@ const ANIMATION_OPTIONS: { value: AnimationLevel; label: string }[] = [
   { value: "none", label: "Выключена" },
 ];
 
-function AnimationLevelSelector() {
-  const [level, setLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
-  const select = useCallback((v: AnimationLevel) => {
-    setLevel(v);
-    storeAnimationLevel(v);
-  }, []);
+function AnimationLevelSelector({ level, onChange }: { level: AnimationLevel; onChange: (value: AnimationLevel) => void }) {
   return (
     <div>
       <p className="font-medium text-sm mb-1">Анимация</p>
@@ -48,7 +44,7 @@ function AnimationLevelSelector() {
         {ANIMATION_OPTIONS.map((opt) => (
           <button
             key={opt.value}
-            onClick={() => select(opt.value)}
+            onClick={() => onChange(opt.value)}
             className={cn(
               "rounded-xl border-2 px-3 py-2.5 text-xs font-medium transition-all duration-200",
               level === opt.value
@@ -84,76 +80,32 @@ function hexToHsl(hex: string): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-function applyAccent(hsl: string) {
-  document.documentElement.style.setProperty('--accent', hsl);
-  document.documentElement.style.setProperty('--ring', hsl);
-  localStorage.setItem('theme-accent', hsl);
-}
-
-function applyDensity(value: string) {
-  document.documentElement.classList.remove('density-compact', 'density-comfortable');
-  if (value !== 'default') document.documentElement.classList.add(`density-${value}`);
-  localStorage.setItem('theme-density', value);
-}
-
-function applyRadius(value: string) {
-  const map: Record<string, string> = { sharp: '0.125rem', default: '0.5rem', soft: '1rem' };
-  document.documentElement.style.setProperty('--radius', map[value] || '0.5rem');
-  localStorage.setItem('theme-radius', value);
-}
-
-function applyVisualTheme(themeId: string | null) {
-  if (!themeId) {
-    document.documentElement.style.removeProperty('--primary');
-    document.documentElement.style.removeProperty('--primary-foreground');
-    document.documentElement.style.removeProperty('--accent');
-    document.documentElement.style.removeProperty('--accent-foreground');
-    return;
-  }
-  const theme = getThemeById(themeId);
-  if (theme) {
-    document.documentElement.style.setProperty('--primary', theme.accent);
-    document.documentElement.style.setProperty('--primary-foreground', theme.accentForeground);
-    document.documentElement.style.setProperty('--accent', theme.accent);
-    document.documentElement.style.setProperty('--accent-foreground', theme.accentForeground);
-  }
-}
-
 export function useThemePersonalization() {
+  const { setTheme } = useTheme();
   useEffect(() => {
-    // If the organization enforces a shared theme, skip applying personal
-    // localStorage overrides — useOrgTheme will dictate the visual theme.
-    const enforced = (() => {
-      try { return localStorage.getItem("org-theme-enforce-active") === "1"; }
-      catch { return false; }
-    })();
-
-    if (!enforced) {
-      const accent = localStorage.getItem('theme-accent');
-      if (accent) applyAccent(accent);
-      const density = localStorage.getItem('theme-density');
-      if (density) applyDensity(density);
-      const radius = localStorage.getItem('theme-radius');
-      if (radius) applyRadius(radius);
-      // Restore visual theme from personal storage
-      const vt = getStoredThemeId();
-      if (vt) applyVisualTheme(vt);
-    }
-
-    // Always listen for runtime theme changes (org enforce push or user toggle)
     const handler = (e: Event) => {
-      const id = (e as CustomEvent).detail;
-      applyVisualTheme(id);
+      applyVisualThemeColors((e as CustomEvent).detail, readDeviceThemePreferences().accentHsl);
     };
+    // Keep next-themes and its header/sidebar controls in sync with shared mode.
+    const modeHandler = (e: Event) => setTheme((e as CustomEvent).detail);
     window.addEventListener("visual-theme-change", handler);
-    return () => window.removeEventListener("visual-theme-change", handler);
-  }, []);
+    window.addEventListener(THEME_MODE_EVENT, modeHandler);
+    initializeThemeSession();
+    if (localStorage.getItem(ORG_THEME_ENFORCE_KEY) !== "1") applyThemePreferences(readDeviceThemePreferences());
+    return () => {
+      window.removeEventListener("visual-theme-change", handler);
+      window.removeEventListener(THEME_MODE_EVENT, modeHandler);
+    };
+  }, [setTheme]);
 }
 
 interface ThemePersonalizationProps {
   isDarkMode: boolean;
   onToggleDark: (dark: boolean) => void;
   showAdminSidebar?: boolean;
+  value?: ThemePreferences;
+  onChange?: (patch: Partial<ThemePreferences>) => void;
+  disabled?: boolean;
 }
 
 const ADMIN_SIDEBAR_ITEMS: { id: string; label: string }[] = [
@@ -210,35 +162,41 @@ function AdminSidebarVisibility() {
   );
 }
 
-export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSidebar }: ThemePersonalizationProps) {
-  const [accentHsl, setAccentHsl] = useState(() => localStorage.getItem('theme-accent') || '174 72% 46%');
-  const [density, setDensity] = useState(() => localStorage.getItem('theme-density') || 'default');
-  const [radius, setRadius] = useState(() => localStorage.getItem('theme-radius') || 'default');
+export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSidebar, value, onChange, disabled = false }: ThemePersonalizationProps) {
+  const [personal, setPersonal] = useState(readDeviceThemePreferences);
+  const preferences = value ?? personal;
+  const { accentHsl, density, radius } = preferences;
+  const dark = value ? value.themeMode === 'dark' || (value.themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) : isDarkMode;
   const [customColor, setCustomColor] = useState('#C8943E');
-
-  const selectAccent = useCallback((hsl: string) => {
-    setAccentHsl(hsl);
-    applyAccent(hsl);
+  useEffect(() => {
+    const sync = () => setPersonal(readDeviceThemePreferences());
+    window.addEventListener(THEME_PREFERENCES_EVENT, sync);
+    window.addEventListener('visual-theme-change', sync);
+    return () => { window.removeEventListener(THEME_PREFERENCES_EVENT, sync); window.removeEventListener('visual-theme-change', sync); };
   }, []);
+  const change = useCallback((patch: Partial<ThemePreferences>) => {
+    if (disabled) return;
+    if (value) { onChange?.(patch); return; }
+    const next = { ...readDeviceThemePreferences(), ...patch };
+    applyThemePreferences(next);
+    setPersonal(next);
+  }, [disabled, value, onChange]);
+  const selectAccent = (accentHsl: string) => change({ accentHsl });
 
-  const handleCustomColor = useCallback((hex: string) => {
+  const handleCustomColor = (hex: string) => {
     setCustomColor(hex);
     const hsl = hexToHsl(hex);
     if (hsl) selectAccent(hsl);
-  }, [selectAccent]);
-
-  const selectDensity = useCallback((v: string) => {
-    setDensity(v);
-    applyDensity(v);
-  }, []);
-
-  const selectRadius = useCallback((v: string) => {
-    setRadius(v);
-    applyRadius(v);
-  }, []);
+  };
+  const selectDensity = (density: string) => change({ density: density as ThemePreferences['density'] });
+  const selectRadius = (radius: string) => change({ radius: radius as ThemePreferences['radius'] });
+  const toggleDark = (dark: boolean) => {
+    change({ themeMode: dark ? 'dark' : 'light' });
+    if (!value && !disabled) onToggleDark(dark);
+  };
 
   return (
-    <div className="space-y-6">
+    <fieldset disabled={disabled} className="space-y-6 min-w-0 disabled:opacity-60">
       {/* Theme mode cards — FIRST */}
       <div>
         <p className="font-medium text-sm mb-1">Режим оформления</p>
@@ -246,10 +204,10 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
         <div className="grid grid-cols-2 gap-3">
           {/* Light preview card */}
           <button
-            onClick={() => onToggleDark(false)}
+            onClick={() => toggleDark(false)}
             className={cn(
               "relative rounded-xl border-2 p-1 transition-all duration-200 overflow-hidden",
-              !isDarkMode ? "border-accent ring-2 ring-accent/20" : "border-border hover:border-muted-foreground/30"
+              !dark ? "border-accent ring-2 ring-accent/20" : "border-border hover:border-muted-foreground/30"
             )}
           >
             <div className="rounded-lg overflow-hidden bg-[#F9F8F5]">
@@ -274,7 +232,7 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
               <Sun className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-xs font-medium">Светлая</span>
             </div>
-            {!isDarkMode && (
+            {!dark && (
               <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
                 <Check className="w-3 h-3 text-accent-foreground" />
               </div>
@@ -283,10 +241,10 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
 
           {/* Dark preview card */}
           <button
-            onClick={() => onToggleDark(true)}
+            onClick={() => toggleDark(true)}
             className={cn(
               "relative rounded-xl border-2 p-1 transition-all duration-200 overflow-hidden",
-              isDarkMode ? "border-accent ring-2 ring-accent/20" : "border-border hover:border-muted-foreground/30"
+              dark ? "border-accent ring-2 ring-accent/20" : "border-border hover:border-muted-foreground/30"
             )}
           >
             <div className="rounded-lg overflow-hidden bg-[#0D0D0D]">
@@ -311,7 +269,7 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
               <Moon className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-xs font-medium">Тёмная</span>
             </div>
-            {isDarkMode && (
+            {dark && (
               <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
                 <Check className="w-3 h-3 text-accent-foreground" />
               </div>
@@ -321,10 +279,10 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
       </div>
 
       {/* Visual theme selector — AFTER mode toggle */}
-      <ThemeSelector onThemeChange={() => {}} />
+      <ThemeSelector value={preferences.themeId} onChange={(themeId) => change({ themeId, accentHsl: null })} />
 
       {/* Animation level */}
-      <AnimationLevelSelector />
+      <AnimationLevelSelector level={preferences.animLevel} onChange={(animLevel) => change({ animLevel })} />
 
       {/* Accent Color */}
       <div>
@@ -418,6 +376,6 @@ export function ThemePersonalization({ isDarkMode, onToggleDark, showAdminSideba
       </div>
 
       {showAdminSidebar && <AdminSidebarVisibility />}
-    </div>
+    </fieldset>
   );
 }

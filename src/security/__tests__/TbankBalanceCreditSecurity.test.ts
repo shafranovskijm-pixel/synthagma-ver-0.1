@@ -7,8 +7,8 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8"
 const migration = read(
   "supabase/migrations/20260822164000_atomic_tbank_balance_credit.sql",
 );
-const webhook = read("supabase/functions/tbank-webhook/index.ts");
-const generatedTypes = read("src/integrations/supabase/types.ts");
+const webhook = read("supabase/functions/tbank-webhook/handler.ts");
+const settlement = read("supabase/migrations/20261016110000_atomic_payment_settlement.sql");
 
 function sqlFunctionBody(functionName: string): string {
   const escapedName = functionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -65,20 +65,16 @@ describe("atomic T-Bank balance credit security contract", () => {
     expect(migration).toContain("auth.role() IS DISTINCT FROM 'service_role'");
     expect(migration).toContain(`REVOKE ALL ON FUNCTION ${signature}\n  FROM authenticated`);
     expect(migration).toContain(`GRANT EXECUTE ON FUNCTION ${signature}\n  TO service_role`);
-    expect(generatedTypes).toContain("apply_tbank_balance_credit: {");
-    expect(generatedTypes).toContain("idempotency_key: string | null");
   });
 
-  it("routes both callbacks through the RPC with stable keys and checks failures", () => {
-    expect(webhook).toContain('.rpc("apply_tbank_balance_credit"');
-    expect(webhook).toContain("if (error)");
-    expect(webhook).toContain("Atomic T-Bank balance credit failed");
-    expect(webhook).toContain("`tbank:subscription:${(invoice as any).id}`");
-    expect(webhook).toContain("`tbank:course:${payment.id}`");
-    expect(webhook).not.toContain('.from("balance_transactions").insert');
-    expect(webhook).not.toContain('.select("amount")');
-    expect(webhook).not.toContain("relatedOrderId");
-    expect(webhook).toContain("if (balanceCredit.applied)");
+  it("routes callbacks through the atomic settlement RPC without direct partial mutations", () => {
+    expect(webhook).toContain('.rpc("apply_tbank_payment_event"');
+    expect(webhook).toContain("if (applyError");
+    expect(webhook).toContain("Atomic payment settlement failed");
+    expect(settlement).toContain("public.apply_tbank_balance_credit(");
+    expect(settlement).toContain("'tbank:' || p_kind || ':' || p_record_id::text");
+    expect(webhook).not.toContain(".insert(");
+    expect(webhook).not.toContain(".update(");
     expect(webhook).toContain('return new Response("Internal error", { status: 500 })');
   });
 });

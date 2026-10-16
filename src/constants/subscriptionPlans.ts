@@ -1,3 +1,5 @@
+import { SUBSCRIPTION_MONTHLY_PRICES, SUBSCRIPTION_YEARLY_DISCOUNT, subscriptionMonthlyAmount } from "../../supabase/functions/_shared/subscription-pricing";
+
 export type SubscriptionPlan = 'free' | 'start' | 'standard' | 'professional' | 'maximum';
 
 export interface PlanLimits {
@@ -30,13 +32,13 @@ export interface PlanInfo {
   description: string;
 }
 
-export const YEARLY_DISCOUNT = 0.15; // 15%
+export const YEARLY_DISCOUNT = SUBSCRIPTION_YEARLY_DISCOUNT; // 15%
 
 export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
   free: {
     id: 'free',
     name: 'Бесплатный',
-    price: 0,
+    price: SUBSCRIPTION_MONTHLY_PRICES.free,
     description: 'Для знакомства с платформой',
     limits: {
       maxCourses: 3,
@@ -63,7 +65,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
   start: {
     id: 'start',
     name: 'Старт',
-    price: 4490,
+    price: SUBSCRIPTION_MONTHLY_PRICES.start,
     description: 'Для начинающих организаций',
     limits: {
       maxCourses: 15,
@@ -90,7 +92,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
   standard: {
     id: 'standard',
     name: 'Стандарт',
-    price: 6990,
+    price: SUBSCRIPTION_MONTHLY_PRICES.standard,
     description: 'Для активных организаций',
     limits: {
       maxCourses: 30,
@@ -117,7 +119,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
   professional: {
     id: 'professional',
     name: 'Профессиональный',
-    price: 16990,
+    price: SUBSCRIPTION_MONTHLY_PRICES.professional,
     description: 'Для крупных организаций',
     limits: {
       maxCourses: -1,
@@ -144,7 +146,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
   maximum: {
     id: 'maximum',
     name: 'Максимальный',
-    price: 24990,
+    price: SUBSCRIPTION_MONTHLY_PRICES.maximum,
     description: 'Полный доступ ко всем функциям',
     limits: {
       maxCourses: -1,
@@ -194,16 +196,7 @@ export function getSubscriptionInvoiceMonthlyAmount({
   customDiscount,
 }: SubscriptionInvoiceMonthlyAmountInput): number {
   const planInfo = SUBSCRIPTION_PLANS[plan as SubscriptionPlan] ?? SUBSCRIPTION_PLANS.start;
-  const parsedCustomPrice = customPrice == null ? null : Number(customPrice);
-  const parsedCustomDiscount = customDiscount == null ? 0 : Number(customDiscount);
-  const basePrice = parsedCustomPrice != null && Number.isFinite(parsedCustomPrice) && parsedCustomPrice >= 0
-    ? parsedCustomPrice
-    : planInfo.price;
-  const discount = Number.isFinite(parsedCustomDiscount) && parsedCustomDiscount > 0
-    ? parsedCustomDiscount
-    : 0;
-
-  return Math.max(0, basePrice - discount);
+  return subscriptionMonthlyAmount(planInfo.id, customPrice, customDiscount);
 }
 
 export function formatStorageSize(bytes: number): string {

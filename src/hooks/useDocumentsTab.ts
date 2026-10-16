@@ -9,6 +9,8 @@ import { getSubscriptionInvoiceMonthlyAmount, SUBSCRIPTION_PLANS } from "@/const
 import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
+import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
 
 export type DocumentSubTab = "kpi" | "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "incoming" | "signatures" | "pd_requests" | "recycle_bin" | "proposals" | "sales_contracts";
 export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "history";
@@ -66,7 +68,22 @@ export function useDocumentsTab(
 ) {
   const d = useOrgDashboard();
   const { plan } = useSubscriptionLimits(organizationId);
-  const isFreePlan = plan === 'free';
+  const postpaid = usePostpaidAccessProfile(organizationId);
+  const isPostpaid = postpaid.data?.active === true && !postpaid.error;
+  const isFreePlan = plan === 'free' && !isPostpaid;
+  const allowPrepaidInvoices = !!organizationId && !postpaid.isLoading && !postpaid.error && postpaid.data?.active === false;
+  const confirmPrepaidInvoiceAccess = async () => {
+    if (!allowPrepaidInvoices || !organizationId) {
+      toast.error(isPostpaid ? "Счёт по постоплате формируется после окончания месяца и проверки использования." : "Не удалось подтвердить условия оплаты организации. Повторите проверку.");
+      return false;
+    }
+    // Recheck before producing a printable document, including a cached draft.
+    if ((await fetchPostpaidAccessProfile(organizationId)).active) {
+      toast.error("Счёт по постоплате формируется после окончания месяца и проверки использования.");
+      return false;
+    }
+    return true;
+  };
 
   const [localActiveTab, setActiveTabRaw] = useState<DocumentSubTab>("counterparties");
   const activeTab = navigation?.activeTab ?? localActiveTab;
@@ -413,6 +430,7 @@ export function useDocumentsTab(
     if (!organizationId) return;
     setGeneratingInvoice(true);
     try {
+      if (!(await confirmPrepaidInvoiceAccess())) return;
       const currentPlan = orgDetails.subscription_plan || "start";
       const amount = getSubscriptionInvoiceMonthlyAmount({
         plan: currentPlan,
@@ -456,6 +474,7 @@ export function useDocumentsTab(
   const handleSavePendingInvoice = async (action: 'download' | 'print') => {
     if (!pendingInvoice) return;
     try {
+      if (!(await confirmPrepaidInvoiceAccess())) return;
       const { data: invoice, error } = await supabase.from("subscription_invoices").insert(pendingInvoice.insertData).select("id").single();
       if (error) throw error;
       const orgDisplayName = d.organizationName || organizationName || "Организация";
@@ -500,7 +519,7 @@ export function useDocumentsTab(
   };
 
   return {
-    d, plan, isFreePlan,
+    d, plan, isFreePlan, isPostpaid, allowPrepaidInvoices,
     activeTab, setActiveTab, tabPrefilters,
     constructorTab, setConstructorTab,
     stampUrl, signatureUrl,

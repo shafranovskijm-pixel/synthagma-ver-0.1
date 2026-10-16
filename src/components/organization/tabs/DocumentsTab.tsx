@@ -559,6 +559,8 @@ function DocumentsTabContent({
             <CounterpartiesSection
               organizationId={organizationId}
               canWrite={canWriteDocuments}
+              allowPrepaidInvoices={h.allowPrepaidInvoices}
+              isPostpaid={h.isPostpaid}
               counterpartySubTab={h.counterpartySubTab}
               setCounterpartySubTab={h.setCounterpartySubTab}
               counterpartyDocs={h.counterpartyDocs}
@@ -594,7 +596,7 @@ function DocumentsTabContent({
         onGenerateAct={h.handleGenerateAct}
         pendingAct={h.pendingAct} setPendingAct={h.setPendingAct}
         onSavePendingAct={h.handleSavePendingAct}
-        showInvoiceDialog={h.showInvoiceDialog} setShowInvoiceDialog={h.setShowInvoiceDialog}
+        showInvoiceDialog={h.showInvoiceDialog && h.allowPrepaidInvoices} setShowInvoiceDialog={h.setShowInvoiceDialog}
         invoiceOtherPayer={h.invoiceOtherPayer} setInvoiceOtherPayer={h.setInvoiceOtherPayer}
         invoiceBuyerName={h.invoiceBuyerName} setInvoiceBuyerName={h.setInvoiceBuyerName}
         invoiceBuyerInn={h.invoiceBuyerInn} setInvoiceBuyerInn={h.setInvoiceBuyerInn}

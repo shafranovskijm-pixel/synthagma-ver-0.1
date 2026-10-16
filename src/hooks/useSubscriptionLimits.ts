@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlanInfo, type SubscriptionPlan, type PlanLimits } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { getOrganizationStorageUsage } from "@/lib/storage/organizationStorageUsage";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
+import { postpaidPlanLimits } from "@/lib/postpaidAccess";
 
 interface SubscriptionLimitsState {
   plan: SubscriptionPlan;
@@ -23,12 +25,20 @@ interface SubscriptionLimitsState {
   hasVideoIdentification: boolean;
   storageLimit: number;
   loading: boolean;
+  error: string | null;
+  isPostpaid: boolean;
   planName: string;
   checkLimit: (type: 'course' | 'student' | 'trained') => { allowed: boolean; message: string };
   refetch: () => Promise<void>;
 }
 
 export function useSubscriptionLimits(organizationId: string | null): SubscriptionLimitsState {
+  const postpaid = usePostpaidAccessProfile(organizationId);
+  const activeOrganization = useRef(organizationId);
+  activeOrganization.current = organizationId;
+  const sequence = useRef(0);
+  const [loadedOrganization, setLoadedOrganization] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<SubscriptionPlan>('free');
   const [coursesCount, setCoursesCount] = useState(0);
   const [studentsCount, setStudentsCount] = useState(0);
@@ -45,7 +55,12 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
+    const request = ++sequence.current;
+    const isCurrent = () => activeOrganization.current === organizationId && sequence.current === request;
+    setLoading(!!organizationId);
+    setError(null);
     if (!organizationId) {
+      setLoadedOrganization(null);
       setLoading(false);
       return;
     }
@@ -70,6 +85,11 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
         supabase.rpc("count_org_completions_this_month" as any, { org_id: organizationId }),
       ]);
 
+      if (!isCurrent()) return;
+      if (orgResult.error || !orgResult.data || coursesResult.error || capacityResult.error || trainedResult.error) {
+        throw new Error("subscription_limits_unconfirmed");
+      }
+
       if (orgResult.data?.subscription_plan) {
         setPlan(orgResult.data.subscription_plan as SubscriptionPlan);
       }
@@ -88,23 +108,28 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       const capRow: any = Array.isArray(capacityResult.data) ? capacityResult.data[0] : capacityResult.data;
       setStudentsCount(Number(capRow?.current_students) || 0);
       setTrainedThisMonth(Number(trainedResult.data) || 0);
+      setStorageUsedBytes(0);
+      setLoadedOrganization(organizationId);
 
       // Share this request across lesson-level hook mounts. Without the cache,
       // the course editor multiplied 2 x courseCount Storage list requests.
       try {
-        setStorageUsedBytes(await getOrganizationStorageUsage(supabase, organizationId));
+        const bytes = await getOrganizationStorageUsage(supabase, organizationId);
+        if (isCurrent()) setStorageUsedBytes(bytes);
       } catch (e) {
         console.error("Error calculating storage:", e);
       }
     } catch (error) {
       console.error("Error fetching subscription limits:", error);
+      if (isCurrent()) setError("Не удалось проверить ограничения организации. Повторите проверку.");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [organizationId]);
 
   useEffect(() => {
     fetchData();
+    return () => { sequence.current++; };
   }, [fetchData]);
 
   // Realtime subscription for plan changes
@@ -143,10 +168,18 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     };
   }, [organizationId]);
 
-  const planInfo = useMemo(() => getPlanInfo(plan), [plan]);
+  const currentData = loadedOrganization === organizationId && !!organizationId;
+  const currentPlan = currentData ? plan : 'free';
+  const planInfo = useMemo(() => getPlanInfo(currentPlan), [currentPlan]);
+  const isPostpaid = !postpaid.error && postpaid.data?.active === true;
+  const accessLoading = !!organizationId && (loading || postpaid.isLoading || (!currentData && !error));
+  const accessError = error || (postpaid.error ? "Не удалось проверить условия постоплаты. Повторите проверку." : null);
+  const accessReady = currentData && !accessLoading && !accessError;
 
   // Merge custom overrides with plan defaults + apply custom-enabled feature flags
   const limits: PlanLimits = useMemo(() => {
+    if (isPostpaid && postpaid.data) return postpaidPlanLimits(postpaid.data);
+    if (!currentData || !postpaid.data || postpaid.error) return { ...getPlanInfo('free').limits, salesCrmEnabled: false, webinarsEnabled: false, videoServicePlus: false };
     const merged: PlanLimits = {
       ...planInfo.limits,
       maxCourses: customOverrides.maxCourses ?? planInfo.limits.maxCourses,
@@ -165,13 +198,14 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       }
     }
     return merged;
-  }, [planInfo, customOverrides, customEnabledCategories]);
+  }, [planInfo, customOverrides, customEnabledCategories, isPostpaid, postpaid.data, postpaid.error, currentData]);
 
-  const canCreateCourse = limits.maxCourses === -1 || coursesCount < limits.maxCourses;
-  const canAddStudent = limits.maxStudents === -1 || studentsCount < limits.maxStudents;
-  const canCompleteCourse = limits.maxTrainedPerMonth === -1 || trainedThisMonth < limits.maxTrainedPerMonth;
+  const canCreateCourse = accessReady && (limits.maxCourses === -1 || coursesCount < limits.maxCourses);
+  const canAddStudent = accessReady && (limits.maxStudents === -1 || studentsCount < limits.maxStudents);
+  const canCompleteCourse = accessReady && (limits.maxTrainedPerMonth === -1 || trainedThisMonth < limits.maxTrainedPerMonth);
 
   const checkLimit = useCallback((type: 'course' | 'student' | 'trained') => {
+    if (!accessReady) return { allowed: false, message: accessError || "Проверяем ограничения организации…" };
     if (type === 'course') {
       if (canCreateCourse) return { allowed: true, message: '' };
       return {
@@ -191,12 +225,12 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       allowed: false,
       message: `Лимит тарифа "${planInfo.name}": ${limits.maxStudents} новых учеников в месяц. Перейдите на следующий тариф.`,
     };
-  }, [canCreateCourse, canAddStudent, canCompleteCourse, planInfo.name, limits]);
+  }, [canCreateCourse, canAddStudent, canCompleteCourse, planInfo.name, limits, accessReady, accessError]);
 
   return {
-    plan,
+    plan: currentPlan,
     limits,
-    usage: { coursesCount, studentsCount, trainedThisMonth, storageUsedBytes },
+    usage: { coursesCount: currentData ? coursesCount : 0, studentsCount: currentData ? studentsCount : 0, trainedThisMonth: currentData ? trainedThisMonth : 0, storageUsedBytes: currentData ? storageUsedBytes : 0 },
     canCreateCourse,
     canAddStudent,
     canCompleteCourse,
@@ -206,9 +240,11 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     hasDocumentChecklist: limits.documentChecklist,
     hasVideoIdentification: limits.videoIdentification,
     storageLimit: limits.storageBytes,
-    loading,
-    planName: planInfo.name,
+    loading: accessLoading,
+    error: accessError,
+    isPostpaid,
+    planName: isPostpaid ? "Постоплата по договору" : planInfo.name,
     checkLimit,
-    refetch: fetchData,
+    refetch: async () => { await Promise.all([fetchData(), postpaid.refetch()]); },
   };
 }

@@ -1,0 +1,21 @@
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { HeroBannerSwiper } from "./HeroBannerSwiper";
+import { ADMIN_THEMES } from "@/constants/admin-themes";
+import { applySharedTheme, restorePersonalTheme, readDeviceThemePreferences, DEFAULT_THEME_PREFERENCES } from "@/lib/themePreferences";
+beforeEach(() => { localStorage.clear(); });
+afterEach(cleanup);
+it("blocks arrows, dots and touch changes while an organization enforces its theme", () => {
+  applySharedTheme({ ...DEFAULT_THEME_PREFERENCES, themeId: ADMIN_THEMES[0].id });
+  const { container } = render(<HeroBannerSwiper />);
+  expect(screen.getByRole("button", { name: "Следующая тема" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Следующая тема" }));
+  fireEvent.click(screen.getByRole("button", { name: ADMIN_THEMES[1].label }));
+  fireEvent.touchStart(container.firstChild!, { touches: [{ clientX: 200, clientY: 50 }] });
+  fireEvent.touchEnd(container.firstChild!, { changedTouches: [{ clientX: 50, clientY: 50 }] });
+  expect(readDeviceThemePreferences().themeId).toBe(ADMIN_THEMES[0].id);
+  act(() => restorePersonalTheme());
+  expect(screen.getByRole("button", { name: "Следующая тема" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Следующая тема" }));
+  expect(readDeviceThemePreferences().themeId).toBe(ADMIN_THEMES[1].id);
+});

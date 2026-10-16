@@ -380,7 +380,7 @@ function LearnerDashboard() {
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
     { id: "catalog", icon: BookOpen, label: "Курсы" },
-    ...(!isNativeLearner && dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
+    ...(!isNativeLearner ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
     { id: "profile" as StudentTab, icon: User, label: "Профиль" },
   ];
 
@@ -458,7 +458,7 @@ function LearnerDashboard() {
           setActiveTab={setActiveTab}
           branding={branding}
           orgName={profile?.organization_name || null}
-          showAiChat={!isNativeLearner && dashboardSettings.showAiChat}
+          showChat={!isNativeLearner}
           isPreviewMode={isPreviewMode}
           isAdminView={isAdminView}
         />
@@ -529,6 +529,7 @@ function LearnerDashboard() {
 
               {!isNativeLearner && currentTab === "chat" && (
                 <StudentChatsTab
+                  showAiChat={dashboardSettings.showAiChat}
                   organizationId={profile?.organization_id}
                   organizationName={profile?.organization_name || "Организация"}
                 />

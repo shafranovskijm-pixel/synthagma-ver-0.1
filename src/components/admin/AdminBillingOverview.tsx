@@ -20,6 +20,8 @@ import { useAdminBilling, type Invoice, type BillingDoc, type Contract } from "@
 import { Suspense, useEffect, useState } from "react";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { OrgPostpaidBillingPanel } from "@/components/admin/OrgPostpaidBillingPanel";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 
 const ContractReviewBody = lazyWithRetry(() =>
   import("@/components/signing/ContractReviewBody").then((m) => ({ default: m.ContractReviewBody }))
@@ -43,6 +45,8 @@ const SECTION_DESCRIPTIONS: Record<string, string> = {
 
 export const AdminBillingOverview = ({ pendingExpandContractId }: { pendingExpandContractId?: string | null } = {}) => {
   const h = useAdminBilling();
+  const postpaid = usePostpaidAccessProfile(h.selectedOrgId || null);
+  const allowPrepaidInvoice = !postpaid.isLoading && !postpaid.error && postpaid.data?.active === false;
   const activeNavItem = NAV_SECTIONS.find(n => n.value === h.activeSection) || NAV_SECTIONS[0];
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
 
@@ -124,14 +128,14 @@ export const AdminBillingOverview = ({ pendingExpandContractId }: { pendingExpan
             </div>
             <div className="flex items-center gap-2">
               {h.activeSection === "org-contracts" && h.selectedOrgId && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => { h.setContractForm(f => ({ ...f, organization_id: h.selectedOrgId })); h.setShowCreateContract(true); }}><Plus className="w-3.5 h-3.5" /><span className="hidden sm:inline">Создать договор</span></Button>}
-              {h.activeSection === "org-invoices" && h.selectedOrgId && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowInvoiceDialog(true)}><Receipt className="w-3.5 h-3.5" /><span className="hidden sm:inline">Сформировать счёт</span></Button>}
+              {h.activeSection === "org-invoices" && h.selectedOrgId && allowPrepaidInvoice && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowInvoiceDialog(true)}><Receipt className="w-3.5 h-3.5" /><span className="hidden sm:inline">Сформировать счёт</span></Button>}
               {h.activeSection === "org-closing" && h.selectedOrgId && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowActDialog(true)}><FileText className="w-3.5 h-3.5" /><span className="hidden sm:inline">Сформировать акт</span></Button>}
             </div>
           </div>
           <div className="p-4 lg:p-6">
             {h.activeSection === "all" && <AllBillingContent h={h} statusBadge={statusBadge} expandedContractId={expandedContractId} onToggleExpand={toggleExpand} />}
             {h.activeSection === "org-contracts" && (h.selectedOrgId ? <OrgContractsList contracts={h.orgContracts} statusBadge={statusBadge} expandedContractId={expandedContractId} onToggleExpand={toggleExpand} /> : <EmptyOrgPrompt />)}
-            {h.activeSection === "org-invoices" && (h.selectedOrgId ? <OrgInvoicesList invoices={h.orgInvoices} statusBadge={statusBadge} onMarkPaid={h.handleMarkPaid} selectedInvoiceIds={h.selectedInvoiceIds} toggleInvoiceSelection={h.toggleInvoiceSelection} onDeleteSelected={() => h.setShowDeleteConfirm(true)} /> : <EmptyOrgPrompt />)}
+            {h.activeSection === "org-invoices" && (h.selectedOrgId ? <div className="space-y-6"><OrgPostpaidBillingPanel organizationId={h.selectedOrgId} /><OrgInvoicesList invoices={h.orgInvoices} statusBadge={statusBadge} onMarkPaid={h.handleMarkPaid} selectedInvoiceIds={h.selectedInvoiceIds} toggleInvoiceSelection={h.toggleInvoiceSelection} onDeleteSelected={() => h.setShowDeleteConfirm(true)} /></div> : <EmptyOrgPrompt />)}
             {h.activeSection === "org-closing" && (h.selectedOrgId ? <OrgClosingList docs={h.orgClosingDocs} handleViewDoc={h.handleViewDoc} handleDeleteDoc={h.handleDeleteDoc} /> : <EmptyOrgPrompt />)}
           </div>
         </div>
