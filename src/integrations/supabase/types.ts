@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -8498,6 +8498,272 @@ export type Database = {
           },
         ]
       }
+      org_crm_activities: {
+        Row: {
+          activity_type: string
+          actor_user_id: string | null
+          client_id: string
+          created_at: string
+          deal_id: string | null
+          description: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          activity_type: string
+          actor_user_id?: string | null
+          client_id: string
+          created_at?: string
+          deal_id?: string | null
+          description: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          activity_type?: string
+          actor_user_id?: string | null
+          client_id?: string
+          created_at?: string
+          deal_id?: string | null
+          description?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_crm_activities_organization_id_client_id_deal_id_fkey"
+            columns: ["organization_id", "client_id", "deal_id"]
+            isOneToOne: false
+            referencedRelation: "org_crm_deals"
+            referencedColumns: ["organization_id", "client_id", "id"]
+          },
+          {
+            foreignKeyName: "org_crm_activities_organization_id_client_id_fkey"
+            columns: ["organization_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "org_crm_clients"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "org_crm_activities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_crm_clients: {
+        Row: {
+          address: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          inn: string | null
+          linked_at: string | null
+          notes: string | null
+          org_name: string
+          organization_id: string
+          phone: string | null
+          student_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          inn?: string | null
+          linked_at?: string | null
+          notes?: string | null
+          org_name: string
+          organization_id: string
+          phone?: string | null
+          student_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          inn?: string | null
+          linked_at?: string | null
+          notes?: string | null
+          org_name?: string
+          organization_id?: string
+          phone?: string | null
+          student_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_crm_clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_crm_clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_crm_clients_student_user_id_fkey"
+            columns: ["student_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "org_crm_clients_student_user_id_fkey"
+            columns: ["student_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "org_crm_clients_student_user_id_fkey"
+            columns: ["student_user_id"]
+            isOneToOne: false
+            referencedRelation: "student_group_profiles_effective"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      org_crm_deals: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          stage: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          stage?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          stage?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_crm_deals_organization_id_client_id_fkey"
+            columns: ["organization_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "org_crm_clients"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "org_crm_deals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_crm_tasks: {
+        Row: {
+          assigned_user_id: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string | null
+          description: string | null
+          due_date: string
+          id: string
+          organization_id: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          organization_id: string
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_user_id?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          organization_id?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_crm_tasks_organization_id_client_id_deal_id_fkey"
+            columns: ["organization_id", "client_id", "deal_id"]
+            isOneToOne: false
+            referencedRelation: "org_crm_deals"
+            referencedColumns: ["organization_id", "client_id", "id"]
+          },
+          {
+            foreignKeyName: "org_crm_tasks_organization_id_client_id_fkey"
+            columns: ["organization_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "org_crm_clients"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "org_crm_tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_custom_roles: {
         Row: {
           base_role: string | null
@@ -15915,6 +16181,86 @@ export type Database = {
       normalize_org_staff_permission: {
         Args: { _permission: string }
         Returns: string
+      }
+      org_crm_access_allowed: {
+        Args: { p_organization_id: string; p_permission: string }
+        Returns: boolean
+      }
+      org_crm_add_activity: {
+        Args: {
+          p_activity_type: string
+          p_client_id: string
+          p_deal_id: string
+          p_description: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      org_crm_context: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      org_crm_link_subject: {
+        Args: {
+          p_client_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      org_crm_require_write: {
+        Args: { p_keys: string[]; p_organization_id: string; p_values: Json }
+        Returns: undefined
+      }
+      org_crm_resolve_subject: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      org_crm_save_client: {
+        Args: {
+          p_expected_updated_at?: string
+          p_id: string
+          p_organization_id: string
+          p_values: Json
+        }
+        Returns: Json
+      }
+      org_crm_save_deal: {
+        Args: {
+          p_expected_updated_at?: string
+          p_id: string
+          p_organization_id: string
+          p_values: Json
+        }
+        Returns: Json
+      }
+      org_crm_save_task: {
+        Args: {
+          p_expected_updated_at?: string
+          p_id: string
+          p_organization_id: string
+          p_values: Json
+        }
+        Returns: Json
+      }
+      org_crm_snapshot: { Args: { p_organization_id: string }; Returns: Json }
+      org_crm_task_assignees: {
+        Args: { p_organization_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          role: string
+          user_id: string
+        }[]
       }
       org_finalize_signature_review: {
         Args: { p_action: string; p_message?: string; p_signature_id: string }
