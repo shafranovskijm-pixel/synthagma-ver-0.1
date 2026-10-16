@@ -1,6 +1,7 @@
 // SkillSpace media download & reupload helpers
 
 import { getCookieHeader, type CookieMap } from "./skillspace-auth.ts";
+import { parseSkillspaceMediaUrl, resolveSkillspaceRedirect } from "./skillspace-source.ts";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -30,43 +31,53 @@ export function createMediaTransfer(
   organizationId: string,
   cookieMap: CookieMap,
   log: (msg: string) => void,
+  schoolOrigin: string,
 ) {
   let filesTransferred = 0;
   let filesFailed = 0;
 
   const downloadAndReupload = async (fileUrl: string): Promise<string | null> => {
-    if (!fileUrl || !fileUrl.startsWith("http")) return null;
+    let target = parseSkillspaceMediaUrl(fileUrl);
+    if (!target) return null;
+    const displayUrl = `${target.origin}${target.pathname}`;
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-
-      const headers: Record<string, string> = {
-        "Cookie": getCookieHeader(cookieMap),
-      };
-      if (fileUrl.includes("skillspace.ru")) {
-        headers["sec-fetch-dest"] = "empty";
-        headers["sec-fetch-mode"] = "cors";
-        headers["sec-fetch-site"] = "same-origin";
+      const signal = AbortSignal.timeout(30000);
+      let res: Response;
+      for (let redirects = 0; ; redirects++) {
+        const headers: Record<string, string> = {};
+        // Recompute credentials on EVERY hop. A school redirect to a CDN must
+        // not inherit the manually supplied school session Cookie header.
+        if (resolveSkillspaceRedirect(target.href, schoolOrigin, schoolOrigin)) {
+          headers.Cookie = getCookieHeader(cookieMap);
+          headers["sec-fetch-dest"] = "empty";
+          headers["sec-fetch-mode"] = "cors";
+          headers["sec-fetch-site"] = "same-origin";
+        }
+        res = await fetch(target.href, { headers, signal, redirect: "manual" });
+        if (![301, 302, 303, 307, 308].includes(res.status)) break;
+        const location = res.headers.get("location");
+        await res.body?.cancel();
+        if (redirects >= 3 || !location) return null;
+        const next = parseSkillspaceMediaUrl(location, target.href);
+        if (!next) return null;
+        target = next;
       }
 
-      const res = await fetch(fileUrl, { headers, signal: controller.signal });
-      clearTimeout(timeout);
-
       if (!res.ok) {
-        log(`Download failed ${res.status}: ${fileUrl.substring(0, 100)}`);
+        log(`Download failed ${res.status}: ${displayUrl.substring(0, 100)}`);
         return null;
       }
 
       const contentLength = parseInt(res.headers.get("content-length") || "0", 10);
       if (contentLength > MAX_FILE_SIZE) {
-        log(`File too large (${(contentLength / 1024 / 1024).toFixed(1)}MB), keeping original URL: ${fileUrl.substring(0, 80)}`);
+        log(`File too large (${(contentLength / 1024 / 1024).toFixed(1)}MB), keeping original URL: ${displayUrl.substring(0, 80)}`);
         return null;
       }
 
       const ct = res.headers.get("content-type") || "application/octet-stream";
 
       if (ct.startsWith("video/") || fileUrl.match(/\.(mp4|webm|mov|avi|mkv)(\?|$)/i)) {
-        log(`Skipping video file (memory constraint): ${fileUrl.substring(0, 80)}`);
+        log(`Skipping video file (memory constraint): ${displayUrl.substring(0, 80)}`);
         try { res.body?.cancel(); } catch {}
         return null;
       }
@@ -86,7 +97,7 @@ export function createMediaTransfer(
         .upload(storagePath, blob, { contentType: ct, upsert: true });
 
       if (uploadErr) {
-        log(`Upload error: ${uploadErr.message} for ${fileUrl.substring(0, 80)}`);
+        log(`Upload error for ${displayUrl.substring(0, 80)}`);
         return null;
       }
 
@@ -95,8 +106,8 @@ export function createMediaTransfer(
       log(`Transferred ${sizeMB}MB → course-files/${storagePath}`);
       filesTransferred++;
       return publicUrl;
-    } catch (err) {
-      log(`Download error: ${String(err).substring(0, 100)} for ${fileUrl.substring(0, 80)}`);
+    } catch {
+      log(`Download error for ${displayUrl.substring(0, 80)}`);
       return null;
     }
   };

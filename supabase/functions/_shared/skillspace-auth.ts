@@ -1,4 +1,5 @@
 // SkillSpace authentication and API request helpers
+import { resolveSkillspaceRedirect } from "./skillspace-source.ts";
 
 export type CookieMap = Map<string, string>;
 
@@ -45,6 +46,11 @@ export function createApiFetch(
   log: (msg: string) => void,
 ) {
   return async (path: string, maxRetries = 3): Promise<ApiFetchResult> => {
+    const url = resolveSkillspaceRedirect(path, `${baseUrl}/`, baseUrl);
+    if (!url) {
+      log("Blocked API request outside the authenticated school origin");
+      return { ok: false, status: 0, data: null, raw: "" };
+    }
     const headers: Record<string, string> = {
       "Accept": "application/json, text/plain, */*",
       "Cookie": getCookieHeader(cookieMap),
@@ -54,7 +60,9 @@ export function createApiFetch(
     };
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const res = await fetch(`${baseUrl}${path}`, { headers });
+        // Never allow fetch to forward the manually supplied Cookie header
+        // through an unvalidated redirect. API redirects are returned as errors.
+        const res = await fetch(url, { headers, redirect: "manual" });
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }

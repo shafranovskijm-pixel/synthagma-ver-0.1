@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { accessErrorResponse, checked, readObject, requireActiveUser, requireSignatureAccess, requireUuid } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,17 +87,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { signatureId } = await req.json();
-    if (!signatureId) {
-      return new Response(JSON.stringify({ error: "signatureId required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const actor = await requireActiveUser(req, supabase, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+    const body = await readObject(req);
+    const signatureId = requireUuid(body.signatureId, "signatureId");
+    await requireSignatureAccess(supabase, actor, signatureId);
 
     const { data: sig, error: sigErr } = await supabase
       .from("document_signatures")
@@ -104,7 +102,8 @@ serve(async (req) => {
       .eq("id", signatureId)
       .maybeSingle();
 
-    if (sigErr || !sig) {
+    checked({ data: sig, error: sigErr });
+    if (!sig) {
       return new Response(JSON.stringify({ error: "Signature not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -146,9 +145,10 @@ serve(async (req) => {
 
     // Записываем путь сертификата
     if (!sig.signed_document_path) {
-      await supabase.from("document_signatures")
+      const result = await supabase.from("document_signatures")
         .update({ signed_document_path: path })
         .eq("id", sig.id);
+      if (result.error) throw new Error("Failed to persist certificate path");
     }
 
     // Вернём HTML напрямую — клиент откроет/скачает
@@ -158,12 +158,10 @@ serve(async (req) => {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Disposition": `inline; filename="signature-certificate-${sig.id}.html"`,
         "X-Certificate-Path": path,
+        "Cache-Control": "no-store",
       },
     });
   } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return accessErrorResponse(e, corsHeaders);
   }
 });

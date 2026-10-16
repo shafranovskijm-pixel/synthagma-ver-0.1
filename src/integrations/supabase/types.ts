@@ -688,6 +688,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          idempotency_key: string | null
           organization_id: string
           performed_by: string | null
           related_order_id: string | null
@@ -698,6 +699,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           organization_id: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -708,6 +710,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           organization_id?: string
           performed_by?: string | null
           related_order_id?: string | null
@@ -2255,6 +2258,7 @@ export type Database = {
           payment_method: string | null
           robokassa_inv_id: number | null
           status: string
+          tbank_terminal_key: string | null
           user_id: string | null
         }
         Insert: {
@@ -2268,6 +2272,7 @@ export type Database = {
           payment_method?: string | null
           robokassa_inv_id?: number | null
           status?: string
+          tbank_terminal_key?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2281,6 +2286,7 @@ export type Database = {
           payment_method?: string | null
           robokassa_inv_id?: number | null
           status?: string
+          tbank_terminal_key?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -7422,6 +7428,51 @@ export type Database = {
           },
         ]
       }
+      manual_invoice_settlements: {
+        Row: {
+          amount: number
+          billing_kind: string
+          confirmed_at: string
+          confirmed_by: string
+          invoice_id: string
+          organization_id: string
+          resulting_paid_until: string | null
+        }
+        Insert: {
+          amount: number
+          billing_kind: string
+          confirmed_at?: string
+          confirmed_by: string
+          invoice_id: string
+          organization_id: string
+          resulting_paid_until?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_kind?: string
+          confirmed_at?: string
+          confirmed_by?: string
+          invoice_id?: string
+          organization_id?: string
+          resulting_paid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_invoice_settlements_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "subscription_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_invoice_settlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_course_comments: {
         Row: {
           author_name: string
@@ -9403,6 +9454,68 @@ export type Database = {
           },
         ]
       }
+      organization_billing_agreements: {
+        Row: {
+          annual_renewal: boolean
+          billing_mode: string
+          billing_timezone: string
+          contract_reference: string
+          contract_through: string
+          created_at: string
+          created_by: string
+          customer_confirmation: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          organization_id: string
+          recording_started_at: string
+          terms_version: string
+          updated_at: string
+        }
+        Insert: {
+          annual_renewal?: boolean
+          billing_mode?: string
+          billing_timezone?: string
+          contract_reference: string
+          contract_through?: string
+          created_at?: string
+          created_by: string
+          customer_confirmation: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          organization_id: string
+          recording_started_at?: string
+          terms_version?: string
+          updated_at?: string
+        }
+        Update: {
+          annual_renewal?: boolean
+          billing_mode?: string
+          billing_timezone?: string
+          contract_reference?: string
+          contract_through?: string
+          created_at?: string
+          created_by?: string
+          customer_confirmation?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          organization_id?: string
+          recording_started_at?: string
+          terms_version?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_billing_agreements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_comments: {
         Row: {
           content: string
@@ -10456,6 +10569,212 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      postpaid_billing_statements: {
+        Row: {
+          agreement_id: string
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          invoice_id: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          plan: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_courses: number | null
+          reviewed_learners: number | null
+          revision: number
+          snapshot: Json
+          source_hash: string
+          status: string
+        }
+        Insert: {
+          agreement_id: string
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          invoice_id?: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          plan: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_courses?: number | null
+          reviewed_learners?: number | null
+          revision: number
+          snapshot: Json
+          source_hash: string
+          status?: string
+        }
+        Update: {
+          agreement_id?: string
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          invoice_id?: string | null
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          plan?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_courses?: number | null
+          reviewed_learners?: number | null
+          revision?: number
+          snapshot?: Json
+          source_hash?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postpaid_billing_statements_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "organization_billing_agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "postpaid_billing_statements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "postpaid_statement_invoice_fk"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "subscription_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      postpaid_feature_confirmations: {
+        Row: {
+          confirmed_at: string
+          effective_to: string | null
+          evidence: string
+          feature: string
+          id: string
+          notified_at: string
+          organization_id: string
+          recorded_at: string
+          recorded_by: string
+        }
+        Insert: {
+          confirmed_at: string
+          effective_to?: string | null
+          evidence: string
+          feature: string
+          id?: string
+          notified_at: string
+          organization_id: string
+          recorded_at?: string
+          recorded_by: string
+        }
+        Update: {
+          confirmed_at?: string
+          effective_to?: string | null
+          evidence?: string
+          feature?: string
+          id?: string
+          notified_at?: string
+          organization_id?: string
+          recorded_at?: string
+          recorded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postpaid_feature_confirmations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      postpaid_invoice_write_tokens: {
+        Row: {
+          invoice_id: string
+          operation: string
+          transaction_id: number
+        }
+        Insert: {
+          invoice_id: string
+          operation: string
+          transaction_id: number
+        }
+        Update: {
+          invoice_id?: string
+          operation?: string
+          transaction_id?: number
+        }
+        Relationships: []
+      }
+      postpaid_usage_events: {
+        Row: {
+          bytes: number | null
+          course_id: string | null
+          evidence: string | null
+          feature: string
+          id: string
+          learner_id: string | null
+          month_start: string
+          occurred_at: string
+          organization_id: string
+          recorded_at: string
+          recorded_by: string | null
+          source_key: string
+          source_table: string
+        }
+        Insert: {
+          bytes?: number | null
+          course_id?: string | null
+          evidence?: string | null
+          feature: string
+          id?: string
+          learner_id?: string | null
+          month_start: string
+          occurred_at: string
+          organization_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          source_key: string
+          source_table: string
+        }
+        Update: {
+          bytes?: number | null
+          course_id?: string | null
+          evidence?: string | null
+          feature?: string
+          id?: string
+          learner_id?: string | null
+          month_start?: string
+          occurred_at?: string
+          organization_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          source_key?: string
+          source_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postpaid_usage_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -12354,6 +12673,7 @@ export type Database = {
       }
       skillspace_import_jobs: {
         Row: {
+          authorization_verified_at: string | null
           batch_id: string
           created_at: string
           created_by: string | null
@@ -12368,6 +12688,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          authorization_verified_at?: string | null
           batch_id?: string
           created_at?: string
           created_by?: string | null
@@ -12382,6 +12703,7 @@ export type Database = {
           url: string
         }
         Update: {
+          authorization_verified_at?: string | null
           batch_id?: string
           created_at?: string
           created_by?: string | null
@@ -13095,6 +13417,7 @@ export type Database = {
       subscription_invoices: {
         Row: {
           amount: number
+          billing_kind: string
           buyer_inn: string | null
           buyer_kpp: string | null
           buyer_name: string | null
@@ -13108,10 +13431,16 @@ export type Database = {
           payment_method: string | null
           period_months: number
           plan: string
+          postpaid_statement_id: string | null
+          service_period_end: string | null
+          service_period_start: string | null
           status: string
+          tbank_order_id: string | null
+          tbank_terminal_key: string | null
         }
         Insert: {
           amount: number
+          billing_kind?: string
           buyer_inn?: string | null
           buyer_kpp?: string | null
           buyer_name?: string | null
@@ -13125,10 +13454,16 @@ export type Database = {
           payment_method?: string | null
           period_months?: number
           plan: string
+          postpaid_statement_id?: string | null
+          service_period_end?: string | null
+          service_period_start?: string | null
           status?: string
+          tbank_order_id?: string | null
+          tbank_terminal_key?: string | null
         }
         Update: {
           amount?: number
+          billing_kind?: string
           buyer_inn?: string | null
           buyer_kpp?: string | null
           buyer_name?: string | null
@@ -13142,7 +13477,12 @@ export type Database = {
           payment_method?: string | null
           period_months?: number
           plan?: string
+          postpaid_statement_id?: string | null
+          service_period_end?: string | null
+          service_period_start?: string | null
           status?: string
+          tbank_order_id?: string | null
+          tbank_terminal_key?: string | null
         }
         Relationships: [
           {
@@ -13150,6 +13490,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_invoices_postpaid_statement_id_fkey"
+            columns: ["postpaid_statement_id"]
+            isOneToOne: true
+            referencedRelation: "postpaid_billing_statements"
             referencedColumns: ["id"]
           },
         ]
@@ -13557,6 +13904,50 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      tbank_payment_settlements: {
+        Row: {
+          amount_kopecks: number
+          kind: string
+          organization_id: string
+          outcome: string
+          payment_id: string
+          processed_at: string
+          record_id: string
+          review_reason: string | null
+          terminal_key: string
+        }
+        Insert: {
+          amount_kopecks: number
+          kind: string
+          organization_id: string
+          outcome: string
+          payment_id: string
+          processed_at?: string
+          record_id: string
+          review_reason?: string | null
+          terminal_key: string
+        }
+        Update: {
+          amount_kopecks?: number
+          kind?: string
+          organization_id?: string
+          outcome?: string
+          payment_id?: string
+          processed_at?: string
+          record_id?: string
+          review_reason?: string | null
+          terminal_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tbank_payment_settlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       telegram_domain_rate_limits: {
         Row: {
@@ -14781,6 +15172,36 @@ export type Database = {
         Returns: Json
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
+      apply_tbank_balance_credit: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_idempotency_key: string
+          p_organization_id: string
+          p_transaction_type: string
+        }
+        Returns: Json
+      }
+      apply_tbank_payment_event: {
+        Args: {
+          p_amount_kopecks: number
+          p_kind: string
+          p_payment_id: string
+          p_record_id: string
+          p_status: string
+          p_terminal_key: string
+        }
+        Returns: Json
+      }
+      approve_postpaid_statement: {
+        Args: {
+          p_courses_override?: number
+          p_learners_override?: number
+          p_review_note: string
+          p_statement_id: string
+        }
+        Returns: Json
+      }
       attest_cold_outreach_campaign: {
         Args: { p_campaign_id: string }
         Returns: undefined
@@ -15039,6 +15460,10 @@ export type Database = {
       confirm_campaign_send_consent_admin: {
         Args: { p_campaign_id: string; p_method?: string; p_user_id: string }
         Returns: string
+      }
+      confirm_manual_subscription_invoice: {
+        Args: { p_invoice_id: string }
+        Returns: Json
       }
       consume_email_quota: {
         Args: { p_count: number; p_scope_key: string; p_skip_warmup?: boolean }
@@ -15399,6 +15824,14 @@ export type Database = {
           expired_company: number
           expired_org: number
         }[]
+      }
+      finalize_created_org_user: {
+        Args: {
+          p_full_name: string
+          p_organization_id: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       finalize_csz_signed_upload: {
         Args: { p_request_id: string; p_upload_id: string }
@@ -15833,6 +16266,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_postpaid_access_profile: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      get_postpaid_billing_overview: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      get_postpaid_invoice_calculation: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
       get_registration_link_by_token: {
         Args: { link_token: string }
         Returns: {
@@ -15958,6 +16403,10 @@ export type Database = {
         }[]
       }
       get_warmup_status: { Args: { p_scope_key: string }; Returns: Json }
+      has_active_postpaid_agreement: {
+        Args: { p_organization_id: string }
+        Returns: boolean
+      }
       has_admin_staff_role: {
         Args: { _role: string; _user_id: string }
         Returns: boolean
@@ -16032,6 +16481,7 @@ export type Database = {
         Args: { _organization_id: string; _user_id: string }
         Returns: boolean
       }
+      is_platform_sales_manager: { Args: { _uid: string }; Returns: boolean }
       is_student_profile: {
         Args: { _org_id: string; _target_user_id: string }
         Returns: boolean
@@ -16086,6 +16536,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      issue_postpaid_invoice: {
+        Args: { p_statement_id: string }
+        Returns: Json
+      }
+      legacy_crm_access_allowed: {
+        Args: { _org_id: string; _permission: string }
+        Returns: boolean
       }
       list_goreltech_enrollment_orders: {
         Args: {
@@ -16311,6 +16769,48 @@ export type Database = {
               port: number
             }[]
           }
+      postpaid_append_event: {
+        Args: {
+          p_bytes?: number
+          p_course: string
+          p_evidence?: string
+          p_feature: string
+          p_key: string
+          p_learner: string
+          p_org: string
+          p_source: string
+          p_when: string
+        }
+        Returns: boolean
+      }
+      postpaid_authorize_invoice_write: {
+        Args: { p_invoice_id: string; p_operation: string }
+        Returns: undefined
+      }
+      postpaid_calculate: {
+        Args: {
+          p_access_days: number
+          p_courses: number
+          p_features: Json
+          p_learners: number
+          p_month_days: number
+        }
+        Returns: Json
+      }
+      postpaid_collect_snapshot: {
+        Args: { p_organization_id: string; p_period_start: string }
+        Returns: Json
+      }
+      postpaid_is_admin: { Args: never; Returns: boolean }
+      postpaid_prepare_statement_internal: {
+        Args: {
+          p_actor: string
+          p_organization_id: string
+          p_period_start: string
+        }
+        Returns: Json
+      }
+      postpaid_require_admin: { Args: never; Returns: undefined }
       prepare_csz_signed_upload: {
         Args: {
           p_comment: string
@@ -16322,6 +16822,7 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_due_postpaid_statements: { Args: never; Returns: Json }
       prepare_final_test_photo: {
         Args: { p_lesson_id: string; p_request_id: string }
         Returns: Json
@@ -16334,6 +16835,10 @@ export type Database = {
           p_recipient_id: string
           p_run_token: string
         }
+        Returns: Json
+      }
+      prepare_postpaid_statement: {
+        Args: { p_organization_id: string; p_period_start: string }
         Returns: Json
       }
       preview_goreltech_enrollment_order: {
@@ -16409,6 +16914,31 @@ export type Database = {
       record_mailing_seed_result: {
         Args: { p_failed: number; p_ledger_id: string; p_sent: number }
         Returns: undefined
+      }
+      record_postpaid_feature_confirmation: {
+        Args: {
+          p_confirmed_at: string
+          p_effective_to?: string
+          p_evidence: string
+          p_feature: string
+          p_notified_at: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      record_postpaid_feature_usage: {
+        Args: {
+          p_bytes?: number
+          p_evidence: string
+          p_feature: string
+          p_occurred_at: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      record_postpaid_lesson_activity: {
+        Args: { p_lesson_id: string }
+        Returns: boolean
       }
       register_referral:
         | {
@@ -16612,6 +17142,16 @@ export type Database = {
         }
         Returns: Json
       }
+      save_postpaid_agreement: {
+        Args: {
+          p_contract_reference: string
+          p_customer_confirmation: string
+          p_effective_from: string
+          p_effective_to?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       save_student_frdo_data: {
         Args: { p_data: Json; p_organization_id: string; p_user_id: string }
         Returns: {
@@ -16770,6 +17310,10 @@ export type Database = {
         Args: { p_answers: Json; p_attempt_id: string }
         Returns: Json
       }
+      tbank_add_calendar_months: {
+        Args: { p_months: number; p_start: string }
+        Returns: string
+      }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       transfer_org_ownership_atomic: {
         Args: { p_new_owner_user_id: string; p_organization_id: string }
@@ -16785,6 +17329,10 @@ export type Database = {
           p_smtp_message_id?: string
           p_state: string
         }
+        Returns: Json
+      }
+      update_organization_theme: {
+        Args: { p_organization_id: string; p_patch: Json }
         Returns: Json
       }
       update_signature_revision_html: {
@@ -16842,6 +17390,10 @@ export type Database = {
           organization_id: string
           reason: string
         }[]
+      }
+      verify_billing_cron_secret: {
+        Args: { p_secret: string }
+        Returns: boolean
       }
       verify_webinar_guest_password: {
         Args: { p_password: string; p_public_token: string }
