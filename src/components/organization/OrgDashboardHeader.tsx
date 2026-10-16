@@ -65,6 +65,7 @@ export function OrgDashboardHeader() {
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
   const planName = d.subscriptionLimits?.plan;
+  const isPostpaid = d.subscriptionLimits?.isPostpaid === true;
   const { user: authUser } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const newIndicators = useOrgNewIndicators(organizationId);
@@ -233,8 +234,8 @@ export function OrgDashboardHeader() {
           >
             <CreditCard className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold text-primary">
-              {planLabel}
-              {daysRemaining !== null && planName !== 'free' && (
+              {isPostpaid ? "Постоплата" : planLabel}
+              {!isPostpaid && daysRemaining !== null && planName !== 'free' && (
                 <span className="ml-1 text-primary/70">— {daysRemaining} дн.</span>
               )}
             </span>

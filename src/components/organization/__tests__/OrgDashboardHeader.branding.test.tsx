@@ -8,6 +8,8 @@ const testState = vi.hoisted(() => ({
   coverUrl: "",
   coverPosition: "cover",
   activeTab: "home",
+  isPostpaid: false,
+  paidUntil: null as string | null,
   setActiveTab: vi.fn(),
   proxiedAssetUrl: vi.fn(),
   setTheme: vi.fn(),
@@ -19,7 +21,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
     organizationName: "СГТ",
     branding: { brandingSettings: { customName: "", logoUrl: "", coverUrl: testState.coverUrl, coverPosition: testState.coverPosition } },
     tabNavigation: { activeTab: testState.activeTab, setActiveTab: testState.setActiveTab },
-    subscriptionLimits: { plan: "start" },
+    subscriptionLimits: { plan: "start", isPostpaid: testState.isPostpaid },
     user: { email: "admin@example.test" },
     setIsMobileSidebarOpen: vi.fn(),
     handleLogout: vi.fn(),
@@ -37,7 +39,7 @@ vi.mock("@/components/radio/RadioPlayerButton", () => ({ RadioPlayerButton: () =
 vi.mock("@/components/account/AccountSettingsLink", () => ({ AccountSettingsMenuItem: () => null }));
 vi.mock("@/utils/proxyFetch", () => ({ proxiedAssetUrl: testState.proxiedAssetUrl }));
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: {}, error: null }) }) }) }) },
+  supabase: { from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { paid_until: testState.paidUntil }, error: null }) }) }) }) },
 }));
 
 import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
@@ -55,12 +57,31 @@ beforeEach(() => {
   testState.coverUrl = "";
   testState.coverPosition = "cover";
   testState.activeTab = "home";
+  testState.isPostpaid = false;
+  testState.paidUntil = null;
   testState.proxiedAssetUrl.mockImplementation((url: string) => url === COVER_URL ? PROXIED_COVER_URL : url || "");
 });
 
 afterEach(cleanup);
 
 describe("organization dashboard cover", () => {
+  it("replaces the expired prepaid badge when postpaid access becomes active", async () => {
+    testState.paidUntil = "2026-02-26T00:00:00Z";
+    const { rerender } = renderHeader();
+    expect(await screen.findByRole("button", { name: "Старт — 0 дн." })).toBeInTheDocument();
+
+    testState.isPostpaid = true;
+    rerender(<MemoryRouter><TooltipProvider><OrgDashboardHeader /></TooltipProvider></MemoryRouter>);
+    const billing = screen.getByRole("button", { name: "Постоплата" });
+    expect(screen.queryByText(/0 дн\./)).not.toBeInTheDocument();
+    fireEvent.click(billing);
+    expect(testState.setActiveTab).toHaveBeenCalledWith("subscription");
+
+    testState.isPostpaid = false;
+    rerender(<MemoryRouter><TooltipProvider><OrgDashboardHeader /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByRole("button", { name: "Старт — 0 дн." })).toBeInTheDocument();
+  });
+
   it("does not override the shared mode through the header logo", () => {
     applySharedTheme(DEFAULT_THEME_PREFERENCES);
     renderHeader();
