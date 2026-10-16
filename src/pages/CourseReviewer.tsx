@@ -169,7 +169,7 @@ export default function CourseReviewer() {
             <div className="flex max-w-4xl gap-4">
               {coverImageHref && <img src={coverImageHref} alt="Обложка курса" className="hidden h-28 w-40 rounded-xl object-cover sm:block" />}
               <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Черновик курса</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Образовательная программа</p>
               <h1 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">{course.title}</h1>
               {course.description && <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{course.description}</p>}
               {course.duration && <p className="mt-2 text-sm font-medium">Объём: {course.duration}</p>}
