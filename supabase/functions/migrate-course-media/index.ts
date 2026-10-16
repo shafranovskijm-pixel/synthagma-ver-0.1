@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { accessErrorResponse, readObject, requireActiveUser, requireMigrationCourse, requireUuid } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,7 +24,7 @@ async function runMigration(courseId: string, organizationId: string) {
 
   if (lessonsError || !lessons) {
     log(`Error fetching lessons: ${lessonsError?.message}`);
-    return { filesTransferred: 0, filesFailed: 0, filesSkipped: 0, error: lessonsError?.message };
+    throw new Error("Не удалось прочитать уроки курса");
   }
 
   log(`Found ${lessons.length} lessons`);
@@ -156,7 +157,8 @@ async function runMigration(courseId: string, organizationId: string) {
     }
 
     if (changed) {
-      await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+      const { error } = await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+      if (error) throw new Error("Не удалось сохранить материалы урока");
     }
     log(`Lesson ${li + 1}/${lessons.length} done`);
   }
@@ -171,13 +173,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { courseId, organizationId } = await req.json();
-    if (!courseId || !organizationId) {
-      return new Response(
-        JSON.stringify({ error: "courseId и organizationId обязательны" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const actor = await requireActiveUser(req, supabase);
+    const body = await readObject(req);
+    const courseId = requireUuid(body.courseId, "courseId");
+    const organizationId = requireUuid(body.organizationId, "organizationId");
+    await requireMigrationCourse(supabase, actor, courseId, organizationId);
 
     const result = await runMigration(courseId, organizationId);
     return new Response(
@@ -185,9 +186,6 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: "Ошибка: " + (error instanceof Error ? error.message : String(error)) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return accessErrorResponse(error, corsHeaders);
   }
 });
