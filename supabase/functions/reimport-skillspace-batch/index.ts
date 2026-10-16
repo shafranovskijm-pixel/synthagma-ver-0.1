@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { AccessError, accessErrorResponse, checked, readObject, requireActiveUser, requirePlatformAdmin, requireUuid } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,21 +17,22 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { organizationId, urls } = await req.json();
-
-    if (!organizationId || !Array.isArray(urls) || urls.length === 0) {
-      return new Response(JSON.stringify({ error: "organizationId and urls required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const actor = await requireActiveUser(req, supabase);
+    await requirePlatformAdmin(supabase, actor);
+    const body = await readObject(req);
+    const organizationId = requireUuid(body.organizationId, "organizationId");
+    const urls = body.urls;
+    if (!Array.isArray(urls) || urls.length === 0 || urls.some(url => typeof url !== "string" || !url.trim())) {
+      throw new AccessError(400, "Укажите адреса курсов");
     }
 
     // Get and decrypt credentials
-    const { data: creds } = await supabase
+    const { data: creds, error: credentialsError } = await supabase
       .from("organization_credentials")
       .select("login_email, login_password")
       .eq("organization_id", organizationId)
-      .single();
+      .maybeSingle();
+    checked({ data: creds, error: credentialsError });
 
     if (!creds) {
       return new Response(JSON.stringify({ error: "No credentials found" }), {
@@ -43,16 +45,16 @@ Deno.serve(async (req) => {
       p_text: creds.login_password,
     });
 
-    console.log(`[reimport] Decrypt result: err=${decryptErr?.message}, pwd_length=${decryptedPassword?.length}, pwd_prefix=${decryptedPassword?.substring(0, 3)}`);
+    console.log(`[reimport] Credentials decrypted: ${!decryptErr && Boolean(decryptedPassword)}`);
 
     if (!decryptedPassword) {
       // Fallback: try using get_decrypted_org_credentials
       const { data: decCreds, error: decErr } = await supabase.rpc("get_decrypted_org_credentials", {
         p_organization_id: organizationId,
       });
-      console.log(`[reimport] Fallback decrypt: err=${decErr?.message}, data=${JSON.stringify(decCreds)?.substring(0, 100)}`);
+      console.log(`[reimport] Fallback credentials available: ${!decErr && Boolean(decCreds?.length)}`);
       
-      if (!decCreds || decCreds.length === 0) {
+      if (decErr || !decCreds || decCreds.length === 0) {
         return new Response(JSON.stringify({ error: "Could not decrypt credentials" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -66,7 +68,7 @@ Deno.serve(async (req) => {
       var password = decryptedPassword;
     }
 
-    console.log(`[reimport] Starting ${urls.length} courses for org ${organizationId}, login: ${login}, pwd_len: ${password?.length}`);
+    console.log(`[reimport] Starting ${urls.length} courses for org ${organizationId}`);
 
     const results: any[] = [];
 
@@ -81,7 +83,7 @@ Deno.serve(async (req) => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${anonKey}`,
+              Authorization: req.headers.get("Authorization")!,
               apikey: anonKey,
             },
             body: JSON.stringify({
@@ -116,10 +118,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[reimport] Fatal error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return accessErrorResponse(err, corsHeaders);
   }
 });

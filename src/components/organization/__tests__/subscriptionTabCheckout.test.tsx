@@ -6,6 +6,7 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 /** Regression на РЕАЛЬНУЮ вкладку тарифа: клики должны открывать один мастер «Оформление тарифа». */
 
 const setActiveTab = vi.fn();
+const postpaidState = vi.hoisted(() => ({ active: false, loading: false, error: null as Error | null }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -47,10 +48,14 @@ vi.mock("@/hooks/useSubscriptionTab", async () => {
   return {
     ...actual,
     useSubscriptionTab: () => ({
+      isPostpaid: postpaidState.active,
+      postpaidAccessLoading: postpaidState.loading,
+      postpaidAccessError: postpaidState.error,
+      refreshPostpaidAccess: vi.fn(),
       subscriptionLimits: {
         plan: "free",
         limits: { maxCourses: 1, maxStudents: 10, maxStorageMb: 100, maxTrainedPerMonth: 5 },
-        usage: { coursesCount: 0, studentsCount: 0, storageUsedMb: 0, trainedThisMonth: 0 },
+        usage: { coursesCount: 0, studentsCount: 0, storageUsedMb: 0, storageUsedBytes: 0, trainedThisMonth: 0 },
       },
       currentPlan: "free",
       currentPlanInfo: SUBSCRIPTION_PLANS.free,
@@ -108,9 +113,29 @@ async function expectSingleWizard() {
 
 beforeEach(() => {
   setActiveTab.mockClear();
+  postpaidState.active = false;
+  postpaidState.loading = false;
+  postpaidState.error = null;
 });
 
 describe("SubscriptionTab — открытие мастера", () => {
+  it("shows the agreed postpaid flow without a prepaid checkout or a free-plan label", () => {
+    postpaidState.active = true;
+    renderTab();
+    expect(screen.getByText("Постоплата по договору")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Оформить тариф|Выставить счёт|Перейти/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Бесплатный тариф")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Счета и документы" }));
+    expect(setActiveTab).toHaveBeenCalledWith("documents");
+  });
+
+  it.each(["loading", "error"])("does not expose prepaid checkout when billing status is %s", state => {
+    postpaidState.loading = state === "loading";
+    postpaidState.error = state === "error" ? new Error("unavailable") : null;
+    renderTab();
+    expect(screen.queryByRole("button", { name: /Оформить тариф|Выставить счёт|Перейти/ })).not.toBeInTheDocument();
+  });
+
   it("сохраняет тариф и счета, но не показывает демо-финансы и T-Bank", () => {
     renderTab();
 

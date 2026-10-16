@@ -1,0 +1,326 @@
+{
+  "release": "payment-access-ui-20261016",
+  "baseCommit": "a122066363461d9beb5247476dd26c89aef16040",
+  "deployed": false,
+  "batchSha256": "9065a9dadd9b62ab7029baa44e6116cf0919e7e903452fa539b58b7f1f4c124a",
+  "newlineHashNormalization": "CRLF to LF only",
+  "migrationCount": 11,
+  "migrations": [
+    {
+      "file": "20260822164000_atomic_tbank_balance_credit.sql",
+      "version": "20260822164000",
+      "name": "atomic_tbank_balance_credit",
+      "stripOuterTransaction": false,
+      "sourceSha256": "d36b86d8dcf6402da394d3f6d84a798909996dcb174cf41b966137819c171173",
+      "sourceMd5": "46c6de4fbbb9fea6b4ecf3fa7757052c",
+      "executableMd5": "46c6de4fbbb9fea6b4ecf3fa7757052c"
+    },
+    {
+      "file": "20261016023000_create_org_user.sql",
+      "version": "20261016023000",
+      "name": "create_org_user",
+      "stripOuterTransaction": true,
+      "sourceSha256": "690d92cf3d9858db264af91c840cb3665c68ef008a53be23cee8279dd73a89bb",
+      "sourceMd5": "9561fb2e7c8fad68a533970d6072ab11",
+      "executableMd5": "aff311e29b25ffea240b7c6b34581c00"
+    },
+    {
+      "file": "20261016024000_org_theme_patch.sql",
+      "version": "20261016024000",
+      "name": "org_theme_patch",
+      "stripOuterTransaction": true,
+      "sourceSha256": "86688dae488c080b59462be0c72973b699d5defed02446db8c225e721c599062",
+      "sourceMd5": "2c9792d7569fc1bf37905d4052df1c74",
+      "executableMd5": "42fe883d9ab9e88f3fb33472e54180db"
+    },
+    {
+      "file": "20261016110000_atomic_payment_settlement.sql",
+      "version": "20261016110000",
+      "name": "atomic_payment_settlement",
+      "stripOuterTransaction": false,
+      "sourceSha256": "8826190717972fa42dd8e0e7f5c7824c38d4ab6f948cf3dd1c4600e54595c07b",
+      "sourceMd5": "c50c1ed21927eb772760b5de745905cf",
+      "executableMd5": "c50c1ed21927eb772760b5de745905cf"
+    },
+    {
+      "file": "20261016140000_legacy_crm_access.sql",
+      "version": "20261016140000",
+      "name": "legacy_crm_access",
+      "stripOuterTransaction": true,
+      "sourceSha256": "3575cf5608e56c3e14355b54d1bdba5143ca822be7e8316c58f5a15f0e2ab36d",
+      "sourceMd5": "65d2b5fb409ce2d836dcff05a0922244",
+      "executableMd5": "1432ce808a0730c90191a8d83578536d"
+    },
+    {
+      "file": "20261016150000_skillspace_job_authorization.sql",
+      "version": "20261016150000",
+      "name": "skillspace_job_authorization",
+      "stripOuterTransaction": true,
+      "sourceSha256": "deecaf8269a70a871ad4058cac02961170abb88b279ff73263999bad89f1bb78",
+      "sourceMd5": "f5e631b328d52dcbc164e9942bf14ab0",
+      "executableMd5": "e948839ab2cbdd590ba7c75f934065cb"
+    },
+    {
+      "file": "20261016160000_postpaid_billing.sql",
+      "version": "20261016160000",
+      "name": "postpaid_billing",
+      "stripOuterTransaction": true,
+      "sourceSha256": "dbe9ebe24b43a03189690cbcddccb9a698d63a8aeaf20df5a9f5184834219614",
+      "sourceMd5": "76b0d7f0b546c0b571094e88516cd6f9",
+      "executableMd5": "d65f903f88a394ca0c65a7b33189be0a"
+    },
+    {
+      "file": "20261016161000_manual_invoice_settlement.sql",
+      "version": "20261016161000",
+      "name": "manual_invoice_settlement",
+      "stripOuterTransaction": false,
+      "sourceSha256": "d98189d681cd18f8015fa3f63933c7334670fd81d774df703032a1231110a952",
+      "sourceMd5": "f269a34171a146997c462289a455c9e7",
+      "executableMd5": "f269a34171a146997c462289a455c9e7"
+    },
+    {
+      "file": "20261016162000_postpaid_access.sql",
+      "version": "20261016162000",
+      "name": "postpaid_access",
+      "stripOuterTransaction": true,
+      "sourceSha256": "33b854fb93cc0e85c3e97bfdd5bf8ba127bb636c24bfc59985743569386a3beb",
+      "sourceMd5": "59a09047cec6e3c9184bb112928c1510",
+      "executableMd5": "744dba2f993eba09fac806ee6b406c35"
+    },
+    {
+      "file": "20261016163000_secure_billing_scheduler.sql",
+      "version": "20261016163000",
+      "name": "secure_billing_scheduler",
+      "stripOuterTransaction": true,
+      "sourceSha256": "591317569ec70d11e67933fd00f49678ccec1e06e3f99fb7c3f34201c3cb99ae",
+      "sourceMd5": "0c4dec574742ebfb9001145ad66692f9",
+      "executableMd5": "3bfebb16dddcb1cd079c092fed686d94"
+    },
+    {
+      "file": "20261016164000_postpaid_bank_guard.sql",
+      "version": "20261016164000",
+      "name": "postpaid_bank_guard",
+      "stripOuterTransaction": true,
+      "sourceSha256": "73aaf8102f3c20ae6a4d1b662cbde504860e8a731ed4323b1cd68cc794ada9ce",
+      "sourceMd5": "980cd605092d5b18bb2628cbed40bf84",
+      "executableMd5": "3513b21049ccbbb11ae38ac278c8f88b"
+    }
+  ],
+  "edgeEntrypoints": [
+    {
+      "name": "batch-skillspace-import",
+      "path": "supabase/functions/batch-skillspace-import/index.ts",
+      "sourceSha256": "7e175596eddd6e512fa1c40f60ab98e8b4330c7a14b0c4b33584374c2f0d30d9"
+    },
+    {
+      "name": "parse-skillspace-course",
+      "path": "supabase/functions/parse-skillspace-course/index.ts",
+      "sourceSha256": "89f2372a661e2f2c3a1428e0c0aeb3e261d560621071048295342fd5edb05631"
+    },
+    {
+      "name": "reimport-skillspace-batch",
+      "path": "supabase/functions/reimport-skillspace-batch/index.ts",
+      "sourceSha256": "89d02b35cc0c1a58b7102d84f2301c0ff61b27fcdae27419262d227065e5a220"
+    },
+    {
+      "name": "tbank-webhook",
+      "path": "supabase/functions/tbank-webhook/index.ts",
+      "sourceSha256": "8b333a30aeb3b1c6dfd7c6e113fe0fa54e60cd30bee972980f2944f294db97cb"
+    },
+    {
+      "name": "tbank-init-subscription",
+      "path": "supabase/functions/tbank-init-subscription/index.ts",
+      "sourceSha256": "246ce982a4ff2ce97f14df5c9afe2e9c801f3a7df386d4c0371daea12e6d7b0b"
+    },
+    {
+      "name": "tbank-init",
+      "path": "supabase/functions/tbank-init/index.ts",
+      "sourceSha256": "16df0639d93b0b68fcd257767f674723caba54b508d2beaf4303a57e217fcb80"
+    },
+    {
+      "name": "create-org-user",
+      "path": "supabase/functions/create-org-user/index.ts",
+      "sourceSha256": "84a33a68e2ba3a0ae28a95e467d3652de9cc92e6dd2ecafe3bb43ae0698047fa"
+    },
+    {
+      "name": "convert-company-to-lead",
+      "path": "supabase/functions/convert-company-to-lead/index.ts",
+      "sourceSha256": "9d4308ad9f8624d78c3ddd5f40d6aec4507a6253763e774bf99dcee2ac8232ab"
+    },
+    {
+      "name": "generate-signature-certificate",
+      "path": "supabase/functions/generate-signature-certificate/index.ts",
+      "sourceSha256": "939f09c4e9f2ad91882602f8a88731a0414e38693c5c35010e0f5120abc3440b"
+    },
+    {
+      "name": "migrate-course-media",
+      "path": "supabase/functions/migrate-course-media/index.ts",
+      "sourceSha256": "6bf26cd82ce33cfacb0e439b9159b74e982e0cc723948636dd9a7ecabfacd963"
+    },
+    {
+      "name": "check-subscription-expiry",
+      "path": "supabase/functions/check-subscription-expiry/index.ts",
+      "sourceSha256": "a472cad015551358a91cec711aeaf1df37bfd8413a50c7bb90159d1a0b5fa56c"
+    }
+  ],
+  "edgeDependencies": [
+    {
+      "path": "supabase/functions/_shared/create-org-user.ts",
+      "sourceSha256": "0a86ce6cfd289b38c765ea8f581ad14796f3047a0bf0627b8a6846c23b349876",
+      "imports": [
+        "supabase/functions/_shared/privileged-access.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/_shared/editorjs-converter.ts",
+      "sourceSha256": "4562b8e4c043f7f8860d759f509c823f6a8b6063bec5fbe9f62de0a8e2a7c30a",
+      "imports": []
+    },
+    {
+      "path": "supabase/functions/_shared/privileged-access.ts",
+      "sourceSha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0",
+      "imports": []
+    },
+    {
+      "path": "supabase/functions/_shared/skillspace-auth.ts",
+      "sourceSha256": "fbb64c7f2a0137a8ae289a1fea605aad9bc4b6dc7278378309391aecec12eedb",
+      "imports": [
+        "supabase/functions/_shared/skillspace-source.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/_shared/skillspace-lessons.ts",
+      "sourceSha256": "541162b0487dc770592426d95a8374c5c91f9bfc5d85058705171f49e46649b1",
+      "imports": [
+        "supabase/functions/_shared/editorjs-converter.ts",
+        "supabase/functions/_shared/skillspace-auth.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/_shared/skillspace-media.ts",
+      "sourceSha256": "db9fc2112f7d6205c90da2eb1f67f102719dec12994155fa7b0ed3c0a2c6ecc4",
+      "imports": [
+        "supabase/functions/_shared/skillspace-auth.ts",
+        "supabase/functions/_shared/skillspace-source.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/_shared/skillspace-source.ts",
+      "sourceSha256": "20314b6ed5bf1a843221234fb7cdb783d5f72ea180bfe7e4b76a0630e457b131",
+      "imports": []
+    },
+    {
+      "path": "supabase/functions/_shared/subscription-pricing.ts",
+      "sourceSha256": "0532776b7d79962d0c96a7cbcab86cdd8c5e2459b42d581ca9081e39bb164a39",
+      "imports": []
+    },
+    {
+      "path": "supabase/functions/_shared/tbank-payment.ts",
+      "sourceSha256": "d4b532623738362a273250d0eaa7ecb84ecf8a836a9bfacd32522a2828e41aca",
+      "imports": []
+    },
+    {
+      "path": "supabase/functions/batch-skillspace-import/index.ts",
+      "sourceSha256": "7e175596eddd6e512fa1c40f60ab98e8b4330c7a14b0c4b33584374c2f0d30d9",
+      "imports": [
+        "supabase/functions/_shared/privileged-access.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/check-subscription-expiry/index.ts",
+      "sourceSha256": "a472cad015551358a91cec711aeaf1df37bfd8413a50c7bb90159d1a0b5fa56c",
+      "imports": [
+        "supabase/functions/_shared/subscription-pricing.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/convert-company-to-lead/index.ts",
+      "sourceSha256": "9d4308ad9f8624d78c3ddd5f40d6aec4507a6253763e774bf99dcee2ac8232ab",
+      "imports": [
+        "supabase/functions/_shared/privileged-access.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/create-org-user/index.ts",
+      "sourceSha256": "84a33a68e2ba3a0ae28a95e467d3652de9cc92e6dd2ecafe3bb43ae0698047fa",
+      "imports": [
+        "supabase/functions/_shared/create-org-user.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/generate-signature-certificate/index.ts",
+      "sourceSha256": "939f09c4e9f2ad91882602f8a88731a0414e38693c5c35010e0f5120abc3440b",
+      "imports": [
+        "supabase/functions/_shared/privileged-access.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/migrate-course-media/index.ts",
+      "sourceSha256": "6bf26cd82ce33cfacb0e439b9159b74e982e0cc723948636dd9a7ecabfacd963",
+      "imports": [
+        "supabase/functions/_shared/privileged-access.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/parse-skillspace-course/index.ts",
+      "sourceSha256": "89f2372a661e2f2c3a1428e0c0aeb3e261d560621071048295342fd5edb05631",
+      "imports": [
+        "supabase/functions/_shared/editorjs-converter.ts",
+        "supabase/functions/_shared/privileged-access.ts",
+        "supabase/functions/_shared/skillspace-auth.ts",
+        "supabase/functions/_shared/skillspace-lessons.ts",
+        "supabase/functions/_shared/skillspace-media.ts",
+        "supabase/functions/_shared/skillspace-source.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/reimport-skillspace-batch/index.ts",
+      "sourceSha256": "89d02b35cc0c1a58b7102d84f2301c0ff61b27fcdae27419262d227065e5a220",
+      "imports": [
+        "supabase/functions/_shared/privileged-access.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/tbank-init-subscription/handler.ts",
+      "sourceSha256": "e55c56ac7194f707b616cf28498af72c701d0603b61d173977405cf746afe85d",
+      "imports": [
+        "supabase/functions/_shared/subscription-pricing.ts",
+        "supabase/functions/_shared/tbank-payment.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/tbank-init-subscription/index.ts",
+      "sourceSha256": "246ce982a4ff2ce97f14df5c9afe2e9c801f3a7df386d4c0371daea12e6d7b0b",
+      "imports": [
+        "supabase/functions/tbank-init-subscription/handler.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/tbank-init/index.ts",
+      "sourceSha256": "16df0639d93b0b68fcd257767f674723caba54b508d2beaf4303a57e217fcb80",
+      "imports": []
+    },
+    {
+      "path": "supabase/functions/tbank-webhook/handler.ts",
+      "sourceSha256": "9abee2930218bc381291ae9812ff5edf69b6162072ed66b462c6669feaab8a8d",
+      "imports": [
+        "supabase/functions/_shared/tbank-payment.ts"
+      ]
+    },
+    {
+      "path": "supabase/functions/tbank-webhook/index.ts",
+      "sourceSha256": "8b333a30aeb3b1c6dfd7c6e113fe0fa54e60cd30bee972980f2944f294db97cb",
+      "imports": [
+        "supabase/functions/tbank-webhook/handler.ts"
+      ]
+    }
+  ],
+  "configSha256": "82431c8a44b4b1c0dfe00acb65256c6f594ec2f5b1ebdd1ba38a2e8cd2e4d1f3",
+  "deploymentNotes": [
+    "Pause/drain old import worker and replace hardened batch handler before SQL; missing marker fails closed.",
+    "Execute release-transaction.sql as one request; never split across connections.",
+    "After all SQL (including secure scheduler): deploy remaining handlers with all inventoried local imports and the frontend changes.",
+    "Postpaid is opt-in per organization; this release seeds no agreement or usage and issues no invoice or charge.",
+    "Apply secure scheduler SQL before secure expiry Edge deployment: the previous anon bearer alone is not business authorization."
+  ]
+}

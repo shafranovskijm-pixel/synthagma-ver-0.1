@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
+import { generateInvoiceHtml, type InvoiceData, type PostpaidInvoiceCalculation } from "@/constants/invoiceTemplate";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer} from "lucide-react";
@@ -21,6 +21,7 @@ export default function InvoiceView() {
 
   const loadInvoice = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data: invoice, error: err } = await supabase
         .from("subscription_invoices")
@@ -39,6 +40,15 @@ export default function InvoiceView() {
         .maybeSingle();
 
       const planInfo = SUBSCRIPTION_PLANS[invoice.plan as keyof typeof SUBSCRIPTION_PLANS];
+      let postpaid: PostpaidInvoiceCalculation | undefined;
+      if ((invoice as any).billing_kind === 'postpaid') {
+        const { data: calculation, error: calculationError } = await supabase.rpc('get_postpaid_invoice_calculation' as any, { p_invoice_id: invoice.id });
+        if (calculationError) throw calculationError;
+        if (!calculation || (calculation as any).invoice_id !== invoice.id || (calculation as any).organization_id !== invoice.organization_id) {
+          throw new Error('Не удалось подтвердить расчёт постоплаты для этого счёта');
+        }
+        postpaid = calculation as unknown as PostpaidInvoiceCalculation;
+      }
 
       const invoiceData: InvoiceData = {
         invoiceNumber: invoice.invoice_number,
@@ -49,7 +59,7 @@ export default function InvoiceView() {
         buyerAddress: org?.legal_address,
         planName: planInfo?.name || invoice.plan,
         periodMonths: invoice.period_months,
-        amount: Number(invoice.amount) };
+        amount: Number(invoice.amount), postpaid };
 
       setHtml(await generateInvoiceHtml(invoiceData));
     } catch (e: any) {

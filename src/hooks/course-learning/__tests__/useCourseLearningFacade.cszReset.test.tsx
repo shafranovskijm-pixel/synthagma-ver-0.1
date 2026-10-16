@@ -74,6 +74,7 @@ class SyntheticQuery implements PromiseLike<QueryResult> {
         status: 'completed', progress: 100, expires_at: '2020-01-01T00:00:00Z',
       }, error: null };
       case 'profiles': return { data: { organization_id: 'org-a' }, error: null };
+      case 'organizations': return { data: { id: 'org-a', name: 'Synthetic organization', subscription_plan: 'free' }, error: null };
       case 'lesson_progress': return { data: [
         { lesson_id: 'lesson-a', completed: true }, { lesson_id: 'lesson-b', completed: true },
       ], error: null };
@@ -126,6 +127,32 @@ function clearLoadEvidence() {
 }
 
 describe('useCourseLearningFacade CSZ reset boundary', () => {
+  it.each([true, false])('uses server-confirmed postpaid access (%s) for the learner completion cap', async active => {
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    clearLoadEvidence();
+    mocks.rpc.mockImplementation(async name => {
+      if (name === 'get_postpaid_access_profile') return { data: { organization_id: 'org-a', active, billing_mode: active ? 'postpaid' : 'prepaid', limits: active ? { maxCourses: -1, maxStudents: -1, maxTrainedStudents: -1 } : null, features: { crm: false, webinar: false, videoserviceplus: false, frdoplus: false } }, error: null };
+      if (name === 'count_org_completions_this_month') return { data: 99, error: null };
+      // End the fixture at the canonical completion transaction boundary.
+      return { data: null, error: null };
+    });
+    await act(async () => { await result.current.retryCourseCompletion(); });
+    expect(mocks.rpc).toHaveBeenCalledWith('get_postpaid_access_profile', { p_organization_id: 'org-a' });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'complete_own_course_enrollment')).toBe(active);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'count_org_completions_this_month')).toBe(!active);
+  });
+
+  it('does not complete enrollment when the learner postpaid entitlement cannot be verified', async () => {
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    clearLoadEvidence();
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'denied' } });
+    await act(async () => { await result.current.retryCourseCompletion(); });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'complete_own_course_enrollment')).toBe(false);
+    expect(mocks.toast.error).toHaveBeenCalledWith('Не удалось проверить условия завершения курса. Повторите попытку.');
+  });
+
   it.each([CSZ_COURSE_ID, CSZ_34_COURSE_ID])('blocks CSZ learner reset for %s before any from/RPC/DML and preserves loaded state', async courseId => {
     mocks.courseId = courseId;
     const { result } = renderHook(() => useCourseLearning());

@@ -15,6 +15,7 @@ import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol
 import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 import { COURSE_LESSON_ORDER_VERSION, orderCourseLessons } from "@/lib/courseLessonOrder";
+import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
 
 import type { Lesson, Course, LessonProgress } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
@@ -166,7 +167,8 @@ export function useCourseLearning() {
       if (!org) return;
 
       const planInfo = (await import('@/constants/subscriptionPlans')).getPlanInfo(org.subscription_plan as Parameters<typeof import('@/constants/subscriptionPlans').getPlanInfo>[0]);
-      if (planInfo.limits.maxTrainedPerMonth !== -1) {
+      const postpaid = await fetchPostpaidAccessProfile(profile.organization_id);
+      if (!postpaid.active && planInfo.limits.maxTrainedPerMonth !== -1) {
         const { data: countData } = await supabase.rpc('count_org_completions_this_month' as never, { org_id: profile.organization_id } as never);
         const trainedCount = Number(countData) || 0;
         if (trainedCount >= planInfo.limits.maxTrainedPerMonth) {
@@ -222,7 +224,10 @@ export function useCourseLearning() {
       }
 
 
-    } catch (error) { console.error('Error handling course completion:', error); }
+    } catch (error) {
+      console.error('Error handling course completion:', error);
+      toast.error('Не удалось проверить условия завершения курса. Повторите попытку.');
+    }
   };
 
   const testHook = useLessonTest({

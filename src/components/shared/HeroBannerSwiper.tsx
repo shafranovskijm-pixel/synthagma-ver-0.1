@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ADMIN_THEMES, getStoredThemeId, getThemeById, storeThemeId } from "@/constants/admin-themes";
+import { useThemeEnforcement } from "@/hooks/useThemeEnforcement";
+import { isSharedThemeEnforced } from "@/lib/themePreferences";
 
 interface HeroBannerSwiperProps {
   /** Overlay content rendered on top of the banner (org info, greeting, etc.) */
@@ -15,6 +17,7 @@ interface HeroBannerSwiperProps {
  * Used by admin, org, and student dashboards.
  */
 export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperProps) {
+  const themeEnforced = useThemeEnforcement();
   const [currentIndex, setCurrentIndex] = useState(() => {
     const id = getStoredThemeId();
     const idx = ADMIN_THEMES.findIndex(t => t.id === id);
@@ -27,6 +30,7 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
   const touchStartY = useRef<number | null>(null);
 
   const applyTheme = useCallback((idx: number) => {
+    if (isSharedThemeEnforced()) return;
     const theme = ADMIN_THEMES[idx];
     if (!theme) return;
     setPrevIndex(currentIndex);
@@ -82,8 +86,8 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
   return (
     <div
       className={`relative w-full h-36 lg:h-48 overflow-hidden select-none group ${className}`}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      onTouchStart={themeEnforced ? undefined : handleTouchStart}
+      onTouchEnd={themeEnforced ? undefined : handleTouchEnd}
     >
       {/* Previous layer (fades out) */}
       {transitioning && prev && (
@@ -113,6 +117,8 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
       {/* Arrow buttons — visible on hover (desktop) */}
       <button
         onClick={goPrev}
+        disabled={themeEnforced}
+        title={themeEnforced ? "Оформление задаётся организацией" : undefined}
         className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all flex items-center justify-center"
         aria-label="Предыдущая тема"
       >
@@ -120,6 +126,8 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
       </button>
       <button
         onClick={goNext}
+        disabled={themeEnforced}
+        title={themeEnforced ? "Оформление задаётся организацией" : undefined}
         className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all flex items-center justify-center"
         aria-label="Следующая тема"
       >
@@ -135,6 +143,8 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
           <button
             key={t.id}
             onClick={() => applyTheme(i)}
+            disabled={themeEnforced}
+            title={themeEnforced ? "Оформление задаётся организацией" : undefined}
             className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
               i === currentIndex ? "bg-white scale-125" : "bg-white/40 hover:bg-white/60"
             }`}

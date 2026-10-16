@@ -3,6 +3,8 @@ import { mergeCookiesFromResponse, getCookieHeader, getAuthToken, createApiFetch
 import { extractLessonsFromStepList, extractLessonsFromFlows, parseLessonContent, getLessonFetchPaths, fetchFallbackPages, type LessonInfo, type ParsedLesson } from "../_shared/skillspace-lessons.ts";
 import { makeId } from "../_shared/editorjs-converter.ts";
 import { createMediaTransfer } from "../_shared/skillspace-media.ts";
+import { accessErrorResponse, readObject, requireActiveUser, requirePlatformAdmin, requireUuid, checked, AccessError } from "../_shared/privileged-access.ts";
+import { parseSkillspaceSource, resolveSkillspaceRedirect } from "../_shared/skillspace-source.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,27 +18,37 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { url, login, password, organizationId, existingCourseId } = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const actor = await requireActiveUser(req, supabaseClient, supabaseKey);
+    if (!actor.service) await requirePlatformAdmin(supabaseClient, actor);
+    const body = await readObject(req);
+    const { url, login, password } = body;
+    const organizationId = requireUuid(body.organizationId, "organizationId");
+    const existingCourseId = body.existingCourseId == null ? null : requireUuid(body.existingCourseId, "existingCourseId");
+    if (existingCourseId) {
+      const course = checked<any>(await supabaseClient.from("courses").select("organization_id").eq("id", existingCourseId).maybeSingle());
+      if (!course || course.organization_id !== organizationId) throw new AccessError(403, "Курс не относится к выбранной организации");
+    }
     const isUpdateMode = !!existingCourseId;
 
-    if (!url || !login || !password || !organizationId) {
+    if (typeof url !== "string" || !url || typeof login !== "string" || !login || typeof password !== "string" || !password) {
       return new Response(
         JSON.stringify({ error: "Все поля обязательны: url, login, password, organizationId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const urlMatch = url.match(/https?:\/\/([^.]+)\.skillspace\.ru\/course\/(\d+)/);
-    if (!urlMatch) {
+    const source = parseSkillspaceSource(url);
+    if (!source) {
       return new Response(
         JSON.stringify({ error: "Неверный формат URL. Ожидается: https://{school}.skillspace.ru/course/{id}/..." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const schoolSlug = urlMatch[1];
-    const courseId = urlMatch[2];
-    const baseUrl = `https://${schoolSlug}.skillspace.ru`;
+    const { courseId, baseUrl } = source;
     const debugLog: string[] = [];
     const log = (msg: string) => { console.log(msg); debugLog.push(msg); };
 
@@ -65,8 +77,9 @@ Deno.serve(async (req) => {
     if (authRes.status >= 300 && authRes.status < 400) {
       const location = authRes.headers.get("location");
       if (location) {
-        const redirectUrl = location.startsWith("http") ? location : `${baseUrl}${location}`;
-        log(`Following redirect to: ${redirectUrl}`);
+        const redirectUrl = resolveSkillspaceRedirect(location, `${baseUrl}/api/user/auth`, baseUrl);
+        if (!redirectUrl) throw new AccessError(502, "Недопустимое перенаправление сервиса авторизации");
+        log("Following authentication redirect");
         const redirectRes = await fetch(redirectUrl, { headers: { Cookie: getCookieHeader(cookieMap) }, redirect: "manual" });
         mergeCookiesFromResponse(redirectRes, cookieMap);
         log(`Redirect response: ${redirectRes.status}`);
@@ -74,7 +87,8 @@ Deno.serve(async (req) => {
         if (redirectRes.status >= 300 && redirectRes.status < 400) {
           const loc2 = redirectRes.headers.get("location");
           if (loc2) {
-            const rUrl2 = loc2.startsWith("http") ? loc2 : `${baseUrl}${loc2}`;
+            const rUrl2 = resolveSkillspaceRedirect(loc2, redirectUrl, baseUrl);
+            if (!rUrl2) throw new AccessError(502, "Недопустимое перенаправление сервиса авторизации");
             const rRes2 = await fetch(rUrl2, { headers: { Cookie: getCookieHeader(cookieMap) }, redirect: "manual" });
             mergeCookiesFromResponse(rRes2, cookieMap);
           }
@@ -82,7 +96,7 @@ Deno.serve(async (req) => {
       }
     } else if (!authRes.ok) {
       const authBody = await authRes.text();
-      log(`Auth failed: ${authRes.status}, body: ${authBody.substring(0, 500)}`);
+      log(`Auth failed: ${authRes.status}`);
       return new Response(
         JSON.stringify({ error: "Не удалось авторизоваться. Проверьте логин и пароль.", debug: debugLog }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -98,7 +112,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    log(`Auth successful, Auth-Token: ${authToken.substring(0, 20)}...`);
+    log("Authentication successful");
 
     // CSRF probe
     try {
@@ -194,7 +208,6 @@ Deno.serve(async (req) => {
         lessonData = bestLessonData;
         if (bestRawSize <= 600) {
           log(`⚠ Small response (${bestRawSize}b) for lesson "${lesson.title}" (uuid=${lesson.uuid}, id=${lesson.id}). Keys: ${Object.keys(lessonData).join(", ")}`);
-          log(`  Data snippet: ${JSON.stringify(lessonData).substring(0, 500)}`);
         }
       }
 
@@ -234,11 +247,7 @@ Deno.serve(async (req) => {
     }
 
     // Step 4.5: Media transfer
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
-
-    const mediaTransfer = createMediaTransfer(supabaseClient, supabaseUrl, organizationId, cookieMap, log);
+    const mediaTransfer = createMediaTransfer(supabaseClient, supabaseUrl, organizationId, cookieMap, log, baseUrl);
 
     if (isUpdateMode) {
       log(`Step 4.5: Skipping media download in update mode`);
@@ -262,11 +271,7 @@ Deno.serve(async (req) => {
       filesTransferred, filesFailed, importMode, schoolApiAvailable, debugLog, log,
     });
   } catch (error) {
-    console.error("Parse error:", error);
-    return new Response(
-      JSON.stringify({ error: "Ошибка парсинга: " + (error instanceof Error ? error.message : String(error)) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return accessErrorResponse(error, corsHeaders);
   }
 });
 

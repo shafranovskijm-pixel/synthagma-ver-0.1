@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganizationCore } from "@/hooks/useOrganizationCore";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 
 interface FeatureAccess {
   categoryEnabled: boolean;
@@ -222,7 +223,7 @@ const defaultFeatures: OrgFeaturesState = {
 };
 
 export function useOrgFeatures(organizationId: string | null) {
-  const [features, setFeatures] = useState<OrgFeaturesState>(defaultFeatures);
+  const postpaid = usePostpaidAccessProfile(organizationId);
 
   // План и custom_enabled_categories — из общего кэша core (один SELECT на всю страницу)
   const { data: orgCore } = useOrganizationCore(organizationId);
@@ -249,11 +250,12 @@ export function useOrgFeatures(organizationId: string | null) {
     },
   });
 
-  const loading = !!organizationId && (featureLoading || !orgCore);
+  const loading = !!organizationId && (featureLoading || !orgCore || postpaid.isLoading);
 
-  useEffect(() => {
-    if (!organizationId) return;
-    if (!featureData || !orgCore) return;
+  const features = useMemo(() => {
+    if (!organizationId || !featureData || !orgCore || !postpaid.data || postpaid.error) {
+      return Object.fromEntries(Object.keys(defaultFeatures).map(key => [key, false])) as unknown as OrgFeaturesState;
+    }
 
     const newFeatures = { ...defaultFeatures };
 
@@ -272,7 +274,7 @@ export function useOrgFeatures(organizationId: string | null) {
 
     const subscriptionPlan = (orgCore.subscription_plan || 'free') as SubscriptionPlan;
     const customEnabledCategories: string[] = orgCore.custom_enabled_categories || [];
-    const planInfo = getPlanInfo(subscriptionPlan);
+    const planInfo = getPlanInfo(postpaid.data.active ? 'start' : subscriptionPlan);
     const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'];
 
     for (const cat of allCategories) {
@@ -282,9 +284,9 @@ export function useOrgFeatures(organizationId: string | null) {
       if (cat in newFeatures) (newFeatures as any)[cat] = true;
     }
     if (!planInfo.limits.aiEnabled) newFeatures.courses_ai = false;
-
-    setFeatures(newFeatures);
-  }, [organizationId, featureData, orgCore]);
+    if (postpaid.data.active) newFeatures.webinars = postpaid.data.features.webinar;
+    return newFeatures;
+  }, [organizationId, featureData, orgCore, postpaid.data, postpaid.error]);
 
   const isEnabled = useCallback((featureId: keyof OrgFeaturesState): boolean => {
     return features[featureId] ?? true;
@@ -301,6 +303,6 @@ export function useOrgFeatures(organizationId: string | null) {
     loading,
     isEnabled,
     isFeatureEnabled,
-    refetch,
+    refetch: async () => { await Promise.all([refetch(), postpaid.refetch()]); },
   };
 }

@@ -13,7 +13,7 @@ interface StudentSidebarProps {
   setActiveTab: (tab: StudentTab) => void;
   branding: { logoUrl: string; showOrgName: boolean; primaryColor?: string } | null;
   orgName: string | null;
-  showAiChat: boolean;
+  showChat: boolean;
   isPreviewMode?: boolean;
   isAdminView?: boolean;
 }
@@ -65,11 +65,11 @@ function normalizeBrandColor(color?: string): string {
 }
 
 export function StudentSidebar({
-  activeTab, setActiveTab, branding, orgName, showAiChat,
+  activeTab, setActiveTab, branding, orgName, showChat,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
   const navItems = allNavItems.filter(i => {
-    if (i.id === "chat") return showAiChat;
+    if (i.id === "chat") return showChat;
     return true;
   });
   const { theme: currentTheme, setTheme } = useTheme();
@@ -132,7 +132,7 @@ export function StudentSidebar({
           >
             <nav className="flex flex-col items-center gap-2">
               {navItems.map((item) => {
-                if (item.id === "chat" && !showAiChat) return null;
+                if (item.id === "chat" && !showChat) return null;
                 const isActive = activeTab === item.id;
 
                 return (

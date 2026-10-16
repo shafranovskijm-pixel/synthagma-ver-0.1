@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { AccessError, accessErrorResponse, checked, readObject, requireActiveUser, requirePlatformSales, requireUuid } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,12 +17,10 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { companyDbId } = await req.json();
-    if (!companyDbId) {
-      return new Response(JSON.stringify({ error: 'companyDbId is required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const actor = await requireActiveUser(req, supabase);
+    await requirePlatformSales(supabase, actor);
+    const body = await readObject(req);
+    const companyDbId = requireUuid(body.companyDbId, "companyDbId");
 
     const { data: company, error: cErr } = await supabase
       .from('sales_companies_db')
@@ -29,10 +28,15 @@ serve(async (req) => {
       .eq('id', companyDbId)
       .maybeSingle();
 
-    if (cErr || !company) {
+    checked({ data: company, error: cErr });
+    if (!company) {
       return new Response(JSON.stringify({ error: 'Company not found' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    if (company.organization_id != null) {
+      throw new AccessError(403, "Компания относится к CRM организации");
     }
 
     if (company.converted_to_lead_id) {
@@ -79,18 +83,16 @@ serve(async (req) => {
       });
     }
 
-    await supabase
+    const linked = await supabase
       .from('sales_companies_db')
       .update({ converted_to_lead_id: lead.id })
       .eq('id', companyDbId);
+    if (linked.error) throw new Error("Failed to link converted lead");
 
     return new Response(JSON.stringify({ success: true, leadId: lead.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return accessErrorResponse(error, corsHeaders);
   }
 });

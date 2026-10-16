@@ -16,6 +16,7 @@ import { MessageCircle, Bot, Users, Contact, Settings, MessagesSquare } from "lu
 interface StudentChatsTabProps {
   organizationId?: string;
   organizationName?: string;
+  showAiChat?: boolean;
 }
 
 const studentSidebarItems = [
@@ -27,10 +28,12 @@ const studentSidebarItems = [
   { id: "settings" as ChatSection, label: "Настройки", icon: Settings },
 ];
 
-export function StudentChatsTab({ organizationId, organizationName }: StudentChatsTabProps) {
+export function StudentChatsTab({ organizationId, organizationName, showAiChat = true }: StudentChatsTabProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState<ChatSection>("chats");
+  const visibleItems = studentSidebarItems.filter(item => item.id !== "ai" || showAiChat);
+  const visibleSection = activeSection === "ai" && !showAiChat ? "chats" : activeSection;
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
@@ -52,7 +55,7 @@ export function StudentChatsTab({ organizationId, organizationName }: StudentCha
   }, [user?.id]);
 
   function renderContent() {
-    switch (activeSection) {
+    switch (visibleSection) {
       case "chats":
         return user && organizationId ? (
           <StudentOrgChat
@@ -114,10 +117,10 @@ export function StudentChatsTab({ organizationId, organizationName }: StudentCha
     return (
       <div className="space-y-3">
         <div className="flex gap-1 overflow-x-auto bg-muted/50 p-1 rounded-xl">
-          {studentSidebarItems.map((item) => (
+          {visibleItems.map((item) => (
             <Button
               key={item.id}
-              variant={activeSection === item.id ? "default" : "ghost"}
+              variant={visibleSection === item.id ? "default" : "ghost"}
               size="sm"
               onClick={() => setActiveSection(item.id)}
               className="rounded-lg text-xs shrink-0"
@@ -134,11 +137,11 @@ export function StudentChatsTab({ organizationId, organizationName }: StudentCha
   return (
     <div className="flex min-h-[300px] border border-border rounded-xl overflow-hidden bg-card">
       <ChatSidebar
-        activeSection={activeSection}
+        activeSection={visibleSection}
         onSectionChange={setActiveSection}
         userName={userName}
         avatarUrl={userAvatar}
-        items={studentSidebarItems}
+        items={visibleItems}
       />
       <div className="flex-1 overflow-hidden p-4">{renderContent()}</div>
     </div>

@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
 
 const MAX_FREE_ATTEMPTS = 3;
 const SESSION_ORG_KEY = "ai_limit_org_id";
@@ -13,6 +14,7 @@ let cachedOrgId: string | null = null;
 /** Store org context so standalone checks can work (e.g. in BlockEditor) */
 export function setAiLimitContext(organizationId: string | null, plan: string) {
   if (organizationId) sessionStorage.setItem(SESSION_ORG_KEY, organizationId);
+  else sessionStorage.removeItem(SESSION_ORG_KEY);
   sessionStorage.setItem(SESSION_PLAN_KEY, plan);
 }
 
@@ -35,11 +37,14 @@ export async function checkAiGenerationLimit(organizationId: string | null, plan
   if (!organizationId) return true;
 
   try {
+    // A paid-in-arrears agreement does not inherit the legacy free-plan AI cap.
+    // Resolve it on the server; sessionStorage contains context, not entitlement.
+    if ((await fetchPostpaidAccessProfile(organizationId)).active) return true;
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("organization_usage")
       .select("ai_generations_count")
       .eq("organization_id", organizationId)
@@ -47,6 +52,7 @@ export async function checkAiGenerationLimit(organizationId: string | null, plan
       .order("month_start", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (error) throw error;
 
     const count = (data as any)?.ai_generations_count || 0;
     cachedCount = count;
@@ -59,7 +65,8 @@ export async function checkAiGenerationLimit(organizationId: string | null, plan
     return true;
   } catch (error) {
     console.error("Error checking AI limit:", error);
-    return true; // Allow on error to not block users
+    toast.error("Не удалось проверить доступность ИИ. Повторите попытку.");
+    return false;
   }
 }
 

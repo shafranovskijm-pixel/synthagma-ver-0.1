@@ -41,6 +41,7 @@ import { sanitizeCourseHtml } from "@/lib/security/courseHtml";
 import { CourseLibraryReader } from "@/components/course-library/CourseLibraryReader";
 import { resolveCourseElectronicLibraryView } from "@/lib/courseLibrary";
 import { getTestAnswerKeyNotice, getTestAnswerKeyState } from "@/utils/testAnswerKey";
+import { usePostpaidLessonActivity } from "@/hooks/usePostpaidLessonActivity";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -80,6 +81,9 @@ const CourseLearning = () => {
     searchParams.get("view"),
   );
   const libraryOpen = libraryView.open;
+  usePostpaidLessonActivity(currentLesson?.id, user?.id,
+    !loading && !!course && !!currentLesson && !isAdminView && !isOfflineMode && !libraryOpen
+    && isLessonAccessible(currentLessonIndex));
 
   useEffect(() => {
     if (loading || !course || !libraryView.shouldClearRequestedView) return;

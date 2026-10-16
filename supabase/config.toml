@@ -216,3 +216,7 @@ verify_jwt = false
 [functions.account-deletion]
 verify_jwt = false
 
+# The bank authenticates notifications using the bound terminal's signature.
+[functions.tbank-webhook]
+verify_jwt = false
+

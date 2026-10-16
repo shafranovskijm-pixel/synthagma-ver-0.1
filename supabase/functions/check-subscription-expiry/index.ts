@@ -1,11 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isPaidSubscriptionPlan, subscriptionMonthlyAmount } from "../_shared/subscription-pricing.ts";
 
 serve(async (req) => {
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Use POST" }), { status: 405 });
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    if (req.headers.get("authorization") !== `Bearer ${supabaseKey}`) {
+      const schedulerSecret = req.headers.get("x-billing-cron-secret");
+      if (!schedulerSecret || schedulerSecret.length !== 64) {
+        return new Response(JSON.stringify({ error: "Scheduled service authorization required" }), { status: 401 });
+      }
+      const { data: valid, error: authError } = await supabase.rpc("verify_billing_cron_secret", { p_secret: schedulerSecret });
+      if (authError || valid !== true) {
+        return new Response(JSON.stringify({ error: "Scheduled service authorization required" }), { status: authError ? 503 : 401 });
+      }
+    }
+
+    // Closed months create internal review drafts only. The SQL RPC is
+    // idempotent and cannot issue an invoice, charge or grant access.
+    const { data: postpaid, error: postpaidError } = await supabase.rpc("prepare_due_postpaid_statements");
+    if (postpaidError) throw postpaidError;
+    if (postpaid?.failed > 0) throw new Error("Some postpaid draft periods require administrator investigation");
 
     // Find orgs with paid_until in ~7 days
     const now = new Date();
@@ -16,7 +34,7 @@ serve(async (req) => {
 
     const { data: orgs, error: orgErr } = await supabase
       .from("organizations")
-      .select("id, name, subscription_plan, paid_until")
+      .select("id, name, subscription_plan, paid_until, custom_price, custom_discount")
       .not("paid_until", "is", null)
       .gte("paid_until", in6.toISOString().split("T")[0])
       .lte("paid_until", in8.toISOString().split("T")[0])
@@ -24,12 +42,15 @@ serve(async (req) => {
 
     if (orgErr) throw orgErr;
     if (!orgs || orgs.length === 0) {
-      return new Response(JSON.stringify({ message: "No expiring subscriptions" }), { status: 200 });
+      return new Response(JSON.stringify({ message: "No expiring prepaid subscriptions", postpaid }), { status: 200 });
     }
 
     let processed = 0;
 
     for (const org of orgs) {
+      const { data: hasPostpaid, error: agreementError } = await supabase.rpc("has_active_postpaid_agreement", { p_organization_id: org.id });
+      if (agreementError) throw agreementError; // Unknown is not permission to invoice.
+      if (hasPostpaid || !isPaidSubscriptionPlan(org.subscription_plan)) continue;
       // Check if notification already sent in last 7 days
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -53,14 +74,7 @@ serve(async (req) => {
 
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
 
-      // Determine amount from plan
-      const planPrices: Record<string, number> = {
-        start: 1990,
-        standard: 4990,
-        professional: 9990,
-        maximum: 19990,
-      };
-      const amount = planPrices[org.subscription_plan] || 1990;
+      const amount = subscriptionMonthlyAmount(org.subscription_plan, org.custom_price, org.custom_discount);
 
       // Create invoice
       const { data: invoice, error: invErr } = await supabase
@@ -93,7 +107,7 @@ serve(async (req) => {
       processed++;
     }
 
-    return new Response(JSON.stringify({ message: `Processed ${processed} orgs` }), { status: 200 });
+    return new Response(JSON.stringify({ message: `Processed ${processed} prepaid orgs`, postpaid }), { status: 200 });
   } catch (err) {
     console.error("Error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });

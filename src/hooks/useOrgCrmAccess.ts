@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
+import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 
 interface CrmAccessState {
   organizationId: string | null;
@@ -14,6 +15,7 @@ interface CrmAccessState {
 
 /** Core projection is readable by active staff without settings.read. */
 export function useOrgCrmAccess(organizationId: string | null) {
+  const postpaid = usePostpaidAccessProfile(organizationId);
   const activeOrganization = useRef(organizationId);
   activeOrganization.current = organizationId;
   const sequence = useRef(0);
@@ -53,11 +55,13 @@ export function useOrgCrmAccess(organizationId: string | null) {
   }, [refresh]);
 
   const current = state.organizationId === organizationId;
+  const profileReady = !!organizationId && !postpaid.isLoading && !postpaid.error && !!postpaid.data;
+  const profileError = postpaid.error ? "Не удалось проверить условия постоплаты. Повторите проверку." : null;
   return {
-    loading: current ? state.loading : !!organizationId,
-    error: current ? state.error : null,
-    enabled: current && !state.loading && !state.error && state.enabled,
-    mailingEnabled: current && !state.loading && !state.error && state.mailingEnabled,
-    refresh,
+    loading: !!organizationId && (postpaid.isLoading || (current ? state.loading : true)),
+    error: profileError || (current ? state.error : null),
+    enabled: current && !state.loading && !state.error && profileReady && (postpaid.data!.active ? postpaid.data!.features.crm : state.enabled),
+    mailingEnabled: current && !state.loading && !state.error && profileReady && (postpaid.data!.active ? true : state.mailingEnabled),
+    refresh: async () => { await Promise.all([refresh(), postpaid.refetch()]); },
   };
 }

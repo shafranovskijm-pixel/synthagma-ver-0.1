@@ -1,177 +1,130 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { storeThemeId } from "@/constants/admin-themes";
-import { storeAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
+import { applySharedTheme, restorePersonalTheme, normalizeThemePreferences, initializeThemeSession, isSharedThemeEnforced, DEFAULT_THEME_PREFERENCES, type ThemePreferences } from "@/lib/themePreferences";
 
-export type OrgThemeMode = "light" | "dark" | "system";
-
-export interface OrgThemeSettings {
-  themeId: string | null;
-  themeMode: OrgThemeMode;
-  animLevel: AnimationLevel;
-  enforce: boolean;
-}
-
-const DEFAULT_THEME: OrgThemeSettings = {
-  themeId: null,
-  themeMode: "light",
-  animLevel: "full",
-  enforce: false,
-};
-
+export type OrgThemeMode = ThemePreferences["themeMode"];
+export interface OrgThemeSettings extends ThemePreferences { enforce: boolean }
+const DEFAULT_THEME: OrgThemeSettings = { ...DEFAULT_THEME_PREFERENCES, enforce: false };
 const cacheKey = (orgId: string) => `org-theme-cache:${orgId}`;
-const ENFORCE_FLAG_KEY = "org-theme-enforce-active";
+const UPDATE_EVENT = "org-theme-saved";
+const saveQueues = new Map<string, Promise<unknown>>();
+const activeConsumers = new Set<object>();
 
-/**
- * Apply the organization's theme on the current device.
- * Writes to localStorage and dispatches the events listened to by:
- * OrganizationDashboard, OrgPageLayout, OrgSidebar, HeroBannerSwiper, ThemePersonalization.
- */
-export function applyOrgTheme(theme: OrgThemeSettings) {
-  // Visual theme (banner / atmosphere / animation kind)
-  storeThemeId(theme.themeId);
-  window.dispatchEvent(
-    new CustomEvent("visual-theme-change", { detail: theme.themeId })
-  );
-
-  // Animation level
-  storeAnimationLevel(theme.animLevel);
-  window.dispatchEvent(
-    new CustomEvent("visual-animation-change", { detail: theme.animLevel })
-  );
-
-  // Light / dark mode
-  const root = document.documentElement;
-  if (theme.themeMode === "dark") {
-    root.classList.add("dark");
-    localStorage.setItem("theme", "dark");
-  } else {
-    root.classList.remove("dark");
-    localStorage.setItem("theme", "light");
-  }
-  window.dispatchEvent(new Event("theme"));
+export function applyOrgTheme(theme: OrgThemeSettings) { applySharedTheme(theme); }
+export function readBrandingTheme(branding: any): OrgThemeSettings {
+  const value = branding?.orgTheme ?? branding?.org_theme ?? {};
+  return { ...normalizeThemePreferences(value), enforce: value.enforce === true };
+}
+function readCache(orgId: string | null | undefined): OrgThemeSettings {
+  try {
+    const cached = orgId && sessionStorage.getItem(cacheKey(orgId));
+    if (cached) return readBrandingTheme({ orgTheme: JSON.parse(cached) });
+  } catch { /* corrupt storage is not authoritative */ }
+  return DEFAULT_THEME;
 }
 
-function readBrandingTheme(branding: any): OrgThemeSettings {
-  const ot = (branding && (branding.orgTheme || branding.org_theme)) || {};
-  return {
-    themeId: ot.themeId ?? null,
-    themeMode: (ot.themeMode as OrgThemeMode) || "light",
-    animLevel: (ot.animLevel as AnimationLevel) || "full",
-    enforce: ot.enforce === true,
-  };
-}
-
-/**
- * Loads the org theme from DB, applies it (only if enforce=true), and exposes a saver.
- * Subscribes to realtime changes so other staff devices update without reload.
- */
 export function useOrgTheme(organizationId: string | null | undefined) {
-  const [theme, setTheme] = useState<OrgThemeSettings>(() => {
-    if (!organizationId) return DEFAULT_THEME;
-    try {
-      const cached = sessionStorage.getItem(cacheKey(organizationId));
-      if (cached) return { ...DEFAULT_THEME, ...JSON.parse(cached) };
-    } catch {}
-    return DEFAULT_THEME;
-  });
+  const [theme, setTheme] = useState(() => readCache(organizationId));
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const pendingSaves = useRef(new Map<string, number>());
+  const currentOrg = useRef(organizationId);
+  currentOrg.current = organizationId;
 
-  // Apply enforced theme + cache
-  const applyAndCache = useCallback(
-    (next: OrgThemeSettings, orgId: string) => {
-      setTheme(next);
-      try {
-        sessionStorage.setItem(cacheKey(orgId), JSON.stringify(next));
-      } catch {}
-      if (next.enforce) {
-        try {
-          localStorage.setItem(ENFORCE_FLAG_KEY, "1");
-        } catch {}
-        applyOrgTheme(next);
-      } else {
-        try {
-          localStorage.removeItem(ENFORCE_FLAG_KEY);
-        } catch {}
-      }
-    },
-    []
-  );
+  const applyAndCache = useCallback((next: OrgThemeSettings, orgId: string) => {
+    if (currentOrg.current !== orgId) return;
+    setTheme(next);
+    setError(null);
+    setLoaded(true);
+    try { sessionStorage.setItem(cacheKey(orgId), JSON.stringify(next)); } catch { /* optional cache */ }
+    if (next.enforce) applyOrgTheme(next);
+    else restorePersonalTheme();
+  }, []);
 
-  // Fetch from DB on mount/orgId change + subscribe to realtime
   useEffect(() => {
+    initializeThemeSession();
+    setTheme(readCache(organizationId));
+    setLoaded(false);
+    setError(null);
+    setSaving(!!organizationId && (pendingSaves.current.get(organizationId) ?? 0) > 0);
     if (!organizationId) return;
     let cancelled = false;
-
-    const load = async () => {
-      const { data } = await supabase
-        .from("organizations")
-        .select("branding")
-        .eq("id", organizationId)
-        .maybeSingle();
+    let revision = 0;
+    const consumer = {};
+    activeConsumers.add(consumer);
+    const accept = (next: OrgThemeSettings) => {
       if (cancelled) return;
-      const next = readBrandingTheme(data?.branding);
+      revision++;
       applyAndCache(next, organizationId);
-      setLoaded(true);
     };
-
-    load();
-
-    // Realtime subscription: pick up branding changes from other devices
-    const channel = supabase
-      .channel(`org-theme:${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "organizations",
-          filter: `id=eq.${organizationId}`,
-        },
-        (payload) => {
-          if (cancelled) return;
-          const next = readBrandingTheme((payload.new as any)?.branding);
-          applyAndCache(next, organizationId);
-        }
-      )
+    const onSaved = (event: Event) => {
+      const value = (event as CustomEvent).detail;
+      if (value.organizationId === organizationId) accept(value.theme);
+    };
+    window.addEventListener(UPDATE_EVENT, onSaved);
+    const initialRevision = revision;
+    const load = async () => {
+      try {
+        const result = await supabase.from("organizations").select("branding").eq("id", organizationId).maybeSingle();
+        if (cancelled || revision !== initialRevision) return;
+        if (result.error || !result.data) throw new Error("Не удалось загрузить тему организации");
+        accept(readBrandingTheme(result.data.branding));
+      } catch {
+        if (!cancelled && revision === initialRevision) setError("Не удалось загрузить тему организации. Обновите страницу.");
+      }
+    };
+    void load();
+    const channel = supabase.channel(`org-theme:${organizationId}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "organizations", filter: `id=eq.${organizationId}` },
+        payload => accept(readBrandingTheme((payload.new as any)?.branding)))
       .subscribe();
-
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      activeConsumers.delete(consumer);
+      window.removeEventListener(UPDATE_EVENT, onSaved);
+      void supabase.removeChannel(channel);
+      // Several layouts consume this hook. Restore only after the last one
+      // leaves, allowing a replacement layout/StrictMode mount to take over.
+      queueMicrotask(() => { if (activeConsumers.size === 0) restorePersonalTheme(); });
     };
   }, [organizationId, applyAndCache]);
 
-  const saveTheme = useCallback(
-    async (next: Partial<OrgThemeSettings>) => {
-      if (!organizationId) return;
-      const merged: OrgThemeSettings = { ...theme, ...next };
-      // Read current branding to preserve other fields (logoUrl, coverUrl, etc.)
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("branding")
-        .eq("id", organizationId)
-        .maybeSingle();
-      const current = (org?.branding as Record<string, unknown>) || {};
-      const newBranding = { ...current, orgTheme: { ...merged } } as Record<string, unknown>;
-      const { error } = await supabase
-        .from("organizations")
-        .update({ branding: newBranding as any })
-        .eq("id", organizationId);
-      if (error) throw error;
-      applyAndCache(merged, organizationId);
-    },
-    [organizationId, theme, applyAndCache]
-  );
-
-  return { theme, saveTheme, loaded };
+  const saveTheme = useCallback(async (patch: Partial<OrgThemeSettings>) => {
+    if (!organizationId) throw new Error("Организация не выбрана");
+    const orgId = organizationId;
+    pendingSaves.current.set(orgId, (pendingSaves.current.get(orgId) ?? 0) + 1);
+    setSaving(true);
+    // Order edits across consumers on this page; the RPC merges just the patch
+    // against the locked database row, preserving logo and concurrent fields.
+    const previous = saveQueues.get(orgId) ?? Promise.resolve();
+    const task = previous.catch(() => {}).then(async () => {
+      const result = await supabase.rpc("update_organization_theme" as any, {
+        p_organization_id: orgId, p_patch: patch,
+      } as any);
+      if (result.error || !result.data || typeof result.data !== "object" || Array.isArray(result.data)
+          || Object.entries(patch).some(([key, value]) => (result.data as Record<string, unknown>)[key] !== value)) {
+        throw new Error("Не удалось сохранить тему организации");
+      }
+      const next = readBrandingTheme({ orgTheme: result.data });
+      if (currentOrg.current === orgId) {
+        window.dispatchEvent(new CustomEvent(UPDATE_EVENT, { detail: { organizationId: orgId, theme: next } }));
+      }
+      return next;
+    });
+    saveQueues.set(orgId, task);
+    try { return await task; }
+    finally {
+      const pending = (pendingSaves.current.get(orgId) ?? 1) - 1;
+      if (pending > 0) pendingSaves.current.set(orgId, pending);
+      else pendingSaves.current.delete(orgId);
+      if (saveQueues.get(orgId) === task) saveQueues.delete(orgId);
+      if (currentOrg.current === orgId) setSaving(pending > 0);
+    }
+  }, [organizationId]);
+  return { theme, saveTheme, loaded, error, saving };
 }
 
-/** True when the current org enforces a shared theme on this device. */
 export function isOrgThemeEnforced(): boolean {
-  try {
-    return localStorage.getItem(ENFORCE_FLAG_KEY) === "1";
-  } catch {
-    return false;
-  }
+  return isSharedThemeEnforced();
 }

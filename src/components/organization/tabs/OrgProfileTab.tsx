@@ -14,11 +14,13 @@ import { useDashboardSettings, defaultMenuSettings } from "@/hooks/useDashboardS
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
-import { ThemeSelector } from "@/components/ui/ThemeSelector";
+import { useTheme } from "next-themes";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { readDeviceThemePreferences } from "@/lib/themePreferences";
 import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
 import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { useOrgTheme, applyOrgTheme } from "@/hooks/useOrgTheme";
+import { useOrgTheme } from "@/hooks/useOrgTheme";
 import { AvatarLocationHint, OrgIconLocationHint, HintBlock } from "@/components/organization/BrandingHints";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
@@ -100,10 +102,12 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
+  const { resolvedTheme, setTheme: setDeviceMode } = useTheme();
+  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const canWriteTheme = !permissionsLoading && can('settings.write');
 
   // Org-wide theme (DB-backed, shared across all sessions/staff)
-  const { theme: orgTheme, saveTheme: saveOrgTheme } = useOrgTheme(organizationId);
+  const { theme: orgTheme, saveTheme: saveOrgTheme, loaded: themeLoaded, error: themeError, saving: themeSaving } = useOrgTheme(organizationId);
 
   // Org login credentials
   const [orgLoginEmail, setOrgLoginEmail] = useState("");
@@ -385,10 +389,9 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
 
   const handleToggleEnforce = async (next: boolean) => {
     try {
-      await saveOrgTheme({ enforce: next });
+      if (!canWriteTheme) return;
+      await saveOrgTheme(next ? { ...readDeviceThemePreferences(), enforce: true } : { enforce: false });
       if (next) {
-        // Immediately apply on this device so admin sees the result
-        applyOrgTheme({ ...orgTheme, enforce: true });
         toast.success("Единый интерфейс включён — применяется ко всем сотрудникам");
       } else {
         toast.success("Единый интерфейс отключён — каждый сотрудник видит свой выбор");
@@ -527,7 +530,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
                   <div className="flex-1">
                     <p className="font-medium text-sm">Применять визуальную тему ко всем сотрудникам</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Когда включено — выбранная тема и режим (свет/тьма) хранятся в облаке и применяются у всех сотрудников
+                      Когда включено — все параметры оформления хранятся в облаке и применяются у всех сотрудников
                       организации на любых устройствах. Когда выключено — каждый сотрудник выбирает оформление сам, и его выбор
                       сохраняется только локально.
                     </p>
@@ -535,36 +538,20 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
                   <Switch
                     checked={orgTheme.enforce}
                     onCheckedChange={handleToggleEnforce}
+                    disabled={!canWriteTheme || !themeLoaded || themeSaving}
                     aria-label="Применять тему ко всем сотрудникам"
                   />
                 </div>
 
-                <div className={orgTheme.enforce ? "" : "opacity-60 pointer-events-none select-none"}>
+                {themeError && <p role="alert" className="text-sm text-destructive">{themeError}</p>}
+                <div>
                   <ThemePersonalization
-                    isDarkMode={isDarkMode}
-                    onToggleDark={(dark) => {
-                      setIsDarkMode(dark);
-                      if (dark) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
-                      else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
-                      saveOrgTheme({ themeMode: dark ? 'dark' : 'light' }).catch((e) => toast.error(e.message));
-                    }}
+                    isDarkMode={resolvedTheme === 'dark'}
+                    onToggleDark={(dark) => setDeviceMode(dark ? 'dark' : 'light')}
+                    value={orgTheme.enforce ? orgTheme : undefined}
+                    disabled={orgTheme.enforce && (!canWriteTheme || !themeLoaded || themeSaving)}
+                    onChange={(patch) => { void saveOrgTheme(patch).catch(() => toast.error("Не удалось сохранить тему организации")); }}
                   />
-                  <div className="pt-4 mt-4 border-t border-border">
-                    <p className="font-medium text-sm mb-1">Визуальная тема</p>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      {orgTheme.enforce
-                        ? "Выбор сохраняется в облаке и применяется ко всем сотрудникам."
-                        : "Включите тумблер выше, чтобы тема применялась ко всем сотрудникам."}
-                    </p>
-                    <ThemeSelector
-                      value={orgTheme.themeId}
-                      onChange={(id) => {
-                        saveOrgTheme({ themeId: id })
-                          .then(() => toast.success("Тема организации обновлена"))
-                          .catch((e) => toast.error(e.message));
-                      }}
-                    />
-                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -49,6 +49,21 @@ export function SubscriptionTab() {
     d?.tabNavigation?.setActiveTab?.("documents" as any);
   };
 
+  if (s.postpaidAccessLoading || s.postpaidAccessError) return <Card><CardContent className="p-6 space-y-3">
+    <p className="text-sm text-muted-foreground">{s.postpaidAccessError ? "Не удалось проверить условия оплаты организации." : "Проверяем условия оплаты организации…"}</p>
+    {s.postpaidAccessError && <Button size="sm" variant="outline" onClick={() => void s.refreshPostpaidAccess()}>Повторить проверку</Button>}
+  </CardContent></Card>;
+
+  if (s.isPostpaid) return <div className="space-y-6">
+    <Card className="border-primary/20 bg-primary/5"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Crown className="h-5 w-5 text-primary" />Постоплата по договору</CardTitle></CardHeader><CardContent className="space-y-4">
+      <p className="text-sm">Счёт формируется после окончания календарного месяца и проверки фактического использования. Тариф определяется по курсам, уникальным обучавшимся и согласованным платным функциям.</p>
+      <div className="grid gap-3 sm:grid-cols-3 text-sm"><div className="rounded-lg border p-3"><strong>Старт · 4 490 ₽</strong><p className="text-xs text-muted-foreground">До 15 курсов и 100 обучавшихся</p></div><div className="rounded-lg border p-3"><strong>Стандарт · 6 990 ₽</strong><p className="text-xs text-muted-foreground">До 30 курсов и 200 обучавшихся; CRM</p></div><div className="rounded-lg border p-3"><strong>Профессиональный · 16 990 ₽</strong><p className="text-xs text-muted-foreground">Выше лимитов; вебинары, Видеосервис+, ФРДО+</p></div></div>
+      <p className="text-xs text-muted-foreground">За полный месяц доступа без активности — 4 490 ₽. Платные функции учитываются при фактическом использовании после предварительного уведомления и вашего подтверждения. Счёт за октябрь охватывает период с 01.10.2026 до 01.11.2026.</p>
+      <Button variant="outline" size="sm" onClick={() => d.tabNavigation.setActiveTab("documents" as any)}>Счета и документы</Button>
+    </CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base">Текущие данные организации</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid gap-3 sm:grid-cols-3 text-sm"><p>Курсы: <strong>{s.subscriptionLimits.usage.coursesCount}</strong></p><p>Активные ученики: <strong>{s.subscriptionLimits.usage.studentsCount}</strong></p><p>Хранилище: <strong>{formatStorageSize(s.subscriptionLimits.usage.storageUsedBytes)}</strong></p></div><p className="text-xs text-muted-foreground">Это текущие показатели кабинета. Итоговый счёт использует отдельный журнал фактического обучения за месяц; количество завершений, ИИ и объём хранилища не повышают тариф.</p></CardContent></Card>
+  </div>;
+
 
   return (
     <div className="space-y-6">

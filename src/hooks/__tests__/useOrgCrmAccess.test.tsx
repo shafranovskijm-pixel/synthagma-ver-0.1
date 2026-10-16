@@ -4,6 +4,7 @@ import { useOrgCrmAccess } from "../useOrgCrmAccess";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc, from: mocks.from } }));
+vi.mock("../usePostpaidAccessProfile", () => ({ usePostpaidAccessProfile: () => ({ data: { active: false }, isLoading: false, error: null, refetch: async () => {} }) }));
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.from.mockImplementation(() => { throw new Error("Sales-only staff has no settings.read; profile organization_id is null"); });

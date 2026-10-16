@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
         status: "pending",
         email: email || null,
         payment_method: "tbank",
+        tbank_terminal_key: ps.terminal_key,
       })
       .select("id")
       .single();
@@ -165,10 +166,11 @@ Deno.serve(async (req) => {
     }
 
     // Save T-Bank PaymentId
-    await supabaseAdmin
+    const { error: bindError } = await supabaseAdmin
       .from("course_payments")
       .update({ robokassa_inv_id: result.PaymentId })
       .eq("id", payment.id);
+    if (bindError) throw new Error("Could not bind bank payment identity");
 
     return new Response(JSON.stringify({ 
       url: result.PaymentURL, 

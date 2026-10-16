@@ -40,11 +40,17 @@ export function OrgCoursesPanel({
     setMigratingCourseId(course.id);
     setMigrationResult(prev => { const next = { ...prev }; delete next[course.id]; return next; });
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Сессия истекла. Войдите повторно.");
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-course-media`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
           body: JSON.stringify({ courseId: course.id, organizationId }),
           signal: AbortSignal.timeout(300000),
         }
