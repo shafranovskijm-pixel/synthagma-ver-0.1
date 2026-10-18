@@ -242,3 +242,14 @@ verify_jwt = false
 [functions.purge-recycle-bin-storage]
 verify_jwt = false
 
+# These handlers verify auth.getUser, account revocation, and scoped document
+# permissions before private reads or writes; do not rely on the gateway JWT.
+[functions.create-org-staff]
+verify_jwt = false
+
+[functions.compile-docx-contract]
+verify_jwt = false
+
+[functions.compile-group-class-journal]
+verify_jwt = false
+

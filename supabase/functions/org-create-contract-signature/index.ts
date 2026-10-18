@@ -1,13 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail, type SmtpConfig } from "../_shared/smtp-sender.ts";
-import { accessErrorResponse, requireActiveUser } from "../_shared/privileged-access.ts";
+import { accessErrorResponse, checked, requireActiveUser } from "../_shared/privileged-access.ts";
 import { signatureSha256 } from "../_shared/signature-finalizer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
+  "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
 };
 
 interface ReqBody {
@@ -88,6 +88,14 @@ serve(async (req: Request) => {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // This service proxy must honor the platform staff role and exact tenant,
+    // rather than accepting the legacy global-admin shortcut on its own.
+    if (checked(await userClient.rpc("uc_document_commercial_creation_allowed", {
+      p_org: body.organization_id,
+    })) !== true) return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
     if (body.linked_proposal_id) {
       const proposal = await admin.from("commercial_proposals").select("id").eq("id", body.linked_proposal_id)

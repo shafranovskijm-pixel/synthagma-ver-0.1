@@ -8,7 +8,7 @@ import { prepareSelfExaminationVersion, saveSelfExaminationVersion } from "../_s
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
+  "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
   "Cache-Control": "no-store",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
