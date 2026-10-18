@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useStudentDetailCardLogic } from "@/hooks/useStudentDetailCard";
 
 const state = vi.hoisted(() => ({ invoke: vi.fn(), clipboard: vi.fn(), canWrite: true }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "actor-a" }, userRole: "organization", loading: false }) }));
 vi.mock("@/utils/safeInvoke", () => ({ safeInvoke: (...args: any[]) => state.invoke(...args) }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock("@/hooks/useStaffPermissions", () => ({ useStaffPermissions: () => ({ can: () => state.canWrite, loading: false }) }));
@@ -13,7 +14,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   rpc: async () => ({ data: null, error: null }),
   from: (table: string) => {
     if (table === "student_login_tokens") throw new Error("Direct token table access is forbidden in the UI");
-    const response = async () => ({ data: table === "profiles" ? { department: null } : [], error: null });
+    const response = async () => ({ data: table === "profiles" ? { department: null } : table === "student_frdo_data" ? null : [], error: null });
     const builder: any = { select: () => builder, eq: () => builder, is: () => builder, order: () => builder,
       limit: () => builder, maybeSingle: response, then: (resolve: any, reject: any) => response().then(resolve, reject) };
     return builder;

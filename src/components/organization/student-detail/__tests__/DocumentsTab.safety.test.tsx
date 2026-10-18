@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DocumentsTab } from "@/components/organization/student-detail/DocumentsTab";
+import { DocumentsTab as ScopedDocumentsTab } from "@/components/organization/student-detail/DocumentsTab";
+const DocumentsTab = (props: any) => <ScopedDocumentsTab organizationId="org-1" studentUserId="student-1" {...props} />;
 
 const state = vi.hoisted(() => ({ download: vi.fn(), retry: vi.fn() }));
 
@@ -30,7 +31,7 @@ const readyData = () => ({
   dataLoadError: null as string | null,
   retryLoadStudentData: state.retry,
   identityDocs: [],
-  frdoData: { snils: "112-233-445 95", last_name: "Попова", first_name: "Елизавета", middle_name: "Олеговна", birth_date: "1990-01-01" },
+  frdoData: { user_id: "student-1", organization_id: "org-1", snils: "112-233-445 95", last_name: "Попова", first_name: "Елизавета", middle_name: "Олеговна", birth_date: "1990-01-01" },
   jobPosition: "Инженер",
   fileInputRef: { current: null },
   saveFrdoField: vi.fn(),

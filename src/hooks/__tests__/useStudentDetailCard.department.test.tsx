@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   canWrite: true,
   permissionsLoading: false,
 }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "actor-a" }, userRole: "organization", loading: false }) }));
 vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({ can: () => state.canWrite, loading: state.permissionsLoading }),
 }));
@@ -46,7 +47,7 @@ vi.mock("@/integrations/supabase/client", () => ({
           data: state.profiles.get(String(filters.user_id)) || null,
           error: state.profileError,
         });
-        return Promise.resolve({ data: table === "student_login_tokens" ? null : [], error: null });
+        return Promise.resolve({ data: table === "student_login_tokens" || table === "student_frdo_data" ? null : [], error: null });
       };
       const builder: any = {
         select: () => builder,
@@ -136,7 +137,7 @@ describe("existing student's department", () => {
     if (mode === "readonly") state.canWrite = false;
     if (mode === "permissions-loading") state.permissionsLoading = true;
     const { result } = renderHook(() => useStudentDetailCardLogic(props("old-student", mode === "missing-org" ? "" : "org-1")), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(mode === "permissions-loading"));
     await act(async () => { expect(await result.current.saveDepartment("Участок")).toBe(false); });
     expect(state.writes).toHaveLength(0);
     expect(toast.success).not.toHaveBeenCalled();

@@ -1,0 +1,408 @@
+{
+  "release": "uc-student-frdo-write-20261019",
+  "preparedOnly": true,
+  "migrationCount": 1,
+  "batchSha256": "e6c4a4f989ea89adcd5e41165a46e8fd1a99a6bc5f3b07fc8d9e3adfb000730b",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261018112000_uc_student_frdo_write_boundaries.sql",
+      "version": "20261018112000",
+      "name": "uc_student_frdo_write_boundaries",
+      "sourceSha256": "3a944fa0ad245488d9b1a6228110d417ae47b70a1211c5426b5f1690aa0619f5",
+      "sourceMd5": "c03613825507e6f101503f335ee22813",
+      "executableMd5": "c03613825507e6f101503f335ee22813"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    },
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a"
+    },
+    {
+      "file": "20261018111000_uc_program_facts.sql",
+      "version": "20261018111000",
+      "name": "uc_program_facts",
+      "sourceMd5": "e78179ae3042db206bd562914c87442d"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-program-facts-20261018/release-manifest.json",
+    "sourceSha256": "ccc1db421d6068a62af99fff68aa4a65727629b4c9fef24ee336841d5b6916cf"
+  },
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens",
+    "public.org_document_reviews",
+    "public.org_document_review_comments",
+    "public.org_document_review_events",
+    "public.org_document_review_requests",
+    "public.program_fact_states",
+    "public.program_fact_versions",
+    "public.course_program_bindings",
+    "public.group_program_bindings",
+    "public.group_program_enrollment_snapshots",
+    "public.program_fact_events",
+    "public.program_fact_requests",
+    "public.education_document_program_sources"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.save_student_frdo_data(uuid,uuid,jsonb)",
+      "definition_md5": "be41cf663726f16f9552211112949895"
+    },
+    {
+      "signature": "public.save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)",
+      "definition_md5": "ce46926124398999b7afab7d1c8b1d12"
+    },
+    {
+      "signature": "public.sync_frdo_name_from_profile()",
+      "definition_md5": "f137a55572406a9488b7146453ab0cc0"
+    },
+    {
+      "signature": "public.auto_create_education_document()",
+      "definition_md5": "2d8d598ea6a1b372292c04a688f52221"
+    },
+    {
+      "signature": "public.is_student_profile(uuid,uuid)",
+      "definition_md5": "92c79c1ec4600ef54941dc9590b39aa8"
+    },
+    {
+      "signature": "public.is_org_owner(uuid,uuid)",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2"
+    },
+    {
+      "signature": "public.has_org_staff_permission(uuid,uuid,text)",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782"
+    },
+    {
+      "signature": "public.get_org_staff_permissions(uuid,uuid)",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3"
+    },
+    {
+      "signature": "public.uc_platform_document_action_allowed(uuid,text)",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d"
+    },
+    {
+      "signature": "public.uc_document_student_scope_allowed(uuid,uuid)",
+      "definition_md5": "9f92bb0ec735fb21e62ca5b342c5672c"
+    },
+    {
+      "signature": "public.uc_document_scope_allowed(uuid,uuid,uuid)",
+      "definition_md5": "2a7407e7d178c7561b1d390f0884c6b6"
+    },
+    {
+      "signature": "public.uc_document_teacher_limited(uuid)",
+      "definition_md5": "72cdbafda69c66500e0d9ae87e8ae403"
+    },
+    {
+      "signature": "public.account_deletion_subject_write_guard()",
+      "definition_md5": "cd0003cc49bdf9a3d074c9e624146e46"
+    }
+  ],
+  "frdoColumns": {
+    "column_count": 29,
+    "columns_md5": "5b37bda17b96827a701218ba819e3313"
+  },
+  "previousReleaseCompatibility": {
+    "function": "auto_create_education_document()",
+    "before": "2d8d598ea6a1b372292c04a688f52221",
+    "after": "b8cde9babf27dd691f78ce356319e47f",
+    "onlyFingerprintReplacement": true
+  },
+  "expectedFunctions": [
+    {
+      "signature": "can_prepare_student_registration_details(uuid,uuid,boolean,boolean)",
+      "definition_md5": "584ac9e1edb8c62da3c90d3e9d96af6f",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "can_write_student_frdo_data(uuid,uuid)",
+      "definition_md5": "d83e8cab4ca97aece60256059a65097d",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_student_frdo_write()",
+      "definition_md5": "69026ff3476fe4dcd47d5b0ea2a4866f",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_actor_can_write(uuid,uuid,uuid,boolean)",
+      "definition_md5": "ad88cbd07480f10c78e7bf522d6a423a",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_delete_allowed(uuid,uuid)",
+      "definition_md5": "6dc1856de9c592f1ba6b2a5494560eaf",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_fields_match(jsonb,jsonb,text[])",
+      "definition_md5": "2572878daeb753efb97937330a053613",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_pair_valid(uuid,uuid)",
+      "definition_md5": "ff48411960f670646f98213ad648cb4f",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_registration_stub(jsonb)",
+      "definition_md5": "f227772cb592e2521e0c93cf53690023",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_staff_can_write(uuid,uuid,uuid,text)",
+      "definition_md5": "5a51f534b77abd13215626afde0b56e7",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_student_frdo_staff_org_allowed(uuid,uuid,text)",
+      "definition_md5": "541b10208fdf1b4788ce4eae588110a6",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedChangedFunctions": [
+    {
+      "signature": "auto_create_education_document()",
+      "definition_md5": "b8cde9babf27dd691f78ce356319e47f"
+    },
+    {
+      "signature": "save_student_frdo_data(uuid,uuid,jsonb)",
+      "definition_md5": "5320fecbc542f8aab00669673fb9c304"
+    },
+    {
+      "signature": "save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)",
+      "definition_md5": "ef4299140c264616b0854e95fea0af2a"
+    },
+    {
+      "signature": "sync_frdo_name_from_profile()",
+      "definition_md5": "c0fad98e0018ed3f316a8251e223629e"
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "uc_student_frdo_write_contexts",
+      "schemaMd5": "bee23aa15f0682f9024b8d0e05a454d4"
+    }
+  ],
+  "expectedPolicies": [
+    {
+      "policyname": "uc_frdo_authorized_writer",
+      "definition_md5": "5ec11e6a38e4e6395d534fc3c1674b79"
+    },
+    {
+      "policyname": "uc_frdo_delete_boundary",
+      "definition_md5": "502f9338eb363a221e69b6c9af2dfdb6"
+    },
+    {
+      "policyname": "uc_frdo_insert_boundary",
+      "definition_md5": "372c2e2ab7ca4a3afde537512beb9c3b"
+    },
+    {
+      "policyname": "uc_frdo_update_boundary",
+      "definition_md5": "696a7846c109dce50b172ee410d65096"
+    }
+  ],
+  "expectedTriggers": [
+    {
+      "schema_name": "public",
+      "table_name": "student_frdo_data",
+      "name": "uc_student_frdo_write_guard",
+      "definition_md5": "42ebb746c53d2d235d436734af746f26",
+      "enabled": "O"
+    }
+  ],
+  "productFiles": [
+    {
+      "path": "src/components/organization/student-detail/DocumentsTab.tsx",
+      "sourceSha256": "c930e55a770146b1ef825dad56c2a5c0b7494cd1147c1660f3aef92b71cd90d0"
+    },
+    {
+      "path": "src/components/organization/tabs/StudentDetailsTab.tsx",
+      "sourceSha256": "d178318d4fa89085d101b4b3505095e140a063800da377e417c6337848048a22"
+    },
+    {
+      "path": "src/hooks/useStudentDetailCard.ts",
+      "sourceSha256": "68dc62a388e48ecdba9265baaaa351507fdcea540f2ff7f01321e5a40d56f6a6"
+    },
+    {
+      "path": "supabase/functions/_shared/enrollment-access.ts",
+      "sourceSha256": "a0881e4daff5e252446af2cccd20a05b59637fff40275631762c71f267c31301"
+    },
+    {
+      "path": "supabase/functions/_shared/ocr-access.ts",
+      "sourceSha256": "3fb4aea92790f3f46d6578faefad949b21954539a1f7b78f6db9e764bb1221aa"
+    },
+    {
+      "path": "supabase/functions/_shared/privileged-access.ts",
+      "sourceSha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0"
+    },
+    {
+      "path": "supabase/functions/_shared/student-job-position.ts",
+      "sourceSha256": "73acc9b5fcf478ba9c87c82d395382f18919843791da54b9accfecbe68fb205c"
+    },
+    {
+      "path": "supabase/functions/_shared/student-registration-details.ts",
+      "sourceSha256": "78ef74f39d2b4ca5d6602db115bfdf59c4431ab101861ca3d0cb1a17da71b1af"
+    },
+    {
+      "path": "supabase/functions/ocr-snils/index.ts",
+      "sourceSha256": "816d163dd2992423bd35ff17640c2854e5b7a55812cfcb6e695b71c05e72c8a1"
+    },
+    {
+      "path": "supabase/functions/register-student/index.ts",
+      "sourceSha256": "0de28df691fff234b84e96dacd9916bdfae8e7d805fba7e9621035db87937758"
+    }
+  ],
+  "edgeFunctions": [
+    "ocr-snils",
+    "register-student"
+  ],
+  "edgeRuntimeGraph": [
+    "supabase/functions/_shared/enrollment-access.ts",
+    "supabase/functions/_shared/ocr-access.ts",
+    "supabase/functions/_shared/privileged-access.ts",
+    "supabase/functions/_shared/student-job-position.ts",
+    "supabase/functions/_shared/student-registration-details.ts",
+    "supabase/functions/ocr-snils/index.ts",
+    "supabase/functions/register-student/index.ts"
+  ],
+  "deploymentOrder": [
+    "Read-only preflight: exact100-111 ledger, previous postcheck, authority and captured issuance definitions",
+    "Submit entire112 transaction once; require every postcheck flag true and preservation guards passed",
+    "Deploy exact OCR source graph and UI authority gates; OCR processing and FRDO application remain separately authorized",
+    "Root-owned rollback-only production QA then real browser acceptance; no PEP, SMTP, real issuance or backfill during release"
+  ]
+}

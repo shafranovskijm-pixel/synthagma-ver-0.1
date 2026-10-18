@@ -1,0 +1,795 @@
+{
+  "readOnlyProductionMetadata": true,
+  "personalRowsRead": false,
+  "readAtUtc": "2026-10-18T16:25:00Z",
+  "rpc": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.save_student_frdo_data(p_organization_id uuid, p_user_id uuid, p_data jsonb)\n RETURNS student_frdo_data\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_row public.student_frdo_data;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RAISE EXCEPTION 'authentication_required' USING ERRCODE = '42501';\n  END IF;\n\n  IF jsonb_typeof(COALESCE(p_data, '{}'::jsonb)) <> 'object' THEN\n    RAISE EXCEPTION 'frdo_data_must_be_object' USING ERRCODE = '22023';\n  END IF;\n\n  IF NOT (\n    public.has_role(auth.uid(), 'admin'::public.app_role)\n    OR EXISTS (\n      SELECT 1\n      FROM public.profiles p\n      WHERE p.user_id = auth.uid()\n        AND p.organization_id = p_organization_id\n    )\n    OR EXISTS (\n      SELECT 1\n      FROM public.org_staff s\n      WHERE s.user_id = auth.uid()\n        AND s.organization_id = p_organization_id\n        AND (s.expires_at IS NULL OR s.expires_at > now())\n    )\n  ) THEN\n    RAISE EXCEPTION 'access_denied' USING ERRCODE = '42501';\n  END IF;\n\n  IF NOT EXISTS (\n    SELECT 1\n    FROM public.profiles student\n    WHERE student.user_id = p_user_id\n      AND student.organization_id = p_organization_id\n  ) THEN\n    RAISE EXCEPTION 'student_not_in_organization' USING ERRCODE = '23503';\n  END IF;\n\n  INSERT INTO public.student_frdo_data AS target (\n    user_id,\n    organization_id,\n    last_name,\n    first_name,\n    middle_name,\n    birth_date,\n    gender,\n    snils,\n    citizenship_code,\n    education_level,\n    education_doc_last_name,\n    education_doc_series,\n    education_doc_number,\n    training_form,\n    financing_source,\n    education_form,\n    professional_area,\n    specialty_group,\n    qualification_name,\n    profession_name,\n    qualification_rank\n  )\n  VALUES (\n    p_user_id,\n    p_organization_id,\n    NULLIF(btrim(p_data->>'last_name'), ''),\n    NULLIF(btrim(p_data->>'first_name'), ''),\n    NULLIF(btrim(p_data->>'middle_name'), ''),\n    NULLIF(btrim(p_data->>'birth_date'), '')::date,\n    NULLIF(btrim(p_data->>'gender'), ''),\n    NULLIF(btrim(p_data->>'snils'), ''),\n    COALESCE(NULLIF(btrim(p_data->>'citizenship_code'), ''), '643'),\n    NULLIF(btrim(p_data->>'education_level'), ''),\n    NULLIF(btrim(p_data->>'education_doc_last_name'), ''),\n    NULLIF(btrim(p_data->>'education_doc_series'), ''),\n    NULLIF(btrim(p_data->>'education_doc_number'), ''),\n    COALESCE(NULLIF(btrim(p_data->>'training_form'), ''), 'Очная'),\n    COALESCE(NULLIF(btrim(p_data->>'financing_source'), ''), 'Платное обучение'),\n    COALESCE(NULLIF(btrim(p_data->>'education_form'), ''), 'в образовательной организации'),\n    NULLIF(btrim(p_data->>'professional_area'), ''),\n    NULLIF(btrim(p_data->>'specialty_group'), ''),\n    NULLIF(btrim(p_data->>'qualification_name'), ''),\n    NULLIF(btrim(p_data->>'profession_name'), ''),\n    NULLIF(btrim(p_data->>'qualification_rank'), '')\n  )\n  ON CONFLICT (user_id, organization_id) DO UPDATE\n  SET\n    last_name = EXCLUDED.last_name,\n    first_name = EXCLUDED.first_name,\n    middle_name = EXCLUDED.middle_name,\n    birth_date = EXCLUDED.birth_date,\n    gender = EXCLUDED.gender,\n    snils = EXCLUDED.snils,\n    citizenship_code = EXCLUDED.citizenship_code,\n    education_level = EXCLUDED.education_level,\n    education_doc_last_name = EXCLUDED.education_doc_last_name,\n    education_doc_series = EXCLUDED.education_doc_series,\n    education_doc_number = EXCLUDED.education_doc_number,\n    training_form = EXCLUDED.training_form,\n    financing_source = EXCLUDED.financing_source,\n    education_form = EXCLUDED.education_form,\n    professional_area = EXCLUDED.professional_area,\n    specialty_group = EXCLUDED.specialty_group,\n    qualification_name = EXCLUDED.qualification_name,\n    profession_name = EXCLUDED.profession_name,\n    qualification_rank = EXCLUDED.qualification_rank,\n    updated_at = now()\n  RETURNING target.* INTO v_row;\n\n  IF v_row.id IS NULL THEN\n    RAISE EXCEPTION 'frdo_save_failed' USING ERRCODE = 'P0002';\n  END IF;\n  RETURN v_row;\nEND;\n$function$\n",
+      "definition_md5": "be41cf663726f16f9552211112949895",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "prosecdef": true,
+      "signature": "save_student_frdo_data(uuid,uuid,jsonb)"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "definition_md5": "7820af4d5a09642908ea9ee6d9aa2236",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org admins can manage students FRDO data",
+      "qual": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": "{public}",
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "UPDATE",
+      "definition_md5": "7cc79968c36d3f07a73881fa29396c29",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can update their own FRDO data",
+      "qual": "(user_id = auth.uid())",
+      "roles": "{public}",
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "ea9e7417c73032e217838737ef24588b",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can view their own FRDO data",
+      "qual": "(user_id = auth.uid())",
+      "roles": "{public}",
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "definition_md5": "8b0f260786f1217612a6a999e8232f1d",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "42c7cf82ad2a6b558556cf6c937150ec",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_read",
+      "qual": "uc_document_student_scope_allowed(organization_id, user_id)",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "definition_md5": "dfb5d68e05fb2242c06e147d1881c28a",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "bcd7d1aabb12c07036a0da92c661a77c",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_read",
+      "qual": "uc_document_student_scope_allowed(organization_id, user_id)",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "definition_md5": "68fdc46b709d8a7b26ad654036e33dbe",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_delete",
+      "qual": "((uc_document_org_access(organization_id, true) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid()))) AND uc_document_student_in_org(user_id, organization_id))",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "definition_md5": "3b4481d98856c22caaa4dc404ee183b2",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_insert",
+      "qual": null,
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "((uc_document_org_access(organization_id, true) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid()))) AND uc_document_student_in_org(user_id, organization_id))"
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "9a6105e75f3849ffb97232d6a212a435",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_select",
+      "qual": "(uc_document_org_access(organization_id, false) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid())))",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "definition_md5": "ffa82249d4f26c4012d782312cda71bd",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_update",
+      "qual": "((uc_document_org_access(organization_id, true) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid()))) AND uc_document_student_in_org(user_id, organization_id))",
+      "roles": "{authenticated}",
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "((uc_document_org_access(organization_id, true) OR ((auth.uid() IS NOT NULL) AND account_deletion_access_allowed() AND (user_id = auth.uid()))) AND uc_document_student_in_org(user_id, organization_id))"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.student_frdo_data FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function_md5": "cd0003cc49bdf9a3d074c9e624146e46",
+      "table_name": "student_frdo_data",
+      "tgname": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER update_student_frdo_data_updated_at BEFORE UPDATE ON public.student_frdo_data FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "function_md5": "3210625d1c794f6db7b3c3defc5984dd",
+      "table_name": "student_frdo_data",
+      "tgname": "update_student_frdo_data_updated_at"
+    },
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.student_identity_documents FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function_md5": "cd0003cc49bdf9a3d074c9e624146e46",
+      "table_name": "student_identity_documents",
+      "tgname": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.student_identity_documents FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+      "function_md5": "434643663f1de773c1b16aac535a40e8",
+      "table_name": "student_identity_documents",
+      "tgname": "uc_document_action_guard"
+    },
+    {
+      "definition": "CREATE TRIGGER update_student_identity_documents_updated_at BEFORE UPDATE ON public.student_identity_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "function_md5": "3210625d1c794f6db7b3c3defc5984dd",
+      "table_name": "student_identity_documents",
+      "tgname": "update_student_identity_documents_updated_at"
+    }
+  ],
+  "tables": [
+    {
+      "owner": "postgres",
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "student_identity_documents",
+      "relrowsecurity": true
+    },
+    {
+      "owner": "postgres",
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "student_frdo_data",
+      "relrowsecurity": true
+    }
+  ],
+  "helpers": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "definition_md5": "64b0a90b7db9813950ccca6dff208f3a",
+      "proacl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "account_deletion_access_allowed()"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+      "definition_md5": "cd0003cc49bdf9a3d074c9e624146e46",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "account_deletion_subject_write_guard()"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.current_company_id()\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN (\n    SELECT c.id FROM public.companies c\n    WHERE c.user_id = auth.uid()\n    LIMIT 1\n  );\nEND;\n$function$\n",
+      "definition_md5": "e07990136558adfbdb5848d570fc7686",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "current_company_id()"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.current_organization_id()\n RETURNS uuid\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_org uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN NULL;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.profiles\n  WHERE user_id = auth.uid()\n  LIMIT 1;\n\n  IF v_org IS NOT NULL THEN\n    RETURN v_org;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.org_staff\n  WHERE user_id = auth.uid()\n    AND (expires_at IS NULL OR expires_at > now())\n  ORDER BY\n    CASE role\n      WHEN 'owner' THEN 1\n      WHEN 'admin' THEN 2\n      WHEN 'school_editor' THEN 3\n      WHEN 'course_editor' THEN 4\n      WHEN 'teacher' THEN 5\n      WHEN 'sales_manager' THEN 6\n      ELSE 10\n    END,\n    created_at ASC\n  LIMIT 1;\n\n  RETURN v_org;\nEND;\n$function$\n",
+      "definition_md5": "59764b65fa49fe9eab47f06d02774888",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "current_organization_id()"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_has_action(p_org uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_platform_document_action_allowed(auth.uid(),p_action)\n  AND public.account_deletion_access_allowed()\n  AND p_org IS NOT NULL AND p_action IN ('read','write','sign','issue')\n  AND coalesce(public.can_access_organization(p_org,'documents.'||p_action),false)\n$function$\n",
+      "definition_md5": "210713a8a6cbd419108e23a7110259cd",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "uc_document_has_action(uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_org_access(p_org uuid, p_write boolean DEFAULT false)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_document_has_action(p_org,CASE WHEN p_write THEN 'write' ELSE 'read' END)\n$function$\n",
+      "definition_md5": "1120d1e60534aafa69d3bec71ef0f7e9",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "uc_document_org_access(uuid,boolean)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_scope_allowed(p_org uuid, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_user uuid;v_course uuid;v_group_course uuid;\nBEGIN\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() OR p_org IS NULL\n OR NOT EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org) THEN RETURN false; END IF;\n IF p_group IS NOT NULL THEN\n  SELECT course_id INTO v_group_course FROM public.student_groups WHERE id=p_group AND organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF v_group_course IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.courses c WHERE c.id=v_group_course AND c.organization_id=p_org) THEN RETURN false; END IF;\n END IF;\n IF p_enrollment IS NOT NULL THEN\n  SELECT e.user_id,e.course_id INTO v_user,v_course FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id\n   WHERE e.id=p_enrollment AND c.organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF p_group IS NOT NULL AND (v_group_course IS DISTINCT FROM v_course OR NOT EXISTS(\n   SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id=p_org AND m.group_id=p_group AND m.user_id=v_user))\n  THEN RETURN false; END IF;\n END IF;\n IF public.has_role(auth.uid(),'admin'::public.app_role) OR public.is_org_owner(auth.uid(),p_org) THEN RETURN true; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=auth.uid()\n   AND (s.expires_at IS NULL OR s.expires_at>now())) THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(p_org) THEN RETURN true; END IF;\n RETURN EXISTS(SELECT 1 FROM public.org_staff s JOIN public.org_staff_document_groups a ON a.staff_id=s.id AND a.organization_id=s.organization_id\n  JOIN public.student_groups g ON g.id=a.group_id AND g.organization_id=a.organization_id\n  WHERE s.organization_id=p_org AND s.user_id=auth.uid() AND (s.expires_at IS NULL OR s.expires_at>now())\n   AND (p_group IS NULL OR g.id=p_group)\n   AND (p_enrollment IS NULL OR (g.course_id=v_course AND EXISTS(SELECT 1 FROM public.student_group_memberships_effective m\n     WHERE m.organization_id=p_org AND m.group_id=g.id AND m.user_id=v_user)))\n   AND (p_group IS NOT NULL OR p_enrollment IS NOT NULL));\nEND;$function$\n",
+      "definition_md5": "2a7407e7d178c7561b1d390f0884c6b6",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "uc_document_scope_allowed(uuid,uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_student_in_org(p_user uuid, p_org uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND public.account_deletion_access_allowed()\n AND (p_user=auth.uid() OR public.uc_document_org_access(p_org,false) OR public.uc_document_org_access(p_org,true))\n AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=p_user AND p.organization_id=p_org)\n AND NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=p_user AND p.organization_id IS DISTINCT FROM p_org);\n$function$\n",
+      "definition_md5": "99fa158d3dd39f84c23b7853248ec5a4",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "uc_document_student_in_org(uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_student_scope_allowed(p_org uuid, p_user uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND public.account_deletion_access_allowed() AND (\n p_user=auth.uid() OR (NOT public.uc_document_teacher_limited(p_org)) OR EXISTS(\n  SELECT 1 FROM public.student_group_memberships_effective m\n  WHERE m.organization_id=p_org AND m.user_id=p_user AND public.uc_document_scope_allowed(p_org,m.group_id,NULL)));\n$function$\n",
+      "definition_md5": "9f92bb0ec735fb21e62ca5b342c5672c",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "uc_document_student_scope_allowed(uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_platform_document_action_allowed(p_user uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_user IS NOT NULL AND p_action IN ('read','write','sign','issue')\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n AND (NOT public.has_role('admin'::public.app_role,p_user)\n  OR NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user)\n  OR EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user AND\n     (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager'))\n     AND (expires_at IS NULL OR expires_at>now()))\n   AND NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user\n     AND (NOT (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager')) OR expires_at<=now())))\n$function$\n",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "uc_platform_document_action_allowed(uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.can_access_organization(_organization_id uuid, _permission text DEFAULT 'settings.read'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _organization_id IS NOT NULL\n    AND auth.uid() IS NOT NULL\n    AND (\n      public.has_role(auth.uid(), 'admin'::public.app_role)\n      OR EXISTS (\n        SELECT 1\n        FROM public.user_roles ur\n        JOIN public.profiles p ON p.user_id = ur.user_id\n        WHERE ur.user_id = auth.uid()\n          AND ur.role = 'organization'::public.app_role\n          AND p.organization_id = _organization_id\n          AND NOT EXISTS (\n            SELECT 1\n            FROM public.org_staff os\n            WHERE os.user_id = auth.uid()\n              AND os.organization_id = _organization_id\n          )\n      )\n      OR (\n        _permission IS NOT NULL\n        AND EXISTS (\n          SELECT 1\n          FROM public.org_staff os\n          WHERE os.user_id = auth.uid()\n            AND os.organization_id = _organization_id\n            AND (os.expires_at IS NULL OR os.expires_at > now())\n        )\n        AND public.has_org_staff_permission(auth.uid(), _organization_id, _permission)\n      )\n    )\n$function$\n",
+      "definition_md5": "2e11495f3d3e6ca261af8a08ed874269",
+      "signature": "can_access_organization(uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_action_allowed(p_org uuid, p_action text, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_document_has_action(p_org,p_action)\n  AND public.uc_document_scope_allowed(p_org,p_group,p_enrollment)\n$function$\n",
+      "definition_md5": "79c190a053f711dc8110e9d451b1a56c",
+      "signature": "uc_document_action_allowed(uuid,text,uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_storage_access(p_bucket text, p_name text, p_write boolean DEFAULT false)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_user uuid:=auth.uid(); v_target uuid; v_orgs uuid[]; v_org uuid;\nBEGIN\n IF v_user IS NULL OR NOT public.account_deletion_access_allowed()\n OR p_bucket IS NULL OR p_name IS NULL OR p_name='' OR left(p_name,1)='/'\n OR p_name ~ '(^|/)[.]{1,2}(/|$)' OR position(chr(92) IN p_name)>0\n OR p_name ~ '[?#]' OR p_name ~* '%(2f|5c|2e)' OR position('//' IN p_name)>0 THEN RETURN false; END IF;\n IF p_bucket NOT IN('student-documents','company-documents') THEN RETURN false; END IF;\n IF public.has_role('admin'::public.app_role,v_user) THEN RETURN true; END IF;\n IF p_bucket='company-documents' THEN\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',1));\n  RETURN split_part(p_name,'/',2)<>'' AND public.uc_document_company_access(v_target,p_write);\n END IF;\n IF split_part(p_name,'/',1)='students' THEN\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',2));\n  RETURN split_part(p_name,'/',3)<>'' AND public.uc_document_enrollment_access(v_target,p_write);\n ELSIF split_part(p_name,'/',1)='avatars' THEN\n  IF p_name !~ '^avatars/[0-9A-Fa-f-]{36}[.][A-Za-z0-9]+$' THEN RETURN false; END IF;\n  v_target:=public.storage_try_uuid(split_part(split_part(p_name,'/',2),'.',1));\n ELSIF split_part(p_name,'/',1)='support' THEN\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',2));\n  RETURN v_target=v_user AND split_part(p_name,'/',3)<>'';\n ELSE\n  v_target:=public.storage_try_uuid(split_part(p_name,'/',1));\n  IF split_part(p_name,'/',2)='' THEN RETURN false; END IF;\n END IF;\n IF v_target IS NULL OR EXISTS(SELECT 1 FROM public.account_deletion_revocations r WHERE r.user_id=v_target) THEN RETURN false; END IF;\n IF v_target=v_user THEN RETURN true; END IF;\n SELECT array_agg(DISTINCT scoped.org) INTO v_orgs FROM (\n  SELECT p.organization_id AS org FROM public.profiles p WHERE p.user_id=v_target\n  UNION ALL\n  SELECT d.organization_id FROM public.student_identity_documents d WHERE d.user_id=v_target\n  AND (d.file_path=p_name OR d.file_url=p_name\n    OR right(split_part(d.file_url,'?',1),length('/student-documents/'||p_name))='/student-documents/'||p_name)\n ) scoped WHERE scoped.org IS NOT NULL;\n IF cardinality(v_orgs) IS DISTINCT FROM 1 THEN RETURN false; END IF;\n v_org:=v_orgs[1];\n RETURN public.uc_document_org_access(v_org,p_write);\nEND\n$function$\n",
+      "definition_md5": "c63bcea8a741c7f7c3a07f7debb09ca9",
+      "signature": "uc_document_storage_access(text,text,boolean)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_storage_scope(p_bucket text, p_name text)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_org uuid;v_user uuid;v_enrollment uuid;v_group uuid;\nBEGIN\n IF p_bucket IN('external-contracts','signed-documents') THEN RETURN public.uc_signature_file_scope(p_bucket,p_name); END IF;\n IF p_bucket NOT IN('student-documents','company-documents','billing-documents','org-documents','incoming-documents','program-documents','frdo-documents','signed-documents','external-contracts') THEN RETURN true; END IF;\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() THEN RETURN false; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.role='teacher')\n OR public.has_role(auth.uid(),'admin'::public.app_role) THEN RETURN true; END IF;\n IF p_bucket='student-documents' THEN\n  IF split_part(p_name,'/',1)='students' THEN\n   v_enrollment:=public.storage_try_uuid(split_part(p_name,'/',2));\n   SELECT c.organization_id,e.user_id INTO v_org,v_user FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id WHERE e.id=v_enrollment;\n   RETURN v_user=auth.uid() OR (v_org IS NOT NULL AND (NOT public.uc_document_teacher_limited(v_org) OR public.uc_document_scope_allowed(v_org,NULL,v_enrollment)));\n  END IF;\n  IF split_part(p_name,'/',1) IN('avatars','support') THEN\n   v_user:=public.storage_try_uuid(split_part(split_part(p_name,'/',2),'.',1));\n  ELSE v_user:=public.storage_try_uuid(split_part(p_name,'/',1)); END IF;\n  IF v_user=auth.uid() THEN RETURN true; END IF;\n  SELECT organization_id INTO v_org FROM public.profiles WHERE user_id=v_user;\n  RETURN v_org IS NOT NULL AND public.uc_document_student_scope_allowed(v_org,v_user);\n ELSIF p_bucket='company-documents' THEN\n  SELECT c.organization_id,c.user_id INTO v_org,v_user FROM public.companies c WHERE c.id=public.storage_try_uuid(split_part(p_name,'/',1));\n  RETURN v_user=auth.uid() OR (v_org IS NOT NULL AND NOT public.uc_document_teacher_limited(v_org));\n ELSIF p_bucket IN('signed-documents','external-contracts') AND EXISTS(\n  SELECT 1 FROM public.document_signatures s WHERE public.uc_document_signature_read_scope(s.id) AND s.organization_id::text=split_part(p_name,'/',1)\n   AND (s.signed_document_path=p_name AND p_bucket='signed-documents'\n     OR s.handwritten_scan_path=p_name AND p_bucket='external-contracts'\n     OR s.signed_source_bucket=p_bucket AND s.signed_source_path=p_name\n     OR p_bucket='external-contracts' AND EXISTS(SELECT 1 FROM public.signature_revisions r WHERE r.signature_id=s.id\n       AND (r.file_url=p_name OR right(split_part(r.file_url,'?',1),length('/external-contracts/'||p_name))='/external-contracts/'||p_name))))\n THEN RETURN true;\n END IF;\n IF p_bucket='external-contracts' AND EXISTS(SELECT 1 FROM public.document_signatures s\n  WHERE s.recipient_user_id=auth.uid() AND s.deleted_at IS NULL AND s.expires_at>now()\n   AND s.status IN('sent','viewed','in_review') AND\n   left(p_name,length(s.organization_id::text||'/signed-scans/'||s.id::text||'-'))=s.organization_id::text||'/signed-scans/'||s.id::text||'-')\n THEN RETURN true; END IF;\n IF split_part(p_name,'/',1)='organizations' THEN\n  v_org:=public.storage_try_uuid(split_part(p_name,'/',2));\n  IF p_bucket='billing-documents' AND split_part(p_name,'/',3)='group-documents' THEN\n   v_group:=public.storage_try_uuid(split_part(p_name,'/',4));\n   RETURN public.uc_document_scope_allowed(v_org,v_group,NULL) AND v_group IS NOT NULL AND split_part(p_name,'/',5)<>'';\n  END IF;\n ELSE v_org:=public.storage_try_uuid(split_part(p_name,'/',1)); END IF;\n IF v_org IS NULL THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(v_org) THEN RETURN true; END IF;\n IF p_bucket='billing-documents' THEN\n  IF split_part(p_name,'/',2)='contracts' AND split_part(p_name,'/',4)<>'' AND split_part(p_name,'/',5)<>'' THEN\n   v_group:=public.storage_try_uuid(split_part(p_name,'/',3));\n   RETURN v_group IS NOT NULL AND public.uc_document_scope_allowed(v_org,v_group,NULL);\n  END IF;\n  RETURN EXISTS(SELECT 1 FROM public.group_documents d WHERE d.organization_id=v_org AND d.file_path=p_name\n   AND public.uc_document_record_scope(d.organization_id,d.group_id,NULL,d.student_user_id,NULL))\n   OR EXISTS(SELECT 1 FROM public.org_contracts d WHERE d.organization_id=v_org AND p_name IN(d.file_path,d.docx_path,d.pdf_path)\n   AND public.uc_document_contract_scope(d.organization_id,d.student_group_id,d.student_user_id,d.company_id,d.students));\n END IF;\n RETURN false;\nEND;$function$\n",
+      "definition_md5": "8b098a3d3719a73e92a0b1a002121de9",
+      "signature": "uc_document_storage_scope(text,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_teacher_limited(p_org uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT public.has_role(auth.uid(),'admin'::public.app_role)\n AND EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.role='teacher')\n AND NOT public.is_org_owner(auth.uid(),p_org)\n AND NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.organization_id=p_org AND s.role<>'teacher'\n  AND (s.expires_at IS NULL OR s.expires_at>now()));\n$function$\n",
+      "definition_md5": "72cdbafda69c66500e0d9ae87e8ae403",
+      "signature": "uc_document_teacher_limited(uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "definition_md5": "20c46f708cc2e7fa51b640290151a59e",
+      "signature": "has_role(app_role,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "definition_md5": "82a7fa1cd06301bb83b010bc315aee0b",
+      "signature": "has_role(uuid,app_role)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_org_staff_permission(_permission text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN _permission IS NULL THEN NULL\n    WHEN _permission LIKE '%.view'   THEN regexp_replace(_permission, '\\.view$',   '.read')\n    WHEN _permission LIKE '%.manage' THEN regexp_replace(_permission, '\\.manage$', '.write')\n    ELSE _permission\n  END\n$function$\n",
+      "definition_md5": "bb385c2b288bb966297a8504df1696ea",
+      "signature": "normalize_org_staff_permission(text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.org_role_default_permissions(_role text)\n RETURNS text[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE _role\n    WHEN 'owner' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','documents.sign','documents.issue','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read','staff.write',\n      'billing.read','billing.write','settings.read','settings.write',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read','sales.write'\n    ]\n    WHEN 'admin' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','documents.sign','documents.issue','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read',\n      'billing.read','settings.read',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read'\n    ]\n    WHEN 'school_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','services.read','services.write',\n      'settings.read','webinars.read','webinars.write'\n    ]\n    WHEN 'course_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','webinars.read'\n    ]\n    WHEN 'teacher' THEN ARRAY[\n      'courses.read','students.read','library.read','chats.read','chats.write',\n      'homework.read','homework.write','documents.read','journals.read'\n    ]\n    WHEN 'sales_manager' THEN ARRAY[\n      'sales.read','sales.write','companies.read','companies.write',\n      'services.read','documents.read','chats.read','chats.write','students.read'\n    ]\n    ELSE ARRAY[]::text[]\n  END\n$function$\n",
+      "definition_md5": "7aeb1012822cfe0013409ce5b1df1771",
+      "signature": "org_role_default_permissions(text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782",
+      "signature": "has_org_staff_permission(uuid,uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.is_org_owner(_user_id uuid, _organization_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.user_roles ur\n    JOIN public.profiles p ON p.user_id = ur.user_id\n    WHERE ur.user_id = _user_id\n      AND ur.role = 'organization'::public.app_role\n      AND p.organization_id = _organization_id\n      AND NOT EXISTS (\n        SELECT 1\n        FROM public.org_staff os\n        WHERE os.user_id = _user_id\n          AND os.organization_id = _organization_id\n      )\n  )\n$function$\n",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2",
+      "signature": "is_org_owner(uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.is_student_profile(_target_user_id uuid, _org_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _target_user_id IS NOT NULL\n    AND _org_id IS NOT NULL\n    AND NOT EXISTS (\n      SELECT 1 FROM public.user_roles\n      WHERE user_id = _target_user_id\n        AND role IN ('admin', 'organization', 'company', 'sales_manager')\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.org_staff\n      WHERE user_id = _target_user_id\n        AND organization_id = _org_id\n        AND (expires_at IS NULL OR expires_at > now())\n    );\n$function$\n",
+      "definition_md5": "92c79c1ec4600ef54941dc9590b39aa8",
+      "signature": "is_student_profile(uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_staff_permissions(_user_id uuid, _organization_id uuid)\n RETURNS text[]\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  staff_role text;\n  base_perms text[];\n  override_perms text[];\nBEGIN\n  SELECT role,\n         COALESCE(\n           ARRAY(SELECT jsonb_array_elements_text(sections_access)),\n           ARRAY[]::text[]\n         )\n    INTO staff_role, override_perms\n    FROM public.org_staff\n   WHERE user_id = _user_id AND organization_id = _organization_id\n   LIMIT 1;\n\n  IF staff_role IS NULL THEN\n    RETURN ARRAY[]::text[];\n  END IF;\n\n  base_perms := public.org_role_default_permissions(staff_role);\n\n  -- merge: union of base + overrides (overrides могут только добавлять права)\n  RETURN ARRAY(\n    SELECT DISTINCT unnest(base_perms || override_perms)\n  );\nEND;\n$function$\n",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3",
+      "signature": "get_org_staff_permissions(uuid,uuid)"
+    }
+  ],
+  "storagePolicies": [
+    {
+      "cmd": "INSERT",
+      "definition_md5": "8005265e613569368d16a836b2ef92e6",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_billing_document_upload",
+      "qual": null,
+      "roles": "{authenticated}",
+      "with_check": "((bucket_id = 'billing-documents'::text) AND uc_document_billing_upload_access(name))"
+    },
+    {
+      "cmd": "INSERT",
+      "definition_md5": "470c378dc425e9ae92ed3bd188f4a1bf",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_billing_document_upload_guard",
+      "qual": null,
+      "roles": "{anon,authenticated}",
+      "with_check": "((bucket_id <> 'billing-documents'::text) OR uc_document_billing_upload_access(name))"
+    },
+    {
+      "cmd": "DELETE",
+      "definition_md5": "18faa147fac6cd472ff4486b67b33a19",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_delete",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "roles": "{anon,authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "definition_md5": "43256931942b96205b705ce320422abf",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_insert",
+      "qual": null,
+      "roles": "{anon,authenticated}",
+      "with_check": "uc_document_storage_scope(bucket_id, name)"
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "6865d3fb1dbda6e6e8b013836b17f067",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_read",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "roles": "{anon,authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "definition_md5": "6213a82dcf64d258d114a0aee4b1625d",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_storage_update",
+      "qual": "uc_document_storage_scope(bucket_id, name)",
+      "roles": "{anon,authenticated}",
+      "with_check": "uc_document_storage_scope(bucket_id, name)"
+    },
+    {
+      "cmd": "DELETE",
+      "definition_md5": "d343d7c7c8dd49516a3b3112664064b5",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_delete",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))",
+      "roles": "{authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "definition_md5": "fd71001a6eb4a9de25f6d57c213049d7",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_delete_guard",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))",
+      "roles": "{anon,authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "definition_md5": "6b5aa5b788abc841a4b633447f16bb11",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_insert",
+      "qual": null,
+      "roles": "{authenticated}",
+      "with_check": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "INSERT",
+      "definition_md5": "3e8a90411cd1deb8fb4637a5b3ded1bf",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_insert_guard",
+      "qual": null,
+      "roles": "{anon,authenticated}",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "605afceb3e3aef53cbb462dec37d0c05",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_read_guard",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, false))",
+      "roles": "{anon,authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "b237d545b386e5d0e7d05892c6b14b64",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_select",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, false))",
+      "roles": "{authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "definition_md5": "99ee5c36c2039d7fc1ca7fc1e9e52a32",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_document_objects_update",
+      "qual": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))",
+      "roles": "{authenticated}",
+      "with_check": "((bucket_id = ANY (ARRAY['student-documents'::text, 'company-documents'::text])) AND uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "UPDATE",
+      "definition_md5": "648521543cd5817ad261e26b3b2499cd",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_objects_update_guard",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))",
+      "roles": "{anon,authenticated}",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text])) OR uc_document_storage_access(bucket_id, name, true))"
+    },
+    {
+      "cmd": "DELETE",
+      "definition_md5": "8797db97a87e6eada94a748e8c0f47a0",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_platform_document_storage_delete",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))",
+      "roles": "{authenticated}",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "definition_md5": "a34dad1947323be88b4390bd5a94bf93",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_platform_document_storage_insert",
+      "qual": null,
+      "roles": "{authenticated}",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))"
+    },
+    {
+      "cmd": "UPDATE",
+      "definition_md5": "baaf1019ee8c48b3ab15ddfa510cefc1",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_platform_document_storage_update",
+      "qual": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))",
+      "roles": "{authenticated}",
+      "with_check": "((bucket_id <> ALL (ARRAY['student-documents'::text, 'company-documents'::text, 'org-documents'::text, 'signed-documents'::text, 'external-contracts'::text, 'billing-documents'::text, 'frdo-documents'::text, 'issued-documents'::text])) OR uc_platform_document_storage_action_allowed(bucket_id, name))"
+    },
+    {
+      "cmd": "SELECT",
+      "definition_md5": "87b060cb1371817ee66ef0b1ebe6ac40",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_program_legacy_read_boundary",
+      "qual": "((bucket_id <> ALL (ARRAY['program-files'::text, 'program-documents'::text])) OR ((bucket_id = 'program-files'::text) AND (split_part(name, '/'::text, 1) = 'programs'::text) AND (split_part(name, '/'::text, 3) <> ''::text) AND uc_document_action_allowed(storage_try_uuid(split_part(name, '/'::text, 2)), 'read'::text, NULL::uuid, NULL::uuid)))",
+      "roles": "{anon,authenticated}",
+      "with_check": null
+    }
+  ],
+  "constraints": [
+    {
+      "conname": "student_frdo_data_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "student_frdo_data"
+    },
+    {
+      "conname": "unique_user_org_frdo",
+      "definition": "UNIQUE (user_id, organization_id)",
+      "table_name": "student_frdo_data"
+    },
+    {
+      "conname": "student_identity_documents_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "student_identity_documents"
+    }
+  ],
+  "columns": [
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "organization_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "first_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "middle_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "birth_date",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "udt_name": "date"
+    },
+    {
+      "column_default": null,
+      "column_name": "gender",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "snils",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'643'::text",
+      "column_name": "citizenship_code",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "education_level",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "education_doc_last_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "education_doc_series",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "education_doc_number",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'Очная'::text",
+      "column_name": "training_form",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'Платное обучение'::text",
+      "column_name": "financing_source",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'в образовательной организации'::text",
+      "column_name": "education_form",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "professional_area",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "specialty_group",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "qualification_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "profession_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "qualification_rank",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "passport_series",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "passport_number",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "passport_issue_date",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "udt_name": "date"
+    },
+    {
+      "column_default": null,
+      "column_name": "passport_issued_by",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "passport_department_code",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "udt_name": "text"
+    }
+  ],
+  "serverWriters": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.save_student_frdo_data(p_organization_id uuid, p_user_id uuid, p_data jsonb)\n RETURNS student_frdo_data\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_row public.student_frdo_data;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RAISE EXCEPTION 'authentication_required' USING ERRCODE = '42501';\n  END IF;\n\n  IF jsonb_typeof(COALESCE(p_data, '{}'::jsonb)) <> 'object' THEN\n    RAISE EXCEPTION 'frdo_data_must_be_object' USING ERRCODE = '22023';\n  END IF;\n\n  IF NOT (\n    public.has_role(auth.uid(), 'admin'::public.app_role)\n    OR EXISTS (\n      SELECT 1\n      FROM public.profiles p\n      WHERE p.user_id = auth.uid()\n        AND p.organization_id = p_organization_id\n    )\n    OR EXISTS (\n      SELECT 1\n      FROM public.org_staff s\n      WHERE s.user_id = auth.uid()\n        AND s.organization_id = p_organization_id\n        AND (s.expires_at IS NULL OR s.expires_at > now())\n    )\n  ) THEN\n    RAISE EXCEPTION 'access_denied' USING ERRCODE = '42501';\n  END IF;\n\n  IF NOT EXISTS (\n    SELECT 1\n    FROM public.profiles student\n    WHERE student.user_id = p_user_id\n      AND student.organization_id = p_organization_id\n  ) THEN\n    RAISE EXCEPTION 'student_not_in_organization' USING ERRCODE = '23503';\n  END IF;\n\n  INSERT INTO public.student_frdo_data AS target (\n    user_id,\n    organization_id,\n    last_name,\n    first_name,\n    middle_name,\n    birth_date,\n    gender,\n    snils,\n    citizenship_code,\n    education_level,\n    education_doc_last_name,\n    education_doc_series,\n    education_doc_number,\n    training_form,\n    financing_source,\n    education_form,\n    professional_area,\n    specialty_group,\n    qualification_name,\n    profession_name,\n    qualification_rank\n  )\n  VALUES (\n    p_user_id,\n    p_organization_id,\n    NULLIF(btrim(p_data->>'last_name'), ''),\n    NULLIF(btrim(p_data->>'first_name'), ''),\n    NULLIF(btrim(p_data->>'middle_name'), ''),\n    NULLIF(btrim(p_data->>'birth_date'), '')::date,\n    NULLIF(btrim(p_data->>'gender'), ''),\n    NULLIF(btrim(p_data->>'snils'), ''),\n    COALESCE(NULLIF(btrim(p_data->>'citizenship_code'), ''), '643'),\n    NULLIF(btrim(p_data->>'education_level'), ''),\n    NULLIF(btrim(p_data->>'education_doc_last_name'), ''),\n    NULLIF(btrim(p_data->>'education_doc_series'), ''),\n    NULLIF(btrim(p_data->>'education_doc_number'), ''),\n    COALESCE(NULLIF(btrim(p_data->>'training_form'), ''), 'Очная'),\n    COALESCE(NULLIF(btrim(p_data->>'financing_source'), ''), 'Платное обучение'),\n    COALESCE(NULLIF(btrim(p_data->>'education_form'), ''), 'в образовательной организации'),\n    NULLIF(btrim(p_data->>'professional_area'), ''),\n    NULLIF(btrim(p_data->>'specialty_group'), ''),\n    NULLIF(btrim(p_data->>'qualification_name'), ''),\n    NULLIF(btrim(p_data->>'profession_name'), ''),\n    NULLIF(btrim(p_data->>'qualification_rank'), '')\n  )\n  ON CONFLICT (user_id, organization_id) DO UPDATE\n  SET\n    last_name = EXCLUDED.last_name,\n    first_name = EXCLUDED.first_name,\n    middle_name = EXCLUDED.middle_name,\n    birth_date = EXCLUDED.birth_date,\n    gender = EXCLUDED.gender,\n    snils = EXCLUDED.snils,\n    citizenship_code = EXCLUDED.citizenship_code,\n    education_level = EXCLUDED.education_level,\n    education_doc_last_name = EXCLUDED.education_doc_last_name,\n    education_doc_series = EXCLUDED.education_doc_series,\n    education_doc_number = EXCLUDED.education_doc_number,\n    training_form = EXCLUDED.training_form,\n    financing_source = EXCLUDED.financing_source,\n    education_form = EXCLUDED.education_form,\n    professional_area = EXCLUDED.professional_area,\n    specialty_group = EXCLUDED.specialty_group,\n    qualification_name = EXCLUDED.qualification_name,\n    profession_name = EXCLUDED.profession_name,\n    qualification_rank = EXCLUDED.qualification_rank,\n    updated_at = now()\n  RETURNING target.* INTO v_row;\n\n  IF v_row.id IS NULL THEN\n    RAISE EXCEPTION 'frdo_save_failed' USING ERRCODE = 'P0002';\n  END IF;\n  RETURN v_row;\nEND;\n$function$\n",
+      "definition_md5": "be41cf663726f16f9552211112949895",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "save_student_frdo_data(uuid,uuid,jsonb)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.save_student_registration_details(p_organization_id uuid, p_user_id uuid, p_actor_id uuid, p_department text DEFAULT NULL::text, p_snils text DEFAULT NULL::text, p_birth_date date DEFAULT NULL::date, p_confirm_identity boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_role text := COALESCE(NULLIF(auth.jwt()->>'role', ''), NULLIF(current_setting('request.jwt.claim.role', true), ''), '');\n  v_department text := NULLIF(btrim(p_department), '');\n  v_snils text := NULLIF(btrim(p_snils), '');\n  v_profile public.profiles;\n  v_identification public.video_identifications;\nBEGIN\n  IF v_role <> 'service_role' THEN\n    RAISE EXCEPTION 'service_role_required' USING ERRCODE = '42501';\n  END IF;\n  IF p_actor_id IS NULL OR NOT (\n    public.has_role(p_actor_id, 'admin'::public.app_role)\n    OR public.is_org_owner(p_actor_id, p_organization_id)\n    OR (EXISTS (SELECT 1 FROM public.org_staff s WHERE s.user_id = p_actor_id\n      AND s.organization_id = p_organization_id AND (s.expires_at IS NULL OR s.expires_at > now()))\n      AND public.has_org_staff_permission(p_actor_id, p_organization_id, 'students.write'))\n  ) THEN\n    RAISE EXCEPTION 'student_details_access_denied' USING ERRCODE = '42501';\n  END IF;\n  -- Serialize repeated imports/confirmation and prevent a concurrent archive/tenant move.\n  SELECT * INTO v_profile FROM public.profiles WHERE user_id = p_user_id FOR UPDATE;\n  IF NOT FOUND OR v_profile.organization_id IS DISTINCT FROM p_organization_id\n     OR NOT public.is_student_profile(p_user_id, p_organization_id) THEN\n    RAISE EXCEPTION 'student_not_in_organization' USING ERRCODE = '42501';\n  END IF;\n  IF v_profile.archived_at IS NOT NULL THEN\n    RAISE EXCEPTION 'student_archived' USING ERRCODE = '22023';\n  END IF;\n  IF length(v_department) > 200 OR v_department ~ '[[:cntrl:]]' THEN\n    RAISE EXCEPTION 'invalid_department' USING ERRCODE = '22023';\n  END IF;\n  IF v_snils IS NOT NULL THEN\n    IF v_snils !~ '^[0-9[:space:]-]+$' THEN\n      RAISE EXCEPTION 'invalid_snils' USING ERRCODE = '22023';\n    END IF;\n    v_snils := regexp_replace(v_snils, '[[:space:]-]', '', 'g');\n    IF length(v_snils) <> 11 THEN\n      RAISE EXCEPTION 'invalid_snils' USING ERRCODE = '22023';\n    END IF;\n    v_snils := substr(v_snils, 1, 3) || '-' || substr(v_snils, 4, 3) || '-' || substr(v_snils, 7, 3) || ' ' || substr(v_snils, 10, 2);\n  END IF;\n  IF p_birth_date > CURRENT_DATE OR p_birth_date < DATE '0001-01-01' THEN\n    RAISE EXCEPTION 'invalid_birth_date' USING ERRCODE = '22023';\n  END IF;\n\n  IF v_department IS NOT NULL THEN\n    UPDATE public.profiles SET department = v_department WHERE user_id = p_user_id;\n  END IF;\n  IF v_snils IS NOT NULL OR p_birth_date IS NOT NULL THEN\n    INSERT INTO public.student_frdo_data AS existing (user_id, organization_id, snils, birth_date)\n    VALUES (p_user_id, p_organization_id, v_snils, p_birth_date)\n    ON CONFLICT (user_id, organization_id) DO UPDATE SET\n      snils = COALESCE(EXCLUDED.snils, existing.snils),\n      birth_date = COALESCE(EXCLUDED.birth_date, existing.birth_date);\n  END IF;\n\n  IF p_confirm_identity IS TRUE THEN\n    SELECT * INTO v_identification FROM public.video_identifications\n    WHERE user_id = p_user_id AND organization_id = p_organization_id\n    ORDER BY created_at DESC, id DESC LIMIT 1 FOR UPDATE;\n    IF NOT FOUND THEN\n      INSERT INTO public.video_identifications\n        (user_id, organization_id, status, verified_by, verified_at)\n      VALUES (p_user_id, p_organization_id, 'verified', p_actor_id, now())\n      RETURNING * INTO v_identification;\n    ELSIF v_identification.status <> 'verified' OR v_identification.verified_by IS NULL OR v_identification.verified_at IS NULL THEN\n      UPDATE public.video_identifications SET status = 'verified', verified_by = p_actor_id,\n        verified_at = now(), rejection_reason = NULL\n      WHERE id = v_identification.id RETURNING * INTO v_identification;\n    END IF;\n  END IF;\n  RETURN jsonb_build_object('success', true, 'user_id', p_user_id,\n    'organization_id', p_organization_id, 'identity_confirmed', p_confirm_identity IS TRUE,\n    'identification_id', v_identification.id);\nEND;\n$function$\n",
+      "definition_md5": "ce46926124398999b7afab7d1c8b1d12",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_frdo_name_from_profile()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  parts text[];\n  new_last text;\n  new_first text;\n  new_middle text;\n  old_parts text[];\n  old_last text;\n  old_first text;\n  old_middle text;\nBEGIN\n  IF NEW.full_name IS NULL OR btrim(NEW.full_name) = '' THEN\n    RETURN NEW;\n  END IF;\n  IF OLD.full_name IS NOT DISTINCT FROM NEW.full_name THEN\n    RETURN NEW;\n  END IF;\n\n  parts := regexp_split_to_array(btrim(NEW.full_name), '\\s+');\n  new_last := COALESCE(parts[1], '');\n  new_first := COALESCE(parts[2], '');\n  new_middle := COALESCE(parts[3], '');\n\n  old_parts := regexp_split_to_array(btrim(COALESCE(OLD.full_name, '')), '\\s+');\n  old_last := COALESCE(old_parts[1], '');\n  old_first := COALESCE(old_parts[2], '');\n  old_middle := COALESCE(old_parts[3], '');\n\n  UPDATE public.student_frdo_data f\n  SET\n    last_name = CASE WHEN COALESCE(f.last_name, '') IN ('', old_last) THEN new_last ELSE f.last_name END,\n    first_name = CASE WHEN COALESCE(f.first_name, '') IN ('', old_first) THEN new_first ELSE f.first_name END,\n    middle_name = CASE WHEN COALESCE(f.middle_name, '') IN ('', old_middle) THEN new_middle ELSE f.middle_name END,\n    updated_at = now()\n  WHERE f.user_id = NEW.user_id;\n\n  RETURN NEW;\nEND;\n$function$\n",
+      "definition_md5": "f137a55572406a9488b7146453ab0cc0",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "prosecdef": true,
+      "signature": "sync_frdo_name_from_profile()"
+    }
+  ],
+  "profileTrigger": [
+    {
+      "definition": "CREATE TRIGGER trg_sync_frdo_name_from_profile AFTER UPDATE OF full_name ON public.profiles FOR EACH ROW EXECUTE FUNCTION sync_frdo_name_from_profile()",
+      "tgname": "trg_sync_frdo_name_from_profile"
+    }
+  ],
+  "timestampWriter": {
+    "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n",
+    "definition_md5": "3210625d1c794f6db7b3c3defc5984dd",
+    "signature": "update_updated_at_column()"
+  },
+  "issuanceFunctions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.auto_create_education_document()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_course public.courses%ROWTYPE;\n  v_program_source public.group_program_enrollment_snapshots;\n  v_association_count integer;\n  v_full_name text;\n  v_birth_date date;\n  v_group_id uuid;\n  v_doc_type text;\n  v_doc_n integer;\n  v_reg_n integer;\n  v_max_doc integer;\n  v_max_reg integer;\n  v_year integer;\nBEGIN\n  IF NEW.status IS DISTINCT FROM 'completed'\n     OR (TG_OP = 'UPDATE' AND OLD.status = 'completed') THEN\n    RETURN NEW;\n  END IF;\n\n  SELECT * INTO v_course FROM public.courses WHERE id = NEW.course_id;\n  IF NOT FOUND THEN RETURN NEW; END IF;\n  -- Completion stays successful when provenance or issuance authority is unknown.\n  -- Multiple effective associations require explicit group selection; never pick the first.\n  SELECT count(*) INTO v_association_count FROM public.student_group_memberships_effective m\n  JOIN public.student_groups g ON g.id=m.group_id AND g.organization_id=m.organization_id\n  WHERE m.user_id=NEW.user_id AND m.organization_id=v_course.organization_id AND g.course_id=NEW.course_id;\n  IF v_association_count<>1 THEN RETURN NEW; END IF;\n  SELECT m.group_id INTO v_group_id FROM public.student_group_memberships_effective m JOIN public.student_groups g ON g.id=m.group_id AND g.organization_id=m.organization_id\n  WHERE m.user_id=NEW.user_id AND m.organization_id=v_course.organization_id AND g.course_id=NEW.course_id;\n  IF NOT coalesce(public.uc_document_has_action(v_course.organization_id,'issue') AND public.uc_document_record_scope(v_course.organization_id,v_group_id,NEW.id,NEW.user_id,NEW.course_id),false) THEN RETURN NEW; END IF;\n  v_program_source:=public.uc_program_issuance_source(v_course.organization_id,v_group_id,NEW.id,NEW.user_id,NEW.course_id);\n  v_course.title:=v_program_source.program_snapshot->'facts'->>'full_title';\n  v_course.frdo_qualification_name:=coalesce(v_program_source.program_snapshot->'facts'->>'qualification',v_program_source.program_snapshot->'facts'->>'profession');\n  v_doc_type := CASE v_program_source.program_snapshot->'facts'->>'program_type'\n    WHEN 'dpo_upskilling' THEN 'certificate'\n    WHEN 'dpo_retraining' THEN 'diploma'\n    WHEN 'professional_training' THEN 'qualification'\n    ELSE NULL\n  END;\n  IF v_doc_type IS NULL THEN RETURN NEW; END IF;\n\n  PERFORM pg_advisory_xact_lock(hashtextextended(v_course.organization_id::text, 0));\n  IF EXISTS (\n    SELECT 1 FROM public.education_document_records edr\n    WHERE edr.enrollment_id = NEW.id\n      AND lower(btrim(edr.document_status)) IN ('original', 'оригинал')\n      AND edr.deleted_at IS NULL\n  ) THEN RETURN NEW; END IF;\n\n  SELECT NULLIF(BTRIM(p.full_name), '')\n  INTO v_full_name\n  FROM public.profiles p\n  WHERE p.user_id = NEW.user_id AND p.organization_id = v_course.organization_id\n  LIMIT 1;\n\n  SELECT sfd.birth_date INTO v_birth_date\n  FROM public.student_frdo_data sfd\n  WHERE sfd.user_id = NEW.user_id AND sfd.organization_id = v_course.organization_id\n  LIMIT 1;\n  IF v_full_name IS NULL OR v_birth_date IS NULL THEN RETURN NEW; END IF;\n\n  v_year := EXTRACT(YEAR FROM CURRENT_DATE)::integer;\n  SELECT COALESCE(MAX((substring(edr.document_number FROM '([0-9]+)$'))::integer), 0)\n  INTO v_max_doc\n  FROM public.education_document_records edr\n  WHERE edr.organization_id = v_course.organization_id\n    AND EXTRACT(YEAR FROM edr.issue_date) = v_year AND edr.deleted_at IS NULL;\n\n  INSERT INTO public.document_number_sequences (organization_id, doc_type, year, last_number)\n  VALUES (v_course.organization_id, 'edu_doc', v_year, v_max_doc + 1)\n  ON CONFLICT (organization_id, doc_type, year)\n  DO UPDATE SET last_number = GREATEST(document_number_sequences.last_number + 1, v_max_doc + 1), updated_at = now()\n  RETURNING last_number INTO v_doc_n;\n\n  SELECT COALESCE(MAX((substring(edr.reg_number FROM '([0-9]+)$'))::integer), 0)\n  INTO v_max_reg\n  FROM public.education_document_records edr\n  WHERE edr.organization_id = v_course.organization_id\n    AND EXTRACT(YEAR FROM edr.issue_date) = v_year AND edr.deleted_at IS NULL;\n\n  INSERT INTO public.document_number_sequences (organization_id, doc_type, year, last_number)\n  VALUES (v_course.organization_id, 'edu_reg', v_year, v_max_reg + 1)\n  ON CONFLICT (organization_id, doc_type, year)\n  DO UPDATE SET last_number = GREATEST(document_number_sequences.last_number + 1, v_max_reg + 1), updated_at = now()\n  RETURNING last_number INTO v_reg_n;\n\n  INSERT INTO public.education_document_records (\n    organization_id, user_id, course_id, group_id, enrollment_id,\n    full_name, birth_date, document_type, document_number, reg_number,\n    issue_date, specialty_name, qualification_name, document_status, delivery_method\n  ) VALUES (\n    v_course.organization_id, NEW.user_id, NEW.course_id, v_group_id, NEW.id,\n    v_full_name, v_birth_date, v_doc_type,\n    v_year || '/' || LPAD(v_doc_n::text, 6, '0'),\n    'ДОК-' || v_year || '/' || LPAD(v_reg_n::text, 4, '0'),\n    CURRENT_DATE, v_course.title, v_course.frdo_qualification_name, 'original', 'personal'\n  );\n  RETURN NEW;\nEXCEPTION WHEN OTHERS THEN\n  RAISE WARNING 'education document was not auto-created for enrollment %: %', NEW.id, SQLERRM;\n  RETURN NEW;\nEND;\n$function$\n",
+      "definition_md5": "2d8d598ea6a1b372292c04a688f52221",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "prosecdef": true,
+      "signature": "auto_create_education_document()"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.issue_education_document_batch(p_organization_id uuid, p_group_id uuid, p_course_id uuid, p_items jsonb)\n RETURNS SETOF education_document_records\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_item jsonb;\n  v_user_id uuid;\n  v_enrollment_id uuid;\n  v_doc_type text;\n  v_issue_date date;\n  v_year int;\n  v_doc_n int;\n  v_reg_n int;\n  v_max_doc int;\n  v_max_reg int;\n  v_doc_number text;\n  v_reg_number text;\n  v_new_id uuid;\n  v_existing_id uuid;\n  v_group_course_id uuid;\n  v_ids uuid[] := '{}';\n  v_items_count int;\nBEGIN\n  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Auth required'; END IF;\n  IF p_organization_id IS NULL THEN RAISE EXCEPTION 'organization_id is required'; END IF;\n  IF p_course_id IS NULL THEN RAISE EXCEPTION 'exact course_id is required'; END IF;\n  IF NOT public.uc_document_has_action(p_organization_id,'issue') THEN\n    RAISE EXCEPTION 'not authorized for this organization';\n  END IF;\n  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' THEN\n    RAISE EXCEPTION 'items must be a non-empty array';\n  END IF;\n  v_items_count := jsonb_array_length(p_items);\n  IF v_items_count = 0 THEN RAISE EXCEPTION 'items must be a non-empty array'; END IF;\n  IF v_items_count > 500 THEN RAISE EXCEPTION 'items exceed max batch size (500)'; END IF;\n\n  IF NOT EXISTS (SELECT 1 FROM public.courses c WHERE c.id = p_course_id AND c.organization_id = p_organization_id) THEN\n    RAISE EXCEPTION 'course % does not belong to organization', p_course_id;\n  END IF;\n  IF p_group_id IS NOT NULL THEN\n    SELECT g.course_id INTO v_group_course_id FROM public.student_groups g\n    WHERE g.id = p_group_id AND g.organization_id = p_organization_id;\n    IF NOT FOUND THEN RAISE EXCEPTION 'group % does not belong to organization', p_group_id; END IF;\n    IF v_group_course_id IS NULL OR v_group_course_id <> p_course_id THEN\n      RAISE EXCEPTION 'group % is not linked to exact course %', p_group_id, p_course_id;\n    END IF;\n  END IF;\n\n  PERFORM pg_advisory_xact_lock(hashtextextended(p_organization_id::text, 0));\n  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP\n    v_user_id := NULLIF(v_item->>'user_id', '')::uuid;\n    v_enrollment_id := NULLIF(v_item->>'enrollment_id', '')::uuid;\n    IF NOT public.uc_document_action_allowed(p_organization_id,'issue',p_group_id,v_enrollment_id) THEN RAISE EXCEPTION 'Issuance scope denied' USING ERRCODE='42501'; END IF;\n    v_doc_type := NULLIF(btrim(v_item->>'document_type'), '');\n    IF v_user_id IS NULL THEN RAISE EXCEPTION 'user_id is required for every item'; END IF;\n    IF v_enrollment_id IS NULL THEN RAISE EXCEPTION 'enrollment_id is required for every item'; END IF;\n    IF v_doc_type NOT IN ('certificate', 'diploma', 'qualification') THEN\n      RAISE EXCEPTION 'document_type must be certificate, diploma or qualification';\n    END IF;\n    IF NULLIF(v_item->>'issue_date', '') IS NULL THEN RAISE EXCEPTION 'issue_date is required for every item'; END IF;\n    v_issue_date := (v_item->>'issue_date')::date;\n    v_year := EXTRACT(YEAR FROM v_issue_date)::int;\n\n    IF NOT EXISTS (\n      SELECT 1 FROM public.profiles pr\n      WHERE pr.user_id = v_user_id AND pr.organization_id = p_organization_id\n        AND (p_group_id IS NULL OR EXISTS (SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id = pr.organization_id AND m.user_id = pr.user_id AND m.group_id = p_group_id))\n    ) THEN RAISE EXCEPTION 'student % is not a member of the specified organization/group', v_user_id; END IF;\n\n    IF NOT EXISTS (\n      SELECT 1 FROM public.enrollments e JOIN public.courses c ON c.id = e.course_id\n      WHERE e.id = v_enrollment_id AND e.user_id = v_user_id AND e.course_id = p_course_id\n        AND c.organization_id = p_organization_id\n    ) THEN\n      RAISE EXCEPTION 'enrollment % does not belong to student %/exact course %', v_enrollment_id, v_user_id, p_course_id;\n    END IF;\n\n    -- One enrollment has one original education document. Re-export returns it.\n    SELECT r.id INTO v_existing_id\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND r.enrollment_id = v_enrollment_id\n      AND lower(btrim(r.document_status)) IN ('original', 'оригинал') AND r.deleted_at IS NULL\n    ORDER BY r.created_at, r.id LIMIT 1;\n    IF v_existing_id IS NOT NULL THEN\n      IF EXISTS(SELECT 1 FROM public.education_document_program_sources ps WHERE ps.record_id=v_existing_id\n       AND (ps.snapshot->>'group_id')::uuid IS DISTINCT FROM p_group_id) THEN\n       RAISE EXCEPTION 'original_document_belongs_to_other_program_association' USING ERRCODE='22023'; END IF;\n      v_ids := array_append(v_ids, v_existing_id); CONTINUE;\n    END IF;\n\n    SELECT COALESCE(MAX((substring(r.document_number FROM '([0-9]+)$'))::int), 0) INTO v_max_doc\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND EXTRACT(YEAR FROM r.issue_date) = v_year AND r.deleted_at IS NULL;\n    INSERT INTO public.document_number_sequences (organization_id, doc_type, year, last_number)\n    VALUES (p_organization_id, 'edu_doc', v_year, v_max_doc + 1)\n    ON CONFLICT (organization_id, doc_type, year)\n    DO UPDATE SET last_number = GREATEST(document_number_sequences.last_number + 1, v_max_doc + 1), updated_at = now()\n    RETURNING last_number INTO v_doc_n;\n\n    SELECT COALESCE(MAX((substring(r.reg_number FROM '([0-9]+)$'))::int), 0) INTO v_max_reg\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND EXTRACT(YEAR FROM r.issue_date) = v_year AND r.deleted_at IS NULL;\n    INSERT INTO public.document_number_sequences (organization_id, doc_type, year, last_number)\n    VALUES (p_organization_id, 'edu_reg', v_year, v_max_reg + 1)\n    ON CONFLICT (organization_id, doc_type, year)\n    DO UPDATE SET last_number = GREATEST(document_number_sequences.last_number + 1, v_max_reg + 1), updated_at = now()\n    RETURNING last_number INTO v_reg_n;\n\n    v_doc_number := v_year::text || '/' || lpad(v_doc_n::text, 6, '0');\n    v_reg_number := 'ДОК-' || v_year::text || '/' || lpad(v_reg_n::text, 4, '0');\n    INSERT INTO public.education_document_records (\n      organization_id, user_id, course_id, group_id, enrollment_id,\n      reg_number, document_number, document_series, document_type,\n      full_name, birth_date, issue_date, specialty_name, qualification_name,\n      document_status, delivery_method, education_result, notes\n    ) VALUES (\n      p_organization_id, v_user_id, p_course_id, p_group_id, v_enrollment_id,\n      v_reg_number, v_doc_number, NULLIF(v_item->>'document_series', ''), v_doc_type,\n      COALESCE(NULLIF(v_item->>'full_name', ''), ''), NULLIF(v_item->>'birth_date', '')::date,\n      v_issue_date, COALESCE(NULLIF(v_item->>'specialty_name', ''), ''),\n      NULLIF(v_item->>'qualification_name', ''), COALESCE(NULLIF(v_item->>'document_status', ''), 'original'),\n      COALESCE(NULLIF(v_item->>'delivery_method', ''), 'personal'),\n      NULLIF(v_item->>'education_result', ''), NULLIF(v_item->>'notes', '')\n    ) RETURNING id INTO v_new_id;\n    v_ids := array_append(v_ids, v_new_id);\n  END LOOP;\n\n  RETURN QUERY SELECT * FROM public.education_document_records r\n  WHERE r.id = ANY(v_ids) ORDER BY array_position(v_ids, r.id);\nEND;\n$function$\n",
+      "definition_md5": "b2efe139105dd68d07ccd06f978d45ce",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "prosecdef": true,
+      "signature": "issue_education_document_batch(uuid,uuid,uuid,jsonb)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_program_issuance_source(p_org uuid, p_group uuid, p_enrollment uuid, p_user uuid, p_course uuid)\n RETURNS group_program_enrollment_snapshots\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE s public.group_program_enrollment_snapshots;b public.group_program_bindings;\nBEGIN\n IF p_group IS NULL OR p_enrollment IS NULL OR NOT coalesce(public.uc_document_has_action(p_org,'issue') AND public.uc_document_record_scope(p_org,p_group,p_enrollment,p_user,p_course),false)\n THEN RAISE EXCEPTION 'exact_program_issuance_scope_required' USING ERRCODE='42501'; END IF;\n PERFORM pg_advisory_xact_lock(hashtextextended('uc_program_roster:'||p_group::text,0));\n PERFORM 1 FROM public.student_groups WHERE id=p_group AND organization_id=p_org AND course_id=p_course FOR SHARE;\n SELECT * INTO b FROM public.group_program_bindings WHERE group_id=p_group AND organization_id=p_org AND course_id=p_course FOR SHARE;\n SELECT * INTO s FROM public.group_program_enrollment_snapshots WHERE group_id=p_group AND enrollment_id=p_enrollment AND organization_id=p_org AND user_id=p_user AND course_id=p_course\n AND binding_id=b.id AND binding_revision=b.revision AND version_id=b.version_id AND snapshot_hash=b.snapshot_hash;\n IF NOT FOUND OR NOT public.uc_program_file_proof(p_org,(s.program_snapshot->>'file_version_id')::uuid)\n THEN RAISE EXCEPTION 'confirmed_program_issuance_snapshot_required' USING ERRCODE='22023'; END IF;\n RETURN s;\nEND;$function$\n",
+      "definition_md5": "e174da72ef5e0ea7f3ac2396ae8b6b6c",
+      "proacl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "prosecdef": true,
+      "signature": "uc_program_issuance_source(uuid,uuid,uuid,uuid,uuid)"
+    }
+  ],
+  "serviceRoleMetadata": [
+    {
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relname": "profiles",
+      "rolbypassrls": true,
+      "rolname": "service_role"
+    },
+    {
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relname": "student_frdo_data",
+      "rolbypassrls": true,
+      "rolname": "service_role"
+    }
+  ],
+  "columnFingerprint": {
+    "column_count": 29,
+    "columns_md5": "5b37bda17b96827a701218ba819e3313"
+  }
+}

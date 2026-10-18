@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Student } from "@/types/shared";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { useAuth } from "@/hooks/useAuth";
 import { normalizeStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 
@@ -128,14 +129,25 @@ interface UseStudentDetailCardLogicProps {
 export function useStudentDetailCardLogic({
   isOpen, student, organizationId, enrollments = [], onStudentUpdated, onStudentDocumentsUpdated,
 }: UseStudentDetailCardLogicProps) {
-  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const { user: actor, userRole: actorRole, loading: authLoading } = useAuth();
+  const permissions = useStaffPermissions();
+  const { can, loading: permissionsLoading } = permissions;
   const canManageLoginLinks = !permissionsLoading && can("students.write");
-  const identityKey = isOpen && student?.user_id && organizationId
-    ? `${organizationId}:${student.user_id}`
+  // A different authenticated actor or access revision must never reuse an
+  // already loaded private card, even when the selected learner is unchanged.
+  const actorAccessKey = JSON.stringify([actor?.id, actorRole, !!authLoading,
+    permissionsLoading, permissions.error, permissions.organizationId,
+    permissions.orgRole, permissions.adminRole, permissions.isOrgOwner,
+    [...(permissions.orgPermissions ?? [])].sort(), can("students.read"), can("students.write"), can("frdo.write")]);
+  const canWriteFrdo = !!actor?.id && !authLoading && !permissionsLoading && !permissions.error
+    && permissions.adminRole !== "viewer" && permissions.adminRole !== "sales_manager" && can("frdo.write");
+  const identityKey = !authLoading && actor?.id && !permissionsLoading && !permissions.error && isOpen && student?.user_id && organizationId
+    ? `${actorAccessKey}:${organizationId}:${student.user_id}`
     : null;
   const activeIdentityKeyRef = useRef<string | null>(identityKey);
   const studentDataLoadSequenceRef = useRef(0);
   const tokenLoadSequenceRef = useRef(0);
+  const frdoSaveSequenceRef = useRef(0);
   // Update during render so an already-resolved A request cannot commit in the
   // interval before the B effect cleanup runs.
   activeIdentityKeyRef.current = identityKey;
@@ -275,6 +287,8 @@ export function useStudentDetailCardLogic({
       && activeIdentityKeyRef.current === requestIdentityKey
     );
 
+    frdoSaveSequenceRef.current += 1;
+    setSavingFrdoField(null);
     resetLoadedStudentData();
     setDecryptedPasswordResult(null);
     setIsLoading(true);
@@ -310,6 +324,9 @@ export function useStudentDetailCardLogic({
           failedQueries.map(([name, result]) => ({ name, error: result.error })),
         );
         throw new Error("Не удалось подтвердить данные личного дела ученика");
+      }
+      if (frdoRes.data && (frdoRes.data.user_id !== requestUserId || frdoRes.data.organization_id !== requestOrganizationId)) {
+        throw new Error("Не удалось подтвердить данные ФРДО выбранного ученика");
       }
       setConsents((consentsRes.data || []) as ConsentRecord[]);
       setGeneratedConsents((generatedConsentsRes.data || []) as GeneratedConsentRecord[]);
@@ -514,19 +531,33 @@ export function useStudentDetailCardLogic({
 
 
   const saveFrdoField = async (field: string, value: string) => {
-    if (!student) return;
+    const requestIdentityKey = identityKey;
+    const requestUserId = student?.user_id;
+    const requestOrganizationId = organizationId;
+    const loadSequence = studentDataLoadSequenceRef.current;
+    if (!canWriteFrdo || !requestIdentityKey || !requestUserId || !requestOrganizationId || activeIdentityKeyRef.current !== requestIdentityKey
+      || loadedIdentityKey !== requestIdentityKey || studentDataLoadError || isLoading) return false;
+    const saveSequence = ++frdoSaveSequenceRef.current;
+    const isCurrentContext = () => activeIdentityKeyRef.current === requestIdentityKey
+      && studentDataLoadSequenceRef.current === loadSequence;
     setSavingFrdoField(field);
     try {
       const { error } = await supabase.from("student_frdo_data").upsert({
-        user_id: student.user_id,
-        organization_id: organizationId,
+        user_id: requestUserId,
+        organization_id: requestOrganizationId,
         [field]: value || null,
       }, { onConflict: "user_id,organization_id" });
+      if (!isCurrentContext()) return false;
       if (error) throw error;
-      setFrdoData(prev => ({ ...prev, [field]: value || null }));
+      setFrdoData(prev => ({ ...prev, user_id: requestUserId, organization_id: requestOrganizationId, [field]: value || null }));
       toast.success("Сохранено");
-    } catch (error) { console.error("Save FRDO field error:", error); toast.error("Ошибка сохранения"); }
-    finally { setSavingFrdoField(null); }
+      return true;
+    } catch {
+      if (isCurrentContext()) toast.error("Ошибка сохранения");
+      return false;
+    } finally {
+      if (isCurrentContext() && frdoSaveSequenceRef.current === saveSequence) setSavingFrdoField(null);
+    }
   };
 
   const savePhone = async (value: string) => {
@@ -824,10 +855,15 @@ export function useStudentDetailCardLogic({
     }
   };
 
+  const requestedIdentity = !!(isOpen && student?.user_id && organizationId);
+  const currentDataLoadError = requestedIdentity && permissions.error
+    ? "Не удалось подтвердить права на личное дело ученика. Повторите проверку прав."
+    : identityKey ? studentDataLoadError : null;
+
   return {
     activeTab, setActiveTab,
-    isLoading: !!identityKey && !studentDataLoadError && (isLoading || !hasCurrentIdentityData),
-    dataLoadError: identityKey ? studentDataLoadError : null,
+    isLoading: requestedIdentity && !currentDataLoadError && (!identityKey || isLoading || !hasCurrentIdentityData),
+    dataLoadError: currentDataLoadError,
     retryLoadStudentData: loadStudentData,
     consents: currentConsents,
     pepAgreements: currentPepAgreements,

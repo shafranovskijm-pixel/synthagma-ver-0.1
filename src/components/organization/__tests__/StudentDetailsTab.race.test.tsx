@@ -25,6 +25,9 @@ const testState = vi.hoisted(() => ({
   studentPageError: null as Error | null,
   studentPageCalls: [] as Array<Record<string, unknown>>,
   setActiveTab: vi.fn(),
+  actorUserId: null as string | null,
+  documentContexts: [] as Array<{ selectedStudentId: string | null; organizationId?: string; studentUserId?: string | null; actorUserId?: string | null }>,
+  hookContexts: [] as Array<{ selectedStudentId: string | null; loadedStudentId?: string; isOpen: boolean }>,
 }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
@@ -39,7 +42,7 @@ vi.mock("@/contexts/OrgDashboardContext", () => ({
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({ user: null }),
+  useAuth: () => ({ user: testState.actorUserId ? { id: testState.actorUserId } : null }),
 }));
 
 vi.mock("@/hooks/useSubscriptionLimits", () => ({
@@ -55,7 +58,9 @@ vi.mock("@/lib/invalidateOrganizationQueries", () => ({
 }));
 
 vi.mock("@/hooks/useStudentDetailCard", () => ({
-  useStudentDetailCardLogic: () => ({
+  useStudentDetailCardLogic: (props: any) => {
+    testState.hookContexts.push({ selectedStudentId: testState.selectedStudentId, loadedStudentId: props.student?.user_id, isOpen: props.isOpen });
+    return ({
     activeTab: testState.activeTab,
     setActiveTab: vi.fn(),
     isLoading: testState.studentDataLoading,
@@ -68,7 +73,8 @@ vi.mock("@/hooks/useStudentDetailCard", () => ({
     isFRDODialogOpen: false,
     setIsFRDODialogOpen: vi.fn(),
     selectedEnrollmentForFRDO: null,
-  }),
+    });
+  },
 }));
 
 vi.mock("@/components/organization/sales/OrgCrmCardSection", () => ({
@@ -90,9 +96,10 @@ vi.mock("@/components/organization/student-detail/CoursesTab", () => ({
   CoursesTab: ({ enrollments }: { enrollments: unknown[] }) => <div>Курсы ({enrollments.length})</div>,
 }));
 vi.mock("@/components/organization/student-detail/DocumentsTab", () => ({
-  DocumentsTab: ({ laborSafetyXml }: { laborSafetyXml?: { organizationId: string; student: { userId: string } } }) => (
-    <div data-testid="documents-local-boundary">XML: {laborSafetyXml?.organizationId}/{laborSafetyXml?.student.userId}</div>
-  ),
+  DocumentsTab: ({ laborSafetyXml, organizationId, studentUserId, actorUserId }: any) => {
+    testState.documentContexts.push({ selectedStudentId: testState.selectedStudentId, organizationId, studentUserId, actorUserId });
+    return <div data-testid="documents-local-boundary">XML: {laborSafetyXml?.organizationId}/{laborSafetyXml?.student.userId}</div>;
+  },
 }));
 vi.mock("@/components/organization/student-detail/ActivityTab", () => ({ ActivityTab: () => null }));
 vi.mock("@/components/organization/student-detail/ChatTab", () => ({ ChatTab: () => null }));
@@ -208,6 +215,7 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
     testState.studentPageError = null;
     testState.studentPageCalls.length = 0;
     testState.setActiveTab.mockClear();
+    testState.actorUserId = null; testState.documentContexts.length = 0; testState.hookContexts.length = 0;
   });
 
   it("passes the confirmed auth user id and organization to CRM, not the profile row id", async () => {
@@ -396,5 +404,19 @@ describe("StudentDetailsTab URL request ordering and tenant scope", () => {
 
     expect(await screen.findByTestId("documents-local-boundary")).toHaveTextContent("XML: org-1/student-a");
     expect(screen.queryByText("Не удалось загрузить личное дело")).not.toBeInTheDocument();
+  });
+  it("passes explicit current actor/org/student context and never gives OCR a previous student's identity during navigation", async () => {
+    testState.activeTab = "documents"; testState.actorUserId = "staff-actor";
+    testState.profileResponses.set("student-a", Promise.resolve({ data: profile("student-a", "Student A"), error: null }));
+    const pending = deferred<{ data: any; error: any }>(); testState.profileResponses.set("student-b", pending.promise);
+    const view = renderDetails(); await screen.findByTestId("documents-local-boundary");
+    expect(testState.documentContexts.at(-1)).toMatchObject({ organizationId: "org-1", studentUserId: "student-a", actorUserId: "staff-actor" });
+    testState.selectedStudentId = "student-b";
+    view.rerender(<MemoryRouter initialEntries={["/organization?tab=student-details"]}><StudentDetailsTab /></MemoryRouter>);
+    expect(testState.documentContexts.filter(item => item.selectedStudentId === "student-b").every(item => item.studentUserId !== "student-a")).toBe(true);
+    expect(testState.hookContexts.some(item => item.selectedStudentId === "student-b" && item.loadedStudentId === "student-a")).toBe(true);
+    expect(testState.hookContexts.filter(item => item.selectedStudentId === "student-b" && item.loadedStudentId === "student-a").every(item => item.isOpen === false)).toBe(true);
+    await act(async () => pending.resolve({ data: profile("student-b", "Student B"), error: null }));
+    await waitFor(() => expect(testState.documentContexts.at(-1)).toMatchObject({ organizationId: "org-1", studentUserId: "student-b", actorUserId: "staff-actor" }));
   });
 });

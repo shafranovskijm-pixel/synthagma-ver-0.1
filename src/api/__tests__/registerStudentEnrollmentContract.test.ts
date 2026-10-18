@@ -221,6 +221,7 @@ function edgeFixture(options: { role?: string; staff?: boolean; expires?: string
   const existing = options.existing !== false;
   const profiles: Record<string, any>[] = [{ user_id: "actor", organization_id: "org-1" }, ...(existing ? [{ user_id: "student", organization_id: options.studentOrg || "org-1", login: "Sgt001", email: options.email || null, full_name: "Иванов", job_position: "Механик", archived_at: null }] : [])];
   const rpc = vi.fn(async (name: string, args: any) => {
+    if (name === "can_prepare_student_registration_details") return { data: true, error: null };
     if (name === "student_import_identity_preflight") return options.importCheckError
       ? { data: null, error: { message: "synthetic lookup failure" } }
       : { data: [{ row_index: 1, login_taken: existing, name_matches: existing ? 1 : 0, email_matches: 0 }], error: null };
