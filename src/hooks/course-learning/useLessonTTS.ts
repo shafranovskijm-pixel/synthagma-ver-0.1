@@ -8,6 +8,7 @@ import { getOptionText } from "./types";
 import { useNativeSpeech } from '@/mobile/useNativeSpeech';
 import { isNativeSpeechPlatform } from '@/mobile/nativeSpeech';
 import { speakBrowserText, splitSpeechText, SALUTE_SPEECH_CHUNK_SIZE } from '@/lib/browserSpeech';
+import { lessonBlocksToSpeechText, speechTextFromHtml } from '@/lib/lessonSpeechText';
 
 export const SALUTE_REQUEST_TIMEOUT_MS = 15000;
 const abortError = () => new DOMException('Speech cancelled', 'AbortError');
@@ -119,36 +120,18 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
 
   const isSpeaking = ttsSettings.provider === 'native' ? nativeSpeech.isSpeaking : isWebSpeaking;
 
-  const extractTextFromBlocks = (blocks: ContentBlock[]): string => {
-    return blocks.map(block => {
-      switch (block.type) {
-        case 'paragraph': case 'heading1': case 'heading2': case 'quote':
-        case 'callout-info': case 'callout-warning': case 'callout-tip':
-          return block.content?.replace(/<[^>]*>/g, '') || '';
-        case 'bulletList': case 'numberedList':
-          return (block.content || '').split('\n').filter(Boolean).join('. ');
-        case 'accordion':
-          return `${block.accordionTitle || ''}. ${block.content || ''}`;
-        case 'quiz':
-          return `Вопрос: ${block.quizQuestion || ''}`;
-        default:
-          return '';
-      }
-    }).filter(Boolean).join('. ');
-  };
-
   const getTextToSpeak = (): string => {
     if (!currentLesson) return '';
     if (currentLesson.type === 'text') {
       return contentBlocks.length > 0
-        ? extractTextFromBlocks(contentBlocks)
-        : currentLesson.content?.replace(/<[^>]*>/g, '').replace(/\n/g, '. ') || '';
+        ? lessonBlocksToSpeechText(contentBlocks)
+        : speechTextFromHtml(currentLesson.content);
     }
     if (currentLesson.type === 'test') {
       return testQuestions.map((q, i) => {
         const options = Array.isArray(q.options) ? q.options : [];
-        const optionsText = options.map((opt, j) => `${j + 1}. ${getOptionText(opt)}`).join('. ');
-        return `Вопрос ${i + 1}: ${q.question}. Варианты ответа: ${optionsText}`;
+        const optionsText = options.map((opt, j) => `${j + 1}. ${speechTextFromHtml(getOptionText(opt))}`).join('. ');
+        return `Вопрос ${i + 1}: ${speechTextFromHtml(q.question)}. Варианты ответа: ${optionsText}`;
       }).join('. ');
     }
     return '';
