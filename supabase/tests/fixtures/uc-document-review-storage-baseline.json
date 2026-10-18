@@ -1,0 +1,24 @@
+{
+  "capturedAt": "2026-10-18",
+  "readOnly": true,
+  "rows": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_org_document_blob_committed(p_bucket text, p_path text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n  SELECT p_bucket='org-documents' AND (\n    p_path ~ '^[0-9a-f-]{36}/versions/[0-9a-f-]{36}/[0-9a-f-]{36}\\.[a-z0-9]{1,12}$'\n    OR EXISTS(SELECT 1 FROM public.org_document_versions WHERE file_path=p_path\n      OR right(file_url,length(p_path)+1)='/'||p_path)\n    OR EXISTS(SELECT 1 FROM public.org_documents WHERE right(file_url,length(p_path)+1)='/'||p_path)\n  )\n$function$\n",
+      "definition_md5": "bc750c58e3d50e33bfd6bf6844fffbaa",
+      "identity": "uc_org_document_blob_committed(text,text)",
+      "kind": "function"
+    },
+    {
+      "definition": "{\"cmd\": \"DELETE\", \"qual\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\", \"roles\": [\"authenticated\"], \"tablename\": \"objects\", \"permissive\": \"RESTRICTIVE\", \"policyname\": \"uc_org_document_blob_no_delete\", \"schemaname\": \"storage\", \"with_check\": null}",
+      "definition_md5": "c82f6a57a88835e478dba6728f01489b",
+      "identity": "uc_org_document_blob_no_delete",
+      "kind": "policy"
+    },
+    {
+      "definition": "{\"cmd\": \"UPDATE\", \"qual\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\", \"roles\": [\"authenticated\"], \"tablename\": \"objects\", \"permissive\": \"RESTRICTIVE\", \"policyname\": \"uc_org_document_blob_no_overwrite\", \"schemaname\": \"storage\", \"with_check\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\"}",
+      "definition_md5": "c5030108254eabf8300b0c94b9d7ef4e",
+      "identity": "uc_org_document_blob_no_overwrite",
+      "kind": "policy"
+    }
+  ]
+}

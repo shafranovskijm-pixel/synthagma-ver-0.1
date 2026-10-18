@@ -24,6 +24,7 @@ interface Props {
   comments: ReviewComment[];
   authorName: string;
   canComment?: boolean;
+  proposalsOnly?: boolean;
   onAddComment: (params: { quotedText: string; commentText: string; positionAnchor: any }) => Promise<void>;
 }
 
@@ -53,7 +54,7 @@ interface InsertDraftState {
  *   • выделение текста → комментарий / удалить / заменить;
  *   • клик в текст → inline-редактор прямо в DOM в точке клика, типа CE-каретка.
  */
-export function ReviewableDocument({ documentHtml, comments, authorName, canComment = true, onAddComment }: Props) {
+export function ReviewableDocument({ documentHtml, comments, authorName, canComment = true, proposalsOnly = false, onAddComment }: Props) {
   const docRef = useRef<HTMLDivElement>(null);
   const draftEditorRef = useRef<HTMLSpanElement | null>(null);
 
@@ -387,7 +388,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
           positionAnchor,
         });
         resetAll();
-        toast.success("Новый текст добавлен");
+        toast.success(proposalsOnly ? "Предложение вставки сохранено. Исходный файл не изменён." : "Новый текст добавлен");
       } catch (e: any) {
         toast.error(e.message || "Не удалось сохранить правку");
       } finally {
@@ -432,7 +433,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     } finally {
       setSubmitting(false);
     }
-  }, [draftKind, draftText, draftReplacement, selection, insertDraft, onAddComment, resetAll]);
+  }, [draftKind, draftText, draftReplacement, selection, insertDraft, onAddComment, resetAll, proposalsOnly]);
 
   // Кастомное событие draft-submit → submit
   useEffect(() => {

@@ -1,0 +1,375 @@
+{
+  "release": "uc-document-review-20261018",
+  "preparedOnly": true,
+  "migrationCount": 1,
+  "batchSha256": "b852810d19de54a7cf4d591fb39e58e24e123061f5b59f34aa24d1fe21503ecf",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceSha256": "70412d3904fdb31613d8ae33d9e7120b55eba80077b370a9b4bbd58156402e3d",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a",
+      "executableMd5": "de6de92f55d7d8478133678026097b9a"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-education-profile-20261018/release-manifest.json",
+    "sourceSha256": "fc02d8e7ca6d7a0adaae550f10602d914b5305bdf23753c4e5e8d171e88ca9fe"
+  },
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.uc_document_action_allowed(uuid,text,uuid,uuid)",
+      "definition_md5": "79c190a053f711dc8110e9d451b1a56c"
+    },
+    {
+      "signature": "public.uc_platform_document_action_allowed(uuid,text)",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d"
+    },
+    {
+      "signature": "public.uc_document_scope_allowed(uuid,uuid,uuid)",
+      "definition_md5": "2a7407e7d178c7561b1d390f0884c6b6"
+    },
+    {
+      "signature": "public.uc_document_teacher_limited(uuid)",
+      "definition_md5": "72cdbafda69c66500e0d9ae87e8ae403"
+    },
+    {
+      "signature": "public.is_org_owner(uuid,uuid)",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2"
+    },
+    {
+      "signature": "public.has_org_staff_permission(uuid,uuid,text)",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782"
+    },
+    {
+      "signature": "public.uc_guard_document_pointer()",
+      "definition_md5": "05734107701fca0104e19952c4880440"
+    },
+    {
+      "signature": "public.uc_guard_document_version_write()",
+      "definition_md5": "e62e9d7f9c8f6c99c049417775b5da2a"
+    },
+    {
+      "signature": "public.uc_org_document_blob_committed(text,text)",
+      "definition_md5": "bc750c58e3d50e33bfd6bf6844fffbaa"
+    },
+    {
+      "signature": "public.can_access_organization(uuid,text)",
+      "definition_md5": "2e11495f3d3e6ca261af8a08ed874269"
+    },
+    {
+      "signature": "public.get_org_staff_permissions(uuid,uuid)",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3"
+    },
+    {
+      "signature": "public.has_role(app_role,uuid)",
+      "definition_md5": "20c46f708cc2e7fa51b640290151a59e"
+    },
+    {
+      "signature": "public.has_role(uuid,app_role)",
+      "definition_md5": "82a7fa1cd06301bb83b010bc315aee0b"
+    },
+    {
+      "signature": "public.org_role_default_permissions(text)",
+      "definition_md5": "7aeb1012822cfe0013409ce5b1df1771"
+    },
+    {
+      "signature": "public.normalize_org_staff_permission(text)",
+      "definition_md5": "bb385c2b288bb966297a8504df1696ea"
+    }
+  ],
+  "immutableStorage": [
+    {
+      "definition": "{\"cmd\": \"DELETE\", \"qual\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\", \"roles\": [\"authenticated\"], \"tablename\": \"objects\", \"permissive\": \"RESTRICTIVE\", \"policyname\": \"uc_org_document_blob_no_delete\", \"schemaname\": \"storage\", \"with_check\": null}",
+      "definition_md5": "c82f6a57a88835e478dba6728f01489b",
+      "identity": "uc_org_document_blob_no_delete",
+      "kind": "policy"
+    },
+    {
+      "definition": "{\"cmd\": \"UPDATE\", \"qual\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\", \"roles\": [\"authenticated\"], \"tablename\": \"objects\", \"permissive\": \"RESTRICTIVE\", \"policyname\": \"uc_org_document_blob_no_overwrite\", \"schemaname\": \"storage\", \"with_check\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\"}",
+      "definition_md5": "c5030108254eabf8300b0c94b9d7ef4e",
+      "identity": "uc_org_document_blob_no_overwrite",
+      "kind": "policy"
+    }
+  ],
+  "expectedFunctions": [
+    {
+      "signature": "add_org_document_review_comment(uuid,uuid,bigint,text,text,jsonb,uuid)",
+      "definition_md5": "9ac6ed846ae68abe16506ef101b61cfe",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "get_org_document_workflow(uuid)",
+      "definition_md5": "fbfd77ee0612152324ca66b387350fe4",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "list_org_document_review_candidates(uuid)",
+      "definition_md5": "4c1401764363fb46a1d2895be968322c",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "resolve_org_document_review_comment(uuid,bigint,text,text,uuid)",
+      "definition_md5": "994b7de94f54b67513123e41dc4a3c3e",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "save_org_document_review_draft(uuid,uuid,bigint,bigint,uuid,uuid,jsonb,uuid)",
+      "definition_md5": "c810584557dcec64792fa28aba977699",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "transition_org_document_review(uuid,bigint,bigint,text,text,text,date,uuid)",
+      "definition_md5": "79e1d5e6e8fcf9f4f22336a3cdfd9af2",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_org_document_review_history()",
+      "definition_md5": "c5a41dc28c5166ca64bc12b6d045a0d1",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_org_document_review_record()",
+      "definition_md5": "6455ddb3a86e9284c610db4203880320",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_mutate_org_document_review(text,jsonb)",
+      "definition_md5": "74cb0b0059a16da71be61618e4cbd411",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_org_document_review_actor(uuid,uuid)",
+      "definition_md5": "89738b475b21d69f496a543ceb97da49",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_org_document_review_actor_name(uuid,uuid)",
+      "definition_md5": "3be72ce07caea51ac89d46e2fa6ca2e7",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_org_document_review_file_bound(org_documents)",
+      "definition_md5": "52a37a3afd327393cc73b8af2a784316",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_org_document_review_file_state(org_documents)",
+      "definition_md5": "1d653238bb9409357a17dc18fe78e060",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_org_document_review_snapshot(uuid)",
+      "definition_md5": "21e23b5969a0b835dc8078d480976e69",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_validate_org_document_review_links(uuid,jsonb)",
+      "definition_md5": "96e63767fec0bca93e7c77930e8e4407",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "org_document_reviews",
+      "schemaMd5": "5e748d5d2679c9a40cc5e083e19d7d56"
+    },
+    {
+      "table": "org_document_review_comments",
+      "schemaMd5": "889d533fca3ede97fe04d449bf3f0a8e"
+    },
+    {
+      "table": "org_document_review_events",
+      "schemaMd5": "aaeab9eec03d949b52d226de59df2769"
+    },
+    {
+      "table": "org_document_review_requests",
+      "schemaMd5": "ee5af1e6e9af44a9acf0a373eb8777a2"
+    }
+  ],
+  "frontendFiles": [
+    {
+      "path": "src/components/organization/OrgDocumentVersionsDialog.tsx",
+      "sourceSha256": "a16cb1a62a60faf9e3783c680c106c10b2b66b562b15252b5590f6b586648680"
+    },
+    {
+      "path": "src/components/organization/documents/OrgDocumentWorkflowPanel.tsx",
+      "sourceSha256": "f5ed31699d9e28e786b85547907fcdfec550fbfc25da1066cda71b0604b87fd0"
+    },
+    {
+      "path": "src/components/signing/ReviewableDocument.tsx",
+      "sourceSha256": "6f8b07910723d83f6916bd63e764a936423a24f966c96d128802de01eda2b083"
+    },
+    {
+      "path": "src/hooks/useOrgDocumentVersions.ts",
+      "sourceSha256": "0df841128a82200f4dd9b26d9ff56cb1b4278c8260bfaf79a2f15c5baab8f669"
+    },
+    {
+      "path": "src/hooks/useOrgDocumentWorkflow.ts",
+      "sourceSha256": "a115636357a072ea794c0ae76f740b8a10fe365e9cae3701afa029882fd001c5"
+    },
+    {
+      "path": "src/lib/orgDocumentReviewContent.ts",
+      "sourceSha256": "fdd25d90f4244d280a8398283104ff8fb461fb1f98ceb0c9a3ff31755088f2e6"
+    },
+    {
+      "path": "src/lib/orgDocumentWorkflow.ts",
+      "sourceSha256": "247380b17a4efdbe7c1240a4b0e7d2c5b46b09acac37bfb0cfc8a806cf2477d2"
+    }
+  ],
+  "edgeFunctions": [],
+  "deploymentOrder": [
+    "Read-only preflight: exact100-109 installed including previous release postcheck",
+    "Submit entire single110 transaction once",
+    "All postcheck fields true; existing rows/functions/policies/cron preserved",
+    "Companion UI deploy; internal review is separate from PEP/signatures and issuance",
+    "Use prepared rollback-only QA acceptance, then parent-owned browser acceptance"
+  ]
+}

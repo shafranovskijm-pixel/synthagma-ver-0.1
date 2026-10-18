@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-const state=vi.hoisted(()=>({read:vi.fn(),upload:vi.fn(),restore:vi.fn(),refreshed:vi.fn(),download:vi.fn()}));
+const state=vi.hoisted(()=>({read:vi.fn(),upload:vi.fn(),restore:vi.fn(),refreshed:vi.fn(),download:vi.fn(),refresh:vi.fn()}));
 vi.mock("@/utils/storageHelpers",()=>({downloadPrivateFile:state.download}));
 vi.mock("@/hooks/useOrgDocumentVersions",()=>({useOrgDocumentVersions:state.read}));
+vi.mock("../documents/OrgDocumentWorkflowPanel",()=>({OrgDocumentWorkflowPanel:({onOpenFiles}:{onOpenFiles:()=>void})=><button onClick={onOpenFiles}>Перейти к файлам и версиям</button>}));
 import { OrgDocumentVersionsDialog } from "../OrgDocumentVersionsDialog";
 const versions=[
   {id:"current",document_id:"doc",organization_id:"org",version_number:2,file_url:"https://example.test/new.pdf",created_at:"2026-10-18T00:00:00Z",event_kind:"upload"},
@@ -12,10 +13,28 @@ const props={open:true,onOpenChange:vi.fn(),documentId:"doc",documentName:"Ли�
 beforeEach(()=>{
   vi.clearAllMocks();
   state.upload.mockResolvedValue(true);state.restore.mockResolvedValue(true);
-  state.read.mockImplementation((_id,canWrite)=>({versions,loading:false,currentVersionId:"current",canChange:canWrite,
+  state.read.mockImplementation((_id,canWrite)=>({versions,loading:false,loadError:null,hasLoaded:true,refresh:state.refresh,currentVersionId:"current",canChange:canWrite,
     uploadVersion:state.upload,restoreVersion:state.restore}));
 });
 describe("organization version history permissions and event UI",()=>{
+  it("offers a retry for a failed history read instead of claiming no history exists",()=>{
+    state.read.mockReturnValue({versions:[],loading:false,loadError:"Не удалось загрузить историю версий.",hasLoaded:false,
+      refresh:state.refresh,currentVersionId:null,canChange:false,uploadVersion:state.upload,restoreVersion:state.restore});
+    render(<OrgDocumentVersionsDialog {...props} canWrite />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Не удалось загрузить историю версий.");
+    expect(screen.queryByText(/История пока не велась/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button",{name:"Загрузить новую версию"})).toBeDisabled();
+    fireEvent.click(screen.getByRole("button",{name:"Повторить загрузку истории"}));
+    expect(state.refresh).toHaveBeenCalledOnce();
+  });
+  it("returns from internal review to the existing version upload without writing a file automatically",()=>{
+    render(<OrgDocumentVersionsDialog {...props} canWrite />);
+    fireEvent.keyDown(screen.getByRole("tab",{name:"Внутреннее согласование"}),{key:"Enter"});
+    fireEvent.click(screen.getByRole("button",{name:"Перейти к файлам и версиям"}));
+    expect(screen.getByRole("tab",{name:"Файлы и версии"})).toHaveAttribute("aria-selected","true");
+    expect(screen.getByRole("button",{name:"Загрузить новую версию"})).toBeEnabled();
+    expect(state.upload).not.toHaveBeenCalled();expect(state.restore).not.toHaveBeenCalled();
+  });
   it("downloads a historical file through private Storage access",()=>{
     state.download.mockResolvedValue(true);
     render(<OrgDocumentVersionsDialog {...props} />);
