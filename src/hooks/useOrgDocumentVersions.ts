@@ -14,6 +14,8 @@ export interface OrgDocumentVersion {
 export function useOrgDocumentVersions(documentId: string | null, canWrite = false) {
   const [versions, setVersions] = useState<OrgDocumentVersion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [document, setDocument] = useState<{ document_revision: number; current_version_id: string | null; deleted_at: string | null } | null>(null);
   const sequence = useRef(0);
   const activeDocument = useRef(documentId);
@@ -25,6 +27,7 @@ export function useOrgDocumentVersions(documentId: string | null, canWrite = fal
     if (activeDocument.current !== documentId) return;
     const run = ++sequence.current;
     setLoading(true);
+    setLoadError(null); setHasLoaded(false);
     setVersions([]); setDocument(null);
     if (!documentId) { setLoading(false); return; }
     try {
@@ -34,12 +37,13 @@ export function useOrgDocumentVersions(documentId: string | null, canWrite = fal
       ]);
       if (history.error) throw history.error;
       if (current.error) throw current.error;
-      if (run !== sequence.current) return;
+      if (run !== sequence.current || activeDocument.current !== documentId) return;
       setVersions((history.data || []) as OrgDocumentVersion[]);
       setDocument(current.data as unknown as typeof document);
+      setHasLoaded(true);
     } catch (e) {
-      if (run === sequence.current) toast.error("Ошибка загрузки версий", { description: getErrorMessage(e) });
-    } finally { if (run === sequence.current) setLoading(false); }
+      if (run === sequence.current && activeDocument.current === documentId) setLoadError(`Не удалось загрузить историю версий. ${getErrorMessage(e)}`);
+    } finally { if (run === sequence.current && activeDocument.current === documentId) setLoading(false); }
   }, [documentId]);
   useEffect(() => {
     upload.current = null; restore.current = null;
@@ -85,6 +89,6 @@ export function useOrgDocumentVersions(documentId: string | null, canWrite = fal
       return false;
     } finally { busy.current = false; }
   };
-  return { versions, loading, refresh, uploadVersion, restoreVersion, currentVersionId: document?.current_version_id,
-    canChange: canWrite && !!document && !document.deleted_at };
+  return { versions, loading, loadError, hasLoaded, refresh, uploadVersion, restoreVersion, currentVersionId: document?.current_version_id,
+    canChange: canWrite && hasLoaded && !loading && !loadError && !!document && !document.deleted_at };
 }
