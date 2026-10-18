@@ -246,7 +246,7 @@ export function useCourseLearning() {
 
   const isLessonCompleted = (lessonId: string) => lessonProgress.some(p => p.lesson_id === lessonId && p.completed);
 
-  const isLessonAccessible = (index: number): boolean => {
+  const isLessonAccessible = (index: number, completedIds?: ReadonlySet<string>): boolean => {
     const lesson = lessons[index];
     if (lesson?.is_locked) return false;
     if (lesson?.locked_until) {
@@ -256,7 +256,7 @@ export function useCourseLearning() {
     if (!course?.sequential_lessons) return true;
     if (index === 0) return true;
     for (let i = 0; i < index; i++) {
-      if (!isLessonCompleted(lessons[i].id)) return false;
+      if (!(completedIds ? completedIds.has(lessons[i].id) : isLessonCompleted(lessons[i].id))) return false;
     }
     return true;
   };
@@ -264,7 +264,9 @@ export function useCourseLearning() {
   const goToNextLesson = () => {
     const nextIndex = currentLessonIndex + 1;
     if (nextIndex < lessons.length) {
-      if (!isLessonAccessible(nextIndex)) { toast.error('Сначала завершите текущий урок'); return; }
+      // markLessonProgress commits this set after both writes, before React
+      // renders lessonProgress. Auto-advance must use that confirmed state.
+      if (!isLessonAccessible(nextIndex, completedIdsRef.current)) { toast.error('Сначала завершите текущий урок'); return; }
       setIsTransitioning(true); videoHook.setVideoWatchProgress(0);
       setTimeout(() => { setCurrentLessonIndex(nextIndex); setIsTransitioning(false); }, 300);
     }
