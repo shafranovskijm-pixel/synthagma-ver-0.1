@@ -9496,6 +9496,104 @@ export type Database = {
           },
         ]
       }
+      org_staff_document_groups: {
+        Row: {
+          group_id: string
+          organization_id: string
+          staff_id: string
+        }
+        Insert: {
+          group_id: string
+          organization_id: string
+          staff_id: string
+        }
+        Update: {
+          group_id?: string
+          organization_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_staff_document_groups_group_id_organization_id_fkey"
+            columns: ["group_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "org_staff_document_groups_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "org_staff_document_scopes"
+            referencedColumns: ["staff_id", "organization_id"]
+          },
+        ]
+      }
+      org_staff_document_scope_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          new_group_ids: string[]
+          old_group_ids: string[]
+          organization_id: string
+          revision: number
+          staff_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          new_group_ids: string[]
+          old_group_ids: string[]
+          organization_id: string
+          revision: number
+          staff_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          new_group_ids?: string[]
+          old_group_ids?: string[]
+          organization_id?: string
+          revision?: number
+          staff_id?: string
+        }
+        Relationships: []
+      }
+      org_staff_document_scopes: {
+        Row: {
+          organization_id: string
+          revision: number
+          staff_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          organization_id: string
+          revision?: number
+          staff_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          organization_id?: string
+          revision?: number
+          staff_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_staff_document_scopes_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: true
+            referencedRelation: "org_staff"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       org_student_messages: {
         Row: {
           attachment_name: string | null
@@ -14366,6 +14464,36 @@ export type Database = {
           },
         ]
       }
+      uc_goreltech_document_stages: {
+        Row: {
+          actor_id: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          group_id: string
+          organization_id: string
+          payload_sha256: string
+        }
+        Insert: {
+          actor_id: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          group_id: string
+          organization_id: string
+          payload_sha256: string
+        }
+        Update: {
+          actor_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          group_id?: string
+          organization_id?: string
+          payload_sha256?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -15527,6 +15655,17 @@ export type Database = {
         }
         Returns: Json
       }
+      commit_org_staff_document_assignment: {
+        Args: {
+          p_can_receive_crm_tasks?: boolean
+          p_display_name: string
+          p_org: string
+          p_role: string
+          p_user: string
+          p_visibility?: string
+        }
+        Returns: boolean
+      }
       complete_final_test_photo: {
         Args: { p_challenge_id: string }
         Returns: Json
@@ -16273,6 +16412,14 @@ export type Database = {
       }
       get_org_email_delivery_status: {
         Args: { p_organization_id: string }
+        Returns: Json
+      }
+      get_org_staff_document_grants: {
+        Args: { p_org: string; p_staff: string }
+        Returns: Json
+      }
+      get_org_staff_document_scope: {
+        Args: { p_organization_id: string; p_staff_id: string }
         Returns: Json
       }
       get_org_staff_permissions: {
@@ -17041,6 +17188,15 @@ export type Database = {
         Args: { p_lesson_id: string }
         Returns: boolean
       }
+      register_goreltech_group_document_stage: {
+        Args: {
+          p_actor_id: string
+          p_docs: Json
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       register_referral:
         | {
             Args: { p_organization_id: string; p_ref_code: string }
@@ -17067,6 +17223,15 @@ export type Database = {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
       }
+      reserve_education_registration_number: {
+        Args: {
+          p_doc_type: string
+          p_group: string
+          p_org: string
+          p_year?: number
+        }
+        Returns: number
+      }
       reserve_goreltech_enrollment_order: {
         Args: {
           p_actor_id: string
@@ -17079,6 +17244,15 @@ export type Database = {
           p_template_sha256: string
         }
         Returns: Json
+      }
+      reserve_group_document_number: {
+        Args: {
+          p_doc_type: string
+          p_group: string
+          p_org: string
+          p_year?: number
+        }
+        Returns: number
       }
       reserve_mailing_campaign_quota: {
         Args: {
@@ -17343,6 +17517,26 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_org_staff_document_grants: {
+        Args: {
+          p_expected_role: string
+          p_expected_sections_access: Json
+          p_issue: boolean
+          p_org: string
+          p_sign: boolean
+          p_staff: string
+        }
+        Returns: Json
+      }
+      set_org_staff_document_groups: {
+        Args: {
+          p_expected_revision: number
+          p_group_ids: string[]
+          p_organization_id: string
+          p_staff_id: string
+        }
+        Returns: Json
+      }
       set_signature_comment_resolution: {
         Args: {
           p_comment_id: string
@@ -17432,32 +17626,122 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_document_action_allowed: {
+        Args: {
+          p_action: string
+          p_enrollment?: string
+          p_group?: string
+          p_org: string
+        }
+        Returns: boolean
+      }
       uc_document_billing_upload_access: {
         Args: { p_name: string }
+        Returns: boolean
+      }
+      uc_document_commercial_creation_allowed: {
+        Args: { p_org: string }
         Returns: boolean
       }
       uc_document_company_access: {
         Args: { p_company: string; p_write?: boolean }
         Returns: boolean
       }
+      uc_document_contract_party: {
+        Args: { p_company: string; p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_document_contract_scope: {
+        Args: {
+          p_company: string
+          p_group: string
+          p_org: string
+          p_students: Json
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_document_course_scope_allowed: {
+        Args: { p_course: string; p_org: string }
+        Returns: boolean
+      }
       uc_document_enrollment_access: {
         Args: { p_enrollment: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_document_has_action: {
+        Args: { p_action: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_journal_write_scope: {
+        Args: { p_course: string; p_org: string; p_user?: string }
         Returns: boolean
       }
       uc_document_org_access: {
         Args: { p_org: string; p_write?: boolean }
         Returns: boolean
       }
+      uc_document_own_group: {
+        Args: { p_group: string; p_org: string }
+        Returns: boolean
+      }
       uc_document_owns_enrollment: {
         Args: { p_enrollment: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_record_scope: {
+        Args: {
+          p_course: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_document_row_action_allowed: {
+        Args: { p_row: Json; p_table: string }
+        Returns: boolean
+      }
+      uc_document_scope_allowed: {
+        Args: { p_enrollment?: string; p_group?: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_signature_read_scope: {
+        Args: { p_signature_id: string }
+        Returns: boolean
+      }
+      uc_document_signature_scope: {
+        Args: { p_signature_id: string }
+        Returns: boolean
+      }
+      uc_document_signature_source_scope: {
+        Args: { p_document: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_staff_manager: {
+        Args: { p_org: string; p_write?: boolean }
         Returns: boolean
       }
       uc_document_storage_access: {
         Args: { p_bucket: string; p_name: string; p_write?: boolean }
         Returns: boolean
       }
+      uc_document_storage_scope: {
+        Args: { p_bucket: string; p_name: string }
+        Returns: boolean
+      }
       uc_document_student_in_org: {
         Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_document_student_scope_allowed: {
+        Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_document_teacher_limited: { Args: { p_org: string }; Returns: boolean }
+      uc_document_user_course_scope: {
+        Args: { p_course: string; p_org: string; p_user: string }
         Returns: boolean
       }
       uc_finalize_signature: {
@@ -17482,12 +17766,32 @@ export type Database = {
         Args: { p_bucket: string; p_path: string }
         Returns: boolean
       }
+      uc_platform_document_action_allowed: {
+        Args: { p_action: string; p_user: string }
+        Returns: boolean
+      }
+      uc_platform_document_storage_action_allowed: {
+        Args: { p_bucket: string; p_name: string }
+        Returns: boolean
+      }
+      uc_platform_sales_action_allowed: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      uc_signature_action_allowed: {
+        Args: { p_action: string; p_signature: string }
+        Returns: boolean
+      }
       uc_signature_actor_allowed: {
         Args: {
           p_recipient?: boolean
           p_signature_id: string
           p_write?: boolean
         }
+        Returns: boolean
+      }
+      uc_signature_commercial_sender_allowed: {
+        Args: { p_signature: string }
         Returns: boolean
       }
       uc_signature_storage_read: {
@@ -17561,6 +17865,10 @@ export type Database = {
           organization_id: string
           reason: string
         }[]
+      }
+      validate_org_staff_document_assignment: {
+        Args: { p_org: string; p_role: string; p_sections_access?: Json }
+        Returns: boolean
       }
       verify_billing_cron_secret: {
         Args: { p_secret: string }

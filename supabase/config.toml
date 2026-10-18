@@ -253,3 +253,8 @@ verify_jwt = false
 [functions.compile-group-class-journal]
 verify_jwt = false
 
+# Public read-only file broker validates the invitation and exact DB-bound file
+# through a service-only context RPC. No public Storage policies are added.
+[functions.get-signature-file]
+verify_jwt = false
+
