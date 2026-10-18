@@ -84,8 +84,9 @@ describe("private storage file actions", () => {
       error: null,
     });
 
+    const progress = vi.fn((phase: string) => { if (phase === "handed_to_browser") expect(click).toHaveBeenCalledOnce(); });
     await expect(
-      downloadPrivateFile("billing-documents", "org/file.docx", "Журнал занятий.docx"),
+      downloadPrivateFile("billing-documents", "org/file.docx", "Журнал занятий.docx", { onProgress: progress }),
     ).resolves.toBe(true);
 
     expect(mocks.createSignedUrl).toHaveBeenCalledWith(
@@ -99,6 +100,59 @@ describe("private storage file actions", () => {
     expect(anchor.href).toBe("blob:synthetic-private-document");
     expect(anchor.download).toBe("Журнал занятий.docx");
     expect(document.querySelector('a[download="Журнал занятий.docx"]')).not.toBeInTheDocument();
+    expect(progress.mock.calls.map(([phase]) => phase)).toEqual(["preparing", "downloading", "handed_to_browser"]);
+  });
+
+  it("bounds signing by the total deadline and ignores a late signed URL", async () => {
+    let finishSigning!: (value: unknown) => void;
+    mocks.createSignedUrl.mockReturnValue(new Promise(resolve => { finishSigning = resolve; }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const fetchFile = vi.fn(); vi.stubGlobal("fetch", fetchFile);
+    const progress = vi.fn();
+    const pending = downloadPrivateFile("org-documents", "org/qa.pdf", "QA.pdf", { onProgress: progress });
+    await vi.advanceTimersByTimeAsync(45000);
+    await expect(pending).resolves.toBe(false);
+    expect(progress.mock.calls.map(([phase]) => phase)).toEqual(["preparing", "timed_out"]);
+    finishSigning({ data: { signedUrl: "https://storage.example/qa.pdf" }, error: null });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchFile).not.toHaveBeenCalled(); expect(click).not.toHaveBeenCalled();
+    expect(progress).toHaveBeenLastCalledWith("timed_out");
+  });
+
+  it("shares one deadline between signing and fetch, aborting even if a late transport ignores the signal", async () => {
+    let finishSigning!: (value: unknown) => void, finishFetch!: (value: unknown) => void;
+    mocks.createSignedUrl.mockReturnValue(new Promise(resolve => { finishSigning = resolve; }));
+    const fetchFile = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => new Promise(resolve => { finishFetch = resolve; })); vi.stubGlobal("fetch", fetchFile);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const progress = vi.fn();
+    const pending = downloadPrivateFile("org-documents", "org/qa.pdf", "QA.pdf", { onProgress: progress });
+    await vi.advanceTimersByTimeAsync(40000);
+    finishSigning({ data: { signedUrl: "https://storage.example/qa.pdf" }, error: null });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(progress).toHaveBeenLastCalledWith("downloading");
+    const signal = fetchFile.mock.calls[0][1]?.signal as AbortSignal;
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(pending).resolves.toBe(false); expect(signal.aborted).toBe(true);
+    const readBody = vi.fn().mockResolvedValue(new Blob(["PDF"]));
+    finishFetch({ ok: true, headers: new Headers({ "content-type": "application/pdf" }), blob: readBody });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(readBody).not.toHaveBeenCalled(); expect(click).not.toHaveBeenCalled();
+    expect(progress).toHaveBeenLastCalledWith("timed_out");
+  });
+
+  it.each(["deadline", "cancel"])("does not download a body arriving after %s", async reason => {
+    let finishBody!: (blob: Blob) => void;
+    mocks.createSignedUrl.mockResolvedValue({ data: { signedUrl: "https://storage.example/qa.pdf" }, error: null });
+    const body = vi.fn(() => new Promise<Blob>(resolve => { finishBody = resolve; }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ "content-type": "application/pdf" }), blob: body }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const progress = vi.fn(), controller = new AbortController();
+    const pending = downloadPrivateFile("org-documents", "org/qa.pdf", "QA.pdf", { onProgress: progress, signal: controller.signal });
+    await vi.advanceTimersByTimeAsync(0); expect(body).toHaveBeenCalledOnce();
+    if (reason === "deadline") await vi.advanceTimersByTimeAsync(45000); else controller.abort();
+    await expect(pending).resolves.toBe(false);
+    finishBody(new Blob(["PDF"])); await vi.advanceTimersByTimeAsync(1);
+    expect(click).not.toHaveBeenCalled(); expect(progress).toHaveBeenLastCalledWith(reason === "deadline" ? "timed_out" : "cancelled");
   });
 
   it.each([
