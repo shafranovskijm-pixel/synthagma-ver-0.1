@@ -8,9 +8,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
 };
 
 const RETENTION_DAYS = 30;
+// Keep both legacy files and immutable versions until UC-024 defines a reviewed
+// retention workflow. Service-role Storage removal runs before DB deletion and
+// would bypass the version protections even if the later row delete is denied.
+const EXCLUDED_TABLES = ["org_documents", "document_signatures", "document_issuance_log", "education_document_records"] as const;
 
 // Map of recycle-bin tables → which column holds the storage path/url + which bucket
 type TableSpec = {
@@ -21,13 +26,9 @@ type TableSpec = {
 };
 
 const TABLES: TableSpec[] = [
-  { table: "org_documents", pathColumns: ["file_path", "file_url"], bucket: "org-documents", urlMarker: "/org-documents/" },
   { table: "company_documents", pathColumns: ["file_path", "file_url"], bucket: "billing-documents", urlMarker: "/billing-documents/" },
   { table: "org_billing_documents", pathColumns: ["file_url"], bucket: "billing-documents", urlMarker: "/billing-documents/" },
   { table: "incoming_documents", pathColumns: ["file_path", "file_url"], bucket: "incoming-documents", urlMarker: "/incoming-documents/" },
-  { table: "document_signatures", pathColumns: ["signed_document_path", "document_snapshot_url", "handwritten_scan_path"], bucket: "signed-documents", urlMarker: "/signed-documents/" },
-  { table: "document_issuance_log", pathColumns: ["file_url"], bucket: "student-documents", urlMarker: "/student-documents/" },
-  { table: "education_document_records", pathColumns: [], bucket: "" }, // no file
   { table: "data_subject_requests", pathColumns: [], bucket: "" }, // attachments are array, skip in v1
   { table: "commercial_proposals", pathColumns: [], bucket: "" }, // HTML in column, no file
 ];
@@ -49,10 +50,19 @@ function extractStoragePath(value: string | null, marker: string | undefined): s
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), {
+    status: 405, headers: { ...corsHeaders, "Content-Type": "application/json", Allow: "POST, OPTIONS" },
+  });
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceKey || req.headers.get("Authorization") !== `Bearer ${serviceKey}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    serviceKey,
   );
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -115,7 +125,7 @@ Deno.serve(async (req) => {
 
   console.log("purge-recycle-bin-storage report:", JSON.stringify(report));
 
-  return new Response(JSON.stringify({ ok: true, cutoff, retentionDays: RETENTION_DAYS, report }), {
+  return new Response(JSON.stringify({ ok: true, cutoff, retentionDays: RETENTION_DAYS, excludedTables: EXCLUDED_TABLES, report }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
     status: 200,
   });
