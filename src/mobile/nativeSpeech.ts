@@ -24,7 +24,7 @@ export function nativeSpeechMessage(status: NativeSpeechStatus | null): string {
 
 export function resolveTTSProvider(raw: unknown, native: boolean, explicitChoice: boolean): 'native' | 'browser' | 'salutespeech' {
   if (native) return explicitChoice && raw === 'salutespeech' ? 'salutespeech' : 'native';
-  return raw === 'browser' || raw === 'native' ? 'browser' : 'salutespeech';
+  return explicitChoice && raw === 'salutespeech' ? 'salutespeech' : 'browser';
 }
 
 export async function getNativeSpeechStatus(): Promise<NativeSpeechStatus> {

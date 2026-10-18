@@ -27,7 +27,10 @@ describe('native speech availability and provider selection', () => {
   it('preserves browser behavior outside the native application', () => {
     expect(resolveTTSProvider('browser', false, true)).toBe('browser');
     expect(resolveTTSProvider('native', false, true)).toBe('browser');
-    expect(resolveTTSProvider(undefined, false, false)).toBe('salutespeech');
+    expect(resolveTTSProvider(undefined, false, false)).toBe('browser');
+    expect(resolveTTSProvider('salutespeech', false, false)).toBe('browser');
+    expect(resolveTTSProvider('salutespeech', false, true)).toBe('salutespeech');
+    expect(resolveTTSProvider('elevenlabs', false, true)).toBe('browser');
   });
 
   it('distinguishes a missing engine from a missing installed Russian voice', () => {
