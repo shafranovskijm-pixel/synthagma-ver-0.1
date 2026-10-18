@@ -6,7 +6,7 @@ import { billingDocumentTarget, requireDocumentWrite } from "../_shared/document
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
+  "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
   "Cache-Control": "no-store",
 };
 
@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
     const userDb = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: req.headers.get("Authorization")! } },
     });
-    await requireDocumentWrite(userDb, target.organizationId);
+    await requireDocumentWrite(userDb, target.organizationId, target.groupId);
     const token = Deno.env.get("BROWSERLESS_TOKEN");
     if (!token) throw new AccessError(503, "Сервис формирования PDF не настроен. Документ не сохранён.");
     const bytes = await renderPdf(target.html, token);

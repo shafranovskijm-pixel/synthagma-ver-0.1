@@ -2,15 +2,15 @@ import { AccessError, checked, requireUuid, type AccessDb, type Actor } from "./
 
 // Use the request's verified user client: the RPC resolves auth.uid() on the
 // server, never an actor or organization supplied in the request body.
-export async function requireDocumentWrite(userDb: AccessDb, organizationId: string): Promise<void> {
-  const allowed = checked(await userDb.rpc("can_access_organization", {
-    _organization_id: organizationId, _permission: "documents.write",
+export async function requireDocumentWrite(userDb: AccessDb, organizationId: string, groupId: string | null = null): Promise<void> {
+  const allowed = checked(await userDb.rpc("uc_document_action_allowed", {
+    p_org: organizationId, p_action: "write", p_group: groupId, p_enrollment: null,
   }));
   if (allowed !== true) throw new AccessError(403, "Нет права изменять документы этой организации");
 }
 
 export function billingDocumentTarget(body: Record<string, unknown>): {
-  organizationId: string; html: string; fileName: string; storagePath: string;
+  organizationId: string; groupId: string | null; html: string; fileName: string; storagePath: string;
 } {
   if (typeof body.html !== "string" || !body.html.trim() || body.html.length > 5_000_000) {
     throw new AccessError(400, "Некорректный или слишком большой документ");
@@ -30,7 +30,8 @@ export function billingDocumentTarget(body: Record<string, unknown>): {
       !segments.at(-1)!.toLowerCase().endsWith(".pdf")) {
     throw new AccessError(400, "Некорректный путь документа");
   }
-  return { organizationId, html: body.html, fileName: body.fileName, storagePath: body.storagePath };
+  const groupId = segments[1] === "contracts" ? requireUuid(segments[2], "учебная группа") : null;
+  return { organizationId, groupId, html: body.html, fileName: body.fileName, storagePath: body.storagePath };
 }
 
 // Organizations request the service; only the platform administrator can
@@ -42,6 +43,10 @@ export async function requireSelfExaminationOrder(
   const role = checked<any>(await db.from("user_roles").select("role")
     .eq("user_id", actor.userId).eq("role", "admin").maybeSingle());
   if (role?.role !== "admin") throw new AccessError(403, "Требуются права администратора платформы");
+  const platformWrite = checked(await db.rpc("uc_platform_document_action_allowed", {
+    p_user: actor.userId, p_action: "write",
+  }));
+  if (platformWrite !== true) throw new AccessError(403, "Нет права исполнять услуги по документам платформы");
   if (!orderId) return null; // Preserve the administrator's explicit manual workflow.
   const order = checked<any>(await db.from("service_orders").select("id,organization_id,service_id,status,notes")
     .eq("id", orderId).maybeSingle());

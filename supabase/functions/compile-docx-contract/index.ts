@@ -6,6 +6,8 @@
  * bucket. Никакого DOCX → HTML → DOCX. PDF в этом окружении не рендерится:
  * возвращаем честный статус pdf_status = 'unavailable'.
  */
+import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
+import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3.23.8";
@@ -65,6 +67,7 @@ Deno.serve(async (req) => {
     ...corsHeaders,
     "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
     "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
+    "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
     "X-Sintagma-Request-Id": requestId,
   };
   if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
@@ -86,16 +89,16 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData?.user) return json({ error: "Недействительная сессия" }, 401);
-    const userId = userData.user.id;
+    const admin = createClient(url, service);
+    const actor = await requireActiveUser(req, admin);
+    const userId = actor.userId!;
 
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) return json({ error: "Некорректные данные", details: parsed.error.flatten().fieldErrors }, 400);
     const body = parsed.data;
     if (!body.groupId) return json({ error: "Учебная группа обязательна для договора с компанией" }, 422);
 
-    const admin = createClient(url, service);
+    await requireDocumentWrite(userClient, body.organizationId, body.groupId);
 
     const replayResponse = (existing: any) => {
       const variables = existing?.variables_snapshot && typeof existing.variables_snapshot === "object"
@@ -120,24 +123,6 @@ Deno.serve(async (req) => {
         idempotent_replay: true,
       });
     };
-
-    // Авторизация: глобальный админ или сотрудник организации с правом на документы.
-    const [adminRoleResult, permissionResult, ownerResult] = await Promise.all([
-      admin
-        .from("user_roles")
-        .select("user_id")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle(),
-      admin.rpc("has_org_staff_permission", { _user_id: userId, _organization_id: body.organizationId, _permission: "documents.manage" }),
-      admin.rpc("is_org_owner", { _user_id: userId, _organization_id: body.organizationId }),
-    ]);
-    const authzError = adminRoleResult.error || permissionResult.error || ownerResult.error;
-    if (authzError) throw authzError;
-    const isAdmin = Boolean(adminRoleResult.data);
-    const hasPerm = permissionResult.data;
-    const isOwner = ownerResult.data;
-    if (!isAdmin && !hasPerm && !isOwner) return json({ error: "Недостаточно прав для генерации договора" }, 403);
 
     // Фирменный договор является клиентским активом ГОРЭЛТЕХ. Организацию
     // определяет только сервер по organizationId из авторизованного запроса:
@@ -329,7 +314,7 @@ Deno.serve(async (req) => {
     });
     if (uploadError) throw uploadError;
 
-    const { data: inserted, error: insertError } = await admin
+    const { data: inserted, error: insertError } = await userClient
       .from("org_contracts")
       .insert({
         id: contractId,
@@ -401,6 +386,7 @@ Deno.serve(async (req) => {
       pdf_status: "unavailable",
     });
   } catch (e) {
+    if (e instanceof AccessError) return json({ error: e.message }, e.status);
     console.error("compile-docx-contract error", e);
     return json({ error: (e as Error).message || "Внутренняя ошибка" }, 500);
   }

@@ -4,6 +4,8 @@
  * реквизиты. Клиент передаёт режим и фактические табличные данные остальных
  * документов этой же атомарной партии.
  */
+import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
+import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
@@ -110,23 +112,7 @@ function decodeBase64Bytes(value: string): Uint8Array {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 }
 
-function isMissingRpcError(error: unknown, functionName: string): boolean {
-  const value = error && typeof error === "object"
-    ? error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown }
-    : {};
-  const code = String(value.code || "");
-  const text = [value.message, value.details, value.hint]
-    .map((part) => String(part || ""))
-    .join(" ")
-    .toLowerCase();
-  const normalizedName = functionName.toLowerCase();
-  return code === "PGRST202"
-    || (text.includes(normalizedName) && (
-      text.includes("could not find the function")
-      || text.includes("schema cache")
-      || text.includes("does not exist")
-    ));
-}
+
 
 function shortInstructorNames(value: unknown): string {
   return String(value || "")
@@ -160,6 +146,7 @@ Deno.serve(async (req) => {
       "authorization, x-client-info, apikey, content-type, x-sintagma-required-compiler-revision",
     "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
     "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
+    "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
     "X-Sintagma-Request-Id": requestId,
   };
   if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
@@ -218,32 +205,10 @@ Deno.serve(async (req) => {
     storageAdmin = admin;
 
     stage = "authentication";
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData?.user) return json({ error: "Недействительная сессия" }, 401);
-    const userId = userData.user.id;
+    const actor = await requireActiveUser(req, admin);
+    const userId = actor.userId!;
     stage = "authorization";
-    const [adminRoleResult, permissionResult, ownerResult] = await Promise.all([
-      admin
-        .from("user_roles")
-        .select("user_id")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle(),
-      admin.rpc("has_org_staff_permission", {
-        _user_id: userId,
-        _organization_id: body.organizationId,
-        _permission: "documents.manage",
-      }),
-      admin.rpc("is_org_owner", { _user_id: userId, _organization_id: body.organizationId }),
-    ]);
-    const authzError = adminRoleResult.error || permissionResult.error || ownerResult.error;
-    if (authzError) throw authzError;
-    const isAdmin = Boolean(adminRoleResult.data);
-    const hasPermission = permissionResult.data;
-    const isOwner = ownerResult.data;
-    if (!isAdmin && !hasPermission && !isOwner) {
-      return json({ error: "Недостаточно прав для генерации журнала" }, 403);
-    }
+    await requireDocumentWrite(userClient, body.organizationId, body.groupId);
 
     stage = "source-data";
     const [groupResult, orgResult, profilesResult] = await Promise.all([
@@ -650,31 +615,17 @@ Deno.serve(async (req) => {
       ...compiledPackageDocuments,
       ...(journalDocument ? [journalDocument] : []),
     ];
-    let batchResult = await admin.rpc("create_goreltech_group_document_batch", {
+    const staged = await admin.rpc("register_goreltech_group_document_stage", {
+      p_actor_id: userId, p_organization_id: body.organizationId, p_group_id: body.groupId, p_docs: persistedDocuments,
+    });
+    if (staged.error || !staged.data?.payload_sha256) throw new AccessError(503,
+      "Не удалось подтвердить серверное происхождение пакета. Прежние документы сохранены");
+    const batchResult = await userClient.rpc("create_goreltech_group_document_batch", {
       p_actor_id: userId,
       p_organization_id: body.organizationId,
       p_group_id: body.groupId,
       p_docs: persistedDocuments,
     });
-    if (batchResult.error && isMissingRpcError(
-      batchResult.error,
-      "create_goreltech_group_document_batch",
-    )) {
-      const rolloutWarning = "База данных ещё использует совместимый режим выкладки: пакет сохранён только как черновик без официальных номеров.";
-      statusWarnings.push(rolloutWarning);
-      const safeLegacyDraftDocuments = persistedDocuments.map((document) => ({
-        ...document,
-        doc_status: "draft",
-        document_number: null,
-        generation_status: "draft",
-        source_note: [document.source_note, rolloutWarning].filter(Boolean).join(" "),
-      }));
-      batchResult = await userClient.rpc("create_group_document_batch", {
-        p_organization_id: body.organizationId,
-        p_group_id: body.groupId,
-        p_docs: safeLegacyDraftDocuments,
-      });
-    }
     let batch = Array.isArray(batchResult.data) ? batchResult.data[0] : batchResult.data;
     if (batchResult.error) {
       // The RPC transaction may have committed even if its HTTP response was
@@ -743,6 +694,7 @@ Deno.serve(async (req) => {
         });
       }
     }
+    if (error instanceof AccessError) return json({ error: error.message, stage }, error.status);
     console.error("compile-group-class-journal error", {
       requestId,
       compilerRevision: COMPILER_REVISION,
