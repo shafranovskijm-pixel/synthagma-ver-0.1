@@ -8,6 +8,7 @@
  */
 import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
 import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
+import { ProgramFactsError, resolveGroupProgramGeneration, programGenerationScalars, programTrainingPeriod } from "../_shared/program-facts.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3.23.8";
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
     ...corsHeaders,
     "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
     "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
-    "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
+    "X-Sintagma-Function-Revision": "uc-program-facts-20261018-v1",
     "X-Sintagma-Request-Id": requestId,
   };
   if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
@@ -123,6 +124,46 @@ Deno.serve(async (req) => {
         idempotent_replay: true,
       });
     };
+
+    // A legacy artifact has no programme approval proof. An exact replay is a
+    // read of its original bytes, never an opportunity to repair its metadata
+    // from today's course or programme. Insufficient identity stays a conflict.
+    if (body.submissionKey) {
+      const lookup = await admin.from("org_contracts")
+        .select("id,name,contract_number,contract_date,docx_path,docx_sha256,pdf_status,template_registry_key,template_version_label,template_sha256,template_format,generation_status,variables_snapshot,submission_snapshot_sha256,student_group_id,company_id,counterparty_type,students")
+        .eq("organization_id", body.organizationId).eq("submission_key", body.submissionKey).maybeSingle();
+      if (lookup.error) throw lookup.error;
+      const prior = lookup.data;
+      if (prior && !prior.variables_snapshot?.program_facts) {
+        const stored = prior.variables_snapshot;
+        const storedIds = Array.isArray(prior.students) ? prior.students.map((v: any) => v.user_id).sort() : [];
+        if (prior.student_group_id !== body.groupId || prior.company_id !== body.companyId || prior.counterparty_type !== "legal"
+          || prior.template_format !== "docx_ooxml" || prior.template_registry_key !== body.templateKey
+          || !prior.docx_path || !prior.docx_sha256 || !prior.template_version_label || !prior.template_sha256
+          || !stored || !stored.scalars || !Array.isArray(stored.programs) || !Array.isArray(stored.students) || !Array.isArray(stored.curricula)
+          || JSON.stringify(storedIds) !== JSON.stringify([...body.studentUserIds].sort())
+          || new Set(body.studentUserIds).size !== body.studentUserIds.length) {
+          return json({ error: "Исторический договор нельзя повторно подтвердить по этому запросу. Откройте существующий документ." }, 409);
+        }
+        const original = { scalars: stored.scalars, programs: stored.programs, students: stored.students,
+          curricula: stored.curricula, totalAmount: stored.total_amount, taxClauseExplicit: true };
+        const requested = { scalars: { ...toStrings(body.scalars), PRICE_NUM: formatMoneyRu(body.totalAmount),
+          PRICE_WORDS: moneyToWordsRu(body.totalAmount), DOC_NO: body.contractNumber },
+          programs: body.programs.map(toStrings), students: numberStudents(body.students.map(toStrings)),
+          curricula: body.curricula, totalAmount: body.totalAmount, taxClauseExplicit: body.taxClauseExplicit };
+        const originalHash = await sha256CanonicalJson({ templateKey: prior.template_registry_key,
+          templateVersionLabel: prior.template_version_label, templateSha256: prior.template_sha256,
+          organizationId: body.organizationId, groupId: body.groupId, companyId: body.companyId,
+          studentUserIds: body.studentUserIds, studentsMeta: body.studentsMeta, contractName: body.contractName,
+          contractNumber: body.contractNumber, contractDate: body.contractDate, snapshot: original });
+        if (originalHash !== prior.submission_snapshot_sha256
+          || await sha256CanonicalJson(original) !== await sha256CanonicalJson(requested)) {
+          return json({ error: "Ключ отправки уже использован для другого снимка договора" }, 409);
+        }
+        return replayResponse(prior);
+      }
+    }
+    const programme = await resolveGroupProgramGeneration(userClient, body.organizationId, body.groupId, body.studentUserIds);
 
     // Фирменный договор является клиентским активом ГОРЭЛТЕХ. Организацию
     // определяет только сервер по organizationId из авторизованного запроса:
@@ -242,12 +283,22 @@ Deno.serve(async (req) => {
     const scalars = toStrings(body.scalars);
     scalars.PRICE_NUM = formatMoneyRu(body.totalAmount);
     scalars.PRICE_WORDS = moneyToWordsRu(body.totalAmount);
-    scalars.DOC_NO = body.contractNumber;
+    scalars.DOC_NO = programme.state === "confirmed" ? body.contractNumber : "Черновик";
+    Object.assign(scalars, programGenerationScalars(programme));
+    if (programme.fields) scalars.PROG_FORM = programme.fields.program_form;
+    if (programme.fields && body.programs.length !== 1) {
+      return json({ error: "Договор группы должен использовать одну закреплённую программу" }, 409);
+    }
 
     const snapshot = {
       scalars,
-      programs: body.programs.map(toStrings),
-      students: numberStudents(body.students.map(toStrings)),
+      programs: body.programs.map(row => ({ ...toStrings(row), ...(programme.fields ? {
+        PROG_TITLE: programme.fields.program_title, PROG_FORM: programme.fields.program_form,
+        PROG_COUNT: String(body.studentUserIds.length),
+      } : {}) })),
+      students: numberStudents(body.students.map(row => ({ ...toStrings(row), ...(programme.fields ? {
+        STUDENT_PROGRAM: programme.fields.program_title, STUDENT_DATES: programTrainingPeriod(programme),
+      } : {}) }))),
       curricula: body.curricula,
       totalAmount: body.totalAmount,
       taxClauseExplicit: body.taxClauseExplicit,
@@ -272,18 +323,20 @@ Deno.serve(async (req) => {
           contractNumber: body.contractNumber,
           contractDate: body.contractDate,
           snapshot,
+          program_facts: programme.provenance,
         })
       : null;
 
     if (body.submissionKey) {
       const { data: existing, error: existingError } = await admin
         .from("org_contracts")
-        .select("id, name, contract_number, contract_date, docx_path, docx_sha256, pdf_status, template_version_label, generation_status, variables_snapshot, submission_snapshot_sha256")
+        .select("id, name, contract_number, contract_date, docx_path, docx_sha256, pdf_status, template_version_label, generation_status, variables_snapshot, submission_snapshot_sha256, student_group_id")
         .eq("organization_id", body.organizationId)
         .eq("submission_key", body.submissionKey)
         .maybeSingle();
       if (existingError) throw existingError;
       if (existing) {
+        if (existing.student_group_id !== body.groupId) return json({ error: "Ключ отправки относится к другой учебной группе" }, 409);
         if (existing.submission_snapshot_sha256 !== submissionSnapshotSha256) {
           return json({ error: "Ключ отправки уже использован для другого снимка договора" }, 409);
         }
@@ -322,7 +375,7 @@ Deno.serve(async (req) => {
         submission_key: body.submissionKey ?? null,
         submission_snapshot_sha256: submissionSnapshotSha256,
         name: body.contractName,
-        contract_number: body.contractNumber,
+        contract_number: programme.state === "confirmed" ? body.contractNumber : null,
         contract_date: body.contractDate,
         status: "draft",
         counterparty_type: "legal",
@@ -335,6 +388,8 @@ Deno.serve(async (req) => {
         template_sha256: sourceHash,
         template_manifest: manifest as unknown as Record<string, unknown>,
         variables_snapshot: {
+          program_facts: programme.provenance,
+          ...(programme.fields ? { PROGRAM_HOURS: String(programme.fields.program_hours) } : {}),
           scalars: snapshot.scalars,
           programs: snapshot.programs,
           students: snapshot.students,
@@ -356,13 +411,13 @@ Deno.serve(async (req) => {
       if (body.submissionKey) {
         const { data: existing, error: existingError } = await admin
           .from("org_contracts")
-          .select("id, name, contract_number, contract_date, docx_path, docx_sha256, pdf_status, template_version_label, generation_status, variables_snapshot, submission_snapshot_sha256")
+          .select("id, name, contract_number, contract_date, docx_path, docx_sha256, pdf_status, template_version_label, generation_status, variables_snapshot, submission_snapshot_sha256, student_group_id")
           .eq("organization_id", body.organizationId)
           .eq("submission_key", body.submissionKey)
           .maybeSingle();
         if (existingError) throw existingError;
         if (existing) {
-          if (existing.submission_snapshot_sha256 !== submissionSnapshotSha256) {
+          if (existing.student_group_id !== body.groupId || existing.submission_snapshot_sha256 !== submissionSnapshotSha256) {
             if (existing.docx_path !== docxPath) {
               await admin.storage.from(BUCKET).remove([docxPath]);
             }
@@ -386,7 +441,7 @@ Deno.serve(async (req) => {
       pdf_status: "unavailable",
     });
   } catch (e) {
-    if (e instanceof AccessError) return json({ error: e.message }, e.status);
+    if (e instanceof AccessError || e instanceof ProgramFactsError) return json({ error: e.message }, e.status);
     console.error("compile-docx-contract error", e);
     return json({ error: (e as Error).message || "Внутренняя ошибка" }, 500);
   }
