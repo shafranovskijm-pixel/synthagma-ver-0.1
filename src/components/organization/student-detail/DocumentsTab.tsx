@@ -1,4 +1,5 @@
-import { useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { z } from "zod";
 import { AlertTriangle, FileText, Eye, Trash2, Upload, Save, User, Calendar, ScanLine, Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +12,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { StudentEnrollment } from "@/types/student";
 import { StudentLaborSafetyXmlCard } from "@/components/organization/student-detail/StudentLaborSafetyXmlCard";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
 interface DocumentsTabProps {
   h: any;
   orgPlan?: string;
+  organizationId?: string | null;
+  studentUserId?: string | null;
+  actorUserId?: string | null;
   laborSafetyXml?: {
     organizationId: string;
     student: {
@@ -42,10 +47,19 @@ const DOC_TYPES = [
   { type: "birth_certificate", label: "Свидетельство о рождении" },
 ];
 
-export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) {
+function matchingFrdoData(h: any, organizationId?: string | null, studentUserId?: string | null): Record<string, string | null> | null {
+  const value = h.frdoData;
+  if (!organizationId || !studentUserId || h.isLoading || h.dataLoadError || !value || typeof value !== "object" || Array.isArray(value)) return null;
+  // A successful scoped read may find no row yet. Nonempty rows must carry
+  // the actual identity selected by that read, never another card's values.
+  return Object.keys(value).length === 0 || value.user_id === studentUserId && value.organization_id === organizationId ? value : null;
+}
+
+export function DocumentsTab({ h, orgPlan, organizationId, studentUserId, actorUserId, laborSafetyXml }: DocumentsTabProps) {
   const snilsInputRef = useRef<HTMLInputElement>(null);
   const personalDocumentsBoundaryRef = useRef<HTMLDivElement>(null);
   const personalDocumentsUnavailable = h.isLoading || Boolean(h.dataLoadError);
+  const currentFrdoData = matchingFrdoData(h, organizationId, studentUserId);
   const focusSnils = () => {
     const target = snilsInputRef.current ?? personalDocumentsBoundaryRef.current;
     target?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -57,8 +71,8 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
       {laborSafetyXml && (
         <StudentLaborSafetyXmlCard
           {...laborSafetyXml}
-          snils={personalDocumentsUnavailable ? null : h.frdoData?.snils ?? null}
-          position={personalDocumentsUnavailable ? null : h.jobPosition ?? null}
+          snils={personalDocumentsUnavailable ? null : currentFrdoData?.snils ?? null}
+          position={personalDocumentsUnavailable || !currentFrdoData ? null : h.jobPosition ?? null}
           onOpenSnils={focusSnils}
         />
       )}
@@ -81,122 +95,204 @@ export function DocumentsTab({ h, orgPlan, laborSafetyXml }: DocumentsTabProps) 
           </Button>
         </div>
       ) : (
-        <PersonalDocumentsContent h={h} orgPlan={orgPlan} snilsInputRef={snilsInputRef} />
+        <PersonalDocumentsContent key={`${organizationId ?? ""}:${studentUserId ?? ""}`} h={h} orgPlan={orgPlan}
+          organizationId={organizationId} studentUserId={studentUserId} actorUserId={actorUserId} snilsInputRef={snilsInputRef} />
       )}
     </div>
   );
 }
 
-function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsTabProps, "h" | "orgPlan"> & {
+const ocrText = z.string().max(4000).nullable();
+const ocrDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}).nullable();
+const ocrResponseSchema = z.object({
+  documentId: z.string().uuid(), doc_type: z.enum(["passport", "snils"]),
+  snils: z.string().regex(/^\d{3}-\d{3}-\d{3} \d{2}$/).nullable(), birth_date: ocrDate,
+  passport_series: z.string().regex(/^\d{2} \d{2}$/).nullable(), passport_number: z.string().regex(/^\d{6}$/).nullable(),
+  passport_issue_date: ocrDate, passport_issued_by: ocrText, passport_department_code: z.string().regex(/^\d{3}-\d{3}$/).nullable(),
+  confidence: z.number().finite().min(0).max(1).nullable(),
+}).strict().refine(value => value.doc_type === "passport" ? value.snils === null
+  : [value.passport_series, value.passport_number, value.passport_issue_date, value.passport_issued_by, value.passport_department_code].every(field => field === null));
+type OcrValues = z.infer<typeof ocrResponseSchema>;
+type OcrField = "snils" | "birth_date" | "passport_series" | "passport_number" | "passport_issue_date" | "passport_issued_by" | "passport_department_code";
+const ocrFields: OcrField[] = ["snils", "birth_date", "passport_series", "passport_number", "passport_issue_date", "passport_issued_by", "passport_department_code"];
+type OcrSource = { actorId: string; organizationId: string; studentUserId: string; documentId: string; docType: "passport" | "snils"; path: string; url: string | null; updatedAt: string | null; accessKey: string };
+type OcrCandidate = { source: OcrSource; values: OcrValues; generation: number };
+
+function PersonalDocumentsContent({ h, orgPlan, organizationId, studentUserId, actorUserId, snilsInputRef }: Pick<DocumentsTabProps, "h" | "orgPlan" | "organizationId" | "studentUserId" | "actorUserId"> & {
   snilsInputRef: RefObject<HTMLInputElement>;
 }) {
-  const [snilsValue, setSnilsValue] = useState(h.frdoData?.snils || "");
-  const [lastName, setLastName] = useState(h.frdoData?.last_name || "");
-  const [firstName, setFirstName] = useState(h.frdoData?.first_name || "");
-  const [middleName, setMiddleName] = useState(h.frdoData?.middle_name || "");
-  const [birthDate, setBirthDate] = useState(h.frdoData?.birth_date || "");
+  const currentFrdoData = matchingFrdoData(h, organizationId, studentUserId);
+  const frdoContextKey = currentFrdoData ? `${organizationId}:${studentUserId}` : null;
+  const [snilsValue, setSnilsValue] = useState(currentFrdoData?.snils || "");
+  const [lastName, setLastName] = useState(currentFrdoData?.last_name || "");
+  const [firstName, setFirstName] = useState(currentFrdoData?.first_name || "");
+  const [middleName, setMiddleName] = useState(currentFrdoData?.middle_name || "");
+  const [birthDate, setBirthDate] = useState(currentFrdoData?.birth_date || "");
   const [ocrDocId, setOcrDocId] = useState<string | null>(null);
-  const [ocrResult, setOcrResult] = useState<{
-    snils: string | null;
-    birth_date: string | null;
-    passport_series: string | null;
-    passport_number: string | null;
-    passport_issue_date: string | null;
-    passport_issued_by: string | null;
-    passport_department_code: string | null;
-    confidence: number | null;
-  } | null>(null);
+  const [ocrCandidate, setOcrCandidate] = useState<OcrCandidate | null>(null);
   const [ocrOpen, setOcrOpen] = useState(false);
-  const [ocrDocType, setOcrDocType] = useState<string | null>(null);
+  const [applyingOcr, setApplyingOcr] = useState(false);
+  const applyingOcrRef = useRef(false);
+  const requestGeneration = useRef(0);
+  const mounted = useRef(true);
+  const permissions = useStaffPermissions();
+  const ocrPlanEnabled = orgPlan === "professional" || orgPlan === "maximum";
+  const hasCurrentContext = z.string().uuid().safeParse(organizationId).success && z.string().uuid().safeParse(studentUserId).success
+    && z.string().uuid().safeParse(actorUserId).success
+    && (permissions.organizationId === organizationId || permissions.organizationId === null && permissions.isOrgOwner);
+  const writableContext = hasCurrentContext && !!currentFrdoData && !permissions.loading && !permissions.error
+    && permissions.adminRole !== "viewer" && permissions.adminRole !== "sales_manager";
+  const canProcessOcr = ocrPlanEnabled && writableContext && permissions.can("documents.write") && permissions.can("students.write");
+  const canRequestFrdoWrite = writableContext && permissions.can("frdo.write");
+  const [frdoWriteScope, setFrdoWriteScope] = useState<{ key: string; allowed: boolean } | null>(null);
+  const accessKey = JSON.stringify([actorUserId, permissions.organizationId, permissions.orgRole, permissions.adminRole,
+    permissions.isOrgOwner, [...(permissions.orgPermissions ?? [])].sort(), canProcessOcr, canRequestFrdoWrite]);
+  const frdoWriteKey = JSON.stringify([organizationId, studentUserId, accessKey, frdoContextKey]);
+  const canWriteFrdo = canRequestFrdoWrite && frdoWriteScope?.key === frdoWriteKey && frdoWriteScope.allowed;
+  const canApplyOcr = canProcessOcr && canWriteFrdo;
+  useEffect(() => {
+    let cancelled = false;
+    setFrdoWriteScope(null);
+    if (!canRequestFrdoWrite || !organizationId || !studentUserId) return;
+    const check = async () => {
+      let allowed = false;
+      try {
+        const rpc = supabase.rpc.bind(supabase) as unknown as (name: "can_write_student_frdo_data", args: { p_organization_id: string; p_user_id: string }) => PromiseLike<{ data: unknown; error: unknown }>;
+        const response = await rpc("can_write_student_frdo_data", { p_organization_id: organizationId, p_user_id: studentUserId });
+        allowed = !response.error && response.data === true;
+      } catch { /* A failed permission read never enables saving. */ }
+      if (!cancelled) setFrdoWriteScope({ key: frdoWriteKey, allowed });
+    };
+    void check();
+    return () => { cancelled = true; };
+  }, [canRequestFrdoWrite, organizationId, studentUserId, frdoWriteKey]);
+  const identityDocs: any[] = Array.isArray(h.identityDocs) ? h.identityDocs : [];
+  const sourceKey = JSON.stringify(identityDocs.map(doc => [doc.id, doc.user_id, doc.organization_id, doc.type,
+    doc.file_path, doc.file_url, doc.updated_at]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+  const current = useRef({ canProcessOcr, canApplyOcr, canWriteFrdo, organizationId, studentUserId, actorUserId, accessKey, identityDocs, ocrCandidate, saveFrdoField: h.saveFrdoField });
+  current.current = { canProcessOcr, canApplyOcr, canWriteFrdo, organizationId, studentUserId, actorUserId, accessKey, identityDocs, ocrCandidate, saveFrdoField: h.saveFrdoField };
+  const sourceFor = (documentId: string): OcrSource | null => {
+    const context = current.current;
+    if (!mounted.current || !context.canProcessOcr) return null;
+    const matches = context.identityDocs.filter(doc => doc.id === documentId);
+    const doc = matches.length === 1 ? matches[0] : null;
+    if (!doc || !z.string().uuid().safeParse(doc.id).success || doc.organization_id !== context.organizationId
+      || doc.user_id !== context.studentUserId || !["passport", "snils"].includes(doc.type)
+      || typeof doc.file_path !== "string" || !doc.file_path.trim()
+      || doc.file_url != null && typeof doc.file_url !== "string" || doc.updated_at != null && typeof doc.updated_at !== "string") return null;
+    return { actorId: context.actorUserId!, organizationId: context.organizationId!, studentUserId: context.studentUserId!,
+      documentId: doc.id, docType: doc.type, path: doc.file_path, url: doc.file_url ?? null, updatedAt: doc.updated_at ?? null, accessKey: context.accessKey };
+  };
+  const sourceIsCurrent = (source: OcrSource) => JSON.stringify(sourceFor(source.documentId)) === JSON.stringify(source);
+  const candidateIsCurrent = (candidate: OcrCandidate | null): candidate is OcrCandidate => !!candidate && mounted.current
+    && current.current.ocrCandidate === candidate && requestGeneration.current === candidate.generation && sourceIsCurrent(candidate.source);
+  const candidateCanApply = (candidate: OcrCandidate | null): candidate is OcrCandidate => current.current.canApplyOcr && candidateIsCurrent(candidate);
+  const ocrResult = candidateIsCurrent(ocrCandidate) ? ocrCandidate.values : null;
+  const ocrDocType = ocrResult ? ocrCandidate!.source.docType : null;
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; requestGeneration.current += 1; };
+  }, []);
+  useEffect(() => {
+    requestGeneration.current += 1;
+    setOcrDocId(null); setOcrCandidate(null); setOcrOpen(false);
+  }, [organizationId, studentUserId, accessKey, sourceKey]);
 
-  const ocrEnabled = orgPlan === "professional" || orgPlan === "maximum";
-
-  // Sync from h.frdoData when it changes
-  useState(() => {
-    if (h.frdoData) {
-      if (h.frdoData.snils) setSnilsValue(h.frdoData.snils);
-      if (h.frdoData.last_name) setLastName(h.frdoData.last_name);
-      if (h.frdoData.first_name) setFirstName(h.frdoData.first_name);
-      if (h.frdoData.middle_name) setMiddleName(h.frdoData.middle_name);
-      if (h.frdoData.birth_date) setBirthDate(h.frdoData.birth_date);
-    }
-  });
+  useEffect(() => {
+    setSnilsValue(currentFrdoData?.snils || ""); setLastName(currentFrdoData?.last_name || "");
+    setFirstName(currentFrdoData?.first_name || ""); setMiddleName(currentFrdoData?.middle_name || ""); setBirthDate(currentFrdoData?.birth_date || "");
+    // Preserve edits to other fields during a same-card single-field save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frdoContextKey]);
 
   const handleSnilsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSnilsValue(formatSnils(e.target.value));
   };
+  const saveManualFrdoField = (field: string, value: string) => {
+    if (!mounted.current || !current.current.canWriteFrdo) return;
+    return current.current.saveFrdoField(field, value);
+  };
 
   const handleRecognize = async (doc: any) => {
-    if (!ocrEnabled) return;
-    if (!doc.file_path) { toast.error("У документа нет файла"); return; }
+    const source = sourceFor(doc.id);
+    if (!source || applyingOcrRef.current) return;
+    const generation = ++requestGeneration.current;
     setOcrDocId(doc.id);
-    setOcrResult(null);
-    setOcrDocType(doc.type);
+    setOcrCandidate(null); setOcrOpen(false);
     try {
       const { data, error } = await supabase.functions.invoke("ocr-snils", {
-        body: { file_path: doc.file_path, doc_type: doc.type },
+        body: { documentId: source.documentId, organizationId: source.organizationId, studentUserId: source.studentUserId, doc_type: source.docType },
       });
+      if (requestGeneration.current !== generation || !sourceIsCurrent(source)) return;
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const res = data as {
-        snils: string | null;
-        birth_date: string | null;
-        passport_series: string | null;
-        passport_number: string | null;
-        passport_issue_date: string | null;
-        passport_issued_by: string | null;
-        passport_department_code: string | null;
-        confidence: number | null;
-      };
-      const hasAny =
-        res.snils || res.birth_date || res.passport_series || res.passport_number ||
-        res.passport_issue_date || res.passport_issued_by || res.passport_department_code;
+      const parsed = ocrResponseSchema.safeParse(data);
+      if (!parsed.success || parsed.data.documentId !== source.documentId || parsed.data.doc_type !== source.docType) {
+        toast.error("Не удалось подтвердить результат для выбранного документа. Повторите распознавание.");
+        return;
+      }
+      const res = parsed.data;
+      const hasAny = ocrFields.some(field => !!res[field]?.trim());
       if (!hasAny) {
         toast.error("Не удалось распознать данные — проверьте качество скана");
         return;
       }
-      setOcrResult(res);
+      setOcrCandidate({ source, values: res, generation });
       setOcrOpen(true);
-    } catch (e: any) {
-      console.error("OCR error", e);
-      toast.error(e?.message || "Ошибка распознавания");
+    } catch {
+      if (requestGeneration.current === generation && sourceIsCurrent(source)) toast.error("Не удалось распознать документ. Повторите попытку.");
     } finally {
-      setOcrDocId(null);
+      if (mounted.current && requestGeneration.current === generation) setOcrDocId(null);
     }
   };
 
+  const updateOcrInput = (field: OcrField, value: string) => {
+    if (field === "snils") setSnilsValue(value);
+    if (field === "birth_date") setBirthDate(value);
+  };
   const applyOcrAll = async () => {
-    if (!ocrResult) return;
+    const candidate = current.current.ocrCandidate;
+    if (!candidateCanApply(candidate) || applyingOcrRef.current) return;
+    const save = current.current.saveFrdoField;
+    applyingOcrRef.current = true; setApplyingOcr(true);
     try {
-      const map: [string, string | null, ((v: string) => void)?][] = [
-        ["snils", ocrResult.snils, setSnilsValue],
-        ["birth_date", ocrResult.birth_date, setBirthDate],
-        ["passport_series", ocrResult.passport_series],
-        ["passport_number", ocrResult.passport_number],
-        ["passport_issue_date", ocrResult.passport_issue_date],
-        ["passport_issued_by", ocrResult.passport_issued_by],
-        ["passport_department_code", ocrResult.passport_department_code],
-      ];
-      for (const [field, value, setter] of map) {
+      for (const field of ocrFields) {
+        if (!candidateCanApply(candidate)) return;
+        const value = candidate.values[field];
         if (value) {
-          setter?.(value);
           // eslint-disable-next-line no-await-in-loop
-          await h.saveFrdoField(field, value);
+          const saved = await save(field, value);
+          if (!candidateCanApply(candidate)) return;
+          if (saved !== true) return;
+          updateOcrInput(field, value);
         }
       }
       setOcrOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message || "Не удалось сохранить");
+    } catch {
+      if (candidateIsCurrent(candidate)) toast.error("Не удалось сохранить распознанные данные.");
+    } finally {
+      applyingOcrRef.current = false;
+      if (mounted.current) setApplyingOcr(false);
     }
   };
 
-  const applyOcrField = async (field: string, value: string | null, setter?: (v: string) => void) => {
+  const applyOcrField = async (field: OcrField) => {
+    const candidate = current.current.ocrCandidate;
+    if (!candidateCanApply(candidate) || applyingOcrRef.current) return;
+    const value = candidate.values[field];
     if (!value) return;
+    const save = current.current.saveFrdoField;
+    applyingOcrRef.current = true; setApplyingOcr(true);
     try {
-      setter?.(value);
-      await h.saveFrdoField(field, value);
-    } catch (e: any) {
-      toast.error(e?.message || "Не удалось сохранить");
+      const saved = await save(field, value);
+      if (saved === true && candidateCanApply(candidate)) updateOcrInput(field, value);
+    } catch {
+      if (candidateIsCurrent(candidate)) toast.error("Не удалось сохранить распознанные данные.");
+    } finally {
+      applyingOcrRef.current = false;
+      if (mounted.current) setApplyingOcr(false);
     }
   };
 
@@ -248,12 +344,13 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
           <User className="w-5 h-5 text-primary" />
           Персональные данные (ФРДО)
         </h3>
+        {!currentFrdoData && <p role="alert" className="mb-4 text-sm text-muted-foreground">Данные выбранного ученика ещё не подтверждены. Повторите загрузку карточки.</p>}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Фамилия</Label>
             <div className="flex gap-2">
-              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Иванов" />
-              <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "last_name"} onClick={() => h.saveFrdoField("last_name", lastName)}>
+              <Input value={currentFrdoData ? lastName : ""} readOnly={!canWriteFrdo} onChange={(e) => setLastName(e.target.value)} placeholder="Иванов" />
+              <Button size="sm" variant="ghost" className="shrink-0" aria-label="Сохранить фамилию" disabled={!canWriteFrdo || h.savingFrdoField === "last_name"} onClick={() => void saveManualFrdoField("last_name", lastName)}>
                 {h.savingFrdoField === "last_name" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
@@ -261,8 +358,8 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
           <div className="space-y-2">
             <Label>Имя</Label>
             <div className="flex gap-2">
-              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Иван" />
-              <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "first_name"} onClick={() => h.saveFrdoField("first_name", firstName)}>
+              <Input value={currentFrdoData ? firstName : ""} readOnly={!canWriteFrdo} onChange={(e) => setFirstName(e.target.value)} placeholder="Иван" />
+              <Button size="sm" variant="ghost" className="shrink-0" aria-label="Сохранить имя" disabled={!canWriteFrdo || h.savingFrdoField === "first_name"} onClick={() => void saveManualFrdoField("first_name", firstName)}>
                 {h.savingFrdoField === "first_name" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
@@ -270,8 +367,8 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
           <div className="space-y-2">
             <Label>Отчество</Label>
             <div className="flex gap-2">
-              <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Иванович" />
-              <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "middle_name"} onClick={() => h.saveFrdoField("middle_name", middleName)}>
+              <Input value={currentFrdoData ? middleName : ""} readOnly={!canWriteFrdo} onChange={(e) => setMiddleName(e.target.value)} placeholder="Иванович" />
+              <Button size="sm" variant="ghost" className="shrink-0" aria-label="Сохранить отчество" disabled={!canWriteFrdo || h.savingFrdoField === "middle_name"} onClick={() => void saveManualFrdoField("middle_name", middleName)}>
                 {h.savingFrdoField === "middle_name" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
@@ -279,8 +376,8 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
           <div className="space-y-2">
             <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />Дата рождения</Label>
             <div className="flex gap-2">
-              <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
-              <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "birth_date"} onClick={() => h.saveFrdoField("birth_date", birthDate)}>
+              <Input type="date" value={currentFrdoData ? birthDate : ""} readOnly={!canWriteFrdo} onChange={(e) => setBirthDate(e.target.value)} />
+              <Button size="sm" variant="ghost" className="shrink-0" aria-label="Сохранить дату рождения" disabled={!canWriteFrdo || h.savingFrdoField === "birth_date"} onClick={() => void saveManualFrdoField("birth_date", birthDate)}>
                 {h.savingFrdoField === "birth_date" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
@@ -292,13 +389,14 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
                 ref={snilsInputRef}
                 id="student-frdo-snils"
                 data-testid="student-frdo-snils-input"
-                value={snilsValue}
+                value={currentFrdoData ? snilsValue : ""}
+                readOnly={!canWriteFrdo}
                 onChange={handleSnilsChange}
                 placeholder="XXX-XXX-XXX XX"
                 maxLength={14}
                 className="max-w-xs"
               />
-              <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "snils" || (snilsValue && !isValidSnils(snilsValue))} onClick={() => h.saveFrdoField("snils", snilsValue)}>
+              <Button size="sm" variant="ghost" className="shrink-0" aria-label="Сохранить СНИЛС" disabled={!canWriteFrdo || h.savingFrdoField === "snils" || (snilsValue && !isValidSnils(snilsValue))} onClick={() => void saveManualFrdoField("snils", snilsValue)}>
                 {h.savingFrdoField === "snils" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
@@ -335,11 +433,12 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
                 </div>
                 <div className="flex items-center gap-1">
                   {(doc.type === "snils" || doc.type === "passport") && (
-                    ocrEnabled ? (
+                    canProcessOcr ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button size="sm" variant="ghost" className="rounded-lg text-primary" disabled={ocrDocId === doc.id} onClick={() => handleRecognize(doc)}>
+                            <Button size="sm" variant="ghost" className="rounded-lg text-primary" aria-label={`Распознать ${doc.name}`}
+                              disabled={ocrDocId !== null || applyingOcr || !sourceFor(doc.id)} onClick={() => handleRecognize(doc)}>
                               {ocrDocId === doc.id ? <SigmaSpinner size="sm" /> : <ScanLine className="w-4 h-4" />}
                             </Button>
                           </TooltipTrigger>
@@ -350,11 +449,11 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground" disabled>
+                            <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground" aria-label={`Распознать ${doc.name}`} disabled>
                               <Lock className="w-4 h-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Распознавание доступно на тарифах «Профессиональный» и «Максимальный»</TooltipContent>
+                          <TooltipContent>{ocrPlanEnabled ? "Для распознавания нужны права изменения документов и учеников." : "Распознавание доступно на тарифах «Профессиональный» и «Максимальный»"}</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )
@@ -372,7 +471,7 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
         )}
       </div>
 
-      <AlertDialog open={ocrOpen} onOpenChange={setOcrOpen}>
+      <AlertDialog open={ocrOpen && !!ocrResult} onOpenChange={setOcrOpen}>
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -398,7 +497,8 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
                       size="sm"
                       variant="ghost"
                       className="shrink-0"
-                      onClick={() => applyOcrField(r.field, r.value as string, r.setter)}
+                      disabled={applyingOcr || !ocrResult || !canApplyOcr}
+                      onClick={() => void applyOcrField(r.field as OcrField)}
                     >
                       Применить
                     </Button>
@@ -408,12 +508,13 @@ function PersonalDocumentsContent({ h, orgPlan, snilsInputRef }: Pick<DocumentsT
                   <div className="flex justify-between text-xs pt-1"><span className="text-muted-foreground">Уверенность модели:</span><span>{Math.round((ocrResult.confidence || 0) * 100)}%</span></div>
                 )}
                 <p className="text-xs text-muted-foreground pt-2">Проверьте данные — распознавание может содержать ошибки.</p>
+                {!canApplyOcr && <p className="text-xs text-muted-foreground">Для сохранения нужно право изменения данных ФРДО.</p>}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-wrap gap-2">
             <AlertDialogCancel>Закрыть</AlertDialogCancel>
-            <AlertDialogAction onClick={applyOcrAll}>Применить все</AlertDialogAction>
+            <AlertDialogAction disabled={applyingOcr || !ocrResult || !canApplyOcr} onClick={(event) => { event.preventDefault(); void applyOcrAll(); }}>Применить все</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

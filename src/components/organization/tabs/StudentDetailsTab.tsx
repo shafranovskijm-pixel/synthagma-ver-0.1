@@ -295,7 +295,7 @@ export function StudentDetailsTab() {
 
   const qc = useQueryClient();
   const h = useStudentDetailCardLogic({
-    isOpen: !!student,
+    isOpen: !!student && student.user_id === studentId,
     student,
     organizationId,
     enrollments,
@@ -534,6 +534,9 @@ export function StudentDetailsTab() {
                 <DocumentsTab
                   h={h}
                   orgPlan={orgPlan}
+                  organizationId={organizationId}
+                  studentUserId={student.user_id === studentId ? studentId : null}
+                  actorUserId={user?.id ?? null}
                   laborSafetyXml={{
                     organizationId,
                     student: {
