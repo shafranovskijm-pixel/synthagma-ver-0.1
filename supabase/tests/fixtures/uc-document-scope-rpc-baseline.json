@@ -1,0 +1,209 @@
+{
+  "columns": [
+    {
+      "column": "id",
+      "table": "enrollment_history",
+      "type": "uuid"
+    },
+    {
+      "column": "enrollment_id",
+      "table": "enrollment_history",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "table": "enrollment_history",
+      "type": "uuid"
+    },
+    {
+      "column": "course_id",
+      "table": "enrollment_history",
+      "type": "uuid"
+    },
+    {
+      "column": "action",
+      "table": "enrollment_history",
+      "type": "text"
+    },
+    {
+      "column": "performed_by",
+      "table": "enrollment_history",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "table": "enrollment_history",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "table": "journal_entries",
+      "type": "uuid"
+    },
+    {
+      "column": "journal_id",
+      "table": "journal_entries",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "table": "journal_entries",
+      "type": "uuid"
+    },
+    {
+      "column": "entry_date",
+      "table": "journal_entries",
+      "type": "date"
+    },
+    {
+      "column": "entry_type",
+      "table": "journal_entries",
+      "type": "text"
+    },
+    {
+      "column": "value",
+      "table": "journal_entries",
+      "type": "text"
+    },
+    {
+      "column": "notes",
+      "table": "journal_entries",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "journal_entries",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "table": "journal_entries",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "table": "program_training_plans",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "program_training_plans",
+      "type": "uuid"
+    },
+    {
+      "column": "course_id",
+      "table": "program_training_plans",
+      "type": "uuid"
+    },
+    {
+      "column": "title",
+      "table": "program_training_plans",
+      "type": "text"
+    },
+    {
+      "column": "hours",
+      "table": "program_training_plans",
+      "type": "int4"
+    },
+    {
+      "column": "form",
+      "table": "program_training_plans",
+      "type": "text"
+    },
+    {
+      "column": "plan_html",
+      "table": "program_training_plans",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "program_training_plans",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "table": "program_training_plans",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "table": "test_attempts",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "table": "test_attempts",
+      "type": "uuid"
+    },
+    {
+      "column": "lesson_id",
+      "table": "test_attempts",
+      "type": "uuid"
+    },
+    {
+      "column": "score",
+      "table": "test_attempts",
+      "type": "int4"
+    },
+    {
+      "column": "max_score",
+      "table": "test_attempts",
+      "type": "int4"
+    },
+    {
+      "column": "answers",
+      "table": "test_attempts",
+      "type": "jsonb"
+    },
+    {
+      "column": "completed_at",
+      "table": "test_attempts",
+      "type": "timestamptz"
+    },
+    {
+      "column": "shown_question_ids",
+      "table": "test_attempts",
+      "type": "jsonb"
+    },
+    {
+      "column": "session_id",
+      "table": "test_attempts",
+      "type": "uuid"
+    },
+    {
+      "column": "started_at",
+      "table": "test_attempts",
+      "type": "timestamptz"
+    },
+    {
+      "column": "passing_score",
+      "table": "test_attempts",
+      "type": "int4"
+    },
+    {
+      "column": "passed",
+      "table": "test_attempts",
+      "type": "bool"
+    }
+  ],
+  "functions": [
+    {
+      "args": "p_organization_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_documents_kpi(p_organization_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_is_admin boolean;\n  v_current_org uuid;\n  v_now timestamptz := now();\n  v_month_start timestamptz := date_trunc('month', v_now);\n  v_in30 timestamptz := v_now + interval '30 days';\n  v_six_months_ago timestamptz := date_trunc('month', v_now - interval '5 months');\n  v_result jsonb;\n  v_sig_total int; v_sig_signed int; v_sig_pending int;\n  v_sig_expired int; v_sig_rejected int;\n  v_edu_total int; v_edu_month int; v_dup int; v_cancel int;\n  v_expiring int; v_expired int;\n  v_contracts_total int; v_contracts_signed int; v_contracts_pending int;\n  v_prop_total int; v_prop_accepted int;\n  v_pd_open int; v_pd_overdue int;\n  v_inc_total int; v_inc_month int;\n  v_monthly_sigs jsonb; v_monthly_edu jsonb;\nBEGIN\n  IF v_user IS NULL OR NOT public.account_deletion_access_allowed() THEN\n    RAISE EXCEPTION 'Authentication required or account access revoked' USING ERRCODE='42501';\n  END IF;\n  IF NOT public.can_access_organization(p_organization_id,'documents.read') THEN\n    RAISE EXCEPTION 'Forbidden' USING ERRCODE='42501';\n  END IF;\n\n  -- Подписания\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status = 'signed'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('sent','viewed')),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status = 'expired'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status = 'rejected'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('sent','viewed') AND expires_at <= v_in30 AND expires_at >= v_now),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('sent','viewed') AND expires_at < v_now)\n  INTO v_sig_total, v_sig_signed, v_sig_pending, v_sig_expired, v_sig_rejected, v_expiring, v_expired\n  FROM public.document_signatures\n  WHERE organization_id = p_organization_id;\n\n  -- Документы об образовании\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND created_at >= v_month_start),\n    count(*) FILTER (WHERE deleted_at IS NULL AND document_status = 'duplicate'),\n    count(*) FILTER (WHERE deleted_at IS NULL AND document_status = 'cancelled')\n  INTO v_edu_total, v_edu_month, v_dup, v_cancel\n  FROM public.education_document_records\n  WHERE organization_id = p_organization_id;\n\n  -- Договоры с контрагентами (через JOIN с companies для org-фильтра)\n  SELECT\n    count(*) FILTER (WHERE cd.deleted_at IS NULL AND cd.type = 'contract'),\n    count(*) FILTER (WHERE cd.deleted_at IS NULL AND cd.type = 'contract' AND cd.is_paid = true),\n    count(*) FILTER (WHERE cd.deleted_at IS NULL AND cd.type = 'contract' AND COALESCE(cd.is_paid, false) = false)\n  INTO v_contracts_total, v_contracts_signed, v_contracts_pending\n  FROM public.company_documents cd\n  JOIN public.companies c ON c.id = cd.company_id\n  WHERE c.organization_id = p_organization_id;\n\n  -- КП\n  IF public.can_access_organization(p_organization_id,'sales.read') THEN\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('accepted','signed'))\n  INTO v_prop_total, v_prop_accepted\n  FROM public.commercial_proposals\n  WHERE organization_id = p_organization_id;\n  ELSE\n    v_prop_total := NULL;\n    v_prop_accepted := NULL;\n  END IF;\n\n  -- Запросы ПД\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('new','in_progress')),\n    count(*) FILTER (WHERE deleted_at IS NULL AND status IN ('new','in_progress') AND due_date < v_now::date)\n  INTO v_pd_open, v_pd_overdue\n  FROM public.data_subject_requests\n  WHERE organization_id = p_organization_id;\n\n  -- Входящие\n  SELECT\n    count(*) FILTER (WHERE deleted_at IS NULL),\n    count(*) FILTER (WHERE deleted_at IS NULL AND created_at >= v_month_start)\n  INTO v_inc_total, v_inc_month\n  FROM public.incoming_documents\n  WHERE organization_id = p_organization_id;\n\n  -- Тренд подписаний (6 мес.)\n  WITH months AS (\n    SELECT date_trunc('month', v_six_months_ago + (n || ' month')::interval) AS m\n    FROM generate_series(0, 5) n\n  ),\n  sigs AS (\n    SELECT date_trunc('month', created_at) AS m_sent,\n           date_trunc('month', signed_at) AS m_signed\n    FROM public.document_signatures\n    WHERE organization_id = p_organization_id\n      AND deleted_at IS NULL\n      AND (created_at >= v_six_months_ago OR signed_at >= v_six_months_ago)\n  )\n  SELECT jsonb_agg(jsonb_build_object(\n    'month', to_char(months.m, 'TMMon YY'),\n    'sent', COALESCE((SELECT count(*) FROM sigs WHERE m_sent = months.m), 0),\n    'signed', COALESCE((SELECT count(*) FROM sigs WHERE m_signed = months.m), 0)\n  ) ORDER BY months.m)\n  INTO v_monthly_sigs FROM months;\n\n  -- Тренд документов об образовании (6 мес.)\n  WITH months AS (\n    SELECT date_trunc('month', v_six_months_ago + (n || ' month')::interval) AS m\n    FROM generate_series(0, 5) n\n  )\n  SELECT jsonb_agg(jsonb_build_object(\n    'month', to_char(months.m, 'TMMon YY'),\n    'count', COALESCE((\n      SELECT count(*) FROM public.education_document_records\n      WHERE organization_id = p_organization_id\n        AND deleted_at IS NULL\n        AND date_trunc('month', created_at) = months.m\n    ), 0)\n  ) ORDER BY months.m)\n  INTO v_monthly_edu FROM months;\n\n  v_result := jsonb_build_object(\n    'signatures_total', v_sig_total,\n    'signatures_signed', v_sig_signed,\n    'signatures_pending', v_sig_pending,\n    'signatures_expired', v_sig_expired,\n    'signatures_rejected', v_sig_rejected,\n    'signing_conversion', CASE WHEN v_sig_total > 0 THEN round((v_sig_signed::numeric / v_sig_total) * 100) ELSE 0 END,\n    'education_docs_total', v_edu_total,\n    'education_docs_this_month', v_edu_month,\n    'duplicates_count', v_dup,\n    'cancelled_count', v_cancel,\n    'expiring_soon', v_expiring,\n    'expired_count', v_expired,\n    'contracts_total', v_contracts_total,\n    'contracts_signed', v_contracts_signed,\n    'contracts_pending', v_contracts_pending,\n    'proposals_total', v_prop_total,\n    'proposals_accepted', v_prop_accepted,\n    'proposal_to_contract_conversion', CASE WHEN v_prop_total IS NULL THEN NULL WHEN v_prop_total > 0 THEN round((v_prop_accepted::numeric / v_prop_total) * 100) ELSE 0 END,\n    'pd_requests_open', v_pd_open,\n    'pd_requests_overdue', v_pd_overdue,\n    'incoming_total', v_inc_total,\n    'incoming_this_month', v_inc_month,\n    'monthly_signatures', COALESCE(v_monthly_sigs, '[]'::jsonb),\n    'monthly_education_docs', COALESCE(v_monthly_edu, '[]'::jsonb)\n  );\n\n  RETURN v_result;\nEND;\n$function$\n",
+      "md5": "73c86ecdf4d6f5205cbe40e50c61f48c",
+      "name": "get_documents_kpi"
+    },
+    {
+      "args": "p_organization_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_frdo_export_readiness(p_organization_id uuid)\n RETURNS TABLE(total_documents integer, ready_for_export integer, missing_frdo_data integer, missing_birth_date integer, missing_snils integer, missing_passport integer, missing_gender_resolvable integer, missing_gender_unresolvable integer, missing_profession_name integer)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NOT (\n    has_role('admin'::app_role, auth.uid())\n    OR (has_role('organization'::app_role, auth.uid()) AND current_organization_id() = p_organization_id)\n  ) THEN\n    RAISE EXCEPTION 'Forbidden';\n  END IF;\n\n  RETURN QUERY\n  WITH docs AS (\n    SELECT edr.id, edr.enrollment_id, e.user_id, e.course_id\n    FROM education_document_records edr\n    LEFT JOIN enrollments e ON e.id = edr.enrollment_id\n    WHERE edr.organization_id = p_organization_id\n      AND edr.deleted_at IS NULL\n  ),\n  enriched AS (\n    SELECT\n      d.id,\n      d.user_id,\n      sfd.birth_date,\n      sfd.snils,\n      sfd.last_name,\n      sfd.first_name,\n      sfd.middle_name,\n      sfd.gender,\n      sfd.profession_name,\n      sfd.passport_series,\n      sfd.passport_number,\n      c.frdo_profession_name AS course_profession_name,\n      lower(coalesce(sfd.middle_name, '')) AS mname_lower\n    FROM docs d\n    LEFT JOIN student_frdo_data sfd\n      ON sfd.user_id = d.user_id\n     AND sfd.organization_id = p_organization_id\n    LEFT JOIN courses c ON c.id = d.course_id\n  )\n  SELECT\n    COUNT(*)::integer,\n    COUNT(*) FILTER (\n      WHERE birth_date IS NOT NULL\n        AND snils IS NOT NULL AND snils <> ''\n        AND last_name IS NOT NULL AND last_name <> ''\n        AND first_name IS NOT NULL AND first_name <> ''\n    )::integer,\n    COUNT(*) FILTER (\n      WHERE birth_date IS NULL\n         OR snils IS NULL OR snils = ''\n         OR last_name IS NULL OR last_name = ''\n    )::integer,\n    COUNT(*) FILTER (WHERE birth_date IS NULL)::integer,\n    COUNT(*) FILTER (WHERE snils IS NULL OR snils = '')::integer,\n    COUNT(*) FILTER (WHERE passport_series IS NULL OR passport_series = '' OR passport_number IS NULL OR passport_number = '')::integer,\n    COUNT(*) FILTER (\n      WHERE (gender IS NULL OR gender = '')\n        AND (mname_lower LIKE '%ич' OR mname_lower LIKE '%ыч' OR mname_lower LIKE '%на')\n    )::integer,\n    COUNT(*) FILTER (\n      WHERE (gender IS NULL OR gender = '')\n        AND NOT (mname_lower LIKE '%ич' OR mname_lower LIKE '%ыч' OR mname_lower LIKE '%на')\n    )::integer,\n    COUNT(*) FILTER (\n      WHERE (profession_name IS NULL OR profession_name = '')\n        AND (course_profession_name IS NULL OR course_profession_name = '')\n    )::integer\n  FROM enriched;\nEND;\n$function$\n",
+      "md5": "728c414ddc92c8f3186e8e78991ac194",
+      "name": "get_frdo_export_readiness"
+    },
+    {
+      "args": "p_organization_id uuid, p_search text, p_limit integer, p_offset integer",
+      "definition": "CREATE OR REPLACE FUNCTION public.list_recycle_bin(p_organization_id uuid, p_search text DEFAULT NULL::text, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)\n RETURNS TABLE(id uuid, source_table text, display_name text, type_label text, meta text, deleted_at timestamp with time zone, deleted_by uuid, organization_id uuid, total_count bigint)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_is_admin boolean;\n  v_current_org uuid;\n  v_q text := COALESCE(NULLIF(trim(p_search), ''), NULL);\n  v_search_pat text;\nBEGIN\n  IF v_user IS NULL OR NOT public.account_deletion_access_allowed() THEN\n    RAISE EXCEPTION 'Authentication required or account access revoked' USING ERRCODE='42501';\n  END IF;\n  IF NOT public.can_access_organization(p_organization_id,'documents.read') THEN\n    RAISE EXCEPTION 'Forbidden' USING ERRCODE='42501';\n  END IF;\n\n  v_search_pat := CASE WHEN v_q IS NULL THEN NULL ELSE '%' || lower(v_q) || '%' END;\n\n  RETURN QUERY\n  WITH all_items AS (\n    -- education_document_records\n    SELECT r.id,\n           'education_document_records'::text AS source_table,\n           (r.full_name || ' — ' || r.reg_number)::text AS display_name,\n           'Документ об образовании'::text AS type_label,\n           r.document_type::text AS meta,\n           r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT r.id, 'org_documents', r.name, 'Документ организации', r.type, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.org_documents r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT cd.id, 'company_documents', cd.name, 'Документ контрагента', cd.type, cd.deleted_at, cd.deleted_by, c.organization_id\n    FROM public.company_documents cd\n    JOIN public.companies c ON c.id = cd.company_id\n    WHERE c.organization_id = p_organization_id AND cd.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT r.id, 'document_signatures',\n           (r.document_title || ' → ' || r.recipient_email)::text,\n           'Подписание (ПЭП)', r.document_type, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.document_signatures r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT r.id, 'data_subject_requests',\n           ('Запрос: ' || r.request_type)::text,\n           'Запрос ПД (152-ФЗ)', r.status, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.data_subject_requests r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT r.id, 'incoming_documents',\n           (COALESCE(r.title, r.doc_type) || COALESCE(' от ' || r.counterparty_name, ''))::text,\n           'Входящий документ', r.doc_type, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.incoming_documents r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT r.id, 'document_issuance_log',\n           (r.document_name || ' — ' || r.user_name)::text,\n           'Запись журнала выдачи', NULL, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.document_issuance_log r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n\n    UNION ALL\n    SELECT r.id, 'commercial_proposals',\n           ('КП: ' || r.company_name || ' (' || r.total_amount::text || ' ₽)')::text,\n           'Коммерческое предложение', NULL, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.commercial_proposals r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n      AND public.can_access_organization(p_organization_id,'sales.read')\n\n    UNION ALL\n    SELECT r.id, 'org_billing_documents', r.name, 'Счёт / Акт', r.doc_type, r.deleted_at, r.deleted_by, r.organization_id\n    FROM public.org_billing_documents r\n    WHERE r.organization_id = p_organization_id AND r.deleted_at IS NOT NULL\n      AND public.can_access_organization(p_organization_id,'billing.read')\n  ),\n  filtered AS (\n    SELECT ai.* FROM all_items ai\n    WHERE v_search_pat IS NULL\n       OR lower(ai.display_name) LIKE v_search_pat\n       OR lower(ai.type_label) LIKE v_search_pat\n       OR lower(COALESCE(ai.meta, '')) LIKE v_search_pat\n  ),\n  counted AS (\n    SELECT *, count(*) OVER () AS total_count FROM filtered\n  )\n  SELECT counted.id, counted.source_table, counted.display_name, counted.type_label,\n         counted.meta, counted.deleted_at, counted.deleted_by, counted.organization_id, counted.total_count\n  FROM counted\n  ORDER BY counted.deleted_at DESC\n  LIMIT GREATEST(p_limit, 1)\n  OFFSET GREATEST(p_offset, 0);\nEND;\n$function$\n",
+      "md5": "6d7ef80fe942d4b9fe916639732e52a2",
+      "name": "list_recycle_bin"
+    }
+  ]
+}

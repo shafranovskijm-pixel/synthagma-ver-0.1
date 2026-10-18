@@ -468,8 +468,8 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     }
     try {
       const year = new Date(date || Date.now()).getFullYear();
-      const { data, error } = await (supabase as any).rpc("get_next_document_number", {
-        p_org: organizationId, p_doc_type: "contract", p_year: year,
+      const { data, error } = await (supabase as any).rpc("reserve_group_document_number", {
+        p_org: organizationId, p_group: groupId, p_doc_type: "contract", p_year: year,
       });
       if (error) throw error;
       const seq = String(data).padStart(3, "0");

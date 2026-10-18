@@ -6,7 +6,7 @@ import { accessErrorResponse, checked, readObject, requireActiveUser, requireSig
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
+  "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
 };
 
 async function sendSmtp(to: string, subject: string, html: string): Promise<boolean> {
@@ -56,7 +56,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
     const actor = await requireActiveUser(req, supabase, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
-    await requireSignatureAccess(supabase, actor, signatureId);
+    if (actor.service) await requireSignatureAccess(supabase, actor, signatureId);
     // Reading/being a recipient does not authorize sending mail on behalf of the organization.
     if (!actor.service) {
       const permissionClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {

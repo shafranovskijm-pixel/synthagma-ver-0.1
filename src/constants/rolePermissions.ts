@@ -20,7 +20,7 @@ export type Permission =
   // Библиотека/маркетплейс
   | 'library.read' | 'library.write'
   // Документы об образовании
-  | 'documents.read' | 'documents.write'
+  | 'documents.read' | 'documents.write' | 'documents.sign' | 'documents.issue'
   // Журналы и протоколы
   | 'journals.read' | 'journals.write'
   // ФРДО
@@ -53,7 +53,7 @@ const ORG_OWNER: Permission[] = [
   'students.read', 'students.write',
   'companies.read', 'companies.write',
   'library.read', 'library.write',
-  'documents.read', 'documents.write',
+  'documents.read', 'documents.write', 'documents.sign', 'documents.issue',
   'journals.read', 'journals.write',
   'frdo.read', 'frdo.write',
   'labor_safety.read', 'labor_safety.write',
@@ -72,7 +72,7 @@ const ORG_ADMIN: Permission[] = [
   'students.read', 'students.write',
   'companies.read', 'companies.write',
   'library.read', 'library.write',
-  'documents.read', 'documents.write',
+  'documents.read', 'documents.write', 'documents.sign', 'documents.issue',
   'journals.read', 'journals.write',
   'frdo.read', 'frdo.write',
   'labor_safety.read', 'labor_safety.write',

@@ -36,6 +36,7 @@ import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 import { CitizenshipCombobox } from "./CitizenshipCombobox";
 import { normalizeRuPhone } from "@/utils/phoneParser";
 import { issueEducationDocumentBatch } from "@/lib/education-docs/issueBatch";
+import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
 import { resolveEducationDocumentType } from "@/lib/education-docs/documentType";
 import { localDateIso } from "@/lib/date/localDate";
 import { normalizeIsoDate } from "@/lib/groups/groupSettings";
@@ -96,6 +97,7 @@ const defaultFRDOData: FRDOData = {
 
 export function FRDOExportDialog({
   isOpen, onOpenChange, student, organizationId, enrollment, onSaved }: FRDOExportDialogProps) {
+  const { canIssue } = useDocumentActionPermissions(organizationId);
   const [activeTab, setActiveTab] = useState("personal");
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
@@ -249,6 +251,7 @@ export function FRDOExportDialog({
   };
 
   const handleExportDPO = async () => {
+    if (!canIssue) return;
     if (!student || !enrollment) { toast.error("Выберите курс для экспорта"); return; }
 
     const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
@@ -328,6 +331,7 @@ export function FRDOExportDialog({
   };
 
   const handleExportPO = async () => {
+    if (!canIssue) return;
     if (!student || !enrollment) { toast.error("Выберите курс для экспорта"); return; }
 
     const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
@@ -596,11 +600,11 @@ export function FRDOExportDialog({
                 Сохранить данные
               </Button>
               <div className="flex gap-2">
-                <Button className="rounded-xl gap-2" onClick={handleExportDPO} disabled={!enrollment}>
+                <Button className="rounded-xl gap-2" onClick={handleExportDPO} disabled={!canIssue || !enrollment}>
                   <Download className="w-4 h-4" />
                   Экспорт ДПО
                 </Button>
-                <Button variant="secondary" className="rounded-xl gap-2" onClick={handleExportPO} disabled={!enrollment}>
+                <Button variant="secondary" className="rounded-xl gap-2" onClick={handleExportPO} disabled={!canIssue || !enrollment}>
                   <Download className="w-4 h-4" />
                   Экспорт ПО
                 </Button>

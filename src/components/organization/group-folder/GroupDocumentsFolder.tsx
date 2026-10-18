@@ -306,8 +306,9 @@ export function GroupDocumentsFolder({
       let numbers: Record<string, string> = {};
       try {
         numbers = await reserveGroupDocumentNumbers(toReserve, new Date().getFullYear(), async (seqKey, year) => {
-          const { data, error } = await (supabase as any).rpc("get_next_document_number", {
+          const { data, error } = await (supabase as any).rpc("reserve_group_document_number", {
             p_org: organizationId,
+            p_group: groupId,
             p_doc_type: seqKey,
             p_year: year,
           });

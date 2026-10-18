@@ -12,6 +12,8 @@ import {
   BarChart, Bar
 } from "recharts";
 import { toast } from "sonner";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { AssignedGroupDocumentsNotice } from "./AssignedGroupDocumentsNotice";
 
 interface Props {
   organizationId: string;
@@ -70,7 +72,14 @@ function KpiCard({ title, value, hint, icon: Icon, iconColor = "text-primary", v
   );
 }
 
-export function DocumentsKpiDashboard({ organizationId, onNavigate }: Props) {
+export function DocumentsKpiDashboard(props: Props) {
+  const permissions = useStaffPermissions();
+  if (permissions.loading) return <Skeleton className="h-28 rounded-xl" />;
+  if (permissions.orgRole === "teacher" && !permissions.isOrgOwner) return <AssignedGroupDocumentsNotice />;
+  return <DocumentsKpiDashboardContent {...props} />;
+}
+
+function DocumentsKpiDashboardContent({ organizationId, onNavigate }: Props) {
   const { kpi, loading, refresh } = useDocumentsKpi(organizationId);
 
   if (loading && !kpi) {

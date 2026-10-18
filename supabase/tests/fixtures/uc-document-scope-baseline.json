@@ -1,0 +1,1116 @@
+{
+  "columns": [
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "uuid"
+    },
+    {
+      "column": "role",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "text"
+    },
+    {
+      "column": "full_name",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "text"
+    },
+    {
+      "column": "email",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "admin_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "expires_at",
+      "nullable": "YES",
+      "table": "admin_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "uuid"
+    },
+    {
+      "column": "enrollment_id",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "uuid"
+    },
+    {
+      "column": "user_name",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "document_type",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "document_name",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "reg_number",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "issued_at",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "send_method",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "send_number",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "file_url",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "document_issuance_log",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_at",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_by",
+      "nullable": "YES",
+      "table": "document_issuance_log",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "reg_number",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "full_name",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "birth_date",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "date"
+    },
+    {
+      "column": "document_type",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "document_series",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "document_number",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "issue_date",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "date"
+    },
+    {
+      "column": "specialty_name",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "qualification_name",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "protocol_number",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "protocol_date",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "date"
+    },
+    {
+      "column": "order_number",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "order_date",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "date"
+    },
+    {
+      "column": "document_status",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "original_document_data",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "delivery_method",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "delivery_details",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "notes",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "enrollment_id",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "education_document_records",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_at",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_by",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "course_id",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "group_id",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "uuid"
+    },
+    {
+      "column": "education_result",
+      "nullable": "YES",
+      "table": "education_document_records",
+      "type": "text"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "uploaded_by",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "file_url",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_name",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "text"
+    },
+    {
+      "column": "sent_to_admin_at",
+      "nullable": "YES",
+      "table": "frdo_signed_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "frdo_signed_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "group_id",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "doc_type",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "name",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "document_number",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "document_date",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "date"
+    },
+    {
+      "column": "variables",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "jsonb"
+    },
+    {
+      "column": "html",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_path",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "student_user_id",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "company_id",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "created_by",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "package_batch_id",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "package_version",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "integer"
+    },
+    {
+      "column": "doc_status",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "fill_mode",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "layout_format",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "source_note",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "is_current",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "boolean"
+    },
+    {
+      "column": "template_registry_key",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "template_version_label",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "template_sha256",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "variables_snapshot",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "jsonb"
+    },
+    {
+      "column": "docx_sha256",
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "pdf_status",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "generation_status",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "doc_type",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "title",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "counterparty_name",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "counterparty_inn",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "doc_number",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "doc_date",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "date"
+    },
+    {
+      "column": "file_url",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_path",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_size",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "bigint"
+    },
+    {
+      "column": "notes",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "text"
+    },
+    {
+      "column": "related_signature_id",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "related_billing_doc_id",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "related_company_id",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "uploaded_by",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "incoming_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_at",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_by",
+      "nullable": "YES",
+      "table": "incoming_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "text"
+    },
+    {
+      "column": "type",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_url",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "issue_date",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "date"
+    },
+    {
+      "column": "expires_at",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "date"
+    },
+    {
+      "column": "status",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "text"
+    },
+    {
+      "column": "responsible_person",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "text"
+    },
+    {
+      "column": "reminder_sent_at",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_at",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "deleted_by",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "uuid"
+    },
+    {
+      "column": "role",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "text"
+    },
+    {
+      "column": "display_name",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "text"
+    },
+    {
+      "column": "bio",
+      "nullable": "YES",
+      "table": "org_staff",
+      "type": "text"
+    },
+    {
+      "column": "visibility",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "text"
+    },
+    {
+      "column": "sections_access",
+      "nullable": "YES",
+      "table": "org_staff",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "expires_at",
+      "nullable": "YES",
+      "table": "org_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "custom_role_id",
+      "nullable": "YES",
+      "table": "org_staff",
+      "type": "uuid"
+    },
+    {
+      "column": "can_receive_crm_tasks",
+      "nullable": "NO",
+      "table": "org_staff",
+      "type": "boolean"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "folder_id",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "category_id",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_url",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_size",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "bigint"
+    },
+    {
+      "column": "file_type",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "color",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "start_date",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "date"
+    },
+    {
+      "column": "end_date",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "date"
+    },
+    {
+      "column": "max_seats",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "integer"
+    },
+    {
+      "column": "curator_id",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "strict_order",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "limit_access_time",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "schedule_access",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "block_resubmit",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "show_locked_lessons",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "enable_channel",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "enable_group_chat",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "block_student_dialogs",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "boolean"
+    },
+    {
+      "column": "group_number",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "program_title",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "program_hours",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "integer"
+    },
+    {
+      "column": "program_form",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "default_price",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "numeric"
+    },
+    {
+      "column": "course_id",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "training_address",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "schedule_text",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "instructor_name",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "training_dates",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "ARRAY"
+    }
+  ],
+  "constraints": [
+    {
+      "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL",
+      "name": "student_groups_course_id_fkey",
+      "table": "student_groups"
+    },
+    {
+      "definition": "FOREIGN KEY (course_id, organization_id) REFERENCES courses(id, organization_id) ON DELETE SET NULL (course_id) NOT VALID",
+      "name": "student_groups_course_organization_registration_fkey",
+      "table": "student_groups"
+    },
+    {
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "name": "student_groups_organization_id_fkey",
+      "table": "student_groups"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "student_groups_pkey",
+      "table": "student_groups"
+    },
+    {
+      "definition": "FOREIGN KEY (custom_role_id) REFERENCES org_custom_roles(id) ON DELETE SET NULL",
+      "name": "org_staff_custom_role_id_fkey",
+      "table": "org_staff"
+    },
+    {
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "name": "org_staff_organization_id_fkey",
+      "table": "org_staff"
+    },
+    {
+      "definition": "UNIQUE (organization_id, user_id)",
+      "name": "org_staff_organization_id_user_id_key",
+      "table": "org_staff"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "org_staff_pkey",
+      "table": "org_staff"
+    }
+  ],
+  "functions": [
+    {
+      "args": "_user_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_admin_staff_role(_user_id uuid)\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT role FROM public.admin_staff WHERE user_id = _user_id LIMIT 1\n$function$\n",
+      "md5": "f788c4978eb23434a5bb81b79e3ca2a4",
+      "name": "get_admin_staff_role"
+    },
+    {
+      "args": "_user_id uuid, _role text",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_admin_staff_role(_user_id uuid, _role text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1 FROM public.admin_staff\n    WHERE user_id = _user_id\n      AND (\n        role = _role\n        OR (role = 'super_admin')\n        OR (role = 'admin' AND _role IN ('viewer'))\n      )\n  )\n$function$\n",
+      "md5": "55c928b0fd93fe57678fa65f3d64bf05",
+      "name": "has_admin_staff_role"
+    }
+  ]
+}

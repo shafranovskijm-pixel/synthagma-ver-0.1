@@ -48,7 +48,10 @@ const ORG_PERMISSION_GROUPS: { title: string; perms: { key: Permission; label: s
   {
     title: "Документы и журналы",
     perms: [
-      { key: "documents.write", label: "Документы об образовании" },
+      { key: "documents.read", label: "Просмотр документов" },
+      { key: "documents.write", label: "Создание и изменение документов" },
+      { key: "documents.sign", label: "Подпись от организации" },
+      { key: "documents.issue", label: "Выдача документов об образовании" },
       { key: "journals.write", label: "Журналы" },
       { key: "frdo.write", label: "ФРДО" },
       { key: "labor_safety.write", label: "Охрана труда" },

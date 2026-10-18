@@ -19,6 +19,9 @@ import { StaffExpirationButton } from "@/components/staff/StaffExpirationButton"
 import { OwnershipTransfer } from "@/components/staff/OwnershipTransfer";
 import { useAuth } from "@/hooks/useAuth";
 import { generateStrongPassword } from "@/utils/credentials";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { isCurrentOrganizationAccess, useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
+import { StaffDocumentGroupsDialog } from "@/components/staff/StaffDocumentGroupsDialog";
 
 interface StaffMember {
   id: string;
@@ -66,6 +69,13 @@ interface StaffManagerProps {
 
 export function StaffManager({ organizationId }: StaffManagerProps) {
   const { user } = useAuth();
+  const permissions = useStaffPermissions();
+  const documentActions = useDocumentActionPermissions(organizationId);
+  const staffAccessReady = isCurrentOrganizationAccess(permissions, organizationId) &&
+    !(permissions.organizationId === null && ["viewer", "sales_manager"].includes(permissions.adminRole ?? ""));
+  const canReadStaff = staffAccessReady && (permissions.can("staff.read") || permissions.can("staff.write"));
+  const canWriteStaff = staffAccessReady && permissions.can("staff.write");
+  const [documentStaff, setDocumentStaff] = useState<(StaffMember & { organizationId: string }) | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +118,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
     setDialogOpen(false);
     setInviteOpen(false);
     setCreateOpen(false);
+    setDocumentStaff(null);
     return () => { loadGeneration.current += 1; };
   }, [organizationId]);
 
@@ -311,6 +322,11 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                           </span>
                         </TableCell>
                         <TableCell>
+                          <Button variant="ghost" size="icon" disabled={!canReadStaff}
+                            title={`Доступ сотрудника ${s.display_name}`} aria-label={`Доступ сотрудника ${s.display_name}`}
+                            onClick={() => setDocumentStaff({ ...s, organizationId })}>
+                            <Users className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -325,6 +341,12 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
         </div>
 
         {/* Permissions matrix */}
+        <StaffDocumentGroupsDialog organizationId={organizationId}
+          staff={documentStaff?.organizationId === organizationId ? documentStaff : null}
+          canWrite={canWriteStaff} onClose={() => setDocumentStaff(null)} onSaved={() => void loadStaff()}
+          canGrantSign={permissions.orgRole !== "teacher" && documentActions.canSign}
+          canGrantIssue={permissions.orgRole !== "teacher" && documentActions.canIssue} />
+
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-bold">Что может каждая роль</h2>

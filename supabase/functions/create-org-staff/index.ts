@@ -1,9 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { accessErrorResponse, checked, requireActiveUser } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
 };
 
 serve(async (req) => {
@@ -97,6 +99,16 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
+    await requireActiveUser(req, supabaseAdmin);
+    // Check all effective document defaults before looking up private account
+    // data or creating an Auth user through the service role. Staff.write alone
+    // cannot delegate sign/issue by assigning the admin role.
+    if (checked(await supabaseAuth.rpc("validate_org_staff_document_assignment", {
+      p_org: organizationId, p_role: role, p_sections_access: [],
+    })) !== true) return new Response(JSON.stringify({ error: "Insufficient permissions for this staff role" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
     const normalizedEmail = String(email).trim().toLowerCase();
 
     // Check if user already exists by email — try to fetch from profiles first
@@ -131,20 +143,14 @@ serve(async (req) => {
       // invitation flow; no implicit-owner/global staff role is assigned.
     }
 
-    // Upsert org_staff record
-    const { error: staffErr } = await supabaseAdmin
-      .from("org_staff")
-      .upsert(
-        {
-          organization_id: organizationId,
-          user_id: userId,
-          role,
-          display_name: (displayName || fullName || normalizedEmail).toString(),
-          visibility,
-          can_receive_crm_tasks: !!canReceiveCrmTasks,
-        },
-        { onConflict: "organization_id,user_id" },
-      );
+    // Recheck effective grants at commit with the original caller's JWT; the
+    // service client's earlier validation cannot authorize this write forever.
+    const { data: assigned, error: assignmentError } = await supabaseAuth.rpc("commit_org_staff_document_assignment", {
+      p_org: organizationId, p_user: userId, p_role: role,
+      p_display_name: (displayName || fullName || normalizedEmail).toString(),
+      p_visibility: visibility, p_can_receive_crm_tasks: !!canReceiveCrmTasks,
+    });
+    const staffErr = assignmentError || (assigned !== true ? { message: "Staff assignment denied" } : null);
 
     if (staffErr) {
       if (createdNewUser && userId) {
@@ -180,9 +186,6 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("create-org-staff error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return accessErrorResponse(error, corsHeaders);
   }
 });

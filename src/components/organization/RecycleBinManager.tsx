@@ -18,12 +18,21 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { toast } from "sonner";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { AssignedGroupDocumentsNotice } from "./AssignedGroupDocumentsNotice";
 
 interface Props {
   organizationId: string;
 }
 
-export function RecycleBinManager({ organizationId }: Props) {
+export function RecycleBinManager(props: Props) {
+  const permissions = useStaffPermissions();
+  if (permissions.loading) return <Skeleton className="h-16 rounded-lg" />;
+  if (permissions.orgRole === "teacher" && !permissions.isOrgOwner) return <AssignedGroupDocumentsNotice />;
+  return <RecycleBinManagerContent {...props} />;
+}
+
+function RecycleBinManagerContent({ organizationId }: Props) {
   const { items, total, loading, search, setSearch, hasMore, restore, restoreMany, purgeOne, loadMore, refresh } = useRecycleBin(organizationId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [purging, setPurging] = useState(false);
@@ -52,11 +61,6 @@ export function RecycleBinManager({ organizationId }: Props) {
   };
 
   const selectedItems = filtered.filter(it => selected.has(key(it)));
-
-  const daysLeft = (deletedAt: string) => {
-    const ms = new Date(deletedAt).getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now();
-    return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
-  };
 
   const purgeOlderThan = async (days: number) => {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -98,7 +102,7 @@ export function RecycleBinManager({ organizationId }: Props) {
             Корзина документов
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Удалённые документы хранятся 30 дней, затем удаляются окончательно. Восстановление возвращает документ в исходный раздел.
+            Восстановление возвращает документ в исходный раздел. Автоматическая очистка приостановлена до настройки правил хранения.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -167,7 +171,7 @@ export function RecycleBinManager({ organizationId }: Props) {
                 <div>
                   <p className="text-base font-semibold">Корзина пуста</p>
                   <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                    Удалённые документы появляются здесь и хранятся 30 дней. После этого срока они удаляются окончательно.
+                    Удалённые документы появляются здесь. Их можно восстановить; срок автоматического удаления пока не установлен.
                   </p>
                 </div>
               </div>
@@ -185,8 +189,6 @@ export function RecycleBinManager({ organizationId }: Props) {
               <div className="space-y-1.5">
                 {filtered.map(it => {
                   const k = key(it);
-                  const left = daysLeft(it.deleted_at);
-                  const isUrgent = left <= 7;
                   return (
                     <div key={k} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/30 transition-colors">
                       <Checkbox checked={selected.has(k)} onCheckedChange={() => toggle(it)} />
@@ -194,12 +196,6 @@ export function RecycleBinManager({ organizationId }: Props) {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium truncate">{it.display_name}</p>
                           <Badge variant="outline" className="text-xs shrink-0">{it.type_label}</Badge>
-                          {isUrgent && (
-                            <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/30 gap-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              Удалится через {left} дн.
-                            </Badge>
-                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                           <Clock className="w-3 h-3" />

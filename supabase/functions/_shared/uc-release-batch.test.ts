@@ -46,8 +46,9 @@ describe('UC four-migration release; only opaque cron command hash adapted for s
    expect(digest(source)).toBe(item.sourceSha256);
    expect((await db.query<any>('SELECT statements[1] source FROM supabase_migrations.schema_migrations WHERE version=$1',[item.version])).rows[0].source).toBe(item.version==='20261018103000'?source.replaceAll(productionCommandHash,md5(syntheticCleanupCommand)):source);
   }
-  for(const item of manifest.edgeDependencies)expect(digest(await readFile(new URL('../../../'+item.path,import.meta.url),'utf8'))).toBe(item.sourceSha256);
-  expect(digest(await readFile(new URL('../../../supabase/config.toml',import.meta.url),'utf8'))).toBe(manifest.configSha256);
+  // This already-deployed release is immutable. Its companion Edge/config may
+  // evolve in later releases, whose own suites attest the current source graph.
+  expect(digest(await read('release-manifest.json'))).toBe('7d44b53d832d5c0631b9b036b9724eed4b6b8f53dd3e3aaf5cac648f0cc95074');
   expect(await one('SELECT last_number FROM document_number_sequences')).toEqual({last_number:73});
   expect(await one('SELECT file_url,document_revision,current_version_id FROM org_documents')).toEqual({file_url:'legacy/original.pdf',document_revision:0,current_version_id:null});
   expect(await one('SELECT count(*)::int n FROM org_document_versions')).toEqual({n:0});

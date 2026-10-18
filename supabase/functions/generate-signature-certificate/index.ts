@@ -6,7 +6,7 @@ import { signatureSha256 } from "../_shared/signature-finalizer.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
+  "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
 };
 
 function escapeHtml(s: string): string {
@@ -96,7 +96,18 @@ serve(async (req) => {
     const actor = await requireActiveUser(req, supabase, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
     const body = await readObject(req);
     const signatureId = requireUuid(body.signatureId, "signatureId");
-    await requireSignatureAccess(supabase, actor, signatureId);
+    if (actor.service) await requireSignatureAccess(supabase, actor, signatureId);
+
+    if (!actor.service) {
+      const permissionClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: req.headers.get("Authorization")! } },
+      });
+      if (checked(await permissionClient.rpc("uc_signature_actor_allowed", {
+        p_signature_id: signatureId, p_write: false, p_recipient: true,
+      })) !== true) return new Response(JSON.stringify({ error: "Нет доступа к документу" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: sig, error: sigErr } = await supabase
       .from("document_signatures")

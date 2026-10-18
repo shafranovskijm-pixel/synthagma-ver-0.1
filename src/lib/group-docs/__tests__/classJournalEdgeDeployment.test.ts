@@ -64,14 +64,11 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("statusWarnings.push");
     expect(source).toContain("warnings: statusWarnings");
     expect(source).not.toContain("document_date: parsed.data.documentDate");
-    expect(source).toContain('admin.rpc("create_goreltech_group_document_batch"');
+    expect(source).toContain('admin.rpc("register_goreltech_group_document_stage"');
+    expect(source).toContain('userClient.rpc("create_goreltech_group_document_batch"');
     expect(source).toContain("p_actor_id: userId");
-    expect(source).toContain("isMissingRpcError(");
-    expect(source).toContain('code === "PGRST202"');
-    expect(source).toContain('userClient.rpc("create_group_document_batch"');
-    expect(source).toContain("safeLegacyDraftDocuments");
-    expect(source).toContain('doc_status: "draft"');
-    expect(source).toContain("document_number: null");
+    expect(source).not.toContain('userClient.rpc("create_group_document_batch"');
+    expect(source).not.toContain("safeLegacyDraftDocuments");
     expect(source).toContain('PROGRAM_HOURS: programHours > 0 ? String(programHours) : ""');
     expect(source).not.toContain('|| "Генеральный директор"');
 
@@ -109,21 +106,25 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(dryRunBlock).not.toContain(".rpc(");
   });
 
-  it("supports both pre-migration fallback and post-migration trusted RPC signatures", () => {
+  it("requires exact server staging before caller-authorized persistence without a weaker fallback", () => {
     const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
-
-    const trustedCall = source.indexOf('admin.rpc("create_goreltech_group_document_batch"');
-    const missingRpcGate = source.indexOf("isMissingRpcError(", trustedCall);
-    const legacyCall = source.indexOf('userClient.rpc("create_group_document_batch"', missingRpcGate);
-    expect(trustedCall).toBeGreaterThan(-1);
-    expect(missingRpcGate).toBeGreaterThan(trustedCall);
-    expect(legacyCall).toBeGreaterThan(missingRpcGate);
-    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_actor_id: userId");
-    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_organization_id: body.organizationId");
-    expect(source.slice(trustedCall, missingRpcGate)).toContain("p_group_id: body.groupId");
-    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_organization_id: body.organizationId");
-    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_group_id: body.groupId");
-    expect(source.slice(legacyCall, legacyCall + 400)).toContain("p_docs: safeLegacyDraftDocuments");
+    const gate = source.indexOf("await requireDocumentWrite(userClient, body.organizationId, body.groupId)");
+    const sourceRead = source.indexOf('stage = "source-data"');
+    const stage = source.indexOf('admin.rpc("register_goreltech_group_document_stage"');
+    const commit = source.indexOf('userClient.rpc("create_goreltech_group_document_batch"');
+    expect(gate).toBeGreaterThan(-1);
+    expect(sourceRead).toBeGreaterThan(gate);
+    expect(stage).toBeGreaterThan(sourceRead);
+    expect(commit).toBeGreaterThan(stage);
+    expect(source.slice(stage, commit)).toContain("staged.data?.payload_sha256");
+    for (const call of [stage, commit]) {
+      expect(source.slice(call, call + 350)).toContain("p_actor_id: userId");
+      expect(source.slice(call, call + 350)).toContain("p_organization_id: body.organizationId");
+      expect(source.slice(call, call + 350)).toContain("p_group_id: body.groupId");
+      expect(source.slice(call, call + 350)).toContain("p_docs: persistedDocuments");
+    }
+    expect(source).not.toContain("safeLegacyDraftDocuments");
+    expect(source).not.toContain('userClient.rpc("create_group_document_batch"');
   });
 
   it("не выдаёт фирменные шаблоны организации с теми же названием и ИНН, но другим UUID", () => {
@@ -148,29 +149,13 @@ describe("compile-group-class-journal deployment contract", () => {
     expect(source).toContain("}, 422)");
   });
 
-  it("checks the admin role without the ambiguous has_role RPC overload", () => {
-    const source = fs.readFileSync(FUNCTION_SOURCE, "utf8");
-
+  it.each([FUNCTION_SOURCE, CONTRACT_FUNCTION_SOURCE])("uses active caller and scoped document rights instead of an unrestricted admin shortcut: %s", file => {
+    const source = fs.readFileSync(file, "utf8");
     expect(source).not.toContain('.rpc("has_role"');
-    expect(source).toContain('.from("user_roles")');
-    expect(source).toContain('.eq("user_id", userId)');
-    expect(source).toContain('.eq("role", "admin")');
-    expect(source).toContain("const authzError = adminRoleResult.error ||");
-    expect(source).toContain("if (authzError) throw authzError");
-    expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
-  });
-
-  it("keeps the contract compiler off the ambiguous has_role RPC overload", () => {
-    const source = fs.readFileSync(CONTRACT_FUNCTION_SOURCE, "utf8");
-
-    expect(source).not.toContain('.rpc("has_role"');
-    expect(source).toContain('.from("user_roles")');
-    expect(source).toContain('.eq("user_id", userId)');
-    expect(source).toContain('.eq("role", "admin")');
-    expect(source).toContain("const authzError = adminRoleResult.error ||");
-    expect(source).toContain("if (authzError) throw authzError");
-    expect(source).toContain("const isAdmin = Boolean(adminRoleResult.data)");
-    expect(source).toContain("goreltech-company-contract-idempotent-roster-v4");
+    expect(source).not.toContain("const isAdmin = Boolean(adminRoleResult.data)");
+    expect(source).toContain("await requireActiveUser(req, admin)");
+    expect(source).toContain("await requireDocumentWrite(userClient, body.organizationId, body.groupId)");
+    expect(source).toContain("uc-permissions-20261018-v2");
     expect(source).toContain("X-Sintagma-Compiler-Revision");
     expect(source).toContain("compilerRevision");
   });
