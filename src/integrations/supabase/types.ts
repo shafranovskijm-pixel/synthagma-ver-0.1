@@ -15408,6 +15408,39 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_student_frdo_write_contexts: {
+        Row: {
+          actor_id: string | null
+          backend_pid: number
+          created_at: string
+          id: string
+          kind: string
+          organization_id: string
+          transaction_id: number
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          backend_pid?: number
+          created_at?: string
+          id?: string
+          kind: string
+          organization_id: string
+          transaction_id?: number
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          backend_pid?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          transaction_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -16438,6 +16471,15 @@ export type Database = {
         Args: { _organization_id: string; _permission: string }
         Returns: boolean
       }
+      can_prepare_student_registration_details: {
+        Args: {
+          p_confirm_identity: boolean
+          p_group_id: string
+          p_organization_id: string
+          p_with_frdo: boolean
+        }
+        Returns: boolean
+      }
       can_read_course_file_object: {
         Args: { _object_name: string }
         Returns: boolean
@@ -16466,6 +16508,10 @@ export type Database = {
       }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
+        Returns: boolean
+      }
+      can_write_student_frdo_data: {
+        Args: { p_organization_id: string; p_user_id: string }
         Returns: boolean
       }
       cancel_course_assignment: {
@@ -19040,6 +19086,44 @@ export type Database = {
       }
       uc_signature_token_access_allowed: {
         Args: { p_id: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_student_frdo_actor_can_write: {
+        Args: {
+          p_actor: string
+          p_allow_self?: boolean
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_student_frdo_delete_allowed: {
+        Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_student_frdo_fields_match: {
+        Args: { p_fields: string[]; p_new: Json; p_old: Json }
+        Returns: boolean
+      }
+      uc_student_frdo_pair_valid: {
+        Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_student_frdo_registration_stub: {
+        Args: { p_row: Json }
+        Returns: boolean
+      }
+      uc_student_frdo_staff_can_write: {
+        Args: {
+          p_actor: string
+          p_org: string
+          p_permission: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_student_frdo_staff_org_allowed: {
+        Args: { p_actor: string; p_org: string; p_permission: string }
         Returns: boolean
       }
       uc_validate_applicability_key: {
