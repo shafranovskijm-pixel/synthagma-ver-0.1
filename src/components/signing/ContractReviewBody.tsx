@@ -25,6 +25,7 @@ import { sha256Hex } from "@/utils/documentHash";
 import { applyAcceptedEdits } from "@/lib/applyAcceptedEdits";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { getSignatureTokenFile, getAuthenticatedSignatureFile, isHistoricalSignatureFileError, downloadSignatureRevisionFile } from "@/lib/signatureTokenFile";
 
 interface Props {
   signatureToken: string | null;
@@ -75,21 +76,6 @@ interface Revision {
 interface OrgComment extends ReviewComment {
   resolution_status?: "pending" | "accepted" | "rejected";
   org_reply?: string | null;
-}
-
-const EXTERNAL_BUCKET = "external-contracts";
-
-async function resolveFileUrl(raw: string | null): Promise<string | null> {
-  if (!raw) return null;
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  const { data, error } = await supabase.storage
-    .from(EXTERNAL_BUCKET)
-    .createSignedUrl(raw, 60 * 60);
-  if (error) {
-    console.error("[ContractReviewBody] signed URL error", error);
-    return null;
-  }
-  return data?.signedUrl || null;
 }
 
 export function ContractReviewBody({
@@ -192,13 +178,23 @@ export function ContractReviewBody({
 
   useEffect(() => {
     let cancelled = false;
+    setResolvedUrl(null);
     (async () => {
-      const url = await resolveFileUrl(rawFileUrl);
-      if (!cancelled) setResolvedUrl(url);
+      if (!rawFileUrl || !signatureToken || !sig?.id || !currentRevision?.id) return;
+      try {
+        const url = await getSignatureTokenFile({ token: signatureToken, signatureId: sig.id, kind: "revision", revisionId: currentRevision.id })
+          .catch((error) => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(rawFileUrl, sig.organization_id); });
+        if (!cancelled) setResolvedUrl(url);
+      } catch { if (!cancelled) toast.error("Для файла требуется проверка исторической привязки отправителем. Подписанные сведения не изменены."); }
     })();
     return () => { cancelled = true; };
-  }, [rawFileUrl]);
+  }, [rawFileUrl, signatureToken, sig?.id, sig?.organization_id, currentRevision?.id]);
 
+  const downloadCurrentFile = async () => {
+    if (!sig || !signatureToken || !currentRevision?.id || !rawFileUrl) return;
+    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId: sig.id, organizationId: sig.organization_id, revisionId: currentRevision.id, locator: rawFileUrl, fileName: currentRevision.file_name || "document" }); }
+    catch { toast.error("Не удалось скачать файл; обновите документ или проверьте привязку у отправителя"); }
+  };
   const reloadComments = async () => {
     if (!signatureToken) return;
     const { data } = await (supabase as any).rpc("get_signature_comments_by_token", { p_token: signatureToken });
@@ -540,7 +536,7 @@ export function ContractReviewBody({
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">PDF-документ. Используйте поле ниже для общих комментариев.</p>
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <a href={resolvedUrl} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5" />Скачать</a>
+              <a href={resolvedUrl} onClick={e => { e.preventDefault(); void downloadCurrentFile(); }} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5" />Скачать</a>
             </Button>
           </div>
           <iframe src={resolvedUrl} className="w-full h-[70vh] rounded-lg border bg-white" title={sig.document_title} />
@@ -572,9 +568,11 @@ export function ContractReviewBody({
       {isDocx && resolvedUrl && !documentHtml && (
         <DocxRenderer
           fileUrl={resolvedUrl}
-          storagePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
+          storagePath={null}
           cachedHtml={currentRevision?.document_html}
           revisionId={currentRevision?.id}
+          onDownload={downloadCurrentFile}
+          cacheConvertedHtml={!readOnly && !!user?.id && sig?.status !== "signed"}
           onHtmlReady={setConvertedHtml}
         />
       )}
@@ -617,7 +615,7 @@ export function ContractReviewBody({
         <div className="text-center text-muted-foreground p-12">
           <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p className="text-sm mb-3">Этот формат не поддерживается для встроенного просмотра.</p>
-          <Button variant="outline" size="sm" asChild><a href={resolvedUrl} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5 mr-1.5" />Скачать файл</a></Button>
+          <Button variant="outline" size="sm" asChild><a href={resolvedUrl} onClick={e => { e.preventDefault(); void downloadCurrentFile(); }} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5 mr-1.5" />Скачать файл</a></Button>
         </div>
       )}
       {!rawFileUrl && !documentHtml && (
@@ -958,9 +956,12 @@ export function ContractReviewBody({
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           signatureId={sig.id}
+          organizationId={sig.organization_id}
+          signatureToken={signatureToken}
+          revisionId={currentRevision?.id ?? null}
           documentTitle={sig.document_title}
           documentHtml={mergedHtml}
-          attachedFilePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
+          attachedFilePath={rawFileUrl}
           attachedFileMime={fileMime || null}
           handwrittenScanPath={sig.handwritten_scan_path || null}
           signedDocumentPath={sig.signed_document_path || null}
@@ -1007,6 +1008,7 @@ export function ContractReviewBody({
           signatureId={sig.id}
           organizationId={sig.organization_id}
           title="Отправить новую версию клиенту"
+          expectedRevisionId={sig.current_revision_id ?? null}
           onUploaded={async () => {
             // После загрузки новой ревизии — финализируем "send_new_version" чтобы выслать уведомление клиенту
             try {

@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Progress } from "@/components/ui/progress";
 import { OrdersArchive } from "./OrdersArchive";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +27,9 @@ import { OrgDocumentVersionsDialog } from "./OrgDocumentVersionsDialog";
 import { openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { AssignedGroupDocumentsNotice } from "./AssignedGroupDocumentsNotice";
+import { EducationCenterAssistant } from "./compliance/EducationCenterAssistant";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Building2, Scale, Award, ClipboardList, FileCheck, FileText, Users, GraduationCap,
@@ -39,6 +41,12 @@ interface OrgDocumentsManagerProps {
 }
 
 export function OrgDocumentsManager({ organizationId, canWrite = false }: OrgDocumentsManagerProps) {
+  const permissions = useStaffPermissions();
+  if (permissions.orgRole === "teacher" && !permissions.isOrgOwner) return <AssignedGroupDocumentsNotice />;
+  return <OrgDocumentsManagerContent key={organizationId} organizationId={organizationId} canWrite={canWrite} />;
+}
+
+function OrgDocumentsManagerContent({ organizationId, canWrite = false }: OrgDocumentsManagerProps) {
   const h = useOrgDocumentsManager(organizationId, canWrite);
 
   if (h.isLoading) {
@@ -49,8 +57,12 @@ export function OrgDocumentsManager({ organizationId, canWrite = false }: OrgDoc
     );
   }
 
+  if (h.documentsError) return <div className="bg-card rounded-2xl border border-border p-6 space-y-3"><p role="alert" className="text-sm text-destructive">{h.documentsError}</p><Button variant="outline" onClick={() => void h.refreshDocuments()}>Повторить загрузку файлов</Button></div>;
+
   return (
     <div className="space-y-6">
+      {!h.activeCategory && <EducationCenterAssistant organizationId={organizationId} organization={h.organizationData ?? null}
+        documents={h.documents ?? []} onUpload={h.openUploadDialog} onHistory={h.setVersionsDocument} onArchive={() => { h.setSearchQuery(""); h.setExpiryFilter("archived"); }} canWrite={canWrite} />}
       {!h.activeCategory ? (
         <OverviewContent h={h} />
       ) : (
@@ -136,8 +148,10 @@ export function OrgDocumentsManager({ organizationId, canWrite = false }: OrgDoc
 }
 
 function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }) {
+  const catalogItems = REGULAR_CATEGORIES.flatMap(category => category.documents);
+  const filesPresent = catalogItems.filter(document => h.isDocumentReady(document.type)).length;
   return (
-    <div className="space-y-6">
+    <div id="org-document-file-catalog" className="space-y-6">
       <div className="bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -145,16 +159,15 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
               <FileText className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold">Комплектность документов</h3>
-              <p className="text-sm text-muted-foreground">Действующие файлы по текущему списку. Содержание и отчётный период проверяются отдельно.</p>
+              <h3 className="text-lg font-semibold">Файлы в каталоге</h3>
+              <p className="text-sm text-muted-foreground">Наличие действующих файлов. Применимость определяется по профилю центра; утверждение и содержание проверяются отдельно.</p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-bold text-primary">{h.completionPercent}%</div>
-            <div className="text-sm text-muted-foreground">{h.uploadedRequired} из {h.totalRequired} обязательных</div>
+            <div className="text-3xl font-bold text-primary">{filesPresent}/{catalogItems.length}</div>
+            <div className="text-sm text-muted-foreground">{filesPresent} из {catalogItems.length} позиций с файлами</div>
           </div>
         </div>
-        <Progress value={h.completionPercent} className="h-2" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -186,17 +199,8 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
           const CategoryIcon = ICON_MAP[category.icon] || FileText;
           const categoryDocs = category.documents;
           const uploadedCount = categoryDocs.filter((d) => h.isDocumentReady(d.type)).length;
-          const requiredCount = categoryDocs.filter((d) => d.required).length;
-          const uploadedRequiredCount = categoryDocs.filter((d) => d.required && h.isDocumentReady(d.type)).length;
           const filteredDocs = h.searchQuery ? categoryDocs.filter((doc) => doc.label.toLowerCase().includes(h.searchQuery.toLowerCase())) : categoryDocs;
           if (h.searchQuery && filteredDocs.length === 0) return null;
-
-          const annualDocs = categoryDocs.filter((d: any) => d.annual);
-          const hasAnnualReminder = annualDocs.some((d: any) => {
-            const uploadedDoc = h.getDocumentForType(d.type);
-            if (!uploadedDoc) return true;
-            return !h.isDocumentReady(d.type);
-          });
 
           return (
             <AccordionItem key={category.id} value={category.id} className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -209,19 +213,13 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
                     <div className="text-left">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{category.title}</h3>
-                        {hasAnnualReminder && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />Требуется обновление
-                          </span>
-                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {uploadedCount} из {categoryDocs.length} действующих
-                        {requiredCount > 0 && <span className="ml-2">(обязательных: {uploadedRequiredCount}/{requiredCount})</span>}
+                        {uploadedCount} из {categoryDocs.length} позиций с действующими файлами
                       </p>
                     </div>
                   </div>
-                  {uploadedRequiredCount === requiredCount && requiredCount > 0 && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                    {uploadedCount === categoryDocs.length && categoryDocs.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-500" aria-label="Файлы всех позиций загружены" />}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-0 pb-0">
@@ -268,14 +266,13 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
   return (
     <div className="flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors">
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasFile ? (!ready ? "bg-amber-500/10" : "bg-green-500/10") : docItem.required ? "bg-destructive/10" : "bg-secondary"}`}>
-          {hasFile ? (!ready ? <AlertCircle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />) : docItem.required ? <AlertCircle className="w-4 h-4 text-destructive" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasFile ? (!ready ? "bg-amber-500/10" : "bg-green-500/10") : "bg-secondary"}`}>
+          {hasFile ? (!ready ? <AlertCircle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />) : <FileText className="w-4 h-4 text-muted-foreground" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium truncate">{docItem.label}</span>
-            {docItem.required && <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">Обязательный</span>}
-            {isAnnual && <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 flex-shrink-0">Ежегодный</span>}
+            {isAnnual && <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 flex-shrink-0">Отчётный документ</span>}
             {expBadge}
           </div>
           {uploadedDoc && (
@@ -287,7 +284,7 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
               {isAnnual && <span>· Отчётный период проверяется отдельно</span>}
             </div>
           )}
-          {isAnnual && !uploadedDoc && <div className="text-xs text-amber-600 mt-0.5">⚠️ Отчёт не загружен — необходимо загрузить ежегодно</div>}
+          {isAnnual && !uploadedDoc && <div className="text-xs text-muted-foreground mt-0.5">Отчёт не загружен. Применимость и период уточняются в помощнике.</div>}
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-4">
@@ -408,7 +405,7 @@ function OrderDocumentsDialog({ h }: { h: ReturnType<typeof useOrgDocumentsManag
                           </div>
                           <span className="text-sm flex-1">{doc.label}</span>
                           {isUploaded && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">Загружен</span>}
-                          {doc.required && !isUploaded && <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Обязательный</span>}
+                          {doc.required && !isUploaded && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Проверьте применимость</span>}
                         </div>
                       );
                     })}

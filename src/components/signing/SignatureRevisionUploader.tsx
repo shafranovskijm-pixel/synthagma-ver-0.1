@@ -8,12 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { cn } from "@/lib/utils";
+import { uploadImmutableSignatureFile } from "@/lib/signatureFileUpload";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   signatureId: string;
   organizationId: string;
+  expectedRevisionId?: string | null;
   /** Заголовок диалога — например, "Отправить правленую версию" или "Загрузить новую версию" */
   title?: string;
   onUploaded?: (revisionId: string) => void;
@@ -22,12 +24,13 @@ interface Props {
 const ALLOWED = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"];
 const MAX_SIZE = 20 * 1024 * 1024;
 
-export function SignatureRevisionUploader({ open, onOpenChange, signatureId, organizationId, title = "Загрузить новую версию", onUploaded }: Props) {
+export function SignatureRevisionUploader({ open, onOpenChange, signatureId, organizationId, expectedRevisionId = null, title = "Загрузить новую версию", onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [summary, setSummary] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const staged = useRef<{ file: File; key: string; revisionId: string; expectedRevisionId: string | null; path: string; uploaded: boolean } | null>(null);
 
   const handleFile = (f: File) => {
     if (!ALLOWED.includes(f.type) && !/\.(pdf|docx?|)$/i.test(f.name)) { toast.error("Только PDF или DOCX/DOC"); return; }
@@ -39,13 +42,19 @@ export function SignatureRevisionUploader({ open, onOpenChange, signatureId, org
     if (!file) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "bin";
-      const path = `${organizationId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("external-contracts").upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) throw upErr;
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+      const key = JSON.stringify([organizationId, signatureId, summary.trim()]);
+      if (!staged.current || staged.current.file !== file || staged.current.key !== key) {
+        const revisionId = crypto.randomUUID();
+        staged.current = { file, key, revisionId, expectedRevisionId, path: `${organizationId}/signature-files/${signatureId}/${revisionId}.${ext}`, uploaded: false };
+      }
+      const { path, revisionId } = staged.current;
+      if (!staged.current.uploaded) { await uploadImmutableSignatureFile(path, file); staged.current.uploaded = true; }
 
-      const { data: revId, error: rpcErr } = await (supabase as any).rpc("add_signature_revision", {
+      const { data: revId, error: rpcErr } = await (supabase as any).rpc("add_signature_revision_v2", {
+        p_revision_id: revisionId,
         p_signature_id: signatureId,
+        p_expected_revision_id: staged.current.expectedRevisionId,
         p_file_url: path,
         p_file_name: file.name,
         p_file_mime: file.type || "application/octet-stream",
@@ -53,10 +62,11 @@ export function SignatureRevisionUploader({ open, onOpenChange, signatureId, org
         p_change_summary: summary.trim() || null,
       });
       if (rpcErr) throw rpcErr;
+      if (revId !== revisionId) throw new Error("Не удалось подтвердить сохранение версии. Повторите отправку.");
 
       toast.success("Новая версия загружена", { description: "Встречная сторона получит уведомление" });
       onUploaded?.(revId as string);
-      setFile(null); setSummary("");
+      setFile(null); setSummary(""); staged.current = null;
       onOpenChange(false);
     } catch (e) {
       console.error(e);

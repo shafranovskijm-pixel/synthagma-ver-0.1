@@ -8,6 +8,8 @@ interface Props {
   storagePath?: string | null;
   cachedHtml?: string | null;
   revisionId?: string | null;
+  cacheConvertedHtml?: boolean;
+  onDownload?: () => void;
   onHtmlReady: (html: string) => void;
 }
 
@@ -17,7 +19,7 @@ const EXTERNAL_BUCKET = "external-contracts";
  * Скачивает DOCX-файл (через Supabase Storage или signed URL),
  * конвертирует в HTML через mammoth, кеширует на сервере.
  */
-export function DocxRenderer({ fileUrl, storagePath, cachedHtml, revisionId, onHtmlReady }: Props) {
+export function DocxRenderer({ fileUrl, storagePath, cachedHtml, revisionId, cacheConvertedHtml = true, onDownload, onHtmlReady }: Props) {
   const [loading, setLoading] = useState(!cachedHtml);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +66,7 @@ export function DocxRenderer({ fileUrl, storagePath, cachedHtml, revisionId, onH
         onHtmlReady(wrappedHtml);
 
         // Кешируем (best-effort)
-        if (revisionId) {
+        if (revisionId && cacheConvertedHtml) {
           (supabase as any).rpc("update_signature_revision_html", {
             p_revision_id: revisionId,
             p_html: wrappedHtml,
@@ -79,7 +81,7 @@ export function DocxRenderer({ fileUrl, storagePath, cachedHtml, revisionId, onH
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileUrl, storagePath, revisionId]);
+  }, [fileUrl, storagePath, revisionId, cacheConvertedHtml]);
 
   if (loading) {
     return (
@@ -94,7 +96,7 @@ export function DocxRenderer({ fileUrl, storagePath, cachedHtml, revisionId, onH
       <div className="flex flex-col items-center justify-center py-12 text-destructive gap-2">
         <AlertTriangle className="w-6 h-6" />
         <p className="text-sm">{error}</p>
-        <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs underline text-primary">
+        <a href={fileUrl} onClick={onDownload ? e => { e.preventDefault(); onDownload(); } : undefined} target="_blank" rel="noreferrer" className="text-xs underline text-primary">
           Скачать файл
         </a>
       </div>

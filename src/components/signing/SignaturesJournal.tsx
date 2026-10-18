@@ -20,6 +20,7 @@ import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { BulkSendForSigningDialog } from "@/components/signing/BulkSendForSigningDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
+import { getAuthenticatedSignatureFile, getSignatureTokenFile, isHistoricalSignatureFileError, downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
 
 interface SignatureRow {
   id: string;
@@ -244,26 +245,8 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
 
   const handleDownloadCertificate = async (r: SignatureRow) => {
     try {
-      let path = r.signed_document_path;
-      if (!path) {
-        // Попробуем сгенерировать сейчас (если ещё не сгенерирован)
-        const { data, error } = await supabase.functions.invoke("generate-signature-certificate", {
-          body: { signature_id: r.id },
-        });
-        if (error) throw error;
-        path = data?.path;
-        if (!path) throw new Error("Сертификат не сформирован");
-      }
-      const { data: signed, error: signErr } = await supabase.storage
-        .from("signed-documents")
-        .createSignedUrl(path, 600);
-      if (signErr || !signed?.signedUrl) throw signErr || new Error("URL не получен");
-      const a = document.createElement("a");
-      a.href = signed.signedUrl;
-      a.download = `signature-certificate-${r.id}.pdf`;
-      a.target = "_blank";
-      document.body.appendChild(a); a.click(); a.remove();
-      toast.success("Сертификат подписи загружен");
+      await downloadStoredSignatureArtifact({ token: r.signature_token, signatureId: r.id, organizationId: r.organization_id, locator: r.signed_document_path });
+      toast.success("Скачивание сохранённого сертификата начато");
     } catch (e: any) {
       toast.error("Не удалось скачать сертификат", { description: e?.message || String(e) });
     }
@@ -563,6 +546,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
               {selected.document_type === "external_upload" && (
                 <SignatureFilesPanel
                   signatureId={selected.id}
+                  signatureToken={selected.signature_token}
                   organizationId={selected.organization_id}
                   senderUserId={selected.sender_user_id}
                   documentType={selected.document_type}
@@ -685,8 +669,9 @@ function SignatureCommentsPanel({ signatureId }: { signatureId: string }) {
 }
 
 /** Панель файлов-версий для внешне загруженных договоров */
-export function SignatureFilesPanel({ signatureId, organizationId, senderUserId, documentType, status, requiresBilateral, senderSignedAt, onChanged }: {
+export function SignatureFilesPanel({ signatureId, signatureToken, organizationId, senderUserId, documentType, status, requiresBilateral, senderSignedAt, onChanged }: {
   signatureId: string; organizationId: string; status: string;
+  signatureToken?: string;
   senderUserId: string; documentType: string;
   requiresBilateral?: boolean; senderSignedAt?: string | null; onChanged: () => void;
 }) {
@@ -698,22 +683,28 @@ export function SignatureFilesPanel({ signatureId, organizationId, senderUserId,
   const [loading, setLoading] = useState(true);
   const [showUploader, setShowUploader] = useState(false);
   const [countersigning, setCountersigning] = useState(false);
+  const [currentRevisionId, setCurrentRevisionId] = useState<string | null>(null);
 
   const loadRev = async () => {
     setLoading(true);
-    const { data } = await (supabase as any)
-      .from("signature_revisions").select("*")
-      .eq("signature_id", signatureId).order("version", { ascending: false });
-    setRevisions((data as any[]) || []);
+    const [versions, parent] = await Promise.all([
+      (supabase as any).from("signature_revisions").select("*").eq("signature_id", signatureId).order("version", { ascending: false }),
+      supabase.from("document_signatures").select("current_revision_id").eq("id", signatureId).maybeSingle(),
+    ]);
+    if (versions.error || parent.error || !parent.data) { setRevisions([]); setCurrentRevisionId(null); toast.error("Не удалось загрузить текущую версию"); }
+    else { setRevisions(versions.data || []); setCurrentRevisionId(parent.data.current_revision_id); }
     setLoading(false);
   };
   useEffect(() => { loadRev(); }, [signatureId]);
 
-  const downloadFile = async (path: string, name: string) => {
-    const { data, error } = await supabase.storage.from("external-contracts").createSignedUrl(path, 600);
-    if (error || !data?.signedUrl) { toast.error("Не удалось получить ссылку"); return; }
+  const downloadFile = async (path: string, name: string, revisionId: string) => {
+    let url: string;
+    try { url = signatureToken ? await getSignatureTokenFile({ token: signatureToken, signatureId, kind: "revision", revisionId })
+      .catch(error => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(path, organizationId); })
+      : await getAuthenticatedSignatureFile(path, organizationId); }
+    catch { toast.error("Не удалось открыть файл; проверьте привязку и доступ"); return; }
     const a = document.createElement("a");
-    a.href = data.signedUrl; a.download = name; a.target = "_blank";
+    a.href = url; a.download = name; a.target = "_blank";
     document.body.appendChild(a); a.click(); a.remove();
   };
 
@@ -760,7 +751,7 @@ export function SignatureFilesPanel({ signatureId, organizationId, senderUserId,
                 </div>
               </div>
               {r.file_url && (
-                <Button variant="ghost" size="icon" onClick={() => downloadFile(r.file_url, r.file_name || "document")}>
+                <Button variant="ghost" size="icon" onClick={() => downloadFile(r.file_url, r.file_name || "document", r.id)}>
                   <Download className="w-4 h-4" />
                 </Button>
               )}
@@ -790,6 +781,7 @@ export function SignatureFilesPanel({ signatureId, organizationId, senderUserId,
       <SignatureRevisionUploader
         open={showUploader} onOpenChange={setShowUploader}
         signatureId={signatureId} organizationId={organizationId}
+        expectedRevisionId={currentRevisionId}
         title="Загрузить новую версию"
         onUploaded={() => { loadRev(); onChanged(); }}
       />

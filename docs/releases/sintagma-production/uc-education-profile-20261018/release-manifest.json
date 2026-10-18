@@ -1,0 +1,460 @@
+{
+  "release": "uc-education-profile-20261018",
+  "preparedOnly": true,
+  "migrationCount": 2,
+  "batchSha256": "6a3cbd8b49a9efce94befb96e257f9cf0010aabbda61d2aac5c09114191f9301",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceSha256": "6df43053d4c85e94b0893e50033f102bc98dd1b0582266d29dac3e0ef1a159d5",
+      "sourceMd5": "a840381f437b4529d13a466636acf512",
+      "executableMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceSha256": "41d0d8f8250a0feddcf0f71f03765b7ea6513d30e06ee75c900fd2971ea9ad42",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1",
+      "executableMd5": "f61b7f838928467ae28aa0a6602810c1"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    }
+  ],
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages"
+  ],
+  "expectedFunctions": [
+    {
+      "signature": "add_signature_revision(uuid,text,text,text,text,text)",
+      "definition_md5": "55bba8f07761156974e016203862fce3",
+      "authenticated": true,
+      "anon": true,
+      "service_role": true
+    },
+    {
+      "signature": "add_signature_revision_v2(uuid,uuid,uuid,text,text,text,text,text)",
+      "definition_md5": "4eff66a8bbd761b099c451f3cab5184c",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "create_external_contract_signature_v2(uuid,text,text,text,text,text,text,text,uuid)",
+      "definition_md5": "5e7217ad17ad684950bc1d4cc1a599b6",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "get_organization_education_profile(uuid)",
+      "definition_md5": "fb776b25a2d3ddb2de45f4bb0af55c66",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "list_organization_document_applicability_decisions(uuid)",
+      "definition_md5": "38bc3c9607dd9b234faedfb0a0c6a7e8",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "list_organization_document_applicability_history(uuid,text,integer,bigint)",
+      "definition_md5": "9eaf5cedc8f849a078e3628c81b71bee",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "list_organization_education_profile_history(uuid,integer,bigint)",
+      "definition_md5": "e5f0f8646e2e57ee474ec2105f5c5f3e",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "save_organization_document_applicability_decision(uuid,text,bigint,bigint,text,text,text,uuid)",
+      "definition_md5": "d9b8bb1b7cc5a20ae27f9b71b8f7c4c0",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "save_organization_education_profile(uuid,bigint,jsonb,uuid)",
+      "definition_md5": "20666a5fc6e0ec3d33e8229b103e047e",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_document_storage_scope(text,text)",
+      "definition_md5": "8b098a3d3719a73e92a0b1a002121de9",
+      "authenticated": true,
+      "anon": true,
+      "service_role": true
+    },
+    {
+      "signature": "uc_empty_education_profile()",
+      "definition_md5": "5cfa6476fc8d857005b1860f162c37b2",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_compliance_history()",
+      "definition_md5": "9ea2c738380752e8d7de9cd5d2bf520b",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_signature_file_provenance()",
+      "definition_md5": "29818408e329a07be3f740a8953f3bfc",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_signature_canonical_file(uuid,uuid,text)",
+      "definition_md5": "401b44e39584dd94d073b944e03979a8",
+      "authenticated": true,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_signature_file_context(text,text,uuid)",
+      "definition_md5": "0913f786957394707e29ef705d5b790d",
+      "authenticated": false,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_signature_file_scope(text,text)",
+      "definition_md5": "9d4733a8bb62597b9a67e4d85261c0df",
+      "authenticated": true,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_signature_locator_key(text,text)",
+      "definition_md5": "3d2d9463e7063aea9f2090f218ffe3f0",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_signature_object_bound(uuid,text,text)",
+      "definition_md5": "0bad882bf215319b4fd5715103b78573",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_signature_object_uploader(text,text,uuid)",
+      "definition_md5": "69f24010df2478180c9b6dce8c32077d",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_signature_storage_read(text,text)",
+      "definition_md5": "8ed97513c96236cf32c44e764ad1e098",
+      "authenticated": true,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_signature_storage_write(text,text)",
+      "definition_md5": "01d386c700f5341f132c72ed607a6e9a",
+      "authenticated": true,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_validate_applicability_key(text,text)",
+      "definition_md5": "fdaba82d961192324e65e8ccb876d987",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_validate_education_profile(jsonb)",
+      "definition_md5": "dcb4593eeeecc6a48123ef8569b6e419",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "organization_education_profiles",
+      "schemaMd5": "24d8c409865532da5edf6ce068ddfad7"
+    },
+    {
+      "table": "organization_education_profile_history",
+      "schemaMd5": "eab27774ca6c9e070bd54ba9d065a3e1"
+    },
+    {
+      "table": "organization_document_applicability_decisions",
+      "schemaMd5": "c14caf43e60db8c5e3ef7bc2fd7d6f91"
+    },
+    {
+      "table": "organization_document_applicability_history",
+      "schemaMd5": "2ecbbe003e463941b395e0956e766725"
+    },
+    {
+      "table": "uc_signature_file_requests",
+      "schemaMd5": "cad275ed69d1aedab329c2419f7591ec"
+    }
+  ],
+  "expectedTriggers": [
+    {
+      "name": "uc_revision_file_provenance",
+      "table_name": "signature_revisions",
+      "definition_md5": "3af5b39abc7d67db409c560a2d854c9f"
+    },
+    {
+      "name": "uc_signature_file_provenance",
+      "table_name": "document_signatures",
+      "definition_md5": "2a0cc2818aa843a097492522bc620b60"
+    }
+  ],
+  "expectedStoragePolicies": [
+    {
+      "name": "uc_signature_namespace_immutable_delete",
+      "definition_md5": "908d0e9b13cf7a2627011cc5152a3ca8"
+    },
+    {
+      "name": "uc_signature_namespace_immutable_update",
+      "definition_md5": "0381e2dba8030669fb760f4ff70ba1fc"
+    },
+    {
+      "name": "uc_signature_namespace_insert",
+      "definition_md5": "aa5bb3aba16a387e755916064a48c34e"
+    }
+  ],
+  "replacementSignatures": [
+    "uc_document_storage_scope(text,text)",
+    "uc_signature_storage_read(text,text)",
+    "uc_signature_storage_write(text,text)",
+    "add_signature_revision(uuid,text,text,text,text,text)"
+  ],
+  "frontendFiles": [
+    {
+      "path": "src/components/organization/OrgDocumentsManager.tsx",
+      "sourceSha256": "cc01e904bcff113fb8235042d43884fc21cf5a7baecd1019846e02049f976103"
+    },
+    {
+      "path": "src/components/organization/compliance/EducationCenterAssistant.tsx",
+      "sourceSha256": "677495b3588d99388322aee6b1c878bf19c8a5cf4c20ae8b619ed07314fe36b5"
+    },
+    {
+      "path": "src/components/organization/compliance/EducationProfileDialog.tsx",
+      "sourceSha256": "a982a9866b2319d9abefd5c561915e11a441695ed50d71f3665753923fd19bbd"
+    },
+    {
+      "path": "src/components/organization/tabs/DocumentsTab.tsx",
+      "sourceSha256": "56b9d5bcd6f29eee4b3c82d3132adf2f3ec6b1073a0bd8b9af2e41453b86aeb5"
+    },
+    {
+      "path": "src/components/signing/ContractReviewBody.tsx",
+      "sourceSha256": "119f40815a4faa7205c80c5cb21603e41691e570ae4bf46bc1acce1354761a37"
+    },
+    {
+      "path": "src/components/signing/ContractReviewDialog.tsx",
+      "sourceSha256": "ea8eb617440ad5302f3b35f134607b5f2e8794b6fd4b7f2105a8a20bb5621ef9"
+    },
+    {
+      "path": "src/components/signing/DocxRenderer.tsx",
+      "sourceSha256": "732e50b08f0a14cb724cee90ce384391c288d110cef954eb73fd38ae6306fc25"
+    },
+    {
+      "path": "src/components/signing/ExternalContractUploader.tsx",
+      "sourceSha256": "2ccd6865067fedbb3f894356132d515dbb52c06e1cc8d95368997ea83ab232ec"
+    },
+    {
+      "path": "src/components/signing/SignatureRevisionUploader.tsx",
+      "sourceSha256": "3fb1cff08da6a68c2d48c6039d9203bd276df8f830eecb9d25d0da3c4f1fcea9"
+    },
+    {
+      "path": "src/components/signing/SignaturesJournal.tsx",
+      "sourceSha256": "454a1d2f9ada111596c6e4052be6fe063f56cdd4afd3f726bbf9bbfa24e51828"
+    },
+    {
+      "path": "src/components/signing/SignedDocumentPreview.tsx",
+      "sourceSha256": "f95355016fb6e687bc8ddc9c619348b3e1ad5583c4dbb7fbaed0e0cbb7310759"
+    },
+    {
+      "path": "src/components/student/StudentDocumentsTab.tsx",
+      "sourceSha256": "f46d50a45e206a45258451db07abfb729616203b8d2173f6196886f9425ce124"
+    },
+    {
+      "path": "src/hooks/useDocumentApplicabilityDecisions.ts",
+      "sourceSha256": "204660dda4c73eaad16125557894e26d969be3b38442b6b7ddc71e0edb2e6fc8"
+    },
+    {
+      "path": "src/hooks/useEducationComplianceProfile.ts",
+      "sourceSha256": "2eb1e20c5284b2c4dad19c279fb2bd936252affbcaf4e5d9befb9f80c522f686"
+    },
+    {
+      "path": "src/hooks/useOrgDocumentsManager.ts",
+      "sourceSha256": "d7cd5fa97c0a704acaae58862eb666c387bb38e569a83245537a88fd23f95c67"
+    },
+    {
+      "path": "src/lib/signatureFileUpload.ts",
+      "sourceSha256": "2a86ed7dcbecb7ac1a746eef485489f2807e754779eb1df117c89533b7bf1b3f"
+    },
+    {
+      "path": "src/lib/signatureTokenFile.ts",
+      "sourceSha256": "f9cea397790e9123c01ff1a77a7be9265d22e53221760e7da620ff91371a980f"
+    },
+    {
+      "path": "src/lib/signedDocumentPdf.ts",
+      "sourceSha256": "04e6a3441d0ffd380e12fbe379f2413f401f2957471148f772268eff1b98c944"
+    },
+    {
+      "path": "src/lib/uc-compliance/catalog.ts",
+      "sourceSha256": "70aa8b0141de2d761eab9b30168ffa05ba78c55e914452ff2364b3110371adc1"
+    },
+    {
+      "path": "src/lib/uc-compliance/evaluate.ts",
+      "sourceSha256": "dafb98edb104ec236e92ebd2d954d0bd8600c5b2629372a63ec74f3c86ccb458"
+    },
+    {
+      "path": "src/lib/uc-compliance/model.ts",
+      "sourceSha256": "0700df238bee823833108a020aba4d959a0b8e69050aa75b40cc6076ac79abbd"
+    },
+    {
+      "path": "src/utils/__tests__/storageHelpers.test.ts",
+      "sourceSha256": "af41c5e1fd970ba3771d41bb592bad547b479e2412704b5a536af0f0604e5f66"
+    },
+    {
+      "path": "src/utils/storageHelpers.ts",
+      "sourceSha256": "b6283fe9a2e8049ca28de7a53814772d7d4ac259496369c25ba0f898cb97920c"
+    }
+  ],
+  "edgeFunctions": [
+    "get-signature-file"
+  ],
+  "edgeFiles": [
+    {
+      "path": "supabase/functions/_shared/signature-file-broker.ts",
+      "sourceSha256": "a9babf7124879bf854bd039f0a399c2ffbf7a189e114c94ec925e7edcc1da292"
+    },
+    {
+      "path": "supabase/functions/_shared/signature-finalizer.ts",
+      "sourceSha256": "fdd9d4e3946b685a996a5d208e321569919c123cf7e082f426b7ec5099f63df2"
+    },
+    {
+      "path": "supabase/functions/get-signature-file/index.ts",
+      "sourceSha256": "7573a47625b8d9385d0d197c2da196bf2ee8eb250f86ee128c1528b166921ea3"
+    }
+  ],
+  "config": {
+    "path": "supabase/config.toml",
+    "sourceSha256": "1144d35893d26f556aadcad2e65f452a131f5803b912f42adbc33c402e436339"
+  },
+  "deploymentOrder": [
+    "Deploy frozen get-signature-file Edge with explicit verify_jwt=false and its token-only checks; missing SQL fails closed",
+    "One entire 108-109 SQL transaction after exact released100-107 baseline",
+    "Postcheck all true; old flat-upload UI fails closed until companion UI",
+    "Companion UI deploy, canonical uploads and explicit declarations; no profile/decision/file backfill"
+  ]
+}

@@ -21,7 +21,7 @@ async function stage(actor=owner,data=docs()){
 }
 beforeAll(async()=>{
  db=await createUcGorelDraftFixture(false);
- const migration=readFileSync('supabase/migrations/20261018106000_uc_gorel_draft_caller.sql','utf8');
+ const migration=readFileSync('supabase/migrations/20261018106000_uc_gorel_draft_caller.sql','utf8').replaceAll('\r\n','\n');
  await expect(db.exec(migration.replace('COMMIT;',()=>"DO $$BEGIN RAISE EXCEPTION 'late migration failure';END$$;COMMIT;"))).rejects.toThrow(/late migration failure/);
  await db.exec('ROLLBACK');expect(await row("SELECT to_regclass('uc_goreltech_document_stages') IS NULL absent")).toEqual({absent:true});
  await db.exec(migration);

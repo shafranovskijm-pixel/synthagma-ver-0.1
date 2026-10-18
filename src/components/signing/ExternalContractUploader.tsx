@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { cn } from "@/lib/utils";
+import { uploadImmutableSignatureFile } from "@/lib/signatureFileUpload";
 
 interface Props {
   open: boolean;
@@ -36,9 +37,10 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const staged = useRef<{ file: File; key: string; signatureId: string; path: string; uploaded: boolean } | null>(null);
 
   const reset = () => {
-    setFile(null); setTitle(""); setSummary("");
+    setFile(null); setTitle(""); setSummary(""); staged.current = null;
   };
 
   const handleFile = (f: File) => {
@@ -68,18 +70,20 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
     const recipientEmail = adminEmail.trim() || FALLBACK_ADMIN_EMAIL;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "bin";
-      const path = `${organizationId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("external-contracts")
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) throw upErr;
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+      const key = JSON.stringify([organizationId, title.trim(), recipientEmail, summary.trim()]);
+      if (!staged.current || staged.current.file !== file || staged.current.key !== key) {
+        const signatureId = crypto.randomUUID();
+        staged.current = { file, key, signatureId, path: `${organizationId}/signature-files/${signatureId}/${crypto.randomUUID()}.${ext}`, uploaded: false };
+      }
+      const { path, signatureId } = staged.current;
+      if (!staged.current.uploaded) {
+        await uploadImmutableSignatureFile(path, file);
+        staged.current.uploaded = true;
+      }
 
-      const { data: pub } = supabase.storage.from("external-contracts").getPublicUrl(path);
-      // Bucket is private; URL won't work directly, but signed URLs will be generated in admin view.
-      // We store the storage path (object key) in file_url for signing later.
-
-      const { data: sigId, error: rpcErr } = await (supabase as any).rpc("create_external_contract_signature", {
+      const { data: sigId, error: rpcErr } = await (supabase as any).rpc("create_external_contract_signature_v2", {
+        p_signature_id: signatureId,
         p_file_url: path, // store path, not public URL (bucket is private)
         p_file_name: file.name,
         p_file_mime: file.type || "application/octet-stream",
@@ -90,6 +94,7 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
         p_organization_id: organizationId,
       });
       if (rpcErr) throw rpcErr;
+      if (sigId !== signatureId) throw new Error("Не удалось подтвердить сохранение договора. Повторите отправку.");
 
       toast.success("Договор отправлен на согласование", {
         description: "Администратор Синтагмы получит уведомление",

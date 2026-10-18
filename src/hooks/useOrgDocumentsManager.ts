@@ -190,6 +190,7 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
   const [versionsDocument, setVersionsDocument] = useState<OrgDocument | null>(null);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -232,6 +233,7 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
     if (activeOrganization.current !== organizationId) return;
     const run = ++fetchSequence.current;
     setIsLoading(true);
+    setDocumentsError(null);
     try {
       const { data, error } = await supabase
         .from("org_documents")
@@ -240,8 +242,11 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      if (run === fetchSequence.current && activeOrganization.current === organizationId) setDocuments(data || []);
+      if (!Array.isArray(data)) throw new Error("Document list response is not an array");
+      if (run === fetchSequence.current && activeOrganization.current === organizationId) setDocuments(data);
     } catch (error) {
+      if (run !== fetchSequence.current || activeOrganization.current !== organizationId) return;
+      setDocumentsError("Не удалось загрузить файлы организации. Их наличие пока не подтверждено.");
       console.error("Error fetching documents:", error);
       toast.error("Ошибка загрузки документов");
     } finally {
@@ -435,7 +440,7 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
   return {
     canWrite, versionsDocument, setVersionsDocument, refreshDocuments: fetchDocuments, isDocumentReady,
     documents,
-    isLoading,
+    isLoading, documentsError,
     showUploadDialog,
     setShowUploadDialog,
     isUploading,
