@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReviewableDocument, type ReviewComment } from "@/components/signing/ReviewableDocument";
 import { DocxRenderer } from "@/components/signing/DocxRenderer";
 import { useAuth } from "@/hooks/useAuth";
+import { getSignatureTokenFile, getAuthenticatedSignatureFile, isHistoricalSignatureFileError, downloadSignatureRevisionFile } from "@/lib/signatureTokenFile";
 
 interface Props {
   open: boolean;
@@ -59,13 +60,25 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
   const [requesting, setRequesting] = useState(false);
   const [pdfComment, setPdfComment] = useState("");
   const [authorName, setAuthorName] = useState("");
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const currentRevision = revisions.find(r => r.id === sig?.current_revision_id) || revisions[revisions.length - 1] || null;
-  const fileUrl = currentRevision?.file_url || null;
+  const rawFileUrl = currentRevision?.file_url || null;
   const fileMime = currentRevision?.file_mime || "";
-  const isPdf = fileMime.includes("pdf") || fileUrl?.toLowerCase().endsWith(".pdf");
-  const isDocx = fileMime.includes("wordprocessingml") || fileUrl?.toLowerCase().endsWith(".docx");
+  const isPdf = fileMime.includes("pdf") || rawFileUrl?.toLowerCase().split("?")[0].endsWith(".pdf");
+  const isDocx = fileMime.includes("wordprocessingml") || rawFileUrl?.toLowerCase().split("?")[0].endsWith(".docx");
   const documentHtml = sig?.document_html || currentRevision?.document_html || convertedHtml || null;
+
+  useEffect(() => {
+    let cancelled = false; setFileUrl(null);
+    if (open && rawFileUrl && signatureToken && sig?.id && currentRevision?.id) {
+      getSignatureTokenFile({ token: signatureToken, signatureId: sig.id, kind: "revision", revisionId: currentRevision.id })
+        .catch(error => { if (!isHistoricalSignatureFileError(error)) throw error; return getAuthenticatedSignatureFile(rawFileUrl, sig.organization_id); })
+        .then(url => { if (!cancelled) setFileUrl(url); })
+        .catch(() => { if (!cancelled) toast.error("Файл требует проверки привязки отправителем"); });
+    }
+    return () => { cancelled = true; };
+  }, [open,rawFileUrl,signatureToken,sig?.id,sig?.organization_id,currentRevision?.id]);
 
   const loadAll = async (token: string) => {
     setLoading(true);
@@ -96,6 +109,11 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, signatureToken]);
 
+  const downloadCurrentFile = async () => {
+    if (!sig || !signatureToken || !currentRevision?.id || !rawFileUrl) return;
+    try { await downloadSignatureRevisionFile({ token: signatureToken, signatureId: sig.id, organizationId: sig.organization_id, revisionId: currentRevision.id, locator: rawFileUrl, fileName: currentRevision.file_name || "document" }); }
+    catch { toast.error("Не удалось скачать файл; обновите документ или проверьте привязку у отправителя"); }
+  };
   const reloadComments = async () => {
     if (!signatureToken) return;
     const { data } = await (supabase as any).rpc("get_signature_comments_by_token", { p_token: signatureToken });
@@ -198,7 +216,7 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">PDF-документ. Выделение текста для пофрагментных комментариев недоступно — используйте поле ниже.</p>
                     <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                      <a href={fileUrl} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5" />Скачать</a>
+                      <a href={fileUrl} onClick={e => { e.preventDefault(); void downloadCurrentFile(); }} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5" />Скачать</a>
                     </Button>
                   </div>
                   <iframe src={fileUrl} className="w-full h-[60vh] rounded-lg border bg-white" title={sig.document_title} />
@@ -244,6 +262,8 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
                   fileUrl={fileUrl}
                   cachedHtml={currentRevision?.document_html}
                   revisionId={currentRevision?.id}
+                  onDownload={downloadCurrentFile}
+                  cacheConvertedHtml={!readOnly && !!user?.id && sig?.status !== "signed"}
                   onHtmlReady={setConvertedHtml}
                 />
               )}
@@ -264,7 +284,7 @@ export function ContractReviewDialog({ open, onOpenChange, signatureToken, readO
                 <div className="text-center text-muted-foreground p-12">
                   <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p className="text-sm mb-3">Этот формат не поддерживается для встроенного просмотра.</p>
-                  <Button variant="outline" size="sm" asChild><a href={fileUrl} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5 mr-1.5" />Скачать файл</a></Button>
+                  <Button variant="outline" size="sm" asChild><a href={fileUrl} onClick={e => { e.preventDefault(); void downloadCurrentFile(); }} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5 mr-1.5" />Скачать файл</a></Button>
                 </div>
               )}
               {!fileUrl && !documentHtml && (

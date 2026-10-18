@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {createUcDocumentScopeFixture} from './uc-document-scope.fixture';
-const read=(p:string)=>readFileSync(p,'utf8').replace(/^\uFEFF/,'');
+const read=(p:string)=>readFileSync(p,'utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n');
 export async function createUcGorelDraftFixture(applyCaller=true,applyScope=true){
  if(applyCaller&&!applyScope)throw new Error('Caller migration requires scope/action migrations');
  const db=await createUcDocumentScopeFixture(applyScope);

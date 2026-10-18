@@ -84,7 +84,10 @@ export const openPrivateFile = async (
   }
 };
 
-/** Download a private file through a signed temporary URL. */
+/** Retrieve private bytes before asking the browser to save them.
+ * A cross-origin anchor cannot reliably apply the requested download name;
+ * a successful signing response alone does not prove the file was retrieved.
+ */
 export const downloadPrivateFile = async (
   bucket: string,
   fileUrlOrPath: string,
@@ -92,7 +95,9 @@ export const downloadPrivateFile = async (
 ): Promise<boolean> => {
   const path = extractStoragePath(fileUrlOrPath, bucket);
   const fallbackName = path.split("/").pop() || "download";
-  const downloadName = (fileName?.trim() || fallbackName).replace(/[\\/:*?"<>|]+/g, "_");
+  let downloadName = (fileName?.trim() || fallbackName).replace(/[\\/:*?"<>|]+/g, "_");
+  const extension = /\.([a-z0-9]{1,10})$/i.exec(fallbackName)?.[1];
+  if (extension && !/\.[a-z0-9]{1,10}$/i.test(downloadName)) downloadName += `.${extension}`;
 
   try {
     const signedUrl = await getSignedStorageUrl(bucket, path, 3600, downloadName);
@@ -100,14 +105,31 @@ export const downloadPrivateFile = async (
       console.error("Failed to generate download URL for:", path);
       return false;
     }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    let blob: Blob;
+    try {
+      const response = await fetch(signedUrl, { signal: controller.signal, cache: "no-store", credentials: "omit" });
+      if (!response.ok) return false;
+      const mime = (response.headers.get("content-type") || "").toLowerCase();
+      if (mime.includes("text/html") && !/\.(html?|xhtml|doc)$/i.test(fallbackName)
+        || mime.includes("application/json") && !/\.json$/i.test(fallbackName)) return false;
+      blob = await response.blob();
+      if (!blob.size) return false;
+    } finally { clearTimeout(timeout); }
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = signedUrl;
-    link.download = downloadName;
-    link.rel = "noopener";
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    try {
+      link.href = blobUrl;
+      link.download = downloadName;
+      link.rel = "noopener";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+    } finally {
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    }
     return true;
   } catch (error) {
     console.error("Failed to download private file:", path, error);

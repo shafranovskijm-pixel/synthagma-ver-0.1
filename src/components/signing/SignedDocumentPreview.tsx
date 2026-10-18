@@ -4,15 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, FileText, FileDown } from "lucide-react";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
-import { supabase } from "@/integrations/supabase/client";
-import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
 import { generateSignedPdf } from "@/lib/signedDocumentPdf";
 import type { AcceptedEditSummary } from "@/lib/pdfStampDrawer";
 import { transliterate } from "@/utils/credentials";
+import { getSignatureTokenFile, getAuthenticatedSignatureFile, isHistoricalSignatureFileError, downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
 
 async function downloadBlobFromUrl(url: string, filename: string) {
-  try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const blob = await response.blob();
@@ -24,10 +22,6 @@ async function downloadBlobFromUrl(url: string, filename: string) {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-  } catch (e) {
-    console.error("[SignedDocumentPreview] downloadBlobFromUrl failed", e);
-    window.open(url, "_blank");
-  }
 }
 
 function buildDownloadFilename(title: string): string {
@@ -52,6 +46,9 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   signatureId: string;
+  organizationId: string;
+  signatureToken?: string | null;
+  revisionId?: string | null;
   documentTitle: string;
   /** HTML тело документа (уже с применёнными принятыми правками клиента). */
   documentHtml?: string | null;
@@ -72,17 +69,19 @@ interface Props {
   acceptedEdits?: AcceptedEditSummary[];
 }
 
-const BUCKET = "external-contracts";
-
 export function SignedDocumentPreview({
   open,
   onOpenChange,
   signatureId,
+  organizationId,
+  signatureToken,
+  revisionId,
   documentTitle,
   documentHtml,
   attachedFilePath,
   attachedFileMime,
   handwrittenScanPath,
+  signedDocumentPath,
   sender,
   recipient,
   signatureMethod = "pep",
@@ -93,53 +92,62 @@ export function SignedDocumentPreview({
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  const resolveFile = async (path: string | null | undefined, kind: "source" | "scan"): Promise<string | null> => {
+    if (!path) return null;
+    if (signatureToken) return getSignatureTokenFile({ token: signatureToken, signatureId, kind }).catch(error => {
+      if (!isHistoricalSignatureFileError(error)) throw error;
+      return getAuthenticatedSignatureFile(path, organizationId);
+    });
+    return getAuthenticatedSignatureFile(path, organizationId);
+  };
+
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    const resolve = async (path: string | null | undefined): Promise<string | null> => {
-      if (!path) return null;
-      if (path.startsWith("http://") || path.startsWith("https://")) return proxiedAssetUrl(path);
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
-      if (error) {
-        console.error("[SignedDocumentPreview] signed URL error", error);
-        return null;
-      }
-      return data?.signedUrl ? proxiedAssetUrl(data.signedUrl) : null;
-    };
     setLoading(true);
-    Promise.all([resolve(attachedFilePath), resolve(handwrittenScanPath)])
+    Promise.all([resolveFile(attachedFilePath, "source"), resolveFile(handwrittenScanPath, "scan")])
       .then(([a, s]) => {
         if (cancelled) return;
         setAttachedUrl(a);
         setScanUrl(s);
       })
+      .catch(() => { if (!cancelled) { setAttachedUrl(null); setScanUrl(null); toast.error("Не удалось открыть файл. Обновите документ или обратитесь к отправителю."); } })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [open, attachedFilePath, handwrittenScanPath]);
+  }, [open, attachedFilePath, handwrittenScanPath, signatureToken, signatureId, organizationId, revisionId]);
 
   const handleDownloadPdf = async () => {
     setGenerating(true);
     try {
+      // The stored artifact is authoritative; exporting must never replace it.
+      if (signedDocumentPath) {
+        await downloadStoredSignatureArtifact({ token: signatureToken, signatureId, organizationId, locator: signedDocumentPath });
+        toast.success("Сохранённый документ скачан");
+        return;
+      }
+      // The broker URL lasts one minute; refresh it for a later download click.
+      const [freshAttachment, freshScan] = await Promise.all([resolveFile(attachedFilePath, "source"), resolveFile(handwrittenScanPath, "scan")]);
       const result = await generateSignedPdf({
         signatureId,
         documentTitle,
         documentHtml: documentHtml || null,
-        attachedFileUrl: attachedUrl,
+        attachedFileUrl: freshAttachment,
         attachedFileMime: attachedFileMime || null,
-        scanFileUrl: scanUrl,
-        scanFileMime: attachedFileMime || null,
+        scanFileUrl: freshScan,
+        scanFileMime: null,
         signatureMethod,
         sender,
         recipient,
         acceptedEdits,
       });
       if (result.url) {
-        await downloadBlobFromUrl(result.url, buildDownloadFilename(documentTitle));
-        toast.success("Подписанный PDF скачан");
+        try { await downloadBlobFromUrl(result.url, buildDownloadFilename(documentTitle)); }
+        finally { URL.revokeObjectURL(result.url); }
+        toast.success("Копия PDF скачана; сохранённое доказательство не изменено");
       }
     } catch (e: any) {
       console.error("[SignedDocumentPreview] generateSignedPdf error", e);
-      toast.error("Не удалось собрать PDF: " + (e?.message || "ошибка"));
+      toast.error("Не удалось скачать документ: " + (e?.message || "ошибка"));
     } finally {
       setGenerating(false);
     }
@@ -210,7 +218,7 @@ export function SignedDocumentPreview({
                 <FileText className="w-4 h-4 text-primary" />
                 Скан с собственноручной подписью и печатью
               </div>
-              {scanUrl.toLowerCase().includes(".pdf") || attachedFileMime?.includes("pdf") ? (
+              {scanUrl.toLowerCase().split("?")[0].endsWith(".pdf") ? (
                 <iframe src={scanUrl} className="w-full h-[60vh] border rounded-lg bg-white" />
               ) : (
                 <img src={scanUrl} alt="Подписанный скан" className="w-full max-h-[60vh] object-contain border rounded-lg bg-white" />
@@ -259,7 +267,7 @@ export function SignedDocumentPreview({
           <div className="flex gap-2 ml-auto">
             <Button size="sm" className="gap-1.5" onClick={handleDownloadPdf} disabled={generating}>
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-              {generating ? "Сборка PDF…" : "Скачать подписанный PDF"}
+              {generating ? "Подготовка…" : signedDocumentPath ? "Скачать сохранённый документ" : "Скачать копию PDF"}
             </Button>
           </div>
         </div>

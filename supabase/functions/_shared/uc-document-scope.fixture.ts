@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {createUcReleaseFixture} from './uc-release.fixture';
-const read=(p:string)=>readFileSync(p,'utf8').replace(/^\uFEFF/,'');
+// The release executor uses canonical LF SQL; Windows checkout CRLF must not change literal patch markers.
+const read=(p:string)=>readFileSync(p,'utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n');
 export const scopeMigration=read('supabase/migrations/20261018104000_uc_document_staff_scope.sql');
 export async function createUcDocumentScopeFixture(applyScope=true){
  const db=await createUcReleaseFixture();

@@ -13,6 +13,7 @@ vi.mock("@/hooks/useOrgDocumentsManager", () => ({
 }));
 vi.mock("../SelfExaminationQuiz", () => ({ SelfExaminationQuiz: () => null }));
 vi.mock("../OrgDocumentVersionsDialog", () => ({ OrgDocumentVersionsDialog: () => null }));
+vi.mock("../compliance/EducationCenterAssistant", () => ({ EducationCenterAssistant: () => null }));
 import { OrgDocumentsManager } from "../OrgDocumentsManager";
 
 const document = { id: "doc", name: "Лицензия", type: "license", file_url: "https://example.test/license.pdf",
@@ -43,25 +44,32 @@ describe("document readiness is reflected in the existing row UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Загрузить" }));
     expect(state.openUpload).toHaveBeenCalledWith("license");
     expect(screen.queryByRole("button", { name: "Обновить" })).not.toBeInTheDocument();
-    expect(screen.getByText("0 из 1 обязательных")).toBeInTheDocument();
+    expect(screen.getByText("0 из 1 позиций с файлами")).toBeInTheDocument();
   });
   it("does not claim a dated but fileless record is active", () => {
     setup({ ...document, file_url: " " });
     expect(screen.queryByText("Действует", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Загрузить" })).toBeEnabled();
-    expect(screen.getByText("0 из 1 обязательных")).toBeInTheDocument();
+    expect(screen.getByText("0 из 1 позиций с файлами")).toBeInTheDocument();
   });
   it("keeps history readable and replacement disabled for a read-only user", () => {
     setup(document, false);
     expect(screen.getByRole("button", { name: "Заменить" })).toBeDisabled();
     fireEvent.click(screen.getByTitle("История версий"));
     expect(state.openHistory).toHaveBeenCalledWith(document);
-    expect(screen.getByText("1 из 1 обязательных")).toBeInTheDocument();
+    expect(screen.getByText("1 из 1 позиций с файлами")).toBeInTheDocument();
   });
   it("marks an archived file for update but excludes it from completeness", () => {
     setup({ ...document, status: "archived" });
     expect(screen.getByRole("button", { name: "Обновить" })).toBeEnabled();
     expect(screen.queryByText("Действует", { exact: true })).not.toBeInTheDocument();
-    expect(screen.getByText("0 из 1 обязательных")).toBeInTheDocument();
+    expect(screen.getByText("0 из 1 позиций с файлами")).toBeInTheDocument();
+  });
+  it("does not render zero file counts when the document list failed", () => {
+    const refresh = vi.fn(); state.read.mockReturnValue({ isLoading: false, documentsError: "Не удалось загрузить файлы организации", refreshDocuments: refresh });
+    render(<OrgDocumentsManager organizationId="org" />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Не удалось загрузить файлы организации");
+    expect(screen.queryByText(/позиций с файлами/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить загрузку файлов" })); expect(refresh).toHaveBeenCalledOnce();
   });
 });

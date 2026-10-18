@@ -25,7 +25,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
-import { proxiedAssetUrl } from "@/utils/proxyFetch";
+import { downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -158,23 +158,7 @@ export function StudentDocumentsTab({
 
   const handleDownloadSigned = async (sig: InboxSignature) => {
     try {
-      let path = sig.signed_document_path;
-      if (!path) {
-        const { data, error } = await supabase.functions.invoke("generate-signature-certificate", {
-          body: { signature_id: sig.id },
-        });
-        if (error) throw error;
-        path = data?.path;
-      }
-      if (!path) {
-        toast.error("Документ ещё не сформирован");
-        return;
-      }
-      const { data: signed, error } = await supabase.storage
-        .from("signed-documents")
-        .createSignedUrl(path, 600);
-      if (error || !signed?.signedUrl) throw error || new Error("URL не получен");
-      window.open(proxiedAssetUrl(signed.signedUrl), "_blank", "noopener");
+      await downloadStoredSignatureArtifact({ token: sig.signature_token, signatureId: sig.id, organizationId: sig.organization_id, locator: sig.signed_document_path });
     } catch (e: any) {
       toast.error("Не удалось скачать", { description: e?.message || String(e) });
     }

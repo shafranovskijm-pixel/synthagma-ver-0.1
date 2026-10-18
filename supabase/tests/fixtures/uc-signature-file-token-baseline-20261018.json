@@ -1,0 +1,11 @@
+{
+  "source": "Read-only production function metadata after released UC100-107; no business documents",
+  "observedOn": "2026-10-18",
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_signature_token_access_allowed(p_id uuid, p_write boolean DEFAULT false)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.document_signatures s WHERE s.id=p_id AND s.deleted_at IS NULL\n  AND (NOT p_write AND s.status='signed' OR s.status IN ('sent','viewed','in_review','changes_requested') AND s.expires_at>now())\n  AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id IN(s.sender_user_id,s.recipient_user_id)))\n$function$\n",
+      "definition_md5": "d53d282e50b51ab83682444301fe6fed",
+      "signature": "uc_signature_token_access_allowed(uuid,boolean)"
+    }
+  ]
+}

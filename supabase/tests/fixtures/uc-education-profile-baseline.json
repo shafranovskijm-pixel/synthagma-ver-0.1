@@ -1,0 +1,103 @@
+{
+  "evidence_columns": [
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "org_document_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "document_id",
+      "nullable": "NO",
+      "table": "org_document_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "org_document_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "file_url",
+      "nullable": "YES",
+      "table": "org_document_versions",
+      "type": "text"
+    },
+    {
+      "column": "file_path",
+      "nullable": "YES",
+      "table": "org_document_versions",
+      "type": "text"
+    },
+    {
+      "column": "storage_object_id",
+      "nullable": "YES",
+      "table": "org_document_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "nullable": "NO",
+      "table": "org_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "file_url",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "text"
+    },
+    {
+      "column": "deleted_at",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "timestamptz"
+    },
+    {
+      "column": "current_version_id",
+      "nullable": "YES",
+      "table": "org_documents",
+      "type": "uuid"
+    }
+  ],
+  "existing_profile_tables": [],
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "definition_md5": "64b0a90b7db9813950ccca6dff208f3a",
+      "name": "account_deletion_access_allowed",
+      "signature": "account_deletion_access_allowed()"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_action_allowed(p_org uuid, p_action text, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_document_has_action(p_org,p_action)\n  AND public.uc_document_scope_allowed(p_org,p_group,p_enrollment)\n$function$\n",
+      "definition_md5": "79c190a053f711dc8110e9d451b1a56c",
+      "name": "uc_document_action_allowed",
+      "signature": "uc_document_action_allowed(uuid,text,uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_has_action(p_org uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_platform_document_action_allowed(auth.uid(),p_action)\n  AND public.account_deletion_access_allowed()\n  AND p_org IS NOT NULL AND p_action IN ('read','write','sign','issue')\n  AND coalesce(public.can_access_organization(p_org,'documents.'||p_action),false)\n$function$\n",
+      "definition_md5": "210713a8a6cbd419108e23a7110259cd",
+      "name": "uc_document_has_action",
+      "signature": "uc_document_has_action(uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_scope_allowed(p_org uuid, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_user uuid;v_course uuid;v_group_course uuid;\nBEGIN\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() OR p_org IS NULL\n OR NOT EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org) THEN RETURN false; END IF;\n IF p_group IS NOT NULL THEN\n  SELECT course_id INTO v_group_course FROM public.student_groups WHERE id=p_group AND organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF v_group_course IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.courses c WHERE c.id=v_group_course AND c.organization_id=p_org) THEN RETURN false; END IF;\n END IF;\n IF p_enrollment IS NOT NULL THEN\n  SELECT e.user_id,e.course_id INTO v_user,v_course FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id\n   WHERE e.id=p_enrollment AND c.organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF p_group IS NOT NULL AND (v_group_course IS DISTINCT FROM v_course OR NOT EXISTS(\n   SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id=p_org AND m.group_id=p_group AND m.user_id=v_user))\n  THEN RETURN false; END IF;\n END IF;\n IF public.has_role(auth.uid(),'admin'::public.app_role) OR public.is_org_owner(auth.uid(),p_org) THEN RETURN true; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=auth.uid()\n   AND (s.expires_at IS NULL OR s.expires_at>now())) THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(p_org) THEN RETURN true; END IF;\n RETURN EXISTS(SELECT 1 FROM public.org_staff s JOIN public.org_staff_document_groups a ON a.staff_id=s.id AND a.organization_id=s.organization_id\n  JOIN public.student_groups g ON g.id=a.group_id AND g.organization_id=a.organization_id\n  WHERE s.organization_id=p_org AND s.user_id=auth.uid() AND (s.expires_at IS NULL OR s.expires_at>now())\n   AND (p_group IS NULL OR g.id=p_group)\n   AND (p_enrollment IS NULL OR (g.course_id=v_course AND EXISTS(SELECT 1 FROM public.student_group_memberships_effective m\n     WHERE m.organization_id=p_org AND m.group_id=g.id AND m.user_id=v_user)))\n   AND (p_group IS NOT NULL OR p_enrollment IS NOT NULL));\nEND;$function$\n",
+      "definition_md5": "2a7407e7d178c7561b1d390f0884c6b6",
+      "name": "uc_document_scope_allowed",
+      "signature": "uc_document_scope_allowed(uuid,uuid,uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_platform_document_action_allowed(p_user uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_user IS NOT NULL AND p_action IN ('read','write','sign','issue')\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n AND (NOT public.has_role('admin'::public.app_role,p_user)\n  OR NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user)\n  OR EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user AND\n     (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager'))\n     AND (expires_at IS NULL OR expires_at>now()))\n   AND NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user\n     AND (NOT (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager')) OR expires_at<=now())))\n$function$\n",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d",
+      "name": "uc_platform_document_action_allowed",
+      "signature": "uc_platform_document_action_allowed(uuid,text)"
+    }
+  ]
+}
