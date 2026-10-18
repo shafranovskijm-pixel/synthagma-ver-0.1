@@ -1,0 +1,13 @@
+# UC113 enrollment deletion boundary
+
+This database-only release requires the exact installed migrations 100–112. Run `preflight.sql` read-only first, submit the entire `release-transaction.sql` once, then require every `postcheck.sql` value to be true. The source and ledger use canonical LF bytes. `prepare-release.mjs` recreates the reviewed wrapper with the existing local PGlite fixture; it does not deploy anything.
+
+Authenticated enrollment deletion requires a current writable actor, `students.write`, the exact tenant/course/student tuple, and the existing exact enrollment group scope. Learners receive no self-deletion grant. The restrictive policy also applies alongside the old broad policies, and a server trigger protects definer callers. The original cancellation rules and CSZ protection remain in place. The existing admin organization RPC receives one entry check before its original body; its owner, grants, and remaining body are preserved.
+
+Before a course or organization is deleted, private witnesses capture only authorized enrollment tuples while their parent, profile, and group relations are visible. Child cascades use that exact actor/tuple/backend/transaction evidence and recheck current global and revocation fences. This is authorization captured before parent deletion, not a claim that the deleted relations remain queryable. Cleanup removes the witnesses. Authenticated read-only actors are rejected even for empty parents. The existing service erasure exception remains limited to its revoked subject and explicit erase context; empty service cleanup is preserved.
+
+The transaction preserves rows and relation metadata for 65 existing tables, all original policies/triggers/cron metadata, and every original function body and grant except the single fingerprinted admin entry addition. It permits exactly one new private table, seven functions, one policy, and five triggers. It performs no backfill and deploys no frontend or Edge function.
+
+The actual SQL tests cover the old synthetic learner-delete/identity-cascade failure, direct and definer authorization, current role/revocation fences, exact teacher course/group scope, original cancellation/CSZ contracts, parent cascade visibility, forged or stale witnesses, private ACLs, and cleanup. Wrapper fault tests roll back late data, schema, grants, policy, trigger, function, and context drift. These are local single-session PostgreSQL engine tests; they do not establish multi-session concurrency behavior or a production deletion result.
+
+Production acceptance is root-owned and must not delete real courses, organizations, profiles, or enrollments or invoke their destructive workflows. Full video identification and private media workflow changes are a separate package.
