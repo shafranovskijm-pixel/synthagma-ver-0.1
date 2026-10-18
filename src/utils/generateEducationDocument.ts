@@ -57,12 +57,12 @@ function stampSignatureHtml(org: OrgDataForDocument): string {
   return parts.join("");
 }
 
-function buildVerifyUrl(regNumber: string): string {
+function buildVerifyUrl(regNumber: string, documentId?: string): string {
   const base =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
       : "https://синтагма.рф";
-  return `${base}/verify/${encodeURIComponent(regNumber)}`;
+  return `${base}/verify/${encodeURIComponent(regNumber)}${documentId ? `?document_id=${encodeURIComponent(documentId)}` : ""}`;
 }
 
 // Builds a Google Chart QR image URL — works without bundling a QR library inside
@@ -82,7 +82,7 @@ export function generateEducationDocumentHtml(
   const directorName = org.director_name || "____________________";
   const directorPosition = org.director_position || "Руководитель";
   const orgCity = org.city || "г. Москва";
-  const verifyUrl = buildVerifyUrl(record.reg_number);
+  const verifyUrl = buildVerifyUrl(record.reg_number, record.id);
 
   const qualificationBlock =
     record.document_type !== "certificate" && record.qualification_name

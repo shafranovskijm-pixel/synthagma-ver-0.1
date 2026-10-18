@@ -137,6 +137,7 @@ export default function SignDocument() {
       const { data, error } = await supabase.functions.invoke("finalize-signature", {
         body: {
           token,
+          expectedRevisionId: sig.current_revision_id ?? null,
           documentHash: docHash,
           pepAgreement: {
             agreement_text: agreementText,

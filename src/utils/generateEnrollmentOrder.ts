@@ -110,7 +110,7 @@ export async function generateEnrollmentOrder({
 
     let fileUrl: string | null = null;
     if (uploadError) {
-      console.error("Storage upload error:", uploadError);
+      throw uploadError;
     } else {
       const { data: urlData } = supabase.storage
         .from("org-documents")

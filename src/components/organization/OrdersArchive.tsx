@@ -1,3 +1,5 @@
+import { downloadPrivateFile } from "@/utils/storageHelpers";
+import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +45,7 @@ interface OrderDocument {
 
 interface OrdersArchiveProps {
   documents: OrderDocument[];
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
   onView: (url: string) => void;
 }
 
@@ -242,17 +244,7 @@ export function OrdersArchive({ documents, onDelete, onView }: OrdersArchiveProp
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={async () => {
-                            try {
-                              const { supabase } = await import("@/integrations/supabase/client");
-                              const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
-                              if (!data?.signedUrl) return;
-                              const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
-                              await downloadHtmlFile(data.signedUrl, doc.name);
-                            } catch (e) {
-                              console.error("Error downloading document:", e);
-                            }
-                          }}
+                          onClick={async () => { if (!await downloadPrivateFile("org-documents", doc.file_url!, doc.name)) toast.error("Не удалось скачать документ"); }}
                           title="Скачать"
                         >
                           <Download className="w-4 h-4" />
@@ -263,7 +255,8 @@ export function OrdersArchive({ documents, onDelete, onView }: OrdersArchiveProp
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => onDelete(doc.id)}
+                      disabled={!onDelete}
+                      onClick={() => onDelete?.(doc.id)}
                       title="Удалить"
                     >
                       <Trash2 className="w-4 h-4" />

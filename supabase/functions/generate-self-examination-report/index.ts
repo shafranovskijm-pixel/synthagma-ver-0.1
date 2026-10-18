@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callAI } from "../_shared/gigachat-client.ts";
+import { accessErrorResponse, readObject, requireActiveUser, requireUuid } from "../_shared/privileged-access.ts";
+import { requireSelfExaminationOrder, completeSelfExaminationOrder } from "../_shared/document-operation-access.ts";
+import { prepareSelfExaminationVersion, saveSelfExaminationVersion } from "../_shared/self-examination-version.ts";
 
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
+  "Cache-Control": "no-store",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
@@ -50,22 +55,24 @@ serve(async (req) => {
   }
 
   try {
-    const { organizationId, orderId } = await req.json();
-
-    if (!organizationId) {
-      return new Response(JSON.stringify({ error: "Organization ID is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log("Fetching organization data for:", organizationId);
+    const actor = await requireActiveUser(req, supabase);
+    const body = await readObject(req);
+    const organizationId = requireUuid(body.organizationId, "организация");
+    const orderId = body.orderId == null ? null : requireUuid(body.orderId, "заказ");
+    const order = await requireSelfExaminationOrder(supabase, actor, organizationId, orderId);
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: req.headers.get("Authorization")! } },
+    });
+    const requestId = body.requestId == null ? crypto.randomUUID() : requireUuid(body.requestId, "идентификатор запроса");
+    const operation = await prepareSelfExaminationVersion(userClient, organizationId, requestId, orderId);
+    if (operation.replayUrl) {
+      await completeSelfExaminationOrder(supabase, order);
+      return new Response(JSON.stringify({ success: true, fileUrl: operation.replayUrl, requestId, replayed: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Fetch organization data
     const { data: organization, error: orgError } = await supabase
@@ -84,13 +91,7 @@ serve(async (req) => {
 
     // Fetch order to get quiz data if available
     let quizData = null;
-    if (orderId) {
-      const { data: order } = await supabase
-        .from("service_orders")
-        .select("notes")
-        .eq("id", orderId)
-        .single();
-
+    if (order) {
       if (order?.notes) {
         try {
           quizData = JSON.parse(order.notes);
@@ -336,88 +337,10 @@ ${reportContent}
 </body>
 </html>`;
 
-    console.log("Uploading report to storage...");
+    const fileUrl = await saveSelfExaminationVersion(userClient, organizationId, operation,
+      fullHtmlDocument, new Date().getFullYear());
 
-    // Upload the report to Supabase storage
-    const fileName = `${organizationId}/self-examination-report-${new Date().getFullYear()}-${Date.now()}.html`;
-    const blob = new Blob([fullHtmlDocument], { type: "text/html" });
-
-    const { error: uploadError } = await supabase.storage
-      .from("org-documents")
-      .upload(fileName, blob, {
-        contentType: "text/html",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
-      return new Response(JSON.stringify({ error: "Failed to save report" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("org-documents")
-      .getPublicUrl(fileName);
-
-    const fileUrl = urlData.publicUrl;
-
-    console.log("Saving document record...");
-
-    // Check if document already exists
-    const { data: existingDoc } = await supabase
-      .from("org_documents")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .eq("type", "self_examination_report")
-      .single();
-
-    if (existingDoc) {
-      // Update existing document
-      const { error: updateError } = await supabase
-        .from("org_documents")
-        .update({
-          name: `Отчёт о результатах самообследования ${new Date().getFullYear()}`,
-          file_url: fileUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingDoc.id);
-
-      if (updateError) {
-        console.error("Update error:", updateError);
-      }
-    } else {
-      // Create new document record
-      const { error: insertError } = await supabase
-        .from("org_documents")
-        .insert({
-          organization_id: organizationId,
-          type: "self_examination_report",
-          name: `Отчёт о результатах самообследования ${new Date().getFullYear()}`,
-          file_url: fileUrl,
-        });
-
-      if (insertError) {
-        console.error("Insert error:", insertError);
-      }
-    }
-
-    // Update order status if orderId provided
-    if (orderId) {
-      const { error: orderError } = await supabase
-        .from("service_orders")
-        .update({
-          status: "completed",
-          updated_at: new Date().toISOString(),
-          notes: `Отчёт сгенерирован: ${fileUrl}`,
-        })
-        .eq("id", orderId);
-
-      if (orderError) {
-        console.error("Order update error:", orderError);
-      }
-    }
+    await completeSelfExaminationOrder(supabase, order);
 
     console.log("Report generated successfully!");
 
@@ -425,6 +348,7 @@ ${reportContent}
       JSON.stringify({
         success: true,
         fileUrl,
+        requestId,
         message: "Отчёт о результатах самообследования успешно сгенерирован",
       }),
       {
@@ -433,13 +357,6 @@ ${reportContent}
       }
     );
   } catch (error) {
-    console.error("Error generating report:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return accessErrorResponse(error, corsHeaders);
   }
 });

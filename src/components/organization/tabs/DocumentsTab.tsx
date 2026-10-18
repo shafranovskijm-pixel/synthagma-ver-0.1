@@ -537,9 +537,9 @@ function DocumentsTabContent({
               onOpenContractEditor={() => h.d.tabNavigation.setActiveTab("contract-editor" as any)}
             />
           )}
-          {h.activeTab === "org" && <OrgDocumentsManager organizationId={organizationId} />}
-          {h.activeTab === "orders" && isOrdersEnabled && <DocumentArchiveView organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} />}
-          {h.activeTab === "protocols" && <DocumentArchiveView organizationId={organizationId} categoryId="attestation_protocols" title="Протоколы аттестационной комиссии" docTypes={["attestation_protocol"]} />}
+          {h.activeTab === "org" && <OrgDocumentsManager organizationId={organizationId} canWrite={canWriteDocuments} />}
+          {h.activeTab === "orders" && isOrdersEnabled && <DocumentArchiveView canWrite={canWriteDocuments} organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} />}
+          {h.activeTab === "protocols" && <DocumentArchiveView canWrite={canWriteDocuments} organizationId={organizationId} categoryId="attestation_protocols" title="Протоколы аттестационной комиссии" docTypes={["attestation_protocol"]} />}
           {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}

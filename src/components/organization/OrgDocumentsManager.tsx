@@ -11,7 +11,7 @@ import {
   FileText, Download, Trash2, Upload, Search, Eye,
   Building2, Scale, Award, ClipboardList, FileCheck, Users, GraduationCap,
   CheckCircle2, AlertCircle, FolderOpen, Sparkles, CheckCircle, ShoppingCart, Check,
-  Archive, Clock, AlertTriangle,
+  Archive, Clock, AlertTriangle, History,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -24,6 +24,9 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
   useOrgDocumentsManager, REGULAR_CATEGORIES, SPECIAL_CATEGORIES, ALL_CATEGORIES, getAllDocumentTypes,
 } from "@/hooks/useOrgDocumentsManager";
+import { OrgDocumentVersionsDialog } from "./OrgDocumentVersionsDialog";
+import { openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
+import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -32,10 +35,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 interface OrgDocumentsManagerProps {
   organizationId: string;
+  canWrite?: boolean;
 }
 
-export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps) {
-  const h = useOrgDocumentsManager(organizationId);
+export function OrgDocumentsManager({ organizationId, canWrite = false }: OrgDocumentsManagerProps) {
+  const h = useOrgDocumentsManager(organizationId, canWrite);
 
   if (h.isLoading) {
     return (
@@ -101,7 +105,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                 onChange={(e) => h.setUploadResponsible(e.target.value)}
               />
             </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={h.handleUpload} disabled={h.isUploading || !h.selectedFile}>
+            <Button className="w-full btn-gradient rounded-xl" onClick={h.handleUpload} disabled={!h.canWrite || h.isUploading || !h.selectedFile}>
               {h.isUploading ? (<><SigmaSpinner size="sm" className="mr-2" />Загрузка...</>) : (<><Upload className="w-4 h-4 mr-2" />Загрузить</>)}
             </Button>
           </div>
@@ -124,6 +128,9 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
       </Dialog>
 
       <OrderDocumentsDialog h={h} />
+      <OrgDocumentVersionsDialog open={!!h.versionsDocument} onOpenChange={open => !open && h.setVersionsDocument(null)}
+        documentId={h.versionsDocument?.id ?? null} documentName={h.versionsDocument?.name ?? ""}
+        organizationId={organizationId} canWrite={canWrite} onRestored={h.refreshDocuments} />
     </div>
   );
 }
@@ -139,7 +146,7 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
             </div>
             <div>
               <h3 className="text-lg font-semibold">Комплектность документов</h3>
-              <p className="text-sm text-muted-foreground">Обязательные документы для ДПО и ПО по 273-ФЗ</p>
+              <p className="text-sm text-muted-foreground">Действующие файлы по текущему списку. Содержание и отчётный период проверяются отдельно.</p>
             </div>
           </div>
           <div className="text-right">
@@ -168,7 +175,7 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
             </Button>
           ))}
         </div>
-        <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowOrderDialog(true)}>
+        <Button variant="outline" className="rounded-xl gap-2" disabled={!h.canWrite} onClick={() => h.setShowOrderDialog(true)}>
           <ShoppingCart className="w-4 h-4" />
           Заказать документы
         </Button>
@@ -178,9 +185,9 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
         {REGULAR_CATEGORIES.map((category) => {
           const CategoryIcon = ICON_MAP[category.icon] || FileText;
           const categoryDocs = category.documents;
-          const uploadedCount = categoryDocs.filter((d) => h.getDocumentForType(d.type)).length;
+          const uploadedCount = categoryDocs.filter((d) => h.isDocumentReady(d.type)).length;
           const requiredCount = categoryDocs.filter((d) => d.required).length;
-          const uploadedRequiredCount = categoryDocs.filter((d) => d.required && h.getDocumentForType(d.type)).length;
+          const uploadedRequiredCount = categoryDocs.filter((d) => d.required && h.isDocumentReady(d.type)).length;
           const filteredDocs = h.searchQuery ? categoryDocs.filter((doc) => doc.label.toLowerCase().includes(h.searchQuery.toLowerCase())) : categoryDocs;
           if (h.searchQuery && filteredDocs.length === 0) return null;
 
@@ -188,8 +195,7 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
           const hasAnnualReminder = annualDocs.some((d: any) => {
             const uploadedDoc = h.getDocumentForType(d.type);
             if (!uploadedDoc) return true;
-            const daysSince = Math.floor((Date.now() - new Date(uploadedDoc.updated_at).getTime()) / (1000 * 60 * 60 * 24));
-            return daysSince >= 365;
+            return !h.isDocumentReady(d.type);
           });
 
           return (
@@ -210,7 +216,7 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {uploadedCount} из {categoryDocs.length} загружено
+                        {uploadedCount} из {categoryDocs.length} действующих
                         {requiredCount > 0 && <span className="ml-2">(обязательных: {uploadedRequiredCount}/{requiredCount})</span>}
                       </p>
                     </div>
@@ -235,15 +241,10 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
 
 function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrgDocumentsManager> }) {
   const uploadedDoc = h.getDocumentForType(docItem.type);
-  const hasFile = !!uploadedDoc?.file_url;
+  const hasFile = Boolean(uploadedDoc?.file_url?.trim());
   const isAnnual = docItem.annual;
   const exp = h.getExpiryStatus(uploadedDoc);
-  let annualStatus: { needsUpdate: boolean; daysSince: number | null; daysUntil: number | null } | null = null;
-  if (isAnnual && uploadedDoc) {
-    const daysSince = Math.floor((Date.now() - new Date(uploadedDoc.updated_at).getTime()) / (1000 * 60 * 60 * 24));
-    const daysUntil = 365 - daysSince;
-    annualStatus = { needsUpdate: daysSince >= 365, daysSince, daysUntil: daysUntil > 0 ? daysUntil : 0 };
-  }
+  const ready = h.isDocumentReady(docItem.type);
 
   // Apply expiry filter — hide rows that don't match
   if (h.expiryFilter !== "all" && uploadedDoc) {
@@ -260,15 +261,15 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
     if (exp.state === "archived") return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex-shrink-0"><Archive className="w-3 h-3" />Архив</span>;
     if (exp.state === "expired") return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0"><AlertTriangle className="w-3 h-3" />Просрочен</span>;
     if (exp.state === "expiring") return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 flex-shrink-0"><Clock className="w-3 h-3" />Истекает через {exp.daysLeft} дн.</span>;
-    if (uploadedDoc.expires_at) return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 flex-shrink-0"><Check className="w-3 h-3" />Действует</span>;
+    if (exp.state === "active" && uploadedDoc.expires_at) return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 flex-shrink-0"><Check className="w-3 h-3" />Действует</span>;
     return null;
   })();
 
   return (
     <div className="flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors">
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasFile ? (annualStatus?.needsUpdate || exp.state === "expired" ? "bg-amber-500/10" : "bg-green-500/10") : docItem.required ? "bg-destructive/10" : "bg-secondary"}`}>
-          {hasFile ? (annualStatus?.needsUpdate || exp.state === "expired" ? <AlertCircle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />) : docItem.required ? <AlertCircle className="w-4 h-4 text-destructive" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasFile ? (!ready ? "bg-amber-500/10" : "bg-green-500/10") : docItem.required ? "bg-destructive/10" : "bg-secondary"}`}>
+          {hasFile ? (!ready ? <AlertCircle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />) : docItem.required ? <AlertCircle className="w-4 h-4 text-destructive" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -279,37 +280,37 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
           </div>
           {uploadedDoc && (
             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-              <span>Загружен {format(new Date(uploadedDoc.updated_at), "d MMMM yyyy", { locale: ru })}</span>
+              <span>Изменён {format(new Date(uploadedDoc.updated_at), "d MMMM yyyy", { locale: ru })}</span>
               {uploadedDoc.issue_date && <span>· Выдан {format(new Date(uploadedDoc.issue_date), "d MMM yyyy", { locale: ru })}</span>}
               {uploadedDoc.expires_at && <span>· До {format(new Date(uploadedDoc.expires_at), "d MMM yyyy", { locale: ru })}</span>}
               {uploadedDoc.responsible_person && <span>· Отв.: {uploadedDoc.responsible_person}</span>}
-              {annualStatus && !annualStatus.needsUpdate && annualStatus.daysUntil !== null && <span className="text-blue-600">(до обновления: {annualStatus.daysUntil} дн.)</span>}
-              {annualStatus?.needsUpdate && <span className="text-amber-600 font-medium">⚠️ Требуется обновление (прошло {annualStatus.daysSince} дн.)</span>}
+              {isAnnual && <span>· Отчётный период проверяется отдельно</span>}
             </div>
           )}
           {isAnnual && !uploadedDoc && <div className="text-xs text-amber-600 mt-0.5">⚠️ Отчёт не загружен — необходимо загрузить ежегодно</div>}
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+        {uploadedDoc && <Button variant="ghost" size="icon" onClick={() => h.setVersionsDocument(uploadedDoc)} title="История версий"><History className="w-4 h-4" /></Button>}
         {hasFile && uploadedDoc && (
           <>
-            <Button variant="ghost" size="icon" onClick={() => window.open(uploadedDoc.file_url!, "_blank")} title="Просмотр"><Eye className="w-4 h-4" /></Button>
-            <Button variant="ghost" size="icon" onClick={() => { const link = document.createElement("a"); link.href = uploadedDoc.file_url!; link.download = docItem.label; link.click(); }} title="Скачать"><Download className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={async () => { if (!await openPrivateFile("org-documents", uploadedDoc.file_url!)) toast.error("Не удалось открыть документ"); }} title="Просмотр"><Eye className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={async () => { if (!await downloadPrivateFile("org-documents", uploadedDoc.file_url!, docItem.label)) toast.error("Не удалось скачать документ"); }} title="Скачать"><Download className="w-4 h-4" /></Button>
             {uploadedDoc.status === "archived" ? (
-              <Button variant="ghost" size="icon" onClick={() => h.restoreDocument(uploadedDoc.id)} title="Восстановить"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></Button>
+              <Button variant="ghost" size="icon" disabled={!h.canWrite} onClick={() => h.restoreDocument(uploadedDoc.id)} title="Восстановить"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></Button>
             ) : (
-              <Button variant="ghost" size="icon" onClick={() => h.archiveDocument(uploadedDoc.id)} title="В архив"><FolderOpen className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" disabled={!h.canWrite} onClick={() => h.archiveDocument(uploadedDoc.id)} title="В архив"><FolderOpen className="w-4 h-4" /></Button>
             )}
-            <Button variant="ghost" size="icon" onClick={() => h.handleDelete(uploadedDoc.id)} className="text-destructive hover:text-destructive" title="Удалить"><Trash2 className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" disabled={!h.canWrite} onClick={() => h.handleDelete(uploadedDoc.id)} className="text-destructive hover:text-destructive" title="Удалить"><Trash2 className="w-4 h-4" /></Button>
           </>
         )}
         {docItem.type === "self_examination_report" && (
-          <Button variant="outline" size="sm" onClick={() => h.setShowQuiz(true)} className="rounded-lg border-primary/50 text-primary hover:bg-primary/10" title="Заказать автоформирование отчёта">
+          <Button variant="outline" size="sm" disabled={!h.canWrite} onClick={() => h.setShowQuiz(true)} className="rounded-lg border-primary/50 text-primary hover:bg-primary/10" title="Заказать автоформирование отчёта">
             <Sparkles className="w-4 h-4 mr-2" />Сформировать за 3 500 ₽
           </Button>
         )}
-        <Button variant={hasFile ? (annualStatus?.needsUpdate || exp.state === "expired" ? "default" : "outline") : "default"} size="sm" onClick={() => h.openUploadDialog(docItem.type)} className={cn("rounded-lg", (annualStatus?.needsUpdate || exp.state === "expired") && "bg-amber-500 hover:bg-amber-600")}>
-          <Upload className="w-4 h-4 mr-2" />{(annualStatus?.needsUpdate || exp.state === "expired") ? "Обновить" : hasFile ? "Заменить" : "Загрузить"}
+        <Button variant={hasFile ? (!ready ? "default" : "outline") : "default"} size="sm" disabled={!h.canWrite} onClick={() => h.openUploadDialog(docItem.type)} className={cn("rounded-lg", hasFile && !ready && "bg-amber-500 hover:bg-amber-600")}>
+          <Upload className="w-4 h-4 mr-2" />{hasFile ? (!ready ? "Обновить" : "Заменить") : "Загрузить"}
         </Button>
       </div>
     </div>
@@ -335,7 +336,7 @@ function SpecialCategoryContent({ h }: { h: ReturnType<typeof useOrgDocumentsMan
       </div>
 
       {h.activeCategory === "enrollment_orders" ? (
-        <OrdersArchive documents={h.documents} onDelete={h.handleDelete} onView={(url) => window.open(url, "_blank")} />
+        <OrdersArchive documents={h.documents} onDelete={h.canWrite ? h.handleDelete : undefined} onView={async (url) => { if (!await openPrivateFile("org-documents", url)) toast.error("Не удалось открыть документ"); }} />
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
           {categoryDocs.length === 0 ? (
@@ -360,11 +361,11 @@ function SpecialCategoryContent({ h }: { h: ReturnType<typeof useOrgDocumentsMan
                   <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                     {doc.file_url && (
                       <>
-                        <Button variant="ghost" size="icon" onClick={() => window.open(doc.file_url!, "_blank")} title="Просмотр"><Eye className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => { const link = document.createElement("a"); link.href = doc.file_url!; link.download = doc.name; link.click(); }} title="Скачать"><Download className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={async () => { if (!await openPrivateFile("org-documents", doc.file_url!)) toast.error("Не удалось открыть документ"); }} title="Просмотр"><Eye className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={async () => { if (!await downloadPrivateFile("org-documents", doc.file_url!, doc.name)) toast.error("Не удалось скачать документ"); }} title="Скачать"><Download className="w-4 h-4" /></Button>
                       </>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => h.handleDelete(doc.id)} className="text-destructive hover:text-destructive" title="Удалить"><Trash2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" disabled={!h.canWrite} onClick={() => h.handleDelete(doc.id)} className="text-destructive hover:text-destructive" title="Удалить"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>
               ))}
@@ -399,7 +400,7 @@ function OrderDocumentsDialog({ h }: { h: ReturnType<typeof useOrgDocumentsManag
                   <div className="ml-10 space-y-1">
                     {category.documents.map((doc) => {
                       const isSelected = h.selectedDocsForOrder.includes(doc.type);
-                      const isUploaded = !!h.getDocumentForType(doc.type);
+                      const isUploaded = h.isDocumentReady(doc.type);
                       return (
                         <div key={doc.type} onClick={() => h.toggleDocForOrder(doc.type)} className={cn("flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border", isSelected ? "bg-primary/10 border-primary" : "bg-secondary/30 border-transparent hover:bg-secondary/50")}>
                           <div className={cn("w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors", isSelected ? "bg-primary border-primary" : "border-muted-foreground/30")}>
@@ -424,7 +425,7 @@ function OrderDocumentsDialog({ h }: { h: ReturnType<typeof useOrgDocumentsManag
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 rounded-xl" onClick={() => { h.setShowOrderDialog(false); }}>Отмена</Button>
-            <Button className="flex-1 btn-gradient rounded-xl" onClick={h.handleOrderDocuments} disabled={h.isSubmittingOrder || h.selectedDocsForOrder.length === 0}>
+            <Button className="flex-1 btn-gradient rounded-xl" onClick={h.handleOrderDocuments} disabled={!h.canWrite || h.isSubmittingOrder || h.selectedDocsForOrder.length === 0}>
               {h.isSubmittingOrder ? (<><SigmaSpinner size="sm" className="mr-2" />Отправка...</>) : (<><ShoppingCart className="w-4 h-4 mr-2" />Заказать</>)}
             </Button>
           </div>

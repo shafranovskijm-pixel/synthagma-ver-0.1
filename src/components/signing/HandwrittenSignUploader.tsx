@@ -10,6 +10,7 @@ interface Props {
   signatureId: string;
   organizationId: string;
   signatureToken: string;
+  expectedRevisionId: string | null;
   /** ФИО подписанта — записывается в финализатор для штампа. */
   signerName: string;
   signerEmail: string;
@@ -24,6 +25,7 @@ export function HandwrittenSignUploader({
   signatureId,
   organizationId,
   signatureToken,
+  expectedRevisionId,
   signerName,
   signerEmail,
   onSigned,
@@ -64,6 +66,7 @@ export function HandwrittenSignUploader({
       const { data, error } = await supabase.functions.invoke("finalize-signature", {
         body: {
           token: signatureToken,
+          expectedRevisionId,
           method: "handwritten_scan",
           handwrittenScanPath: path,
           handwrittenScanComment: comment.trim() || null,

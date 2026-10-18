@@ -236,7 +236,7 @@ export function useOrgDetailsView(organization: Organization) {
 
   const fetchDocuments = useCallback(async () => {
     const { data, error } = await supabase
-      .from("org_documents").select("*").eq("organization_id", organization.id)
+      .from("org_documents").select("*").eq("organization_id", organization.id).is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (!error) setDocuments(data || []);
   }, [organization.id]);

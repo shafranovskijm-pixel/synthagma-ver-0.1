@@ -165,6 +165,7 @@ export async function generateAttestationProtocol({
     if (uploadError) console.error("Storage upload error:", uploadError);
 
     let fileUrl: string | null = null;
+    if (uploadError) throw uploadError;
     if (!uploadError) {
       const { data: urlData } = supabase.storage
         .from("org-documents")

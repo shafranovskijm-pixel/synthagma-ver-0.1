@@ -1,0 +1,162 @@
+{
+  "release": "uc-document-foundation-20261018",
+  "preparedOnly": true,
+  "migrationCount": 4,
+  "batchSha256": "cee305559a23f7fa656bd1b3f74530db9d424ef417440bd96298c7b8a1fd2324",
+  "newlineHashNormalization": "CRLF to LF only",
+  "migrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "stripOuterTransaction": true,
+      "sourceSha256": "02472f27d89b9392a3805d8ddec7fc47fb1d122ddd026bf87646545eefd7f147",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c",
+      "executableMd5": "78cc4967a7ad43dbb33bdb0307c19f0b"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "stripOuterTransaction": false,
+      "sourceSha256": "e4f135d5e1d36614b352c15c3be4ef95572b729bcc58eb547ab785802c21c509",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885",
+      "executableMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "stripOuterTransaction": true,
+      "sourceSha256": "e67782277c68d12341517b338f44fe8d614f13664093c94186c78a857ea98cf8",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b",
+      "executableMd5": "3bb4188643dc02cd5b7e12ec3ac1d7a7"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "stripOuterTransaction": true,
+      "sourceSha256": "c78fd90a5f4da0c0e03d66bf44ecc62b97bfb5b40b27b8e6558a6e34ad4a2f14",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736",
+      "executableMd5": "7652ea8d286d4e92f9502cbba693ceef"
+    }
+  ],
+  "edgeFunctions": [
+    "html-to-pdf",
+    "generate-self-examination-report",
+    "finalize-signature",
+    "generate-signature-certificate",
+    "send-signing-email",
+    "org-create-contract-signature",
+    "public-verify-document",
+    "purge-recycle-bin-storage"
+  ],
+  "edgeDependencies": [
+    {
+      "path": "supabase/functions/_shared/document-operation-access.ts",
+      "sourceSha256": "25f5e63517662b9193c2a02a2f1c9472967d22939a55b6334aabae4a1033e40f"
+    },
+    {
+      "path": "supabase/functions/_shared/gigachat-client.ts",
+      "sourceSha256": "0c40ab34d74df95d3b6a1a2a2394210cdddcd52a6029e1c809acbea619b69355"
+    },
+    {
+      "path": "supabase/functions/_shared/privileged-access.ts",
+      "sourceSha256": "b42d27ae2ab69a7d085ca34391e02e2db007dd8081e439c9ec26b44563a597b0"
+    },
+    {
+      "path": "supabase/functions/_shared/public-document-verifier.ts",
+      "sourceSha256": "6dd543151d209888f2796ec24932e4025e88b6d7838c3997aba1b9d4f7d31680"
+    },
+    {
+      "path": "supabase/functions/_shared/rate-limiter.ts",
+      "sourceSha256": "588eb2774f91c5afd397244540f52bd2f2abee19f2cf702c872a6c81bd573085"
+    },
+    {
+      "path": "supabase/functions/_shared/russian-ca.ts",
+      "sourceSha256": "6e65ea551950b7d87c0dce1e64f784d10337b744b15b33f4c9d331e324697518"
+    },
+    {
+      "path": "supabase/functions/_shared/self-examination-version.ts",
+      "sourceSha256": "acd6e39c32d0eb2a58bbeec05553d4ad883e19705af16d8e74f1b82deaff67d2"
+    },
+    {
+      "path": "supabase/functions/_shared/signature-finalizer.ts",
+      "sourceSha256": "fdd9d4e3946b685a996a5d208e321569919c123cf7e082f426b7ec5099f63df2"
+    },
+    {
+      "path": "supabase/functions/_shared/smtp-protocol.ts",
+      "sourceSha256": "d3326b74770af7b6ad70ed8410d805e12212655faf72f53c03c3f70a3c192e3b"
+    },
+    {
+      "path": "supabase/functions/_shared/smtp-sender.ts",
+      "sourceSha256": "a3e08210cfd1cd16a9bcd80e1cebba2ccbe9789cef3f9a4e48ac70989f2cca1e"
+    },
+    {
+      "path": "supabase/functions/finalize-signature/index.ts",
+      "sourceSha256": "e1a25e2cb8bf38921abb1d5a52c574247f93ef344b53c44b40fdbf001e6176a6"
+    },
+    {
+      "path": "supabase/functions/generate-self-examination-report/index.ts",
+      "sourceSha256": "b705be7d7e9d65523501a4c06b8fb901598f10df3dcc96917b4d993fa23dfdc4"
+    },
+    {
+      "path": "supabase/functions/generate-signature-certificate/index.ts",
+      "sourceSha256": "6daa9bedc57fc46b2012ca85d94efbdc2ec6e2e0072bb9928f51e8f5f3c792d8"
+    },
+    {
+      "path": "supabase/functions/html-to-pdf/index.ts",
+      "sourceSha256": "8609d2264fd6c792666a195bc316b373fdf1816221df18c40493d56e44a5a9fb"
+    },
+    {
+      "path": "supabase/functions/org-create-contract-signature/index.ts",
+      "sourceSha256": "7452bf2a16756c2ca0a6d1a254e633a566be8ff1c34a7ef165240ce751cc2961"
+    },
+    {
+      "path": "supabase/functions/public-verify-document/index.ts",
+      "sourceSha256": "5bee36743379efa96506658189b8c6a180be0c5632796ee104b78eaa9bba6d86"
+    },
+    {
+      "path": "supabase/functions/purge-recycle-bin-storage/index.ts",
+      "sourceSha256": "5474c56302476a9868c90893b4617f344791fe4ebfc92169271413008620a089"
+    },
+    {
+      "path": "supabase/functions/send-signing-email/index.ts",
+      "sourceSha256": "c3be34d82d9910c521315f2b9081bc2a94cb49152f19a15bd057da0e0a483f0b"
+    }
+  ],
+  "configSha256": "fb484603da7a69ce5a64cadbec2063e93c15ae1c68c3385919d384623a40a9e1",
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets"
+  ],
+  "deploymentOrder": [
+    "Hardened Edge handlers first; signing/version operations fail closed until new SQL exists",
+    "Run one entire SQL transaction including pause of the legacy anonymous cleanup job",
+    "Deploy companion UI and perform ordinary authorized UI smoke checks"
+  ]
+}

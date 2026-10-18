@@ -28,6 +28,9 @@ import { ReconciliationActDialog } from "./ReconciliationActDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { companiesPath } from "@/lib/groups/groupContext";
+import { companyDocumentStorage } from "@/lib/documents/companyDocumentStorage";
+import { openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
+import type { CompanyDocument } from "@/hooks/useCompaniesManager";
 
 interface CompaniesManagerProps {
   organizationId: string;
@@ -172,9 +175,17 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     if (dm.selectedCompanyForDetail) await dm.uploadDocument(file, type, dm.selectedCompanyForDetail.id);
   };
 
-  const handleViewDocument = (doc: any) => { if (doc.file_url) window.open(doc.file_url, "_blank"); };
-  const handleDownloadDocument = (doc: any) => {
-    if (doc.file_url) { const a = document.createElement("a"); a.href = doc.file_url; a.download = doc.name; a.click(); }
+  const handleViewDocument = async (doc: CompanyDocument) => {
+    const location = companyDocumentStorage(doc);
+    if (location) {
+      if (!await openPrivateFile(location.bucket, location.path)) toast.error("Нет доступа к файлу документа");
+    } else if (doc.file_url) window.open(doc.file_url, "_blank", "noopener");
+  };
+  const handleDownloadDocument = async (doc: CompanyDocument) => {
+    const location = companyDocumentStorage(doc);
+    if (location) {
+      if (!await downloadPrivateFile(location.bucket, location.path, doc.name)) toast.error("Не удалось скачать документ");
+    } else if (doc.file_url) { const a = document.createElement("a"); a.href = doc.file_url; a.download = doc.name; a.click(); }
   };
   const handleTogglePaid = async (doc: any) => {
     if (dm.selectedCompanyForDetail) await dm.markAsPaid(doc.id, dm.selectedCompanyForDetail.id);

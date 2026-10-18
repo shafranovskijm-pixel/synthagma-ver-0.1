@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
-import { getSignedStorageUrl } from "@/utils/storageHelpers";
+import { getSignedStorageUrl, openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
 import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
 
 export interface DocumentRecord {
@@ -113,7 +113,7 @@ export function useDocumentRegistration(organizationId: string) {
           });
         }
 
-        const { data: orgDocs } = await supabase.from("org_documents").select("id, name, file_url, type").eq("organization_id", organizationId);
+        const { data: orgDocs } = await supabase.from("org_documents").select("id, name, file_url, type").eq("organization_id", organizationId).is("deleted_at", null);
         const orgDocFileMap = new Map<string, string>();
         for (const od of orgDocs || []) { if (od.file_url) orgDocFileMap.set(od.name.toLowerCase(), od.file_url); }
 
@@ -191,6 +191,10 @@ export function useDocumentRegistration(organizationId: string) {
 
   const handleViewDocument = async (record: DocumentRecord) => {
     if (!record.file_url) return;
+    if (record.source === "enrollment") {
+      if (!await openPrivateFile("org-documents", record.file_url)) toast.error("Не удалось открыть документ");
+      return;
+    }
     try {
       if (record.file_url.startsWith("http")) { window.open(record.file_url, "_blank"); }
       else {
@@ -206,6 +210,10 @@ export function useDocumentRegistration(organizationId: string) {
 
   const handleDownloadDocument = async (record: DocumentRecord) => {
     if (!record.file_url) return;
+    if (record.source === "enrollment") {
+      if (!await downloadPrivateFile("org-documents", record.file_url, record.document_name)) toast.error("Не удалось скачать документ");
+      return;
+    }
     try {
       let url = record.file_url;
       if (!url.startsWith("http")) {

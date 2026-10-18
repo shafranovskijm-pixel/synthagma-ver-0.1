@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as access from "./privileged-access";
 import * as skillspaceSource from "./skillspace-source";
 import { mergeCookiesFromResponse, getCookieHeader, getAuthToken } from "./skillspace-auth";
+import { signatureSha256 } from "./signature-finalizer";
 
 const actorId = "00000000-0000-4000-8000-000000000001";
 const orgId = "00000000-0000-4000-8000-000000000002";
@@ -65,7 +66,7 @@ function actualHandler(name: string, db: ReturnType<typeof database>["db"], fetc
   const executable = ts.transpileModule(noImports, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   let handler: (req: Request) => Promise<Response>;
   const serve = (fn: typeof handler) => { handler = fn; };
-  const deps = { ...access, ...skillspaceSource, mergeCookiesFromResponse, getCookieHeader, getAuthToken,
+  const deps = { ...access, ...skillspaceSource, mergeCookiesFromResponse, getCookieHeader, getAuthToken, signatureSha256,
     createClient: () => db, serve, fetch, console: { log() {}, error() {} }, Deno: { serve, env: { get: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? serviceKey : "https://example.invalid" } } };
   new Function(...Object.keys(deps), executable)(...Object.values(deps));
   return handler!;
@@ -143,7 +144,7 @@ describe("privileged operation scope", () => {
   });
 });
 
-describe.each(["generate-signature-certificate", "migrate-course-media", "reimport-skillspace-batch", "convert-company-to-lead", "parse-skillspace-course", "batch-skillspace-import"])("actual %s handler", name => {
+describe.each(["generate-signature-certificate", "send-signing-email", "migrate-course-media", "reimport-skillspace-batch", "convert-company-to-lead", "parse-skillspace-course", "batch-skillspace-import"])("actual %s handler", name => {
   it.each([
     { token: null, options: {}, status: 401 },
     { token: "publishable-key", options: { invalidToken: true }, status: 401 },
@@ -162,6 +163,26 @@ describe.each(["generate-signature-certificate", "migrate-course-media", "reimpo
     expect((await actualHandler(name, db, effects.fetch)(request(null, "OPTIONS"))).status).toBe(200);
     expect(db.auth.getUser).not.toHaveBeenCalled();
     expect(db.from).not.toHaveBeenCalled();
+  });
+});
+
+describe('actual organization contract sender authorization', () => {
+  it.each([
+    { token: null, options: {}, status: 401 },
+    { token: 'publishable-key', options: { invalidToken: true }, status: 401 },
+    { token: 'valid-user', options: { revoked: true }, status: 403 },
+    { token: 'valid-user', options: {}, status: 403 },
+    { token: 'valid-user', options: { errorTable: 'account_deletion_revocations' }, status: 503 },
+  ])('rejects unauthorized signature creation before insert/SMTP: %j', async ({token,options,status}) => {
+    const {db,effects}=database(options);
+    const req=new Request('https://example.invalid/function', {method:'POST',
+      headers: token ? {Authorization:`Bearer ${token}`, 'Content-Type':'application/json'} : {'Content-Type':'application/json'},
+      body:JSON.stringify({organization_id:orgId,document_title:'Synthetic contract',document_html:'<p>Synthetic</p>',recipient_email:'synthetic@example.invalid',recipient_name:'Synthetic Recipient'}),
+    });
+    const response=await actualHandler('org-create-contract-signature',db,effects.fetch)(req);
+    expect(response.status).toBe(status);
+    for(const effect of Object.values(effects))expect(effect).not.toHaveBeenCalled();
+    expect(response.headers.get('X-Sintagma-Function-Revision')).toBe('uc-foundation-20261018-v1');
   });
 });
 

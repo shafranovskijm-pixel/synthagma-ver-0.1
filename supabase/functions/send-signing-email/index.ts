@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
+import { accessErrorResponse, checked, readObject, requireActiveUser, requireSignatureAccess, requireUuid } from "../_shared/privileged-access.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
 };
 
 async function sendSmtp(to: string, subject: string, html: string): Promise<boolean> {
@@ -42,8 +44,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json();
-    const signatureId = body.signatureId || body.signature_id;
+    const body = await readObject(req);
+    const signatureId = requireUuid(body.signatureId || body.signature_id, "signatureId");
     const isReminder = !!(body.isReminder || body.is_reminder);
     if (!signatureId) {
       return new Response(JSON.stringify({ error: "signatureId required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -53,14 +55,25 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const actor = await requireActiveUser(req, supabase, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+    await requireSignatureAccess(supabase, actor, signatureId);
+    // Reading/being a recipient does not authorize sending mail on behalf of the organization.
+    if (!actor.service) {
+      const permissionClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: req.headers.get("Authorization")! } },
+      });
+      if (checked(await permissionClient.rpc("uc_signature_actor_allowed", {
+        p_signature_id: signatureId, p_write: true, p_recipient: false,
+      })) !== true) return new Response(JSON.stringify({ error: "Нет права отправлять документы" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { data: sig, error } = await supabase
       .from("document_signatures")
-      .select("id, document_title, recipient_email, recipient_name, signature_token, expires_at, organization_id, sent_at")
+      .select("id, document_title, recipient_email, recipient_name, signature_token, expires_at, organization_id, sent_at, status, deleted_at")
       .eq("id", signatureId)
       .maybeSingle();
 
-    if (error || !sig) {
+    if (error || !sig || sig.deleted_at || !["draft", "sent", "viewed", "in_review", "changes_requested"].includes(sig.status) || new Date(sig.expires_at).getTime() <= Date.now()) {
       return new Response(JSON.stringify({ error: "Signature not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -82,14 +95,13 @@ serve(async (req) => {
       await supabase
         .from("document_signatures")
         .update({ status: "sent", sent_at: new Date().toISOString() })
-        .eq("id", signatureId);
+        .eq("id", signatureId).in("status", ["draft", "sent", "viewed"]);
     }
 
     return new Response(JSON.stringify({ success: ok, reminder: isReminder }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return accessErrorResponse(e, corsHeaders);
   }
 });

@@ -18,7 +18,7 @@ const { dbState, toastErrorMock, toastSuccessMock, toastWarningMock } = vi.hoist
 
 vi.mock("@/integrations/supabase/client", () => {
   const rowsFor = (table: string) => {
-    if (table === "profiles") return dbState.profileRows;
+    if (table === "student_group_profiles_effective") return dbState.profileRows;
     if (table === "org_contracts") return dbState.contractRows;
     if (table === "group_documents") return dbState.documentRows;
     return [];
@@ -41,6 +41,7 @@ vi.mock("@/integrations/supabase/client", () => {
     query.in = vi.fn(() => query);
     query.or = vi.fn(() => query);
     query.order = vi.fn(() => query);
+    query.range = vi.fn(() => query);
     query.then = (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
       Promise.resolve(
         operation === "delete"
@@ -93,7 +94,7 @@ describe("group document deletion safety", () => {
     const { result } = renderHook(() => useGroupContracts("org-1", "group-1"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(dbState.events).toContain("is:profiles:archived_at:null");
+    expect(dbState.events).toContain("is:student_group_profiles_effective:archived_at:null");
   });
 
   it("удаляет запись договора до файлов и очищает все уникальные пути", async () => {
