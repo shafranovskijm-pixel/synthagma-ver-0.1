@@ -18,6 +18,8 @@ import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisio
 import { Upload, PenLine, Users } from "lucide-react";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { BulkSendForSigningDialog } from "@/components/signing/BulkSendForSigningDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
 
 interface SignatureRow {
   id: string;
@@ -26,6 +28,7 @@ interface SignatureRow {
   document_html: string | null;
   document_hash: string | null;
   organization_id: string;
+  sender_user_id: string;
   sender_name: string | null;
   recipient_type: string;
   recipient_email: string;
@@ -561,6 +564,8 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
                 <SignatureFilesPanel
                   signatureId={selected.id}
                   organizationId={selected.organization_id}
+                  senderUserId={selected.sender_user_id}
+                  documentType={selected.document_type}
                   status={selected.status}
                   requiresBilateral={(selected as any).requires_bilateral}
                   senderSignedAt={(selected as any).sender_signed_at}
@@ -680,10 +685,15 @@ function SignatureCommentsPanel({ signatureId }: { signatureId: string }) {
 }
 
 /** Панель файлов-версий для внешне загруженных договоров */
-function SignatureFilesPanel({ signatureId, organizationId, status, requiresBilateral, senderSignedAt, onChanged }: {
+export function SignatureFilesPanel({ signatureId, organizationId, senderUserId, documentType, status, requiresBilateral, senderSignedAt, onChanged }: {
   signatureId: string; organizationId: string; status: string;
+  senderUserId: string; documentType: string;
   requiresBilateral?: boolean; senderSignedAt?: string | null; onChanged: () => void;
 }) {
+  const { user } = useAuth();
+  const permissions = useDocumentActionPermissions(organizationId);
+  const canCountersign = !!user?.id && senderUserId === user.id && (permissions.canSign ||
+    (permissions.canSalesWrite && ["contract", "external_upload", "act"].includes(documentType)));
   const [revisions, setRevisions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploader, setShowUploader] = useState(false);
@@ -708,6 +718,7 @@ function SignatureFilesPanel({ signatureId, organizationId, status, requiresBila
   };
 
   const countersign = async () => {
+    if (!canCountersign || countersigning) return;
     setCountersigning(true);
     try {
       let ip = "unknown";
@@ -765,7 +776,7 @@ function SignatureFilesPanel({ signatureId, organizationId, status, requiresBila
           </Button>
         )}
         {requiresBilateral && status === "signed" && !senderSignedAt && (
-          <Button size="sm" className="gap-1.5" onClick={countersign} disabled={countersigning}>
+          <Button size="sm" className="gap-1.5" onClick={countersign} disabled={!canCountersign || countersigning}>
             <PenLine className="w-3.5 h-3.5" />Подписать с моей стороны
           </Button>
         )}

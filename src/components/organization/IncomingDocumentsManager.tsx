@@ -345,7 +345,7 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      if (confirm(`Переместить документ "${doc.title}" в корзину? Срок хранения 30 дней.`)) remove(doc);
+                      if (confirm(`Переместить документ "${doc.title}" в корзину? Его можно будет восстановить.`)) remove(doc);
                     }}
                     className="rounded-xl"
                     title="В корзину"

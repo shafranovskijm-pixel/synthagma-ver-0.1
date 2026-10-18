@@ -11,6 +11,7 @@ import { FRDO_REQUIRED_FIELDS, resolveFrdoReadiness } from "@/lib/frdo/readiness
 import { issueEducationDocumentsByCourse, issuedRowKey, type CourseScopedItem } from "@/lib/education-docs/issueBatch";
 import { resolveEducationDocumentType } from "@/lib/education-docs/documentType";
 import { localDateIso } from "@/lib/date/localDate";
+import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
 
 interface Student { user_id: string; name: string; email: string; course?: string | null; course_id?: string | null; }
 interface FRDOData {
@@ -56,6 +57,7 @@ export interface FRDOGroupContext {
 }
 
 export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {}) {
+  const { canIssue } = useDocumentActionPermissions(organizationId);
   const groupId = ctx.groupId || null;
   const contextCourseId = ctx.courseId || null;
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +158,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   };
 
   const handleBulkExport = async (exportType: "dpo" | "po") => {
+    if (!canIssue) return;
     const exportUserIds = selectedStudents.size > 0 ? selectedStudents : new Set(filteredStudents.map(s => s.user_id));
     if (exportUserIds.size === 0) { toast.error("Нет студентов для экспорта"); return; }
     setIsExporting(true);
@@ -368,7 +371,7 @@ export function useFRDOManager(organizationId: string, ctx: FRDOGroupContext = {
   };
 
   return {
-    groupId,
+    canIssue, groupId,
     isLoading, students, courses, searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,

@@ -14,7 +14,7 @@ const target = { html: "<html><body>Договор на русском язык�
   storagePath: `${org}/bulk/2026-10/new-contract.pdf` };
 
 function db(options: { invalid?: boolean; revoked?: boolean; writer?: boolean; admin?: boolean;
-  missingRenderer?: boolean; uploadError?: boolean; permissionError?: boolean; orderOrg?: string; orderStatus?: string } = {}) {
+  missingRenderer?: boolean; uploadError?: boolean; permissionError?: boolean; orderOrg?: string; orderStatus?: string; platformReadonly?: boolean } = {}) {
   const effects = { upload: vi.fn(async () => ({ error: options.uploadError ? new Error("denied") : null })),
     insert: vi.fn(), update: vi.fn(), callAI: vi.fn(), fetch: vi.fn(async () => new Response("%PDF-1.7\nfixture")) };
   const from = vi.fn((table: string) => {
@@ -31,7 +31,8 @@ function db(options: { invalid?: boolean; revoked?: boolean; writer?: boolean; a
     return q;
   });
   const client = { auth: { getUser: vi.fn(async () => ({ data: { user: options.invalid ? null : { id: user } }, error: null })) },
-    from, rpc: vi.fn(async () => ({ data: !!options.writer, error: options.permissionError ? new Error("offline") : null })),
+    from, rpc: vi.fn(async (name: string) => ({ data: name === "uc_platform_document_action_allowed" ? !!options.admin && !options.platformReadonly : !!options.writer,
+      error: options.permissionError ? new Error("offline") : null })),
     storage: { from: vi.fn(() => ({ upload: effects.upload })) } };
   return { client, effects, options };
 }
@@ -64,15 +65,26 @@ describe("document renderer boundary (actual handler)", () => {
     { token: "valid", permissionError: true, status: 503 }])("denies before rendering or storage: %j", async c => {
     const f = db(c); const response = await actualHandler("html-to-pdf", f)(request(target, c.token));
     expect(response.status).toBe(c.status);
-    expect(response.headers.get("X-Sintagma-Function-Revision")).toBe("uc-foundation-20261018-v1");
+    expect(response.headers.get("X-Sintagma-Function-Revision")).toBe("uc-permissions-20261018-v2");
     expect(f.effects.fetch).not.toHaveBeenCalled(); expect(f.effects.upload).not.toHaveBeenCalled();
   });
   it("resolves write access for the path organization using the user JWT", async () => {
     const f = db({ writer: true }); const response = await actualHandler("html-to-pdf", f)(request());
     expect(response.status).toBe(200);
-    expect(f.client.rpc).toHaveBeenCalledWith("can_access_organization", { _organization_id: org, _permission: "documents.write" });
+    expect(f.client.rpc).toHaveBeenCalledWith("uc_document_action_allowed", { p_org: org, p_action: "write", p_group: null, p_enrollment: null });
     expect(f.effects.upload).toHaveBeenCalledWith(target.storagePath, expect.any(Uint8Array), { contentType: "application/pdf", upsert: false });
     expect(await response.json()).toMatchObject({ success: true, renderer: "browserless" });
+  });
+  it("authorizes a group draft using its exact storage-path group, ignoring a body-supplied alternative", async () => {
+    const f = db({ writer: true });
+    const storagePath = `${org}/contracts/${orderId}/draft/file.pdf`;
+    expect((await actualHandler("html-to-pdf", f)(request({ ...target, storagePath, groupId: otherOrg }))).status).toBe(200);
+    expect(f.client.rpc).toHaveBeenCalledWith("uc_document_action_allowed", { p_org: org, p_action: "write", p_group: orderId, p_enrollment: null });
+  });
+  it("denies an unassigned group before rendering or upload", async () => {
+    const f = db();
+    expect((await actualHandler("html-to-pdf", f)(request({ ...target, storagePath: `${org}/contracts/${orderId}/draft/file.pdf` }))).status).toBe(403);
+    expect(f.effects.fetch).not.toHaveBeenCalled(); expect(f.effects.upload).not.toHaveBeenCalled();
   });
   it.each([`${org}/bulk/../other.pdf`, `${org}/bulk/%2e%2e/other.pdf`, `${org}/bulk//other.pdf`,
     `${org}/other/2026/other.pdf`, `${org}/contracts/x/other.pdf?token=x`])("rejects an unsafe destination %s", async storagePath => {
@@ -115,7 +127,7 @@ describe("self-examination fulfilment access", () => {
     const f = db(); await documents.completeSelfExaminationOrder(f.client, { status: "completed" });
     expect(f.client.from).not.toHaveBeenCalled();
   });
-  it.each([{}, { admin: true, orderOrg: otherOrg }, { admin: true, orderStatus: "cancelled" }])("does not read organization facts or call AI before authorization %j", async options => {
+  it.each([{}, { admin: true, platformReadonly: true }, { admin: true, orderOrg: otherOrg }, { admin: true, orderStatus: "cancelled" }])("does not read organization facts or call AI before authorization %j", async options => {
     const f = db(options);
     const response = await actualHandler("generate-self-examination-report", f)(request({ organizationId: org, orderId }));
     expect([403, 409]).toContain(response.status);

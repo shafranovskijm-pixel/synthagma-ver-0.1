@@ -297,7 +297,7 @@ export function useOrgDocumentsManager(organizationId: string, canWrite = false)
 
   const handleDelete = async (docId: string) => {
     if (!canWrite) return;
-    if (!confirm("Переместить документ в корзину? Он будет храниться 30 дней и может быть восстановлен.")) return;
+    if (!confirm("Переместить документ в корзину? Его можно будет восстановить из корзины.")) return;
     try {
       const { data, error } = await supabase.rpc("soft_delete_document", {
         p_table: "org_documents",

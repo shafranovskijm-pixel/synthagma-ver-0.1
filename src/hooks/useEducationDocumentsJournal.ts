@@ -9,6 +9,7 @@ import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/
 import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
 import { issueEducationDocumentsByCourse } from "@/lib/education-docs/issueBatch";
 import { localDateIso } from "@/lib/date/localDate";
+import { useDocumentActionPermissions } from "@/hooks/useDocumentActionPermissions";
 import {
   type EducationDocumentRecord,
   type CompletedStudent,
@@ -40,6 +41,7 @@ export function useEducationDocumentsJournal({
   groupContext,
 }: UseEducationDocumentsJournalProps) {
   const qc = useQueryClient();
+  const { canIssue } = useDocumentActionPermissions(organizationId);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocType, setSelectedDocType] = useState<string>("all");
@@ -320,12 +322,14 @@ export function useEducationDocumentsJournal({
   };
 
   const generateRegNumber = async () => {
+    if (!canIssue) return;
     const year = formData.issue_date.getFullYear();
     const docType = formData.document_type || "doc";
     let nextNumber = 0;
     try {
-      const { data, error } = await supabase.rpc("next_reg_number", {
+      const { data, error } = await (supabase.rpc as any)("reserve_education_registration_number", {
         p_org: organizationId,
+        p_group: groupContext?.groupId ?? null,
         p_doc_type: docType,
         p_year: year,
       });
@@ -362,6 +366,7 @@ export function useEducationDocumentsJournal({
   const manualAddGuard = resolveManualWriteGuard("education_documents", groupContext);
 
   const handleOpenAdd = () => {
+    if (!canIssue) return;
     if (manualAddGuard.blocked) {
       toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
       return;
@@ -371,6 +376,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleOpenEdit = (record: EducationDocumentRecord) => {
+    if (!canIssue) return;
     if (!isRowWriteAllowed(record.id, scopedRecords, groupContext)) {
       toast.error("Запись не относится к этой группе — редактирование недоступно");
       return;
@@ -400,6 +406,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleOpenSelectStudents = async () => {
+    if (!canIssue) return;
     setSelectedStudents(new Set());
     setStudentSearchQuery("");
     setShowSelectStudentsDialog(true);
@@ -412,6 +419,7 @@ export function useEducationDocumentsJournal({
    * in SelectStudentsDialog.
    */
   const handleOpenEnrollment = async (enrollmentId: string) => {
+    if (!canIssue) return;
     const student = scopedCompletedStudents.find((item) => item.enrollment_id === enrollmentId);
     setSelectedStudents(new Set([enrollmentId]));
     setStudentSearchQuery(student?.full_name ?? "");
@@ -421,6 +429,7 @@ export function useEducationDocumentsJournal({
 
   /** Общая транзакционная выдача: номера только с сервера, всё или ничего. */
   const issueForStudents = async (list: CompletedStudent[], successLabel: string) => {
+    if (!canIssue) return false;
     setSaving(true);
     try {
       const inserted = await issueEducationDocumentsByCourse({
@@ -456,6 +465,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleAutoAddAllGraduates = async () => {
+    if (!canIssue) return;
     let newStudents = scopedCompletedStudents.filter((s) => !s.already_added);
     if (documentTypeFilter) {
       newStudents = newStudents.filter((s) => {
@@ -468,6 +478,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleCreateFromStudents = async () => {
+    if (!canIssue) return;
     const selectedList = scopedCompletedStudents.filter((s) => selectedStudents.has(s.enrollment_id) && !s.already_added);
     if (selectedList.length === 0) { toast.error("Выберите хотя бы одного выпускника"); return; }
     const ok = await issueForStudents(selectedList, "Создано записей");
@@ -488,6 +499,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleSave = async () => {
+    if (!canIssue) return;
     // Создание новой записи разрешено только через scoped-сценарий «по выпускникам группы».
     if (!editingRecord && manualAddGuard.blocked) {
       toast.error("Ручное добавление недоступно", { description: manualAddGuard.reason || undefined });
@@ -551,6 +563,7 @@ export function useEducationDocumentsJournal({
   };
 
   const handleDelete = async () => {
+    if (!canIssue) return;
     if (!deletingRecord) return;
     if (!isRowWriteAllowed(deletingRecord.id, scopedRecords, groupContext)) {
       toast.error("Запись не относится к этой группе — удаление отменено");
@@ -582,6 +595,7 @@ export function useEducationDocumentsJournal({
   };
 
   return {
+    canIssue,
     // State
     loading, saving, records: scopedRecords, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,

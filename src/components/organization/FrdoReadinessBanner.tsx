@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { detectGenderFromMiddleName } from "@/constants/frdo";
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { AssignedGroupDocumentsNotice } from "./AssignedGroupDocumentsNotice";
 
 interface FrdoReadinessBannerProps {
   organizationId: string;
@@ -173,7 +174,8 @@ function FrdoReadinessBannerContent({ organizationId, onOpenFrdo }: FrdoReadines
  * frdo.read neither see the readiness controls nor start FRDO data requests.
  */
 export function FrdoReadinessBanner(props: FrdoReadinessBannerProps) {
-  const { can, loading } = useStaffPermissions();
+  const { can, loading, orgRole, isOrgOwner } = useStaffPermissions();
   if (loading || !can("frdo.read")) return null;
+  if (orgRole === "teacher" && !isOrgOwner) return <AssignedGroupDocumentsNotice />;
   return <FrdoReadinessBannerContent {...props} />;
 }

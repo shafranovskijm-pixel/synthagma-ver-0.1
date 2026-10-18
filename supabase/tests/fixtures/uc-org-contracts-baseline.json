@@ -1,0 +1,322 @@
+{
+  "columns": [
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "default": "''::text",
+      "nullable": "NO",
+      "type": "text"
+    },
+    {
+      "column": "contract_number",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "contract_date",
+      "default": null,
+      "nullable": "YES",
+      "type": "date"
+    },
+    {
+      "column": "file_url",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "file_path",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "default": "'active'::text",
+      "nullable": "NO",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "type": "timestamptz"
+    },
+    {
+      "column": "student_user_id",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "student_group_id",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "company_id",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "counterparty_type",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "template_id",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "variables",
+      "default": "'{}'::jsonb",
+      "nullable": "NO",
+      "type": "jsonb"
+    },
+    {
+      "column": "template_version",
+      "default": null,
+      "nullable": "YES",
+      "type": "int4"
+    },
+    {
+      "column": "body_html",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "students",
+      "default": "'[]'::jsonb",
+      "nullable": "NO",
+      "type": "jsonb"
+    },
+    {
+      "column": "template_format",
+      "default": "'html'::text",
+      "nullable": "NO",
+      "type": "text"
+    },
+    {
+      "column": "template_registry_key",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "template_version_label",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "template_sha256",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "template_manifest",
+      "default": null,
+      "nullable": "YES",
+      "type": "jsonb"
+    },
+    {
+      "column": "variables_snapshot",
+      "default": null,
+      "nullable": "YES",
+      "type": "jsonb"
+    },
+    {
+      "column": "docx_path",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "docx_sha256",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "pdf_path",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "pdf_status",
+      "default": "'unavailable'::text",
+      "nullable": "NO",
+      "type": "text"
+    },
+    {
+      "column": "generation_status",
+      "default": "'draft'::text",
+      "nullable": "NO",
+      "type": "text"
+    },
+    {
+      "column": "generation_error",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "approved_at",
+      "default": null,
+      "nullable": "YES",
+      "type": "timestamptz"
+    },
+    {
+      "column": "signed_at",
+      "default": null,
+      "nullable": "YES",
+      "type": "timestamptz"
+    },
+    {
+      "column": "submission_key",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "submission_snapshot_sha256",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    }
+  ],
+  "constraints": [
+    {
+      "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL",
+      "name": "org_contracts_company_id_fkey"
+    },
+    {
+      "definition": "CHECK (((counterparty_type IS NULL) OR (counterparty_type = ANY (ARRAY['individual'::text, 'legal'::text]))))",
+      "name": "org_contracts_counterparty_type_check"
+    },
+    {
+      "definition": "CHECK ((generation_status = ANY (ARRAY['draft'::text, 'generated'::text, 'failed'::text])))",
+      "name": "org_contracts_generation_status_check"
+    },
+    {
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "name": "org_contracts_organization_id_fkey"
+    },
+    {
+      "definition": "CHECK ((pdf_status = ANY (ARRAY['unavailable'::text, 'pending'::text, 'ready'::text])))",
+      "name": "org_contracts_pdf_status_check"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "org_contracts_pkey"
+    },
+    {
+      "definition": "FOREIGN KEY (student_group_id) REFERENCES student_groups(id) ON DELETE SET NULL",
+      "name": "org_contracts_student_group_id_fkey"
+    },
+    {
+      "definition": "FOREIGN KEY (student_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "name": "org_contracts_student_user_id_fkey"
+    },
+    {
+      "definition": "CHECK (((submission_snapshot_sha256 IS NULL) OR (submission_snapshot_sha256 ~ '^[0-9a-f]{64}$'::text)))",
+      "name": "org_contracts_submission_snapshot_sha256_check"
+    },
+    {
+      "definition": "CHECK ((template_format = ANY (ARRAY['html'::text, 'docx_ooxml'::text])))",
+      "name": "org_contracts_template_format_check"
+    },
+    {
+      "definition": "FOREIGN KEY (template_id) REFERENCES org_contract_templates(id) ON DELETE SET NULL",
+      "name": "org_contracts_template_id_fkey"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can delete own contracts",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "org_contracts",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can insert own contracts",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "org_contracts",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can update own contracts",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "org_contracts",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can view own contracts",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "org_contracts",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "org_contracts",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    }
+  ]
+}

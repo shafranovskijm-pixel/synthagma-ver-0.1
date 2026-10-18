@@ -1,0 +1,924 @@
+{
+  "columns": [
+    {
+      "column": "id",
+      "table": "journal_instances",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "journal_instances",
+      "type": "uuid"
+    },
+    {
+      "column": "course_id",
+      "table": "journal_instances",
+      "type": "uuid"
+    },
+    {
+      "column": "journal_type",
+      "table": "journal_instances",
+      "type": "text"
+    },
+    {
+      "column": "title",
+      "table": "journal_instances",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "journal_instances",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "table": "journal_instances",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "table": "lesson_progress",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "table": "lesson_progress",
+      "type": "uuid"
+    },
+    {
+      "column": "lesson_id",
+      "table": "lesson_progress",
+      "type": "uuid"
+    },
+    {
+      "column": "completed",
+      "table": "lesson_progress",
+      "type": "bool"
+    },
+    {
+      "column": "time_spent",
+      "table": "lesson_progress",
+      "type": "int4"
+    },
+    {
+      "column": "completed_at",
+      "table": "lesson_progress",
+      "type": "timestamptz"
+    },
+    {
+      "column": "video_position",
+      "table": "lesson_progress",
+      "type": "float4"
+    },
+    {
+      "column": "video_duration",
+      "table": "lesson_progress",
+      "type": "float4"
+    },
+    {
+      "column": "id",
+      "table": "student_frdo_data",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "table": "student_frdo_data",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "student_frdo_data",
+      "type": "uuid"
+    },
+    {
+      "column": "last_name",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "first_name",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "middle_name",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "birth_date",
+      "table": "student_frdo_data",
+      "type": "date"
+    },
+    {
+      "column": "gender",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "snils",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "citizenship_code",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "education_level",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "education_doc_last_name",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "education_doc_series",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "education_doc_number",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "training_form",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "financing_source",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "education_form",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "professional_area",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "specialty_group",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "qualification_name",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "profession_name",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "qualification_rank",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "student_frdo_data",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "table": "student_frdo_data",
+      "type": "timestamptz"
+    },
+    {
+      "column": "passport_series",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "passport_number",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "passport_issue_date",
+      "table": "student_frdo_data",
+      "type": "date"
+    },
+    {
+      "column": "passport_issued_by",
+      "table": "student_frdo_data",
+      "type": "text"
+    },
+    {
+      "column": "passport_department_code",
+      "table": "student_frdo_data",
+      "type": "text"
+    }
+  ],
+  "functions": [
+    {
+      "args": "p_course_id uuid, p_limit integer, p_offset integer, p_search text, p_status text",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_course_students_page(p_course_id uuid, p_limit integer DEFAULT 10, p_offset integer DEFAULT 0, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text)\n RETURNS TABLE(id uuid, user_id uuid, full_name text, email text, login text, enrollment_id uuid, progress integer, status text, started_at timestamp with time zone, completed_at timestamp with time zone, time_spent integer, archived_at timestamp with time zone, total_count bigint, active_count bigint, completed_count bigint, average_progress numeric)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_limit int := GREATEST(1, LEAST(100, COALESCE(p_limit, 10)));\n  v_offset int := GREATEST(0, COALESCE(p_offset, 0));\n  v_search text := NULLIF(btrim(COALESCE(p_search, '')), '');\n  v_search_like text;\n  v_org uuid;\nBEGIN\n  IF v_uid IS NULL THEN\n    RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '42501';\n  END IF;\n  IF NOT public.can_access_course(p_course_id, 'students.read') THEN\n    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';\n  END IF;\n\n  SELECT c.organization_id INTO v_org FROM public.courses c WHERE c.id = p_course_id;\n  IF v_org IS NULL THEN\n    RAISE EXCEPTION 'course not found' USING ERRCODE = 'P0002';\n  END IF;\n\n  IF v_search IS NOT NULL THEN\n    v_search_like := '%' || v_search || '%';\n  END IF;\n\n  RETURN QUERY\n  WITH excluded AS (\n    SELECT ur.user_id FROM public.user_roles ur WHERE ur.role IN ('admin','organization')\n    UNION\n    SELECT os.user_id FROM public.org_staff os\n    WHERE os.organization_id = v_org\n      AND (os.expires_at IS NULL OR os.expires_at > now())\n  ),\n  rows AS (\n    SELECT p.id, p.user_id, p.full_name, p.email, p.login, p.archived_at,\n           e.id AS enrollment_id, COALESCE(e.progress, 0) AS progress,\n           e.status, e.started_at, e.completed_at, e.time_spent\n    FROM public.enrollments e\n    JOIN public.profiles p ON p.user_id = e.user_id\n    WHERE e.course_id = p_course_id AND NOT EXISTS (SELECT 1 FROM public.student_roster_removals srr WHERE srr.organization_id = v_org AND srr.user_id = e.user_id)\n      AND NOT EXISTS (SELECT 1 FROM excluded ex WHERE ex.user_id = e.user_id)\n      AND (\n        v_search IS NULL\n        OR p.full_name ILIKE v_search_like\n        OR p.email     ILIKE v_search_like\n        OR p.login     ILIKE v_search_like\n      )\n      AND (\n        p_status IS NULL OR p_status = 'all'\n        OR (p_status = 'active'    AND e.status = 'active')\n        OR (p_status = 'completed' AND e.status = 'completed')\n      )\n  ),\n  cnt AS (SELECT COUNT(*)::bigint AS total_count FROM rows),\n  course_cnt AS (\n    SELECT\n      COUNT(*)::bigint                                        AS total_count,\n      COUNT(*) FILTER (WHERE e.status = 'active')::bigint     AS active_count,\n      COUNT(*) FILTER (WHERE e.status = 'completed')::bigint  AS completed_count,\n      COALESCE(ROUND(AVG(COALESCE(e.progress, 0))::numeric, 1), 0) AS avg_progress\n    FROM public.enrollments e\n    WHERE e.course_id = p_course_id AND NOT EXISTS (SELECT 1 FROM public.student_roster_removals srr WHERE srr.organization_id = v_org AND srr.user_id = e.user_id)\n      AND NOT EXISTS (SELECT 1 FROM excluded ex WHERE ex.user_id = e.user_id)\n  )\n  SELECT\n    r.id, r.user_id, r.full_name, r.email, r.login,\n    r.enrollment_id, r.progress, r.status, r.started_at, r.completed_at, r.time_spent,\n    r.archived_at,\n    cnt.total_count,\n    course_cnt.active_count, course_cnt.completed_count, course_cnt.avg_progress\n  FROM rows r, cnt, course_cnt\n  ORDER BY r.full_name NULLS LAST, r.user_id\n  OFFSET v_offset\n  LIMIT  v_limit;\nEND;\n$function$\n",
+      "md5": "5bbd759bb24c96ce777c9d7a4d45e62b",
+      "name": "get_course_students_page"
+    },
+    {
+      "args": "p_organization_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_organization_student_group_counts(p_organization_id uuid)\n RETURNS TABLE(group_id uuid, total_count bigint, active_count bigint, archived_count bigint)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nBEGIN\n  IF auth.uid() IS NULL OR NOT public.can_access_organization(p_organization_id, 'students.read') THEN\n    RAISE EXCEPTION 'student_group_access_denied' USING ERRCODE = '42501';\n  END IF;\n  RETURN QUERY\n  WITH learners AS (\n    SELECT p.user_id, p.archived_at FROM public.profiles p\n    WHERE p.organization_id = p_organization_id AND NOT EXISTS (SELECT 1 FROM public.student_roster_removals srr WHERE srr.organization_id = p_organization_id AND srr.user_id = p.user_id)\n      AND public.is_student_profile(p.user_id, p_organization_id)\n  ), bindings AS (\n    SELECT l.user_id, l.archived_at, m.group_id FROM learners l\n    LEFT JOIN public.student_group_memberships_effective m\n      ON m.user_id = l.user_id AND m.organization_id = p_organization_id\n  )\n  SELECT b.group_id, COUNT(*)::bigint,\n    COUNT(*) FILTER (WHERE b.archived_at IS NULL)::bigint,\n    COUNT(*) FILTER (WHERE b.archived_at IS NOT NULL)::bigint\n  FROM bindings b GROUP BY b.group_id;\nEND;\n$function$\n",
+      "md5": "2ac1ed379fbd78efd661e1a072604f3a",
+      "name": "get_organization_student_group_counts"
+    },
+    {
+      "args": "p_organization_id uuid, p_limit integer, p_offset integer, p_search text, p_course_id uuid, p_group_filter text, p_status text, p_docs_filter text, p_archive_mode text",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_organization_students_page(p_organization_id uuid, p_limit integer DEFAULT 10, p_offset integer DEFAULT 0, p_search text DEFAULT NULL::text, p_course_id uuid DEFAULT NULL::uuid, p_group_filter text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_docs_filter text DEFAULT NULL::text, p_archive_mode text DEFAULT 'active'::text)\n RETURNS TABLE(id uuid, user_id uuid, full_name text, email text, login text, company_id uuid, student_group_id uuid, last_visit_at timestamp with time zone, archived_at timestamp with time zone, progress integer, status text, last_activity timestamp with time zone, enrollments jsonb, has_passport boolean, has_snils boolean, has_education boolean, frdo_complete boolean, frdo_has_data boolean, total_count bigint, active_count bigint, archived_count bigint)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_limit int := GREATEST(1, LEAST(100, COALESCE(p_limit, 10)));\n  v_offset int := GREATEST(0, COALESCE(p_offset, 0));\n  v_search text := NULLIF(btrim(COALESCE(p_search, '')), '');\n  v_search_like text;\n  v_archive text := COALESCE(p_archive_mode, 'active');\nBEGIN\n  IF v_uid IS NULL THEN\n    RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '42501';\n  END IF;\n  IF NOT public.can_access_organization(p_organization_id, 'students.read') THEN\n    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';\n  END IF;\n\n  IF v_search IS NOT NULL THEN\n    v_search_like := '%' || v_search || '%';\n  END IF;\n\n  RETURN QUERY\n  WITH excluded AS (\n    SELECT ur.user_id FROM public.user_roles ur WHERE ur.role IN ('admin','organization')\n    UNION\n    SELECT os.user_id FROM public.org_staff os\n    WHERE os.organization_id = p_organization_id\n      AND (os.expires_at IS NULL OR os.expires_at > now())\n  ),\n  base AS (\n    SELECT p.id, p.user_id, p.full_name, p.email, p.login, p.company_id,\n           p.student_group_id, p.last_visit_at, p.archived_at\n    FROM public.profiles p\n    WHERE p.organization_id = p_organization_id AND NOT EXISTS (SELECT 1 FROM public.student_roster_removals srr WHERE srr.organization_id = p_organization_id AND srr.user_id = p.user_id)\n      AND NOT EXISTS (SELECT 1 FROM excluded ex WHERE ex.user_id = p.user_id)\n      AND (\n        (v_archive = 'active'  AND p.archived_at IS NULL) OR\n        (v_archive = 'archive' AND p.archived_at IS NOT NULL)\n      )\n      AND (\n        v_search IS NULL\n        OR p.full_name ILIKE v_search_like\n        OR p.email     ILIKE v_search_like\n        OR p.login     ILIKE v_search_like\n      )\n      AND (\n        p_group_filter IS NULL\n        OR p_group_filter = 'all'\n        OR (p_group_filter = 'no_group' AND NOT EXISTS (SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id = p.organization_id AND m.user_id = p.user_id))\n        OR EXISTS (SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id = p.organization_id AND m.user_id = p.user_id AND m.group_id::text = p_group_filter)\n      )\n  ),\n  base_enr AS (\n    SELECT e.user_id,\n           jsonb_agg(jsonb_build_object(\n             'id',           e.id,\n             'course_id',    e.course_id,\n             'course_title', c.title,\n             'progress',     COALESCE(e.progress, 0),\n             'status',       e.status,\n             'started_at',   e.started_at,\n             'completed_at', e.completed_at,\n             'time_spent',   e.time_spent\n           ) ORDER BY e.started_at DESC NULLS LAST) AS enrollments,\n           COUNT(*)::int                                   AS enroll_count,\n           BOOL_OR(e.status = 'completed')                 AS has_completed,\n           BOOL_OR(e.status = 'active')                    AS has_active,\n           ROUND(AVG(COALESCE(e.progress, 0)))::int        AS avg_progress,\n           MAX(e.started_at)                               AS last_started\n    FROM public.enrollments e\n    JOIN public.courses c ON c.id = e.course_id\n    WHERE c.organization_id = p_organization_id\n      AND e.user_id IN (SELECT b.user_id FROM base b)\n    GROUP BY e.user_id\n  ),\n  docs AS (\n    SELECT d.user_id,\n           BOOL_OR(d.type IN ('passport','birth_certificate'))                     AS has_passport,\n           BOOL_OR(d.type = 'snils')                                               AS has_snils,\n           BOOL_OR(d.type IN ('education_document','diploma','attestat'))          AS has_education\n    FROM public.student_identity_documents d\n    WHERE d.organization_id = p_organization_id\n      AND d.user_id IN (SELECT b.user_id FROM base b)\n    GROUP BY d.user_id\n  ),\n  frdo AS (\n    SELECT f.user_id,\n           (f.last_name  IS NOT NULL AND\n            f.first_name IS NOT NULL AND\n            f.birth_date IS NOT NULL AND\n            f.gender     IS NOT NULL AND\n            f.snils      IS NOT NULL) AS frdo_complete\n    FROM public.student_frdo_data f\n    WHERE f.organization_id = p_organization_id\n      AND f.user_id IN (SELECT b.user_id FROM base b)\n  ),\n  joined AS (\n    SELECT b.*,\n           COALESCE(be.avg_progress, 0)                                             AS r_progress,\n           CASE\n             WHEN be.enroll_count IS NULL THEN NULL\n             WHEN be.has_completed THEN 'completed'\n             WHEN be.has_active    THEN 'active'\n             ELSE NULL\n           END                                                                      AS r_status,\n           be.last_started                                                          AS r_last_activity,\n           COALESCE(be.enrollments, '[]'::jsonb)                                    AS r_enrollments,\n           COALESCE(be.enroll_count, 0)                                             AS r_enroll_count,\n           COALESCE(be.has_active, false)                                           AS r_has_active,\n           COALESCE(be.has_completed, false)                                        AS r_has_completed,\n           COALESCE(d.has_passport,  false)                                         AS r_has_passport,\n           COALESCE(d.has_snils,     false)                                         AS r_has_snils,\n           COALESCE(d.has_education, false)                                         AS r_has_education,\n           COALESCE(fr.frdo_complete, false)                                        AS r_frdo_complete,\n           (fr.user_id IS NOT NULL)                                                 AS r_frdo_has_data\n    FROM base b\n    LEFT JOIN base_enr be ON be.user_id = b.user_id\n    LEFT JOIN docs     d  ON d.user_id  = b.user_id\n    LEFT JOIN frdo     fr ON fr.user_id = b.user_id\n  ),\n  filtered AS (\n    SELECT * FROM joined j\n    WHERE (\n      p_course_id IS NULL\n      OR EXISTS (\n        SELECT 1 FROM jsonb_array_elements(j.r_enrollments) x\n        WHERE (x->>'course_id')::uuid = p_course_id\n      )\n    )\n    AND (\n      p_status IS NULL OR p_status = 'all'\n      OR (p_status = 'active'       AND j.r_has_active)\n      OR (p_status = 'completed'    AND j.r_has_completed)\n      OR (p_status = 'not_enrolled' AND j.r_enroll_count = 0)\n    )\n    AND (\n      p_docs_filter IS NULL OR p_docs_filter = 'all'\n      OR (p_docs_filter = 'complete'     AND j.r_has_passport AND j.r_has_snils AND j.r_has_education)\n      OR (p_docs_filter = 'incomplete'   AND NOT (j.r_has_passport AND j.r_has_snils AND j.r_has_education))\n      OR (p_docs_filter = 'no_passport'  AND NOT j.r_has_passport)\n      OR (p_docs_filter = 'no_snils'     AND NOT j.r_has_snils)\n      OR (p_docs_filter = 'no_education' AND NOT j.r_has_education)\n    )\n  ),\n  cnt AS (SELECT COUNT(*)::bigint AS total_count FROM filtered),\n  org_cnt AS (\n    SELECT\n      COUNT(*) FILTER (WHERE p.archived_at IS NULL)     ::bigint AS active_count,\n      COUNT(*) FILTER (WHERE p.archived_at IS NOT NULL) ::bigint AS archived_count\n    FROM public.profiles p\n    WHERE p.organization_id = p_organization_id AND NOT EXISTS (SELECT 1 FROM public.student_roster_removals srr WHERE srr.organization_id = p_organization_id AND srr.user_id = p.user_id)\n      AND NOT EXISTS (SELECT 1 FROM excluded ex WHERE ex.user_id = p.user_id)\n  )\n  SELECT\n    f.id, f.user_id, f.full_name, f.email, f.login, f.company_id,\n    f.student_group_id, f.last_visit_at, f.archived_at,\n    f.r_progress, f.r_status, f.r_last_activity, f.r_enrollments,\n    f.r_has_passport, f.r_has_snils, f.r_has_education,\n    f.r_frdo_complete, f.r_frdo_has_data,\n    cnt.total_count, org_cnt.active_count, org_cnt.archived_count\n  FROM filtered f, cnt, org_cnt\n  ORDER BY\n    CASE WHEN v_archive = 'archive' THEN 0 ELSE 1 END,\n    CASE WHEN v_archive = 'archive' THEN f.archived_at END DESC NULLS LAST,\n    CASE WHEN v_archive <> 'archive' AND f.r_enroll_count > 0 THEN 0 ELSE 1 END,\n    f.full_name NULLS LAST,\n    f.user_id\n  OFFSET v_offset\n  LIMIT  v_limit;\nEND;\n$function$\n",
+      "md5": "ee40a538ea07e51b2ffad3ef65c07017",
+      "name": "get_organization_students_page"
+    },
+    {
+      "args": "p_organization_id uuid, p_group_id uuid, p_expected_course_id uuid, p_user_id uuid, p_slot integer, p_expected_date text, p_expected_revision integer, p_mark text",
+      "definition": "CREATE OR REPLACE FUNCTION public.save_group_class_journal_mark(p_organization_id uuid, p_group_id uuid, p_expected_course_id uuid, p_user_id uuid, p_slot integer, p_expected_date text, p_expected_revision integer, p_mark text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_group public.student_groups%ROWTYPE;\n  v_saved public.group_class_journal_marks%ROWTYPE;\n  v_date date;\nBEGIN\n  IF v_uid IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000'; END IF;\n  IF NOT COALESCE(public.can_access_organization(p_organization_id, 'documents.write'), false) THEN\n    RAISE EXCEPTION 'access_denied' USING ERRCODE = '42501';\n  END IF;\n  IF p_slot IS NULL OR p_slot NOT BETWEEN 1 AND 4 THEN\n    RAISE EXCEPTION 'invalid_mark_slot' USING ERRCODE = '22023';\n  END IF;\n  IF p_mark IS NULL OR length(p_mark) > 12 THEN\n    RAISE EXCEPTION 'invalid_mark_text' USING ERRCODE = '22023';\n  END IF;\n  -- PostgreSQL UTF-8 already rejects NUL and unpaired surrogates. XML 1.0 also\n  -- forbids these remaining controls/noncharacters; keep TAB, LF and CR intact.\n  IF EXISTS (\n    SELECT 1 FROM generate_series(1, length(p_mark)) AS chars(pos)\n    WHERE ascii(substr(p_mark, pos, 1)) BETWEEN 1 AND 8\n      OR ascii(substr(p_mark, pos, 1)) IN (11, 12, 65534, 65535)\n      OR ascii(substr(p_mark, pos, 1)) BETWEEN 14 AND 31\n  ) THEN RAISE EXCEPTION 'invalid_xml_text' USING ERRCODE = '22023'; END IF;\n  IF p_expected_date IS NULL OR p_expected_date !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN\n    RAISE EXCEPTION 'invalid_mark_date' USING ERRCODE = '22023';\n  END IF;\n  BEGIN\n    v_date := p_expected_date::date;\n  EXCEPTION WHEN datetime_field_overflow OR invalid_datetime_format THEN\n    RAISE EXCEPTION 'invalid_mark_date' USING ERRCODE = '22023';\n  END;\n  IF to_char(v_date, 'YYYY-MM-DD') <> p_expected_date THEN\n    RAISE EXCEPTION 'invalid_mark_date' USING ERRCODE = '22023';\n  END IF;\n\n  -- Serializes cell inserts as well as updates and protects the expected course\n  -- and column date from a concurrent edit of the group settings.\n  SELECT * INTO v_group FROM public.student_groups WHERE id = p_group_id FOR UPDATE;\n  IF NOT FOUND OR v_group.organization_id IS DISTINCT FROM p_organization_id THEN\n    RAISE EXCEPTION 'group_scope_mismatch' USING ERRCODE = '42501';\n  END IF;\n  IF v_group.course_id IS DISTINCT FROM p_expected_course_id THEN\n    RAISE EXCEPTION 'group_course_changed' USING ERRCODE = '40001';\n  END IF;\n  IF v_group.training_dates[p_slot] IS NULL\n    OR to_char(v_group.training_dates[p_slot], 'YYYY-MM-DD') IS DISTINCT FROM p_expected_date THEN\n    RAISE EXCEPTION 'group_training_date_changed' USING ERRCODE = '40001';\n  END IF;\n  -- Hold a matching live profile while saving, but do not attach a cascading FK:\n  -- moving/archiving/deleting the learner later must retain their stored marks.\n  PERFORM 1 FROM public.profiles p\n  WHERE p.user_id = p_user_id\n    AND p.organization_id = p_organization_id\n    AND p.student_group_id = p_group_id\n    AND p.archived_at IS NULL\n  FOR SHARE OF p;\n  IF NOT FOUND THEN RAISE EXCEPTION 'student_scope_mismatch' USING ERRCODE = '42501'; END IF;\n\n  SELECT * INTO v_saved FROM public.group_class_journal_marks\n  WHERE group_id = p_group_id AND user_id = p_user_id AND slot = p_slot FOR UPDATE;\n  IF FOUND THEN\n    IF v_saved.organization_id IS DISTINCT FROM p_organization_id THEN\n      RAISE EXCEPTION 'mark_scope_mismatch' USING ERRCODE = '42501';\n    END IF;\n    IF p_expected_revision IS NULL OR v_saved.revision <> p_expected_revision THEN\n      RAISE EXCEPTION 'mark_revision_conflict' USING ERRCODE = '40001';\n    END IF;\n    UPDATE public.group_class_journal_marks SET\n      mark = p_mark, course_id = p_expected_course_id, source_date = p_expected_date,\n      revision = revision + 1, updated_at = clock_timestamp(), updated_by = v_uid\n    WHERE id = v_saved.id RETURNING * INTO v_saved;\n  ELSE\n    IF p_expected_revision IS NOT NULL THEN\n      RAISE EXCEPTION 'mark_revision_conflict' USING ERRCODE = '40001';\n    END IF;\n    INSERT INTO public.group_class_journal_marks\n      (organization_id, group_id, user_id, slot, course_id, source_date, mark, revision, updated_at, updated_by)\n    VALUES\n      (p_organization_id, p_group_id, p_user_id, p_slot, p_expected_course_id, p_expected_date, p_mark, 1, clock_timestamp(), v_uid)\n    RETURNING * INTO v_saved;\n  END IF;\n  RETURN to_jsonb(v_saved);\nEND;\n$function$\n",
+      "md5": "c4b6249a0a343bd3f4902137bc5196c0",
+      "name": "save_group_class_journal_mark"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view enrollment history for their org courses",
+      "qual": "((EXISTS ( SELECT 1\n   FROM (courses c\n     JOIN profiles p ON ((p.organization_id = c.organization_id)))\n  WHERE ((c.id = enrollment_history.course_id) AND (p.user_id = auth.uid())))) OR (EXISTS ( SELECT 1\n   FROM user_roles ur\n  WHERE ((ur.user_id = auth.uid()) AND (ur.role = 'admin'::app_role)))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollment_history",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "System can insert enrollment history",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollment_history",
+      "with_check": "(auth.role() = 'service_role'::text)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollment_history",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Companies can view employee enrollments",
+      "qual": "(user_id IN ( SELECT p.user_id\n   FROM profiles p\n  WHERE (p.company_id = current_company_id())))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can delete enrollments",
+      "qual": "can_access_course(course_id, 'students.write'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can insert enrollments",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": "can_access_course(course_id, 'students.write'::text)"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can update enrollments",
+      "qual": "can_access_course(course_id, 'students.write'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": "can_access_course(course_id, 'students.write'::text)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can view enrollments",
+      "qual": "can_access_course(course_id, 'students.read'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users and admins can delete enrollments",
+      "qual": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users and admins can update enrollments",
+      "qual": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users and admins can view enrollments for their courses",
+      "qual": "((user_id = auth.uid()) OR has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users and org users can create enrollments",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": "((user_id = auth.uid()) OR has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own enrollments",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own enrollments",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can create journal entries",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_entries",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM journal_instances j\n  WHERE ((j.id = journal_entries.journal_id) AND can_access_organization(j.organization_id, 'journals.write'::text))))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can delete journal entries",
+      "qual": "(EXISTS ( SELECT 1\n   FROM journal_instances j\n  WHERE ((j.id = journal_entries.journal_id) AND can_access_organization(j.organization_id, 'journals.write'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_entries",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can update journal entries",
+      "qual": "(EXISTS ( SELECT 1\n   FROM journal_instances j\n  WHERE ((j.id = journal_entries.journal_id) AND can_access_organization(j.organization_id, 'journals.write'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_entries",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM journal_instances j\n  WHERE ((j.id = journal_entries.journal_id) AND can_access_organization(j.organization_id, 'journals.write'::text))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can view their journal entries",
+      "qual": "(EXISTS ( SELECT 1\n   FROM journal_instances j\n  WHERE ((j.id = journal_entries.journal_id) AND can_access_organization(j.organization_id, 'journals.read'::text))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_entries",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_entries",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can create journal instances",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_instances",
+      "with_check": "can_access_organization(organization_id, 'journals.write'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can delete journal instances",
+      "qual": "can_access_organization(organization_id, 'journals.write'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_instances",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can update journal instances",
+      "qual": "can_access_organization(organization_id, 'journals.write'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_instances",
+      "with_check": "can_access_organization(organization_id, 'journals.write'::text)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization members can view their journal instances",
+      "qual": "can_access_organization(organization_id, 'journals.read'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_instances",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "journal_instances",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Companies can view employee lesson progress",
+      "qual": "(user_id IN ( SELECT p.user_id\n   FROM profiles p\n  WHERE (p.company_id = current_company_id())))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "lesson_progress",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can view lesson progress",
+      "qual": "can_access_lesson(lesson_id, 'students.read'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "lesson_progress",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view progress for their courses",
+      "qual": "((EXISTS ( SELECT 1\n   FROM (lessons l\n     JOIN courses c ON ((c.id = l.course_id)))\n  WHERE ((l.id = lesson_progress.lesson_id) AND (c.organization_id = current_organization_id())))) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "lesson_progress",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can manage own progress",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "lesson_progress",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "lesson_progress",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can delete profiles",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can update all profiles",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can view all profiles",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Companies can view their employees",
+      "qual": "((company_id IS NOT NULL) AND (company_id = current_company_id()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org admins can delete profiles in their org",
+      "qual": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org admins can update profiles in their org",
+      "qual": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org admins can view profiles in their org",
+      "qual": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can update student profiles",
+      "qual": "(can_access_organization(organization_id, 'students.write'::text) AND is_student_profile(user_id, organization_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": "(can_access_organization(organization_id, 'students.write'::text) AND is_student_profile(user_id, organization_id))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can view student profiles",
+      "qual": "(can_access_organization(organization_id, 'students.read'::text) AND is_student_profile(user_id, organization_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own profile",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own profile organization",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own profile",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "profiles",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org admins can manage students FRDO data",
+      "qual": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can update their own FRDO data",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can view their own FRDO data",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_frdo_data",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_group_memberships",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "student_group_memberships_read",
+      "qual": "(has_role(auth.uid(), 'admin'::app_role) OR is_org_owner(auth.uid(), organization_id) OR ((EXISTS ( SELECT 1\n   FROM org_staff s\n  WHERE ((s.user_id = auth.uid()) AND (s.organization_id = student_group_memberships.organization_id) AND ((s.expires_at IS NULL) OR (s.expires_at > now()))))) AND has_org_staff_permission(auth.uid(), organization_id, 'students.read'::text)) OR (user_id = auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_group_memberships",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin full access to student groups",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "student_groups",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage student groups",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "student_groups",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_groups",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can view test attempts",
+      "qual": "can_access_lesson(lesson_id, 'students.read'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "test_attempts",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view attempts for their courses",
+      "qual": "((EXISTS ( SELECT 1\n   FROM (lessons l\n     JOIN courses c ON ((c.id = l.course_id)))\n  WHERE ((l.id = test_attempts.lesson_id) AND (c.organization_id = current_organization_id())))) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "test_attempts",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can read own test attempts",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "test_attempts",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "test_attempts",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    }
+  ]
+}

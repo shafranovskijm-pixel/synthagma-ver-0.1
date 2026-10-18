@@ -1,0 +1,92 @@
+{
+  "group_course_relations": null,
+  "group_functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_group_course_enrollments()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_course_org_id uuid;\nBEGIN\n  IF NEW.course_id IS NULL THEN\n    RETURN NEW;\n  END IF;\n  SELECT c.organization_id INTO v_course_org_id\n  FROM public.courses c WHERE c.id = NEW.course_id FOR SHARE;\n  IF NOT FOUND OR v_course_org_id IS DISTINCT FROM NEW.organization_id THEN\n    RAISE EXCEPTION 'group_course_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.profiles p WHERE p.student_group_id = NEW.id\n      AND p.organization_id IS DISTINCT FROM NEW.organization_id\n  ) THEN\n    RAISE EXCEPTION 'student_group_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n\n  -- Group settings saves include course_id even for rename/price/date edits.\n  -- Tenant validation still runs, but an unchanged association must not enroll.\n  IF TG_OP = 'UPDATE'\n     AND NEW.course_id IS NOT DISTINCT FROM OLD.course_id\n     AND NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id\n  THEN\n    RETURN NEW;\n  END IF;\n\n  INSERT INTO public.enrollments (user_id, course_id, status, progress, time_spent)\n  SELECT p.user_id, NEW.course_id, 'active', 0, 0\n  FROM public.profiles p\n  WHERE p.student_group_id = NEW.id AND p.organization_id = NEW.organization_id\n  ON CONFLICT (user_id, course_id) DO NOTHING;\n  RETURN NEW;\nEND;\n$function$\n",
+      "name": "sync_group_course_enrollments"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_profile_group_course_enrollment()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_course_id uuid;\n  v_group_org_id uuid;\n  v_course_org_id uuid;\nBEGIN\n  IF NEW.student_group_id IS NULL THEN\n    RETURN NEW;\n  END IF;\n\n  -- SHARE, not KEY SHARE: course_id is not a key, but changing it must wait for\n  -- registration/enrollment to commit. Held until transaction end. The group\n  -- updater's AFTER trigger then sees committed membership at READ COMMITTED.\n  -- Native composite FKs protect tenant references under stronger isolation too;\n  -- this is not a claim of tested multi-session enrollment synchronization.\n  SELECT g.course_id, g.organization_id INTO v_course_id, v_group_org_id\n  FROM public.student_groups g WHERE g.id = NEW.student_group_id\n  FOR SHARE;\n  IF NOT FOUND THEN\n    -- Cascading actions can already have deleted the group before this queued\n    -- AFTER event runs. Its native SET NULL action clears the actual membership.\n    IF TG_OP = 'UPDATE' AND NEW.organization_id IS NULL AND OLD.organization_id IS NOT NULL\n       AND NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = OLD.organization_id)\n    THEN\n      RETURN NEW;\n    END IF;\n    RAISE EXCEPTION 'student_group_not_found' USING ERRCODE = '23503';\n  END IF;\n\n  -- Preserve the pre-existing organization deletion actions: profiles.org uses\n  -- ON DELETE SET NULL, while groups use ON DELETE CASCADE. During that cascade\n  -- only, the organization is already gone and group deletion will clear the\n  -- membership. Do not create an enrollment from this intermediate row.\n  IF TG_OP = 'UPDATE' AND NEW.organization_id IS NULL\n     AND OLD.organization_id IS NOT DISTINCT FROM v_group_org_id\n     AND NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = v_group_org_id)\n  THEN\n    RETURN NEW;\n  END IF;\n\n  IF NEW.organization_id IS NULL OR v_group_org_id IS DISTINCT FROM NEW.organization_id THEN\n    RAISE EXCEPTION 'student_group_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n\n  IF v_course_id IS NULL THEN\n    RETURN NEW;\n  END IF;\n  SELECT c.organization_id INTO v_course_org_id\n  FROM public.courses c WHERE c.id = v_course_id FOR SHARE;\n  IF NOT FOUND OR v_course_org_id IS DISTINCT FROM NEW.organization_id THEN\n    RAISE EXCEPTION 'group_course_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n\n  -- A normal profile save may explicitly SET the unchanged identity fields.\n  -- Validate them above, but do not undo an intentional enrollment deletion.\n  IF TG_OP = 'UPDATE'\n     AND NEW.student_group_id IS NOT DISTINCT FROM OLD.student_group_id\n     AND NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id\n     AND NEW.user_id IS NOT DISTINCT FROM OLD.user_id\n  THEN\n    RETURN NEW;\n  END IF;\n\n  -- Existing active/completed/expired enrollments, progress and expiry are never\n  -- overwritten or revived. A violation aborts the whole profile/quota RPC.\n  INSERT INTO public.enrollments (user_id, course_id, status, progress, time_spent)\n  VALUES (NEW.user_id, v_course_id, 'active', 0, 0)\n  ON CONFLICT (user_id, course_id) DO NOTHING;\n  RETURN NEW;\nEND;\n$function$\n",
+      "name": "sync_profile_group_course_enrollment"
+    }
+  ],
+  "marks_columns": [
+    {
+      "name": "id",
+      "type": "uuid"
+    },
+    {
+      "name": "organization_id",
+      "type": "uuid"
+    },
+    {
+      "name": "group_id",
+      "type": "uuid"
+    },
+    {
+      "name": "user_id",
+      "type": "uuid"
+    },
+    {
+      "name": "slot",
+      "type": "int4"
+    },
+    {
+      "name": "course_id",
+      "type": "uuid"
+    },
+    {
+      "name": "source_date",
+      "type": "text"
+    },
+    {
+      "name": "mark",
+      "type": "text"
+    },
+    {
+      "name": "revision",
+      "type": "int4"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamptz"
+    },
+    {
+      "name": "updated_by",
+      "type": "uuid"
+    }
+  ],
+  "marks_policies": [
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "group_class_journal_marks",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "group_class_journal_marks_read",
+      "qual": "((can_access_organization(organization_id, 'documents.read'::text) OR can_access_organization(organization_id, 'documents.write'::text)) AND (EXISTS ( SELECT 1\n   FROM student_groups g\n  WHERE ((g.id = group_class_journal_marks.group_id) AND (g.organization_id = group_class_journal_marks.organization_id)))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "group_class_journal_marks",
+      "with_check": null
+    }
+  ],
+  "roles": [
+    "admin",
+    "organization",
+    "student",
+    "sales_manager",
+    "company"
+  ]
+}

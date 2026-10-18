@@ -299,8 +299,9 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
       // Один номер на весь submit: RPC вызывается максимум один раз,
       // повторная попытка после ошибки компиляции переиспользует его.
       const docNo = await acquireContractNumber(assignedNumber, async () => {
-        const { data, error } = await supabase.rpc("get_next_document_number", {
+        const { data, error } = await (supabase.rpc as any)("reserve_group_document_number", {
           p_org: organizationId,
+          p_group: groupId,
           p_doc_type: "contract",
           p_year: Number(docDateIso.slice(0, 4)) || new Date().getFullYear(),
         });

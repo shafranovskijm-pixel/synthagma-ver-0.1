@@ -1,0 +1,351 @@
+{
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.create_goreltech_group_document_batch(p_actor_id uuid, p_organization_id uuid, p_group_id uuid, p_docs jsonb)\n RETURNS TABLE(batch_id uuid, batch_version integer, inserted_count integer)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_batch uuid := gen_random_uuid();\n  v_version integer;\n  v_count integer := 0;\n  v_docs_count integer;\n  v_jwt_role text := COALESCE(\n    NULLIF(auth.jwt()->>'role', ''),\n    NULLIF(current_setting('request.jwt.claim.role', true), ''),\n    ''\n  );\n  v_path_prefix text := 'organizations/' || p_organization_id::text\n    || '/group-documents/' || p_group_id::text || '/';\nBEGIN\n  IF v_jwt_role IS DISTINCT FROM 'service_role' THEN\n    RAISE EXCEPTION 'service role required' USING ERRCODE = '42501';\n  END IF;\n  IF p_actor_id IS NULL OR NOT (\n    public.has_role(p_actor_id, 'admin'::app_role)\n    OR public.has_org_staff_permission(p_actor_id, p_organization_id, 'documents.manage')\n    OR public.is_org_owner(p_actor_id, p_organization_id)\n  ) THEN\n    RAISE EXCEPTION 'actor is not allowed to manage organization documents' USING ERRCODE = '42501';\n  END IF;\n  IF p_organization_id <> '7237f9d4-3670-4a19-8946-a43c68fd3473'::uuid\n     OR NOT EXISTS (\n       SELECT 1 FROM public.organizations o\n       WHERE o.id = p_organization_id\n         AND regexp_replace(COALESCE(o.inn, ''), '\\D', '', 'g') = '7806541216'\n         AND COALESCE(o.name, '') ~* 'ГОРЭЛТЕХ'\n     )\n  THEN\n    RAISE EXCEPTION 'exact GORELTECH organization is required';\n  END IF;\n  IF NOT EXISTS (\n    SELECT 1 FROM public.student_groups g\n    WHERE g.id = p_group_id AND g.organization_id = p_organization_id\n  ) THEN\n    RAISE EXCEPTION 'group does not belong to GORELTECH organization';\n  END IF;\n  IF p_docs IS NULL OR jsonb_typeof(p_docs) <> 'array' THEN\n    RAISE EXCEPTION 'p_docs must be a nine-document jsonb array';\n  END IF;\n  v_docs_count := jsonb_array_length(p_docs);\n  IF v_docs_count <> 9 THEN\n    RAISE EXCEPTION 'GORELTECH package must contain exactly 9 documents';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM jsonb_array_elements(p_docs) AS d\n    GROUP BY btrim(d->>'doc_type') HAVING count(*) > 1\n  ) OR EXISTS (\n    SELECT 1 FROM jsonb_array_elements(p_docs) AS d\n    WHERE btrim(d->>'doc_type') NOT IN (\n      'enrollment_order', 'expulsion_order', 'student_list', 'class_journal',\n      'schedule', 'attestation_sheet', 'registration_book', 'title_page', 'pass'\n    )\n  ) OR EXISTS (\n    SELECT 1 FROM unnest(ARRAY[\n      'enrollment_order', 'expulsion_order', 'student_list', 'class_journal',\n      'schedule', 'attestation_sheet', 'registration_book', 'title_page', 'pass'\n    ]) AS expected(doc_type)\n    WHERE NOT EXISTS (\n      SELECT 1 FROM jsonb_array_elements(p_docs) AS d\n      WHERE btrim(d->>'doc_type') = expected.doc_type\n    )\n  ) THEN\n    RAISE EXCEPTION 'GORELTECH package document types are invalid';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM jsonb_array_elements(p_docs) AS d\n    WHERE COALESCE(NULLIF(d->>'doc_status', ''), 'draft') <> 'draft'\n       OR NULLIF(btrim(d->>'document_number'), '') IS NOT NULL\n       OR COALESCE(NULLIF(d->>'layout_format', ''), '') <> 'docx_ooxml'\n       OR NULLIF(d->>'file_path', '') IS NULL\n       OR position(v_path_prefix IN (d->>'file_path')) <> 1\n  ) THEN\n    RAISE EXCEPTION 'GORELTECH package accepts only tenant-scoped DOCX drafts without official numbers';\n  END IF;\n\n  PERFORM pg_advisory_xact_lock(hashtextextended(p_organization_id::text || ':' || p_group_id::text, 0));\n  SELECT COALESCE(MAX(gd.package_version), 0) + 1 INTO v_version\n  FROM public.group_documents gd\n  WHERE gd.organization_id = p_organization_id AND gd.group_id = p_group_id\n    AND gd.package_batch_id IS NOT NULL;\n\n  UPDATE public.group_documents gd\n  SET is_current = false, updated_at = now()\n  WHERE gd.organization_id = p_organization_id AND gd.group_id = p_group_id\n    AND gd.package_batch_id IS NOT NULL AND gd.package_batch_id <> v_batch\n    AND gd.is_current IS DISTINCT FROM false\n    AND gd.doc_type IN (\n      SELECT DISTINCT btrim(d->>'doc_type') FROM jsonb_array_elements(p_docs) AS d\n    );\n\n  INSERT INTO public.group_documents (\n    organization_id, group_id, doc_type, name, document_number, document_date,\n    variables, html, file_path, status, doc_status, fill_mode, layout_format, source_note,\n    student_user_id, company_id, package_batch_id, package_version, is_current, created_by,\n    template_registry_key, template_version_label, template_sha256, variables_snapshot,\n    docx_sha256, pdf_status, generation_status\n  )\n  SELECT\n    p_organization_id, p_group_id, btrim(d->>'doc_type'), d->>'name',\n    NULL, NULLIF(d->>'document_date', '')::date,\n    COALESCE(d->'variables', '{}'::jsonb), NULL, d->>'file_path',\n    'active', 'draft', COALESCE(NULLIF(d->>'fill_mode', ''), 'blank'),\n    'docx_ooxml', NULLIF(d->>'source_note', ''),\n    NULL, NULL, v_batch, v_version, true, p_actor_id,\n    NULLIF(d->>'template_registry_key', ''), NULLIF(d->>'template_version_label', ''),\n    NULLIF(d->>'template_sha256', ''), d->'variables_snapshot',\n    NULLIF(d->>'docx_sha256', ''), COALESCE(NULLIF(d->>'pdf_status', ''), 'unavailable'),\n    COALESCE(NULLIF(d->>'generation_status', ''), 'generated')\n  FROM jsonb_array_elements(p_docs) AS d;\n\n  SELECT count(*)::int INTO v_count\n  FROM public.group_documents gd WHERE gd.package_batch_id = v_batch;\n  RETURN QUERY SELECT v_batch, v_version, v_count;\nEND;\n$function$\n",
+      "hash": "201600eaeb4cb37dcea7791d0716dbb2",
+      "identity": "p_actor_id uuid, p_organization_id uuid, p_group_id uuid, p_docs jsonb",
+      "name": "create_goreltech_group_document_batch"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.create_goreltech_group_document_batch_once(p_actor_id uuid, p_organization_id uuid, p_group_id uuid, p_operation_id uuid, p_docs jsonb, p_warnings text[] DEFAULT '{}'::text[])\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_saved public.goreltech_document_operations%ROWTYPE;\n  v_batch record;\n  v_document jsonb;\n  v_receipt jsonb;\n  v_jwt_role text := COALESCE(\n    NULLIF(auth.jwt()->>'role', ''),\n    NULLIF(current_setting('request.jwt.claim.role', true), ''),\n    ''\n  );\nBEGIN\n  IF v_jwt_role IS DISTINCT FROM 'service_role' THEN\n    RAISE EXCEPTION 'service role required' USING ERRCODE = '42501';\n  END IF;\n  IF p_actor_id IS NULL OR NOT COALESCE((\n    public.has_role(p_actor_id, 'admin'::public.app_role)\n    OR public.is_org_owner(p_actor_id, p_organization_id)\n    OR (\n      EXISTS (\n        SELECT 1 FROM public.org_staff s\n        WHERE s.user_id = p_actor_id AND s.organization_id = p_organization_id\n          AND (s.expires_at IS NULL OR s.expires_at > now())\n      )\n      AND public.has_org_staff_permission(p_actor_id, p_organization_id, 'documents.manage')\n    )\n  ), false) THEN\n    RAISE EXCEPTION 'actor is not allowed to manage organization documents' USING ERRCODE = '42501';\n  END IF;\n  IF p_organization_id IS DISTINCT FROM '7237f9d4-3670-4a19-8946-a43c68fd3473'::uuid\n    OR NOT EXISTS (\n      SELECT 1 FROM public.organizations o\n      WHERE o.id = p_organization_id\n        AND regexp_replace(COALESCE(o.inn, ''), '\\D', '', 'g') = '7806541216'\n        AND COALESCE(o.name, '') ~* 'ГОРЭЛТЕХ'\n    ) THEN\n    RAISE EXCEPTION 'exact GORELTECH organization is required' USING ERRCODE = '42501';\n  END IF;\n  IF NOT EXISTS (\n    SELECT 1 FROM public.student_groups g\n    WHERE g.id = p_group_id AND g.organization_id = p_organization_id\n  ) THEN\n    RAISE EXCEPTION 'group does not belong to GORELTECH organization' USING ERRCODE = '42501';\n  END IF;\n  IF p_operation_id IS NULL THEN\n    RAISE EXCEPTION 'operation ID is required' USING ERRCODE = '22023';\n  END IF;\n\n  -- Same intent serializes before receipt lookup. The existing batch RPC also\n  -- locks the group to serialize distinct package versions. Both locks live for\n  -- the entire transaction, including receipt insertion/commit or rollback.\n  PERFORM pg_advisory_xact_lock(hashtextextended(\n    'goreltech-document-operation:' || p_organization_id::text || ':'\n      || p_group_id::text || ':' || p_operation_id::text, 0\n  ));\n  SELECT * INTO v_saved FROM public.goreltech_document_operations o\n  WHERE o.organization_id = p_organization_id AND o.group_id = p_group_id\n    AND o.operation_id = p_operation_id;\n  IF FOUND THEN\n    IF v_saved.actor_id IS DISTINCT FROM p_actor_id THEN\n      RAISE EXCEPTION 'operation belongs to another actor' USING ERRCODE = '42501';\n    END IF;\n    -- Do not validate/use the later body or warnings and never call batch twice.\n    RETURN v_saved.receipt;\n  END IF;\n  IF COALESCE(array_ndims(p_warnings), 1) > 1 THEN\n    RAISE EXCEPTION 'warnings must be a one-dimensional text array without nulls' USING ERRCODE = '22023';\n  END IF;\n  IF array_position(p_warnings, NULL) IS NOT NULL THEN\n    RAISE EXCEPTION 'warnings must be a one-dimensional text array without nulls' USING ERRCODE = '22023';\n  END IF;\n\n  SELECT * INTO STRICT v_batch\n  FROM public.create_goreltech_group_document_batch(p_actor_id, p_organization_id, p_group_id, p_docs);\n  IF v_batch.batch_id IS NULL OR v_batch.batch_version IS NULL OR v_batch.batch_version < 1\n    OR v_batch.inserted_count IS DISTINCT FROM 9 THEN\n    RAISE EXCEPTION 'batch result could not be confirmed' USING ERRCODE = 'P0001';\n  END IF;\n  -- Build the document response from persisted facts, not the retry body.\n  v_document := (\n    SELECT jsonb_build_object(\n      'doc_type', gd.doc_type, 'name', gd.name, 'file_path', gd.file_path,\n      'docx_sha256', gd.docx_sha256, 'pdf_status', gd.pdf_status,\n      'template_version_label', gd.template_version_label\n    )\n    FROM public.group_documents gd\n    WHERE gd.organization_id = p_organization_id AND gd.group_id = p_group_id\n      AND gd.package_batch_id = v_batch.batch_id AND gd.doc_type = 'class_journal'\n  );\n  v_receipt := jsonb_build_object(\n    'operationId', p_operation_id,\n    'batch', jsonb_build_object(\n      'batch_id', v_batch.batch_id, 'batch_version', v_batch.batch_version,\n      'inserted_count', v_batch.inserted_count\n    ),\n    'document', v_document,\n    'warnings', to_jsonb(COALESCE(p_warnings, '{}'::text[]))\n  );\n  INSERT INTO public.goreltech_document_operations\n    (organization_id, group_id, operation_id, actor_id, receipt)\n  VALUES (p_organization_id, p_group_id, p_operation_id, p_actor_id, v_receipt);\n  -- Any error after batch creation rolls back the batch, previous-current flags\n  -- and this receipt together. No exception handler may turn it into a success.\n  RETURN v_receipt;\nEND;\n$function$\n",
+      "hash": "72c0bc7f4b6feaba492b305887bafb32",
+      "identity": "p_actor_id uuid, p_organization_id uuid, p_group_id uuid, p_operation_id uuid, p_docs jsonb, p_warnings text[]",
+      "name": "create_goreltech_group_document_batch_once"
+    }
+  ],
+  "tables": [
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "group_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "doc_type",
+      "default": null,
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "document_number",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "document_date",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "date",
+      "udt": "date"
+    },
+    {
+      "column": "variables",
+      "default": "'{}'::jsonb",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "jsonb",
+      "udt": "jsonb"
+    },
+    {
+      "column": "html",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "file_path",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "status",
+      "default": "'active'::text",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "student_user_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "company_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "created_by",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "timestamp with time zone",
+      "udt": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "timestamp with time zone",
+      "udt": "timestamptz"
+    },
+    {
+      "column": "package_batch_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "uuid",
+      "udt": "uuid"
+    },
+    {
+      "column": "package_version",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "integer",
+      "udt": "int4"
+    },
+    {
+      "column": "doc_status",
+      "default": "'draft'::text",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "fill_mode",
+      "default": "'blank'::text",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "layout_format",
+      "default": "'legacy_html'::text",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "source_note",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "is_current",
+      "default": "true",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "boolean",
+      "udt": "bool"
+    },
+    {
+      "column": "template_registry_key",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "template_version_label",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "template_sha256",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "variables_snapshot",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "jsonb",
+      "udt": "jsonb"
+    },
+    {
+      "column": "docx_sha256",
+      "default": null,
+      "nullable": "YES",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "pdf_status",
+      "default": "'unavailable'::text",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    },
+    {
+      "column": "generation_status",
+      "default": "'draft'::text",
+      "nullable": "NO",
+      "table": "group_documents",
+      "type": "text",
+      "udt": "text"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.group_documents FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('student_user_id')",
+      "name": "account_deletion_subject_fence",
+      "table": "group_documents"
+    },
+    {
+      "definition": "CREATE TRIGGER enforce_goreltech_group_document_draft_insert BEFORE INSERT ON public.group_documents FOR EACH ROW EXECUTE FUNCTION enforce_goreltech_group_document_draft()",
+      "name": "enforce_goreltech_group_document_draft_insert",
+      "table": "group_documents"
+    },
+    {
+      "definition": "CREATE TRIGGER enforce_goreltech_group_document_draft_update BEFORE UPDATE OF doc_status, document_number, document_date, variables, html, file_path, layout_format ON public.group_documents FOR EACH ROW EXECUTE FUNCTION enforce_goreltech_group_document_draft()",
+      "name": "enforce_goreltech_group_document_draft_update",
+      "table": "group_documents"
+    },
+    {
+      "definition": "CREATE TRIGGER update_group_documents_updated_at BEFORE UPDATE ON public.group_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "name": "update_group_documents_updated_at",
+      "table": "group_documents"
+    }
+  ],
+  "dependencies": {
+    "columns": [
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "type": "uuid"
+      },
+      {
+        "column": "group_id",
+        "default": null,
+        "nullable": "NO",
+        "type": "uuid"
+      },
+      {
+        "column": "operation_id",
+        "default": null,
+        "nullable": "NO",
+        "type": "uuid"
+      },
+      {
+        "column": "actor_id",
+        "default": null,
+        "nullable": "NO",
+        "type": "uuid"
+      },
+      {
+        "column": "receipt",
+        "default": null,
+        "nullable": "NO",
+        "type": "jsonb"
+      },
+      {
+        "column": "created_at",
+        "default": "clock_timestamp()",
+        "nullable": "NO",
+        "type": "timestamptz"
+      }
+    ],
+    "functions": [
+      {
+        "definition": "CREATE OR REPLACE FUNCTION public.enforce_goreltech_group_document_draft()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_jwt_role text := COALESCE(\n    auth.jwt()->>'role',\n    current_setting('request.jwt.claim.role', true),\n    ''\n  );\n  v_warning constant text :=\n    'Итоговый статус не подтверждён сервером: документ сохранён как черновик без официального номера.';\nBEGIN\n  IF v_jwt_role IS DISTINCT FROM 'service_role'\n     AND NEW.organization_id = '7237f9d4-3670-4a19-8946-a43c68fd3473'::uuid\n     AND EXISTS (\n       SELECT 1\n       FROM public.organizations o\n       WHERE o.id = NEW.organization_id\n         AND regexp_replace(COALESCE(o.inn, ''), '\\D', '', 'g') = '7806541216'\n         AND COALESCE(o.name, '') ~* 'ГОРЭЛТЕХ'\n     )\n  THEN\n    NEW.doc_status := 'draft';\n    NEW.document_number := NULL;\n    IF position(v_warning IN COALESCE(NEW.source_note, '')) = 0 THEN\n      NEW.source_note := concat_ws(' ', NULLIF(btrim(NEW.source_note), ''), v_warning);\n    END IF;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+        "hash": "81e483581316a19462ccbc8f4ed8ba54",
+        "name": "enforce_goreltech_group_document_draft"
+      }
+    ],
+    "policies": [
+      {
+        "cmd": "ALL",
+        "permissive": "RESTRICTIVE",
+        "policyname": "account_deletion_no_revoked_access",
+        "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+        "roles": [
+          "authenticated"
+        ],
+        "schemaname": "public",
+        "tablename": "goreltech_document_operations",
+        "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+      }
+    ]
+  }
+}

@@ -182,7 +182,7 @@ describe('actual organization contract sender authorization', () => {
     const response=await actualHandler('org-create-contract-signature',db,effects.fetch)(req);
     expect(response.status).toBe(status);
     for(const effect of Object.values(effects))expect(effect).not.toHaveBeenCalled();
-    expect(response.headers.get('X-Sintagma-Function-Revision')).toBe('uc-foundation-20261018-v1');
+    expect(response.headers.get('X-Sintagma-Function-Revision')).toBe('uc-permissions-20261018-v2');
   });
 });
 

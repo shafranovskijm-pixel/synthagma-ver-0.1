@@ -49,7 +49,7 @@ export function EducationDocumentsJournal({
   focusEnrollmentId = null }: EducationDocumentsJournalProps) {
   const handledFocusRef = useRef<string | null>(null);
   const {
-    loading, saving, records, searchQuery, setSearchQuery,
+    loading, saving, canIssue, records, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
     dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
@@ -72,7 +72,7 @@ export function EducationDocumentsJournal({
       handledFocusRef.current = null;
       return;
     }
-    if (loading || handledFocusRef.current === focusKey) return;
+    if (!canIssue || loading || handledFocusRef.current === focusKey) return;
 
     const record = focusRecordId
       ? records.find((item) => isEducationDocumentRecordForFocus(item, {
@@ -91,6 +91,7 @@ export function EducationDocumentsJournal({
       void handleOpenEnrollment(focusEnrollmentId);
     }
   }, [
+    canIssue,
     completedStudents,
     focusEnrollmentId,
     focusRecordId,
@@ -124,11 +125,11 @@ export function EducationDocumentsJournal({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="default" onClick={handleOpenSelectStudents} className="rounded-xl bg-gradient-to-r from-primary to-primary/80">
+          <Button variant="default" onClick={handleOpenSelectStudents} disabled={!canIssue} className="rounded-xl bg-gradient-to-r from-primary to-primary/80">
             <Sparkles className="w-4 h-4 mr-2" />Из выпускников
           </Button>
           {!manualAddGuard.blocked && (
-            <Button variant="outline" onClick={handleOpenAdd} className="rounded-xl" data-testid="add-manual-button">
+            <Button variant="outline" onClick={handleOpenAdd} disabled={!canIssue} className="rounded-xl" data-testid="add-manual-button">
               <Plus className="w-4 h-4 mr-2" />Добавить вручную
             </Button>
           )}
@@ -201,10 +202,10 @@ export function EducationDocumentsJournal({
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleOpenSelectStudents} className="rounded-xl">
+              <Button variant="outline" onClick={handleOpenSelectStudents} disabled={!canIssue} className="rounded-xl">
                 <Users className="w-4 h-4 mr-2" />Выбрать
               </Button>
-              <Button onClick={handleAutoAddAllGraduates} disabled={saving} className="rounded-xl">
+              <Button onClick={handleAutoAddAllGraduates} disabled={!canIssue || saving} className="rounded-xl">
                 {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Plus className="w-4 h-4 mr-1" />}
                 Добавить всех
               </Button>
@@ -298,8 +299,8 @@ export function EducationDocumentsJournal({
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" title="Печать документа" onClick={() => { const html = generateEducationDocumentHtml(record, orgData); printHtmlContent(html, `${record.document_type === "certificate" ? "Удостоверение" : record.document_type === "diploma" ? "Диплом" : "Свидетельство"} ${record.document_number}`); }}><Printer className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" onClick={() => handleOpenEdit(record)}><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeletingRecord(record)}><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" disabled={!canIssue} onClick={() => handleOpenEdit(record)}><Pencil className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={!canIssue} onClick={() => setDeletingRecord(record)}><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -315,7 +316,7 @@ export function EducationDocumentsJournal({
             <h3 className="text-lg font-medium mb-2">Записей не найдено</h3>
             <p className="text-sm text-muted-foreground mb-4">{searchQuery || selectedDocType !== "all" || selectedStatus !== "all" ? "Попробуйте изменить параметры поиска" : "Добавьте первую запись в журнал"}</p>
             {!searchQuery && selectedDocType === "all" && selectedStatus === "all" && (
-              <Button onClick={handleOpenAdd} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Добавить запись</Button>
+              <Button onClick={handleOpenAdd} disabled={!canIssue} className="rounded-xl"><Plus className="w-4 h-4 mr-2" />Добавить запись</Button>
             )}
           </div>
         </div>
@@ -323,7 +324,7 @@ export function EducationDocumentsJournal({
 
       {/* Extracted Dialogs */}
       <DocumentFormDialog
-        open={showAddDialog || !!editingRecord}
+        open={canIssue && (showAddDialog || !!editingRecord)}
         onClose={() => { setShowAddDialog(false); setEditingRecord(null); resetForm(); }}
         isEditing={!!editingRecord}
         formData={formData}
@@ -334,7 +335,7 @@ export function EducationDocumentsJournal({
       />
 
       <SelectStudentsDialog
-        open={showSelectStudentsDialog}
+        open={canIssue && showSelectStudentsDialog}
         onOpenChange={setShowSelectStudentsDialog}
         studentSearchQuery={studentSearchQuery}
         setStudentSearchQuery={setStudentSearchQuery}
@@ -348,7 +349,7 @@ export function EducationDocumentsJournal({
       />
 
       {/* Delete Confirm */}
-      <AlertDialog open={!!deletingRecord} onOpenChange={() => setDeletingRecord(null)}>
+      <AlertDialog open={canIssue && !!deletingRecord} onOpenChange={() => setDeletingRecord(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить запись?</AlertDialogTitle>
