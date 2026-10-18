@@ -88,10 +88,17 @@ export const openPrivateFile = async (
  * A cross-origin anchor cannot reliably apply the requested download name;
  * a successful signing response alone does not prove the file was retrieved.
  */
+export type PrivateDownloadProgress = "preparing" | "downloading" | "handed_to_browser" | "failed" | "timed_out" | "cancelled";
+export interface PrivateDownloadOptions {
+  onProgress?: (progress: PrivateDownloadProgress) => void;
+  signal?: AbortSignal;
+}
+const PRIVATE_DOWNLOAD_DEADLINE_MS = 45000;
 export const downloadPrivateFile = async (
   bucket: string,
   fileUrlOrPath: string,
   fileName?: string,
+  options: PrivateDownloadOptions = {},
 ): Promise<boolean> => {
   const path = extractStoragePath(fileUrlOrPath, bucket);
   const fallbackName = path.split("/").pop() || "download";
@@ -99,24 +106,50 @@ export const downloadPrivateFile = async (
   const extension = /\.([a-z0-9]{1,10})$/i.exec(fallbackName)?.[1];
   if (extension && !/\.[a-z0-9]{1,10}$/i.test(downloadName)) downloadName += `.${extension}`;
 
+  const controller = new AbortController();
+  const deadline = Date.now() + PRIVATE_DOWNLOAD_DEADLINE_MS;
+  let timedOut = false;
+  const report = (progress: PrivateDownloadProgress) => {
+    // A status renderer must not interrupt the file operation.
+    try { options.onProgress?.(progress); } catch { /* no file data in diagnostics */ }
+  };
+  const cancel = () => controller.abort();
+  options.signal?.addEventListener("abort", cancel, { once: true });
+  if (options.signal?.aborted) cancel();
+  const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, PRIVATE_DOWNLOAD_DEADLINE_MS);
+  const ensureActive = () => {
+    if (!controller.signal.aborted && Date.now() >= deadline) { timedOut = true; controller.abort(); }
+    if (controller.signal.aborted) throw new DOMException("Download stopped", "AbortError");
+  };
+  // Signing has no SDK abort parameter. Race every awaited phase against the
+  // same deadline, retaining handlers on late responses without using them.
+  const waitFor = <T,>(pending: Promise<T>): Promise<T> => new Promise((resolve, reject) => {
+    const aborted = () => reject(new DOMException("Download stopped", "AbortError"));
+    controller.signal.addEventListener("abort", aborted, { once: true });
+    if (controller.signal.aborted) aborted();
+    pending.then(value => {
+      controller.signal.removeEventListener("abort", aborted);
+      try { ensureActive(); resolve(value); } catch (error) { reject(error); }
+    }, error => {
+      controller.signal.removeEventListener("abort", aborted);
+      reject(error);
+    });
+  });
   try {
-    const signedUrl = await getSignedStorageUrl(bucket, path, 3600, downloadName);
-    if (!signedUrl) {
-      console.error("Failed to generate download URL for:", path);
-      return false;
-    }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-    let blob: Blob;
-    try {
-      const response = await fetch(signedUrl, { signal: controller.signal, cache: "no-store", credentials: "omit" });
-      if (!response.ok) return false;
-      const mime = (response.headers.get("content-type") || "").toLowerCase();
-      if (mime.includes("text/html") && !/\.(html?|xhtml|doc)$/i.test(fallbackName)
-        || mime.includes("application/json") && !/\.json$/i.test(fallbackName)) return false;
-      blob = await response.blob();
-      if (!blob.size) return false;
-    } finally { clearTimeout(timeout); }
+    ensureActive(); report("preparing");
+    const signedUrl = await waitFor(getSignedStorageUrl(bucket, path, 3600, downloadName));
+    ensureActive();
+    if (!signedUrl) { report("failed"); return false; }
+    report("downloading");
+    const response = await waitFor(fetch(signedUrl, { signal: controller.signal, cache: "no-store", credentials: "omit" }));
+    ensureActive();
+    if (!response.ok) { report("failed"); return false; }
+    const mime = (response.headers.get("content-type") || "").toLowerCase();
+    if (mime.includes("text/html") && !/\.(html?|xhtml|doc)$/i.test(fallbackName)
+      || mime.includes("application/json") && !/\.json$/i.test(fallbackName)) { report("failed"); return false; }
+    const blob = await waitFor(response.blob());
+    ensureActive();
+    if (!blob.size) { report("failed"); return false; }
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     try {
@@ -125,14 +158,19 @@ export const downloadPrivateFile = async (
       link.rel = "noopener";
       link.style.display = "none";
       document.body.appendChild(link);
+      ensureActive();
       link.click();
     } finally {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     }
+    report("handed_to_browser");
     return true;
-  } catch (error) {
-    console.error("Failed to download private file:", path, error);
+  } catch {
+    report(timedOut ? "timed_out" : controller.signal.aborted ? "cancelled" : "failed");
     return false;
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", cancel);
   }
 };

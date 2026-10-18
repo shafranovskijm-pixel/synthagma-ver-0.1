@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const state=vi.hoisted(()=>({read:vi.fn(),upload:vi.fn(),restore:vi.fn(),refreshed:vi.fn(),download:vi.fn(),refresh:vi.fn()}));
 vi.mock("@/utils/storageHelpers",()=>({downloadPrivateFile:state.download}));
 vi.mock("@/hooks/useOrgDocumentVersions",()=>({useOrgDocumentVersions:state.read}));
@@ -13,6 +13,7 @@ const props={open:true,onOpenChange:vi.fn(),documentId:"doc",documentName:"Ли�
 beforeEach(()=>{
   vi.clearAllMocks();
   state.upload.mockResolvedValue(true);state.restore.mockResolvedValue(true);
+  state.download.mockResolvedValue(true);
   state.read.mockImplementation((_id,canWrite)=>({versions,loading:false,loadError:null,hasLoaded:true,refresh:state.refresh,currentVersionId:"current",canChange:canWrite,
     uploadVersion:state.upload,restoreVersion:state.restore}));
 });
@@ -35,11 +36,48 @@ describe("organization version history permissions and event UI",()=>{
     expect(screen.getByRole("button",{name:"Загрузить новую версию"})).toBeEnabled();
     expect(state.upload).not.toHaveBeenCalled();expect(state.restore).not.toHaveBeenCalled();
   });
-  it("downloads a historical file through private Storage access",()=>{
+  it("downloads a historical file through private Storage access",async()=>{
     state.download.mockResolvedValue(true);
     render(<OrgDocumentVersionsDialog {...props} />);
-    fireEvent.click(screen.getAllByTitle("Скачать")[1]);
-    expect(state.download).toHaveBeenCalledWith("org-documents",versions[1].file_url,"Лицензия");
+    await act(async()=>{fireEvent.click(screen.getAllByTitle("Скачать")[1]);});
+    expect(state.download).toHaveBeenCalledWith("org-documents",versions[1].file_url,"Лицензия",expect.objectContaining({signal:expect.any(AbortSignal),onProgress:expect.any(Function)}));
+  });
+  it("blocks duplicate clicks, keeps timeout visible, and retries with a truthful browser handoff receipt",async()=>{
+    let finish!: (ok:boolean)=>void;
+    let progress!: (phase:string)=>void;
+    state.download.mockImplementation((_bucket,_path,_name,options)=>{
+      progress=options.onProgress;
+      return new Promise<boolean>(resolve=>{finish=resolve;});
+    });
+    render(<OrgDocumentVersionsDialog {...props} />);
+    const button=screen.getAllByTitle("Скачать")[0];
+    fireEvent.click(button);fireEvent.click(button);
+    expect(state.download).toHaveBeenCalledOnce();expect(button).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("Подготавливаем файл");
+    await act(async()=>{progress("downloading");});
+    expect(screen.getByRole("status")).toHaveTextContent("Загружаем файл");
+    await act(async()=>{progress("timed_out");finish(false);});
+    expect(screen.getByRole("alert")).toHaveTextContent("45 секунд");
+    expect(screen.queryByText("Файл передан браузеру для сохранения.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Повторить скачивание"}));
+    expect(state.download).toHaveBeenCalledTimes(2);
+    await act(async()=>{progress("handed_to_browser");finish(true);});
+    expect(screen.getByRole("status")).toHaveTextContent("Файл передан браузеру для сохранения.");
+    expect(screen.queryByText(/^Файл сохранён/)).not.toBeInTheDocument();expect(button).toBeEnabled();
+  });
+  it("cancels a pending download on close and does not attach its late receipt to another document",async()=>{
+    let finish!: (ok:boolean)=>void;
+    let signal!:AbortSignal;
+    state.download.mockImplementation((_bucket,_path,_name,options)=>{
+      signal=options.signal;return new Promise<boolean>(resolve=>{finish=resolve;});
+    });
+    const view=render(<OrgDocumentVersionsDialog {...props} />);
+    fireEvent.click(screen.getAllByTitle("Скачать")[0]);
+    view.rerender(<OrgDocumentVersionsDialog {...props} open={false} />);
+    expect(signal.aborted).toBe(true);
+    view.rerender(<OrgDocumentVersionsDialog {...props} documentId="different-document" />);
+    await act(async()=>{finish(true);});
+    expect(screen.queryByText("Файл передан браузеру для сохранения.")).not.toBeInTheDocument();
   });
   it("shows readable history but no upload controls and disables restoration without write rights",()=>{
     render(<OrgDocumentVersionsDialog {...props} />);

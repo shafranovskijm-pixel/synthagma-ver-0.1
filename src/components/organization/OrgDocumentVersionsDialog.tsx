@@ -1,5 +1,4 @@
-import { downloadPrivateFile } from "@/utils/storageHelpers";
-import { toast } from "sonner";
+import { downloadPrivateFile, type PrivateDownloadProgress } from "@/utils/storageHelpers";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrgDocumentWorkflowPanel } from "./documents/OrgDocumentWorkflowPanel";
-import { useOrgDocumentVersions } from "@/hooks/useOrgDocumentVersions";
+import { useOrgDocumentVersions, type OrgDocumentVersion } from "@/hooks/useOrgDocumentVersions";
 import { Loader2, Upload, Download, RotateCcw, History } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -38,8 +37,41 @@ export function OrgDocumentVersionsDialog({
   const [restoring, setRestoring] = useState(false);
   const [summary, setSummary] = useState("");
   const [activeTab, setActiveTab] = useState("files");
+  const [download, setDownload] = useState<{ versionId: string; progress: PrivateDownloadProgress } | null>(null);
+  const downloadTask = useRef<{ controller: AbortController } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setActiveTab("files"); }, [documentId, open]);
+  useEffect(() => {
+    setDownload(null);
+    return () => {
+      const pending = downloadTask.current;
+      downloadTask.current = null;
+      pending?.controller.abort();
+    };
+  }, [documentId, open]);
+  const downloading = download?.progress === "preparing" || download?.progress === "downloading";
+  const handleDownload = async (version: OrgDocumentVersion) => {
+    if (downloadTask.current || !version.file_url || !open) return;
+    const task = { controller: new AbortController() };
+    downloadTask.current = task;
+    const latestProgress: { value: PrivateDownloadProgress } = { value: "failed" };
+    setDownload({ versionId: version.id, progress: "preparing" });
+    try {
+      const ok = await downloadPrivateFile("org-documents", version.file_path || version.file_url, version.file_name || documentName, {
+        signal: task.controller.signal,
+        onProgress: progress => {
+          latestProgress.value = progress;
+          if (downloadTask.current === task) setDownload({ versionId: version.id, progress });
+        },
+      });
+      if (downloadTask.current === task) setDownload({ versionId: version.id,
+        progress: ok ? "handed_to_browser" : latestProgress.value === "timed_out" ? "timed_out" : "failed" });
+    } catch {
+      if (downloadTask.current === task) setDownload({ versionId: version.id, progress: "failed" });
+    } finally {
+      if (downloadTask.current === task) downloadTask.current = null;
+    }
+  };
 
   const handleFile = async (file: File) => {
     setUploading(true);
@@ -135,16 +167,29 @@ export function OrgDocumentVersionsDialog({
                     {v.change_summary && (
                       <div className="text-xs text-muted-foreground mt-1">{v.change_summary}</div>
                     )}
+                    {download?.versionId === v.id && <div className="text-xs mt-1 space-y-1" role={download.progress === "failed" || download.progress === "timed_out" ? "alert" : "status"}>
+                      <p className="text-muted-foreground">{{
+                        preparing: "Подготавливаем файл…",
+                        downloading: "Загружаем файл…",
+                        handed_to_browser: "Файл передан браузеру для сохранения.",
+                        failed: "Не удалось подготовить файл для скачивания. Повторите попытку.",
+                        timed_out: "Не удалось получить файл за 45 секунд. Повторите попытку.",
+                        cancelled: "Скачивание отменено.",
+                      }[download.progress]}</p>
+                      {(download.progress === "failed" || download.progress === "timed_out") && <Button variant="outline" size="sm" className="max-w-full h-auto whitespace-normal" onClick={() => void handleDownload(v)}>Повторить скачивание</Button>}
+                    </div>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0 ml-2">
                     {v.file_url && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={async () => { if (!await downloadPrivateFile("org-documents", v.file_path || v.file_url!, v.file_name || documentName)) toast.error("Не удалось скачать документ"); }}
+                        disabled={downloading}
+                        onClick={() => void handleDownload(v)}
                         title="Скачать"
+                        aria-label="Скачать"
                       >
-                        <Download className="w-4 h-4" />
+                        {downloading && download?.versionId === v.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                       </Button>
                     )}
                     <Button
