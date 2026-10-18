@@ -6,6 +6,7 @@
  */
 import { AccessError, requireActiveUser } from "../_shared/privileged-access.ts";
 import { requireDocumentWrite } from "../_shared/document-operation-access.ts";
+import { ProgramFactsError, resolveGroupProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE, programGenerationScalars, programTrainingPeriod, programGroupLabel, programDate } from "../_shared/program-facts.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { readEffectiveGroupProfiles } from "../_shared/student-group-memberships.ts";
@@ -146,7 +147,7 @@ Deno.serve(async (req) => {
       "authorization, x-client-info, apikey, content-type, x-sintagma-required-compiler-revision",
     "Access-Control-Expose-Headers": "X-Sintagma-Compiler-Revision, X-Sintagma-Request-Id",
     "X-Sintagma-Compiler-Revision": COMPILER_REVISION,
-    "X-Sintagma-Function-Revision": "uc-permissions-20261018-v2",
+    "X-Sintagma-Function-Revision": "uc-program-facts-20261018-v1",
     "X-Sintagma-Request-Id": requestId,
   };
   if (req.method === "OPTIONS") return new Response("ok", { headers: responseHeaders });
@@ -209,6 +210,9 @@ Deno.serve(async (req) => {
     const userId = actor.userId!;
     stage = "authorization";
     await requireDocumentWrite(userClient, body.organizationId, body.groupId);
+    stage = "program-facts";
+    const programme = await resolveGroupProgramGeneration(userClient, body.organizationId, body.groupId, body.studentUserIds);
+    if (programme.state === "unconfirmed") statusWarnings.push(UNCONFIRMED_PROGRAM_NOTICE);
 
     stage = "source-data";
     const [groupResult, orgResult, profilesResult] = await Promise.all([
@@ -227,12 +231,13 @@ Deno.serve(async (req) => {
     if (groupResult.error) throw groupResult.error;
     if (orgResult.error) throw orgResult.error;
     if (profilesResult.error) throw profilesResult.error;
-    const group = groupResult.data as any;
+    let group = groupResult.data as any;
     const organization = orgResult.data as any;
     if (!group || group.organization_id !== body.organizationId) {
       return json({ error: "Группа не принадлежит выбранной организации" }, 409);
     }
     if (!organization) return json({ error: "Организация не найдена" }, 404);
+    if (programme.groupFields) group = { ...group, ...programme.groupFields };
     const requestedStudentIds = Array.from(new Set(body.studentUserIds)).sort();
     const activeStudentIds = ((profilesResult.data as any[]) || [])
       .map((profile) => String(profile.user_id))
@@ -280,8 +285,8 @@ Deno.serve(async (req) => {
 
     const instructorSlots = instructorShortSlots(group.instructor_name);
     const dates = Array.isArray(group.training_dates) ? group.training_dates.map(String) : [];
-    const programTitle = String(group.program_title || course?.title || "").trim();
-    const programHours = firstPositiveFiniteNumber(
+    const programTitle = programme.fields?.program_title ?? String(group.program_title || course?.title || "").trim();
+    const programHours = programme.fields?.program_hours ?? firstPositiveFiniteNumber(
       group.program_hours,
       course?.frdo_duration_hours,
       course?.duration,
@@ -387,9 +392,11 @@ Deno.serve(async (req) => {
     const journalSignatory = resolveDocumentSignatory(body.journalSignatory, organization);
     const snapshot = {
       scalars: {
+        ...programGenerationScalars(programme),
         GROUP_NUMBER: String(group.group_number || "").trim(),
         PROGRAM_TITLE: programTitle,
         PROGRAM_HOURS: programHours > 0 ? String(programHours) : "",
+        PROGRAM_FORM: programme.fields?.program_form || "",
         INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
         SIGNATORY_POSITION: journalSignatory.position,
         SIGNATORY_SHORT: journalSignatory.shortName,
@@ -462,6 +469,8 @@ Deno.serve(async (req) => {
       template_version_label: manifest.template_version,
       template_sha256: manifest.template_sha256,
       variables_snapshot: {
+        program_facts: programme.provenance,
+        student_user_ids: requestedStudentIds,
         scalars: snapshot.scalars,
         students: snapshot.students.map((student, index) => ({
           row_number: index + 1,
@@ -500,6 +509,7 @@ Deno.serve(async (req) => {
       const documentSignatory = resolveDocumentSignatory(document.signatory, organization);
       const packageScalars = buildGroupDocumentScalars(document.variables || {});
       Object.assign(packageScalars, {
+        ...programGenerationScalars(programme),
         ...buildCanonicalDocumentMetadataScalars({
           documentNumber: document.document_number,
           documentDate: document.document_date,
@@ -525,8 +535,9 @@ Deno.serve(async (req) => {
         ORG_EMAIL: String(organization.email || ""),
         ORG_PHONE: String(organization.phone || ""),
         GROUP_NUMBER: String(group.group_number || ""),
-        PROGRAM_TITLE: String(group.program_title || course?.title || ""),
+        PROGRAM_TITLE: programTitle,
         PROGRAM_HOURS: programHours > 0 ? String(programHours) : "",
+        PROGRAM_FORM: programme.fields?.program_form || "",
         INSTRUCTOR_NAME: String(group.instructor_name || ""),
         INSTRUCTOR_SHORT: shortInstructorNames(group.instructor_name),
         INSTRUCTOR_1_SHORT: instructorSlots.first,
@@ -541,6 +552,17 @@ Deno.serve(async (req) => {
             packageManifest.row_tokens,
           )
         : [];
+      if (programme.fields) for (const [index, row] of packageRows.entries()) {
+        if ("STUDENT_PROGRAM" in row) row.STUDENT_PROGRAM = programme.fields.program_title;
+        if ("STUDENT_HOURS" in row) row.STUDENT_HOURS = String(programme.fields.program_hours);
+        if ("STUDENT_PERIOD" in row) row.STUDENT_PERIOD = programTrainingPeriod(programme);
+        if ("PROGRAM_GROUP" in row) row.PROGRAM_GROUP = programGroupLabel(programme);
+        if (document.doc_type === "schedule" && programme.groupFields) {
+          row.DATE = programDate(programme.groupFields.training_dates[index] || "");
+          row.TIME = programme.groupFields.schedule_text;
+          row.TEACHER = programme.groupFields.instructor_name;
+        }
+      }
       const packageXml = compileGroupDocumentXml({
         documentXml: await packageDocumentFile.async("string"),
         manifest: packageManifest,
@@ -563,6 +585,8 @@ Deno.serve(async (req) => {
 
       compiledPackageDocuments.push({
         ...document,
+        variables: { ...document.variables, ...(programme.fields || {}),
+          ...(programme.fields ? { program_hours: String(programme.fields.program_hours) } : {}) },
         html: null,
         file_path: packagePath,
         layout_format: "docx_ooxml",
@@ -574,6 +598,8 @@ Deno.serve(async (req) => {
         template_version_label: packageManifest.template_version,
         template_sha256: packageManifest.template_sha256,
         variables_snapshot: {
+          program_facts: programme.provenance,
+          student_user_ids: requestedStudentIds,
           scalars: packageScalars,
           rows: packageRows,
           signatory_source: documentSignatory.source,
@@ -694,7 +720,7 @@ Deno.serve(async (req) => {
         });
       }
     }
-    if (error instanceof AccessError) return json({ error: error.message, stage }, error.status);
+    if (error instanceof AccessError || error instanceof ProgramFactsError) return json({ error: error.message, stage }, error.status);
     console.error("compile-group-class-journal error", {
       requestId,
       compilerRevision: COMPILER_REVISION,

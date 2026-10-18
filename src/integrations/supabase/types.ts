@@ -2306,6 +2306,58 @@ export type Database = {
           },
         ]
       }
+      course_program_bindings: {
+        Row: {
+          course_id: string
+          organization_id: string
+          program_id: string
+          recorded_at: string
+          recorded_by: string
+          revision: number
+          version_id: string
+        }
+        Insert: {
+          course_id: string
+          organization_id: string
+          program_id: string
+          recorded_at?: string
+          recorded_by: string
+          revision: number
+          version_id: string
+        }
+        Update: {
+          course_id?: string
+          organization_id?: string
+          program_id?: string
+          recorded_at?: string
+          recorded_by?: string
+          revision?: number
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_program_bindings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_program_bindings_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_program_bindings_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "program_fact_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_promo_codes: {
         Row: {
           code: string
@@ -3943,6 +3995,55 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "driving_programs"
             referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      education_document_program_sources: {
+        Row: {
+          enrollment_snapshot_id: string
+          organization_id: string
+          record_id: string
+          recorded_at: string
+          recorded_by: string
+          snapshot: Json
+        }
+        Insert: {
+          enrollment_snapshot_id: string
+          organization_id: string
+          record_id: string
+          recorded_at?: string
+          recorded_by: string
+          snapshot: Json
+        }
+        Update: {
+          enrollment_snapshot_id?: string
+          organization_id?: string
+          record_id?: string
+          recorded_at?: string
+          recorded_by?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "education_document_program_sources_enrollment_snapshot_id_fkey"
+            columns: ["enrollment_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "group_program_enrollment_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "education_document_program_sources_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "education_document_program_sources_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: true
+            referencedRelation: "education_document_records"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5750,6 +5851,152 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "student_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_program_bindings: {
+        Row: {
+          course_id: string
+          group_id: string
+          group_snapshot: Json
+          id: string
+          organization_id: string
+          program_id: string
+          program_snapshot: Json
+          recorded_at: string
+          recorded_by: string
+          revision: number
+          snapshot_hash: string
+          version_id: string
+        }
+        Insert: {
+          course_id: string
+          group_id: string
+          group_snapshot: Json
+          id?: string
+          organization_id: string
+          program_id: string
+          program_snapshot: Json
+          recorded_at?: string
+          recorded_by: string
+          revision: number
+          snapshot_hash: string
+          version_id: string
+        }
+        Update: {
+          course_id?: string
+          group_id?: string
+          group_snapshot?: Json
+          id?: string
+          organization_id?: string
+          program_id?: string
+          program_snapshot?: Json
+          recorded_at?: string
+          recorded_by?: string
+          revision?: number
+          snapshot_hash?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_program_bindings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_program_bindings_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_program_bindings_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "program_fact_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_program_enrollment_snapshots: {
+        Row: {
+          binding_id: string
+          binding_revision: number
+          course_id: string
+          enrollment_id: string
+          group_id: string
+          group_snapshot: Json
+          id: string
+          legal_enrollment_date: string | null
+          organization_id: string
+          program_snapshot: Json
+          recorded_at: string
+          recorded_by: string | null
+          snapshot_hash: string
+          source: string
+          user_id: string
+          version_id: string
+        }
+        Insert: {
+          binding_id: string
+          binding_revision: number
+          course_id: string
+          enrollment_id: string
+          group_id: string
+          group_snapshot: Json
+          id?: string
+          legal_enrollment_date?: string | null
+          organization_id: string
+          program_snapshot: Json
+          recorded_at?: string
+          recorded_by?: string | null
+          snapshot_hash: string
+          source: string
+          user_id: string
+          version_id: string
+        }
+        Update: {
+          binding_id?: string
+          binding_revision?: number
+          course_id?: string
+          enrollment_id?: string
+          group_id?: string
+          group_snapshot?: Json
+          id?: string
+          legal_enrollment_date?: string | null
+          organization_id?: string
+          program_snapshot?: Json
+          recorded_at?: string
+          recorded_by?: string | null
+          snapshot_hash?: string
+          source?: string
+          user_id?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_program_enrollment_snapshots_binding_id_fkey"
+            columns: ["binding_id"]
+            isOneToOne: false
+            referencedRelation: "group_program_bindings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_program_enrollment_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_program_enrollment_snapshots_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "program_fact_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -8889,6 +9136,249 @@ export type Database = {
           },
         ]
       }
+      org_document_review_comments: {
+        Row: {
+          author_name: string
+          author_role: string
+          author_user_id: string
+          comment_text: string
+          created_at: string
+          id: string
+          org_reply: string | null
+          organization_id: string
+          position_anchor: Json | null
+          quoted_text: string | null
+          resolution_status: string
+          resolved_at: string | null
+          resolved_by: string | null
+          review_id: string
+          version_id: string
+        }
+        Insert: {
+          author_name: string
+          author_role: string
+          author_user_id: string
+          comment_text: string
+          created_at?: string
+          id?: string
+          org_reply?: string | null
+          organization_id: string
+          position_anchor?: Json | null
+          quoted_text?: string | null
+          resolution_status?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          review_id: string
+          version_id: string
+        }
+        Update: {
+          author_name?: string
+          author_role?: string
+          author_user_id?: string
+          comment_text?: string
+          created_at?: string
+          id?: string
+          org_reply?: string | null
+          organization_id?: string
+          position_anchor?: Json | null
+          quoted_text?: string | null
+          resolution_status?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          review_id?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_document_review_comments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_document_review_comments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_document_review_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: string
+          note: string | null
+          organization_id: string
+          review_id: string
+          revision: number
+          snapshot: Json
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          organization_id: string
+          review_id: string
+          revision: number
+          snapshot: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          organization_id?: string
+          review_id?: string
+          revision?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_document_review_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_document_review_events_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_document_review_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          document_id: string
+          organization_id: string
+          payload: Json
+          receipt: Json
+          request_id: string
+          review_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          document_id: string
+          organization_id: string
+          payload: Json
+          receipt: Json
+          request_id: string
+          review_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          document_id?: string
+          organization_id?: string
+          payload?: Json
+          receipt?: Json
+          request_id?: string
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_document_review_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_document_reviews: {
+        Row: {
+          approval_date: string | null
+          approval_number: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          document_id: string
+          id: string
+          links: Json
+          organization_id: string
+          responsible_name: string
+          responsible_user_id: string
+          reviewer_name: string
+          reviewer_user_id: string
+          revision: number
+          state: string
+          updated_at: string
+          version_id: string
+        }
+        Insert: {
+          approval_date?: string | null
+          approval_number?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          links?: Json
+          organization_id: string
+          responsible_name: string
+          responsible_user_id: string
+          reviewer_name: string
+          reviewer_user_id: string
+          revision: number
+          state: string
+          updated_at?: string
+          version_id: string
+        }
+        Update: {
+          approval_date?: string | null
+          approval_number?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          links?: Json
+          organization_id?: string
+          responsible_name?: string
+          responsible_user_id?: string
+          reviewer_name?: string
+          reviewer_user_id?: string
+          revision?: number
+          state?: string
+          updated_at?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_document_reviews_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "org_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_document_reviews_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_document_reviews_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_document_share_links: {
         Row: {
           created_at: string
@@ -9766,6 +10256,173 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "organization_credentials_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_document_applicability_decisions: {
+        Row: {
+          catalog_version: string
+          decided_at: string
+          decided_by: string
+          decision: string | null
+          organization_id: string
+          profile_revision: number
+          reason: string
+          requirement_id: string
+          revision: number
+        }
+        Insert: {
+          catalog_version: string
+          decided_at: string
+          decided_by: string
+          decision?: string | null
+          organization_id: string
+          profile_revision: number
+          reason: string
+          requirement_id: string
+          revision: number
+        }
+        Update: {
+          catalog_version?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: string | null
+          organization_id?: string
+          profile_revision?: number
+          reason?: string
+          requirement_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_document_applicability_decisi_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_document_applicability_history: {
+        Row: {
+          catalog_version: string
+          decided_at: string
+          decided_by: string
+          decision: string | null
+          organization_id: string
+          previous_revision: number
+          profile_revision: number
+          profile_snapshot: Json
+          reason: string
+          request_id: string
+          requirement_id: string
+          revision: number
+        }
+        Insert: {
+          catalog_version: string
+          decided_at: string
+          decided_by: string
+          decision?: string | null
+          organization_id: string
+          previous_revision: number
+          profile_revision: number
+          profile_snapshot: Json
+          reason: string
+          request_id: string
+          requirement_id: string
+          revision: number
+        }
+        Update: {
+          catalog_version?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: string | null
+          organization_id?: string
+          previous_revision?: number
+          profile_revision?: number
+          profile_snapshot?: Json
+          reason?: string
+          request_id?: string
+          requirement_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_document_applicability_histor_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_education_profile_history: {
+        Row: {
+          organization_id: string
+          previous_revision: number
+          profile: Json
+          request_id: string
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          organization_id: string
+          previous_revision: number
+          profile: Json
+          request_id: string
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Update: {
+          organization_id?: string
+          previous_revision?: number
+          profile?: Json
+          request_id?: string
+          revision?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_education_profile_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_education_profiles: {
+        Row: {
+          organization_id: string
+          profile: Json
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          organization_id: string
+          profile: Json
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Update: {
+          organization_id?: string
+          profile?: Json
+          revision?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_education_profiles_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: true
             referencedRelation: "organizations"
@@ -11186,6 +11843,233 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_fact_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string
+          entity_kind: string
+          id: string
+          organization_id: string
+          revision: number
+          snapshot: Json
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          entity_id: string
+          entity_kind: string
+          id?: string
+          organization_id: string
+          revision: number
+          snapshot: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_kind?: string
+          id?: string
+          organization_id?: string
+          revision?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_fact_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_fact_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          organization_id: string
+          payload: Json
+          receipt: Json
+          request_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          organization_id: string
+          payload: Json
+          receipt: Json
+          request_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          organization_id?: string
+          payload?: Json
+          receipt?: Json
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_fact_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_fact_states: {
+        Row: {
+          current_version_id: string
+          organization_id: string
+          program_id: string
+          revision: number
+        }
+        Insert: {
+          current_version_id: string
+          organization_id: string
+          program_id: string
+          revision: number
+        }
+        Update: {
+          current_version_id?: string
+          organization_id?: string
+          program_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_fact_current_version_fk"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "program_fact_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_fact_states_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_fact_states_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "program_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_fact_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string
+          facts: Json
+          facts_hash: string
+          file_approval: Json
+          file_document_id: string
+          file_review_id: string
+          file_version_id: string
+          id: string
+          note: string | null
+          organization_id: string
+          program_id: string
+          reviewer_name: string
+          reviewer_user_id: string
+          revision: number
+          state: string
+          version_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          created_by_name: string
+          facts: Json
+          facts_hash: string
+          file_approval: Json
+          file_document_id: string
+          file_review_id: string
+          file_version_id: string
+          id?: string
+          note?: string | null
+          organization_id: string
+          program_id: string
+          reviewer_name: string
+          reviewer_user_id: string
+          revision: number
+          state: string
+          version_number: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string
+          facts?: Json
+          facts_hash?: string
+          file_approval?: Json
+          file_document_id?: string
+          file_review_id?: string
+          file_version_id?: string
+          id?: string
+          note?: string | null
+          organization_id?: string
+          program_id?: string
+          reviewer_name?: string
+          reviewer_user_id?: string
+          revision?: number
+          state?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_fact_versions_file_document_id_fkey"
+            columns: ["file_document_id"]
+            isOneToOne: false
+            referencedRelation: "org_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_fact_versions_file_review_id_fkey"
+            columns: ["file_review_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_fact_versions_file_version_id_fkey"
+            columns: ["file_version_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_fact_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_fact_versions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_documents"
             referencedColumns: ["id"]
           },
         ]
@@ -14494,6 +15378,36 @@ export type Database = {
         }
         Relationships: []
       }
+      uc_signature_file_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          request_hash: string
+          request_id: string
+          request_kind: string
+          revision_id: string
+          signature_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          request_hash: string
+          request_id: string
+          request_kind: string
+          revision_id: string
+          signature_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          request_hash?: string
+          request_id?: string
+          request_kind?: string
+          revision_id?: string
+          signature_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -15318,6 +16232,18 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: number
       }
+      add_org_document_review_comment: {
+        Args: {
+          p_anchor: Json
+          p_expected_workflow_revision: number
+          p_quote: string
+          p_request_id: string
+          p_review_id: string
+          p_text: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       add_signature_comment_by_token: {
         Args: {
           p_author_name: string
@@ -15335,6 +16261,19 @@ export type Database = {
           p_file_mime?: string
           p_file_name?: string
           p_file_url?: string
+          p_signature_id: string
+        }
+        Returns: string
+      }
+      add_signature_revision_v2: {
+        Args: {
+          p_change_summary?: string
+          p_document_html?: string
+          p_expected_revision_id: string
+          p_file_mime?: string
+          p_file_name?: string
+          p_file_url?: string
+          p_revision_id: string
           p_signature_id: string
         }
         Returns: string
@@ -15434,6 +16373,27 @@ export type Database = {
             Args: { p_accepted_terms?: boolean; p_referred_by?: string }
             Returns: string
           }
+      bind_course_program_version: {
+        Args: {
+          p_course_id: string
+          p_expected_revision: number
+          p_organization_id: string
+          p_request_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      bind_group_program_version: {
+        Args: {
+          p_course_id: string
+          p_expected_revision: number
+          p_group_id: string
+          p_organization_id: string
+          p_request_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       bulk_import_broadcast_companies: {
         Args: { p_rows: Json }
         Returns: number
@@ -15701,6 +16661,16 @@ export type Database = {
         Args: { p_campaign_id: string; p_method?: string; p_user_id: string }
         Returns: string
       }
+      confirm_group_program_enrollments: {
+        Args: {
+          p_enrollment_ids: string[]
+          p_expected_binding_revision: number
+          p_group_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       confirm_manual_subscription_invoice: {
         Args: { p_invoice_id: string }
         Returns: Json
@@ -15753,6 +16723,20 @@ export type Database = {
             }
             Returns: string
           }
+      create_external_contract_signature_v2: {
+        Args: {
+          p_admin_email: string
+          p_admin_name?: string
+          p_document_title: string
+          p_file_mime: string
+          p_file_name: string
+          p_file_url: string
+          p_organization_id?: string
+          p_signature_id: string
+          p_summary?: string
+        }
+        Returns: string
+      }
       create_goreltech_group_document_batch: {
         Args: {
           p_actor_id: string
@@ -15810,6 +16794,20 @@ export type Database = {
           p_phone?: string
         }
         Returns: string
+      }
+      create_program_facts_version: {
+        Args: {
+          p_description: string
+          p_expected_revision: number
+          p_facts: Json
+          p_file_version_id: string
+          p_name: string
+          p_organization_id: string
+          p_program_id: string
+          p_request_id: string
+          p_reviewer_id: string
+        }
+        Returns: Json
       }
       create_student_profile_with_capacity: {
         Args: {
@@ -16152,6 +17150,10 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
+      get_course_program_binding: {
+        Args: { p_course_id: string; p_organization_id: string }
+        Returns: Json
+      }
       get_course_review_lesson: {
         Args: { p_course_id: string; p_lesson_id: string }
         Returns: Json
@@ -16357,6 +17359,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_group_program_facts: {
+        Args: {
+          p_enrollment_id?: string
+          p_group_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       get_mailing_deliverability_seed_secret: {
         Args: { p_seed_id: string }
         Returns: {
@@ -16410,6 +17420,10 @@ export type Database = {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number
       }
+      get_org_document_workflow: {
+        Args: { p_document_id: string }
+        Returns: Json
+      }
       get_org_email_delivery_status: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -16448,6 +17462,10 @@ export type Database = {
           with_passport: number
           with_snils: number
         }[]
+      }
+      get_organization_education_profile: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       get_organization_student_capacity: {
         Args: { p_organization_id: string; p_requested_count?: number }
@@ -16524,6 +17542,10 @@ export type Database = {
       }
       get_postpaid_invoice_calculation: {
         Args: { p_invoice_id: string }
+        Returns: Json
+      }
+      get_program_facts: {
+        Args: { p_organization_id: string; p_program_id: string }
         Returns: Json
       }
       get_registration_link_by_token: {
@@ -16811,6 +17833,10 @@ export type Database = {
         }
         Returns: Json
       }
+      list_org_document_review_candidates: {
+        Args: { p_document_id: string }
+        Returns: Json
+      }
       list_org_task_assignees: {
         Args: { _org_id: string }
         Returns: {
@@ -16819,6 +17845,32 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      list_organization_document_applicability_decisions: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      list_organization_document_applicability_history: {
+        Args: {
+          p_before_revision?: number
+          p_limit?: number
+          p_organization_id: string
+          p_requirement_id: string
+        }
+        Returns: Json
+      }
+      list_organization_education_profile_history: {
+        Args: {
+          p_before_revision?: number
+          p_limit?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      list_program_facts: { Args: { p_organization_id: string }; Returns: Json }
+      list_program_facts_candidates: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       list_recycle_bin: {
         Args: {
@@ -17319,6 +18371,16 @@ export type Database = {
           name_raw: string
         }[]
       }
+      resolve_org_document_review_comment: {
+        Args: {
+          p_comment_id: string
+          p_expected_workflow_revision: number
+          p_reply: string
+          p_request_id: string
+          p_resolution: string
+        }
+        Returns: Json
+      }
       restore_course_snapshot: { Args: { _snapshot_id: string }; Returns: Json }
       restore_document: {
         Args: { p_id: string; p_table: string }
@@ -17414,6 +18476,41 @@ export type Database = {
           p_password?: string
           p_sender_id: string
           p_settings: Json
+        }
+        Returns: Json
+      }
+      save_org_document_review_draft: {
+        Args: {
+          p_document_id: string
+          p_expected_document_revision: number
+          p_expected_workflow_revision: number
+          p_links: Json
+          p_request_id: string
+          p_responsible_user_id: string
+          p_reviewer_user_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      save_organization_document_applicability_decision: {
+        Args: {
+          p_catalog_version: string
+          p_decision: string
+          p_expected_revision: number
+          p_organization_id: string
+          p_profile_revision: number
+          p_reason: string
+          p_request_id: string
+          p_requirement_id: string
+        }
+        Returns: Json
+      }
+      save_organization_education_profile: {
+        Args: {
+          p_expected_revision: number
+          p_organization_id: string
+          p_profile: Json
+          p_request_id: string
         }
         Returns: Json
       }
@@ -17626,6 +18723,33 @@ export type Database = {
         }
         Returns: Json
       }
+      transition_org_document_review: {
+        Args: {
+          p_action: string
+          p_approval_date: string
+          p_approval_number: string
+          p_expected_document_revision: number
+          p_expected_workflow_revision: number
+          p_note: string
+          p_request_id: string
+          p_review_id: string
+        }
+        Returns: Json
+      }
+      transition_program_facts_version: {
+        Args: {
+          p_action: string
+          p_expected_revision: number
+          p_note: string
+          p_request_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      uc_capture_program_association: {
+        Args: { p_enrollment: string; p_group: string; p_source: string }
+        Returns: string
+      }
       uc_document_action_allowed: {
         Args: {
           p_action: string
@@ -17744,6 +18868,7 @@ export type Database = {
         Args: { p_course: string; p_org: string; p_user: string }
         Returns: boolean
       }
+      uc_empty_education_profile: { Args: never; Returns: Json }
       uc_finalize_signature: {
         Args: {
           p_agreement: Json
@@ -17762,9 +18887,37 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_mutate_org_document_review: {
+        Args: { p_body: Json; p_operation: string }
+        Returns: Json
+      }
+      uc_mutate_program_facts: {
+        Args: { p_action: string; p_payload: Json }
+        Returns: Json
+      }
       uc_org_document_blob_committed: {
         Args: { p_bucket: string; p_path: string }
         Returns: boolean
+      }
+      uc_org_document_review_actor: {
+        Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_org_document_review_actor_name: {
+        Args: { p_org: string; p_user: string }
+        Returns: string
+      }
+      uc_org_document_review_file_bound: {
+        Args: { p_doc: Database["public"]["Tables"]["org_documents"]["Row"] }
+        Returns: boolean
+      }
+      uc_org_document_review_file_state: {
+        Args: { p_doc: Database["public"]["Tables"]["org_documents"]["Row"] }
+        Returns: string
+      }
+      uc_org_document_review_snapshot: {
+        Args: { p_review: string }
+        Returns: Json
       }
       uc_platform_document_action_allowed: {
         Args: { p_action: string; p_user: string }
@@ -17778,6 +18931,65 @@ export type Database = {
         Args: { p_user: string }
         Returns: boolean
       }
+      uc_program_active_file_proof: {
+        Args: { p_org: string; p_version: string }
+        Returns: boolean
+      }
+      uc_program_document_proof: {
+        Args: { p_group: string; p_org: string; p_users: string[] }
+        Returns: Json
+      }
+      uc_program_file_proof: {
+        Args: { p_org: string; p_version: string }
+        Returns: boolean
+      }
+      uc_program_group_calendar: { Args: { p_group: string }; Returns: Json }
+      uc_program_hash: { Args: { p_value: Json }; Returns: string }
+      uc_program_issuance_lifecycle: {
+        Args: { p_after: Json; p_before: Json }
+        Returns: boolean
+      }
+      uc_program_issuance_source: {
+        Args: {
+          p_course: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: {
+          binding_id: string
+          binding_revision: number
+          course_id: string
+          enrollment_id: string
+          group_id: string
+          group_snapshot: Json
+          id: string
+          legal_enrollment_date: string | null
+          organization_id: string
+          program_snapshot: Json
+          recorded_at: string
+          recorded_by: string | null
+          snapshot_hash: string
+          source: string
+          user_id: string
+          version_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "group_program_enrollment_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      uc_program_render_scalars: {
+        Args: { p_calendar: Json; p_facts: Json }
+        Returns: Json
+      }
+      uc_program_version_snapshot: {
+        Args: { p_version: string }
+        Returns: Json
+      }
       uc_signature_action_allowed: {
         Args: { p_action: string; p_signature: string }
         Returns: boolean
@@ -17790,8 +19002,32 @@ export type Database = {
         }
         Returns: boolean
       }
+      uc_signature_canonical_file: {
+        Args: { p_org: string; p_path: string; p_signature: string }
+        Returns: boolean
+      }
       uc_signature_commercial_sender_allowed: {
         Args: { p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_file_context: {
+        Args: { p_kind?: string; p_revision_id?: string; p_token: string }
+        Returns: Json
+      }
+      uc_signature_file_scope: {
+        Args: { p_bucket: string; p_path: string }
+        Returns: boolean
+      }
+      uc_signature_locator_key: {
+        Args: { p_bucket: string; p_locator: string }
+        Returns: string
+      }
+      uc_signature_object_bound: {
+        Args: { p_bucket: string; p_path: string; p_signature: string }
+        Returns: boolean
+      }
+      uc_signature_object_uploader: {
+        Args: { p_bucket: string; p_path: string; p_user: string }
         Returns: boolean
       }
       uc_signature_storage_read: {
@@ -17805,6 +19041,22 @@ export type Database = {
       uc_signature_token_access_allowed: {
         Args: { p_id: string; p_write?: boolean }
         Returns: boolean
+      }
+      uc_validate_applicability_key: {
+        Args: { p_catalog_version: string; p_requirement_id: string }
+        Returns: undefined
+      }
+      uc_validate_education_profile: {
+        Args: { p_profile: Json }
+        Returns: undefined
+      }
+      uc_validate_org_document_review_links: {
+        Args: { p_links: Json; p_org: string }
+        Returns: undefined
+      }
+      uc_validate_program_facts: {
+        Args: { p_complete?: boolean; p_facts: Json }
+        Returns: undefined
       }
       update_organization_theme: {
         Args: { p_organization_id: string; p_patch: Json }
