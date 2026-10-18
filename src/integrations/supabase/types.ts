@@ -2969,6 +2969,9 @@ export type Database = {
       }
       document_signatures: {
         Row: {
+          certificate_error: string | null
+          certificate_hash: string | null
+          certificate_state: string
           created_at: string
           current_revision_id: string | null
           deleted_at: string | null
@@ -2982,6 +2985,7 @@ export type Database = {
           email_open_token: string | null
           email_opened_at: string | null
           expires_at: string
+          handwritten_scan_hash: string | null
           handwritten_scan_path: string | null
           hidden_for_recipient: boolean
           hidden_for_sender: boolean
@@ -3008,6 +3012,12 @@ export type Database = {
           signed_at: string | null
           signed_document_path: string | null
           signed_ip: string | null
+          signed_organization_inn: string | null
+          signed_organization_name: string | null
+          signed_revision_id: string | null
+          signed_source_bucket: string | null
+          signed_source_hash: string | null
+          signed_source_path: string | null
           signed_user_agent: string | null
           status: string
           template_version_id: string | null
@@ -3015,6 +3025,9 @@ export type Database = {
           viewed_at: string | null
         }
         Insert: {
+          certificate_error?: string | null
+          certificate_hash?: string | null
+          certificate_state?: string
           created_at?: string
           current_revision_id?: string | null
           deleted_at?: string | null
@@ -3028,6 +3041,7 @@ export type Database = {
           email_open_token?: string | null
           email_opened_at?: string | null
           expires_at?: string
+          handwritten_scan_hash?: string | null
           handwritten_scan_path?: string | null
           hidden_for_recipient?: boolean
           hidden_for_sender?: boolean
@@ -3054,6 +3068,12 @@ export type Database = {
           signed_at?: string | null
           signed_document_path?: string | null
           signed_ip?: string | null
+          signed_organization_inn?: string | null
+          signed_organization_name?: string | null
+          signed_revision_id?: string | null
+          signed_source_bucket?: string | null
+          signed_source_hash?: string | null
+          signed_source_path?: string | null
           signed_user_agent?: string | null
           status?: string
           template_version_id?: string | null
@@ -3061,6 +3081,9 @@ export type Database = {
           viewed_at?: string | null
         }
         Update: {
+          certificate_error?: string | null
+          certificate_hash?: string | null
+          certificate_state?: string
           created_at?: string
           current_revision_id?: string | null
           deleted_at?: string | null
@@ -3074,6 +3097,7 @@ export type Database = {
           email_open_token?: string | null
           email_opened_at?: string | null
           expires_at?: string
+          handwritten_scan_hash?: string | null
           handwritten_scan_path?: string | null
           hidden_for_recipient?: boolean
           hidden_for_sender?: boolean
@@ -3100,6 +3124,12 @@ export type Database = {
           signed_at?: string | null
           signed_document_path?: string | null
           signed_ip?: string | null
+          signed_organization_inn?: string | null
+          signed_organization_name?: string | null
+          signed_revision_id?: string | null
+          signed_source_bucket?: string | null
+          signed_source_hash?: string | null
+          signed_source_path?: string | null
           signed_user_agent?: string | null
           status?: string
           template_version_id?: string | null
@@ -8927,12 +8957,20 @@ export type Database = {
           change_summary: string | null
           created_at: string
           document_id: string
+          document_metadata: Json | null
+          event_kind: string | null
           file_name: string | null
           file_path: string | null
           file_size: number | null
           file_url: string | null
           id: string
           organization_id: string
+          request_id: string | null
+          request_payload: Json | null
+          restored_from_version_id: string | null
+          result_revision: number | null
+          storage_metadata: Json | null
+          storage_object_id: string | null
           uploaded_by: string | null
           uploaded_by_name: string | null
           version_number: number
@@ -8941,12 +8979,20 @@ export type Database = {
           change_summary?: string | null
           created_at?: string
           document_id: string
+          document_metadata?: Json | null
+          event_kind?: string | null
           file_name?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
           organization_id: string
+          request_id?: string | null
+          request_payload?: Json | null
+          restored_from_version_id?: string | null
+          result_revision?: number | null
+          storage_metadata?: Json | null
+          storage_object_id?: string | null
           uploaded_by?: string | null
           uploaded_by_name?: string | null
           version_number: number
@@ -8955,12 +9001,20 @@ export type Database = {
           change_summary?: string | null
           created_at?: string
           document_id?: string
+          document_metadata?: Json | null
+          event_kind?: string | null
           file_name?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
           organization_id?: string
+          request_id?: string | null
+          request_payload?: Json | null
+          restored_from_version_id?: string | null
+          result_revision?: number | null
+          storage_metadata?: Json | null
+          storage_object_id?: string | null
           uploaded_by?: string | null
           uploaded_by_name?: string | null
           version_number?: number
@@ -8980,13 +9034,37 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "org_document_versions_restored_from_version_id_fkey"
+            columns: ["restored_from_version_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_versions"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      org_document_write_tokens: {
+        Row: {
+          document_id: string
+          transaction_id: number
+        }
+        Insert: {
+          document_id: string
+          transaction_id: number
+        }
+        Update: {
+          document_id?: string
+          transaction_id?: number
+        }
+        Relationships: []
       }
       org_documents: {
         Row: {
           created_at: string
+          current_version_id: string | null
           deleted_at: string | null
           deleted_by: string | null
+          document_revision: number
           expires_at: string | null
           file_url: string | null
           id: string
@@ -9001,8 +9079,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_version_id?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          document_revision?: number
           expires_at?: string | null
           file_url?: string | null
           id?: string
@@ -9017,8 +9097,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_version_id?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          document_revision?: number
           expires_at?: string | null
           file_url?: string | null
           id?: string
@@ -9032,6 +9114,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "org_documents_current_version_fk"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "org_document_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "org_documents_organization_id_fkey"
             columns: ["organization_id"]
@@ -15426,6 +15515,18 @@ export type Database = {
         Returns: string
       }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
+      commit_org_document_version: {
+        Args: {
+          p_document?: Json
+          p_document_id: string
+          p_expected_revision: number
+          p_organization_id: string
+          p_request_id: string
+          p_restore_version_id?: string
+          p_upload?: Json
+        }
+        Returns: Json
+      }
       complete_final_test_photo: {
         Args: { p_challenge_id: string }
         Returns: Json
@@ -17330,6 +17431,76 @@ export type Database = {
           p_state: string
         }
         Returns: Json
+      }
+      uc_document_billing_upload_access: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
+      uc_document_company_access: {
+        Args: { p_company: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_document_enrollment_access: {
+        Args: { p_enrollment: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_document_org_access: {
+        Args: { p_org: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_document_owns_enrollment: {
+        Args: { p_enrollment: string; p_org: string }
+        Returns: boolean
+      }
+      uc_document_storage_access: {
+        Args: { p_bucket: string; p_name: string; p_write?: boolean }
+        Returns: boolean
+      }
+      uc_document_student_in_org: {
+        Args: { p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_finalize_signature: {
+        Args: {
+          p_agreement: Json
+          p_document_hash: string
+          p_expected_revision_id?: string
+          p_ip?: string
+          p_method?: string
+          p_revision_provided?: boolean
+          p_scan_hash?: string
+          p_scan_path?: string
+          p_source_bucket?: string
+          p_source_hash?: string
+          p_source_path?: string
+          p_token: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
+      uc_org_document_blob_committed: {
+        Args: { p_bucket: string; p_path: string }
+        Returns: boolean
+      }
+      uc_signature_actor_allowed: {
+        Args: {
+          p_recipient?: boolean
+          p_signature_id: string
+          p_write?: boolean
+        }
+        Returns: boolean
+      }
+      uc_signature_storage_read: {
+        Args: { p_bucket: string; p_name: string }
+        Returns: boolean
+      }
+      uc_signature_storage_write: {
+        Args: { p_bucket: string; p_name: string }
+        Returns: boolean
+      }
+      uc_signature_token_access_allowed: {
+        Args: { p_id: string; p_write?: boolean }
+        Returns: boolean
       }
       update_organization_theme: {
         Args: { p_organization_id: string; p_patch: Json }
