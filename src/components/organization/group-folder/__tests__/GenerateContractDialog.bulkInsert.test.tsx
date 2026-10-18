@@ -4,6 +4,7 @@ import { GenerateContractDialog } from "../GenerateContractDialog";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
+  resolveProgram: vi.fn(),
   rpc: vi.fn(),
   invoke: vi.fn(),
   insert: vi.fn(),
@@ -13,6 +14,11 @@ const mocks = vi.hoisted(() => ({
   downloadBlob: vi.fn(),
   toastError: vi.fn(),
   existingRows: [] as any[],
+}));
+
+vi.mock("../../../../../supabase/functions/_shared/program-facts", async importOriginal => ({
+  ...await importOriginal<typeof import("../../../../../supabase/functions/_shared/program-facts")>(),
+  resolveGroupProgramGeneration: mocks.resolveProgram,
 }));
 
 const organization = {
@@ -61,6 +67,8 @@ function queryFor(table: string) {
   const query: any = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
+    is: vi.fn(() => query),
+    range: vi.fn(() => Promise.resolve(result)),
     order: vi.fn(() => query),
     in: vi.fn(() => Promise.resolve(result)),
     maybeSingle: vi.fn(() => Promise.resolve(result)),
@@ -161,6 +169,9 @@ describe("GenerateContractDialog individual bulk persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.from.mockImplementation((table: string) => queryFor(table));
+    mocks.resolveProgram.mockReset().mockResolvedValue({state:"confirmed",reason:null,
+      fields:{program_title:"Утверждённая QA v1",program_hours:16,program_form:"Очно-заочная"},
+      provenance:{schema_version:1,state:"confirmed",organization_id:"org-1",group_id:"group-1",course_id:"qa-course",version_id:"qa-version"}});
     mocks.rpc
       .mockResolvedValueOnce({ data: 1, error: null })
       .mockResolvedValueOnce({ data: 2, error: null });
@@ -206,8 +217,8 @@ describe("GenerateContractDialog individual bulk persistence", () => {
 
   it("вставляет два договора одним массивом только после обоих PDF", async () => {
     mocks.invoke
-      .mockResolvedValueOnce({ data: { path: "org/contracts/student-1.pdf" }, error: null })
-      .mockResolvedValueOnce({ data: { path: "org/contracts/student-2.pdf" }, error: null });
+      .mockResolvedValueOnce({ data: { success:true,renderer:"browserless",path: "org/contracts/student-1.pdf" }, error: null })
+      .mockResolvedValueOnce({ data: { success:true,renderer:"browserless",path: "org/contracts/student-2.pdf" }, error: null });
 
     await openReviewAndSubmit();
 
@@ -239,9 +250,44 @@ describe("GenerateContractDialog individual bulk persistence", () => {
     });
   });
 
+  it("сохраняет неподтверждённую программу только в черновиках с явным источником", async () => {
+    mocks.resolveProgram.mockResolvedValue({state:"unconfirmed",reason:"no_confirmed_group_binding",fields:null,
+      provenance:{schema_version:1,state:"unconfirmed",organization_id:"org-1",group_id:"group-1",course_id:null,reason:"no_confirmed_group_binding"}});
+    mocks.invoke.mockResolvedValue({data:{success:true,renderer:"browserless",path:"qa-only.pdf"},error:null});
+    await openReviewAndSubmit();
+    await waitFor(()=>expect(mocks.insert).toHaveBeenCalledOnce());
+    const rows=mocks.insert.mock.calls[0][0];
+    expect(rows.every((row:any)=>row.status==="draft" && row.variables_snapshot.program_facts.state==="unconfirmed")).toBe(true);
+    expect(rows.every((row:any)=>row.body_html.includes('data-sintagma-program-state="unconfirmed"'))).toBe(true);
+    expect(rows.every((row:any)=>row.contract_number===null)).toBe(true);expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("берёт программу из повторной проверки, защищает её от ручных значений и сохраняет proof", async () => {
+    mocks.resolveProgram.mockResolvedValue({state:"confirmed",reason:null,fields:{program_title:"Утверждённая QA v1",program_hours:16,program_form:"Очно-заочная"},
+      groupFields:{name:"Pinned QA group",start_date:"2026-10-01",end_date:"2026-10-02",training_dates:["2026-10-01"],schedule_text:"Pinned schedule",instructor_name:"Pinned teacher"},
+      facts:{duration_calendar:"2 days",attestation_form:"test",attestation_criteria:"explicit criteria"},provenance:{state:"confirmed",version_id:"qa-version",enrollment_snapshot_ids:["qa-snapshot"]}});
+    mocks.invoke.mockResolvedValue({data:{success:true,renderer:"browserless",path:"qa-only.pdf"},error:null});
+    await openReviewAndSubmit();
+    await waitFor(()=>expect(mocks.insert).toHaveBeenCalledOnce());
+    const rows=mocks.insert.mock.calls[0][0];
+    expect(rows.every((row:any)=>row.variables.program_title==="Утверждённая QA v1" && row.variables.program_hours==="16" && row.variables.program_form==="Очно-заочная")).toBe(true);
+    expect(rows.every((row:any)=>row.variables_snapshot.program_facts.version_id==="qa-version")).toBe(true);
+    expect(rows.every((row:any)=>row.variables.start_date==="01.10.2026" && row.variables.end_date==="02.10.2026"
+      && row.variables.schedule_text==="Режим занятий: Pinned schedule." && row.variables.attestation_form==="test")).toBe(true);
+    expect(mocks.resolveProgram).toHaveBeenCalledWith(expect.anything(),"org-1","group-1",["student-1"]);
+    expect(mocks.resolveProgram).toHaveBeenCalledWith(expect.anything(),"org-1","group-1",["student-2"]);
+  });
+
+  it("при недоступном источнике программы не расходует номер и не создаёт PDF или договор", async () => {
+    mocks.resolveProgram.mockRejectedValue(new Error("Programme source unavailable"));
+    await openReviewAndSubmit();
+    await waitFor(()=>expect(mocks.toastError).toHaveBeenCalledWith("Ошибка генерации",expect.objectContaining({description:"Programme source unavailable"})));
+    expect(mocks.rpc).not.toHaveBeenCalled();expect(mocks.invoke).not.toHaveBeenCalled();expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
   it("не делает insert, если второй PDF не сохранён", async () => {
     mocks.invoke
-      .mockResolvedValueOnce({ data: { path: "org/contracts/student-1.pdf" }, error: null })
+      .mockResolvedValueOnce({ data: { success:true,renderer:"browserless",path: "org/contracts/student-1.pdf" }, error: null })
       .mockResolvedValueOnce({ data: null, error: new Error("second PDF failed") });
 
     await openReviewAndSubmit();
@@ -259,8 +305,8 @@ describe("GenerateContractDialog individual bulk persistence", () => {
 
   it("сверяет уже сохранённый пакет, если HTTP-ответ bulk insert потерян", async () => {
     mocks.invoke
-      .mockResolvedValueOnce({ data: { path: "org/contracts/student-1.pdf" }, error: null })
-      .mockResolvedValueOnce({ data: { path: "org/contracts/student-2.pdf" }, error: null });
+      .mockResolvedValueOnce({ data: { success:true,renderer:"browserless",path: "org/contracts/student-1.pdf" }, error: null })
+      .mockResolvedValueOnce({ data: { success:true,renderer:"browserless",path: "org/contracts/student-2.pdf" }, error: null });
     mocks.insert.mockImplementationOnce(async (rows: any[]) => {
       mocks.existingRows = rows.map((row) => ({
         contract_number: row.contract_number,
@@ -283,7 +329,7 @@ describe("GenerateContractDialog individual bulk persistence", () => {
 
   it("при неподтверждённом transport error блокирует закрытие и повторяет те же номера", async () => {
     mocks.invoke
-      .mockResolvedValue({ data: { path: "org/contracts/student.pdf" }, error: null });
+      .mockResolvedValue({ data: { success:true,renderer:"browserless",path: "org/contracts/student.pdf" }, error: null });
     mocks.insert
       .mockResolvedValueOnce({ error: { message: "Failed to fetch", code: "" } })
       .mockResolvedValueOnce({ error: null });

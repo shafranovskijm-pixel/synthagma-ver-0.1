@@ -8,6 +8,7 @@ import { GORELTECH_ORGANIZATION_ID } from "@/lib/group-docs/clientProfile";
 
 const mocks = vi.hoisted(() => ({
   useGroupDocuments: vi.fn(),
+  resolveProgram: vi.fn(),
   useGroupFactualData: vi.fn(),
   generatePackage: vi.fn(),
   generateDocument: vi.fn(),
@@ -27,6 +28,11 @@ const mocks = vi.hoisted(() => ({
     individualProps: null as any,
     legalProps: null as any,
   },
+}));
+
+vi.mock("../../../../../supabase/functions/_shared/program-facts", async importOriginal => ({
+  ...await importOriginal<typeof import("../../../../../supabase/functions/_shared/program-facts")>(),
+  resolveGroupProgramGeneration: mocks.resolveProgram,
 }));
 
 vi.mock("@/hooks/useGroupDocuments", () => ({
@@ -174,6 +180,8 @@ describe("GroupDocumentsFolder package contract routing", () => {
     mocks.dialogState.individualProps = null;
     mocks.dialogState.legalProps = null;
     mocks.toastError.mockReset();
+    mocks.resolveProgram.mockReset().mockResolvedValue({state:"unconfirmed",reason:"no_confirmed_group_binding",fields:null,
+      provenance:{schema_version:1,state:"unconfirmed",organization_id:"org-1",group_id:"group-1",course_id:null,reason:"no_confirmed_group_binding"}});
     mocks.toastSuccess.mockReset();
     mocks.downloadPrivateFile.mockReset();
     mocks.downloadPrivateFile.mockResolvedValue(true);

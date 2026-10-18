@@ -7,8 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { ProgramFactsPanel } from "./programs/ProgramFactsPanel";
 interface CourseProgramsListProps {
   organizationId: string | null;
+  canConfigure?: boolean;
 }
 
 interface CourseWithProgram {
@@ -19,7 +21,7 @@ interface CourseWithProgram {
   order_pending: boolean;
 }
 
-export function CourseProgramsList({ organizationId }: CourseProgramsListProps) {
+export function CourseProgramsList({ organizationId, canConfigure = false }: CourseProgramsListProps) {
   const [courses, setCourses] = useState<CourseWithProgram[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState<string | null>(null);
@@ -135,11 +137,13 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
           <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Образовательные программы</p>
-            Синтагма не останавливает обучение, если файл программы не прикреплён. Прикреплённый
-            файл пока не подставляется в курс, договоры или пакет документов автоматически.
+            Синтагма не останавливает обучение, если файл программы не прикреплён. Сам файл
+            не подтверждает сведения программы. Для документов группы отдельно утвердите сведения и выберите версию программы.
           </div>
         </CardContent>
       </Card>
+
+      {organizationId && <ProgramFactsPanel organizationId={organizationId} canConfigure={canConfigure} courses={courses.map(c => ({ id: c.id, title: c.title }))} />}
 
       {courses.length === 0 ? (
         <Card>
@@ -162,7 +166,7 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
                       {course.has_program ? (
                         <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">
                           <Check className="w-3 h-3 mr-1" />
-                          Программа добавлена
+                          Файл программы добавлен
                         </Badge>
                       ) : course.order_pending ? (
                         <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
@@ -171,7 +175,7 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs text-muted-foreground">
-                          Нет программы
+                          Нет файла программы
                         </Badge>
                       )}
                     </div>

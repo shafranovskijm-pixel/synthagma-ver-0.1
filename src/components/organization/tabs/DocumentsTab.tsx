@@ -543,7 +543,7 @@ function DocumentsTabContent({
           {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
           {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={canReadFrdo ? () => h.setActiveTab("frdo") : undefined} />}
-          {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} />}
+          {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} canConfigure={canWriteDocuments} />}
           {h.activeTab === "journals" && canReadJournals && <JournalsManager organizationId={organizationId!} />}
           {h.activeTab === "frdo" && canReadFrdo && <FRDOManager organizationId={organizationId!} />}
           {h.activeTab === "signatures" && (
@@ -619,9 +619,9 @@ function DocumentsTabContent({
             const { data: companies } = await supabase.from("companies").select("id").eq("organization_id", organizationId).ilike("name", companyName).limit(1);
             const companyId = companies?.[0]?.id;
             if (companyId) {
-              await supabase.from("company_documents").insert({
+              const { error } = await supabase.from("company_documents").insert({
                 company_id: companyId,
-                name: `Договор №${contractNumber} — ${companyName}`,
+                name: `Черновик договора №${contractNumber} — ${companyName}`,
                 type: "contract",
                 contract_number: contractNumber,
                 contract_date: contractDate,
@@ -629,8 +629,9 @@ function DocumentsTabContent({
                 students_count: studentsCount,
                 course_id: courseId || null,
               });
+              if (error) throw error;
               await h.refreshCounterpartyDocs();
-              toast.success("Договор сохранён");
+              toast.success("Черновик сохранён");
             }
             h.setShowContractGenerator(false);
           }}

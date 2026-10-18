@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { localDateIso } from "@/lib/date/localDate";
 import { createQueryWrapper } from "@/test/queryWrapper";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { supabase } from "@/integrations/supabase/client";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -152,5 +153,23 @@ describe("useContractGenerator", () => {
     });
 
     expect(result.current.totalPrice).toBe(1000 * 2 + 500 * 3);
+  });
+
+  it("labels a standalone multi-course preview and saved HTML as an unconfirmed programme draft", async () => {
+    vi.mocked(supabase.from).mockImplementation(((table: string) => {
+      const result = {data:table==="courses"?[{id:"qa-course",title:"QA course",duration:"16"}]:table==="organizations"?{}:[],error:null};
+      const q:any={select:()=>q,eq:()=>q,order:async()=>result,single:async()=>result};return q;
+    }) as any);
+    const props = { ...defaultProps, preselectedCompany: { id: "qa-company", name: "QA company", inn: null, kpp: null,
+      ogrn: null, address: null, director: null } };
+    const { result } = renderHook(() => useContractGenerator(props), { wrapper: createQueryWrapper() });
+    await waitFor(()=>expect(result.current.courses).toHaveLength(1));
+    act(() => { result.current.updateProgram(0, { courseId: "qa-course", price: "10", studentsCount: "1" }); });
+    act(() => { result.current.handlePreview(); });
+    expect(result.current.previewHtml).toContain('data-sintagma-program-state="unconfirmed"');
+    expect(result.current.previewHtml).toContain("утверждённая программа и её связь с обучением не подтверждены");
+    await act(async () => { await result.current.handleSaveContract(); });
+    expect(props.onSave).toHaveBeenCalledWith(expect.stringContaining('data-sintagma-program-state="unconfirmed"'),
+      expect.any(String), "QA company", "qa-course", 10, 1, expect.any(String));
   });
 });

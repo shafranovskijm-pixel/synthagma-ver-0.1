@@ -1,0 +1,656 @@
+{
+  "release": "uc-program-facts-20261018",
+  "preparedOnly": true,
+  "migrationCount": 1,
+  "batchSha256": "e9b50a1c00d88fccb826adc6f70f728f84f352c5232a607252e01c3d6c335142",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261018111000_uc_program_facts.sql",
+      "version": "20261018111000",
+      "name": "uc_program_facts",
+      "sourceSha256": "3b2715e0eafc568f05562800f88bcd018b9059de305c3c9c7e6e30a5f00f7eaf",
+      "sourceMd5": "e78179ae3042db206bd562914c87442d",
+      "executableMd5": "e78179ae3042db206bd562914c87442d"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    },
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-document-review-20261018/release-manifest.json",
+    "sourceSha256": "5f3a2a129006f775de843aa9be4c1be553cb1f5dca47fb59a19eb666413f2568"
+  },
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens",
+    "public.org_document_reviews",
+    "public.org_document_review_comments",
+    "public.org_document_review_events",
+    "public.org_document_review_requests"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.uc_document_action_allowed(uuid,text,uuid,uuid)",
+      "definition_md5": "79c190a053f711dc8110e9d451b1a56c"
+    },
+    {
+      "signature": "public.uc_document_record_scope(uuid,uuid,uuid,uuid,uuid)",
+      "definition_md5": "c2d296f2ede0051919f375eaf1ce6802"
+    },
+    {
+      "signature": "public.uc_org_document_review_actor(uuid,uuid)",
+      "definition_md5": "89738b475b21d69f496a543ceb97da49"
+    },
+    {
+      "signature": "public.uc_org_document_review_file_bound(public.org_documents)",
+      "definition_md5": "52a37a3afd327393cc73b8af2a784316"
+    },
+    {
+      "signature": "public.sync_profile_group_course_enrollment()",
+      "definition_md5": "3608c6747572c6a98830b62cfb5b4238"
+    },
+    {
+      "signature": "public.sync_group_course_enrollments()",
+      "definition_md5": "97b3ba66ec588a9fa3d77bcd25f57f7a"
+    },
+    {
+      "signature": "public.uc_org_document_blob_committed(text,text)",
+      "definition_md5": "bc750c58e3d50e33bfd6bf6844fffbaa"
+    },
+    {
+      "signature": "public.auto_create_education_document()",
+      "definition_md5": "6be323dfb0295c9b083fb0273ad7d8ff"
+    },
+    {
+      "signature": "public.issue_education_document_batch(uuid,uuid,uuid,jsonb)",
+      "definition_md5": "669c0cd4987e806846f03a4e82f8be15"
+    }
+  ],
+  "immutableStorage": [
+    {
+      "definition": "{\"cmd\": \"DELETE\", \"qual\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\", \"roles\": [\"authenticated\"], \"tablename\": \"objects\", \"permissive\": \"RESTRICTIVE\", \"policyname\": \"uc_org_document_blob_no_delete\", \"schemaname\": \"storage\", \"with_check\": null}",
+      "definition_md5": "c82f6a57a88835e478dba6728f01489b",
+      "identity": "uc_org_document_blob_no_delete",
+      "kind": "policy"
+    },
+    {
+      "definition": "{\"cmd\": \"UPDATE\", \"qual\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\", \"roles\": [\"authenticated\"], \"tablename\": \"objects\", \"permissive\": \"RESTRICTIVE\", \"policyname\": \"uc_org_document_blob_no_overwrite\", \"schemaname\": \"storage\", \"with_check\": \"(NOT uc_org_document_blob_committed(bucket_id, name))\"}",
+      "definition_md5": "c5030108254eabf8300b0c94b9d7ef4e",
+      "identity": "uc_org_document_blob_no_overwrite",
+      "kind": "policy"
+    }
+  ],
+  "expectedFunctions": [
+    {
+      "signature": "bind_course_program_version(uuid,uuid,uuid,bigint,uuid)",
+      "definition_md5": "2850cb622693cd6884abfff49d6041c6",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "bind_group_program_version(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "definition_md5": "8e0a14efd3d490f0c758d5230109db6b",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "confirm_group_program_enrollments(uuid,uuid,uuid[],bigint,uuid)",
+      "definition_md5": "1185272fb3dd32d9c7ce5bab65167e69",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "create_program_facts_version(uuid,uuid,text,text,uuid,uuid,jsonb,bigint,uuid)",
+      "definition_md5": "3a95ef14bfd41278665faff9d3f06d36",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "get_course_program_binding(uuid,uuid)",
+      "definition_md5": "8d1a9fbded5d900503b8cd59d6038dd9",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "get_group_program_facts(uuid,uuid,uuid)",
+      "definition_md5": "0352674692dfd942cc78a0e3edfb11e2",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "get_program_facts(uuid,uuid)",
+      "definition_md5": "19250e59fe6f0ab7b5826fdf03ba2355",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "list_program_facts(uuid)",
+      "definition_md5": "14c7305aed74b20a115d356a817b5318",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "list_program_facts_candidates(uuid)",
+      "definition_md5": "e478098e846f30f545ea1ab365e20c59",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "transition_program_facts_version(uuid,bigint,text,text,uuid)",
+      "definition_md5": "fb9c119c638540773fca7be8189b7a32",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_capture_program_association(uuid,uuid,text)",
+      "definition_md5": "f2ffe10db5620033886e52d9773598ed",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_capture_program_association_event()",
+      "definition_md5": "2ce633cf62c224ab8cb15171b799d2d3",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_bound_program_group()",
+      "definition_md5": "fb1210ed77d70500a78ce06cfe72a97f",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_program_artifact()",
+      "definition_md5": "eb7789a817440fd1ecadbbdec4f0f2a6",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_program_history()",
+      "definition_md5": "43ac0a680636b00151d064691eda14ea",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_program_issuance()",
+      "definition_md5": "50047dc5a19f847574dbab5fa188eb63",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_program_navigation()",
+      "definition_md5": "0026bfe2d2d00c1ed0885465214731bf",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_mutate_program_facts(text,jsonb)",
+      "definition_md5": "2506c8cf781082e4a96f6a375681f5a8",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_active_file_proof(uuid,uuid)",
+      "definition_md5": "907b8b6273881c72189003cd03e28824",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_document_proof(uuid,uuid,uuid[])",
+      "definition_md5": "1234dee93c311e31a7ebaff2f6ba8624",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_file_proof(uuid,uuid)",
+      "definition_md5": "129853325186d540264e5d10c6a36ad8",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_group_calendar(uuid)",
+      "definition_md5": "203a22597c8e1bbe78ef9845996911ad",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_hash(jsonb)",
+      "definition_md5": "e1aa6923b594879f3e9ec51df370efca",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_issuance_lifecycle(jsonb,jsonb)",
+      "definition_md5": "8db379db82788ff4c52c5aab2da45f96",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_issuance_source(uuid,uuid,uuid,uuid,uuid)",
+      "definition_md5": "e174da72ef5e0ea7f3ac2396ae8b6b6c",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_render_scalars(jsonb,jsonb)",
+      "definition_md5": "f358f0ce29cacae2ad2ac0cdfea7a9c8",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_program_version_snapshot(uuid)",
+      "definition_md5": "504b041bc31b62df181d1e6622c014ca",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_record_program_issuance()",
+      "definition_md5": "a836fabb52f6ea4b5df6328ceecaa1eb",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_validate_program_facts(jsonb,boolean)",
+      "definition_md5": "4d96f07c4a5183dc1a1a2d18dc13c5ff",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedChangedFunctions": [
+    {
+      "signature": "auto_create_education_document()",
+      "definition_md5": "2d8d598ea6a1b372292c04a688f52221"
+    },
+    {
+      "signature": "issue_education_document_batch(uuid,uuid,uuid,jsonb)",
+      "definition_md5": "b2efe139105dd68d07ccd06f978d45ce"
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "program_fact_states",
+      "schemaMd5": "2179e08e70164b919a3c1560bfc385b5"
+    },
+    {
+      "table": "program_fact_versions",
+      "schemaMd5": "b8f41d760ac1cfd2f251d884b6ff2b94"
+    },
+    {
+      "table": "course_program_bindings",
+      "schemaMd5": "5273999e446fdd3fbc2ea2b8f2709708"
+    },
+    {
+      "table": "group_program_bindings",
+      "schemaMd5": "3b0d3e152d262d6d56b429f404e192fd"
+    },
+    {
+      "table": "group_program_enrollment_snapshots",
+      "schemaMd5": "240e627838876757c5767a0c3704f958"
+    },
+    {
+      "table": "program_fact_events",
+      "schemaMd5": "6885a0c599f65bfdf5e727b6328085e9"
+    },
+    {
+      "table": "program_fact_requests",
+      "schemaMd5": "651dd71b03321e871ae1921204974abe"
+    },
+    {
+      "table": "education_document_program_sources",
+      "schemaMd5": "7e0b777c80952d4cf39341d956870d19"
+    }
+  ],
+  "expectedPolicies": [
+    {
+      "policyname": "uc_program_legacy_no_delete",
+      "definition_md5": "9cc125f71d4da21d3309d3b3d507d72a"
+    },
+    {
+      "policyname": "uc_program_legacy_no_insert",
+      "definition_md5": "a5e41a46952a873a1edd0668afc2f81f"
+    },
+    {
+      "policyname": "uc_program_legacy_no_update",
+      "definition_md5": "25d79867451c26ec51f8b4758f3892e3"
+    },
+    {
+      "policyname": "uc_program_legacy_read_boundary",
+      "definition_md5": "87b060cb1371817ee66ef0b1ebe6ac40"
+    }
+  ],
+  "expectedTriggers": [
+    {
+      "schema_name": "public",
+      "table_name": "education_document_program_sources",
+      "name": "uc_program_history_immutable",
+      "definition_md5": "228d7e4bae754dbbe5ea6f1ef42b81a4",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "education_document_records",
+      "name": "uc_program_issuance_guard",
+      "definition_md5": "0495910d4bffe5cdb7eaab5dfd6252ef",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "education_document_records",
+      "name": "uc_program_issuance_record",
+      "definition_md5": "234361eda5aa9769a4c8268afce7b6c6",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "enrollments",
+      "name": "zzz_uc_program_association",
+      "definition_md5": "6e26feb4928c9c33b522e3006b5ff744",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "group_documents",
+      "name": "uc_program_artifact_guard",
+      "definition_md5": "da1b5d26746c0ba7a46757b79f8a18f9",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "group_program_enrollment_snapshots",
+      "name": "uc_program_history_immutable",
+      "definition_md5": "7919212580ac825a1dc6a27754e8d598",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "org_contracts",
+      "name": "uc_program_artifact_guard",
+      "definition_md5": "e6a5271a9db92986265bcd1791824c02",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "profiles",
+      "name": "zzz_uc_program_association",
+      "definition_md5": "f8df32e5db3950ed3e7fe7495530bdfd",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "program_documents",
+      "name": "uc_program_navigation_guard",
+      "definition_md5": "e8f0786ef86f5dd45bb9f78fc0508d0b",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "program_fact_events",
+      "name": "uc_program_history_immutable",
+      "definition_md5": "6e7f8118b160196fbe41414979d2034a",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "program_fact_requests",
+      "name": "uc_program_history_immutable",
+      "definition_md5": "ac6ed7e808f245ec863e17760216d515",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "program_fact_versions",
+      "name": "uc_program_history_immutable",
+      "definition_md5": "c8c208fabb573d9106088e15f2996511",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "program_folders",
+      "name": "uc_program_navigation_guard",
+      "definition_md5": "696c46a98d4e787819cafd64c5cca95b",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "student_group_memberships",
+      "name": "zzz_uc_program_association",
+      "definition_md5": "2f0e36894c9171cff26cbc0096715ab8",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "student_groups",
+      "name": "uc_program_frozen_group",
+      "definition_md5": "6196e3183245a119387c9fd17506cdfe",
+      "enabled": "O"
+    }
+  ],
+  "productFiles": [
+    {
+      "path": "src/components/organization/CourseProgramsList.tsx",
+      "sourceSha256": "1f8db9f188d0050a7555bfc059f6d7fb9e840b08b6951843153e8f4ed308d6c5"
+    },
+    {
+      "path": "src/components/organization/group-folder/GenerateContractDialog.tsx",
+      "sourceSha256": "b4a97ae729c628d20d7e8f45e2218b8277f73c97246e60896a27e71a34d8b709"
+    },
+    {
+      "path": "src/components/organization/group-folder/GenerateDocxContractDialog.tsx",
+      "sourceSha256": "be40aafe15187ee1788f761be33330c1989d59efa6500d10e8dc5db84520afac"
+    },
+    {
+      "path": "src/components/organization/group-folder/GroupDocumentsFolder.tsx",
+      "sourceSha256": "e549b837790de411ccd813597d319a0258dcb5bdc3c54615625ed3d7b191e31a"
+    },
+    {
+      "path": "src/components/organization/programs/GroupProgramFactsPanel.tsx",
+      "sourceSha256": "7c9d20d1e6961fbb58cf03b9651cd8d67d39cf8ebae5d9b12b01d53fe418b49d"
+    },
+    {
+      "path": "src/components/organization/programs/ProgramFactsPanel.tsx",
+      "sourceSha256": "8e604d5e434663e32c38c0b273f184dceee1615970e5320f4b584718ee6fdef1"
+    },
+    {
+      "path": "src/components/organization/programs/groupProgramPresentation.ts",
+      "sourceSha256": "34696fa857e4d31536260cfe3c5199c87b373a01599cc3625981b1a988e535f1"
+    },
+    {
+      "path": "src/components/organization/tabs/DocumentsTab.tsx",
+      "sourceSha256": "89ecefe699fe4e2062725536d7d3a20335b1f0041169fe914dea67adbcc31247"
+    },
+    {
+      "path": "src/components/organization/tabs/GroupFolderTab.tsx",
+      "sourceSha256": "76f31adbd9ba2f5aab78d9cea74575192c9687aaa7ae9fcf7f6d87ac6f849425"
+    },
+    {
+      "path": "src/hooks/useContractGenerator.ts",
+      "sourceSha256": "bf4c7dcc099490776ef5aaa066261600b388c75ad8a2b58933f6d2ddbe8c3708"
+    },
+    {
+      "path": "src/hooks/useGroupDocuments.ts",
+      "sourceSha256": "86964bddf000a1683653ba53d2af58efbebce5c73528cb9d3e05defa32cda6a6"
+    },
+    {
+      "path": "src/hooks/useProgramFacts.ts",
+      "sourceSha256": "20cbc516e91539118bbc332274f8d6dbd2eeaa4e7deed989b1231d982a676efb"
+    },
+    {
+      "path": "src/lib/group-docs/generate.ts",
+      "sourceSha256": "8081d09c5b2ecd7dc5100ba3319671f6708e1d1c6abd7b3a550b5659659f6cd9"
+    },
+    {
+      "path": "src/lib/group-docs/schema.ts",
+      "sourceSha256": "63e43ea027fe96e72ab1df4c09be5ce7868d3826a6864bd6506181f09bfe6a10"
+    },
+    {
+      "path": "src/lib/programFacts.ts",
+      "sourceSha256": "4e834021e23ac0d482b952f481a7ff3646698e54e4dbc3b72baae94347380383"
+    },
+    {
+      "path": "supabase/functions/_shared/program-facts.ts",
+      "sourceSha256": "cc13528d4d4d5183c6580f57f99983a1758718d522ed4511c2533e4fa347b660"
+    },
+    {
+      "path": "supabase/functions/compile-docx-contract/index.ts",
+      "sourceSha256": "fe61d641831fca182abed7ff7eee836e5b95eebcfd0d49368009d31310719db1"
+    },
+    {
+      "path": "supabase/functions/compile-group-class-journal/index.ts",
+      "sourceSha256": "a771b33809af7733e64d671e9851190a569d2e52d446b45ce46d2d433481432d"
+    }
+  ],
+  "edgeFunctions": [
+    "compile-docx-contract",
+    "compile-group-class-journal"
+  ],
+  "deploymentOrder": [
+    "Read-only preflight: exact100-110 ledger, previous postcheck, authority and captured issuance definitions",
+    "Submit entire111 transaction once; require every postcheck flag true and preservation guards passed",
+    "Deploy exact companion compiler Edge source graph and UI; new unconfirmed artifacts remain drafts without official numbers",
+    "Root-owned rollback-only production QA then real browser acceptance; no PEP, SMTP, real issuance or backfill during release"
+  ]
+}

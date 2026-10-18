@@ -79,6 +79,7 @@ export function useGroupDocuments(organizationId: string | null, groupId: string
       fill_mode: d.fill_mode,
       layout_format: d.layout_format,
       source_note: d.source_note ?? null,
+      variables_snapshot: d.variables_snapshot ?? null,
     }));
     const { data, error } = await (supabase as any).rpc("create_group_document_batch", {
       p_organization_id: organizationId,

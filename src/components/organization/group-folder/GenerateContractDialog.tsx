@@ -45,6 +45,7 @@ import {
 } from "@/lib/contracts/dialogLifecycle";
 import { htmlToDocxBlob, htmlDocsToZipBlob, downloadBlob, sanitizeFileName } from "@/lib/docx/htmlToDocx";
 import { localDateIso } from "@/lib/date/localDate";
+import { resolveGroupProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE, programGenerationScalars, programDate, type ProgramGeneration } from "../../../../supabase/functions/_shared/program-facts";
 
 interface Student { user_id: string; full_name: string; email?: string | null; passport?: string | null; address?: string | null; phone?: string | null; }
 interface Template { id: string; name: string; body_html: string; is_default?: boolean | null; updated_at?: string | null; counterparty_type?: string | null; version?: number | null; }
@@ -152,6 +153,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [persistenceUncertain, setPersistenceUncertain] = useState(false);
+  const [programme, setProgramme] = useState<ProgramGeneration | null>(null);
 
   // Reset when dialog opens
   useEffect(() => {
@@ -304,9 +306,9 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
       }));
   }, [multiStudentIds, primaryStudent, students, plan, selectedCourse]);
 
-  const programHours = courseHoursOverride || (plan?.hours != null ? String(plan.hours) : "") || (selectedCourse?.duration || "");
-  const programForm = courseFormOverride || plan?.form || "";
-  const programTitle = programTitleOverride || plan?.title || selectedCourse?.title || "";
+  const programHours = programme?.fields ? String(programme.fields.program_hours) : courseHoursOverride || (plan?.hours != null ? String(plan.hours) : "") || (selectedCourse?.duration || "");
+  const programForm = programme?.fields?.program_form ?? (courseFormOverride || plan?.form || "");
+  const programTitle = programme?.fields?.program_title ?? (programTitleOverride || plan?.title || selectedCourse?.title || "");
 
   const allTplVars = useMemo(() => selectedTpl ? extractVariables(selectedTpl.body_html) : [], [selectedTpl]);
   const tplVarSet = useMemo(() => new Set(allTplVars), [allTplVars]);
@@ -315,7 +317,10 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     [tplVarSet],
   );
 
-  const buildVariables = (numberValue: string, jobStudents?: ScenarioStudent[]): TemplateVariables => {
+  const buildVariables = (numberValue: string, jobStudents?: ScenarioStudent[], source = programme): TemplateVariables => {
+    const titleValue = source?.fields?.program_title ?? programTitle;
+    const hoursValue = source?.fields ? String(source.fields.program_hours) : programHours;
+    const formValue = source?.fields?.program_form ?? programForm;
     const rows = (jobStudents
       ? jobStudents.map(s => ({ full_name: s.full_name, email: s.email, program: programTitle }))
       : selectedStudentRows);
@@ -349,7 +354,19 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
     if (counterparty === "legal" && selectedCompany) {
       Object.assign(base, buildCompanyVariables(selectedCompany));
     }
-    return { ...base, ...extra };
+    return { ...base, ...extra, ...(source?.fields ? {
+      ...Object.fromEntries(Object.entries(programGenerationScalars(source)).map(([key, value]) => [key.toLowerCase(), value])),
+      start_date: programDate(source.groupFields?.start_date ?? ""), end_date: programDate(source.groupFields?.end_date ?? ""),
+      group_name: source.groupFields?.name ?? "", schedule_text: source.groupFields?.schedule_text
+        ? `Режим занятий: ${source.groupFields.schedule_text}.` : "Режим занятий в настройках группы не задан.",
+      instructor_name: source.groupFields?.instructor_name ?? "", training_dates: source.groupFields?.training_dates.join(", ") ?? "",
+      course_title: titleValue, course_hours: hoursValue, course_duration: ` продолжительностью ${hoursValue} часов`,
+      program_title: titleValue, program_hours: hoursValue, program_form: formValue,
+      programs_table: buildProgramsTable([{ title: titleValue, hours: Number(hoursValue), form: formValue, count: rows.length || null }]),
+      students_table: buildStudentsTable(rows.map(row => ({ ...row, program: titleValue }))),
+      // Mutable course plan HTML is not the approved immutable programme file.
+      training_plan: "",
+    } : {}) };
   };
 
 
@@ -371,6 +388,15 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         };
       });
   }, [multiStudentIds, primaryStudent, students, studentDetails, studentOverrides]);
+
+  const programRosterKey = scenarioStudents.map(s => s.user_id).sort().join(",");
+  useEffect(() => {
+    let cancelled = false; setProgramme(null);
+    if (open) void resolveGroupProgramGeneration(supabase, organizationId, groupId, programRosterKey ? programRosterKey.split(",") : [])
+      .then(value => { if (!cancelled) setProgramme(value); })
+      .catch(() => { if (!cancelled) setProgramme(null); });
+    return () => { cancelled = true; };
+  }, [open, organizationId, groupId, programRosterKey]);
 
   const previewVariables = useMemo(
     () => buildVariables(previewNumber || "", scenarioStudents.length ? scenarioStudents : undefined),
@@ -499,11 +525,12 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         produced = immutableRetry.produced;
         contractRows = immutableRetry.contractRows;
       } else {
+        const source = await resolveGroupProgramGeneration(supabase, organizationId, groupId, scenarioStudents.map(s => s.user_id));
         const jobs = planContractJobs(counterparty, {
           org: orgReq,
           students: scenarioStudents,
           company: selectedCompany || null,
-          programTitle,
+          programTitle: source.fields?.program_title ?? programTitle,
           price,
           date,
           templateId,
@@ -513,19 +540,21 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
         contractRows = [];
 
         for (const [index, job] of jobs.entries()) {
-          const hasAssignedNumber = assignedNumbers.current.has(job.key);
-          const number = hasAssignedNumber
+          const jobSource = await resolveGroupProgramGeneration(supabase, organizationId, groupId, job.students.map(s => s.user_id));
+          const hasAssignedNumber = !!assignedNumbers.current.get(job.key);
+          const number = jobSource.state === "unconfirmed" ? "" : hasAssignedNumber
             ? assignedNumbers.current.get(job.key)!
             : await resolveNumber(index);
           if (!hasAssignedNumber) assignedNumbers.current.set(job.key, number);
-          const vars = buildVariables(number, job.students);
+          const vars = buildVariables(number, job.students, jobSource);
           const bodyHtml = renderTemplate(selectedTpl.body_html, vars, RAW_KEYS);
           const leftover = findUnresolvedPlaceholders(bodyHtml);
           if (leftover.length > 0) {
             throw new Error(`Не заполнены переменные шаблона: ${leftover.join(", ")}`);
           }
           const title = number ? `Договор № ${number}` : job.label;
-          const fullDoc = wrapAsPrintableDocument(bodyHtml, title);
+          const fullDoc = wrapAsPrintableDocument(jobSource.state === "unconfirmed"
+            ? `<p data-sintagma-program-state="unconfirmed">${UNCONFIRMED_PROGRAM_NOTICE}</p>${bodyHtml}` : bodyHtml, title);
 
           const safe = `${title} ${counterparty === "individual" ? job.students[0]?.full_name || "" : ""}`.trim();
           const fileName = sanitizeFileName(safe || "contract", "pdf").replace(/[^\w.\-]+/g, "_");
@@ -550,13 +579,14 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
               _sintagma_generation_id: generationId.current,
               _sintagma_job_key: job.key,
             },
+            variables_snapshot: { program_facts: jobSource.provenance },
             students: job.students.map(st => ({ user_id: st.user_id, full_name: st.full_name, email: st.email || null })),
             body_html: fullDoc,
             name: counterparty === "individual" ? `${title} — ${job.students[0]?.full_name || ""}`.trim() : title,
             contract_number: number || null,
             contract_date: date || null,
             file_path: pdfPath,
-            status: "active",
+            status: jobSource.state === "confirmed" ? "active" : "draft",
           });
 
           produced.push({
@@ -997,7 +1027,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                 <div className="rounded-xl border border-border p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="flex items-center gap-1.5"><BookOpen className="w-4 h-4" />Программа обучения</Label>
-                    {courseId && (
+                    {courseId && !programme?.fields && (
                       <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setPlanOpen(true)}>
                         Учебный план
                         <Badge variant={plan?.plan_html ? "default" : "secondary"} className="ml-1 text-[10px]">
@@ -1006,7 +1036,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                       </Button>
                     )}
                   </div>
-                  <Select value={courseId} onValueChange={setCourseId}>
+                  <Select value={courseId} onValueChange={setCourseId} disabled={!!programme?.fields}>
                     <SelectTrigger className="h-9"><SelectValue placeholder={courses.length ? "Выберите курс" : "Нет курсов"} /></SelectTrigger>
                     <SelectContent>
                       {courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
@@ -1015,13 +1045,14 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-xs text-muted-foreground">Часов</Label>
-                      <Input value={courseHoursOverride} onChange={e => setCourseHoursOverride(e.target.value)} placeholder="40" className="h-9" />
+                      <Input value={programme?.fields ? programHours : courseHoursOverride} onChange={e => setCourseHoursOverride(e.target.value)} disabled={!!programme?.fields} placeholder="40" className="h-9" />
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Форма обучения</Label>
-                      <Input value={courseFormOverride} onChange={e => setCourseFormOverride(e.target.value)} placeholder="очная / дистанционная" className="h-9" />
+                      <Input value={programme?.fields ? programForm : courseFormOverride} onChange={e => setCourseFormOverride(e.target.value)} disabled={!!programme?.fields} placeholder="очная / дистанционная" className="h-9" />
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">{programme?.fields ? `Закреплённая программа: ${programTitle}` : UNCONFIRMED_PROGRAM_NOTICE}</p>
                 </div>
 
                 <div className="space-y-1.5">

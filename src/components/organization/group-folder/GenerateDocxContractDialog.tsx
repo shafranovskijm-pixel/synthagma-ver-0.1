@@ -46,6 +46,7 @@ import {
   shouldDismissContractDialog,
 } from "@/lib/contracts/dialogLifecycle";
 import { useNavigate } from "react-router-dom";
+import { resolveGroupProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE, programGenerationScalars, programTrainingPeriod, type ProgramGeneration } from "../../../../supabase/functions/_shared/program-facts";
 
 
 interface Student { user_id: string; full_name: string; email?: string | null; }
@@ -148,6 +149,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   const [scheduleHint, setScheduleHint] = useState<string>("");
   const [curriculumMatched, setCurriculumMatched] = useState<boolean>(false);
   const [manualKeys, setManualKeys] = useState<Set<string>>(new Set());
+  const [programme, setProgramme] = useState<ProgramGeneration | null>(null);
   const navigate = useNavigate();
   /**
    * SPA-переход к источнику истины: диалог закрывается, полный reload страницы
@@ -180,13 +182,14 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     setManualKeys(new Set());
     setCurriculumMatched(false);
     setScheduleHint("");
+    setProgramme(null);
     const iso = todayIso();
     setDocDateIso(iso);
     setScalars(initialDocxScalars(null, iso));
 
     (async () => {
       try {
-        const [tpls, companiesRes, groupRes, profilesRes, frdoRes] = await Promise.all([
+        const [tpls, companiesRes, groupRes, profilesRes, frdoRes, source] = await Promise.all([
           fetchDocxTemplates("legal"),
           supabase.from("companies").select("*").eq("organization_id", organizationId).order("name"),
           supabase.from("student_groups").select("*").eq("id", groupId).maybeSingle(),
@@ -197,13 +200,15 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
             .from("student_frdo_data")
             .select("user_id, education_level, last_name, first_name, middle_name")
             .eq("organization_id", organizationId),
+          resolveGroupProgramGeneration(supabase, organizationId, groupId, students.map(s => s.user_id)),
         ]);
+        setProgramme(source);
         setTemplates(tpls);
         setTemplateKey(tpls[0]?.template_key || "");
 
         const g = (groupRes.data as any) || null;
         setAmount(Number(g?.default_price) || 0);
-        setScalars(initialDocxScalars(g, iso));
+        setScalars({ ...initialDocxScalars(g, iso), ...programGenerationScalars(source), ...(source.fields ? { PROG_FORM: source.fields.program_form } : {}) });
         setCompanies((companiesRes.data as any[]) || []);
         setScheduleHint(groupScheduleHint(g));
 
@@ -219,7 +224,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         }
 
         // Учебный план подставляется только при точном совпадении названия.
-        const matched = matchGroupCurriculum(g?.program_title, courseTitle);
+        const matched = source.fields ? null : matchGroupCurriculum(g?.program_title, courseTitle);
         setCurriculumMatched(!!matched);
         if (matched) setCurricula([matched]);
 
@@ -233,7 +238,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
               email: s.email,
               profile: byUser.get(s.user_id) || null,
               frdo: frdoByUser.get(s.user_id) || null,
-              program: matched || "",
+              program: source.fields?.program_title ?? matched ?? "",
             }),
           ),
         );
@@ -261,7 +266,8 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
   }, [docDateIso]);
 
   const draft: DocxContractDraft = useMemo(() => {
-    const programs = curricula.map((title) => ({
+    const programs = programme?.fields ? [{ PROG_TITLE: programme.fields.program_title,
+      PROG_FORM: programme.fields.program_form, PROG_COUNT: String(rows.length) }] : curricula.map((title) => ({
       PROG_TITLE: title,
       PROG_FORM: scalars.PROG_FORM || "",
       PROG_COUNT: String(rows.filter((r) => r.program === title).length),
@@ -272,8 +278,8 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
       STUDENT_CONTACTS: r.contacts,
       STUDENT_POSITION: r.position,
       STUDENT_ADDRESS: r.address,
-      STUDENT_PROGRAM: r.program,
-      STUDENT_DATES: scalars.STUDENT_DATES || "",
+      STUDENT_PROGRAM: programme?.fields?.program_title ?? r.program,
+      STUDENT_DATES: programme?.fields ? programTrainingPeriod(programme) : scalars.STUDENT_DATES || "",
     }));
     return {
       scalars: {
@@ -287,7 +293,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
       totalAmount: amount,
       taxClauseChosen: taxChosen && !!scalars.TAX_CLAUSE,
     };
-  }, [scalars, rows, curricula, amount, taxChosen]);
+  }, [scalars, rows, curricula, amount, taxChosen, programme]);
 
   const readiness = useMemo(() => evaluateDocxReadiness(draft), [draft]);
   const ready = isDocxDraftReady(readiness) && !!companyId && !!templateKey && !!docDateIso;
@@ -296,9 +302,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
     if (!ready || busy || !acquireContractSubmission(submitLock)) return;
     setBusy(true);
     try {
+      const source = await resolveGroupProgramGeneration(supabase, organizationId, groupId, rows.map(r => r.user_id));
       // Один номер на весь submit: RPC вызывается максимум один раз,
       // повторная попытка после ошибки компиляции переиспользует его.
-      const docNo = await acquireContractNumber(assignedNumber, async () => {
+      const docNo = source.state === "confirmed" ? await acquireContractNumber(assignedNumber, async () => {
         const { data, error } = await (supabase.rpc as any)("reserve_group_document_number", {
           p_org: organizationId,
           p_group: groupId,
@@ -307,12 +314,15 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         });
         if (error) throw error;
         return String(data || "");
-      });
+      }) : "";
       if (docNo !== assignedNumber) setAssignedNumber(docNo);
 
       const finalDraft: DocxContractDraft = {
         ...draft,
-        scalars: { ...draft.scalars, DOC_NO: docNo },
+        scalars: { ...draft.scalars, ...programGenerationScalars(source), DOC_NO: docNo || "Черновик", ...(source.fields ? { PROG_FORM: source.fields.program_form } : {}) },
+        programs: source.fields ? [{ PROG_TITLE: source.fields.program_title, PROG_FORM: source.fields.program_form,
+          PROG_COUNT: String(rows.length) }] : draft.programs,
+        students: draft.students.map(row => ({ ...row, ...(source.fields ? { STUDENT_PROGRAM: source.fields.program_title, STUDENT_DATES: programTrainingPeriod(source) } : {}) })),
       };
 
       const res = await generateDocxContract({
@@ -323,8 +333,8 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
         companyId,
         studentUserIds: rows.map((r) => r.user_id),
         studentsMeta: rows.map((r) => ({ user_id: r.user_id, full_name: r.fio })),
-        contractName: `Договор ${docNo} — ${scalars.CUST_NAME}`,
-        contractNumber: docNo,
+        contractName: `${docNo ? `Договор ${docNo}` : "Черновик договора"} — ${scalars.CUST_NAME}`,
+        contractNumber: docNo || "Черновик",
         contractDate: docDateIso,
         draft: finalDraft,
       });
@@ -390,6 +400,9 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
               {/* Готовность данных */}
               <div className="space-y-2">
                 <div className="text-sm font-semibold">Готовность данных</div>
+                <p className="text-xs text-muted-foreground">{programme?.fields
+                  ? `Закреплённая программа: ${programme.fields.program_title}, ${programme.fields.program_hours} ч. ${programme.fields.program_form}`
+                  : UNCONFIRMED_PROGRAM_NOTICE}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {readiness.map((g) => (
                     <div key={g.id} className="rounded-xl border border-border p-3">
@@ -476,7 +489,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <Label htmlFor="DOC_NO">Номер договора</Label>
                     <Input
                       id="DOC_NO"
-                      value={assignedNumber || "будет назначен автоматически"}
+                      value={assignedNumber || (programme?.state === "unconfirmed" ? "Черновик без номера" : "будет назначен автоматически")}
                       readOnly
                       disabled
                     />
@@ -499,7 +512,7 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="SCHEDULE">Режим занятий</Label>
-                    <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} />
+                    <Input id="SCHEDULE" value={scalars.SCHEDULE || ""} onChange={(e) => setField("SCHEDULE", e.target.value)} disabled={!!programme?.fields} />
                     <SourceHint fieldKey="SCHEDULE" groupId={groupId} companyId={companyId} edited={manualKeys.has("SCHEDULE")} onLeave={goToSource} />
                     {scheduleHint && (
                       <p className="text-[11px] text-muted-foreground">
@@ -510,11 +523,11 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
 
                   <div className="space-y-1.5">
                     <Label htmlFor="STUDENT_DATES">Даты обучения (для всех слушателей)</Label>
-                    <Input id="STUDENT_DATES" value={scalars.STUDENT_DATES || ""} onChange={(e) => setField("STUDENT_DATES", e.target.value)} placeholder="03.08.2026 — 07.08.2026" />
+                    <Input id="STUDENT_DATES" value={scalars.STUDENT_DATES || ""} onChange={(e) => setField("STUDENT_DATES", e.target.value)} disabled={!!programme?.fields} placeholder="03.08.2026 — 07.08.2026" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="PROG_FORM">Форма обучения</Label>
-                    <Input id="PROG_FORM" value={scalars.PROG_FORM || ""} onChange={(e) => setField("PROG_FORM", e.target.value)} />
+                    <Input id="PROG_FORM" value={scalars.PROG_FORM || ""} onChange={(e) => setField("PROG_FORM", e.target.value)} disabled={!!programme?.fields} />
                   </div>
                 </div>
               </div>
@@ -555,8 +568,8 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
                     <AlertCircle className="w-4 h-4" />
                     <AlertTitle>Учебный план не определён автоматически</AlertTitle>
                     <AlertDescription>
-                      Название программы группы (или курса) не совпадает точно ни с одним планом шаблона.
-                      Выберите план вручную — договор не будет сформирован без выбранного приложения.
+                      Выберите приложение шаблона вручную и проверьте его соответствие программе.
+                      Совпадение названия не подтверждает утверждение учебного плана.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -620,10 +633,10 @@ export function GenerateDocxContractDialog({ open, onClose, organizationId, grou
 
                       <div className="space-y-1.5">
                         <Label>Программа</Label>
-                        <Select value={r.program} onValueChange={(v) => setRows((p) => p.map((x, j) => j === i ? { ...x, program: v } : x))}>
+                        <Select value={r.program} onValueChange={(v) => setRows((p) => p.map((x, j) => j === i ? { ...x, program: v } : x))} disabled={!!programme?.fields}>
                           <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
                           <SelectContent>
-                            {curricula.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                            {(programme?.fields ? [programme.fields.program_title] : curricula).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
