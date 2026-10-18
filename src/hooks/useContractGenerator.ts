@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { formatPrice, detectGender, declineFullNameToGenitive, isIP, numberToWords } from "@/utils/russianTextUtils";
+import { UNCONFIRMED_PROGRAM_NOTICE } from "../../supabase/functions/_shared/program-facts";
 
 interface Company {
   id: string; name: string; inn: string | null; kpp: string | null; ogrn: string | null; address: string | null; director: string | null;
@@ -369,6 +370,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`;
   };
 
+  const generateUnconfirmedDraft = () => generateContractHTML().replace(/<body>/i,
+    `<body><p data-sintagma-program-state="unconfirmed">${UNCONFIRMED_PROGRAM_NOTICE}</p>`);
   const hasValidCounterparty = counterpartyType === 'individual' ? !!individualData.fullName : !!selectedCompanyId;
 
   const handleGenerate = async () => {
@@ -377,7 +380,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (validPrograms.length === 0) { toast.error("Добавьте хотя бы одну программу с ценой"); return; }
     setIsGenerating(true);
     try {
-      const html = generateContractHTML();
+      const html = generateUnconfirmedDraft();
       const printWindow = window.open('', '_blank');
       if (printWindow) { printWindow.document.write(html); printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 500); }
       toast.success("Договор сформирован");
@@ -388,7 +391,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const handleDownloadDOC = () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId);
     if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
-    const html = generateContractHTML();
+    const html = generateUnconfirmedDraft();
     const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || 'компания');
     const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>Договор ${contractNumber}</title><style>@page{size:A4;margin:2cm}body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.5}</style></head><body>${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
     const blob = new Blob([docContent], { type: 'application/msword' });
@@ -405,7 +408,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (!onSave) { toast.error("Сохранение недоступно"); return; }
     setIsSaving(true);
     try {
-      const html = generateContractHTML();
+      const html = generateUnconfirmedDraft();
       const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || '');
       await onSave(html, contractNumber, counterpartyName, validPrograms[0].courseId, totalPrice, totalStudents, contractDate);
       toast.success("Договор сохранён"); onClose();
@@ -416,7 +419,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const handlePreview = () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price);
     if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
-    setPreviewHtml(generateContractHTML()); setShowPreview(true);
+    setPreviewHtml(generateUnconfirmedDraft()); setShowPreview(true);
   };
 
   const hasValidPrograms = selectedPrograms.some(p => p.courseId && p.price && parseFloat(p.price) > 0);

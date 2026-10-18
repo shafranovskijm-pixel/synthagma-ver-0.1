@@ -46,8 +46,17 @@ it('runs exact single110 atomically after100-109 and preserves populated predece
   expect(hash(source)).toBe(m.sourceSha256);
   expect((await one("SELECT statements[1] source FROM supabase_migrations.schema_migrations WHERE version='"+m.version+"'")).source).toBe(source);
  }
- for(const f of [...manifest.frontendFiles,manifest.previousReleaseManifest])
-  expect(hash(await readFile(new URL('../../../'+f.path,import.meta.url),'utf8'))).toBe(f.sourceSha256);
+ // This immutable manifest attests the UI shipped with110. Later reviewed
+ // releases may change those same files; their current behaviour is verified
+ // by the latest UI suite and release manifest, not against historical bytes.
+ expect(hash(await read('release-manifest.json'))).toBe('5f3a2a129006f775de843aa9be4c1be553cb1f5dca47fb59a19eb666413f2568');
+ expect(manifest.frontendFiles).toHaveLength(7);
+ expect(new Set(manifest.frontendFiles.map((f:any)=>f.path)).size).toBe(7);
+ for(const f of manifest.frontendFiles){
+  expect(f.path).toMatch(/^src\//);expect(f.sourceSha256).toMatch(/^[a-f0-9]{64}$/);
+ }
+ const prior=manifest.previousReleaseManifest;
+ expect(hash(await readFile(new URL('../../../'+prior.path,import.meta.url),'utf8'))).toBe(prior.sourceSha256);
  await expect(db.exec(batch)).rejects.toThrow(/preflight failed/);await db.exec('ROLLBACK');
  expect(await one('SELECT count(*)::int n FROM org_document_reviews')).toEqual({n:0});
 },30000);

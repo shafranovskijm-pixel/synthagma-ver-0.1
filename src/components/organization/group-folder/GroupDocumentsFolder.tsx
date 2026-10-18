@@ -56,6 +56,7 @@ import {
 } from "@/lib/group-docs/signatories";
 import { GoreltechDocumentSignatoriesDialog } from "./GoreltechDocumentSignatoriesDialog";
 import { localDateIso } from "@/lib/date/localDate";
+import { resolveGroupProgramGeneration, withProgramGeneration, UNCONFIRMED_PROGRAM_NOTICE } from "../../../../supabase/functions/_shared/program-facts";
 
 interface FolderStudent { user_id: string; full_name: string; email?: string | null }
 interface GeneratedContractBatch {
@@ -273,6 +274,10 @@ export function GroupDocumentsFolder({
     dryRun = false,
   ) => {
     if (!ctx) { toast.error("Недостаточно данных группы для генерации"); return false; }
+    let programme;
+    try { programme = await resolveGroupProgramGeneration(supabase, organizationId, groupId, ctx.students.map(s => s.user_id)); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось проверить программу группы"); return false; }
+    const authoritativeCtx = withProgramGeneration(ctx, programme);
     const gate = docBlockers ?? Array.from(new Set([
       ...packageBlockers,
       ...missingPackageRequirements(types, reqSource, mode, requirementProfile),
@@ -288,7 +293,7 @@ export function GroupDocumentsFolder({
     try {
       // Точные DOCX ГОРЭЛТЕХ пока содержат legacy browser-transport строк.
       // Не резервируем официальные номера до полной серверной сверки полей.
-      const requestedStatus = exactGoreltechDocuments
+      const requestedStatus = exactGoreltechDocuments || programme.state === "unconfirmed"
         ? ("draft" as const)
         : mode === "data"
           ? ("final" as const)
@@ -323,7 +328,7 @@ export function GroupDocumentsFolder({
       }
 
       const generationCtx = {
-        ...ctx,
+        ...authoritativeCtx,
         extras: {
           ...(ctx.extras || {}),
           ...(exactGoreltechDocuments
@@ -337,6 +342,7 @@ export function GroupDocumentsFolder({
       // подменяем ею даты приказов о зачислении/завершении.
       const journalDraftDate = localDateIso();
       const genOpts = {
+        programFacts: programme.provenance,
         totalPrice: price,
         mode,
         numbers,
@@ -383,6 +389,7 @@ export function GroupDocumentsFolder({
           })
        : await saveGenerated(docs);
       const ok = !!res;
+      if (ok && programme.state === "unconfirmed") toast.warning(UNCONFIRMED_PROGRAM_NOTICE);
       if (ok && exactGoreltechDocuments && "dryRun" in res && res.dryRun) return true;
       if (ok) onDataChanged?.();
       if (ok && types.length === 1) {

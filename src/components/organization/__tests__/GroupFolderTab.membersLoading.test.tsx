@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GroupFolderTab } from "@/components/organization/tabs/GroupFolderTab";
+import { groupEnvelope, ids } from "../programs/programFacts.fixtures";
 
 const db = vi.hoisted(() => ({
   rows: {} as Record<string, Array<Record<string, unknown>>>,
@@ -9,6 +10,7 @@ const db = vi.hoisted(() => ({
   rejectedTables: new Set<string>(),
   queries: [] as Array<{ table: string; filters: Array<[string, unknown]>; from: number; to: number; order?: string }>,
   refresh: vi.fn(),
+  programme: null as any,
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
@@ -44,6 +46,14 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   },
 } }));
 vi.mock("@/contexts/OrgDashboardContext", () => ({ useOrgDashboard: () => ({}) }));
+// This suite isolates roster pagination/errors; the new programme RPC has its own contract tests.
+vi.mock("@/hooks/useProgramFacts", async importOriginal => ({
+  ...await importOriginal<typeof import("@/hooks/useProgramFacts")>(),
+  useGroupProgramFacts: (_org: string, groupId: string | null) => ({
+    data: groupId ? db.programme ?? { state: "unconfirmed", reason: "no_group_binding", group_id: groupId, course_id: null, enrollment_id: null, revision: 0, binding: null, snapshot: null, enrollments: [], capabilities: { can_bind: false, can_confirm_existing: false } } : null,
+    loading: false, saving: false, error: null, conflict: false, denied: false, reload: vi.fn(),
+  }),
+}));
 vi.mock("@/hooks/useStaffPermissions", () => ({
   useStaffPermissions: () => ({ can: () => true, canSeeOrgTab: () => true, loading: false }),
 }));
@@ -54,7 +64,7 @@ vi.mock("@/components/organization/group-folder/ContractsFolder", () => ({ Contr
 vi.mock("@/components/organization/GroupSettingsDialog", () => ({ GroupSettingsDialog: () => null }));
 vi.mock("@/components/organization/groups/AddStudentsToGroupDialog", () => ({ AddStudentsToGroupDialog: () => null }));
 vi.mock("@/components/organization/group-folder/GroupDocumentsFolder", () => ({
-  GroupDocumentsFolder: ({ ctx }: { ctx: unknown }) => <div data-testid="document-context">{JSON.stringify(ctx)}</div>,
+  GroupDocumentsFolder: ({ ctx, blockingFields }: { ctx: unknown; blockingFields: string[] }) => <><div data-testid="document-context">{JSON.stringify(ctx)}</div><div data-testid="document-blockers">{JSON.stringify(blockingFields)}</div></>,
 }));
 
 function profile(index: number, archived = false) {
@@ -74,6 +84,7 @@ async function context() {
 
 beforeEach(() => {
   db.queries.length = 0;
+  db.programme = null;
   db.errors = {};
   db.rejectedTables.clear();
   db.rows = {
@@ -85,6 +96,31 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("GroupFolderTab roster loading", () => {
+  it("uses the pinned approved version and calendar even after mutable course and group fields change", async () => {
+    db.programme = groupEnvelope(); db.programme.enrollments[0] = { ...db.programme.enrollments[0], state: "confirmed", snapshot_id: ids.snapshot };
+    db.programme.binding.group_snapshot = { name: "Зафиксированная группа", start_date: "2026-10-01", end_date: "2026-10-31", training_dates: ["2026-10-02", "2026-10-09", "2026-10-16", "2026-10-23"], schedule_text: "Согласованное расписание", instructor_name: "Прежний преподаватель" };
+    db.rows = {
+      student_groups: [{ id: ids.group, organization_id: ids.org, name: "Новое название группы", course_id: ids.course, program_title: "Позднее название", program_hours: 500, program_form: "Очная", start_date: "2027-01-01", end_date: "2027-02-01", training_dates: ["2027-01-02"], schedule_text: "Новое расписание", instructor_name: "Новый преподаватель" }],
+      organizations: [{ id: ids.org, name: "Организация", inn: "123", director_name: "Руководитель", director_position: "Директор" }],
+      profiles: [{ user_id: ids.learner, full_name: "Иван", organization_id: ids.org, student_group_id: ids.group, archived_at: null }],
+      courses: [{ id: ids.course, title: "Текущее название курса", duration: 999, frdo_duration_hours: 144, training_form: "Очная" }],
+      course_enrollments: [{ user_id: ids.learner, course_id: ids.course, status: "active", progress_percent: 0 }],
+    };
+    render(<MemoryRouter initialEntries={[`/organization?tab=group-folder&groupId=${ids.group}&folder=docs`]}><GroupFolderTab organizationId={ids.org} groupId={ids.group} /></MemoryRouter>);
+    expect((await context()).group).toMatchObject({ program_title: "Подтверждённая программа", program_hours: 72, program_form: "Заочная", name: "Зафиксированная группа", start_date: "2026-10-01", end_date: "2026-10-31", training_dates: ["2026-10-02", "2026-10-09", "2026-10-16", "2026-10-23"], schedule_text: "Согласованное расписание", instructor_name: "Прежний преподаватель" });
+    expect(screen.getByTestId("document-blockers")).toHaveTextContent("[]");
+  });
+  it("keeps a captured unknown calendar unknown instead of borrowing subsequently filled live fields", async () => {
+    db.programme = groupEnvelope(); db.programme.enrollments[0] = { ...db.programme.enrollments[0], state: "confirmed", snapshot_id: ids.snapshot };
+    db.rows = {
+      student_groups: [{ id: ids.group, organization_id: ids.org, name: "Текущая группа", course_id: ids.course, start_date: "2027-01-01", end_date: "2027-02-01", training_dates: ["2027-01-02"], schedule_text: "Внесено позднее", instructor_name: "Новый преподаватель" }],
+      organizations: [{ id: ids.org, name: "Организация" }],
+      profiles: [{ user_id: ids.learner, full_name: "Иван", organization_id: ids.org, student_group_id: ids.group, archived_at: null }],
+      courses: [{ id: ids.course, title: "Текущий курс" }],
+    };
+    render(<MemoryRouter initialEntries={[`/organization?tab=group-folder&groupId=${ids.group}&folder=docs`]}><GroupFolderTab organizationId={ids.org} groupId={ids.group} /></MemoryRouter>);
+    expect((await context()).group).toMatchObject({ name: "Группа", start_date: "", end_date: "", training_dates: [], schedule_text: "", instructor_name: "" });
+  });
   it("shows an additional-group member once and preserves their original primary group", async () => {
     db.rows.student_groups.push({ id: "group-2", organization_id: "org-1", name: "Второе обучение", course_id: null });
     db.rows.student_group_memberships = [{ user_id: "student-0001", organization_id: "org-1", group_id: "group-2" }];

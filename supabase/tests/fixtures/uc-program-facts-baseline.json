@@ -1,0 +1,1111 @@
+{
+  "columns": [
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "uuid"
+    },
+    {
+      "column": "course_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "uuid"
+    },
+    {
+      "column": "progress",
+      "default": "0",
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "int4"
+    },
+    {
+      "column": "time_spent",
+      "default": "0",
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "int4"
+    },
+    {
+      "column": "status",
+      "default": "'active'::text",
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "text"
+    },
+    {
+      "column": "started_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "timestamptz"
+    },
+    {
+      "column": "completed_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "enrollments",
+      "type": "timestamptz"
+    },
+    {
+      "column": "access_days",
+      "default": null,
+      "nullable": "YES",
+      "table": "enrollments",
+      "type": "int4"
+    },
+    {
+      "column": "expires_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "enrollments",
+      "type": "timestamptz"
+    },
+    {
+      "column": "document_facts_revision",
+      "default": "0",
+      "nullable": "NO",
+      "table": "enrollments",
+      "type": "int8"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "program_categories",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_categories",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_categories",
+      "type": "text"
+    },
+    {
+      "column": "color",
+      "default": "'#6366f1'::text",
+      "nullable": "YES",
+      "table": "program_categories",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "program_categories",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "folder_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "category_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_url",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "file_size",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "int8"
+    },
+    {
+      "column": "file_type",
+      "default": "'document'::text",
+      "nullable": "YES",
+      "table": "program_documents",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "program_documents",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "program_folders",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_folders",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_folders",
+      "type": "text"
+    },
+    {
+      "column": "parent_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_folders",
+      "type": "uuid"
+    },
+    {
+      "column": "category_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_folders",
+      "type": "uuid"
+    },
+    {
+      "column": "color",
+      "default": "'#6366f1'::text",
+      "nullable": "YES",
+      "table": "program_folders",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "program_folders",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "program_training_plans",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_training_plans",
+      "type": "uuid"
+    },
+    {
+      "column": "course_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "program_training_plans",
+      "type": "uuid"
+    },
+    {
+      "column": "title",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_training_plans",
+      "type": "text"
+    },
+    {
+      "column": "hours",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_training_plans",
+      "type": "int4"
+    },
+    {
+      "column": "form",
+      "default": null,
+      "nullable": "YES",
+      "table": "program_training_plans",
+      "type": "text"
+    },
+    {
+      "column": "plan_html",
+      "default": "''::text",
+      "nullable": "NO",
+      "table": "program_training_plans",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "program_training_plans",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "program_training_plans",
+      "type": "timestamptz"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "student_group_memberships",
+      "type": "uuid"
+    },
+    {
+      "column": "group_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "student_group_memberships",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "student_group_memberships",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "student_group_memberships",
+      "type": "timestamptz"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "color",
+      "default": "'#6366f1'::text",
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "timestamptz"
+    },
+    {
+      "column": "start_date",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "date"
+    },
+    {
+      "column": "end_date",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "date"
+    },
+    {
+      "column": "max_seats",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "int4"
+    },
+    {
+      "column": "curator_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "strict_order",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "limit_access_time",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "schedule_access",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "block_resubmit",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "show_locked_lessons",
+      "default": "true",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "enable_channel",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "enable_group_chat",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "block_student_dialogs",
+      "default": "false",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "bool"
+    },
+    {
+      "column": "group_number",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "program_title",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "program_hours",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "int4"
+    },
+    {
+      "column": "program_form",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "default_price",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "numeric"
+    },
+    {
+      "column": "course_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "uuid"
+    },
+    {
+      "column": "training_address",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "schedule_text",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "instructor_name",
+      "default": null,
+      "nullable": "YES",
+      "table": "student_groups",
+      "type": "text"
+    },
+    {
+      "column": "training_dates",
+      "default": "'{}'::date[]",
+      "nullable": "NO",
+      "table": "student_groups",
+      "type": "_date"
+    }
+  ],
+  "counts": {
+    "bucket_objects": 0,
+    "categories": 0,
+    "documents": 0,
+    "folders": 0,
+    "public": false
+  },
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.bump_enrollment_document_facts_revision()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nBEGIN\n  NEW.document_facts_revision := nextval('public.enrollment_document_facts_generation_seq'::regclass);\n  RETURN NEW;\nEND;\n$function$\n",
+      "md5": "fca7f23c0d51b0a4c03a757fc898e2e6",
+      "signature": "bump_enrollment_document_facts_revision()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_group_course_enrollments()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_course_org_id uuid;\nBEGIN\n  IF NEW.course_id IS NULL THEN\n    RETURN NEW;\n  END IF;\n  SELECT c.organization_id INTO v_course_org_id\n  FROM public.courses c WHERE c.id = NEW.course_id FOR SHARE;\n  IF NOT FOUND OR v_course_org_id IS DISTINCT FROM NEW.organization_id THEN\n    RAISE EXCEPTION 'group_course_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.profiles p WHERE p.student_group_id = NEW.id\n      AND p.organization_id IS DISTINCT FROM NEW.organization_id\n  ) THEN\n    RAISE EXCEPTION 'student_group_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n\n  -- Group settings saves include course_id even for rename/price/date edits.\n  -- Tenant validation still runs, but an unchanged association must not enroll.\n  IF TG_OP = 'UPDATE'\n     AND NEW.course_id IS NOT DISTINCT FROM OLD.course_id\n     AND NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id\n  THEN\n    RETURN NEW;\n  END IF;\n\n  INSERT INTO public.enrollments (user_id, course_id, status, progress, time_spent)\n  SELECT p.user_id, NEW.course_id, 'active', 0, 0\n  FROM public.profiles p\n  WHERE p.student_group_id = NEW.id AND p.organization_id = NEW.organization_id\n  ON CONFLICT (user_id, course_id) DO NOTHING;\n  RETURN NEW;\nEND;\n$function$\n",
+      "md5": "97b3ba66ec588a9fa3d77bcd25f57f7a",
+      "signature": "sync_group_course_enrollments()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_profile_group_course_enrollment()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_course_id uuid;\n  v_group_org_id uuid;\n  v_course_org_id uuid;\nBEGIN\n  IF NEW.student_group_id IS NULL THEN\n    RETURN NEW;\n  END IF;\n\n  -- SHARE, not KEY SHARE: course_id is not a key, but changing it must wait for\n  -- registration/enrollment to commit. Held until transaction end. The group\n  -- updater's AFTER trigger then sees committed membership at READ COMMITTED.\n  -- Native composite FKs protect tenant references under stronger isolation too;\n  -- this is not a claim of tested multi-session enrollment synchronization.\n  SELECT g.course_id, g.organization_id INTO v_course_id, v_group_org_id\n  FROM public.student_groups g WHERE g.id = NEW.student_group_id\n  FOR SHARE;\n  IF NOT FOUND THEN\n    -- Cascading actions can already have deleted the group before this queued\n    -- AFTER event runs. Its native SET NULL action clears the actual membership.\n    IF TG_OP = 'UPDATE' AND NEW.organization_id IS NULL AND OLD.organization_id IS NOT NULL\n       AND NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = OLD.organization_id)\n    THEN\n      RETURN NEW;\n    END IF;\n    RAISE EXCEPTION 'student_group_not_found' USING ERRCODE = '23503';\n  END IF;\n\n  -- Preserve the pre-existing organization deletion actions: profiles.org uses\n  -- ON DELETE SET NULL, while groups use ON DELETE CASCADE. During that cascade\n  -- only, the organization is already gone and group deletion will clear the\n  -- membership. Do not create an enrollment from this intermediate row.\n  IF TG_OP = 'UPDATE' AND NEW.organization_id IS NULL\n     AND OLD.organization_id IS NOT DISTINCT FROM v_group_org_id\n     AND NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = v_group_org_id)\n  THEN\n    RETURN NEW;\n  END IF;\n\n  IF NEW.organization_id IS NULL OR v_group_org_id IS DISTINCT FROM NEW.organization_id THEN\n    RAISE EXCEPTION 'student_group_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n\n  IF v_course_id IS NULL THEN\n    RETURN NEW;\n  END IF;\n  SELECT c.organization_id INTO v_course_org_id\n  FROM public.courses c WHERE c.id = v_course_id FOR SHARE;\n  IF NOT FOUND OR v_course_org_id IS DISTINCT FROM NEW.organization_id THEN\n    RAISE EXCEPTION 'group_course_organization_mismatch' USING ERRCODE = '23503';\n  END IF;\n\n  -- A normal profile save may explicitly SET the unchanged identity fields.\n  -- Validate them above, but do not undo an intentional enrollment deletion.\n  IF TG_OP = 'UPDATE'\n     AND NEW.student_group_id IS NOT DISTINCT FROM OLD.student_group_id\n     AND NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id\n     AND NEW.user_id IS NOT DISTINCT FROM OLD.user_id\n  THEN\n    RETURN NEW;\n  END IF;\n\n  -- Existing active/completed/expired enrollments, progress and expiry are never\n  -- overwritten or revived. A violation aborts the whole profile/quota RPC.\n  INSERT INTO public.enrollments (user_id, course_id, status, progress, time_spent)\n  VALUES (NEW.user_id, v_course_id, 'active', 0, 0)\n  ON CONFLICT (user_id, course_id) DO NOTHING;\n  RETURN NEW;\nEND;\n$function$\n",
+      "md5": "3608c6747572c6a98830b62cfb5b4238",
+      "signature": "sync_profile_group_course_enrollment()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_action_allowed(p_org uuid, p_action text, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_document_has_action(p_org,p_action)\n  AND public.uc_document_scope_allowed(p_org,p_group,p_enrollment)\n$function$\n",
+      "md5": "79c190a053f711dc8110e9d451b1a56c",
+      "signature": "uc_document_action_allowed(uuid,text,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_course_scope_allowed(p_org uuid, p_course uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND public.account_deletion_access_allowed()\n AND (NOT public.uc_document_teacher_limited(p_org) OR EXISTS(\n SELECT 1 FROM public.student_groups g WHERE g.organization_id=p_org AND g.course_id=p_course\n AND public.uc_document_scope_allowed(p_org,g.id,NULL)));\n$function$\n",
+      "md5": "2036e0694af48efad992945b86028e0d",
+      "signature": "uc_document_course_scope_allowed(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_record_scope(p_org uuid, p_group uuid, p_enrollment uuid, p_user uuid, p_course uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nBEGIN\n IF p_enrollment IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id\n  WHERE e.id=p_enrollment AND c.organization_id=p_org AND (p_user IS NULL OR e.user_id=p_user) AND (p_course IS NULL OR e.course_id=p_course)) THEN RETURN false; END IF;\n IF p_course IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.courses c WHERE c.id=p_course AND c.organization_id=p_org) THEN RETURN false; END IF;\n IF p_group IS NOT NULL AND p_course IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.student_groups g WHERE g.id=p_group AND g.organization_id=p_org AND g.course_id=p_course) THEN RETURN false; END IF;\n IF p_group IS NOT NULL AND p_user IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.student_group_memberships_effective m\n  WHERE m.organization_id=p_org AND m.group_id=p_group AND m.user_id=p_user) THEN RETURN false; END IF;\n RETURN public.uc_document_scope_allowed(p_org,p_group,p_enrollment);\nEND;$function$\n",
+      "md5": "c2d296f2ede0051919f375eaf1ce6802",
+      "signature": "uc_document_record_scope(uuid,uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_scope_allowed(p_org uuid, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_user uuid;v_course uuid;v_group_course uuid;\nBEGIN\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() OR p_org IS NULL\n OR NOT EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org) THEN RETURN false; END IF;\n IF p_group IS NOT NULL THEN\n  SELECT course_id INTO v_group_course FROM public.student_groups WHERE id=p_group AND organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF v_group_course IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.courses c WHERE c.id=v_group_course AND c.organization_id=p_org) THEN RETURN false; END IF;\n END IF;\n IF p_enrollment IS NOT NULL THEN\n  SELECT e.user_id,e.course_id INTO v_user,v_course FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id\n   WHERE e.id=p_enrollment AND c.organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF p_group IS NOT NULL AND (v_group_course IS DISTINCT FROM v_course OR NOT EXISTS(\n   SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id=p_org AND m.group_id=p_group AND m.user_id=v_user))\n  THEN RETURN false; END IF;\n END IF;\n IF public.has_role(auth.uid(),'admin'::public.app_role) OR public.is_org_owner(auth.uid(),p_org) THEN RETURN true; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=auth.uid()\n   AND (s.expires_at IS NULL OR s.expires_at>now())) THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(p_org) THEN RETURN true; END IF;\n RETURN EXISTS(SELECT 1 FROM public.org_staff s JOIN public.org_staff_document_groups a ON a.staff_id=s.id AND a.organization_id=s.organization_id\n  JOIN public.student_groups g ON g.id=a.group_id AND g.organization_id=a.organization_id\n  WHERE s.organization_id=p_org AND s.user_id=auth.uid() AND (s.expires_at IS NULL OR s.expires_at>now())\n   AND (p_group IS NULL OR g.id=p_group)\n   AND (p_enrollment IS NULL OR (g.course_id=v_course AND EXISTS(SELECT 1 FROM public.student_group_memberships_effective m\n     WHERE m.organization_id=p_org AND m.group_id=g.id AND m.user_id=v_user)))\n   AND (p_group IS NOT NULL OR p_enrollment IS NOT NULL));\nEND;$function$\n",
+      "md5": "2a7407e7d178c7561b1d390f0884c6b6",
+      "signature": "uc_document_scope_allowed(uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres",
+        "anon=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_storage_scope(p_bucket text, p_name text)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_org uuid;v_user uuid;v_enrollment uuid;v_group uuid;\nBEGIN\n IF p_bucket IN('external-contracts','signed-documents') THEN RETURN public.uc_signature_file_scope(p_bucket,p_name); END IF;\n IF p_bucket NOT IN('student-documents','company-documents','billing-documents','org-documents','incoming-documents','program-documents','frdo-documents','signed-documents','external-contracts') THEN RETURN true; END IF;\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() THEN RETURN false; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=auth.uid() AND s.role='teacher')\n OR public.has_role(auth.uid(),'admin'::public.app_role) THEN RETURN true; END IF;\n IF p_bucket='student-documents' THEN\n  IF split_part(p_name,'/',1)='students' THEN\n   v_enrollment:=public.storage_try_uuid(split_part(p_name,'/',2));\n   SELECT c.organization_id,e.user_id INTO v_org,v_user FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id WHERE e.id=v_enrollment;\n   RETURN v_user=auth.uid() OR (v_org IS NOT NULL AND (NOT public.uc_document_teacher_limited(v_org) OR public.uc_document_scope_allowed(v_org,NULL,v_enrollment)));\n  END IF;\n  IF split_part(p_name,'/',1) IN('avatars','support') THEN\n   v_user:=public.storage_try_uuid(split_part(split_part(p_name,'/',2),'.',1));\n  ELSE v_user:=public.storage_try_uuid(split_part(p_name,'/',1)); END IF;\n  IF v_user=auth.uid() THEN RETURN true; END IF;\n  SELECT organization_id INTO v_org FROM public.profiles WHERE user_id=v_user;\n  RETURN v_org IS NOT NULL AND public.uc_document_student_scope_allowed(v_org,v_user);\n ELSIF p_bucket='company-documents' THEN\n  SELECT c.organization_id,c.user_id INTO v_org,v_user FROM public.companies c WHERE c.id=public.storage_try_uuid(split_part(p_name,'/',1));\n  RETURN v_user=auth.uid() OR (v_org IS NOT NULL AND NOT public.uc_document_teacher_limited(v_org));\n ELSIF p_bucket IN('signed-documents','external-contracts') AND EXISTS(\n  SELECT 1 FROM public.document_signatures s WHERE public.uc_document_signature_read_scope(s.id) AND s.organization_id::text=split_part(p_name,'/',1)\n   AND (s.signed_document_path=p_name AND p_bucket='signed-documents'\n     OR s.handwritten_scan_path=p_name AND p_bucket='external-contracts'\n     OR s.signed_source_bucket=p_bucket AND s.signed_source_path=p_name\n     OR p_bucket='external-contracts' AND EXISTS(SELECT 1 FROM public.signature_revisions r WHERE r.signature_id=s.id\n       AND (r.file_url=p_name OR right(split_part(r.file_url,'?',1),length('/external-contracts/'||p_name))='/external-contracts/'||p_name))))\n THEN RETURN true;\n END IF;\n IF p_bucket='external-contracts' AND EXISTS(SELECT 1 FROM public.document_signatures s\n  WHERE s.recipient_user_id=auth.uid() AND s.deleted_at IS NULL AND s.expires_at>now()\n   AND s.status IN('sent','viewed','in_review') AND\n   left(p_name,length(s.organization_id::text||'/signed-scans/'||s.id::text||'-'))=s.organization_id::text||'/signed-scans/'||s.id::text||'-')\n THEN RETURN true; END IF;\n IF split_part(p_name,'/',1)='organizations' THEN\n  v_org:=public.storage_try_uuid(split_part(p_name,'/',2));\n  IF p_bucket='billing-documents' AND split_part(p_name,'/',3)='group-documents' THEN\n   v_group:=public.storage_try_uuid(split_part(p_name,'/',4));\n   RETURN public.uc_document_scope_allowed(v_org,v_group,NULL) AND v_group IS NOT NULL AND split_part(p_name,'/',5)<>'';\n  END IF;\n ELSE v_org:=public.storage_try_uuid(split_part(p_name,'/',1)); END IF;\n IF v_org IS NULL THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(v_org) THEN RETURN true; END IF;\n IF p_bucket='billing-documents' THEN\n  IF split_part(p_name,'/',2)='contracts' AND split_part(p_name,'/',4)<>'' AND split_part(p_name,'/',5)<>'' THEN\n   v_group:=public.storage_try_uuid(split_part(p_name,'/',3));\n   RETURN v_group IS NOT NULL AND public.uc_document_scope_allowed(v_org,v_group,NULL);\n  END IF;\n  RETURN EXISTS(SELECT 1 FROM public.group_documents d WHERE d.organization_id=v_org AND d.file_path=p_name\n   AND public.uc_document_record_scope(d.organization_id,d.group_id,NULL,d.student_user_id,NULL))\n   OR EXISTS(SELECT 1 FROM public.org_contracts d WHERE d.organization_id=v_org AND p_name IN(d.file_path,d.docx_path,d.pdf_path)\n   AND public.uc_document_contract_scope(d.organization_id,d.student_group_id,d.student_user_id,d.company_id,d.students));\n END IF;\n RETURN false;\nEND;$function$\n",
+      "md5": "8b098a3d3719a73e92a0b1a002121de9",
+      "signature": "uc_document_storage_scope(text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_org_document_review_actor(p_org uuid, p_user uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_org IS NOT NULL AND p_user IS NOT NULL\n AND public.uc_platform_document_action_allowed(p_user,'write')\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n AND (public.is_org_owner(p_user,p_org) OR\n  EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=p_user\n   AND (s.expires_at IS NULL OR s.expires_at>now()) AND public.has_org_staff_permission(p_user,p_org,'documents.write')\n   AND (s.role<>'teacher' OR public.has_role(p_user,'admin'::public.app_role))))\n$function$\n",
+      "md5": "89738b475b21d69f496a543ceb97da49",
+      "signature": "uc_org_document_review_actor(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_org_document_review_file_bound(p_doc org_documents)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.org_document_versions v JOIN storage.objects o ON o.id=v.storage_object_id\n  WHERE v.id=p_doc.current_version_id AND v.document_id=p_doc.id AND v.organization_id=p_doc.organization_id\n   AND v.event_kind IN('upload','restore') AND v.file_url IS NOT DISTINCT FROM p_doc.file_url\n   AND v.file_path ~ ('^'||p_doc.organization_id::text||'/versions/'||p_doc.id::text||'/[0-9a-f-]{36}[.][a-z0-9]{1,12}$')\n   AND o.bucket_id='org-documents' AND o.name=v.file_path\n   AND v.file_url ~ '^https://[a-zA-Z0-9.-]+(:[0-9]+)?/storage/v1/object/public/org-documents/'\n   AND right(v.file_url,length('/org-documents/'||v.file_path))='/org-documents/'||v.file_path\n   AND v.file_size IS NOT NULL AND v.file_size>0 AND o.metadata->>'size' ~ '^[0-9]+$'\n   AND v.file_size=CASE WHEN o.metadata->>'size' ~ '^[0-9]+$' THEN (o.metadata->>'size')::numeric END\n   AND v.storage_metadata=jsonb_build_object('size',v.file_size,'etag',coalesce(o.metadata->>'eTag',o.metadata->>'etag'),'mimetype',o.metadata->>'mimetype'))\n$function$\n",
+      "md5": "52a37a3afd327393cc73b8af2a784316",
+      "signature": "uc_org_document_review_file_bound(org_documents)"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_read",
+      "qual": "(NOT uc_document_teacher_limited(organization_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_delete",
+      "qual": "uc_document_org_access(organization_id, true)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": "uc_document_org_access(organization_id, true)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_select",
+      "qual": "uc_document_org_access(organization_id, false)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_update",
+      "qual": "uc_document_org_access(organization_id, true)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": "uc_document_org_access(organization_id, true)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_read",
+      "qual": "(NOT uc_document_teacher_limited(organization_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_delete",
+      "qual": "uc_document_org_access(organization_id, true)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": "uc_document_org_access(organization_id, true)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_select",
+      "qual": "uc_document_org_access(organization_id, false)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_update",
+      "qual": "uc_document_org_access(organization_id, true)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": "uc_document_org_access(organization_id, true)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "uc_document_assigned_read",
+      "qual": "(NOT uc_document_teacher_limited(organization_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_delete",
+      "qual": "uc_document_org_access(organization_id, true)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": "uc_document_org_access(organization_id, true)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_select",
+      "qual": "uc_document_org_access(organization_id, false)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "uc_documents_update",
+      "qual": "uc_document_org_access(organization_id, true)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": "uc_document_org_access(organization_id, true)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can read program files",
+      "qual": "((bucket_id = 'program-files'::text) AND (has_role('admin'::app_role, auth.uid()) OR ((storage.foldername(name))[2] = (current_organization_id())::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "program_files_delete",
+      "qual": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "program_files_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "program_files_update",
+      "qual": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'program-files'::text) AND can_access_organization(storage_try_uuid((storage.foldername(name))[2]), 'documents.write'::text))"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function": "account_deletion_subject_write_guard()",
+      "name": "account_deletion_subject_fence",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER audit_enrollments AFTER INSERT OR DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+      "function": "auto_audit_log()",
+      "name": "audit_enrollments",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER capture_postpaid_study AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION capture_postpaid_study_activity()",
+      "function": "capture_postpaid_study_activity()",
+      "name": "capture_postpaid_study",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER enrollments_notify_on_complete AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (((new.status = 'completed'::text) AND (old.status IS DISTINCT FROM 'completed'::text))) EXECUTE FUNCTION trg_notify_course_completion()",
+      "function": "trg_notify_course_completion()",
+      "name": "enrollments_notify_on_complete",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER on_course_completion_update_labor_safety AFTER UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION update_labor_safety_on_course_completion()",
+      "function": "update_labor_safety_on_course_completion()",
+      "name": "on_course_completion_update_labor_safety",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER on_enrollment_delete AFTER DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()",
+      "function": "log_enrollment_change()",
+      "name": "on_enrollment_delete",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER on_enrollment_insert AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()",
+      "function": "log_enrollment_change()",
+      "name": "on_enrollment_insert",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER revoke_manual_credit_on_course_reset AFTER UPDATE OF status, user_id, course_id ON public.enrollments FOR EACH ROW EXECUTE FUNCTION revoke_manual_credit_on_course_reset()",
+      "function": "revoke_manual_credit_on_course_reset()",
+      "name": "revoke_manual_credit_on_course_reset",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER sync_training_plan_on_complete AFTER UPDATE OF status ON public.enrollments FOR EACH ROW EXECUTE FUNCTION sync_training_plan_status()",
+      "function": "sync_training_plan_status()",
+      "name": "sync_training_plan_on_complete",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER sync_training_plan_on_enroll AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION sync_training_plan_status()",
+      "function": "sync_training_plan_status()",
+      "name": "sync_training_plan_on_enroll",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER trg_calc_enrollment_expires BEFORE INSERT OR UPDATE OF access_days, started_at ON public.enrollments FOR EACH ROW EXECUTE FUNCTION calc_enrollment_expires_at()",
+      "function": "calc_enrollment_expires_at()",
+      "name": "trg_calc_enrollment_expires",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER trg_org_course_completion_notify AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION create_org_course_completion_notification()",
+      "function": "create_org_course_completion_notification()",
+      "name": "trg_org_course_completion_notify",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER trigger_auto_complete_enrollment BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_complete_enrollment()",
+      "function": "auto_complete_enrollment()",
+      "name": "trigger_auto_complete_enrollment",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER trigger_auto_create_education_document AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (((new.status = 'completed'::text) AND (old.status IS DISTINCT FROM 'completed'::text))) EXECUTE FUNCTION auto_create_education_document()",
+      "function": "auto_create_education_document()",
+      "name": "trigger_auto_create_education_document",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER trigger_create_course_reminder AFTER UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION create_course_reminder_on_completion()",
+      "function": "create_course_reminder_on_completion()",
+      "name": "trigger_create_course_reminder",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER trigger_enrollment_achievements AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION check_enrollment_achievements()",
+      "function": "check_enrollment_achievements()",
+      "name": "trigger_enrollment_achievements",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER zz_enrollment_document_facts_revision BEFORE INSERT OR UPDATE OF id, user_id, course_id, progress, status, started_at, completed_at, access_days, expires_at, document_facts_revision ON public.enrollments FOR EACH ROW EXECUTE FUNCTION bump_enrollment_document_facts_revision()",
+      "function": "bump_enrollment_document_facts_revision()",
+      "name": "zz_enrollment_document_facts_revision",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER zzzz_csz_enrollment_guard BEFORE INSERT OR DELETE OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION csz_guard_enrollment()",
+      "function": "csz_guard_enrollment()",
+      "name": "zzzz_csz_enrollment_guard",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER zzzz_csz_protected_truncate_guard BEFORE TRUNCATE ON public.enrollments FOR EACH STATEMENT EXECUTE FUNCTION csz_guard_protected_truncate()",
+      "function": "csz_guard_protected_truncate()",
+      "name": "zzzz_csz_protected_truncate_guard",
+      "table": "enrollments"
+    },
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function": "account_deletion_subject_write_guard()",
+      "name": "account_deletion_subject_fence",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER audit_profiles AFTER INSERT OR DELETE OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+      "function": "auto_audit_log()",
+      "name": "audit_profiles",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER encrypt_profile_password BEFORE INSERT OR UPDATE OF generated_password ON public.profiles FOR EACH ROW EXECUTE FUNCTION trigger_encrypt_profile_password()",
+      "function": "trigger_encrypt_profile_password()",
+      "name": "encrypt_profile_password",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER guard_profile_tenant_identity BEFORE UPDATE OF organization_id, company_id, student_group_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_tenant_identity()",
+      "function": "guard_profile_tenant_identity()",
+      "name": "guard_profile_tenant_identity",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER sync_profile_group_course_enrollment_trigger AFTER INSERT OR UPDATE OF student_group_id, organization_id, user_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION sync_profile_group_course_enrollment()",
+      "function": "sync_profile_group_course_enrollment()",
+      "name": "sync_profile_group_course_enrollment_trigger",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER trg_sync_frdo_name_from_profile AFTER UPDATE OF full_name ON public.profiles FOR EACH ROW EXECUTE FUNCTION sync_frdo_name_from_profile()",
+      "function": "sync_frdo_name_from_profile()",
+      "name": "trg_sync_frdo_name_from_profile",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER trigger_profile_achievements AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION check_profile_achievements()",
+      "function": "check_profile_achievements()",
+      "name": "trigger_profile_achievements",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "function": "update_updated_at_column()",
+      "name": "update_profiles_updated_at",
+      "table": "profiles"
+    },
+    {
+      "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.program_categories FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+      "function": "uc_guard_document_actions()",
+      "name": "uc_document_action_guard",
+      "table": "program_categories"
+    },
+    {
+      "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.program_documents FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+      "function": "uc_guard_document_actions()",
+      "name": "uc_document_action_guard",
+      "table": "program_documents"
+    },
+    {
+      "definition": "CREATE TRIGGER update_program_documents_updated_at BEFORE UPDATE ON public.program_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "function": "update_updated_at_column()",
+      "name": "update_program_documents_updated_at",
+      "table": "program_documents"
+    },
+    {
+      "definition": "CREATE TRIGGER uc_document_action_guard BEFORE INSERT OR DELETE OR UPDATE ON public.program_folders FOR EACH ROW EXECUTE FUNCTION uc_guard_document_actions()",
+      "function": "uc_guard_document_actions()",
+      "name": "uc_document_action_guard",
+      "table": "program_folders"
+    },
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.student_group_memberships FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "function": "account_deletion_subject_write_guard()",
+      "name": "account_deletion_subject_fence",
+      "table": "student_group_memberships"
+    },
+    {
+      "definition": "CREATE TRIGGER sync_group_course_enrollments_trigger AFTER INSERT OR UPDATE OF course_id, organization_id ON public.student_groups FOR EACH ROW EXECUTE FUNCTION sync_group_course_enrollments()",
+      "function": "sync_group_course_enrollments()",
+      "name": "sync_group_course_enrollments_trigger",
+      "table": "student_groups"
+    },
+    {
+      "definition": "CREATE TRIGGER update_student_groups_updated_at BEFORE UPDATE ON public.student_groups FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "function": "update_updated_at_column()",
+      "name": "update_student_groups_updated_at",
+      "table": "student_groups"
+    }
+  ]
+}

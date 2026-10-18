@@ -75,6 +75,8 @@ export interface GenerationContext {
 }
 
 export interface GeneratedDocument {
+  /** Authoritative programme provenance; committed only after server recheck. */
+  variables_snapshot?: Record<string, unknown>;
   id: string;
   doc_type: DocType;
   name: string;

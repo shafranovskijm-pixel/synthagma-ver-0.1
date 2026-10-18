@@ -10,8 +10,10 @@ import {
 } from "./factualData";
 import { requiresDocumentNumber, willBeFinalDocument } from "./documentNumbers";
 import { localDateIso } from "@/lib/date/localDate";
+import { UNCONFIRMED_PROGRAM_NOTICE, type ProgramFactsProof } from "../../../supabase/functions/_shared/program-facts";
 
 export interface GenerateOptions {
+  programFacts?: ProgramFactsProof;
   /** Явный номер (уже зарезервированный сервером). */
   documentNumber?: string;
   /** Карта зарезервированных номеров по типу документа (для пакета). */
@@ -81,7 +83,7 @@ export function generateDocument(
   const docStatus: "draft" | "final" = willBeFinalDocument(docType, {
     mode,
     requestedStatus: opts.requestedStatus === "final" ? "final" : "draft",
-    finalBlocked: () => readiness?.finalBlocked ?? false,
+    finalBlocked: () => opts.programFacts?.state === "unconfirmed" || (readiness?.finalBlocked ?? false),
   })
     ? "final"
     : "draft";
@@ -137,6 +139,7 @@ export function generateDocument(
 
 
   return {
+    variables_snapshot: opts.programFacts ? { program_facts: opts.programFacts, student_user_ids: ctx.students.map(s => s.user_id).sort() } : undefined,
     id: `doc-${docType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     doc_type: docType,
     name: `${tpl.title}${documentNumber ? ` № ${documentNumber}` : ""}`,
@@ -151,7 +154,8 @@ export function generateDocument(
     layout_format: docType === "contract" ? "docx_first" : LEGACY_LAYOUT_FORMAT,
     package_batch_id: opts.packageBatchId ?? null,
     package_version: opts.packageVersion ?? null,
-    source_note: readiness ? readiness.source : LEGACY_LAYOUT_NOTICE,
+    source_note: [readiness ? readiness.source : LEGACY_LAYOUT_NOTICE,
+      opts.programFacts?.state === "unconfirmed" ? UNCONFIRMED_PROGRAM_NOTICE : ""].filter(Boolean).join(". "),
   };
 }
 

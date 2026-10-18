@@ -36,6 +36,7 @@ vi.mock("sonner", () => ({
     error: vi.fn(),
   },
 }));
+vi.mock("@/components/organization/programs/ProgramFactsPanel", () => ({ ProgramFactsPanel: ({ canConfigure }: { canConfigure: boolean }) => <div data-testid="program-facts-panel">{canConfigure ? "Редактирование программы" : "Чтение программы"}</div> }));
 
 import { CourseProgramsList } from "@/components/organization/CourseProgramsList";
 
@@ -60,8 +61,8 @@ describe("CourseProgramsList", () => {
 
     render(<CourseProgramsList organizationId="org-1" />);
 
-    expect(await screen.findAllByText("Нет программы")).toHaveLength(2);
-    expect(screen.getAllByText("Программа добавлена")).toHaveLength(1);
+    expect(await screen.findAllByText("Нет файла программы")).toHaveLength(2);
+    expect(screen.getAllByText("Файл программы добавлен")).toHaveLength(1);
     expect(screen.getByText("Курс с программой")).toBeInTheDocument();
   });
 
@@ -69,7 +70,8 @@ describe("CourseProgramsList", () => {
     render(<CourseProgramsList organizationId="org-1" />);
 
     expect(await screen.findByText(/Синтагма не останавливает обучение/)).toBeInTheDocument();
-    expect(screen.getByText(/файл пока не подставляется в курс, договоры или пакет документов автоматически/)).toBeInTheDocument();
+    expect(screen.getByText(/не подтверждает сведения программы/)).toBeInTheDocument();
+    expect(screen.getByTestId("program-facts-panel")).toHaveTextContent("Чтение программы");
     expect(screen.queryByText(/По законодательству у каждого курса/)).not.toBeInTheDocument();
   });
 });

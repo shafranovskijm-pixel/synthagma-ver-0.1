@@ -36,6 +36,10 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import type { Permission } from "@/constants/rolePermissions";
 import { AddStudentsToGroupDialog } from "@/components/organization/groups/AddStudentsToGroupDialog";
 import { fetchEffectiveGroupProfiles } from "@/api/studentGroupMemberships";
+import { useGroupProgramFacts } from "@/hooks/useProgramFacts";
+import { GroupProgramFactsPanel } from "@/components/organization/programs/GroupProgramFactsPanel";
+import { groupProgramPresentation } from "@/components/organization/programs/groupProgramPresentation";
+import { withProgramGeneration } from "../../../../supabase/functions/_shared/program-facts";
 
 
 
@@ -426,13 +430,20 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
     if (!openFolder) refreshCounts();
   }, [openFolder, refreshCounts]);
 
+  // Only read the programme after the group was loaded under this tenant.
+  const groupProgram = useGroupProgramFacts(organizationId, !loading && group?.id === groupId ? groupId : null, null, !permissionsLoading && can("documents.write"));
+  const programPresentation = useMemo(() => groupProgram.data
+    ? groupProgramPresentation(groupProgram.data, organizationId, groupId, students.map(s => s.user_id))
+    : { projection: null, error: groupProgram.error || "Сведения программы группы ещё не загружены." },
+  [groupProgram.data, groupProgram.error, organizationId, groupId, students]);
+  const pinnedProgram = programPresentation.projection?.fields;
 
 
 
   /** Контекст генерации документов группы: организация + группа + ученики. */
   const generationContext = useMemo<GenerationContext | null>(() => {
     if (!group) return null;
-    return {
+    const context: GenerationContext = {
       organization: {
         id: orgInfo?.id || organizationId,
         name: orgInfo?.name || "",
@@ -456,11 +467,11 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         number: group.group_number || "",
         start_date: group.start_date || "",
         end_date: group.end_date || "",
-        program_title: group.program_title || courseInfo?.title || "",
-        program_hours: group.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0,
-        // Fail-closed: форма обучения только из настроек группы. Пустое значение
-        // честно блокирует договор, вместо подстановки «типовой» формы.
-        program_form: group.program_form || "",
+        program_title: pinnedProgram?.program_title ?? (group.program_title || courseInfo?.title || ""),
+        program_hours: pinnedProgram?.program_hours ?? (group.program_hours || courseInfo?.frdo_duration_hours || 0),
+        // Подтверждённая программа имеет приоритет. Для прежнего черновика
+        // неизвестная форма остаётся пустой, без подстановки «типовой» формы.
+        program_form: pinnedProgram?.program_form ?? (group.program_form || ""),
         schedule_text: group.schedule_text || null,
         instructor_name: group.instructor_name || null,
         training_dates: group.training_dates || [],
@@ -481,14 +492,15 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
         education: s.frdo?.education_level || undefined,
       })),
     };
-  }, [group, orgInfo, students, courseInfo, organizationId]);
+    return programPresentation.projection ? withProgramGeneration(context, programPresentation.projection) : context;
+  }, [group, orgInfo, students, courseInfo, organizationId, pinnedProgram, programPresentation.projection]);
 
-  const resolvedProgramTitle = group?.program_title || courseInfo?.title || "";
+  const resolvedProgramTitle = pinnedProgram?.program_title ?? (group?.program_title || courseInfo?.title || "");
   const resolvedCourseId = group?.course_id || courseInfo?.id || null;
 
-  const resolvedProgramHours = group?.program_hours || courseInfo?.frdo_duration_hours || courseInfo?.duration || 0;
+  const resolvedProgramHours = pinnedProgram?.program_hours ?? (group?.program_hours || courseInfo?.frdo_duration_hours || 0);
   const courseMasterHours = canonicalCourseHours(courseInfo);
-  const hasProgramHoursMismatch = programHoursMismatch(group?.program_hours, courseInfo);
+  const hasProgramHoursMismatch = !pinnedProgram && programHoursMismatch(group?.program_hours, courseInfo);
   const exactGoreltechDocuments = useMemo(
     () => !!generationContext
       && resolveGroupDocumentClientProfile(generationContext.organization).key === "goreltech",
@@ -509,22 +521,24 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
   /** Критичные поля: без них документы бессмысленны — генерация блокируется. */
   const blockingDocFields = useMemo(() => {
     const missing: string[] = [];
+    if (programPresentation.error) missing.push(programPresentation.error);
     if (!resolvedProgramTitle) missing.push("название программы (или курс группы)");
     if (!resolvedProgramHours) missing.push("объём часов");
     if (hasProgramHoursMismatch) missing.push(`часы группы (${group?.program_hours}) не совпадают с курсом (${courseMasterHours})`);
     missing.push(...missingOrganizationDocFields);
-    if (!group?.program_form) missing.push("форма обучения группы");
+    if (!(pinnedProgram?.program_form || group?.program_form)) missing.push("форма обучения группы");
     return missing;
-  }, [resolvedProgramTitle, resolvedProgramHours, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours, missingOrganizationDocFields]);
+  }, [resolvedProgramTitle, resolvedProgramHours, group?.program_form, group?.program_hours, hasProgramHoursMismatch, courseMasterHours, missingOrganizationDocFields, programPresentation.error, pinnedProgram]);
 
   const missingDocFields = useMemo(() => {
     const missing = [...blockingDocFields];
+    if (programPresentation.projection?.state !== "confirmed") missing.push("утверждённая версия программы и её связь с группой не подтверждены");
     if (!group?.group_number) missing.push("номер группы");
-    if (!group?.start_date || !group?.end_date) missing.push("даты обучения");
-    if (!group?.instructor_name) missing.push("преподаватель для журнала");
-    if ((group?.training_dates || []).length !== 4) missing.push("4 даты занятий для журнала");
+    if (!generationContext?.group.start_date || !generationContext?.group.end_date) missing.push("даты обучения");
+    if (!generationContext?.group.instructor_name) missing.push("преподаватель для журнала");
+    if ((generationContext?.group.training_dates || []).length !== 4) missing.push("4 даты занятий для журнала");
     return missing;
-  }, [blockingDocFields, group]);
+  }, [blockingDocFields, group?.group_number, generationContext, programPresentation.projection?.state]);
 
   const frdoReadyCount = useMemo(
     () => students.filter(student => resolveFrdoReadiness(student.frdo, student.full_name).status === "complete").length,
@@ -770,6 +784,9 @@ export function GroupFolderTab({ organizationId, groupId }: GroupFolderTabProps)
           </div>
         </div>
       </Card>
+
+      <GroupProgramFactsPanel organizationId={organizationId} groupId={groupId} courseId={resolvedCourseId} courseTitle={courseInfo?.title}
+        students={students} resource={groupProgram} canConfigure={!permissionsLoading && can("documents.write")} />
 
       {/* Работа с группой */}
       <Card className="p-4 rounded-2xl border-border">
