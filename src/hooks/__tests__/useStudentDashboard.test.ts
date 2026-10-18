@@ -141,8 +141,17 @@ describe("useStudentDashboard", () => {
     expect(typeof result.current.isPreviewMode).toBe("boolean");
   });
 
-  it("provides formatTime utility", () => {
+  it("formats stored enrollment seconds as whole hours and minutes", () => {
     const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
-    expect(typeof result.current.formatTime).toBe("function");
+    // The enrollment RPC sums lesson seconds; the production QA course had
+    // about 940 seconds, which must display as 15 minutes, not 15 hours.
+    expect(result.current.formatTime(940)).toBe("0ч 15м");
+    expect(result.current.formatTime(0)).toBe("0ч 0м");
+    expect(result.current.formatTime(59)).toBe("0ч 0м");
+    expect(result.current.formatTime(60)).toBe("0ч 1м");
+    expect(result.current.formatTime(3599)).toBe("0ч 59м");
+    expect(result.current.formatTime(3600)).toBe("1ч 0м");
+    expect(result.current.formatTime(3661)).toBe("1ч 1м");
+    expect(result.current.formatTime(10_859)).toBe("3ч 0м");
   });
 });

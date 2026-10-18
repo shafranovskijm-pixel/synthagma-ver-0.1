@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { Lesson } from './types';
+import type { ContentBlock } from '@/components/course-builder/block-editor/types';
 
 const mocks = vi.hoisted(() => ({
   maybeSingle: vi.fn(), toastError: vi.fn(), toastInfo: vi.fn(),
@@ -67,6 +68,18 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('lesson speech lifecycle', () => {
+  it('passes headings, table cells and clean list text to the actual speech queue', async () => {
+    const blocks: ContentBlock[] = [
+      { id: 'heading', type: 'heading3', content: 'Проверка' },
+      { id: 'table', type: 'table', content: '', tableCellsHtml: true, tableRows: [['Датчик', '<b>Готов</b>']] },
+      { id: 'list', type: 'numberedList', content: 'Осмотр<br>Пуск&nbsp;разрешён' },
+    ];
+    const { result } = renderHook(() => useLessonTTS({ currentLesson: lesson('mixed', JSON.stringify(blocks)), currentLessonIndex: 0, contentBlocks: blocks, testQuestions: [] }));
+    act(() => result.current.speakText()); await flush();
+    expect(utterances[0].text).toBe('Проверка. Датчик; Готов. Осмотр. Пуск разрешён');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('defaults to browser speech without a cloud call and preserves an explicit Sber choice', async () => {
     expect(getStoredTTSSettings({ provider: 'salutespeech' }).provider).toBe('browser');
     const { result } = renderTTS();

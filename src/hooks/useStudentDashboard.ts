@@ -570,7 +570,9 @@ export function useStudentDashboard() {
   const nameParts = profile?.full_name?.split(" ") || [];
   const firstName = nameParts.length >= 2 ? nameParts[1] : "Ученик";
 
-  const formatTime = (minutes: number) => {
+  const formatTime = (seconds: number) => {
+    // enrollments.time_spent is the sum of lesson time stored in seconds.
+    const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}ч ${mins}м`;
