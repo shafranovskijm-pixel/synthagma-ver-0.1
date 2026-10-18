@@ -220,3 +220,25 @@ verify_jwt = false
 [functions.tbank-webhook]
 verify_jwt = false
 
+# UC foundation: signing invitations validate token/revision/hash; all other
+# handlers verify the user and account revocation before privileged operations.
+[functions.finalize-signature]
+verify_jwt = false
+
+[functions.generate-signature-certificate]
+verify_jwt = false
+
+[functions.send-signing-email]
+verify_jwt = false
+
+[functions.org-create-contract-signature]
+verify_jwt = false
+
+[functions.html-to-pdf]
+verify_jwt = false
+
+# A valid anonymous JWT must never authorize cron purge. The handler permits
+# POST only with the exact server service bearer before reading any records.
+[functions.purge-recycle-bin-storage]
+verify_jwt = false
+

@@ -1,10 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail, type SmtpConfig } from "../_shared/smtp-sender.ts";
+import { accessErrorResponse, requireActiveUser } from "../_shared/privileged-access.ts";
+import { signatureSha256 } from "../_shared/signature-finalizer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
 };
 
 interface ReqBody {
@@ -44,6 +47,7 @@ function renderEmailHtml(orgName: string, recipientName: string, docTitle: strin
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Используйте POST" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const body: ReqBody = await req.json();
@@ -63,6 +67,8 @@ serve(async (req: Request) => {
     });
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    await requireActiveUser(req, admin);
 
     // ============ Phase 5C.1.c: sales.write on THIS org, before any service-role writes/SMTP ============
     // Prevents students, sales.read-only staff, expired staff, and users from OTHER orgs
@@ -83,7 +89,11 @@ serve(async (req: Request) => {
       });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    if (body.linked_proposal_id) {
+      const proposal = await admin.from("commercial_proposals").select("id").eq("id", body.linked_proposal_id)
+        .eq("organization_id", body.organization_id).maybeSingle();
+      if (proposal.error || !proposal.data) return new Response(JSON.stringify({ error: "Предложение не относится к организации" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // 1. Получаем имя отправителя
     const { data: profile } = await admin.from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle();
@@ -95,10 +105,11 @@ serve(async (req: Request) => {
       organization_id: body.organization_id,
       sender_user_id: user.id,
       sender_name: senderName,
-      document_type: "sales_contract",
+      document_type: "contract",
       document_title: body.document_title,
       document_html: body.document_html,
-      recipient_type: "external_company",
+      document_hash: await signatureSha256(body.document_html),
+      recipient_type: "company",
       recipient_email: body.recipient_email,
       recipient_name: body.recipient_name,
       status: "draft",
@@ -120,9 +131,10 @@ serve(async (req: Request) => {
     }).select("id").single();
     if (revErr || !rev) throw new Error("Не удалось создать ревизию: " + (revErr?.message || "unknown"));
 
-    await admin.from("document_signatures").update({
+    const linkedRevision = await admin.from("document_signatures").update({
       current_revision_id: rev.id,
-    }).eq("id", sig.id);
+    }).eq("id", sig.id).eq("status", "draft");
+    if (linkedRevision.error) throw new Error("Не удалось сохранить версию договора");
 
     // 4. Готовим SMTP организации
     const { data: smtpRow, error: smErr } = await admin.rpc("get_decrypted_org_smtp", {
@@ -141,7 +153,8 @@ serve(async (req: Request) => {
     let templateHtml: string | undefined;
     let templateSubject: string | undefined;
     if (body.template_email_id) {
-      const { data: tpl } = await admin.from("email_templates").select("subject, html_body").eq("id", body.template_email_id).maybeSingle();
+      const { data: tpl, error: templateError } = await userClient.from("email_templates").select("subject, html_body").eq("id", body.template_email_id).is("deleted_at", null).maybeSingle();
+      if (templateError || !tpl) throw new Error("Шаблон письма недоступен");
       if (tpl) {
         templateHtml = tpl.html_body;
         templateSubject = tpl.subject;
@@ -195,16 +208,12 @@ serve(async (req: Request) => {
     await admin.from("document_signatures").update({
       status: "sent",
       sent_at: new Date().toISOString(),
-    }).eq("id", sig.id);
+    }).eq("id", sig.id).eq("status", "draft");
 
     return new Response(JSON.stringify({ signature_id: sig.id, signing_url: signUrl }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    const msg = (e as Error).message;
-    console.error("org-create-contract-signature error", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return accessErrorResponse(e, corsHeaders);
   }
 });

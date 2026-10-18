@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { accessErrorResponse, checked, readObject, requireActiveUser, requireSignatureAccess, requireUuid } from "../_shared/privileged-access.ts";
+import { signatureSha256 } from "../_shared/signature-finalizer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "X-Sintagma-Function-Revision": "uc-foundation-20261018-v1",
 };
 
 function escapeHtml(s: string): string {
@@ -114,6 +116,18 @@ serve(async (req) => {
       });
     }
 
+    // Existing artifacts, including pre-release ones, are returned byte-for-byte.
+    if (sig.signed_document_path) {
+      const existing = await supabase.storage.from("signed-documents").download(sig.signed_document_path);
+      if (existing.error || !existing.data) throw new Error("Certificate artifact unavailable");
+      return new Response(existing.data, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+    }
+    if (!Object.hasOwn(sig, "certificate_state")) {
+      return new Response(JSON.stringify({ error: "Обновление хранилища подписей ещё не завершено" }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
+    }
+
     const pep = (sig as any).pep_agreements;
     const html = buildCertificateHtml({
       signatureId: sig.id,
@@ -127,7 +141,7 @@ serve(async (req) => {
       signedUserAgent: sig.signed_user_agent || "—",
       pepAgreementText: pep?.agreement_text || "",
       pepAgreementVersion: pep?.agreement_version || "v1.0",
-      organizationName: (sig as any).organizations?.name || "",
+      organizationName: sig.signed_organization_name || (sig as any).organizations?.name || "",
     });
 
     // Сохраняем HTML-сертификат в storage (PDF-конвертация по запросу пользователя)
@@ -135,19 +149,18 @@ serve(async (req) => {
     const blob = new Blob([html], { type: "text/html; charset=utf-8" });
     const { error: upErr } = await supabase.storage
       .from("signed-documents")
-      .upload(path, blob, { upsert: true, contentType: "text/html; charset=utf-8" });
+      .upload(path, blob, { upsert: false, contentType: "text/html; charset=utf-8" });
     if (upErr) {
-      console.error("upload err:", upErr);
-      return new Response(JSON.stringify({ error: "Failed to save certificate" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // A simultaneous retry may have created exactly this immutable artifact.
+      const existing = await supabase.storage.from("signed-documents").download(path);
+      if (existing.error || !existing.data || await existing.data.text() !== html) throw new Error("Certificate artifact conflict");
     }
 
     // Записываем путь сертификата
     if (!sig.signed_document_path) {
       const result = await supabase.from("document_signatures")
-        .update({ signed_document_path: path })
-        .eq("id", sig.id);
+        .update({ signed_document_path: path, certificate_hash: await signatureSha256(html), certificate_state: "ready", certificate_error: null })
+        .eq("id", sig.id).is("signed_document_path", null);
       if (result.error) throw new Error("Failed to persist certificate path");
     }
 
