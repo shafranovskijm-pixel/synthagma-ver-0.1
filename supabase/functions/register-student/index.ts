@@ -16,12 +16,13 @@ import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails, res
 import { persistStudentJobPosition } from "../_shared/student-job-position.ts";
 
 const REGISTER_STUDENT_REVISION = "student-import-v6";
+const FUNCTION_REVISION = "uc-ocr-scope-20261019-v1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Expose-Headers": "X-Sintagma-Register-Student-Revision",
+  "Access-Control-Expose-Headers": "X-Sintagma-Register-Student-Revision, X-Sintagma-Function-Revision",
 };
 
 const j = (body: unknown, status = 200) =>
@@ -31,6 +32,7 @@ const j = (body: unknown, status = 200) =>
       ...corsHeaders,
       "Content-Type": "application/json",
       "X-Sintagma-Register-Student-Revision": REGISTER_STUDENT_REVISION,
+      "X-Sintagma-Function-Revision": FUNCTION_REVISION,
     },
   });
 
@@ -79,6 +81,7 @@ serve(async (req) => {
     let callerUserId: string | null = null;
     let callerProfile: { organization_id: string | null } | null = null;
     let callerStaffAuthorized = false;
+    let callerClient: ReturnType<typeof createClient> | null = null;
 
     if (registration_token) {
       const { data: link, error: linkError } = await supabaseAdmin
@@ -119,6 +122,7 @@ serve(async (req) => {
         }, 401);
       }
       callerUserId = user.id;
+      callerClient = supabaseAuth;
 
       // Multi-role aware: user may hold multiple roles.
       const { data: rd } = await supabaseAdmin
@@ -263,6 +267,28 @@ serve(async (req) => {
         if (hasRegistrationDetails && !canResolveByLogin) {
           return j({ error: "Недостаточно прав для сохранения сведений и подтверждения идентификации", code: "STUDENT_DETAILS_FORBIDDEN" }, 403);
         }
+      }
+    }
+
+    if (hasRegistrationDetails) {
+      // Check the actual caller before Auth/profile creation. The service-only
+      // save RPC repeats current target authority after the profile is claimed.
+      // Empty normalized fields request no extra FRDO/identity privilege.
+      let detailsAllowed = false;
+      try {
+        const { data: allowed, error } = await callerClient!.rpc("can_prepare_student_registration_details", {
+          p_organization_id: effectiveOrgId,
+          p_group_id: effectiveStudentGroupId ?? null,
+          p_with_frdo: !!(registrationDetails.snils || registrationDetails.birth_date),
+          p_confirm_identity: registrationDetails.confirm_identity === true,
+        });
+        if (error || typeof allowed !== "boolean") throw new Error("Unconfirmed registration detail authority");
+        detailsAllowed = allowed === true;
+      } catch {
+        return j({ error: "Не удалось проверить права на сведения ученика", code: "STUDENT_DETAILS_PERMISSION_UNCONFIRMED" }, 500);
+      }
+      if (!detailsAllowed) {
+        return j({ error: "Недостаточно прав для сохранения сведений и подтверждения идентификации", code: "STUDENT_DETAILS_FORBIDDEN" }, 403);
       }
     }
 
