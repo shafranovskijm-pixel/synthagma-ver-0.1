@@ -44,7 +44,7 @@
 
 - 38 actual SQL scenarios на PGlite поверх actual100–105 и14 снятых read-only production определений доступа.
 - 38 actual SQL scenarios для109: namespace + uploader, роль/группа/tenant, initial staging до parent, коммерческий sender, recipient revision, старые forged references, scan/certificate, finalization, receipt/CAS/replay и поздний rollback.
-- 6 actual atomic-batch tests общего108–109: полный выпуск, late109 ledger rollback обеих миграций, source tamper, auth drift, отсутствующая прежняя миграция и повторяемые schema/function fingerprints после пользовательского сохранения.
+- 7 actual atomic-batch tests общего108–109: полный выпуск, late109 ledger rollback обеих миграций, source tamper, auth drift, отсутствующая прежняя миграция, повторяемые schema/function fingerprints после пользовательского сохранения и обнаружение DROP NOT NULL в каждой из пяти новых таблиц.
 - Положительные owner/custom writer; отрицательные learner, assigned teacher, viewer, revoked/expired, NULL-auth/service, foreign tenant.
 - CAS, idempotent replay, другой актёр/тело, history pagination, отзыв, stale profile/catalog, строгие поля, evidence binding, поздний rollback.
 - Реальная двухсессионная конкуренция PostgreSQL не выполнялась: тестовая среда — одна connection. Сериализацию обеспечивают advisory lock, row locks, unique keys и CAS; последовательные stale requests проверены.
@@ -74,4 +74,6 @@ Token broker принимает только токен, kind и optional exact 
 Read-only production inventory до выпуска:1 signature,1 revision с flat file pointer;6 external objects, из них5 flat,0 canonical;1 certificate pointer,0 scan/snapshot pointers. Никакие записи или blobs не мигрируются. Legacy ambiguous source возвращает P0010/HISTORICAL_FILE_BINDING_UNVERIFIED: публичный recipient и assigned teacher не получают доступ из mutable reference. Самостоятельное org-wide право owner/admin/reader сохраняет прежний user-JWT Storage read; UI может использовать его только для этого исторического кода, без обхода revoked/expiry/hash errors.
 
 Manifest хранит canonical LF hashes обеих SQL, всех product UI файлов, config и полного локального import graph Edge. На Windows raw CRLF hash может отличаться: перед сравнением нормализуется только CRLF→LF.
+
+Проверка схемы совместима с PostgreSQL17 и18: только дополнительные строки `pg_constraint.contype='n'`, появившиеся в18, исключены из компонента constraints. Обязательность каждой колонки по-прежнему проверяется через `pg_attribute.attnotnull`; все CHECK/FK/UNIQUE/PK и остальные типы constraints остаются в fingerprint. Диагностика с намеренным исключением и полным откатом установила, что это единственное расхождение всех пяти схем production17.6 и local18.6. Исходники108/109 и права не изменялись.
 

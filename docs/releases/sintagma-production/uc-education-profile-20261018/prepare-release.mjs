@@ -29,9 +29,11 @@ const functions=['uc_empty_education_profile','uc_validate_education_profile','u
  'uc_guard_signature_file_provenance','create_external_contract_signature_v2','add_signature_revision_v2','uc_signature_file_context'];
 const auth=[...JSON.parse(await read('supabase/tests/fixtures/uc-education-profile-baseline.json')).functions,...JSON.parse(await read('supabase/tests/fixtures/uc-education-profile-auth-baseline.json')).functions,...JSON.parse(await read('supabase/tests/fixtures/uc-signature-file-token-baseline-20261018.json')).functions];
 const ledger=items=>items.map(s=>`(version='${s.version}' AND name='${s.name}' AND cardinality(statements)=1 AND md5(replace(statements[1],chr(13)||chr(10),chr(10)))='${s.sourceMd5}')`).join(' OR ');
+// PG18 exposes NOT NULL in pg_constraint; PG17 does not. attnotnull below
+// remains authoritative, so only that duplicated representation is omitted.
 const tableShape=(t)=>`SELECT md5(jsonb_build_object(
  'columns',(SELECT jsonb_agg(jsonb_build_array(a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull,pg_get_expr(d.adbin,d.adrelid)) ORDER BY a.attnum) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid='public.${t}'::regclass AND a.attnum>0 AND NOT a.attisdropped),
- 'constraints',(SELECT jsonb_agg(jsonb_build_array(conname,pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid='public.${t}'::regclass),
+ 'constraints',(SELECT jsonb_agg(jsonb_build_array(conname,pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid='public.${t}'::regclass AND contype<>'n'),
  'indexes',(SELECT jsonb_agg(jsonb_build_array(indexname,indexdef) ORDER BY indexname) FROM pg_indexes WHERE schemaname='public' AND tablename='${t}'),
  'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY policyname) FROM pg_policies p WHERE schemaname='public' AND tablename='${t}'),
  'triggers',(SELECT jsonb_agg(jsonb_build_array(tgname,tgenabled,pg_get_triggerdef(oid)) ORDER BY tgname) FROM pg_trigger WHERE tgrelid='public.${t}'::regclass AND NOT tgisinternal),

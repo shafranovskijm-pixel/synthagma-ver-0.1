@@ -76,4 +76,19 @@ it('checks schema/function fingerprints after apply and keeps postcheck valid af
  await db.exec('ALTER TABLE organization_education_profiles ADD COLUMN unexpected text');
  expect((await one(await read('postcheck.sql'))).exact_new_schema).toBe(false);
 },30000);
+it('canonical PG17/18 fingerprint still detects removal of NOT NULL in every new table',async()=>{
+ await setup();await db.exec(await read('release-transaction.sql'));await db.exec('BEGIN');
+ for(const [table,column] of [
+  ['organization_education_profiles','profile'],['organization_education_profile_history','profile'],
+  ['organization_document_applicability_decisions','reason'],['organization_document_applicability_history','reason'],
+  ['uc_signature_file_requests','request_hash'],
+ ]){
+  await db.exec('SAVEPOINT not_null_drift');
+  await db.exec('ALTER TABLE '+table+' ALTER COLUMN '+column+' DROP NOT NULL');
+  expect((await one(await read('postcheck.sql'))).exact_new_schema).toBe(false);
+  await db.exec('ROLLBACK TO not_null_drift');
+  expect((await one(await read('postcheck.sql'))).exact_new_schema).toBe(true);
+ }
+ await db.exec('ROLLBACK');
+},30000);
 

@@ -2,7 +2,7 @@
   "release": "uc-education-profile-20261018",
   "preparedOnly": true,
   "migrationCount": 2,
-  "batchSha256": "6a3cbd8b49a9efce94befb96e257f9cf0010aabbda61d2aac5c09114191f9301",
+  "batchSha256": "534ae40cfe06c09dfdd68b33a55504ddef148308dd11049f95d66064ae8b832f",
   "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
   "migrations": [
     {
@@ -285,23 +285,23 @@
   "expectedTables": [
     {
       "table": "organization_education_profiles",
-      "schemaMd5": "24d8c409865532da5edf6ce068ddfad7"
+      "schemaMd5": "876d5ee780c85d0d7a2256e72b38d086"
     },
     {
       "table": "organization_education_profile_history",
-      "schemaMd5": "eab27774ca6c9e070bd54ba9d065a3e1"
+      "schemaMd5": "a8514967a2b0ad1341cf192a6eb7a7c1"
     },
     {
       "table": "organization_document_applicability_decisions",
-      "schemaMd5": "c14caf43e60db8c5e3ef7bc2fd7d6f91"
+      "schemaMd5": "5f3e4bbd138ec894b1a582f7113320cf"
     },
     {
       "table": "organization_document_applicability_history",
-      "schemaMd5": "2ecbbe003e463941b395e0956e766725"
+      "schemaMd5": "ad0359196a8ad0b37ee84b98965284c4"
     },
     {
       "table": "uc_signature_file_requests",
-      "schemaMd5": "cad275ed69d1aedab329c2419f7591ec"
+      "schemaMd5": "d794ebebf61a3b2dff0df8b7e4633c7b"
     }
   ],
   "expectedTriggers": [
