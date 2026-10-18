@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { openPrivateFile } from "@/utils/storageHelpers";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createDocumentUploadOperation, saveDocumentUpload, type DocumentUploadOperation } from "@/lib/orgDocumentLifecycle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +44,7 @@ interface OrgDocument {
   type: string;
   file_url: string | null;
   created_at: string;
+  deleted_at?: string | null;
 }
 
 interface OrgDocumentsTabProps {
@@ -58,6 +61,8 @@ const DOCUMENT_TYPES = [
 ];
 
 export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }: OrgDocumentsTabProps) {
+  const uploadOperation = useRef<DocumentUploadOperation | null>(null);
+  const visibleDocuments = documents.filter(doc => !doc.deleted_at);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [versionsDoc, setVersionsDoc] = useState<OrgDocument | null>(null);
@@ -70,29 +75,12 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
   const handleUpload = async (file: File, type: string) => {
     setUploadingType(type);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${organizationId}/${type}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("org-documents")
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("org-documents")
-        .getPublicUrl(fileName);
-
-      const { error: dbError } = await supabase
-        .from("org_documents")
-        .insert({
-          organization_id: organizationId,
-          name: file.name,
-          type: type,
-          file_url: publicUrl,
-        });
-
-      if (dbError) throw dbError;
+      if (!uploadOperation.current || uploadOperation.current.file !== file
+        || uploadOperation.current.organizationId !== organizationId || uploadOperation.current.document.type !== type) {
+        uploadOperation.current = createDocumentUploadOperation({ organizationId, file, document: { name: file.name, type } });
+      }
+      await saveDocumentUpload(uploadOperation.current);
+      uploadOperation.current = null;
 
       toast.success("Документ загружен");
       onDocumentsChange();
@@ -106,24 +94,14 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
   };
 
   const handleDelete = async (doc: OrgDocument) => {
-    if (!confirm(`Удалить документ "${doc.name}"?`)) return;
+    if (!confirm(`Переместить документ "${doc.name}" в корзину?`)) return;
 
     try {
-      if (doc.file_url) {
-        const path = doc.file_url.split("/org-documents/")[1];
-        if (path) {
-          await supabase.storage.from("org-documents").remove([path]);
-        }
-      }
-
-      const { error } = await supabase
-        .from("org_documents")
-        .delete()
-        .eq("id", doc.id);
-
+      const { data, error } = await supabase.rpc("soft_delete_document", { p_table: "org_documents", p_id: doc.id });
       if (error) throw error;
+      if (!data) throw new Error("Документ не найден или уже удалён");
 
-      toast.success("Документ удалён");
+      toast.success("Документ перемещён в корзину");
       onDocumentsChange();
     } catch (error) {
       console.error("Error deleting document:", error);
@@ -133,7 +111,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
 
   const documentsByType = DOCUMENT_TYPES.slice(0, 3).map(type => ({
     ...type,
-    count: documents.filter(d => d.type === type.value).length,
+    count: visibleDocuments.filter(d => d.type === type.value).length,
   }));
 
   return (
@@ -177,7 +155,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.map((doc) => {
+              {visibleDocuments.map((doc) => {
                 const typeConfig = getTypeConfig(doc.type);
                 const Icon = typeConfig.icon;
                 return (
@@ -218,7 +196,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => window.open(doc.file_url!, "_blank")}
+                            onClick={async () => { if (!await openPrivateFile("org-documents", doc.file_url!)) toast.error("Не удалось открыть документ"); }}
                             title="Скачать"
                           >
                             <Download className="w-4 h-4" />
@@ -238,7 +216,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
                   </TableRow>
                 );
               })}
-              {documents.length === 0 && (
+              {visibleDocuments.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     Нет документов
@@ -282,6 +260,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
         documentId={versionsDoc?.id || null}
         documentName={versionsDoc?.name || ""}
         organizationId={organizationId}
+        canWrite
         onRestored={onDocumentsChange}
       />
 

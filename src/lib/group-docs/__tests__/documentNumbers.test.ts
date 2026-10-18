@@ -147,7 +147,9 @@ describe("create_group_document_batch сериализует параллель�
     const dir = path.join(process.cwd(), "supabase", "migrations");
     const file = fs
       .readdirSync(dir)
-      .filter((f) => fs.readFileSync(path.join(dir, f), "utf8").includes("create_group_document_batch"))
+      // Later migrations can change only grants or wrap the existing function.
+      // Inspect its latest actual definition, not a file merely mentioning it.
+      .filter((f) => /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.create_group_document_batch\s*\(/i.test(fs.readFileSync(path.join(dir, f), "utf8")))
       .sort()
       .pop()!;
     const sql = fs.readFileSync(path.join(dir, file), "utf8");

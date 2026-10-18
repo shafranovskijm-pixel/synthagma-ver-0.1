@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { TrainingPlanEditor } from "./TrainingPlanEditor";
 import { cn } from "@/lib/utils";
+import { generatedPdfPath } from "@/lib/documents/generatedPdf";
 import {
   templateMatchesScenario, templateUsableForScenario, pickDefaultTemplate, validateScenario, blockingMissing,
   planContractJobs, templateVariableGaps, type ContractScenario, type ScenarioStudent,
@@ -534,7 +535,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             body: { html: fullDoc, fileName, storagePath },
           });
           if (pdfErr) throw pdfErr;
-          if (!pdfRes?.path) throw new Error("PDF не был сохранён");
+          const pdfPath = generatedPdfPath(pdfRes);
 
           contractRows.push({
             organization_id: organizationId,
@@ -554,7 +555,7 @@ export function GenerateContractDialog({ organizationId, groupId, groupName, stu
             name: counterparty === "individual" ? `${title} — ${job.students[0]?.full_name || ""}`.trim() : title,
             contract_number: number || null,
             contract_date: date || null,
-            file_path: pdfRes.path,
+            file_path: pdfPath,
             status: "active",
           });
 

@@ -24,6 +24,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       select: () => ({
         eq: (_column: string, companyId: string) => ({
           order: () => queryState.responses.get(`${table}:${companyId}`),
+          is: () => ({ order: () => queryState.responses.get(`${table}:${companyId}`) }),
         }),
       }),
     }),

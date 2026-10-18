@@ -292,6 +292,7 @@ export function ContractReviewBody({
       const { data, error } = await supabase.functions.invoke("finalize-signature", {
         body: {
           token: signatureToken,
+          expectedRevisionId: sig.current_revision_id ?? null,
           documentHash: docHash,
           pepAgreement: {
             agreement_text: agreementText,
@@ -766,6 +767,7 @@ export function ContractReviewBody({
                 signatureId={sig.id}
                 organizationId={sig.organization_id}
                 signatureToken={signatureToken!}
+                expectedRevisionId={sig.current_revision_id ?? null}
                 signerName={signFullName}
                 signerEmail={signEmail}
                 onSigned={async (info) => {

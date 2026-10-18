@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { openPrivateFile } from "@/utils/storageHelpers";
+import { companyDocumentStorage } from "@/lib/documents/companyDocumentStorage";
 
 interface CompanyDoc {
   id: string;
@@ -35,6 +36,7 @@ export function CompanyDocumentsTab({ companyId }: Props) {
       .from("company_documents")
       .select("id, name, type, file_url, file_path, amount, is_paid, uploaded_at, contract_number, contract_date")
       .eq("company_id", companyId)
+      .is("deleted_at", null)
       .order("uploaded_at", { ascending: false });
     setDocuments(data || []);
     setLoading(false);
@@ -83,11 +85,14 @@ export function CompanyDocumentsTab({ companyId }: Props) {
                   </TableCell>
                 )}
                 <TableCell>
-                  {doc.file_path ? (
+                  {companyDocumentStorage({ ...doc, company_id: companyId }) ? (
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => openPrivateFile("billing-documents", doc.file_path!)}
+                      onClick={() => {
+                        const location = companyDocumentStorage({ ...doc, company_id: companyId });
+                        if (location) void openPrivateFile(location.bucket, location.path);
+                      }}
                     >
                       <Download className="w-4 h-4" />
                     </Button>

@@ -1,5 +1,7 @@
+import { downloadPrivateFile } from "@/utils/storageHelpers";
+import { toast } from "sonner";
 import { useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +19,7 @@ interface OrgDocumentVersionsDialogProps {
   documentName: string;
   organizationId: string;
   onRestored?: () => void;
+  canWrite?: boolean;
 }
 
 export function OrgDocumentVersionsDialog({
@@ -26,9 +29,11 @@ export function OrgDocumentVersionsDialog({
   documentName,
   organizationId,
   onRestored,
+  canWrite = false,
 }: OrgDocumentVersionsDialogProps) {
-  const { versions, loading, uploadVersion, restoreVersion } = useOrgDocumentVersions(documentId);
+  const { versions, loading, uploadVersion, restoreVersion, currentVersionId, canChange } = useOrgDocumentVersions(open ? documentId : null, canWrite);
   const [uploading, setUploading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [summary, setSummary] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -50,9 +55,10 @@ export function OrgDocumentVersionsDialog({
             <History className="w-5 h-5 text-primary" />
             История версий: {documentName}
           </DialogTitle>
+          <DialogDescription className="sr-only">Просмотр сохранённых файлов. Замена и восстановление создают новую запись истории.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 border-b border-border pb-4">
+        {canWrite && <div className="space-y-3 border-b border-border pb-4">
           <Textarea
             placeholder="Краткое описание изменений (необязательно)"
             value={summary}
@@ -71,7 +77,7 @@ export function OrgDocumentVersionsDialog({
           />
           <Button
             onClick={() => fileRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || restoring || !canChange}
             className="w-full"
           >
             {uploading ? (
@@ -81,7 +87,7 @@ export function OrgDocumentVersionsDialog({
             )}
             Загрузить новую версию
           </Button>
-        </div>
+        </div>}
 
         <ScrollArea className="max-h-[400px]">
           {loading ? (
@@ -90,7 +96,7 @@ export function OrgDocumentVersionsDialog({
             </div>
           ) : versions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Версий пока нет. Первая загрузка будет помечена как v1.
+              История пока не велась. При следующей замене прежний файл сохранится снимком на дату операции.
             </div>
           ) : (
             <div className="space-y-2">
@@ -102,6 +108,8 @@ export function OrgDocumentVersionsDialog({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline" className="font-mono">v{v.version_number}</Badge>
+                      {v.id === currentVersionId && <Badge variant="secondary">Текущая</Badge>}
+                      {v.event_kind === "baseline" && <span className="text-xs text-muted-foreground">Снимок на дату операции</span>}
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(v.created_at), "d MMM yyyy, HH:mm", { locale: ru })}
                       </span>
@@ -121,7 +129,7 @@ export function OrgDocumentVersionsDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => window.open(v.file_url!, "_blank")}
+                        onClick={async () => { if (!await downloadPrivateFile("org-documents", v.file_path || v.file_url!, v.file_name || documentName)) toast.error("Не удалось скачать документ"); }}
                         title="Скачать"
                       >
                         <Download className="w-4 h-4" />
@@ -130,9 +138,11 @@ export function OrgDocumentVersionsDialog({
                     <Button
                       variant="ghost"
                       size="icon"
+                      disabled={!canChange || uploading || restoring || !v.file_url || v.id === currentVersionId}
                       onClick={async () => {
-                        const ok = await restoreVersion(v);
-                        if (ok) onRestored?.();
+                        setRestoring(true);
+                        try { const ok = await restoreVersion(v); if (ok) onRestored?.(); }
+                        finally { setRestoring(false); }
                       }}
                       title="Сделать актуальной"
                     >

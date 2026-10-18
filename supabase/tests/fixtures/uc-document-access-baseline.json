@@ -1,0 +1,2412 @@
+{
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "md5": "64b0a90b7db9813950ccca6dff208f3a",
+      "name": "account_deletion_access_allowed"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_organization_id uuid, _permission text",
+      "definition": "CREATE OR REPLACE FUNCTION public.can_access_organization(_organization_id uuid, _permission text DEFAULT 'settings.read'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _organization_id IS NOT NULL\n    AND auth.uid() IS NOT NULL\n    AND (\n      public.has_role(auth.uid(), 'admin'::public.app_role)\n      OR EXISTS (\n        SELECT 1\n        FROM public.user_roles ur\n        JOIN public.profiles p ON p.user_id = ur.user_id\n        WHERE ur.user_id = auth.uid()\n          AND ur.role = 'organization'::public.app_role\n          AND p.organization_id = _organization_id\n          AND NOT EXISTS (\n            SELECT 1\n            FROM public.org_staff os\n            WHERE os.user_id = auth.uid()\n              AND os.organization_id = _organization_id\n          )\n      )\n      OR (\n        _permission IS NOT NULL\n        AND EXISTS (\n          SELECT 1\n          FROM public.org_staff os\n          WHERE os.user_id = auth.uid()\n            AND os.organization_id = _organization_id\n            AND (os.expires_at IS NULL OR os.expires_at > now())\n        )\n        AND public.has_org_staff_permission(auth.uid(), _organization_id, _permission)\n      )\n    )\n$function$\n",
+      "md5": "2e11495f3d3e6ca261af8a08ed874269",
+      "name": "can_access_organization"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.current_company_id()\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN (\n    SELECT c.id FROM public.companies c\n    WHERE c.user_id = auth.uid()\n    LIMIT 1\n  );\nEND;\n$function$\n",
+      "md5": "e07990136558adfbdb5848d570fc7686",
+      "name": "current_company_id"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.current_organization_id()\n RETURNS uuid\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_org uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN NULL;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.profiles\n  WHERE user_id = auth.uid()\n  LIMIT 1;\n\n  IF v_org IS NOT NULL THEN\n    RETURN v_org;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.org_staff\n  WHERE user_id = auth.uid()\n    AND (expires_at IS NULL OR expires_at > now())\n  ORDER BY\n    CASE role\n      WHEN 'owner' THEN 1\n      WHEN 'admin' THEN 2\n      WHEN 'school_editor' THEN 3\n      WHEN 'course_editor' THEN 4\n      WHEN 'teacher' THEN 5\n      WHEN 'sales_manager' THEN 6\n      ELSE 10\n    END,\n    created_at ASC\n  LIMIT 1;\n\n  RETURN v_org;\nEND;\n$function$\n",
+      "md5": "59764b65fa49fe9eab47f06d02774888",
+      "name": "current_organization_id"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "p_org uuid, p_doc_type text, p_year integer",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_next_document_number(p_org uuid, p_doc_type text, p_year integer DEFAULT NULL::integer)\n RETURNS integer\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_year int := COALESCE(p_year, EXTRACT(YEAR FROM now())::int);\n  v_next int;\nBEGIN\n  IF p_org IS NULL OR p_doc_type IS NULL THEN\n    RAISE EXCEPTION 'organization_id and doc_type are required';\n  END IF;\n  IF NOT (has_role('admin'::app_role, auth.uid())\n          OR p_org = current_organization_id()) THEN\n    RAISE EXCEPTION 'not authorized';\n  END IF;\n\n  INSERT INTO document_number_sequences(organization_id, doc_type, year, last_number)\n  VALUES (p_org, p_doc_type, v_year, 1)\n  ON CONFLICT (organization_id, doc_type, year)\n  DO UPDATE SET last_number = document_number_sequences.last_number + 1,\n                updated_at = now()\n  RETURNING last_number INTO v_next;\n\n  RETURN v_next;\nEND;\n$function$\n",
+      "md5": "7e9e645840a9dc05cc9ec98322927444",
+      "name": "get_next_document_number"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_user_id uuid, _organization_id uuid, _permission text",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+      "md5": "3d1fedafe94778fa19dd47acb71a3782",
+      "name": "has_org_staff_permission"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_user_id uuid, _organization_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_org_owner(_user_id uuid, _organization_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.user_roles ur\n    JOIN public.profiles p ON p.user_id = ur.user_id\n    WHERE ur.user_id = _user_id\n      AND ur.role = 'organization'::public.app_role\n      AND p.organization_id = _organization_id\n      AND NOT EXISTS (\n        SELECT 1\n        FROM public.org_staff os\n        WHERE os.user_id = _user_id\n          AND os.organization_id = _organization_id\n      )\n  )\n$function$\n",
+      "md5": "362aca6afc26c775be594843258b2ab2",
+      "name": "is_org_owner"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "p_organization_id uuid, p_group_id uuid, p_course_id uuid, p_items jsonb",
+      "definition": "CREATE OR REPLACE FUNCTION public.issue_education_document_batch(p_organization_id uuid, p_group_id uuid, p_course_id uuid, p_items jsonb)\n RETURNS SETOF education_document_records\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_item jsonb;\n  v_user_id uuid;\n  v_enrollment_id uuid;\n  v_doc_type text;\n  v_issue_date date;\n  v_year int;\n  v_doc_n int;\n  v_reg_n int;\n  v_max_doc int;\n  v_max_reg int;\n  v_doc_number text;\n  v_reg_number text;\n  v_new_id uuid;\n  v_existing_id uuid;\n  v_group_course_id uuid;\n  v_ids uuid[] := '{}';\n  v_items_count int;\nBEGIN\n  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Auth required'; END IF;\n  IF p_organization_id IS NULL THEN RAISE EXCEPTION 'organization_id is required'; END IF;\n  IF p_course_id IS NULL THEN RAISE EXCEPTION 'exact course_id is required'; END IF;\n  IF NOT (has_role('admin'::app_role, auth.uid()) OR p_organization_id = current_organization_id()) THEN\n    RAISE EXCEPTION 'not authorized for this organization';\n  END IF;\n  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' THEN\n    RAISE EXCEPTION 'items must be a non-empty array';\n  END IF;\n  v_items_count := jsonb_array_length(p_items);\n  IF v_items_count = 0 THEN RAISE EXCEPTION 'items must be a non-empty array'; END IF;\n  IF v_items_count > 500 THEN RAISE EXCEPTION 'items exceed max batch size (500)'; END IF;\n\n  IF NOT EXISTS (SELECT 1 FROM public.courses c WHERE c.id = p_course_id AND c.organization_id = p_organization_id) THEN\n    RAISE EXCEPTION 'course % does not belong to organization', p_course_id;\n  END IF;\n  IF p_group_id IS NOT NULL THEN\n    SELECT g.course_id INTO v_group_course_id FROM public.student_groups g\n    WHERE g.id = p_group_id AND g.organization_id = p_organization_id;\n    IF NOT FOUND THEN RAISE EXCEPTION 'group % does not belong to organization', p_group_id; END IF;\n    IF v_group_course_id IS NULL OR v_group_course_id <> p_course_id THEN\n      RAISE EXCEPTION 'group % is not linked to exact course %', p_group_id, p_course_id;\n    END IF;\n  END IF;\n\n  PERFORM pg_advisory_xact_lock(hashtextextended(p_organization_id::text, 0));\n  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP\n    v_user_id := NULLIF(v_item->>'user_id', '')::uuid;\n    v_enrollment_id := NULLIF(v_item->>'enrollment_id', '')::uuid;\n    v_doc_type := NULLIF(btrim(v_item->>'document_type'), '');\n    IF v_user_id IS NULL THEN RAISE EXCEPTION 'user_id is required for every item'; END IF;\n    IF v_enrollment_id IS NULL THEN RAISE EXCEPTION 'enrollment_id is required for every item'; END IF;\n    IF v_doc_type NOT IN ('certificate', 'diploma', 'qualification') THEN\n      RAISE EXCEPTION 'document_type must be certificate, diploma or qualification';\n    END IF;\n    IF NULLIF(v_item->>'issue_date', '') IS NULL THEN RAISE EXCEPTION 'issue_date is required for every item'; END IF;\n    v_issue_date := (v_item->>'issue_date')::date;\n    v_year := EXTRACT(YEAR FROM v_issue_date)::int;\n\n    IF NOT EXISTS (\n      SELECT 1 FROM public.profiles pr\n      WHERE pr.user_id = v_user_id AND pr.organization_id = p_organization_id\n        AND (p_group_id IS NULL OR EXISTS (SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id = pr.organization_id AND m.user_id = pr.user_id AND m.group_id = p_group_id))\n    ) THEN RAISE EXCEPTION 'student % is not a member of the specified organization/group', v_user_id; END IF;\n\n    IF NOT EXISTS (\n      SELECT 1 FROM public.enrollments e JOIN public.courses c ON c.id = e.course_id\n      WHERE e.id = v_enrollment_id AND e.user_id = v_user_id AND e.course_id = p_course_id\n        AND c.organization_id = p_organization_id\n    ) THEN\n      RAISE EXCEPTION 'enrollment % does not belong to student %/exact course %', v_enrollment_id, v_user_id, p_course_id;\n    END IF;\n\n    -- One enrollment has one original education document. Re-export returns it.\n    SELECT r.id INTO v_existing_id\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND r.enrollment_id = v_enrollment_id\n      AND lower(btrim(r.document_status)) IN ('original', 'оригинал') AND r.deleted_at IS NULL\n    ORDER BY r.created_at, r.id LIMIT 1;\n    IF v_existing_id IS NOT NULL THEN v_ids := array_append(v_ids, v_existing_id); CONTINUE; END IF;\n\n    SELECT COALESCE(MAX((substring(r.document_number FROM '([0-9]+)$'))::int), 0) INTO v_max_doc\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND EXTRACT(YEAR FROM r.issue_date) = v_year AND r.deleted_at IS NULL;\n    INSERT INTO public.document_number_sequences (organization_id, doc_type, year, last_number)\n    VALUES (p_organization_id, 'edu_doc', v_year, v_max_doc + 1)\n    ON CONFLICT (organization_id, doc_type, year)\n    DO UPDATE SET last_number = GREATEST(document_number_sequences.last_number + 1, v_max_doc + 1), updated_at = now()\n    RETURNING last_number INTO v_doc_n;\n\n    SELECT COALESCE(MAX((substring(r.reg_number FROM '([0-9]+)$'))::int), 0) INTO v_max_reg\n    FROM public.education_document_records r\n    WHERE r.organization_id = p_organization_id AND EXTRACT(YEAR FROM r.issue_date) = v_year AND r.deleted_at IS NULL;\n    INSERT INTO public.document_number_sequences (organization_id, doc_type, year, last_number)\n    VALUES (p_organization_id, 'edu_reg', v_year, v_max_reg + 1)\n    ON CONFLICT (organization_id, doc_type, year)\n    DO UPDATE SET last_number = GREATEST(document_number_sequences.last_number + 1, v_max_reg + 1), updated_at = now()\n    RETURNING last_number INTO v_reg_n;\n\n    v_doc_number := v_year::text || '/' || lpad(v_doc_n::text, 6, '0');\n    v_reg_number := 'ДОК-' || v_year::text || '/' || lpad(v_reg_n::text, 4, '0');\n    INSERT INTO public.education_document_records (\n      organization_id, user_id, course_id, group_id, enrollment_id,\n      reg_number, document_number, document_series, document_type,\n      full_name, birth_date, issue_date, specialty_name, qualification_name,\n      document_status, delivery_method, education_result, notes\n    ) VALUES (\n      p_organization_id, v_user_id, p_course_id, p_group_id, v_enrollment_id,\n      v_reg_number, v_doc_number, NULLIF(v_item->>'document_series', ''), v_doc_type,\n      COALESCE(NULLIF(v_item->>'full_name', ''), ''), NULLIF(v_item->>'birth_date', '')::date,\n      v_issue_date, COALESCE(NULLIF(v_item->>'specialty_name', ''), ''),\n      NULLIF(v_item->>'qualification_name', ''), COALESCE(NULLIF(v_item->>'document_status', ''), 'original'),\n      COALESCE(NULLIF(v_item->>'delivery_method', ''), 'personal'),\n      NULLIF(v_item->>'education_result', ''), NULLIF(v_item->>'notes', '')\n    ) RETURNING id INTO v_new_id;\n    v_ids := array_append(v_ids, v_new_id);\n  END LOOP;\n\n  RETURN QUERY SELECT * FROM public.education_document_records r\n  WHERE r.id = ANY(v_ids) ORDER BY array_position(v_ids, r.id);\nEND;\n$function$\n",
+      "md5": "304262a513c4aded799f0bec0524292d",
+      "name": "issue_education_document_batch"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_value text",
+      "definition": "CREATE OR REPLACE FUNCTION public.storage_try_uuid(_value text)\n RETURNS uuid\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF _value IS NULL THEN RETURN NULL; END IF;\n  RETURN _value::uuid;\nEXCEPTION WHEN others THEN\n  RETURN NULL;\nEND;\n$function$\n",
+      "md5": "25c5cfeb854ac88283b7d9d9549c3689",
+      "name": "storage_try_uuid"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "p_organization_id uuid, p_group_id uuid, p_docs jsonb",
+      "definition": "CREATE OR REPLACE FUNCTION public.create_group_document_batch(p_organization_id uuid, p_group_id uuid, p_docs jsonb)\n RETURNS TABLE(batch_id uuid, batch_version integer, inserted_count integer)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_batch uuid := gen_random_uuid();\n  v_version integer;\n  v_count integer := 0;\n  v_docs_count integer;\n  v_uid uuid := auth.uid();\n  v_force_goreltech_draft boolean :=\n    p_organization_id = '7237f9d4-3670-4a19-8946-a43c68fd3473'::uuid;\nBEGIN\n  IF v_uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;\n  IF p_docs IS NULL OR jsonb_typeof(p_docs) <> 'array' THEN\n    RAISE EXCEPTION 'p_docs must be a non-empty jsonb array';\n  END IF;\n  v_docs_count := jsonb_array_length(p_docs);\n  IF v_docs_count = 0 OR v_docs_count > 500 THEN\n    RAISE EXCEPTION 'p_docs count must be between 1 and 500, got %', v_docs_count;\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM jsonb_array_elements(p_docs) AS d\n    WHERE NULLIF(btrim(d->>'doc_type'), '') IS NULL\n  ) THEN\n    RAISE EXCEPTION 'each p_docs item must have a non-empty doc_type';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM jsonb_array_elements(p_docs) AS d\n    GROUP BY btrim(d->>'doc_type') HAVING count(*) > 1\n  ) THEN\n    RAISE EXCEPTION 'p_docs must contain unique doc_type values';\n  END IF;\n\n  IF NOT (\n    public.has_role(v_uid, 'admin'::app_role)\n    OR public.has_org_staff_permission(v_uid, p_organization_id, 'documents.manage')\n    OR public.is_org_owner(v_uid, p_organization_id)\n  ) THEN\n    RAISE EXCEPTION 'insufficient privileges for organization %', p_organization_id;\n  END IF;\n  IF NOT EXISTS (\n    SELECT 1 FROM public.student_groups g\n    WHERE g.id = p_group_id AND g.organization_id = p_organization_id\n  ) THEN\n    RAISE EXCEPTION 'group % does not belong to organization %', p_group_id, p_organization_id;\n  END IF;\n\n  PERFORM pg_advisory_xact_lock(hashtextextended(p_organization_id::text || ':' || p_group_id::text, 0));\n  SELECT COALESCE(MAX(gd.package_version), 0) + 1 INTO v_version\n  FROM public.group_documents gd\n  WHERE gd.organization_id = p_organization_id AND gd.group_id = p_group_id\n    AND gd.package_batch_id IS NOT NULL;\n\n  UPDATE public.group_documents gd\n  SET is_current = false, updated_at = now()\n  WHERE gd.organization_id = p_organization_id AND gd.group_id = p_group_id\n    AND gd.package_batch_id IS NOT NULL AND gd.package_batch_id <> v_batch\n    AND gd.is_current IS DISTINCT FROM false\n    AND gd.doc_type IN (\n      SELECT DISTINCT btrim(d->>'doc_type') FROM jsonb_array_elements(p_docs) AS d\n    );\n\n  INSERT INTO public.group_documents (\n    organization_id, group_id, doc_type, name, document_number, document_date,\n    variables, html, file_path, status, doc_status, fill_mode, layout_format, source_note,\n    student_user_id, company_id, package_batch_id, package_version, is_current, created_by,\n    template_registry_key, template_version_label, template_sha256, variables_snapshot,\n    docx_sha256, pdf_status, generation_status\n  )\n  SELECT\n    p_organization_id, p_group_id, btrim(d->>'doc_type'), d->>'name',\n    CASE WHEN v_force_goreltech_draft THEN NULL ELSE NULLIF(d->>'document_number', '') END,\n    NULLIF(d->>'document_date', '')::date,\n    COALESCE(d->'variables', '{}'::jsonb), d->>'html', NULLIF(d->>'file_path', ''),\n    'active', CASE\n      WHEN v_force_goreltech_draft THEN 'draft'\n      ELSE COALESCE(NULLIF(d->>'doc_status', ''), 'draft')\n    END,\n    COALESCE(NULLIF(d->>'fill_mode', ''), 'blank'),\n    COALESCE(NULLIF(d->>'layout_format', ''), 'legacy_html'),\n    CASE\n      WHEN v_force_goreltech_draft THEN concat_ws(\n        ' ',\n        NULLIF(d->>'source_note', ''),\n        'Пакет ГОРЭЛТЕХ сохранён как черновик без официального номера.'\n      )\n      ELSE NULLIF(d->>'source_note', '')\n    END,\n    NULLIF(d->>'student_user_id', '')::uuid, NULLIF(d->>'company_id', '')::uuid,\n    v_batch, v_version, true, v_uid,\n    NULLIF(d->>'template_registry_key', ''), NULLIF(d->>'template_version_label', ''),\n    NULLIF(d->>'template_sha256', ''), d->'variables_snapshot',\n    NULLIF(d->>'docx_sha256', ''), COALESCE(NULLIF(d->>'pdf_status', ''), 'unavailable'),\n    CASE\n      WHEN v_force_goreltech_draft THEN 'draft'\n      ELSE COALESCE(NULLIF(d->>'generation_status', ''), 'draft')\n    END\n  FROM jsonb_array_elements(p_docs) AS d;\n\n  SELECT count(*)::int INTO v_count\n  FROM public.group_documents gd WHERE gd.package_batch_id = v_batch;\n  RETURN QUERY SELECT v_batch, v_version, v_count;\nEND;\n$function$\n",
+      "md5": "8298673e0ecb017fffc3698d0fc6d687",
+      "name": "create_group_document_batch"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_user_id uuid, _organization_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_staff_permissions(_user_id uuid, _organization_id uuid)\n RETURNS text[]\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  staff_role text;\n  base_perms text[];\n  override_perms text[];\nBEGIN\n  SELECT role,\n         COALESCE(\n           ARRAY(SELECT jsonb_array_elements_text(sections_access)),\n           ARRAY[]::text[]\n         )\n    INTO staff_role, override_perms\n    FROM public.org_staff\n   WHERE user_id = _user_id AND organization_id = _organization_id\n   LIMIT 1;\n\n  IF staff_role IS NULL THEN\n    RETURN ARRAY[]::text[];\n  END IF;\n\n  base_perms := public.org_role_default_permissions(staff_role);\n\n  -- merge: union of base + overrides (overrides могут только добавлять права)\n  RETURN ARRAY(\n    SELECT DISTINCT unnest(base_perms || override_perms)\n  );\nEND;\n$function$\n",
+      "md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3",
+      "name": "get_org_staff_permissions"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_user_id uuid, _role app_role",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "md5": "82a7fa1cd06301bb83b010bc315aee0b",
+      "name": "has_role"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_role app_role, _user_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "md5": "20c46f708cc2e7fa51b640290151a59e",
+      "name": "has_role"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_permission text",
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_org_staff_permission(_permission text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN _permission IS NULL THEN NULL\n    WHEN _permission LIKE '%.view'   THEN regexp_replace(_permission, '\\.view$',   '.read')\n    WHEN _permission LIKE '%.manage' THEN regexp_replace(_permission, '\\.manage$', '.write')\n    ELSE _permission\n  END\n$function$\n",
+      "md5": "bb385c2b288bb966297a8504df1696ea",
+      "name": "normalize_org_staff_permission"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "_role text",
+      "definition": "CREATE OR REPLACE FUNCTION public.org_role_default_permissions(_role text)\n RETURNS text[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE _role\n    WHEN 'owner' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read','staff.write',\n      'billing.read','billing.write','settings.read','settings.write',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read','sales.write'\n    ]\n    WHEN 'admin' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read',\n      'billing.read','settings.read',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read'\n    ]\n    WHEN 'school_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','services.read','services.write',\n      'settings.read','webinars.read','webinars.write'\n    ]\n    WHEN 'course_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','webinars.read'\n    ]\n    WHEN 'teacher' THEN ARRAY[\n      'courses.read','students.read','library.read','chats.read','chats.write',\n      'homework.read','homework.write','documents.read','journals.read'\n    ]\n    WHEN 'sales_manager' THEN ARRAY[\n      'sales.read','sales.write','companies.read','companies.write',\n      'services.read','documents.read','chats.read','chats.write','students.read'\n    ]\n    ELSE ARRAY[]::text[]\n  END\n$function$\n",
+      "md5": "f2b39953a0c439d75079d72d5e103247",
+      "name": "org_role_default_permissions"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can insert documents",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "frdo_signed_documents",
+      "with_check": "(organization_id = current_organization_id())"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can update their documents",
+      "qual": "(organization_id = current_organization_id())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "frdo_signed_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members can view their documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "frdo_signed_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "frdo_signed_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can create program documents for their org",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete program documents for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update program documents for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view program documents for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage org documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "org_documents",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "org_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members manage own incoming documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "incoming_documents",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "incoming_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can create program categories for their org",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete program categories for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update program categories for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view program categories for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_categories",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage student identity documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can delete own identity documents",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can insert own identity documents",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can update own identity documents",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "(user_id = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can view own identity documents",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_identity_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage document issuance logs",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_issuance_log",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org members manage own training plans",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_training_plans",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_training_plans",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage student documents",
+      "qual": "(EXISTS ( SELECT 1\n   FROM (enrollments e\n     JOIN courses c ON ((c.id = e.course_id)))\n  WHERE ((e.id = student_documents.enrollment_id) AND ((c.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_documents",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM (enrollments e\n     JOIN courses c ON ((c.id = e.course_id)))\n  WHERE ((e.id = student_documents.enrollment_id) AND ((c.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own documents",
+      "qual": "(EXISTS ( SELECT 1\n   FROM enrollments e\n  WHERE ((e.id = student_documents.enrollment_id) AND (e.user_id = auth.uid()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "student_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can delete their education documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "education_document_records",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can insert education documents",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "education_document_records",
+      "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can update their education documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "education_document_records",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view their education documents",
+      "qual": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "education_document_records",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "education_document_records",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can create program folders for their org",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete program folders for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update program folders for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view program folders for their org",
+      "qual": "(organization_id IN ( SELECT profiles.organization_id\n   FROM profiles\n  WHERE (profiles.user_id = auth.uid())))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "program_folders",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can manage all student docs storage",
+      "qual": "((bucket_id = 'student-documents'::text) AND has_role('admin'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can delete company documents",
+      "qual": "((bucket_id = 'company-documents'::text) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id IS NOT NULL)))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can delete company documents storage",
+      "qual": "((bucket_id = 'company-documents'::text) AND (EXISTS ( SELECT 1\n   FROM (companies c\n     JOIN profiles p ON ((p.organization_id = c.organization_id)))\n  WHERE (((c.id)::text = (storage.foldername(c.name))[1]) AND (p.user_id = auth.uid())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage student docs storage",
+      "qual": "((bucket_id = 'student-documents'::text) AND has_role('organization'::app_role, auth.uid()))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can update company documents",
+      "qual": "((bucket_id = 'company-documents'::text) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id IS NOT NULL)))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can upload company documents",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'company-documents'::text) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id IS NOT NULL)))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view company documents",
+      "qual": "((bucket_id = 'company-documents'::text) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id IS NOT NULL)))))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view company documents storage",
+      "qual": "((bucket_id = 'company-documents'::text) AND (EXISTS ( SELECT 1\n   FROM (companies c\n     JOIN profiles p ON ((p.organization_id = c.organization_id)))\n  WHERE (((c.id)::text = (storage.foldername(c.name))[1]) AND (p.user_id = auth.uid())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization users can delete their company documents",
+      "qual": "((bucket_id = 'company-documents'::text) AND (auth.uid() IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN companies c ON ((c.organization_id = p.organization_id)))\n  WHERE ((p.user_id = auth.uid()) AND ((c.id)::text = split_part(c.name, '/'::text, 1))))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization users can update their company documents",
+      "qual": "((bucket_id = 'company-documents'::text) AND (auth.uid() IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN companies c ON ((c.organization_id = p.organization_id)))\n  WHERE ((p.user_id = auth.uid()) AND ((c.id)::text = split_part(c.name, '/'::text, 1))))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization users can upload company documents",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'company-documents'::text) AND (auth.uid() IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN companies c ON ((c.organization_id = p.organization_id)))\n  WHERE ((p.user_id = auth.uid()) AND ((c.id)::text = split_part(c.name, '/'::text, 1))))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organization users can view their company documents",
+      "qual": "((bucket_id = 'company-documents'::text) AND (auth.uid() IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN companies c ON ((c.organization_id = p.organization_id)))\n  WHERE ((p.user_id = auth.uid()) AND ((c.id)::text = split_part(c.name, '/'::text, 1))))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can delete own documents",
+      "qual": "((bucket_id = 'student-documents'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can upload own documents",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'student-documents'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can view own documents",
+      "qual": "((bucket_id = 'student-documents'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can view own documents storage",
+      "qual": "((bucket_id = 'student-documents'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_delete_guard",
+      "qual": "(bucket_id <> 'csz-signed-intake'::text)",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_insert_guard",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_can_insert(name, metadata))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_read_guard",
+      "qual": "((bucket_id <> 'csz-signed-intake'::text) OR csz_signed_intake_is_admin())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "csz_signed_intake_update_guard",
+      "qual": "(bucket_id <> 'csz-signed-intake'::text)",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "(bucket_id <> 'csz-signed-intake'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_delete_guard",
+      "qual": "(bucket_id <> 'final-test-photos'::text)",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_insert_guard",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id <> 'final-test-photos'::text) OR can_upload_final_test_photo(name))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_select_guard",
+      "qual": "((bucket_id <> 'final-test-photos'::text) OR can_read_final_test_photo(name))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "final_test_photos_update_guard",
+      "qual": "(bucket_id <> 'final-test-photos'::text)",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "(bucket_id <> 'final-test-photos'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_delete_guard",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_insert_guard",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "(bucket_id <> 'goreltech-issued-documents'::text)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_read_guard",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "goreltech_issued_objects_update_guard",
+      "qual": "(bucket_id <> 'goreltech-issued-documents'::text)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "(bucket_id <> 'goreltech-issued-documents'::text)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_delete",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_insert",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id <> 'library-files'::text) OR can_manage_library_file_object(name))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_select",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_read_library_file_object(name))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "RESTRICTIVE",
+      "policyname": "library_files_restrictive_update",
+      "qual": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id <> 'library-files'::text) OR can_delete_orphan_library_file_object(name))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Companies can view own documents",
+      "qual": "(company_id = current_company_id())",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "company_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can manage company documents",
+      "qual": "(EXISTS ( SELECT 1\n   FROM companies c\n  WHERE ((c.id = company_documents.company_id) AND ((c.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "company_documents",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM companies c\n  WHERE ((c.id = company_documents.company_id) AND ((c.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users can view company documents",
+      "qual": "(EXISTS ( SELECT 1\n   FROM companies c\n  WHERE ((c.id = company_documents.company_id) AND ((c.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "company_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "company_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can delete group documents",
+      "qual": "(can_access_organization(organization_id) OR has_role(auth.uid(), 'admin'::app_role))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "group_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can view group documents",
+      "qual": "(can_access_organization(organization_id) OR has_role(auth.uid(), 'admin'::app_role))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "group_documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "group_documents",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    }
+  ],
+  "tables": [
+    "org_documents",
+    "incoming_documents",
+    "education_document_records",
+    "document_issuance_log",
+    "program_documents",
+    "program_folders",
+    "program_categories",
+    "program_training_plans",
+    "frdo_signed_documents",
+    "student_documents",
+    "student_identity_documents",
+    "company_documents",
+    "group_documents"
+  ],
+  "scope": "Metadata only; SELECT snapshot 2026-10-18. No production documents or PII.",
+  "schema": {
+    "columns": [
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "uuid"
+      },
+      {
+        "column": "enrollment_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "uuid"
+      },
+      {
+        "column": "user_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "uuid"
+      },
+      {
+        "column": "user_name",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "document_type",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "document_name",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "reg_number",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "issued_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "timestamptz"
+      },
+      {
+        "column": "send_method",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "send_number",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "document_issuance_log",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_by",
+        "default": null,
+        "nullable": "YES",
+        "table": "document_issuance_log",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_number_sequences",
+        "type": "uuid"
+      },
+      {
+        "column": "doc_type",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_number_sequences",
+        "type": "text"
+      },
+      {
+        "column": "year",
+        "default": null,
+        "nullable": "NO",
+        "table": "document_number_sequences",
+        "type": "int4"
+      },
+      {
+        "column": "last_number",
+        "default": "0",
+        "nullable": "NO",
+        "table": "document_number_sequences",
+        "type": "int4"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "document_number_sequences",
+        "type": "timestamptz"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "reg_number",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "full_name",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "birth_date",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "date"
+      },
+      {
+        "column": "document_type",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "document_series",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "document_number",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "issue_date",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "date"
+      },
+      {
+        "column": "specialty_name",
+        "default": null,
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "qualification_name",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "protocol_number",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "protocol_date",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "date"
+      },
+      {
+        "column": "order_number",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "order_date",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "date"
+      },
+      {
+        "column": "document_status",
+        "default": "'original'::text",
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "original_document_data",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "delivery_method",
+        "default": "'personal'::text",
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "delivery_details",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "notes",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "enrollment_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "education_document_records",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_by",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "user_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "course_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "group_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "uuid"
+      },
+      {
+        "column": "education_result",
+        "default": null,
+        "nullable": "YES",
+        "table": "education_document_records",
+        "type": "text"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "uploaded_by",
+        "default": null,
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_name",
+        "default": null,
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "text"
+      },
+      {
+        "column": "status",
+        "default": "'uploaded'::text",
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "text"
+      },
+      {
+        "column": "sent_to_admin_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "frdo_signed_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "frdo_signed_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "group_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "doc_type",
+        "default": null,
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "name",
+        "default": null,
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "document_number",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "document_date",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "date"
+      },
+      {
+        "column": "variables",
+        "default": "'{}'::jsonb",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "jsonb"
+      },
+      {
+        "column": "html",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_path",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "status",
+        "default": "'active'::text",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "student_user_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "company_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "created_by",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "package_batch_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "package_version",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "int4"
+      },
+      {
+        "column": "doc_status",
+        "default": "'draft'::text",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "fill_mode",
+        "default": "'blank'::text",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "layout_format",
+        "default": "'legacy_html'::text",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "source_note",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "is_current",
+        "default": "true",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "bool"
+      },
+      {
+        "column": "template_registry_key",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "template_version_label",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "template_sha256",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "variables_snapshot",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "jsonb"
+      },
+      {
+        "column": "docx_sha256",
+        "default": null,
+        "nullable": "YES",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "pdf_status",
+        "default": "'unavailable'::text",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "generation_status",
+        "default": "'draft'::text",
+        "nullable": "NO",
+        "table": "group_documents",
+        "type": "text"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "doc_type",
+        "default": "'contract'::text",
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "title",
+        "default": null,
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "counterparty_name",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "counterparty_inn",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "doc_number",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "doc_date",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "date"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_path",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_size",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "int8"
+      },
+      {
+        "column": "notes",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "text"
+      },
+      {
+        "column": "related_signature_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "related_billing_doc_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "related_company_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "uploaded_by",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "incoming_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_by",
+        "default": null,
+        "nullable": "YES",
+        "table": "incoming_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "name",
+        "default": null,
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "text"
+      },
+      {
+        "column": "type",
+        "default": null,
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "issue_date",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "date"
+      },
+      {
+        "column": "expires_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "date"
+      },
+      {
+        "column": "status",
+        "default": "'active'::text",
+        "nullable": "NO",
+        "table": "org_documents",
+        "type": "text"
+      },
+      {
+        "column": "responsible_person",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "text"
+      },
+      {
+        "column": "reminder_sent_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_at",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "deleted_by",
+        "default": null,
+        "nullable": "YES",
+        "table": "org_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "program_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "program_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "folder_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "category_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "name",
+        "default": null,
+        "nullable": "NO",
+        "table": "program_documents",
+        "type": "text"
+      },
+      {
+        "column": "description",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_size",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_documents",
+        "type": "int8"
+      },
+      {
+        "column": "file_type",
+        "default": "'document'::text",
+        "nullable": "YES",
+        "table": "program_documents",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "program_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "program_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "program_folders",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "program_folders",
+        "type": "uuid"
+      },
+      {
+        "column": "name",
+        "default": null,
+        "nullable": "NO",
+        "table": "program_folders",
+        "type": "text"
+      },
+      {
+        "column": "parent_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_folders",
+        "type": "uuid"
+      },
+      {
+        "column": "category_id",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_folders",
+        "type": "uuid"
+      },
+      {
+        "column": "color",
+        "default": "'#6366f1'::text",
+        "nullable": "YES",
+        "table": "program_folders",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "program_folders",
+        "type": "timestamptz"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "program_training_plans",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "program_training_plans",
+        "type": "uuid"
+      },
+      {
+        "column": "course_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "program_training_plans",
+        "type": "uuid"
+      },
+      {
+        "column": "title",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_training_plans",
+        "type": "text"
+      },
+      {
+        "column": "hours",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_training_plans",
+        "type": "int4"
+      },
+      {
+        "column": "form",
+        "default": null,
+        "nullable": "YES",
+        "table": "program_training_plans",
+        "type": "text"
+      },
+      {
+        "column": "plan_html",
+        "default": "''::text",
+        "nullable": "NO",
+        "table": "program_training_plans",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "program_training_plans",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "program_training_plans",
+        "type": "timestamptz"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "student_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "enrollment_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "name",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_documents",
+        "type": "text"
+      },
+      {
+        "column": "type",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "YES",
+        "table": "student_documents",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "student_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "student_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "id",
+        "default": "gen_random_uuid()",
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "user_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "organization_id",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "uuid"
+      },
+      {
+        "column": "type",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "text"
+      },
+      {
+        "column": "name",
+        "default": null,
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_url",
+        "default": null,
+        "nullable": "YES",
+        "table": "student_identity_documents",
+        "type": "text"
+      },
+      {
+        "column": "file_path",
+        "default": null,
+        "nullable": "YES",
+        "table": "student_identity_documents",
+        "type": "text"
+      },
+      {
+        "column": "created_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "timestamptz"
+      },
+      {
+        "column": "updated_at",
+        "default": "now()",
+        "nullable": "NO",
+        "table": "student_identity_documents",
+        "type": "timestamptz"
+      }
+    ],
+    "constraints": [
+      {
+        "definition": "PRIMARY KEY (organization_id, doc_type, year)",
+        "name": "document_number_sequences_pkey",
+        "table": "document_number_sequences",
+        "type": "p"
+      },
+      {
+        "definition": "CHECK ((delivery_method = ANY (ARRAY['personal'::text, 'representative'::text, 'postal'::text])))",
+        "name": "education_document_records_delivery_method_check",
+        "table": "education_document_records",
+        "type": "c"
+      },
+      {
+        "definition": "CHECK ((document_status = ANY (ARRAY['original'::text, 'duplicate'::text])))",
+        "name": "education_document_records_document_status_check",
+        "table": "education_document_records",
+        "type": "c"
+      },
+      {
+        "definition": "CHECK ((document_type = ANY (ARRAY['certificate'::text, 'diploma'::text, 'qualification'::text])))",
+        "name": "education_document_records_document_type_check",
+        "table": "education_document_records",
+        "type": "c"
+      },
+      {
+        "definition": "FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE SET NULL",
+        "name": "education_document_records_enrollment_id_fkey",
+        "table": "education_document_records",
+        "type": "f"
+      },
+      {
+        "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+        "name": "education_document_records_organization_id_fkey",
+        "table": "education_document_records",
+        "type": "f"
+      },
+      {
+        "definition": "PRIMARY KEY (id)",
+        "name": "education_document_records_pkey",
+        "table": "education_document_records",
+        "type": "p"
+      }
+    ],
+    "indexes": [
+      {
+        "indexdef": "CREATE UNIQUE INDEX uq_edu_doc_records_document_number ON public.education_document_records USING btree (organization_id, document_number) WHERE ((deleted_at IS NULL) AND (document_number IS NOT NULL) AND (btrim(document_number) <> ''::text))",
+        "indexname": "uq_edu_doc_records_document_number",
+        "schemaname": "public",
+        "tablename": "education_document_records",
+        "tablespace": null
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX uq_edu_doc_records_reg_number ON public.education_document_records USING btree (organization_id, reg_number) WHERE ((deleted_at IS NULL) AND (reg_number IS NOT NULL) AND (btrim(reg_number) <> ''::text))",
+        "indexname": "uq_edu_doc_records_reg_number",
+        "schemaname": "public",
+        "tablename": "education_document_records",
+        "tablespace": null
+      }
+    ]
+  }
+}

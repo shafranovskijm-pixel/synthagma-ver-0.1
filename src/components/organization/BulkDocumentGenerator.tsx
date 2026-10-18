@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import JSZip from "jszip";
 import { openPrivateFile } from "@/utils/storageHelpers";
+import { generatedPdfPath } from "@/lib/documents/generatedPdf";
 import {
   renderTemplate,
   buildOrgVariables,
@@ -304,11 +305,11 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
         body: { html: fullDoc, fileName, storagePath },
       });
       if (pdfErr) throw pdfErr;
-      if (!pdfRes?.path) throw new Error("PDF не был сохранён");
+      const pdfPath = generatedPdfPath(pdfRes);
 
       if (recipientType === "companies") {
         const totalAmount = perStudentPrice * studentsPerCompany;
-        await supabase.from("company_documents").insert({
+        const { error: registryError } = await supabase.from("company_documents").insert({
           company_id: recipientId,
           name: `${selectedTemplate!.name} № ${variables.contract_number}`,
           type: "contract",
@@ -316,19 +317,21 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
           contract_date: documentDate,
           amount: totalAmount,
           students_count: studentsPerCompany,
-          file_path: pdfRes.path,
+          file_path: pdfPath,
         });
+        if (registryError) throw registryError;
       } else {
-        await supabase.from("document_issuance_log").insert({
+        const { error: registryError } = await supabase.from("document_issuance_log").insert({
           organization_id: organizationId,
           user_id: recipientId,
           user_name: recipient.name,
           document_type: "contract",
           document_name: `${selectedTemplate!.name} № ${variables.contract_number}`,
           reg_number: String(variables.contract_number),
-          file_url: pdfRes.path,
+          file_url: pdfPath,
           send_method: "bulk_generation",
         });
+        if (registryError) throw registryError;
       }
 
       return {
@@ -336,7 +339,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
         recipientName: recipient.name,
         status: "success",
         documentName: String(variables.contract_number),
-        filePath: pdfRes.path,
+        filePath: pdfPath,
         fileName,
       };
     } catch (e: any) {

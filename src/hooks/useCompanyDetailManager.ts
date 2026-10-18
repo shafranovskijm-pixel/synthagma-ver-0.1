@@ -69,6 +69,7 @@ export function useCompanyDetailManager(organizationId: string) {
         .from("company_documents")
         .select("*")
         .eq("company_id", companyId)
+        .is("deleted_at", null)
         .order("uploaded_at", { ascending: false });
 
       if (error) throw error;
@@ -103,19 +104,15 @@ export function useCompanyDetailManager(organizationId: string) {
   const uploadDocument = async (file: File, type: 'contract' | 'invoice' | 'act' | 'other', companyId: string) => {
     setIsUploadingDocument(type);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${companyId}/${Date.now()}.${fileExt}`;
-      const filePath = `company-documents/${fileName}`;
+      const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
+      const fileExt = /^[a-z0-9]{1,12}$/.test(extension) ? extension : "bin";
+      const filePath = `${companyId}/${crypto.randomUUID()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(filePath, file);
+        .from("company-documents")
+        .upload(filePath, file, { upsert: false });
 
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("documents")
-        .getPublicUrl(filePath);
 
       const { error: insertError } = await supabase
         .from("company_documents")
@@ -123,7 +120,7 @@ export function useCompanyDetailManager(organizationId: string) {
           company_id: companyId,
           type,
           name: file.name,
-          file_url: publicUrl,
+          file_url: null,
           file_path: filePath,
           file_size: file.size,
         });
@@ -143,16 +140,9 @@ export function useCompanyDetailManager(organizationId: string) {
   const deleteDocument = async (document: CompanyDocument) => {
     setIsDeletingDocument(document.id);
     try {
-      if (document.file_path) {
-        await supabase.storage
-          .from("documents")
-          .remove([document.file_path]);
-      }
-
-      const { error } = await supabase
-        .from("company_documents")
-        .delete()
-        .eq("id", document.id);
+      const { error } = await supabase.rpc("soft_delete_document", {
+        p_table: "company_documents", p_id: document.id,
+      });
 
       if (error) throw error;
 

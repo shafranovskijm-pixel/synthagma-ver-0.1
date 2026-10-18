@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+import { createDocumentUploadOperation, saveDocumentUpload, getOrgDocumentState, isOrgDocumentReady, type DocumentUploadOperation } from "@/lib/orgDocumentLifecycle";
 
 export interface OrgDocument {
   id: string;
@@ -14,6 +15,9 @@ export interface OrgDocument {
   expires_at?: string | null;
   status?: string | null;
   responsible_person?: string | null;
+  deleted_at?: string | null;
+  document_revision?: number;
+  current_version_id?: string | null;
 }
 
 // Основные категории документов
@@ -177,7 +181,13 @@ export const getAllDocumentTypes = () => {
   return types;
 };
 
-export function useOrgDocumentsManager(organizationId: string) {
+export function useOrgDocumentsManager(organizationId: string, canWrite = false) {
+  const uploadOperation = useRef<{ key: string; operation: DocumentUploadOperation } | null>(null);
+  const saving = useRef(false);
+  const activeOrganization = useRef(organizationId);
+  activeOrganization.current = organizationId;
+  const fetchSequence = useRef(0);
+  const [versionsDocument, setVersionsDocument] = useState<OrgDocument | null>(null);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -199,8 +209,10 @@ export function useOrgDocumentsManager(organizationId: string) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   useEffect(() => {
+    setDocuments([]); setVersionsDocument(null); uploadOperation.current = null;
     fetchDocuments();
     fetchOrganizationData();
+    return () => { ++fetchSequence.current; };
   }, [organizationId]);
 
   const fetchOrganizationData = async () => {
@@ -210,27 +222,30 @@ export function useOrgDocumentsManager(organizationId: string) {
         .select("*")
         .eq("id", organizationId)
         .single();
-      if (!error && data) setOrganizationData(data);
+      if (!error && data && activeOrganization.current === organizationId) setOrganizationData(data);
     } catch (error) {
       console.error("Error fetching organization:", error);
     }
   };
 
   const fetchDocuments = async () => {
+    if (activeOrganization.current !== organizationId) return;
+    const run = ++fetchSequence.current;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("org_documents")
         .select("*")
         .eq("organization_id", organizationId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setDocuments(data || []);
+      if (run === fetchSequence.current && activeOrganization.current === organizationId) setDocuments(data || []);
     } catch (error) {
       console.error("Error fetching documents:", error);
       toast.error("Ошибка загрузки документов");
     } finally {
-      setIsLoading(false);
+      if (run === fetchSequence.current && activeOrganization.current === organizationId) setIsLoading(false);
     }
   };
 
@@ -247,40 +262,22 @@ export function useOrgDocumentsManager(organizationId: string) {
     const docTypeInfo = getAllDocumentTypes().find((t) => t.value === uploadDocType);
     if (!docTypeInfo) return;
 
+    if (!canWrite || saving.current) return;
+    saving.current = true;
     setIsUploading(true);
     try {
-      let fileUrl: string | null = null;
-      const fileExt = selectedFile.name.split(".").pop();
-      const fileName = `${organizationId}/${uploadDocType}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from("org-documents")
-        .upload(fileName, selectedFile);
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage.from("org-documents").getPublicUrl(fileName);
-        fileUrl = urlData.publicUrl;
+      const existingDoc = getDocumentForType(uploadDocType);
+      const metadata = { name: docTypeInfo.label, type: uploadDocType, status: "active",
+        issue_date: uploadIssueDate || null, expires_at: uploadExpiresAt || null, responsible_person: uploadResponsible || null };
+      const key = JSON.stringify({ organizationId, id: existingDoc?.id, revision: existingDoc?.document_revision ?? 0, metadata });
+      if (uploadOperation.current?.key !== key || uploadOperation.current.operation.file !== selectedFile) {
+        uploadOperation.current = { key, operation: createDocumentUploadOperation({ organizationId,
+          documentId: existingDoc?.id, expectedRevision: existingDoc?.document_revision ?? 0,
+          file: selectedFile, document: metadata }) };
       }
-
-      const existingDoc = documents.find((d) => d.type === uploadDocType);
-      const meta: any = { status: "active", reminder_sent_at: null };
-      if (uploadIssueDate) meta.issue_date = uploadIssueDate;
-      if (uploadExpiresAt) meta.expires_at = uploadExpiresAt;
-      if (uploadResponsible) meta.responsible_person = uploadResponsible;
-
-      if (existingDoc) {
-        const { error } = await supabase
-          .from("org_documents")
-          .update({ name: docTypeInfo.label, file_url: fileUrl, updated_at: new Date().toISOString(), ...meta })
-          .eq("id", existingDoc.id);
-        if (error) throw error;
-        toast.success("Документ обновлён");
-      } else {
-        const { error } = await supabase
-          .from("org_documents")
-          .insert({ organization_id: organizationId, name: docTypeInfo.label, type: uploadDocType, file_url: fileUrl, ...meta });
-        if (error) throw error;
-        toast.success("Документ загружен");
-      }
-
+      await saveDocumentUpload(uploadOperation.current.operation);
+      uploadOperation.current = null;
+      toast.success(existingDoc ? "Документ обновлён. Предыдущий файл сохранён в истории." : "Документ загружен");
       setShowUploadDialog(false);
       setUploadDocType("");
       setSelectedFile(null);
@@ -290,13 +287,16 @@ export function useOrgDocumentsManager(organizationId: string) {
       fetchDocuments();
     } catch (error) {
       console.error("Error uploading document:", error);
-      toast.error("Ошибка загрузки документа");
+      toast.error("Не удалось сохранить документ", { description: getErrorMessage(error) });
+      if ((error as any)?.code === "40001") { uploadOperation.current = null; await fetchDocuments(); }
     } finally {
+      saving.current = false;
       setIsUploading(false);
     }
   };
 
   const handleDelete = async (docId: string) => {
+    if (!canWrite) return;
     if (!confirm("Переместить документ в корзину? Он будет храниться 30 дней и может быть восстановлен.")) return;
     try {
       const { data, error } = await supabase.rpc("soft_delete_document", {
@@ -314,6 +314,8 @@ export function useOrgDocumentsManager(organizationId: string) {
   };
 
   const openUploadDialog = (docType: string) => {
+    if (!canWrite) return;
+    uploadOperation.current = null;
     setUploadDocType(docType);
     setSelectedFile(null);
     const existing = documents.find((d) => d.type === docType);
@@ -324,10 +326,11 @@ export function useOrgDocumentsManager(organizationId: string) {
   };
 
   const archiveDocument = async (docId: string) => {
+    if (!canWrite) return;
     const { error } = await supabase
       .from("org_documents")
       .update({ status: "archived" })
-      .eq("id", docId);
+      .eq("id", docId).eq("organization_id", organizationId).is("deleted_at", null).select("id").single();
     if (error) {
       toast.error("Не удалось архивировать");
       return;
@@ -337,10 +340,11 @@ export function useOrgDocumentsManager(organizationId: string) {
   };
 
   const restoreDocument = async (docId: string) => {
+    if (!canWrite) return;
     const { error } = await supabase
       .from("org_documents")
       .update({ status: "active" })
-      .eq("id", docId);
+      .eq("id", docId).eq("organization_id", organizationId).is("deleted_at", null).select("id").single();
     if (error) {
       toast.error("Не удалось восстановить");
       return;
@@ -349,24 +353,10 @@ export function useOrgDocumentsManager(organizationId: string) {
     fetchDocuments();
   };
 
-  const getExpiryStatus = (doc: OrgDocument | undefined): {
-    state: "none" | "active" | "expiring" | "expired" | "archived";
-    daysLeft: number | null;
-  } => {
-    if (!doc) return { state: "none", daysLeft: null };
-    if (doc.status === "archived") return { state: "archived", daysLeft: null };
-    if (!doc.expires_at) return { state: "active", daysLeft: null };
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const exp = new Date(doc.expires_at);
-    exp.setHours(0, 0, 0, 0);
-    const days = Math.floor((exp.getTime() - today.getTime()) / 86400000);
-    if (days < 0) return { state: "expired", daysLeft: days };
-    if (days <= 30) return { state: "expiring", daysLeft: days };
-    return { state: "active", daysLeft: days };
-  };
+  const getExpiryStatus = getOrgDocumentState;
 
   const handleQuizSubmit = async (quizData: any) => {
+    if (!canWrite) return;
     setIsSubmittingQuiz(true);
     try {
       const { error } = await supabase.from("service_orders").insert({
@@ -390,6 +380,7 @@ export function useOrgDocumentsManager(organizationId: string) {
   };
 
   const handleOrderDocuments = async () => {
+    if (!canWrite) return;
     if (selectedDocsForOrder.length === 0) {
       toast.error("Выберите хотя бы один документ");
       return;
@@ -422,7 +413,11 @@ export function useOrgDocumentsManager(organizationId: string) {
     setSelectedDocsForOrder((prev) => (prev.includes(docType) ? prev.filter((t) => t !== docType) : [...prev, docType]));
   };
 
-  const getDocumentForType = (docType: string) => documents.find((d) => d.type === docType);
+  const getDocumentForType = (docType: string) => {
+    const candidates = documents.filter(d => d.type === docType && !d.deleted_at);
+    return candidates.find(d => isOrgDocumentReady(d)) ?? candidates.find(d => d.status !== "archived") ?? candidates[0];
+  };
+  const isDocumentReady = (docType: string) => isOrgDocumentReady(getDocumentForType(docType));
 
   const getDocumentsForCategory = (categoryId: string) => {
     const category = ALL_CATEGORIES.find((c) => c.id === categoryId);
@@ -432,12 +427,13 @@ export function useOrgDocumentsManager(organizationId: string) {
 
   const totalRequired = REGULAR_CATEGORIES.reduce((acc, cat) => acc + cat.documents.filter((d) => d.required).length, 0);
   const uploadedRequired = REGULAR_CATEGORIES.reduce(
-    (acc, cat) => acc + cat.documents.filter((d) => d.required && getDocumentForType(d.type)).length,
+    (acc, cat) => acc + cat.documents.filter((d) => d.required && isDocumentReady(d.type)).length,
     0
   );
   const completionPercent = totalRequired > 0 ? Math.round((uploadedRequired / totalRequired) * 100) : 0;
 
   return {
+    canWrite, versionsDocument, setVersionsDocument, refreshDocuments: fetchDocuments, isDocumentReady,
     documents,
     isLoading,
     showUploadDialog,

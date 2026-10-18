@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { downloadPrivateFile, openPrivateFile } from "@/utils/storageHelpers";
+import { downloadPrivateFile, openPrivateFile, extractStoragePath } from "@/utils/storageHelpers";
 
 const mocks = vi.hoisted(() => ({
   createSignedUrl: vi.fn(),
@@ -19,6 +19,12 @@ vi.mock("@/utils/proxyFetch", () => ({
 }));
 
 describe("private storage file actions", () => {
+  it("resolves legacy public and signed locators with encoded names without retaining credentials", () => {
+    const path = "org/Лицензия центра.pdf";
+    expect(extractStoragePath(`https://storage.example/storage/v1/object/public/org-documents/${encodeURI(path)}`, "org-documents")).toBe(path);
+    expect(extractStoragePath(`https://storage.example/storage/v1/object/sign/org-documents/${encodeURI(path)}?token=secret#page=2`, "org-documents")).toBe(path);
+    expect(extractStoragePath("org/literal%20name.pdf", "org-documents")).toBe("org/literal%20name.pdf");
+  });
   beforeEach(() => {
     mocks.createSignedUrl.mockReset();
     vi.spyOn(console, "error").mockImplementation(() => undefined);

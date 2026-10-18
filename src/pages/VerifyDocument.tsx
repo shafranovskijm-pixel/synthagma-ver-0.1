@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,8 @@ interface VerificationResult {
   valid: boolean;
   error?: string;
   document?: {
+    id?: string;
+    organization_id?: string;
     reg_number: string;
     full_name_masked: string;
     document_type: string;
@@ -55,16 +57,20 @@ function formatDate(d?: string | null) {
 
 export default function VerifyDocument() {
   const { regNumber } = useParams<{ regNumber: string }>();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(regNumber ?? "");
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const verify = async (num: string) => {
+  const verify = async (num: string, documentId?: string | null, organizationId?: string | null) => {
     if (!num.trim()) return;
     setLoading(true);
     setResult(null);
     try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-verify-document?reg_number=${encodeURIComponent(num.trim())}`;
+      const params = new URLSearchParams({ reg_number: num.trim() });
+      if (documentId) params.set("document_id", documentId);
+      if (organizationId) params.set("organization_id", organizationId);
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-verify-document?${params}`;
       const res = await fetch(url, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
@@ -78,8 +84,8 @@ export default function VerifyDocument() {
   };
 
   useEffect(() => {
-    if (regNumber) verify(regNumber);
-  }, [regNumber]);
+    if (regNumber) verify(regNumber, searchParams.get("document_id"), searchParams.get("organization_id"));
+  }, [regNumber, searchParams]);
 
   const doc = result?.document;
   const statusInfo = doc ? STATUS_LABELS[doc.status] ?? { label: doc.status, color: "bg-muted" } : null;
@@ -215,7 +221,7 @@ export default function VerifyDocument() {
             <div className="border-t bg-muted/30 p-6 flex flex-col md:flex-row items-center gap-6 print:bg-white">
               <div className="bg-white p-3 rounded-xl border border-border shrink-0">
                 <QRCodeSVG
-                  value={`${window.location.origin}/verify/${encodeURIComponent(doc.reg_number)}`}
+                  value={`${window.location.origin}/verify/${encodeURIComponent(doc.reg_number)}${doc.id ? `?document_id=${encodeURIComponent(doc.id)}` : ""}`}
                   size={132}
                   level="M"
                   includeMargin={false}

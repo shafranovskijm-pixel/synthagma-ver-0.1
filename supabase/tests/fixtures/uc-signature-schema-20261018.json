@@ -1,0 +1,632 @@
+{
+  "constraints": [
+    {
+      "definition": "CHECK ((document_type = ANY (ARRAY['contract'::text, 'consent'::text, 'pep_agreement'::text, 'act'::text, 'order'::text, 'custom_pdf'::text, 'education_document'::text, 'external_upload'::text])))",
+      "name": "document_signatures_document_type_check",
+      "table": "document_signatures",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (linked_proposal_id) REFERENCES commercial_proposals(id) ON DELETE SET NULL",
+      "name": "document_signatures_linked_proposal_id_fkey",
+      "table": "document_signatures",
+      "type": "f"
+    },
+    {
+      "definition": "CHECK ((mode = ANY (ARRAY['sign'::text, 'review'::text])))",
+      "name": "document_signatures_mode_check",
+      "table": "document_signatures",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "name": "document_signatures_organization_id_fkey",
+      "table": "document_signatures",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (pep_agreement_id) REFERENCES pep_agreements(id) ON DELETE SET NULL",
+      "name": "document_signatures_pep_agreement_id_fkey",
+      "table": "document_signatures",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "document_signatures_pkey",
+      "table": "document_signatures",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK ((recipient_type = ANY (ARRAY['student'::text, 'company'::text, 'individual'::text, 'admin_sintagma'::text])))",
+      "name": "document_signatures_recipient_type_check",
+      "table": "document_signatures",
+      "type": "c"
+    },
+    {
+      "definition": "UNIQUE (signature_token)",
+      "name": "document_signatures_signature_token_key",
+      "table": "document_signatures",
+      "type": "u"
+    },
+    {
+      "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'sent'::text, 'viewed'::text, 'signed'::text, 'rejected'::text, 'expired'::text, 'revoked'::text, 'in_review'::text, 'changes_requested'::text])))",
+      "name": "document_signatures_status_check",
+      "table": "document_signatures",
+      "type": "c"
+    },
+    {
+      "definition": "FOREIGN KEY (template_version_id) REFERENCES org_contract_template_versions(id) ON DELETE SET NULL",
+      "name": "document_signatures_template_version_id_fkey",
+      "table": "document_signatures",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "signature_revisions_pkey",
+      "table": "signature_revisions",
+      "type": "p"
+    },
+    {
+      "definition": "FOREIGN KEY (signature_id) REFERENCES document_signatures(id) ON DELETE CASCADE",
+      "name": "signature_revisions_signature_id_fkey",
+      "table": "signature_revisions",
+      "type": "f"
+    },
+    {
+      "definition": "UNIQUE (signature_id, version)",
+      "name": "signature_revisions_signature_id_version_key",
+      "table": "signature_revisions",
+      "type": "u"
+    }
+  ],
+  "functions": [
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "name": "account_deletion_access_allowed"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+      "name": "account_deletion_subject_write_guard"
+    },
+    {
+      "args": "_user_id uuid, _role app_role",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "name": "has_role"
+    },
+    {
+      "args": "_role app_role, _user_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "name": "has_role"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.validate_signature_method()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.signature_method NOT IN ('pep', 'handwritten_scan') THEN\n    RAISE EXCEPTION 'Invalid signature_method: %', NEW.signature_method;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+      "name": "validate_signature_method"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres",
+        "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+      ],
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.current_organization_id()\n RETURNS uuid\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_org uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN NULL;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.profiles\n  WHERE user_id = auth.uid()\n  LIMIT 1;\n\n  IF v_org IS NOT NULL THEN\n    RETURN v_org;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.org_staff\n  WHERE user_id = auth.uid()\n    AND (expires_at IS NULL OR expires_at > now())\n  ORDER BY\n    CASE role\n      WHEN 'owner' THEN 1\n      WHEN 'admin' THEN 2\n      WHEN 'school_editor' THEN 3\n      WHEN 'course_editor' THEN 4\n      WHEN 'teacher' THEN 5\n      WHEN 'sales_manager' THEN 6\n      ELSE 10\n    END,\n    created_at ASC\n  LIMIT 1;\n\n  RETURN v_org;\nEND;\n$function$\n",
+      "name": "current_organization_id",
+      "security_definer": true
+    }
+  ],
+  "source": "Read-only production schema snapshot 2026-10-18; no business data",
+  "policies": [
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage all document_signatures",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "document_signatures",
+      "with_check": "has_role('admin'::app_role, auth.uid())"
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org manages its document_signatures",
+      "qual": "(organization_id = current_organization_id())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "document_signatures",
+      "with_check": "(organization_id = current_organization_id())"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Recipient can update status own",
+      "qual": "(recipient_user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "document_signatures",
+      "with_check": "(recipient_user_id = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Recipient can view own document_signatures",
+      "qual": "(recipient_user_id = auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "document_signatures",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "document_signatures",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Insert revisions by sender or admin",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "signature_revisions",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM document_signatures ds\n  WHERE ((ds.id = signature_revisions.signature_id) AND ((ds.sender_user_id = auth.uid()) OR (ds.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "View revisions if can view signature",
+      "qual": "(EXISTS ( SELECT 1\n   FROM document_signatures ds\n  WHERE ((ds.id = signature_revisions.signature_id) AND ((ds.sender_user_id = auth.uid()) OR (ds.recipient_user_id = auth.uid()) OR (ds.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "signature_revisions",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "signature_revisions",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    }
+  ],
+  "columns": [
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "document_type",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "document_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "document_title",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "document_html",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "document_hash",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "document_snapshot_url",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "sender_user_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "sender_name",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "recipient_type",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "recipient_user_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "recipient_email",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "recipient_name",
+      "default": null,
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "default": "'draft'::text",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "signature_token",
+      "default": "replace((gen_random_uuid())::text, '-'::text, ''::text)",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "pep_agreement_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "sent_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "viewed_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "signed_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "signed_ip",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "signed_user_agent",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "rejected_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "rejection_reason",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "expires_at",
+      "default": "(now() + '7 days'::interval)",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "mode",
+      "default": "'sign'::text",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "current_revision_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "sender_signed_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "sender_signed_ip",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "sender_signed_user_agent",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "requires_bilateral",
+      "default": "false",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "bool"
+    },
+    {
+      "column": "signature_method",
+      "default": "'pep'::text",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "handwritten_scan_path",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "signed_document_path",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "text"
+    },
+    {
+      "column": "hidden_for_sender",
+      "default": "false",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "bool"
+    },
+    {
+      "column": "hidden_for_recipient",
+      "default": "false",
+      "nullable": "NO",
+      "table": "document_signatures",
+      "type": "bool"
+    },
+    {
+      "column": "email_opened_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "email_open_token",
+      "default": "gen_random_uuid()",
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "linked_proposal_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "template_version_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "deleted_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "timestamptz"
+    },
+    {
+      "column": "deleted_by",
+      "default": null,
+      "nullable": "YES",
+      "table": "document_signatures",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "signature_revisions",
+      "type": "uuid"
+    },
+    {
+      "column": "signature_id",
+      "default": null,
+      "nullable": "NO",
+      "table": "signature_revisions",
+      "type": "uuid"
+    },
+    {
+      "column": "version",
+      "default": null,
+      "nullable": "NO",
+      "table": "signature_revisions",
+      "type": "int4"
+    },
+    {
+      "column": "document_html",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    },
+    {
+      "column": "document_hash",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    },
+    {
+      "column": "created_by",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "uuid"
+    },
+    {
+      "column": "created_by_name",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    },
+    {
+      "column": "change_summary",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "table": "signature_revisions",
+      "type": "timestamptz"
+    },
+    {
+      "column": "file_url",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    },
+    {
+      "column": "file_name",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    },
+    {
+      "column": "file_mime",
+      "default": null,
+      "nullable": "YES",
+      "table": "signature_revisions",
+      "type": "text"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('recipient_user_id', 'sender_user_id')",
+      "enabled": "O",
+      "function": "account_deletion_subject_write_guard",
+      "table": "document_signatures",
+      "trigger": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER validate_signature_method_trg BEFORE INSERT OR UPDATE OF signature_method ON public.document_signatures FOR EACH ROW EXECUTE FUNCTION validate_signature_method()",
+      "enabled": "O",
+      "function": "validate_signature_method",
+      "table": "document_signatures",
+      "trigger": "validate_signature_method_trg"
+    }
+  ]
+}

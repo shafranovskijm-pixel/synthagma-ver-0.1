@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { parseISO, startOfYear, endOfYear, isWithinInterval, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
-import { getSignedStorageUrl } from "@/utils/storageHelpers";
+import { getSignedStorageUrl, openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
 import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
 import { filterByGroupContext, resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 import { resolveManualWriteGuard, isRowWriteAllowed } from "@/lib/journals/manualWriteGuard";
@@ -112,7 +112,7 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
           documentRecords.push({ id: doc.id, original_id: doc.id, reg_number: doc.contract_number, document_type: docType, document_name: doc.name, direction: doc.type === "contract" ? "incoming" : "outgoing", date: doc.contract_date || doc.uploaded_at, related_entity: (doc.companies as any)?.name || null, related_entity_type: "company", notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null, source: "company_document", is_editable: true, file_url: doc.file_url || null, user_id: null, course_id: null });
         }
 
-        const { data: orgDocs } = await supabase.from("org_documents").select("id, name, file_url, type").eq("organization_id", organizationId);
+        const { data: orgDocs } = await supabase.from("org_documents").select("id, name, file_url, type").eq("organization_id", organizationId).is("deleted_at", null);
         const orgDocFileMap = new Map<string, string>();
         for (const od of orgDocs || []) { if (od.file_url) orgDocFileMap.set(od.name.toLowerCase(), od.file_url); }
 
@@ -193,6 +193,10 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
 
   const handleViewDocument = useCallback(async (record: DocumentRecord) => {
     if (!record.file_url) return;
+    if (record.source === "enrollment") {
+      if (!await openPrivateFile("org-documents", record.file_url)) toast.error("Не удалось открыть документ");
+      return;
+    }
     try {
       if (record.file_url.startsWith("http")) { window.open(record.file_url, "_blank"); }
       else {
@@ -205,6 +209,10 @@ export function useDocumentRegistrationJournal(organizationId: string, groupCont
 
   const handleDownloadDocument = useCallback(async (record: DocumentRecord) => {
     if (!record.file_url) return;
+    if (record.source === "enrollment") {
+      if (!await downloadPrivateFile("org-documents", record.file_url, record.document_name)) toast.error("Не удалось скачать документ");
+      return;
+    }
     try {
       let url = record.file_url;
       if (!url.startsWith("http")) { const signedUrl = await getSignedStorageUrl("org-documents", url); if (!signedUrl) { toast.error("Не удалось скачать документ"); return; } url = signedUrl; }

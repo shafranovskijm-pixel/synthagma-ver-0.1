@@ -1,3 +1,4 @@
+import { openPrivateFile, downloadPrivateFile } from "@/utils/storageHelpers";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -39,6 +40,7 @@ interface DocumentArchiveViewProps {
   categoryId: string;
   title: string;
   docTypes: string[];
+  canWrite?: boolean;
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -47,7 +49,7 @@ export function DocumentArchiveView({
   organizationId,
   categoryId,
   title,
-  docTypes }: DocumentArchiveViewProps) {
+  docTypes, canWrite = false }: DocumentArchiveViewProps) {
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,6 +67,7 @@ export function DocumentArchiveView({
         .from("org_documents")
         .select("*")
         .eq("organization_id", organizationId)
+        .is("deleted_at", null)
         .in("type", docTypes)
         .order("created_at", { ascending: false });
 
@@ -79,6 +82,7 @@ export function DocumentArchiveView({
   };
 
   const handleDelete = async (docId: string) => {
+    if (!canWrite) return;
     if (!confirm("Переместить документ в корзину? Он будет храниться 30 дней и может быть восстановлен.")) return;
 
     try {
@@ -122,8 +126,8 @@ export function DocumentArchiveView({
       <div className="space-y-4">
         <OrdersArchive
           documents={documents}
-          onDelete={handleDelete}
-          onView={(url) => window.open(url, "_blank")}
+          onDelete={canWrite ? handleDelete : undefined}
+          onView={async (url) => { if (!await openPrivateFile("org-documents", url)) toast.error("Не удалось открыть документ"); }}
         />
       </div>
     );
@@ -223,21 +227,7 @@ export function DocumentArchiveView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={async () => {
-                            try {
-                              const { data, error } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
-                              if (error) throw error;
-                              if (!data?.signedUrl) throw new Error("Не удалось получить ссылку на файл");
-                              const res = await fetch(data.signedUrl);
-                              if (!res.ok) throw new Error(`Файл недоступен (${res.status})`);
-                              const text = await res.text();
-                              const blob = new Blob([text], { type: "text/html;charset=utf-8" });
-                              window.open(URL.createObjectURL(blob), "_blank");
-                            } catch (e) {
-                              console.error("Error viewing document:", e);
-                              toast.error("Не удалось открыть документ", { description: getErrorMessage(e) });
-                            }
-                          }}
+                          onClick={async () => { if (!await openPrivateFile("org-documents", doc.file_url!)) toast.error("Не удалось открыть документ"); }}
                           title="Просмотр"
                         >
                           <Eye className="w-4 h-4" />
@@ -245,18 +235,7 @@ export function DocumentArchiveView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={async () => {
-                            try {
-                              const { data, error } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
-                              if (error) throw error;
-                              if (!data?.signedUrl) throw new Error("Не удалось получить ссылку на файл");
-                              const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
-                              await downloadHtmlFile(data.signedUrl, doc.name);
-                            } catch (e) {
-                              console.error("Error downloading document:", e);
-                              toast.error("Не удалось скачать документ", { description: getErrorMessage(e) });
-                            }
-                          }}
+                          onClick={async () => { if (!await downloadPrivateFile("org-documents", doc.file_url!, doc.name)) toast.error("Не удалось скачать документ"); }}
                           title="Скачать"
                         >
                           <Download className="w-4 h-4" />
@@ -267,7 +246,7 @@ export function DocumentArchiveView({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(doc.id)}
+                      disabled={!canWrite} onClick={() => handleDelete(doc.id)}
                       className="text-destructive hover:text-destructive"
                       title="Удалить"
                     >

@@ -93,7 +93,7 @@ export function useOrganizationsTab({ activeTab }: UseOrganizationsTabProps) {
     try {
       const { data: docs } = await supabase
         .from("org_documents")
-        .select("*")
+        .select("*").is("deleted_at", null)
         .eq("organization_id", org.id)
         .order("created_at", { ascending: false });
       

@@ -36,11 +36,17 @@ export const extractStoragePath = (
   if (!fileUrlOrPath.startsWith("http")) {
     return fileUrlOrPath;
   }
-  // Extract path from public URL format
+  // Old public locators and temporary signed URLs both identify the same
+  // object. Do not pass a query token/hash or URL-encoded name to Storage.
+  let pathname: string;
+  try { pathname = new URL(fileUrlOrPath).pathname; }
+  catch { return fileUrlOrPath; }
   const marker = `/${bucket}/`;
-  const idx = fileUrlOrPath.indexOf(marker);
+  const idx = pathname.indexOf(marker);
   if (idx !== -1) {
-    return fileUrlOrPath.substring(idx + marker.length);
+    const encodedPath = pathname.substring(idx + marker.length);
+    try { return decodeURIComponent(encodedPath); }
+    catch { return encodedPath; }
   }
   return fileUrlOrPath;
 };
