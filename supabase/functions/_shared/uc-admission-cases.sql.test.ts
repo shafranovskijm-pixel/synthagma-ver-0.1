@@ -83,6 +83,46 @@ afterAll(async()=>{await db?.close();});
 it('installs exactly six private case tables on the actual installed114 source baseline',async()=>{
  const row=(await db.query<any>("SELECT count(*)::int n FROM pg_tables WHERE schemaname='public'AND tablename IN('uc_admission_cases','uc_admission_rule_sets','uc_admission_case_events','uc_admission_case_evidence','uc_admission_evidence_reservations','uc_admission_case_requests')")).rows[0];expect(row.n).toBe(6);
 });
+it('removes arbitrary inherited default grants only from the exact new objects and preserves old overload ACLs, owners and global defaults',async()=>{
+ const extraRoles=['uc115_unexpected_default','UC115 default "quoted"'];const quote=(s:string)=>'"'+s.replaceAll('"','""')+'"';
+ let oldRelations:number[]=[],oldFunctions:number[]=[],defaultsBefore:any,oldBefore:any,installer:string|undefined;
+ const defaults=async(d:PGlite)=>(await d.query<any>("SELECT coalesce(jsonb_agg(to_jsonb(a)ORDER BY a.oid),'[]')d FROM pg_default_acl a")).rows[0].d;
+ const oldAcl=async(d:PGlite)=>({
+  relations:(await d.query("SELECT oid,relowner,relacl::text FROM pg_class WHERE oid=ANY($1::oid[])ORDER BY oid",[oldRelations])).rows,
+  columns:(await d.query("SELECT attrelid,attnum,attacl::text FROM pg_attribute WHERE attrelid=ANY($1::oid[])AND attnum>0 ORDER BY attrelid,attnum",[oldRelations])).rows,
+  functions:(await d.query("SELECT oid,proowner,proacl::text FROM pg_proc WHERE oid=ANY($1::oid[])ORDER BY oid",[oldFunctions])).rows,
+ });
+ const extra=await createUcAdmissionFixture(true,{beforeAdmission:async(d)=>{
+  installer=(await d.query<any>('SELECT current_user name')).rows[0].name;
+  for(const role of extraRoles){await d.exec('CREATE ROLE '+quote(role)+' NOLOGIN');await d.exec('GRANT USAGE ON SCHEMA public TO '+quote(role));
+   await d.exec('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,INSERT ON TABLES TO '+quote(role)+' WITH GRANT OPTION');
+   await d.exec('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO '+quote(role)+' WITH GRANT OPTION');}
+  await d.exec('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,INSERT ON TABLES TO PUBLIC,anon,authenticated,service_role');
+  await d.exec('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon,authenticated,service_role');
+  await d.exec("CREATE FUNCTION public.uc_admission_error(integer)RETURNS integer LANGUAGE sql AS 'SELECT $1+1'");
+  await d.exec('GRANT SELECT(full_name)ON public.profiles TO '+quote(extraRoles[0])+' WITH GRANT OPTION');
+  oldRelations=(await d.query<any>("SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','storage')ORDER BY c.oid")).rows.map(x=>x.oid);
+  oldFunctions=(await d.query<any>("SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public'ORDER BY p.oid")).rows.map(x=>x.oid);
+  defaultsBefore=await defaults(d);oldBefore=await oldAcl(d);
+ }});
+ try{
+  expect(await defaults(extra)).toEqual(defaultsBefore);expect(await oldAcl(extra)).toEqual(oldBefore);
+  const rawTables=(d:PGlite)=>d.query("SELECT relname,relacl::text FROM pg_class WHERE oid=ANY(SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'AND c.relname=ANY($1))ORDER BY relname",[privateTables]);
+  expect((await rawTables(extra)).rows).toEqual((await rawTables(db)).rows);
+  const tables=(await extra.query<any>("SELECT c.relname,pg_get_userbyid(c.relowner)owner,c.relrowsecurity,coalesce(jsonb_agg(jsonb_build_object('grantee',a.grantee,'grantor',a.grantor,'privilege_type',a.privilege_type,'is_grantable',a.is_grantable)ORDER BY a.privilege_type)FILTER(WHERE a.grantee=c.relowner),'[]')owner_acl,(SELECT jsonb_agg(jsonb_build_object('grantee',x.grantee,'grantor',x.grantor,'privilege_type',x.privilege_type,'is_grantable',x.is_grantable)ORDER BY x.privilege_type)FROM aclexplode(acldefault('r',c.relowner))x WHERE x.grantee=c.relowner)expected_owner_acl,count(*)FILTER(WHERE a.grantee<>c.relowner)::int nonowner FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner)))a WHERE n.nspname='public'AND c.relname=ANY($1)GROUP BY c.oid ORDER BY c.relname",[privateTables])).rows;
+  expect(tables).toHaveLength(6);for(const t of tables){expect(t.owner).toBe(installer);expect(t.relrowsecurity).toBe(true);expect(t.nonowner).toBe(0);expect(t.owner_acl).toEqual(t.expected_owner_acl);}
+  const functions=(await extra.query<any>("SELECT p.oid,p.proname,pg_get_userbyid(p.proowner)owner,(SELECT jsonb_agg(to_jsonb(x)ORDER BY x.privilege_type)FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner)))x WHERE x.grantee=p.proowner)owner_acl,(SELECT jsonb_agg(to_jsonb(x)ORDER BY x.privilege_type)FROM aclexplode(acldefault('f',p.proowner))x WHERE x.grantee=p.proowner)expected_owner_acl FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public'AND NOT(p.oid=ANY($1::oid[]))ORDER BY p.proname",[oldFunctions])).rows;
+  expect(functions).toHaveLength(49);for(const f of functions){expect(f.owner).toBe(installer);expect(f.owner_acl).toEqual(f.expected_owner_acl);}
+  const grants=(await extra.query<any>("SELECT p.proname name,CASE WHEN a.grantee=0 THEN 'PUBLIC'ELSE pg_get_userbyid(a.grantee)END role,a.privilege_type privilege,a.is_grantable FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner)))a WHERE n.nspname='public'AND NOT(p.oid=ANY($1::oid[]))AND a.grantee<>p.proowner ORDER BY p.proname,role",[oldFunctions])).rows;
+  const auth=['read_student_admission_case','apply_student_admission_case_action','prepare_admission_case_evidence','uc_admission_evidence_context','uc_finalize_admission_case_evidence','uc_admission_evidence_file_context','uc_admission_stage_allowed'];
+  const expected=[...auth.map(name=>({name,role:'authenticated',privilege:'EXECUTE',is_grantable:false})),{name:'uc_attest_admission_case_evidence',role:'service_role',privilege:'EXECUTE',is_grantable:false},{name:'uc_admission_stage_allowed',role:'anon',privilege:'EXECUTE',is_grantable:false}].sort((a,b)=>a.name.localeCompare(b.name)||a.role.localeCompare(b.role));expect(grants).toEqual(expected);
+  for(const role of extraRoles){await extra.exec('RESET ROLE;SET ROLE '+quote(role));expect((await extra.query<any>("SELECT has_schema_privilege(current_user,'public','USAGE')allowed")).rows[0].allowed).toBe(true);
+   for(const table of privateTables){await expect(extra.query('SELECT * FROM public.'+quote(table))).rejects.toMatchObject({code:'42501'});await expect(extra.query('INSERT INTO public.'+quote(table)+' DEFAULT VALUES')).rejects.toMatchObject({code:'42501'});}
+   await expect(extra.query("SELECT public.uc_admission_trim('private')")).rejects.toMatchObject({code:'42501'});
+   expect((await extra.query<any>('SELECT public.uc_admission_error(41::integer)answer')).rows[0].answer).toBe(42);
+  }
+ }finally{await extra.close();}
+},30000);
 it('first initialized result is strict boolean DTO with no unassigned review/decision grant',async()=>{
  const s=await initialize();expect(s.capabilities).toMatchObject({can_assign:true,can_review:false,can_decide:false,can_configure_rules:false});expect(s.responsible_id).toBeNull();
  expect(admissionCaseReadSchema.parse(await readCase()).state).toEqual(s);

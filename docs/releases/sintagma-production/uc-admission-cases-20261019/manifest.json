@@ -2,16 +2,16 @@
   "release": "uc-admission-cases-20261019",
   "preparedOnly": true,
   "migrationCount": 1,
-  "batchSha256": "1dca2b59e8986b536ae9f12d6b539351bd80f52b01da34103a60108c85374dff",
+  "batchSha256": "f01a89f3d1387cd9d423c6e26179bcaec9b89bf5c2eec33e87b72a12728ef0e0",
   "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
   "migrations": [
     {
       "file": "20261019115000_uc_admission_cases.sql",
       "version": "20261019115000",
       "name": "uc_admission_cases",
-      "sourceSha256": "f3efa2ab8c85a168a95db2530099a30763a9cd3a16e6e9f74889bff00a84365e",
-      "sourceMd5": "5b804029ddb60b6c5b73f1c5872d6cd7",
-      "executableMd5": "5b804029ddb60b6c5b73f1c5872d6cd7"
+      "sourceSha256": "faa24852220cc77011f4f8829a0616909ac6e280582c626a47b312d52c00df34",
+      "sourceMd5": "9abe6463e90ed80449d425955052a9d4",
+      "executableMd5": "9abe6463e90ed80449d425955052a9d4"
     }
   ],
   "priorMigrations": [
@@ -284,7 +284,7 @@
   },
   "sourceAnchors": {
     "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/reviewed-source-anchors.json",
-    "sourceSha256": "195e9c9f190fbc89a66931ef563668b3a8359999ca6372a5206c4722bebedd0e"
+    "sourceSha256": "6dc618a3fd22fb4b08a727ee5e1142e09d3561c23cc28928d14ba954d9db55a8"
   },
   "baselineCapture": {
     "path": "supabase/tests/fixtures/uc-admission-cases-baseline.json",

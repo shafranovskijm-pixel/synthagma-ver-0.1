@@ -56,8 +56,17 @@ CREATE TABLE public.uc_admission_case_requests(
 CREATE INDEX uc_admission_events_history ON public.uc_admission_case_events(case_id,case_revision DESC);
 CREATE INDEX uc_admission_evidence_case ON public.uc_admission_case_evidence(case_id,requirement_id);
 CREATE INDEX uc_admission_reservations_subject ON public.uc_admission_evidence_reservations(user_id,actor_id);
-DO $acl$DECLARE t text;BEGIN FOREACH t IN ARRAY ARRAY['uc_admission_cases','uc_admission_rule_sets','uc_admission_case_events','uc_admission_case_evidence','uc_admission_evidence_reservations','uc_admission_case_requests']LOOP
- EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC,anon,authenticated,service_role',t);END LOOP;END;$acl$;
+-- A deployment can install default grants for additional technical roles.
+-- Strip every nonowner ACL entry on ONLY these six new private relations;
+-- never change global defaults, role memberships or pre-existing object ACLs.
+DO $acl$DECLARE t text;g record;BEGIN FOREACH t IN ARRAY ARRAY['uc_admission_cases','uc_admission_rule_sets','uc_admission_case_events','uc_admission_case_evidence','uc_admission_evidence_reservations','uc_admission_case_requests']LOOP
+ EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
+ FOR g IN SELECT DISTINCT a.grantee FROM pg_class c CROSS JOIN LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner)))a WHERE c.oid=format('public.%I',t)::regclass AND a.grantee<>c.relowner LOOP
+  EXECUTE format('REVOKE ALL ON TABLE public.%I FROM %s CASCADE',t,CASE WHEN g.grantee=0 THEN 'PUBLIC'ELSE quote_ident(pg_get_userbyid(g.grantee))END);
+ END LOOP;
+ -- Canonical owner-only relacl must match with or without host defaults.
+ EXECUTE format('GRANT ALL PRIVILEGES ON TABLE public.%I TO %I',t,(SELECT pg_get_userbyid(c.relowner)FROM pg_class c WHERE c.oid=format('public.%I',t)::regclass));
+END LOOP;END;$acl$;
 
 CREATE FUNCTION public.uc_admission_error(p_code text)RETURNS void LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
 BEGIN RAISE EXCEPTION 'ADMISSION_%',p_code USING ERRCODE=CASE p_code WHEN 'ACCESS_DENIED'THEN '42501'WHEN 'INVALID_INPUT'THEN '22023'WHEN 'REVISION_CONFLICT'THEN '40001'ELSE 'P0001'END;END;$fn$;
@@ -680,9 +689,65 @@ DO $patch$DECLARE original text;patched text;BEGIN
 END;$patch$;
 
 
-DO $grants$DECLARE f record;BEGIN
- FOR f IN SELECT p.oid,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public'AND(p.proname~'^uc_admission_'OR p.proname IN('uc_attest_admission_case_evidence','uc_finalize_admission_case_evidence','uc_erase_admission_cases','uc_guard_admission_history','uc_guard_admission_storage','uc_guard_admission_org_delete','read_student_admission_case','apply_student_admission_case_action','prepare_admission_case_evidence'))LOOP
-  EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.oid::regprocedure);
+-- The exact49 new signatures exclude all five patched historical functions.
+-- Remove inherited defaults (including PUBLIC/grant options) before restoring
+-- the finite public/private RPC grants. CASCADE is bounded to each new object.
+DO $grants$DECLARE signature text;f record;g record;BEGIN
+ FOREACH signature IN ARRAY ARRAY[
+  'public.apply_student_admission_case_action(uuid,uuid,uuid,jsonb)',
+  'public.prepare_admission_case_evidence(uuid,bigint,jsonb,uuid,jsonb)',
+  'public.read_student_admission_case(uuid,uuid,jsonb)',
+  'public.uc_admission_actor_allowed(uuid,boolean)',
+  'public.uc_admission_association(uuid,uuid,uuid,uuid)',
+  'public.uc_admission_authority(uuid,uuid)',
+  'public.uc_admission_can_read(uuid,uuid,uuid,uuid,uuid)',
+  'public.uc_admission_candidate(uuid,text,uuid,uuid,uuid)',
+  'public.uc_admission_capabilities(uuid,uuid,uuid,uuid,uuid,uuid)',
+  'public.uc_admission_context(uuid,uuid,text,uuid)',
+  'public.uc_admission_current_evidence(uuid,uuid)',
+  'public.uc_admission_derive(uuid,uuid)',
+  'public.uc_admission_error(text)',
+  'public.uc_admission_event(uuid,uuid,uuid,text,uuid,text,text)',
+  'public.uc_admission_evidence_context(uuid,uuid,bigint,uuid)',
+  'public.uc_admission_evidence_dto(uuid,uuid)',
+  'public.uc_admission_evidence_file_context(uuid,uuid)',
+  'public.uc_admission_history_payload(jsonb,uuid)',
+  'public.uc_admission_ids(jsonb,integer,integer)',
+  'public.uc_admission_local_source(uuid,jsonb)',
+  'public.uc_admission_lock(uuid,uuid,uuid,uuid,uuid,uuid)',
+  'public.uc_admission_lock_rules(jsonb)',
+  'public.uc_admission_lock_source(uuid)',
+  'public.uc_admission_object(text,text,text,jsonb)',
+  'public.uc_admission_prerequisites(uuid,uuid,uuid,uuid,boolean)',
+  'public.uc_admission_program(uuid,uuid,uuid,uuid)',
+  'public.uc_admission_redact(jsonb,uuid,boolean)',
+  'public.uc_admission_ref_valid(jsonb)',
+  'public.uc_admission_refresh(uuid)',
+  'public.uc_admission_requirements_digest(uuid)',
+  'public.uc_admission_result(uuid,uuid,jsonb,boolean)',
+  'public.uc_admission_rules_current(uuid)',
+  'public.uc_admission_scope(uuid)',
+  'public.uc_admission_shape(jsonb,text[])',
+  'public.uc_admission_source_proof(uuid,uuid)',
+  'public.uc_admission_staff_allowed(uuid,uuid,uuid,uuid,uuid,boolean)',
+  'public.uc_admission_stage_allowed(text,text,boolean)',
+  'public.uc_admission_state(uuid,uuid,boolean)',
+  'public.uc_admission_student_path(text,uuid)',
+  'public.uc_admission_text(jsonb,integer)',
+  'public.uc_admission_trim(text)',
+  'public.uc_admission_uuid(jsonb)',
+  'public.uc_admission_validate_action(jsonb)',
+  'public.uc_attest_admission_case_evidence(uuid,uuid,uuid,bigint,uuid,uuid,timestamp with time zone,text,uuid,timestamp with time zone,text,bigint,text)',
+  'public.uc_erase_admission_cases(uuid)',
+  'public.uc_finalize_admission_case_evidence(uuid,uuid,bigint,uuid)',
+  'public.uc_guard_admission_history()',
+  'public.uc_guard_admission_org_delete()',
+  'public.uc_guard_admission_storage()'
+ ]LOOP
+  SELECT p.oid,p.proname,p.proowner,p.proacl INTO STRICT f FROM pg_proc p WHERE p.oid=signature::regprocedure;
+  FOR g IN SELECT DISTINCT a.grantee FROM aclexplode(coalesce(f.proacl,acldefault('f',f.proowner)))a WHERE a.grantee<>f.proowner LOOP
+   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %s CASCADE',f.oid::regprocedure,CASE WHEN g.grantee=0 THEN 'PUBLIC'ELSE quote_ident(pg_get_userbyid(g.grantee))END);
+  END LOOP;
   IF f.proname IN('read_student_admission_case','apply_student_admission_case_action','prepare_admission_case_evidence','uc_admission_evidence_context','uc_finalize_admission_case_evidence','uc_admission_evidence_file_context','uc_admission_stage_allowed')THEN EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',f.oid::regprocedure);END IF;
   IF f.proname='uc_attest_admission_case_evidence'THEN EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.oid::regprocedure);END IF;
   IF f.proname='uc_admission_stage_allowed'THEN EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO anon',f.oid::regprocedure);END IF;

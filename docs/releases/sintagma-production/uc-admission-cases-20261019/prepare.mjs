@@ -118,6 +118,7 @@ CREATE TEMP TABLE uc_admission_policies_before ON COMMIT DROP AS SELECT * FROM p
 CREATE TEMP TABLE uc_admission_functions_before ON COMMIT DROP AS SELECT p.oid,md5(pg_get_functiondef(p.oid)) definition_hash,p.proowner,p.proacl FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','storage','auth') AND p.prokind IN('f','p');
 CREATE TEMP TABLE uc_admission_triggers_before ON COMMIT DROP AS SELECT t.oid,t.tgenabled,md5(pg_get_triggerdef(t.oid)) hash FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','storage') AND NOT t.tgisinternal;
 CREATE TEMP TABLE uc_admission_cron_before ON COMMIT DROP AS SELECT jobid,md5(to_jsonb(j)::text) hash FROM cron.job j;
+CREATE TEMP TABLE uc_admission_default_acl_before ON COMMIT DROP AS SELECT oid,md5(to_jsonb(d)::text) hash FROM pg_default_acl d;
 DO $snapshot$ DECLARE t text;n bigint;h text;shape text;BEGIN
  FOREACH t IN ARRAY ARRAY[${list(preserved)}] LOOP
  EXECUTE format('SELECT count(*),md5(coalesce(string_agg(to_jsonb(r)::text,E''\\n'' ORDER BY to_jsonb(r)::text),'''')) FROM %s r%s',t,CASE WHEN t='storage.buckets' THEN ' WHERE id<>''admission-case-evidence''' ELSE '' END) INTO n,h;
@@ -143,6 +144,7 @@ DO $preserve$ DECLARE r record;n bigint;h text;t text;shape text;BEGIN
  IF EXISTS(SELECT 1 FROM uc_admission_triggers_before b LEFT JOIN pg_trigger t ON t.oid=b.oid WHERE b.hash IS DISTINCT FROM md5(pg_get_triggerdef(t.oid)) OR b.tgenabled IS DISTINCT FROM t.tgenabled) THEN RAISE EXCEPTION 'Existing trigger changed';END IF;
  IF EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN uc_admission_triggers_before b ON b.oid=t.oid WHERE n.nspname IN('public','storage') AND NOT t.tgisinternal AND b.oid IS NULL AND NOT(${expectedTriggers.map(t=>`(n.nspname='${t.schema_name}' AND c.relname='${t.table_name}' AND t.tgname='${t.name}')`).join(' OR ')})) THEN RAISE EXCEPTION 'Unreviewed additional trigger';END IF;
  IF EXISTS(SELECT 1 FROM uc_admission_cron_before b FULL JOIN (SELECT jobid,md5(to_jsonb(j)::text) hash FROM cron.job j) a USING(jobid) WHERE b.hash IS DISTINCT FROM a.hash) THEN RAISE EXCEPTION 'Cron metadata changed';END IF;
+ IF EXISTS(SELECT 1 FROM uc_admission_default_acl_before b FULL JOIN (SELECT oid,md5(to_jsonb(d)::text) hash FROM pg_default_acl d) a USING(oid) WHERE b.hash IS DISTINCT FROM a.hash) THEN RAISE EXCEPTION 'Default ACL metadata changed';END IF;
  IF ${tables.map(t=>`EXISTS(SELECT 1 FROM public.${t})`).join(' OR ')} THEN RAISE EXCEPTION 'Unexpected prospective admission backfill';END IF;
 END $preserve$;
 NOTIFY pgrst,'reload schema';COMMIT;

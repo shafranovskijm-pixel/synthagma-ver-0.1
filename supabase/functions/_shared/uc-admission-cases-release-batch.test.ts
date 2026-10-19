@@ -8,16 +8,19 @@ const read=async(p:string)=>(await readFile(new URL(p,folder),'utf8')).replace(/
 const sha=(s:string)=>createHash('sha256').update(s.replace(/\r\n/g,'\n')).digest('hex');
 const oldRecord='e0000000-0000-4000-8000-000000000881',oldVideo='e0000000-0000-4000-8000-000000000882';
 const tables=['uc_admission_cases','uc_admission_rule_sets','uc_admission_case_events','uc_admission_case_evidence','uc_admission_evidence_reservations','uc_admission_case_requests'];
-let db:any;
+let db:any,defaultAclBefore:string;
+const defaultAclHashSql="SELECT md5(coalesce(jsonb_agg(to_jsonb(d)ORDER BY d.oid),'[]')::text)hash FROM pg_default_acl d";
 const one=async(sql:string,args:any[]=[]) => (await db.query(sql,args)).rows[0];
 async function setup(){
  db=await createUcAdmissionFixture(false);
  // Owner-only fixture seed is deliberately nonempty in the last114 private
  // registry and its legacy projection; no production or API authority is used.
  await db.exec("SELECT set_config('request.jwt.claim.sub','',false),set_config('request.jwt.claim.role','service_role',false);ALTER TABLE video_identifications DISABLE TRIGGER uc_identification_projection_guard;INSERT INTO video_identifications(id,user_id,organization_id,status,photo_url,verified_by,verified_at)VALUES('"+oldVideo+"','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000100','verified','https://invalid.example/retained-legacy.jpg','00000000-0000-4000-8000-000000000001','2020-01-01T00:00:00Z');ALTER TABLE video_identifications ENABLE TRIGGER uc_identification_projection_guard;INSERT INTO uc_identification_records(id,user_id,organization_id,scope_kind,projection_owned,origin,source_kind,status)VALUES('"+oldRecord+"','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000100','subject',false,'prospective','manual_staff_claim','verified');CREATE ROLE fixture_bystander;");
+ defaultAclBefore=(await one(defaultAclHashSql)).hash;
 }
 async function rolledBack(){
  await db.exec('ROLLBACK');expect(await one('SELECT count(*)::int n FROM supabase_migrations.schema_migrations')).toEqual({n:15});
+ expect((await one(defaultAclHashSql)).hash).toBe(defaultAclBefore);
  for(const table of tables)expect(await one(`SELECT to_regclass('public.${table}') IS NULL absent`)).toEqual({absent:true});
  expect(await one("SELECT to_regprocedure('uc_admission_evidence_context(uuid,uuid,bigint,uuid)') IS NULL absent")).toEqual({absent:true});
  expect(await one("SELECT count(*)::int n FROM storage.buckets WHERE id='admission-case-evidence'")).toEqual({n:0});
@@ -42,6 +45,26 @@ it('whole atomic115 preserves all71 prior relations including nonempty114 regist
  expect(sha(await readFile(new URL('../../../'+m.sourceAnchors.path,import.meta.url),'utf8'))).toBe(m.sourceAnchors.sourceSha256);
  expect(m.previousReleaseCompatibility.reviewedChanges).toHaveLength(5);
  await expect(db.exec(batch)).rejects.toThrow(/preflight failed/);await db.exec('ROLLBACK');
+},30000);
+it('whole115 normalizes arbitrary pre-DDL default grants only on the new6/49 and preserves global defaults plus old table/function grants',async()=>{
+ await setup();await db.exec(`CREATE ROLE fixture_default_grantee NOLOGIN;
+ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,INSERT ON TABLES TO fixture_default_grantee;
+ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO fixture_default_grantee;
+ GRANT SELECT(user_id) ON profiles TO fixture_default_grantee;
+ GRANT EXECUTE ON FUNCTION uc_identification_actor_allowed(uuid,boolean) TO fixture_default_grantee;`);
+ const defaultQuery=defaultAclHashSql;
+ const oldQuery="SELECT jsonb_build_object('table_owner',pg_get_userbyid(c.relowner),'table_acl',c.relacl::text,'column_acl',a.attacl::text,'function_owner',pg_get_userbyid(p.proowner),'function_acl',p.proacl::text)proof FROM pg_class c JOIN pg_attribute a ON a.attrelid=c.oid AND a.attname='user_id' CROSS JOIN pg_proc p WHERE c.oid='profiles'::regclass AND p.oid='uc_identification_actor_allowed(uuid,boolean)'::regprocedure";
+ const defaultsBefore=await one(defaultQuery),oldBefore=await one(oldQuery);
+ expect((await one("SELECT has_any_column_privilege('fixture_default_grantee','profiles','SELECT')ok")).ok).toBe(true);
+ expect(Object.values(await one(await read('preflight.sql'))).every(v=>v===true)).toBe(true);
+ await db.exec(await read('production-batch.sql'));
+ expect(Object.values(await one(await read('postcheck.sql'))).every(v=>v===true)).toBe(true);
+ expect(await one(defaultQuery)).toEqual(defaultsBefore);expect(await one(oldQuery)).toEqual(oldBefore);
+ for(const table of tables)expect(await one(`SELECT has_table_privilege('fixture_default_grantee','public.${table}','SELECT,INSERT,UPDATE,DELETE')allowed,has_any_column_privilege('fixture_default_grantee','public.${table}','SELECT,INSERT,UPDATE')column_allowed`)).toEqual({allowed:false,column_allowed:false});
+ const manifest=JSON.parse(await read('manifest.json'));expect(manifest.expectedFunctions).toHaveLength(49);
+ for(const f of manifest.expectedFunctions)expect((await one("SELECT has_function_privilege('fixture_default_grantee',to_regprocedure($1),'EXECUTE')allowed",['public.'+f.signature])).allowed).toBe(false);
+ expect((await one("SELECT has_function_privilege('fixture_default_grantee','uc_identification_actor_allowed(uuid,boolean)','EXECUTE')allowed")).allowed).toBe(true);
+ expect((await one('SELECT count(*)::int n FROM supabase_migrations.schema_migrations')).n).toBe(16);
 },30000);
 it('rejected final ledger insertion rolls back six tables, private bucket, guards and all five old account bodies',async()=>{await setup();await db.exec("ALTER TABLE supabase_migrations.schema_migrations ADD CHECK(version<>'20261019115000')");await expect(db.exec(await read('production-batch.sql'))).rejects.toThrow(/check constraint/);await rolledBack();},30000);
 it('altered embedded115 source is rejected before DDL',async()=>{await setup();await expect(db.exec((await read('production-batch.sql')).replace('-- UC012: exact bound personal case.','-- FORGED115: exact bound personal case.'))).rejects.toThrow(/Source hash mismatch/);await rolledBack();},30000);
@@ -80,6 +103,7 @@ it.each([
  ['new function ACL other role',"GRANT EXECUTE ON FUNCTION uc_admission_error(text) TO fixture_bystander",/postcheck failed/],
  ['new function owner',"ALTER FUNCTION uc_admission_error(text) OWNER TO fixture_bystander",/postcheck failed/],
  ['cron',"UPDATE cron.job SET active=false WHERE jobid=2",/Cron metadata changed/],
+ ['default ACL',"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO fixture_bystander",/Default ACL metadata changed/],
  ['extra old trigger',"CREATE TRIGGER fixture_unreviewed BEFORE UPDATE ON organizations FOR EACH ROW EXECUTE FUNCTION fixture_late_115()",/Unreviewed additional trigger/],
  ['extra function',"CREATE FUNCTION public.fixture_unreviewed()RETURNS integer LANGUAGE sql SECURITY DEFINER AS $late$SELECT 1$late$",/Unreviewed additional function/],
 ] as const)('late %s drift rolls back the entire115 release',async(_label,sql,match)=>{await setup();await late(sql+';');await expect(db.exec(await read('production-batch.sql'))).rejects.toThrow(match);await rolledBack();},30000);
