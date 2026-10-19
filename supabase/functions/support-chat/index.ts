@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callAI } from "../_shared/gigachat-client.ts";
+import { SUPPORT_CONTACT_CONTEXT, officialSupportContactReply, guardSupportContactAnswer, supportMessagesFromLatest } from "../_shared/platform-support-contacts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +56,7 @@ function shouldEscalate(text: string): boolean {
  * финально откатывается на Lovable AI (Gemini).
  */
 async function callSupportAI(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const fullMessages = [{ role: "system", content: SYSTEM_PROMPT }, ...messages];
+  const fullMessages = [{ role: "system", content: SYSTEM_PROMPT + "\n\n" + SUPPORT_CONTACT_CONTEXT }, ...messages];
   const { text, model } = await callAI(
     fullMessages,
     1024,
@@ -209,7 +210,9 @@ serve(async (req) => {
     }
 
     // Записываем сообщение пользователя
+    const currentMessageId = crypto.randomUUID();
     await supabase.from("support_messages").insert({
+      id: currentMessageId,
       conversation_id: conversationId,
       role: "user",
       content: body.message,
@@ -265,21 +268,18 @@ serve(async (req) => {
 
     // Получаем историю сообщений
     const { data: history } = await supabase.from("support_messages")
-      .select("role, content")
+      .select("id, role, content")
       .eq("conversation_id", conversationId)
       .in("role", ["user", "ai"])
-      .order("created_at").limit(20);
+      .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(20);
 
-    const aiMessages = (history ?? []).map(m => ({
-      role: m.role === 'ai' ? 'assistant' : 'user',
-      content: m.content,
-    }));
+    const aiMessages = supportMessagesFromLatest(history ?? [], currentMessageId, body.message);
 
     // Вызываем ИИ: общий клиент сам обходит все 3 GigaChat-слота и финально Lovable AI
     let aiResponse = "";
     let aiError: Error | null = null;
     try {
-      aiResponse = await callSupportAI(aiMessages);
+      aiResponse = officialSupportContactReply(body.message) ?? guardSupportContactAnswer(await callSupportAI(aiMessages));
     } catch (e) {
       console.warn("[support-chat] All AI providers exhausted:", e);
       aiError = e as Error;

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Mail, Phone, ArrowUpRight, Download } from "lucide-react";
 import { StarfieldCanvas } from "./StarfieldCanvas";
+import { PLATFORM_CONTACTS } from "../../../supabase/functions/_shared/platform-support-contacts";
 
 export function Footer() {
   return (
@@ -30,23 +31,23 @@ export function Footer() {
             </div>
             
             <div className="space-y-3">
-              <a href="mailto:support@sintagma.com.ru" className="flex items-center gap-3 text-white/60 hover:text-white transition-colors group">
+              <a href={`mailto:${PLATFORM_CONTACTS.supportEmail}`} className="flex items-center gap-3 text-white/60 hover:text-white transition-colors group">
                 <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center group-hover:bg-white/15 transition-colors">
                   <Mail className="w-4 h-4" />
                 </div>
-                <span className="text-sm">support@sintagma.com.ru</span>
+                <span className="text-sm">{PLATFORM_CONTACTS.supportEmail}</span>
               </a>
-              <a href="tel:89147213424" className="flex items-center gap-3 text-white/60 hover:text-white transition-colors group">
+              <a href={PLATFORM_CONTACTS.primaryPhone.href} className="flex items-center gap-3 text-white/60 hover:text-white transition-colors group">
                 <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center group-hover:bg-white/15 transition-colors">
                   <Phone className="w-4 h-4" />
                 </div>
-                <span className="text-sm">8 (914) 721-34-24</span>
+                <span className="text-sm">{PLATFORM_CONTACTS.primaryPhone.display}</span>
               </a>
-              <a href="tel:89247213424" className="flex items-center gap-3 text-white/60 hover:text-white transition-colors group">
+              <a href={PLATFORM_CONTACTS.secondaryPhone.href} className="flex items-center gap-3 text-white/60 hover:text-white transition-colors group">
                 <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center group-hover:bg-white/15 transition-colors">
                   <Phone className="w-4 h-4" />
                 </div>
-                <span className="text-sm">8 (924) 721-34-24</span>
+                <span className="text-sm">{PLATFORM_CONTACTS.secondaryPhone.display}</span>
               </a>
             </div>
           </div>
@@ -89,8 +90,8 @@ export function Footer() {
               {[
                 { label: "О нас", to: "/about" },
                 { label: "Установить приложение", to: "/install" },
-                { label: "Контакты", href: "mailto:shafranovskij.m@gmail.com" },
-                { label: "Поддержка", href: "tel:89147213424" },
+                { label: "Контакты", href: `mailto:${PLATFORM_CONTACTS.ownerEmail}` },
+                { label: "Поддержка", href: PLATFORM_CONTACTS.primaryPhone.href },
               ].map((link) => (
                 <li key={link.label}>
                   {link.to ? (
