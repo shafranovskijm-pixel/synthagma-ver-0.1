@@ -30,7 +30,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
     mode === "development" && componentTagger(),
     {
       name: 'sintagma-private-cache-cleanup',
-      generateBundle() {
+      generateBundle(this: import('rollup').PluginContext) {
         this.emitFile({ type: 'asset', fileName: 'sw-private-cache-cleanup.js', source: privateCleanupWorkerSource() });
       },
     },

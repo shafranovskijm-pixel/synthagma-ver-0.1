@@ -15348,6 +15348,48 @@ export type Database = {
           },
         ]
       }
+      uc_enrollment_delete_witnesses: {
+        Row: {
+          actor_id: string
+          backend_pid: number
+          course_id: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          kind: string
+          organization_id: string
+          parent_id: string
+          transaction_id: number
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          backend_pid?: number
+          course_id: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          kind: string
+          organization_id: string
+          parent_id: string
+          transaction_id?: number
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          backend_pid?: number
+          course_id?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          parent_id?: string
+          transaction_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       uc_goreltech_document_stages: {
         Row: {
           actor_id: string
@@ -16449,6 +16491,10 @@ export type Database = {
       }
       can_access_signed_contract_object: {
         Args: { _object_name: string }
+        Returns: boolean
+      }
+      can_delete_course_enrollment: {
+        Args: { p_enrollment_id: string }
         Returns: boolean
       }
       can_delete_orphan_library_file_object: {
@@ -18915,6 +18961,15 @@ export type Database = {
         Returns: boolean
       }
       uc_empty_education_profile: { Args: never; Returns: Json }
+      uc_enrollment_delete_actor_writable: { Args: never; Returns: boolean }
+      uc_enrollment_delete_has_witness: {
+        Args: { p_course: string; p_enrollment: string; p_user: string }
+        Returns: boolean
+      }
+      uc_enrollment_delete_live_allowed: {
+        Args: { p_course: string; p_enrollment: string; p_user: string }
+        Returns: boolean
+      }
       uc_finalize_signature: {
         Args: {
           p_agreement: Json
