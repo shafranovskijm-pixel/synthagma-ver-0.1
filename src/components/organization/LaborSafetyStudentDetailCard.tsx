@@ -99,6 +99,7 @@ export function LaborSafetyStudentDetailCard({ isOpen, onOpenChange, record, org
                   <TabsContent value="identification" className="m-0">
                     <LSIdentificationTab
                       hasProfile={!!s.profile}
+                      identification={s.identification}
                       verifications={s.verifications}
                       latestVerification={s.latestVerification}
                       handleManualVerification={s.handleManualVerification}

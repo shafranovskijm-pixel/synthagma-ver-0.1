@@ -1,3 +1,4 @@
+import { useIdentificationState } from '@/hooks/useIdentificationMedia';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,7 +71,9 @@ export function StudentDocumentsTab({
   const inbox = useStudentSignatureInbox(userId);
 
   // Status state for one-time tasks
-  const [videoIdStatus, setVideoIdStatus] = useState<{ verified: boolean; date?: string }>({ verified: false });
+  const identification = useIdentificationState(organizationId,userId);
+  const videoIdStatus = {verified: identification.state?.current?.status === 'verified' || identification.state?.compatibility.historicalVerifiedObserved === true,
+    date: identification.state?.current?.decidedAt || identification.state?.current?.createdAt};
   const [consentStatus, setConsentStatus] = useState<{ signed: boolean; date?: string }>({ signed: false });
   const [docsCounts, setDocsCounts] = useState<{ uploaded: number; required: number }>({
     uploaded: 0,
@@ -93,14 +96,7 @@ export function StudentDocumentsTab({
       setStatusLoading(true);
       try {
         const [vi, consent, docs] = await Promise.all([
-          supabase
-            .from("video_identifications")
-            .select("status, verified_at, created_at")
-            .eq("user_id", userId)
-            .in("status", ["verified", "approved"])
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+          Promise.resolve({data:null,error:null}),
           supabase
             .from("student_consents")
             .select("status, signed_at, created_at, expires_at")
@@ -116,12 +112,6 @@ export function StudentDocumentsTab({
         ]);
 
         if (cancelled) return;
-
-        if (vi.data) {
-          setVideoIdStatus({ verified: true, date: (vi.data as any).verified_at || (vi.data as any).created_at });
-        } else {
-          setVideoIdStatus({ verified: false });
-        }
 
         if (consent.data) {
           const exp = (consent.data as any).expires_at;
@@ -191,8 +181,8 @@ export function StudentDocumentsTab({
       key: "videoid",
       status: "pending",
       icon: Video,
-      title: "Видеоидентификация",
-      subtitle: "Подтвердите личность через камеру",
+      title: identification.error ? 'Статус идентификации недоступен' : identification.state?.current?.status === 'pending' ? 'Фото на проверке' : 'Видеоидентификация',
+      subtitle: identification.error ? 'Подключитесь и повторите проверку статуса' : identification.state?.current?.status === 'pending' ? 'Ожидает решения сотрудника организации' : undefined,
       cta: "Пройти",
       onAction: () => setShowVideoId(true),
     });
@@ -518,7 +508,7 @@ export function StudentDocumentsTab({
             userName={userName}
             organizationId={organizationId || undefined}
             embedded={true}
-            onVerified={() => setShowVideoId(false)}
+            onSubmitted={() => {void identification.refresh();setShowVideoId(false);}}
           />
         </DialogContent>
       </Dialog>

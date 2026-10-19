@@ -31,12 +31,20 @@ const queryState = vi.hoisted(() => ({
   tokenResponses: new Map<string, Promise<QueryResponse>>(),
   filters: [] as Array<{ table: string; values: Record<string, unknown> }>,
   rpcCalls: [] as string[],
+  identificationContexts: [] as unknown[][],
   frdoResponses: new Map<string, Promise<QueryResponse>>(),
   frdoWrites: [] as Array<{ payload: Record<string, unknown>; options: unknown }>,
   frdoWriteResponses: new Map<string, Promise<QueryResponse>>(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: queryState.actorId ? { id: queryState.actorId } : null, userRole: "organization", loading: queryState.authLoading }) }));
+vi.mock('@/hooks/useIdentificationMedia', async original => {
+  const actual = await original<typeof import('@/hooks/useIdentificationMedia')>();
+  return {...actual,useIdentificationState:(...args:Parameters<typeof actual.useIdentificationState>)=>{
+    queryState.identificationContexts.push(args.slice(0,4));
+    return actual.useIdentificationState(...args);
+  }};
+});
 vi.mock("@/hooks/useStaffPermissions", () => ({ useStaffPermissions: () => ({ loading: queryState.permissionsLoading, error: queryState.permissionsError, can: (permission: string) => permission !== "frdo.write" || queryState.canWriteFrdo }) }));
 
 vi.mock("@/utils/safeInvoke", () => ({
@@ -149,6 +157,7 @@ describe("useStudentDetailCardLogic identity races", () => {
     queryState.tokenResponses.clear();
     queryState.filters.length = 0;
     queryState.rpcCalls.length = 0;
+    queryState.identificationContexts.length = 0;
     queryState.frdoResponses.clear(); queryState.frdoWrites.length = 0; queryState.frdoWriteResponses.clear();
     vi.mocked(toast.error).mockClear();
     vi.mocked(toast.success).mockClear();
@@ -262,10 +271,9 @@ describe("useStudentDetailCardLogic identity races", () => {
     expect(result.current.autoLoginToken).toBe("token-student-b");
     expect(queryState.rpcCalls).toEqual(["student-b"]);
 
-    expect(queryState.filters).toContainEqual({
-      table: "video_identifications",
-      values: { user_id: "student-b", organization_id: "org-1" },
-    });
+    // Existing toy IDs exercise card routing/races; strict UUID/RPC authority
+    // and late canonical results are covered by the dedicated identification suites.
+    expect(queryState.identificationContexts).toContainEqual(['org-1','student-b',null,true]);
     expect(queryState.filters).toContainEqual({
       table: "student_documents",
       values: {

@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { openPrivateFile, extractStoragePath } from "@/utils/storageHelpers";
+import { useIdentificationState } from '@/hooks/useIdentificationMedia';
+import { identificationRecords, identificationView, type IdentificationRecord } from '@/lib/identification/contract';
+import { identificationScopeCurrent } from '@/lib/identification/client';
 import { toast } from "sonner";
 import {
   EnrollmentPersistenceError,
@@ -50,6 +53,7 @@ export interface LSEnrollment {
 }
 
 export interface LSVerificationRecord {
+  canonical?: IdentificationRecord;
   id: string;
   status: string;
   photo_url: string | null;
@@ -76,7 +80,8 @@ export function useLaborSafetyStudent(
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<LaborSafetyProfile | null>(null);
   const [enrollments, setEnrollments] = useState<LSEnrollment[]>([]);
-  const [verifications, setVerifications] = useState<LSVerificationRecord[]>([]);
+  const identification = useIdentificationState(organizationId,profile?.user_id,null,isOpen && !!record && profile?.record_id === record.id && profile.organization_id === organizationId);
+  const verifications = identificationRecords(identification.state).map(identificationView);
   const [identityDocs, setIdentityDocs] = useState<LSIdentityDocument[]>([]);
   const [availableCourses, setAvailableCourses] = useState<LSCourse[]>([]);
 
@@ -128,13 +133,12 @@ export function useLaborSafetyStudent(
         const { data: enrollmentData } = await supabase.from("enrollments").select("id, course_id, progress, status, started_at, completed_at, courses(title)").eq("user_id", existingProfile.user_id);
         if (enrollmentData) setEnrollments(enrollmentData.map((e: any) => ({ id: e.id, course_id: e.course_id, course_title: e.courses?.title || "Курс", progress: e.progress, status: e.status, started_at: e.started_at, completed_at: e.completed_at })));
 
-        const { data: verificationData } = await supabase.from("video_identifications").select("*").eq("user_id", existingProfile.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false });
-        if (verificationData) setVerifications(verificationData);
+
 
         const { data: docsData } = await supabase.from("student_identity_documents").select("*").eq("user_id", existingProfile.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false });
         if (docsData) setIdentityDocs(docsData);
       } else {
-        setProfile(null); setEnrollments([]); setVerifications([]); setIdentityDocs([]);
+        setProfile(null); setEnrollments([]); setIdentityDocs([]);
       }
 
       const { data: categoryData } = await supabase.from("course_categories").select("id").eq("organization_id", organizationId).ilike("name", "%охрана труда%").maybeSingle();
@@ -194,18 +198,14 @@ export function useLaborSafetyStudent(
   };
 
   const handleManualVerification = async (verified: boolean) => {
-    if (!profile) return;
-    try {
-      const latest = verifications[0];
-      if (verified) {
-        if (latest) await supabase.from("video_identifications").update({ status: "verified", verified_at: new Date().toISOString() }).eq("id", latest.id);
-        else await supabase.from("video_identifications").insert({ user_id: profile.user_id, organization_id: organizationId, status: "verified", verified_at: new Date().toISOString() });
-        toast.success("Видеоидентификация отмечена как пройденная");
-      } else {
-        if (latest) { await supabase.from("video_identifications").update({ status: "pending", verified_at: null }).eq("id", latest.id); toast.success("Статус видеоидентификации сброшен"); }
-      }
-      loadData(); onRecordUpdated?.();
-    } catch { toast.error("Ошибка обновления статуса"); }
+    const scope = identification.scope;
+    if (!scope) return;
+    const record = identification.state?.current || null;
+    if (!verified && !record) return;
+    const ok = await identification.decide(verified ? 'manual_verify' : 'reset',verified ? null : record);
+    if (!identificationScopeCurrent(scope)) return;
+    if (ok) {toast.success(verified ? 'Ручная отметка сотрудника сохранена без фотографии' : 'Статус сброшен');onRecordUpdated?.();}
+    else toast.error('Решение не подтверждено. Проверьте актуальный статус и права доступа.');
   };
 
   const handleUploadClick = (docType: string) => { setSelectedDocType(docType); fileInputRef.current?.click(); };
@@ -301,7 +301,7 @@ export function useLaborSafetyStudent(
   ];
 
   return {
-    activeTab, setActiveTab, isLoading, profile, enrollments, verifications, identityDocs,
+    activeTab, setActiveTab, isLoading, profile, enrollments, verifications, identityDocs, identification,
     isEditingCredentials, setIsEditingCredentials, newLogin, setNewLogin, newPassword, setNewPassword,
     isUpdatingCredentials, copiedField, showPassword, setShowPassword,
     fileInputRef, uploadingType, isAddingCourse, setIsAddingCourse,

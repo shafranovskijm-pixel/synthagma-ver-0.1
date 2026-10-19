@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,15 @@ import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { resolveGroupGateState, type GroupJournalContext } from "@/lib/journals/groupJournalContext";
 
+import { useAuth } from '@/hooks/useAuth';
+import { captureOfflineActor, isOfflineActorCurrent } from '@/utils/courseCache';
+import { captureIdentificationScope, identificationBearer, readIdentificationStates, decideIdentification } from '@/lib/identification/client';
+import { identificationAssuranceLabel, type IdentificationRecord as CanonicalIdentification, type IdentificationSubject, type IdentificationAction } from '@/lib/identification/contract';
+import { IdentificationPhoto } from '@/hooks/useIdentificationMedia';
+
 interface IdentificationRecord {
+  canonical: CanonicalIdentification | null;
+  subject: IdentificationSubject;
   id: string;
   user_id: string;
   status: string;
@@ -32,6 +40,13 @@ interface IdentificationJournalProps {
 }
 
 export function IdentificationJournal({ organizationId, onClose, groupContext }: IdentificationJournalProps) {
+  const {user: actor,loading:authLoading} = useAuth();
+  const accessRevision = captureOfflineActor(actor?.id);
+  const [loadError,setLoadError] = useState(false);
+  const [busy,setBusy] = useState<string | null>(null);
+  const requests = useRef(new Map<string,string>());
+  const mounted = useRef(true);
+  const loadRevision = useRef(0);
   const [records, setRecords] = useState<IdentificationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,86 +55,76 @@ export function IdentificationJournal({ organizationId, onClose, groupContext }:
   const groupGate = resolveGroupGateState("identification", groupContext);
   const groupMemberKey = (groupContext?.memberUserIds ?? []).join(",");
 
+  const identityKey = JSON.stringify([actor?.id,accessRevision,authLoading,organizationId,groupGate,groupMemberKey]);
+  const identity = useRef({key:identityKey,generation:0});
+  if (identity.current.key !== identityKey) identity.current = {key:identityKey,generation:identity.current.generation+1};
+  const generation = identity.current.generation;
+  const [loadedGeneration,setLoadedGeneration] = useState(-1);
+  const current = () => mounted.current && !!actor && !authLoading && identity.current.generation === generation && isOfflineActorCurrent(actor.id,accessRevision);
+
   useEffect(() => {
-    // Приватность: в контексте группы не загружаем данные всей организации.
-    if (groupGate === "loading" || groupGate === "error") { setRecords([]); setIsLoading(groupGate === "loading"); return; }
-    loadRecords();
-  }, [organizationId, groupGate, groupMemberKey]);
+    mounted.current = true; requests.current.clear(); setRecords([]); setLoadedGeneration(-1); setBusy(null);
+    if (groupGate === 'loading' || groupGate === 'error' || !current()) {setIsLoading(groupGate === 'loading');setLoadError(groupGate==='error');setLoadedGeneration(generation);return;}
+    void loadRecords();
+    return () => {mounted.current=false;loadRevision.current++;};
+  },[identityKey]);
 
   const loadRecords = async () => {
-    setIsLoading(true);
+    if (groupGate === 'loading' || groupGate === 'error') return;
+    const request = ++loadRevision.current;
+    const live = () => current() && request === loadRevision.current;
+    if (!live()) return;
+    setIsLoading(true); setLoadError(false);
     try {
-      // Get org students
-      let profilesQuery = supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .eq("organization_id", organizationId);
-      if (groupGate === "ready") {
-        const memberIds = groupContext?.memberUserIds ?? [];
-        if (memberIds.length === 0) { setRecords([]); setIsLoading(false); return; }
-        profilesQuery = profilesQuery.in("user_id", memberIds);
+      const scope = captureIdentificationScope(organizationId,actor!.id,null,live);
+      const bearer = await identificationBearer(scope);
+      if (!live()) return;
+      let profilesQuery = supabase.from('profiles').select('user_id, full_name, email').eq('organization_id',organizationId).setHeader('Authorization',bearer);
+      if (groupGate === 'ready') {
+        const memberIds = groupContext?.memberUserIds || [];
+        if (!memberIds.length) {setRecords([]);setLoadedGeneration(generation);return;}
+        profilesQuery=profilesQuery.in('user_id',memberIds);
       }
-      const { data: profiles } = await profilesQuery;
-
-      if (!profiles || profiles.length === 0) {
-        setRecords([]);
-        setIsLoading(false);
-        return;
+      const {data:profiles,error} = await profilesQuery;
+      if (!live()) return;
+      if (error) throw error;
+      const states = new Map<string,IdentificationSubject>();
+      for (let offset=0;offset<(profiles || []).length;offset+=100) {
+        const ids=profiles!.slice(offset,offset+100).map(profile=>profile.user_id);
+        const values=await readIdentificationStates({...scope,studentUserId:ids[0]},ids);
+        if (!live()) return;
+        values.forEach(value=>states.set(value.studentUserId,value));
       }
-
-      const userIds = profiles.map((p) => p.user_id);
-
-      // Get video identifications for these users scoped to org
-      const { data: identifications } = await supabase
-        .from("video_identifications")
-        .select("*")
-        .in("user_id", userIds)
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false });
-
-      const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
-      const idMap = new Map<string, any>();
-      // Keep latest per user
-      (identifications || []).forEach((id: any) => {
-        if (!idMap.has(id.user_id)) idMap.set(id.user_id, id);
+      const result:IdentificationRecord[]=(profiles || []).map(profile=>{
+        const subject=states.get(profile.user_id);
+        if (!subject) throw new Error('Identification state not confirmed');
+        const record=subject.current;
+        return {canonical:record,subject,id:record?.identificationId || profile.user_id,user_id:profile.user_id,status:record?.status || 'none',photo_url:null,
+          created_at:record?.createdAt || '',full_name:profile.full_name || 'Без имени',email:profile.email || ''};
       });
-
-      const result: IdentificationRecord[] = profiles.map((p) => {
-        const vid = idMap.get(p.user_id);
-        return {
-          id: vid?.id || p.user_id,
-          user_id: p.user_id,
-          status: vid?.status || "none",
-          photo_url: vid?.photo_url || null,
-          created_at: vid?.created_at || "",
-          full_name: p.full_name || "Без имени",
-          email: p.email || "" };
-      });
-
-      setRecords(result);
-    } catch (error) {
-      console.error("Error loading identifications:", error);
-      toast.error("Ошибка загрузки данных");
-    } finally {
-      setIsLoading(false);
-    }
+      if (live()) {setRecords(result);setLoadedGeneration(generation);}
+    } catch {if(live()){setRecords([]);setLoadError(true);setLoadedGeneration(generation);}}
+    finally {if(live())setIsLoading(false);}
   };
 
-  const updateStatus = async (userId: string, newStatus: string) => {
+  const updateStatus = async (item:IdentificationRecord, action:IdentificationAction) => {
+    if (!current() || busy || loadedGeneration !== generation) return;
+    const record=action==='manual_verify' ? null : item.canonical;
+    const capabilities=record?.capabilities || item.subject.capabilities;
+    if (action==='verify' && (!capabilities.canReview || record?.assurance!=='submitted')) return;
+    if (action==='reject' && !capabilities.canReject || action==='reset' && !capabilities.canReset || action==='manual_verify' && !capabilities.canReview) return;
+    const reason=action==='reject' ? prompt('Причина отклонения:')?.trim() || null : null;
+    if(action==='reject'&&!reason)return;
+    const requestKey=JSON.stringify([item.user_id,record?.identificationId,record?.revision,action,reason]);
+    const requestId=requests.current.get(requestKey)||crypto.randomUUID();requests.current.set(requestKey,requestId);
+    setBusy(item.id);
     try {
-      const { error } = await supabase
-        .from("video_identifications")
-        .update({ status: newStatus })
-        .eq("user_id", userId)
-        .eq("organization_id", organizationId);
-
-      if (error) throw error;
-      toast.success(newStatus === "verified" ? "Идентификация подтверждена" : "Идентификация отклонена");
-      loadRecords();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast.error("Ошибка обновления статуса");
-    }
+      await decideIdentification(captureIdentificationScope(organizationId,item.user_id,null,current),action,record,requestId,reason);
+      if(!current())return;
+      await loadRecords();
+      if(current())toast.success(action==='manual_verify'?'Ручная отметка сотрудника сохранена без фотографии':action==='reset'?'Статус сброшен':'Решение сохранено');
+    }catch{if(current()){toast.error('Решение не подтверждено. Обновите статус и проверьте права.');await loadRecords();}}
+    finally{if(current())setBusy(null);}
   };
 
   const statusBadge = (status: string) => {
@@ -135,7 +140,8 @@ export function IdentificationJournal({ organizationId, onClose, groupContext }:
     }
   };
 
-  const filtered = records.filter((r) => {
+  const visibleRecords = current() && loadedGeneration === generation ? records : [];
+  const filtered = visibleRecords.filter((r) => {
     const matchesSearch =
       r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -144,13 +150,13 @@ export function IdentificationJournal({ organizationId, onClose, groupContext }:
   });
 
   const counts = {
-    all: records.length,
-    pending: records.filter((r) => r.status === "pending").length,
-    verified: records.filter((r) => r.status === "verified").length,
-    rejected: records.filter((r) => r.status === "rejected").length,
-    none: records.filter((r) => r.status === "none").length };
+    all: visibleRecords.length,
+    pending: visibleRecords.filter((r) => r.status === "pending").length,
+    verified: visibleRecords.filter((r) => r.status === "verified").length,
+    rejected: visibleRecords.filter((r) => r.status === "rejected").length,
+    none: visibleRecords.filter((r) => r.status === "none").length };
 
-  if (isLoading) {
+  if (isLoading || current() && loadedGeneration !== generation) {
     return (
       <div className="flex justify-center py-12">
         <SigmaSpinner />
@@ -178,6 +184,7 @@ export function IdentificationJournal({ organizationId, onClose, groupContext }:
         </div>
       </div>
 
+      {(loadError || groupGate === 'error') && <div className="text-sm text-destructive">Не удалось подтвердить доступ к журналу. <Button variant="link" onClick={() => void loadRecords()}>Повторить</Button></div>}
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
@@ -247,17 +254,10 @@ export function IdentificationJournal({ organizationId, onClose, groupContext }:
                       <div className="text-xs text-muted-foreground">{record.email}</div>
                     </div>
                   </TableCell>
-                  <TableCell>{statusBadge(record.status)}</TableCell>
+                  <TableCell>{statusBadge(record.status)}{record.canonical && <p className="text-[10px] text-muted-foreground mt-1">{identificationAssuranceLabel(record.canonical)}</p>}</TableCell>
                   <TableCell>
-                    {record.photo_url ? (
-                      <img
-                        src={record.photo_url}
-                        alt="ID Photo"
-                        className="w-10 h-10 rounded-lg object-cover border border-border"
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                    <IdentificationPhoto scope={current() ? captureIdentificationScope(organizationId,record.user_id,record.canonical?.enrollmentId || null,current) : null}
+                      record={record.canonical} className="w-10 h-10 rounded-lg object-cover border border-border" />
                   </TableCell>
                   <TableCell>
                     {record.created_at ? (
@@ -269,50 +269,14 @@ export function IdentificationJournal({ organizationId, onClose, groupContext }:
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {record.status === "pending" && (
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="rounded-lg"
-                          onClick={() => updateStatus(record.user_id, "verified")}
-                        >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          Подтвердить
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-lg text-destructive"
-                          onClick={() => updateStatus(record.user_id, "rejected")}
-                        >
-                          <UserX className="w-4 h-4 mr-1" />
-                          Отклонить
-                        </Button>
-                      </div>
-                    )}
-                    {record.status === "verified" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-lg text-destructive"
-                        onClick={() => updateStatus(record.user_id, "rejected")}
-                      >
-                        <UserX className="w-4 h-4 mr-1" />
-                        Отклонить
-                      </Button>
-                    )}
-                    {record.status === "rejected" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-lg"
-                        onClick={() => updateStatus(record.user_id, "verified")}
-                      >
-                        <UserCheck className="w-4 h-4 mr-1" />
-                        Подтвердить
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {record.status === 'pending' && <>
+                        <Button size="sm" className="rounded-lg" disabled={!!busy || !record.canonical?.capabilities.canReview || record.canonical.assurance !== 'submitted'} onClick={() => void updateStatus(record,'verify')}><UserCheck className="w-4 h-4 mr-1" />Подтвердить</Button>
+                        <Button size="sm" variant="outline" className="rounded-lg text-destructive" disabled={!!busy || !record.canonical?.capabilities.canReject} onClick={() => void updateStatus(record,'reject')}><UserX className="w-4 h-4 mr-1" />Отклонить</Button>
+                      </>}
+                      {['verified','rejected'].includes(record.status) && <Button size="sm" variant="outline" className="rounded-lg" disabled={!!busy || !record.canonical?.capabilities.canReset} onClick={() => void updateStatus(record,'reset')}>Сбросить</Button>}
+                      {record.status === 'none' && record.subject.capabilities.canReview && <Button size="sm" variant="outline" className="rounded-lg" disabled={!!busy} onClick={() => void updateStatus(record,'manual_verify')}>Ручная отметка без фото</Button>}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

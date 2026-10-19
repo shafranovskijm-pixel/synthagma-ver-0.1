@@ -1,0 +1,13 @@
+# Private identification capture and explicit staff review
+
+This is a prepared release, not evidence of deployment or a legal identity/admission decision. New JPEG photographs use the private `student-identification-media` bucket. Self capture creates a pending outcome. Current scoped staff require both `students.write` and `documents.write` for explicit decisions; actual source bytes are checked by the two root-deployed Edge adapters.
+
+Run `prepare.mjs` with the repository's pinned runtime, then review `manifest.json`, read-only `preflight.sql` and the entire `production-batch.sql`. Submit the whole batch once only after the exact installed ledger has been checked. An unknown outcome requires ledger/postcheck inspection before retry. The transaction preserves all 66 prior relation row/schema/ACL witnesses, all prior policies/triggers/cron and function grants, allowing exactly five reviewed registration/erasure body patches and one explicitly configured private bucket row. No old migration or historical release manifest changes.
+
+The repeatable postcheck retains the previous release's full assertions, substituting only this release's exact reviewed registration definition hash in the nested historical caller assertion. It does not rewrite historical SQL sources or silently waive previous function checks.
+
+Legacy rows/URLs remain untouched. Legacy reset/reject creates a prospective overlay; old unproven photographs cannot be verified as new private proof. The exact former `avatars/<UUID>/verification_<digits>.jpg` upload/update namespace is blocked for old clients while ordinary avatar behavior/read/deletion is preserved. No public bucket conversion, legacy byte copy, mass migration or deletion is included.
+
+Authorized enrollment/course/organization cascades retain the new registry/events/private files while removing the old projection under exact PID/transaction/actor/parent-child witnesses. Corrupt cross-subject legacy children fail closed without repair. Confirmed subject erasure enumerates new files before database cleanup; reviewer erasure removes attribution/receipts while preserving another subject's outcome. Prospective history is append-only within this explicit retention/erasure boundary; no immutable legacy archive or automatic retention duration is claimed.
+
+Validation uses actual isolated PostgreSQL, synthetic Storage metadata, handler mocks and root-owned production predicate rollback checks. It does not perform a real identity decision, biometric assessment, account erasure, destructive production cascade, notification or photo read. Single-session lock-order probes are not two-session concurrency proof. The separate final-test-photo challenge remains unchanged.

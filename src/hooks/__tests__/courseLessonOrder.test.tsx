@@ -69,7 +69,7 @@ class Query {
       case 'courses': return { data: mocks.courseError ? null : course(), error: mocks.courseError ? new TypeError('Failed to fetch (offline fixture)') : null };
       case 'course_modules': return { data: mocks.modulesError ? null : mocks.modules, error: mocks.modulesError ? new Error('Module read failed') : null };
       case 'lessons': return { data: this.columns === 'content' ? { content: null } : mocks.lessons, error: null };
-      case 'enrollments': return { data: { id: 'synthetic-enrollment', status: 'active', expires_at: null }, error: null };
+      case 'enrollments': return { data: { id: 'synthetic-enrollment', user_id: mocks.user.id, course_id: COURSE_ID, status: 'active', expires_at: null }, error: null };
       case 'profiles': return { data: { organization_id: 'synthetic-org' }, error: null };
       case 'lesson_progress': return { data: ['1.1', 'S1', 'test1'].map(lesson_id => ({ lesson_id, completed: true })), error: null };
       case 'module_access_schedules': case 'module_access_overrides':

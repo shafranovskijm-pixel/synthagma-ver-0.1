@@ -1,3 +1,4 @@
+import { captureIdentificationScope, readIdentificationStates } from '@/lib/identification/client';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
@@ -263,7 +264,7 @@ export function useStudentDashboard() {
         requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES,
       });
     }
-    setIsVideoIdentified(!!snapshot.video_identified);
+    // The fast legacy snapshot is not a new identity decision. Canonical status loads below.
     if (typeof snapshot.profile.onboarding_completed === 'boolean' && !snapshot.profile.onboarding_completed && !isAdminView) {
       setShowOnboarding(true);
     }
@@ -537,7 +538,7 @@ export function useStudentDashboard() {
         // Параллельно: identity docs + video identification
         const [identityRes, videoIdRes] = await Promise.all([
           supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId),
-          supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+          readIdentificationStates(captureIdentificationScope(effectiveOrgId,uid,null,current),[uid]).then(subjects=>({data:subjects[0],error:null})).catch(()=>({data:null,error:null})),
         ]);
         if (!current()) return;
         if (identityRes.error || videoIdRes.error) throw identityRes.error || videoIdRes.error;
@@ -551,7 +552,7 @@ export function useStudentDashboard() {
           cachedDocumentsProgress = { completed: requiredTypes.filter(hasType).length, total: requiredTypes.length, requiredTypes };
         }
         setDocumentsProgress(cachedDocumentsProgress);
-        setIsVideoIdentified(!!videoIdRes.data);
+        setIsVideoIdentified(videoIdRes.data?.current?.status === "verified" || videoIdRes.data?.compatibility.historicalVerifiedObserved === true);
       }
 
       // Cache dashboard data for offline fallback using local variables
@@ -664,7 +665,7 @@ export function useStudentDashboard() {
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress: privateVisible ? documentsProgress : { completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES },
     isVideoIdentified: privateVisible && isVideoIdentified, setIsVideoIdentified, showOnboarding: privateVisible && showOnboarding, handleOnboardingClose,
-    handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
+    handleLogout, handleRefresh, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
     signOut, orgPlan: privateVisible ? orgPlan : 'free', isAdminView, adminViewStudentName,
   };
 }

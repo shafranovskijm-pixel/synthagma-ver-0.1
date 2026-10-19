@@ -258,3 +258,11 @@ verify_jwt = false
 [functions.get-signature-file]
 verify_jwt = false
 
+# UC private identification: both handlers verify the original bearer with
+# auth.getUser and exact current SQL permissions before private media access.
+[functions.student-identification-submit]
+verify_jwt = false
+
+[functions.student-identification-media]
+verify_jwt = false
+

@@ -510,20 +510,8 @@ export function useCourseLearning() {
       setCourse(courseData);
       setIsOfflineMode(false);
 
-      // Skip the video-identification gate when an admin/manager is previewing.
-      if (!isAdminView && courseData.skip_video_identification === false && user) {
-        const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
-        if (!current()) return;
-        if (profileData?.organization_id) {
-          const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
-          if (!current()) return;
-          if (!videoId) {
-            toast.error('Требуется видеоидентификация', { description: 'Пройдите видеоидентификацию перед началом курса' });
-            navigate('/student');
-            return;
-          }
-        }
-      }
+      // Existing current enrollment/status/expiry checks below govern learning.
+      // A newly submitted photo is pending evidence and cannot grant or revoke course access.
       let lessonsData = orderCourseLessons(lessonsResult.data || [], modulesResult.data || []);
 
       // Apply module access schedules + per-user overrides (use target student's id in admin view)
@@ -550,6 +538,11 @@ export function useCourseLearning() {
       setLessons(lessonsData);
 
       const enrollment = enrollmentResult.data;
+      if (enrollment && (enrollment.user_id !== lookupUserId || enrollment.course_id !== courseId)) {
+        forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
+        setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null); setLoadedGeneration(-1);
+        toast.error('Доступ к курсу не подтверждён'); navigate('/student'); return;
+      }
       if (!isAdminView && enrollment && !['active', 'completed'].includes(enrollment.status || '')) {
         forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
         setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null); setLoadedGeneration(-1);

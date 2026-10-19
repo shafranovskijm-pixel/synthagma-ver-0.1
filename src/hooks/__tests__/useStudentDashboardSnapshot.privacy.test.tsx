@@ -57,6 +57,6 @@ describe('dashboard snapshot actor/access query identity', () => {
     mocks.rpc.mockResolvedValue({data: null, error: new TypeError('Failed to fetch')}); await act(async () => {await hook.result.current.refetch();});
     expect(hook.result.current.accessDenied).toBe(false); expect(hook.result.current.data?.profile.full_name).toBe('same owner');
     mocks.rpc.mockResolvedValueOnce({data: {profile: {user_id: 'different-target'}}, error: null}); await act(async () => {await hook.result.current.refetch();});
-    expect(hook.result.current.unconfirmed).toBe(true); expect(hook.result.current.data).toBeUndefined();
+    await waitFor(() => expect(hook.result.current.unconfirmed).toBe(true)); expect(hook.result.current.data).toBeUndefined();
   });
 });
