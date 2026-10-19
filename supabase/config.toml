@@ -258,3 +258,9 @@ verify_jwt = false
 [functions.get-signature-file]
 verify_jwt = false
 
+
+[functions.student-identification-submit]
+verify_jwt = false
+
+[functions.student-identification-media]
+verify_jwt = false
