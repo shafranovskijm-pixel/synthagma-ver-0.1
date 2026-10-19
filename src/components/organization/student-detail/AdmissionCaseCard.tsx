@@ -15,8 +15,8 @@ const fieldClass = 'w-full rounded-xl border border-input bg-background px-3 py-
 const stamp = (value:string) => new Date(value).toLocaleString('ru-RU');
 const eventLabels:Record<string,string> = {initialize:'Личное дело открыто',assign_responsible:'Ответственный назначен',review_local_rules:'Правила проверены',review_requirement:'Применимость рассмотрена',review_evidence:'Версия проверена',record_decision:'Решение ответственного',evidence_committed:'Версия файла сохранена'};
 
-interface Props {organizationId:string;studentUserId:string;enabled?:boolean;observedAccessKey?:string;visible?:boolean;courseLabels?:Record<string,string>;ownOnly?:boolean;onUploadOwn?:()=>void}
-export function AdmissionCaseCard({organizationId,studentUserId,enabled=true,observedAccessKey='',visible=true,courseLabels={},ownOnly=false,onUploadOwn}:Props) {
+interface Props {organizationId:string;studentUserId:string;enabled?:boolean;observedAccessKey?:string;visible?:boolean;courseLabels?:Record<string,string>;ownOnly?:boolean;onUploadOwn?:()=>void;onOpenCourses?:()=>void}
+export function AdmissionCaseCard({organizationId,studentUserId,enabled=true,observedAccessKey='',visible=true,courseLabels={},ownOnly=false,onUploadOwn,onOpenCourses}:Props) {
   const controller = useAdmissionCase(organizationId,studentUserId,enabled,observedAccessKey,ownOnly);
   if (!visible || !enabled) return null;
   return <Card className="rounded-2xl border-border/60 shadow-sm mb-5">
@@ -26,12 +26,24 @@ export function AdmissionCaseCard({organizationId,studentUserId,enabled=true,obs
       {controller.associationsLoading && <p className="text-sm text-muted-foreground" role="status">Проверяем зачисления…</p>}
       {controller.associationsError && <ErrorBox code={controller.associationsError} onRetry={() => void controller.refreshAssociations()}/>}
       {controller.associations && <>
+        {controller.associations.items.length > 0 ? <>
         <label className="block space-y-1 text-sm"><span>Группа и зачисление</span><select aria-label="Группа и зачисление" className={fieldClass} value={controller.selected?.group_id || ''}
           onChange={event => controller.selectAssociation(controller.associations!.items.find(item => item.scope.group_id === event.target.value)?.scope || null)}>
           <option value="">Выберите точную группу</option>{controller.associations.items.map(item => <option key={item.scope.group_id} value={item.scope.group_id}>{courseLabels[item.scope.course_id] || 'Учебная программа'} · {item.group_label}</option>)}</select></label>
         {controller.associations.has_more && <Button size="sm" variant="outline" onClick={() => void controller.refreshAssociations(true)}>Ещё зачисления</Button>}
-        {!controller.associations.items.length && <p className="text-sm text-muted-foreground">Нет подтверждённой связи с группой. Обратитесь к ответственному за зачисления.</p>}
         {controller.associations.prerequisites.map(item => <p key={item.code} className="text-sm text-muted-foreground">{item.public_label}</p>)}
+        </> : <div className="rounded-xl bg-muted/40 p-3 text-sm space-y-2">
+          <p className="font-medium">Учебная связь для личного дела пока не настроена</p>
+          {ownOnly ? <p className="text-muted-foreground">Ответственный центра ещё не настроил личное дело по группе и курсу. При необходимости уточните это у центра. Этот блок не ограничивает доступ к назначенным курсам.</p>
+            : <><p className="text-muted-foreground">Здесь выбирается группа, связанная с тем же курсом, на который зачислен ученик. {controller.associations.prerequisites.some(item => item.code === 'missing_enrollment')
+              ? 'Сначала проверьте назначенные ученику курсы.'
+              : 'Если ученик уже состоит в группе, проверьте, что у этой группы указан соответствующий курс.'}</p>
+              <p className="text-muted-foreground">Ничего выбирать сейчас не нужно. Этот блок не ограничивает обучение и работу с обычными документами.</p></>}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {!ownOnly && onOpenCourses && <Button size="sm" variant="outline" onClick={onOpenCourses}>Открыть курсы ученика</Button>}
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => void controller.refreshAssociations()}><RefreshCw className="h-3.5 w-3.5"/>Проверить связь снова</Button>
+          </div>
+        </div>}
       </>}
       {controller.loading && <p role="status" className="text-sm text-muted-foreground">Загружаем выбранное личное дело…</p>}
       {controller.error && <ErrorBox code={controller.error} onRetry={() => void controller.refresh()}/>}

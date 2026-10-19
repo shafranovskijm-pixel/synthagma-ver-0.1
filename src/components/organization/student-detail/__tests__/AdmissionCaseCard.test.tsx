@@ -4,7 +4,7 @@ import {setOfflineAuthActor} from '@/utils/courseCache';
 import * as f from '@/lib/admissionCases/__tests__/fixtures';
 import * as c from '@/lib/admissionCases/contract';
 import {AdmissionCaseCard} from '../AdmissionCaseCard';
-const m=vi.hoisted(()=>({actor:'11111111-1111-4111-8111-000000000001',state:null as any,events:[] as any[],rpc:vi.fn(),invoke:vi.fn(),readOnly:false,own:false,prepared:null as any}));
+const m=vi.hoisted(()=>({actor:'11111111-1111-4111-8111-000000000001',state:null as any,events:[] as any[],rpc:vi.fn(),invoke:vi.fn(),readOnly:false,own:false,prepared:null as any,emptyAssociation:null as 'missing_group'|'missing_enrollment'|null}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:m.actor},loading:false})}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:async()=>({data:{session:{user:{id:m.actor},access_token:'SYNTHETIC_A'}},error:null})},rpc:m.rpc,functions:{invoke:m.invoke}}}));
 function result(kind:c.AdmissionMutationResult['receipt']['kind'],request:string,reason:string|null=null) {
@@ -13,11 +13,11 @@ function result(kind:c.AdmissionMutationResult['receipt']['kind'],request:string
   return {data:{...f.mutation(kind,state.revision,request),state},error:null};
 }
 beforeEach(()=>{
-  vi.clearAllMocks();m.actor=f.actor;m.state=null;m.events=[];m.readOnly=false;m.own=false;setOfflineAuthActor(null);setOfflineAuthActor(f.actor);
+  vi.clearAllMocks();m.actor=f.actor;m.state=null;m.events=[];m.readOnly=false;m.own=false;m.emptyAssociation=null;setOfflineAuthActor(null);setOfflineAuthActor(f.actor);
   m.rpc.mockImplementation((name,args)=>({setHeader:async()=>{
     if(name==='read_student_admission_case'){
       const query=args.p_query;
-      if(query.mode==='associations')return {data:{...f.associations(),items:[{scope:f.scope,group_label:'Внутренняя группа QA',case_id:m.state?.id||null,prerequisites:[]}]},error:null};
+      if(query.mode==='associations')return {data:m.emptyAssociation ? {...f.associations(),items:[],prerequisites:[{code:m.emptyAssociation,public_label:'Выберите подтверждённую учебную связь',next_action:'select_exact_association',persisted:false}]} : {...f.associations(),items:[{scope:f.scope,group_label:'Внутренняя группа QA',case_id:m.state?.id||null,prerequisites:[]}]},error:null};
       if(query.mode==='case'){
         if(m.own)return {data:{schema_version:1,mode:'case',projection:'learner',scope:f.scope,state:{id:f.caseId,scope:f.scope,revision:4,program_title:'Индивидуальная программа',outcome:'needs_information',outcome_recorded_at:f.at,later_review_required:false,tasks:[{id:f.id(200),public_label:'Нужны сведения для проверки',next_action:'upload_own_attachment',status:'open'}]},prerequisites:[]},error:null};
         const data=f.staffRead(m.state);return {data:{...data,capabilities:m.state?.capabilities||{...f.caps,can_initialize:true}},error:null};
@@ -43,6 +43,27 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();setOfflineAuthActor(null);});
 describe('case Card preserves human review and existing UI boundaries',()=>{
+  it('replaces the empty group selector with a useful explanation and read-only recovery',async()=>{
+    m.emptyAssociation='missing_group';const openCourses=vi.fn();render(<AdmissionCaseCard organizationId={f.org} studentUserId={f.learner} onOpenCourses={openCourses}/>);
+    await screen.findByText('Учебная связь для личного дела пока не настроена');
+    expect(screen.queryByRole('combobox',{name:'Группа и зачисление'})).toBeNull();expect(screen.queryByText('Выберите подтверждённую учебную связь')).toBeNull();
+    expect(screen.getByText(/Если ученик уже состоит в группе/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'Открыть курсы ученика'}));expect(openCourses).toHaveBeenCalledOnce();
+    m.emptyAssociation=null;fireEvent.click(screen.getByRole('button',{name:'Проверить связь снова'}));
+    await screen.findByRole('combobox',{name:'Группа и зачисление'});await screen.findByRole('button',{name:'Открыть личное дело'});
+    expect(m.rpc.mock.calls.every(call=>call[0]==='read_student_admission_case')).toBe(true);expect(m.invoke).not.toHaveBeenCalled();expect(m.state).toBeNull();
+  });
+  it('explains a missing enrollment without inventing a group or a persisted case',async()=>{
+    m.emptyAssociation='missing_enrollment';render(<AdmissionCaseCard organizationId={f.org} studentUserId={f.learner}/>);
+    await screen.findByText(/Сначала проверьте назначенные ученику курсы/);expect(screen.queryByRole('combobox')).toBeNull();expect(m.state).toBeNull();
+    expect(m.rpc.mock.calls.every(call=>call[0]==='read_student_admission_case')).toBe(true);
+  });
+  it('keeps learner empty-state guidance separate from organization setup controls',async()=>{
+    m.actor=f.learner;setOfflineAuthActor(f.learner);m.own=true;m.emptyAssociation='missing_group';
+    render(<AdmissionCaseCard organizationId={f.org} studentUserId={f.learner} ownOnly onOpenCourses={vi.fn()}/>);
+    await screen.findByText(/Ответственный центра ещё не настроил/);expect(screen.queryByRole('combobox')).toBeNull();expect(screen.queryByRole('button',{name:'Открыть курсы ученика'})).toBeNull();
+    expect(screen.queryByText(/Если ученик уже состоит в группе/)).toBeNull();expect(m.rpc.mock.calls.every(call=>call[0]==='read_student_admission_case')).toBe(true);
+  });
   it('runs a complete first synthetic case through the actual hook/client without a seeded rule set',async()=>{
     render(<AdmissionCaseCard organizationId={f.org} studentUserId={f.learner}/>);
     await screen.findByRole('button',{name:'Открыть личное дело'});expect(m.state).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Открыть личное дело'}));

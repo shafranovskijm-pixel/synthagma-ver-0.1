@@ -497,6 +497,7 @@ export function StudentDetailsTab() {
             observedAccessKey={JSON.stringify([permissionsLoading,orgRole,adminRole,isOrgOwner,can("students.read"),can("students.write"),can("documents.read"),can("documents.write")])}
             visible={h.activeTab === "profile" || h.activeTab === "documents"}
             courseLabels={Object.fromEntries(enrollments.map(enrollment => [enrollment.course_id,enrollment.course_title]))}
+            onOpenCourses={() => h.setActiveTab("courses")}
           />
           {activeTabNeedsStudentData && h.isLoading ? (
             <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
