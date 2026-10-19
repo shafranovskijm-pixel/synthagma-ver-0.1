@@ -15348,6 +15348,376 @@ export type Database = {
           },
         ]
       }
+      uc_admission_case_events: {
+        Row: {
+          actor_id: string | null
+          authority_hash: string
+          authority_redacted: boolean
+          authority_snapshot: Json
+          case_id: string
+          case_revision: number
+          id: string
+          kind: string
+          organization_id: string
+          payload: Json
+          recorded_at: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          authority_hash: string
+          authority_redacted?: boolean
+          authority_snapshot: Json
+          case_id: string
+          case_revision: number
+          id?: string
+          kind: string
+          organization_id: string
+          payload: Json
+          recorded_at?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          authority_hash?: string
+          authority_redacted?: boolean
+          authority_snapshot?: Json
+          case_id?: string
+          case_revision?: number
+          id?: string
+          kind?: string
+          organization_id?: string
+          payload?: Json
+          recorded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_admission_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_admission_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_admission_case_evidence: {
+        Row: {
+          byte_sha256: string
+          byte_size: number
+          captured_at: string
+          captured_by: string | null
+          case_id: string
+          case_revision_created: number
+          event_id: string
+          id: string
+          mime_type: string
+          object_updated_at: string
+          organization_id: string
+          participant_ids: string[]
+          requirement_id: string
+          sealed_path: string
+          source_kind: string
+          source_redacted: boolean
+          source_snapshot: Json
+          storage_object_id: string
+          supersedes_id: string | null
+          user_id: string
+        }
+        Insert: {
+          byte_sha256: string
+          byte_size: number
+          captured_at?: string
+          captured_by?: string | null
+          case_id: string
+          case_revision_created: number
+          event_id: string
+          id: string
+          mime_type: string
+          object_updated_at: string
+          organization_id: string
+          participant_ids: string[]
+          requirement_id: string
+          sealed_path: string
+          source_kind: string
+          source_redacted?: boolean
+          source_snapshot: Json
+          storage_object_id: string
+          supersedes_id?: string | null
+          user_id: string
+        }
+        Update: {
+          byte_sha256?: string
+          byte_size?: number
+          captured_at?: string
+          captured_by?: string | null
+          case_id?: string
+          case_revision_created?: number
+          event_id?: string
+          id?: string
+          mime_type?: string
+          object_updated_at?: string
+          organization_id?: string
+          participant_ids?: string[]
+          requirement_id?: string
+          sealed_path?: string
+          source_kind?: string
+          source_redacted?: boolean
+          source_snapshot?: Json
+          storage_object_id?: string
+          supersedes_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_admission_case_evidence_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_admission_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_admission_case_requests: {
+        Row: {
+          actor_id: string
+          case_id: string | null
+          created_at: string
+          kind: string
+          organization_id: string
+          payload_digest: string
+          receipt: Json
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          case_id?: string | null
+          created_at?: string
+          kind: string
+          organization_id: string
+          payload_digest: string
+          receipt: Json
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          case_id?: string | null
+          created_at?: string
+          kind?: string
+          organization_id?: string
+          payload_digest?: string
+          receipt?: Json
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_admission_case_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_admission_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_admission_cases: {
+        Row: {
+          course_id: string
+          created_at: string
+          decision: Json | null
+          enrollment_id: string
+          group_id: string
+          id: string
+          organization_id: string
+          program_ref: Json
+          program_title: string
+          program_type: string
+          requirements: Json
+          responsible_id: string | null
+          reviews: Json
+          revision: number
+          rule_set_id: string | null
+          tasks: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          decision?: Json | null
+          enrollment_id: string
+          group_id: string
+          id?: string
+          organization_id: string
+          program_ref: Json
+          program_title: string
+          program_type: string
+          requirements?: Json
+          responsible_id?: string | null
+          reviews?: Json
+          revision: number
+          rule_set_id?: string | null
+          tasks?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          decision?: Json | null
+          enrollment_id?: string
+          group_id?: string
+          id?: string
+          organization_id?: string
+          program_ref?: Json
+          program_title?: string
+          program_type?: string
+          requirements?: Json
+          responsible_id?: string | null
+          reviews?: Json
+          revision?: number
+          rule_set_id?: string | null
+          tasks?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_admission_evidence_reservations: {
+        Row: {
+          actor_id: string
+          case_id: string
+          commit_request_id: string | null
+          created_at: string
+          evidence_version_id: string
+          expected_revision: number
+          expires_at: string
+          id: string
+          organization_id: string
+          prepare_request_id: string
+          program_ref: Json
+          requirement_id: string
+          sealed_proof: Json | null
+          source: Json
+          source_proof: Json | null
+          state: string
+          supersedes_id: string | null
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          case_id: string
+          commit_request_id?: string | null
+          created_at?: string
+          evidence_version_id: string
+          expected_revision: number
+          expires_at?: string
+          id?: string
+          organization_id: string
+          prepare_request_id: string
+          program_ref: Json
+          requirement_id: string
+          sealed_proof?: Json | null
+          source: Json
+          source_proof?: Json | null
+          state?: string
+          supersedes_id?: string | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          case_id?: string
+          commit_request_id?: string | null
+          created_at?: string
+          evidence_version_id?: string
+          expected_revision?: number
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          prepare_request_id?: string
+          program_ref?: Json
+          requirement_id?: string
+          sealed_proof?: Json | null
+          source?: Json
+          source_proof?: Json | null
+          state?: string
+          supersedes_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_admission_evidence_reservations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_admission_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_admission_rule_sets: {
+        Row: {
+          authority_hash: string
+          authority_redacted: boolean
+          authority_snapshot: Json
+          case_id: string
+          definitions: Json
+          digest: string
+          id: string
+          organization_id: string
+          program_ref: Json
+          recorded_at: string
+          review_reason: string | null
+          reviewer_id: string | null
+          source_snapshots: Json
+          sources: Json
+          user_id: string
+        }
+        Insert: {
+          authority_hash: string
+          authority_redacted?: boolean
+          authority_snapshot: Json
+          case_id: string
+          definitions: Json
+          digest: string
+          id?: string
+          organization_id: string
+          program_ref: Json
+          recorded_at?: string
+          review_reason?: string | null
+          reviewer_id?: string | null
+          source_snapshots: Json
+          sources: Json
+          user_id: string
+        }
+        Update: {
+          authority_hash?: string
+          authority_redacted?: boolean
+          authority_snapshot?: Json
+          case_id?: string
+          definitions?: Json
+          digest?: string
+          id?: string
+          organization_id?: string
+          program_ref?: Json
+          recorded_at?: string
+          review_reason?: string | null
+          reviewer_id?: string | null
+          source_snapshots?: Json
+          sources?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_admission_rule_sets_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "uc_admission_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uc_enrollment_delete_witnesses: {
         Row: {
           actor_id: string
@@ -15417,6 +15787,271 @@ export type Database = {
           group_id?: string
           organization_id?: string
           payload_sha256?: string
+        }
+        Relationships: []
+      }
+      uc_identification_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          at: string
+          from_status: string | null
+          id: string
+          identification_id: string
+          organization_id: string
+          revision: number
+          safe_reason: string | null
+          source_id: string | null
+          to_status: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          at?: string
+          from_status?: string | null
+          id?: string
+          identification_id: string
+          organization_id: string
+          revision: number
+          safe_reason?: string | null
+          source_id?: string | null
+          to_status: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          at?: string
+          from_status?: string | null
+          id?: string
+          identification_id?: string
+          organization_id?: string
+          revision?: number
+          safe_reason?: string | null
+          source_id?: string | null
+          to_status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_identification_events_identification_id_fkey"
+            columns: ["identification_id"]
+            isOneToOne: false
+            referencedRelation: "uc_identification_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_identification_records: {
+        Row: {
+          created_at: string
+          current_source_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          enrollment_id: string | null
+          id: string
+          organization_id: string
+          origin: string
+          projection_owned: boolean
+          rejection_reason: string | null
+          revision: number
+          scope_course_id: string | null
+          scope_kind: string
+          source_kind: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_source_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          enrollment_id?: string | null
+          id?: string
+          organization_id: string
+          origin: string
+          projection_owned: boolean
+          rejection_reason?: string | null
+          revision?: number
+          scope_course_id?: string | null
+          scope_kind: string
+          source_kind: string
+          status: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_source_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          enrollment_id?: string | null
+          id?: string
+          organization_id?: string
+          origin?: string
+          projection_owned?: boolean
+          rejection_reason?: string | null
+          revision?: number
+          scope_course_id?: string | null
+          scope_kind?: string
+          source_kind?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uc_identification_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          identification_id: string
+          operation: string
+          payload_sha256: string
+          request_id: string
+          result: Json
+          source_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          identification_id: string
+          operation: string
+          payload_sha256: string
+          request_id: string
+          result: Json
+          source_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          identification_id?: string
+          operation?: string
+          payload_sha256?: string
+          request_id?: string
+          result?: Json
+          source_id?: string | null
+        }
+        Relationships: []
+      }
+      uc_identification_sources: {
+        Row: {
+          bucket: string
+          byte_sha256: string | null
+          byte_size: number | null
+          committed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          identification_id: string
+          mime_type: string
+          object_created_at: string | null
+          object_updated_at: string | null
+          organization_id: string
+          path: string
+          reservation_request_id: string
+          state: string
+          storage_object_id: string | null
+          user_id: string
+        }
+        Insert: {
+          bucket: string
+          byte_sha256?: string | null
+          byte_size?: number | null
+          committed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          identification_id: string
+          mime_type?: string
+          object_created_at?: string | null
+          object_updated_at?: string | null
+          organization_id: string
+          path: string
+          reservation_request_id: string
+          state: string
+          storage_object_id?: string | null
+          user_id: string
+        }
+        Update: {
+          bucket?: string
+          byte_sha256?: string | null
+          byte_size?: number | null
+          committed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          identification_id?: string
+          mime_type?: string
+          object_created_at?: string | null
+          object_updated_at?: string | null
+          organization_id?: string
+          path?: string
+          reservation_request_id?: string
+          state?: string
+          storage_object_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uc_identification_sources_identification_id_fkey"
+            columns: ["identification_id"]
+            isOneToOne: false
+            referencedRelation: "uc_identification_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uc_identification_write_contexts: {
+        Row: {
+          actor_id: string | null
+          backend_pid: number
+          created_at: string
+          enrollment_id: string | null
+          expected_revision: number | null
+          id: string
+          identification_id: string | null
+          kind: string
+          organization_id: string | null
+          source_id: string | null
+          transaction_id: number
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          backend_pid?: number
+          created_at?: string
+          enrollment_id?: string | null
+          expected_revision?: number | null
+          id?: string
+          identification_id?: string | null
+          kind: string
+          organization_id?: string | null
+          source_id?: string | null
+          transaction_id?: number
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          backend_pid?: number
+          created_at?: string
+          enrollment_id?: string | null
+          expected_revision?: number | null
+          id?: string
+          identification_id?: string | null
+          kind?: string
+          organization_id?: string | null
+          source_id?: string | null
+          transaction_id?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -16403,6 +17038,15 @@ export type Database = {
         Returns: Json
       }
       apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
+      apply_student_admission_case_action: {
+        Args: {
+          p_command: Json
+          p_organization_id: string
+          p_request_id: string
+          p_student_user_id: string
+        }
+        Returns: Json
+      }
       apply_tbank_balance_credit: {
         Args: {
           p_amount: number
@@ -16935,6 +17579,18 @@ export type Database = {
       csz_signed_intake_is_admin: { Args: never; Returns: boolean }
       current_company_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
+      decide_student_identification: {
+        Args: {
+          p_action: string
+          p_expected_revision?: number
+          p_identification_id?: string
+          p_organization_id: string
+          p_reason?: string
+          p_request_id: string
+          p_student_user_id: string
+        }
+        Returns: Json
+      }
       decrypt_password: { Args: { p_text: string }; Returns: string }
       delete_signature_comment_by_token: {
         Args: { p_comment_id: string; p_token: string }
@@ -17715,6 +18371,15 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_student_identification_state: {
+        Args: {
+          p_enrollment_id?: string
+          p_include_history?: boolean
+          p_organization_id: string
+          p_student_user_ids: string[]
+        }
+        Returns: Json
+      }
       get_student_learning_results: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: Json
@@ -18203,6 +18868,16 @@ export type Database = {
         Returns: Json
       }
       postpaid_require_admin: { Args: never; Returns: undefined }
+      prepare_admission_case_evidence: {
+        Args: {
+          p_case_id: string
+          p_expected_program_ref: Json
+          p_expected_revision: number
+          p_request_id: string
+          p_source: Json
+        }
+        Returns: Json
+      }
       prepare_csz_signed_upload: {
         Args: {
           p_comment: string
@@ -18226,6 +18901,14 @@ export type Database = {
           p_payload: Json
           p_recipient_id: string
           p_run_token: string
+        }
+        Returns: Json
+      }
+      prepare_own_identification_photo: {
+        Args: {
+          p_enrollment_id?: string
+          p_organization_id: string
+          p_request_id: string
         }
         Returns: Json
       }
@@ -18293,6 +18976,14 @@ export type Database = {
       purge_recycle_bin_30d: { Args: never; Returns: number }
       read_group_completion_decisions: {
         Args: { p_group_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      read_student_admission_case: {
+        Args: {
+          p_organization_id: string
+          p_query: Json
+          p_student_user_id: string
+        }
         Returns: Json
       }
       recalc_enrollment_time: {
@@ -18838,9 +19529,268 @@ export type Database = {
         }
         Returns: Json
       }
+      uc_admission_actor_allowed: {
+        Args: { p_actor: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_admission_association: {
+        Args: {
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_admission_authority: {
+        Args: { p_actor: string; p_case: string }
+        Returns: Json
+      }
+      uc_admission_can_read: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_admission_candidate: {
+        Args: {
+          p_actor?: string
+          p_case: string
+          p_id: string
+          p_kind: string
+          p_version?: string
+        }
+        Returns: Json
+      }
+      uc_admission_capabilities: {
+        Args: {
+          p_actor: string
+          p_case?: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_admission_context: {
+        Args: {
+          p_actor: string
+          p_case: string
+          p_erase_user?: string
+          p_mode: string
+        }
+        Returns: string
+      }
+      uc_admission_current_evidence: {
+        Args: { p_actor: string; p_case: string }
+        Returns: Json
+      }
+      uc_admission_derive: {
+        Args: { p_actor: string; p_case: string }
+        Returns: Json
+      }
+      uc_admission_error: { Args: { p_code: string }; Returns: undefined }
+      uc_admission_event: {
+        Args: {
+          p_actor: string
+          p_case: string
+          p_event: string
+          p_kind: string
+          p_payload_digest: string
+          p_reason?: string
+          p_request: string
+        }
+        Returns: Json
+      }
+      uc_admission_evidence_context: {
+        Args: {
+          p_case_id: string
+          p_expected_revision: number
+          p_request_id: string
+          p_reservation_id: string
+        }
+        Returns: Json
+      }
+      uc_admission_evidence_dto: {
+        Args: { p_actor: string; p_evidence: string }
+        Returns: Json
+      }
+      uc_admission_evidence_file_context: {
+        Args: { p_case_id: string; p_evidence_version_id: string }
+        Returns: Json
+      }
+      uc_admission_history_payload: {
+        Args: { p_actor: string; p_payload: Json }
+        Returns: Json
+      }
+      uc_admission_ids: {
+        Args: { p_max?: number; p_min?: number; p_value: Json }
+        Returns: boolean
+      }
+      uc_admission_local_source: {
+        Args: { p_org: string; p_ref: Json }
+        Returns: Json
+      }
+      uc_admission_lock: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_responsible?: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      uc_admission_lock_rules: { Args: { p_sources: Json }; Returns: undefined }
+      uc_admission_lock_source: {
+        Args: { p_reservation: string }
+        Returns: undefined
+      }
+      uc_admission_object: {
+        Args: {
+          p_bucket: string
+          p_extra?: Json
+          p_known?: string
+          p_path: string
+        }
+        Returns: Json
+      }
+      uc_admission_prerequisites: {
+        Args: {
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_rules?: boolean
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_admission_program: {
+        Args: {
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_admission_redact: {
+        Args: { p_force?: boolean; p_user: string; p_value: Json }
+        Returns: Json
+      }
+      uc_admission_ref_valid: { Args: { p_ref: Json }; Returns: boolean }
+      uc_admission_refresh: { Args: { p_case: string }; Returns: undefined }
+      uc_admission_requirements_digest: {
+        Args: { p_case: string }
+        Returns: string
+      }
+      uc_admission_result: {
+        Args: {
+          p_actor: string
+          p_case: string
+          p_receipt: Json
+          p_replayed: boolean
+        }
+        Returns: Json
+      }
+      uc_admission_rules_current: { Args: { p_case: string }; Returns: boolean }
+      uc_admission_scope: { Args: { p_case: string }; Returns: Json }
+      uc_admission_shape: {
+        Args: { p_keys: string[]; p_value: Json }
+        Returns: boolean
+      }
+      uc_admission_source_proof: {
+        Args: { p_actor: string; p_reservation: string }
+        Returns: Json
+      }
+      uc_admission_staff_allowed: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_group: string
+          p_org: string
+          p_user: string
+          p_write: boolean
+        }
+        Returns: boolean
+      }
+      uc_admission_stage_allowed: {
+        Args: { p_bucket: string; p_path: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_admission_state: {
+        Args: { p_actor: string; p_case: string; p_learner?: boolean }
+        Returns: Json
+      }
+      uc_admission_student_path: {
+        Args: { p_reference: string; p_user: string }
+        Returns: string
+      }
+      uc_admission_text: {
+        Args: { p_max?: number; p_value: Json }
+        Returns: boolean
+      }
+      uc_admission_trim: { Args: { p_value: string }; Returns: string }
+      uc_admission_uuid: { Args: { p_value: Json }; Returns: boolean }
+      uc_admission_validate_action: {
+        Args: { p_command: Json }
+        Returns: undefined
+      }
+      uc_apply_identification_decision: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_id: string
+          p_org: string
+          p_reason: string
+          p_registration?: boolean
+          p_request: string
+          p_revision: number
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_attest_admission_case_evidence: {
+        Args: {
+          p_actor_id: string
+          p_byte_sha256: string
+          p_byte_size: number
+          p_case_id: string
+          p_expected_revision: number
+          p_mime_type: string
+          p_request_id: string
+          p_reservation_id: string
+          p_sealed_object_id: string
+          p_sealed_updated_at: string
+          p_source_fingerprint: string
+          p_source_object_id: string
+          p_source_updated_at: string
+        }
+        Returns: Json
+      }
       uc_capture_program_association: {
         Args: { p_enrollment: string; p_group: string; p_source: string }
         Returns: string
+      }
+      uc_commit_identification_photo: {
+        Args: {
+          p_actor_id: string
+          p_byte_sha256: string
+          p_byte_size: number
+          p_expected_revision: number
+          p_identification_id: string
+          p_object_updated_at: string
+          p_request_id: string
+          p_source_id: string
+          p_storage_object_id: string
+        }
+        Returns: Json
       }
       uc_document_action_allowed: {
         Args: {
@@ -18970,6 +19920,20 @@ export type Database = {
         Args: { p_course: string; p_enrollment: string; p_user: string }
         Returns: boolean
       }
+      uc_erase_admission_cases: { Args: { p_user: string }; Returns: undefined }
+      uc_erase_identification_data: {
+        Args: { p_user: string }
+        Returns: undefined
+      }
+      uc_finalize_admission_case_evidence: {
+        Args: {
+          p_case_id: string
+          p_expected_revision: number
+          p_request_id: string
+          p_reservation_id: string
+        }
+        Returns: Json
+      }
       uc_finalize_signature: {
         Args: {
           p_agreement: Json
@@ -18987,6 +19951,105 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: Json
+      }
+      uc_identification_actor_allowed: {
+        Args: { p_actor: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_identification_can_read: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_identification_can_review: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_identification_can_submit: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_identification_capabilities: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_legacy: boolean
+          p_org: string
+          p_source: string
+          p_status: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      uc_identification_event_dto: {
+        Args: { p_actor: string; p_id: string }
+        Returns: Json
+      }
+      uc_identification_legacy_dto: {
+        Args: { p_actor: string; p_id: string }
+        Returns: Json
+      }
+      uc_identification_lock_mutation: {
+        Args: { p_actor: string; p_org: string; p_user: string }
+        Returns: undefined
+      }
+      uc_identification_media_context: {
+        Args: { p_identification_id: string; p_source_id: string }
+        Returns: Json
+      }
+      uc_identification_object: { Args: { p_source: string }; Returns: Json }
+      uc_identification_payload: { Args: { p_value: Json }; Returns: string }
+      uc_identification_projection_read: {
+        Args: { p_enrollment: string; p_org: string; p_user: string }
+        Returns: boolean
+      }
+      uc_identification_receipt_result: {
+        Args: { p_actor: string; p_id: string }
+        Returns: Json
+      }
+      uc_identification_record_dto: {
+        Args: { p_actor: string; p_id: string }
+        Returns: Json
+      }
+      uc_identification_scope_allowed: {
+        Args: {
+          p_actor: string
+          p_enrollment: string
+          p_org: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      uc_identification_storage_allowed: {
+        Args: { p_bucket: string; p_path: string; p_write: boolean }
+        Returns: boolean
+      }
+      uc_identification_submit_context: {
+        Args: {
+          p_expected_revision: number
+          p_identification_id: string
+          p_request_id: string
+          p_source_id: string
+        }
+        Returns: Json
+      }
+      uc_identification_target_allowed: {
+        Args: { p_org: string; p_user: string; p_write: boolean }
+        Returns: boolean
       }
       uc_mutate_org_document_review: {
         Args: { p_body: Json; p_operation: string }
@@ -19090,6 +20153,10 @@ export type Database = {
       uc_program_version_snapshot: {
         Args: { p_version: string }
         Returns: Json
+      }
+      uc_registration_identification_claim: {
+        Args: { p_actor: string; p_org: string; p_user: string }
+        Returns: string
       }
       uc_signature_action_allowed: {
         Args: { p_action: string; p_signature: string }
