@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadStoredSignatureArtifact } from "@/lib/signatureTokenFile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AdmissionCaseCard } from "@/components/organization/student-detail/AdmissionCaseCard";
 
 interface StudentDocumentsTabProps {
   userId: string;
@@ -242,6 +243,7 @@ export function StudentDocumentsTab({
 
   return (
     <div className="space-y-6">
+      <AdmissionCaseCard organizationId={organizationId} studentUserId={userId} enabled={!isAdminView} ownOnly onUploadOwn={() => setShowDocs(true)}/>
       {/* Always-visible quick access to PEP + PD consent */}
       <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardContent className="p-4 sm:p-5">
@@ -289,9 +291,9 @@ export function StudentDocumentsTab({
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="font-semibold text-sm">Все документы в порядке</p>
+              <p className="font-semibold text-sm">Базовые действия выполнены</p>
               <p className="text-xs text-muted-foreground">
-                Видеоидентификация пройдена, согласие подписано, документы загружены
+                Идентификация учтена, согласие подписано, файлы загружены. Допуск рассматривается ответственным отдельно.
               </p>
             </div>
           </CardContent>

@@ -1,0 +1,972 @@
+{
+  "release": "uc-admission-cases-20261019",
+  "preparedOnly": true,
+  "migrationCount": 1,
+  "batchSha256": "f01a89f3d1387cd9d423c6e26179bcaec9b89bf5c2eec33e87b72a12728ef0e0",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261019115000_uc_admission_cases.sql",
+      "version": "20261019115000",
+      "name": "uc_admission_cases",
+      "sourceSha256": "faa24852220cc77011f4f8829a0616909ac6e280582c626a47b312d52c00df34",
+      "sourceMd5": "9abe6463e90ed80449d425955052a9d4",
+      "executableMd5": "9abe6463e90ed80449d425955052a9d4"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    },
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a"
+    },
+    {
+      "file": "20261018111000_uc_program_facts.sql",
+      "version": "20261018111000",
+      "name": "uc_program_facts",
+      "sourceMd5": "e78179ae3042db206bd562914c87442d"
+    },
+    {
+      "file": "20261018112000_uc_student_frdo_write_boundaries.sql",
+      "version": "20261018112000",
+      "name": "uc_student_frdo_write_boundaries",
+      "sourceMd5": "c03613825507e6f101503f335ee22813"
+    },
+    {
+      "file": "20261018113000_uc_enrollment_delete_boundaries.sql",
+      "version": "20261018113000",
+      "name": "uc_enrollment_delete_boundaries",
+      "sourceMd5": "b6f69536e3619a3c3fd2084b10447151"
+    },
+    {
+      "file": "20261019114000_uc_identification_private_review.sql",
+      "version": "20261019114000",
+      "name": "uc_identification_private_review",
+      "sourceMd5": "e92a1c9ec0a810fbd92b65e6b48efcf2"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-identification-private-review-20261019/manifest.json",
+    "sourceSha256": "75413d3ef229f2c48c400a10229bf5d166b71814b1831685175ecacda1bb29cf"
+  },
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens",
+    "public.org_document_reviews",
+    "public.org_document_review_comments",
+    "public.org_document_review_events",
+    "public.org_document_review_requests",
+    "public.program_fact_states",
+    "public.program_fact_versions",
+    "public.course_program_bindings",
+    "public.group_program_bindings",
+    "public.group_program_enrollment_snapshots",
+    "public.program_fact_events",
+    "public.program_fact_requests",
+    "public.education_document_program_sources",
+    "public.uc_student_frdo_write_contexts",
+    "public.video_identifications",
+    "public.uc_enrollment_delete_witnesses",
+    "public.uc_identification_records",
+    "public.uc_identification_sources",
+    "public.uc_identification_events",
+    "public.uc_identification_requests",
+    "public.uc_identification_write_contexts"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.account_deletion_erase_data(uuid,text)",
+      "definition_md5": "0195ff3304609fad30cc773b1d7e348b"
+    },
+    {
+      "signature": "public.account_deletion_files(uuid)",
+      "definition_md5": "5e4638a7fb1a8909b393e94a64d88beb"
+    },
+    {
+      "signature": "public.account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "b73ea401e57da586acfc0b16ee6c4435"
+    },
+    {
+      "signature": "public.account_deletion_snapshot(uuid)",
+      "definition_md5": "90a1b279ec2d55a922f5097b1cdac0a4"
+    },
+    {
+      "signature": "public.account_deletion_storage_write_guard()",
+      "definition_md5": "4c34fa5ade42bbd0deeac51e455709ea"
+    },
+    {
+      "signature": "public.has_org_staff_permission(uuid,uuid,text)",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782"
+    },
+    {
+      "signature": "public.is_org_owner(uuid,uuid)",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2"
+    },
+    {
+      "signature": "public.uc_document_action_allowed(uuid,text,uuid,uuid)",
+      "definition_md5": "79c190a053f711dc8110e9d451b1a56c"
+    },
+    {
+      "signature": "public.uc_identification_actor_allowed(uuid,boolean)",
+      "definition_md5": "6506ece1c2b3123e5b38276594fca2a2"
+    },
+    {
+      "signature": "public.uc_identification_target_allowed(uuid,uuid,boolean)",
+      "definition_md5": "68d1c14d8472234a22fd09365ba5bb61"
+    },
+    {
+      "signature": "public.uc_org_document_review_file_bound(org_documents)",
+      "definition_md5": "52a37a3afd327393cc73b8af2a784316"
+    },
+    {
+      "signature": "public.uc_org_document_review_file_state(org_documents)",
+      "definition_md5": "1d653238bb9409357a17dc18fe78e060"
+    },
+    {
+      "signature": "public.uc_platform_document_action_allowed(uuid,text)",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d"
+    },
+    {
+      "signature": "public.uc_program_file_proof(uuid,uuid)",
+      "definition_md5": "129853325186d540264e5d10c6a36ad8"
+    },
+    {
+      "signature": "public.uc_student_frdo_staff_org_allowed(uuid,uuid,text)",
+      "definition_md5": "541b10208fdf1b4788ce4eae588110a6"
+    }
+  ],
+  "unchangedPriorFunctionBodiesExceptReviewed": [
+    "account_deletion_erase_data(uuid,text)",
+    "account_deletion_files(uuid)",
+    "account_deletion_personal_row_counts(uuid)",
+    "account_deletion_snapshot(uuid)",
+    "account_deletion_storage_write_guard()"
+  ],
+  "previousReleaseCompatibility": {
+    "rule": "Only exact five reviewed account-function definition pins are substituted in the nested114 postcheck. Every historical SQL/manifest remains unchanged.",
+    "reviewedChanges": [
+      {
+        "signature": "account_deletion_files(uuid)",
+        "before_definition_md5": "5e4638a7fb1a8909b393e94a64d88beb",
+        "definition_md5": "6a1f2827bef12a66c898c8c3456b2cbd"
+      },
+      {
+        "signature": "account_deletion_storage_write_guard()",
+        "before_definition_md5": "4c34fa5ade42bbd0deeac51e455709ea",
+        "definition_md5": "a3a1bb2fb8f3f1b8080f66e8aa296c81"
+      },
+      {
+        "signature": "account_deletion_personal_row_counts(uuid)",
+        "before_definition_md5": "b73ea401e57da586acfc0b16ee6c4435",
+        "definition_md5": "6354209a8ba5614d8539059bc33dc0ed"
+      },
+      {
+        "signature": "account_deletion_erase_data(uuid,text)",
+        "before_definition_md5": "0195ff3304609fad30cc773b1d7e348b",
+        "definition_md5": "56549dc5330b85ada3adeed89ac1457f"
+      },
+      {
+        "signature": "account_deletion_snapshot(uuid)",
+        "before_definition_md5": "90a1b279ec2d55a922f5097b1cdac0a4",
+        "definition_md5": "7238852e3da99d7b769e61d65a95dccb"
+      }
+    ]
+  },
+  "sourceAnchors": {
+    "path": "docs/releases/sintagma-production/uc-admission-cases-20261019/reviewed-source-anchors.json",
+    "sourceSha256": "6dc618a3fd22fb4b08a727ee5e1142e09d3561c23cc28928d14ba954d9db55a8"
+  },
+  "baselineCapture": {
+    "path": "supabase/tests/fixtures/uc-admission-cases-baseline.json",
+    "sourceSha256": "be0554f1f91d42e09920d46e4d8b6a266b1516e65b6c20e169e2dbbdb3417cd5"
+  },
+  "expectedFunctions": [
+    {
+      "signature": "apply_student_admission_case_action(uuid,uuid,uuid,jsonb)",
+      "definition_md5": "1cbc08070a9ebded32bf36fd187831cd",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "prepare_admission_case_evidence(uuid,bigint,jsonb,uuid,jsonb)",
+      "definition_md5": "6f3f4bea5f1f2d82f4ce79ef8fd1b3d7",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "read_student_admission_case(uuid,uuid,jsonb)",
+      "definition_md5": "0d8b1e216ba1c0d8ff482a104e8a8850",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_actor_allowed(uuid,boolean)",
+      "definition_md5": "1f50e5b2b2b8f34a4e3f41708d33ebe5",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_association(uuid,uuid,uuid,uuid)",
+      "definition_md5": "e011d899120532d2d941d9cb3ef31ec7",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_authority(uuid,uuid)",
+      "definition_md5": "a6fe32541059781ccc5ddd17e9a4cd26",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_can_read(uuid,uuid,uuid,uuid,uuid)",
+      "definition_md5": "167660b4b3a7617f16750e2f184d262a",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_candidate(uuid,text,uuid,uuid,uuid)",
+      "definition_md5": "468bf836bbd6787d3a667fcbd7b6fafb",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_capabilities(uuid,uuid,uuid,uuid,uuid,uuid)",
+      "definition_md5": "fd96735b41e785e6fc243cd4424caa89",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_context(uuid,uuid,text,uuid)",
+      "definition_md5": "e797d54ffed44f344568eba687fa6eea",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_current_evidence(uuid,uuid)",
+      "definition_md5": "8065539bd020bd72a78b643e7c21b735",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_derive(uuid,uuid)",
+      "definition_md5": "893221d3514b71cb00e945fc91cbb190",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_error(text)",
+      "definition_md5": "737dadcc87eb7a55d001694a7a4cbf23",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_event(uuid,uuid,uuid,text,uuid,text,text)",
+      "definition_md5": "dce4e2b9bd88cd3ad09301040725cedd",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_evidence_context(uuid,uuid,bigint,uuid)",
+      "definition_md5": "86c7fb6e4124484a2992eb8acdfab38c",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_evidence_dto(uuid,uuid)",
+      "definition_md5": "b8208b677458745aa0ade295d34f1a9a",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_evidence_file_context(uuid,uuid)",
+      "definition_md5": "6110160d55cbc274ab0e86b5788f3b56",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_history_payload(jsonb,uuid)",
+      "definition_md5": "b046f0aac86a51a4cd56e8f9df2219c6",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_ids(jsonb,integer,integer)",
+      "definition_md5": "e415fddef04bdb96a28a08c2f176f9fd",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_local_source(uuid,jsonb)",
+      "definition_md5": "058c91f7f6a3342ab22aa8a9b625d8e6",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_lock(uuid,uuid,uuid,uuid,uuid,uuid)",
+      "definition_md5": "9cd87f775978e92543ae16060aa7e2e1",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_lock_rules(jsonb)",
+      "definition_md5": "7d24aceed0e7f4f23987b9372a89e0e8",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_lock_source(uuid)",
+      "definition_md5": "7344c137c9390481be125da933c9ee17",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_object(text,text,text,jsonb)",
+      "definition_md5": "634bd06bfd22b8bd525f72cd615bbf00",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_prerequisites(uuid,uuid,uuid,uuid,boolean)",
+      "definition_md5": "798387b48e92fe12573647426c5c4673",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_program(uuid,uuid,uuid,uuid)",
+      "definition_md5": "0289e6c6f0b07240f6de82b9b60b2ded",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_redact(jsonb,uuid,boolean)",
+      "definition_md5": "37f46e9c33ef37332c25a4d7debcd436",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_ref_valid(jsonb)",
+      "definition_md5": "b6c3ba329e5d3276e60e928b746bb344",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_refresh(uuid)",
+      "definition_md5": "471923475b428e8bd86ba477a6c97389",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_requirements_digest(uuid)",
+      "definition_md5": "c1cf69c7ee5bdbb02eb2b7a201a1a496",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_result(uuid,uuid,jsonb,boolean)",
+      "definition_md5": "a092072f9fb4623e7a07a64c354c5f27",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_rules_current(uuid)",
+      "definition_md5": "98d348d6cffdb5d225189df5d54b50d4",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_scope(uuid)",
+      "definition_md5": "78f97aade15b1ed830b9e82ffd1e1535",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_shape(jsonb,text[])",
+      "definition_md5": "ccc07658bd564702596630e49095048a",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_source_proof(uuid,uuid)",
+      "definition_md5": "ad6afde5cd74e24698e169f6f1d94782",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_staff_allowed(uuid,uuid,uuid,uuid,uuid,boolean)",
+      "definition_md5": "e25b8edd3543d6269aba41a1bb9b4053",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_stage_allowed(text,text,boolean)",
+      "definition_md5": "dfdb23d1faea5d9a902551d144764fc5",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,anon=X/postgres}",
+      "authenticated": true,
+      "anon": true,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_state(uuid,uuid,boolean)",
+      "definition_md5": "8bb78eba889df5840d3236f56611196d",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_student_path(text,uuid)",
+      "definition_md5": "f8fec1eb920a9fa4ef19b778c9a01dbc",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_text(jsonb,integer)",
+      "definition_md5": "25a7418537001aa88bb8101e496da52b",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_trim(text)",
+      "definition_md5": "c5f3758c610655a6e4aa02a0ab776f45",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_uuid(jsonb)",
+      "definition_md5": "52a062fba45a767d6c5ad756d62379e1",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_admission_validate_action(jsonb)",
+      "definition_md5": "f4cf18ea23b17a487e71cb8a0688ded1",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_attest_admission_case_evidence(uuid,uuid,uuid,bigint,uuid,uuid,timestamp with time zone,text,uuid,timestamp with time zone,text,bigint,text)",
+      "definition_md5": "eaf20a7dd206c43fc1ea8c4032f86ca2",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_erase_admission_cases(uuid)",
+      "definition_md5": "6c68f419e008657e7611e564b81935c2",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_finalize_admission_case_evidence(uuid,uuid,bigint,uuid)",
+      "definition_md5": "e10a4e4cbe381ba40105ec80388a7864",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_admission_history()",
+      "definition_md5": "2b595de2ea2dedd40f93930430a8ca91",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_admission_org_delete()",
+      "definition_md5": "86846ea9cada0d382aae0f0236b52f2a",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_admission_storage()",
+      "definition_md5": "a7909d74dff6d5439ff0008e43c1cdc5",
+      "owner_name": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedChangedFunctions": [
+    {
+      "signature": "account_deletion_erase_data(uuid,text)",
+      "definition_md5": "56549dc5330b85ada3adeed89ac1457f"
+    },
+    {
+      "signature": "account_deletion_files(uuid)",
+      "definition_md5": "6a1f2827bef12a66c898c8c3456b2cbd"
+    },
+    {
+      "signature": "account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "6354209a8ba5614d8539059bc33dc0ed"
+    },
+    {
+      "signature": "account_deletion_snapshot(uuid)",
+      "definition_md5": "7238852e3da99d7b769e61d65a95dccb"
+    },
+    {
+      "signature": "account_deletion_storage_write_guard()",
+      "definition_md5": "a3a1bb2fb8f3f1b8080f66e8aa296c81"
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "uc_admission_cases",
+      "schemaMd5": "5c6269f90e0e3d7b02d73895395cc375"
+    },
+    {
+      "table": "uc_admission_rule_sets",
+      "schemaMd5": "c399b8d50270d6badc0bcebaf61dda96"
+    },
+    {
+      "table": "uc_admission_case_events",
+      "schemaMd5": "519aace8e72268facbc0fdd75314b8cc"
+    },
+    {
+      "table": "uc_admission_case_evidence",
+      "schemaMd5": "e9793921f79ba1b1e7b06196bf5f1c64"
+    },
+    {
+      "table": "uc_admission_evidence_reservations",
+      "schemaMd5": "688215bbd53d6d5ebe8891abcde6975d"
+    },
+    {
+      "table": "uc_admission_case_requests",
+      "schemaMd5": "f5e153beeaa6ae874bd1a04a62856706"
+    }
+  ],
+  "expectedPolicies": [
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_delete_guard",
+      "definition_md5": "92f978e5e4e8576497e302e6165ff073"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_insert_guard",
+      "definition_md5": "72965f31ff066e4ef7caaba14cf7751f"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_select_guard",
+      "definition_md5": "2b99c8ced3a332ffe471e1bb7d940ef3"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_stage_insert",
+      "definition_md5": "d48536870e25e5b8e09f81729170b3b8"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_stage_select",
+      "definition_md5": "659ccd479151ff630993873ce9574a95"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_admission_update_guard",
+      "definition_md5": "9a91b497858f819298fa9ce9a3115902"
+    }
+  ],
+  "expectedTriggers": [
+    {
+      "schema_name": "public",
+      "table_name": "organizations",
+      "name": "uc_admission_org_file_plan",
+      "definition_md5": "837979a9e372477460318f3942ca6ab6",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "uc_admission_case_events",
+      "name": "uc_admission_history_guard",
+      "definition_md5": "6cbeead80c014704445bab95478a7eec",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "uc_admission_case_evidence",
+      "name": "uc_admission_history_guard",
+      "definition_md5": "c21745ac6c9342b758433ce71ae1232c",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "uc_admission_case_requests",
+      "name": "uc_admission_history_guard",
+      "definition_md5": "1b31e5c7d3822454eeb73ef6795f45ee",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "uc_admission_cases",
+      "name": "uc_admission_history_guard",
+      "definition_md5": "17a261bcf6674f1f9ba953c9c8756a04",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "uc_admission_evidence_reservations",
+      "name": "uc_admission_history_guard",
+      "definition_md5": "7cebed7affe713b260d0eac59f958c56",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "uc_admission_rule_sets",
+      "name": "uc_admission_history_guard",
+      "definition_md5": "bf1494ff4638b1dc1ba17b8ae34dd9d2",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "storage",
+      "table_name": "objects",
+      "name": "uc_admission_storage_boundary",
+      "definition_md5": "da8513e844b91007c92fb45f8def4f56",
+      "enabled": "O"
+    }
+  ],
+  "productFiles": [
+    {
+      "path": "src/components/organization/student-detail/AdmissionCaseCard.tsx",
+      "sourceSha256": "5ff27eb0ad39c7ad3bf9238ceeba78000ba9a1b1f4d00342ca30fc30ae18d64b",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "src/components/organization/student-detail/AdmissionEvidenceSection.tsx",
+      "sourceSha256": "ada61a2c8f71971a11f95a57246ac70760d9144e50308238801506d1c4a7578b",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "src/components/organization/tabs/StudentDetailsTab.tsx",
+      "sourceSha256": "141475bffacd148f77b0e64fff935b01d00d48358fcede34d1e5ae77341fcc19",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "src/components/student/StudentDocumentsTab.tsx",
+      "sourceSha256": "2a43602f9676dcc0bc861a9e49dd5eabdabdf781a853e3e91d15cd021f173aa7",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "src/hooks/useAdmissionCase.ts",
+      "sourceSha256": "7e586f411d1cc433129b0f3694146a93414ceb9745d59708e4410f065f93d8c5",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "src/lib/admissionCases/client.ts",
+      "sourceSha256": "98d1c320c5bd264d267ff4b61d7a6c7c0f87385a91d7f4423b6899928782dd0c",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "src/lib/admissionCases/contract.ts",
+      "sourceSha256": "3df89ca4271bf0c674dfcdf36e9b1177cfb36a82a16d6bd5e472b328549b6cc4",
+      "kind": "frontend_source"
+    },
+    {
+      "path": "supabase/config.toml",
+      "sourceSha256": "c25f4a9d69c162a7b68b24fd188b6bfe1f76759bd94d5b870004a48fe47589a2",
+      "kind": "root_configuration"
+    },
+    {
+      "path": "supabase/functions/_shared/admission-case-access.ts",
+      "sourceSha256": "f647c10055d22f649faa3966fea8c20fb225eff9f4cb61e2a91c53495a434bf5",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/admission-case-evidence-commit.ts",
+      "sourceSha256": "392747efc1c9e745f0a5f3f0c6b1da517b8dd0fcbeca2bd2fec6edfae32980bd",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/_shared/admission-case-evidence-file.ts",
+      "sourceSha256": "da7be818f9a0c013735b56620496acafb7dfa8807a9ecd6c0eeb750a38fdbd9f",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/admission-case-evidence-commit/index.ts",
+      "sourceSha256": "aa064d04d08a012144738b8962c6fb4eeed79ec9052c02e9445bcb066befa089",
+      "kind": "native_edge_ts"
+    },
+    {
+      "path": "supabase/functions/admission-case-evidence-file/index.ts",
+      "sourceSha256": "5e31af0e1542ea146f30e0a0cdd9b62da99539b6a40e0c32129259f1761de306",
+      "kind": "native_edge_ts"
+    }
+  ],
+  "edgeFunctions": [
+    "admission-case-evidence-commit",
+    "admission-case-evidence-file"
+  ],
+  "configSemanticAttestation": {
+    "path": "supabase/config.toml",
+    "verifyJwtFalse": [
+      "admission-case-evidence-commit",
+      "admission-case-evidence-file"
+    ],
+    "originalCallerValidation": "Both fixed entrypoints call original auth.getUser before exact SQL authority; service transport never decides admission."
+  },
+  "edgeRuntimeGraph": [
+    "supabase/functions/_shared/admission-case-access.ts",
+    "supabase/functions/_shared/admission-case-evidence-commit.ts",
+    "supabase/functions/_shared/admission-case-evidence-file.ts",
+    "supabase/functions/admission-case-evidence-commit/index.ts",
+    "supabase/functions/admission-case-evidence-file/index.ts"
+  ],
+  "deploymentOrder": [
+    "Read-only preflight: exact100-114 ledger, previous postcheck and15 captured authority/erasure definitions",
+    "Submit entire115 transaction once; require every postcheck flag true and preservation guards passed",
+    "After SQL acceptance, root deploys the two named evidence commit/file Edge functions and compatible frontend; no legacy backfill, learning/issuer/contract changes or legal decisions",
+    "Root-owned isolated synthetic acceptance only; no real-person admission, law activation, PEP, SMTP, official issuance, deletion or backfill during release"
+  ]
+}

@@ -266,9 +266,11 @@ verify_jwt = false
 [functions.student-identification-media]
 verify_jwt = false
 
-
+# UC admission evidence: both handlers verify the original bearer and current
+# exact-case SQL authority before accessing private bytes or finalizing evidence.
 [functions.admission-case-evidence-commit]
 verify_jwt = false
 
 [functions.admission-case-evidence-file]
 verify_jwt = false
+

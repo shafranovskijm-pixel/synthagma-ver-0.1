@@ -28,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { fetchOrganizationStudentEnrollments } from "@/api/students";
 import { toast } from "sonner";
+import { AdmissionCaseCard } from "@/components/organization/student-detail/AdmissionCaseCard";
 
 const TABS = [
   { key: "profile", label: "Личное дело", icon: User },
@@ -84,7 +85,7 @@ export function StudentDetailsTab() {
   const groupReturnPath = studentGroupReturnPath(searchParams);
   const d = useOrgDashboard();
   const { user } = useAuth();
-  const { can, loading: permissionsLoading } = useStaffPermissions();
+  const { can, loading: permissionsLoading, orgRole, adminRole, isOrgOwner } = useStaffPermissions();
   const canAssignCourse = !permissionsLoading && can("students.write");
   const organizationId = d.organizationId;
   const studentId = d.tabNavigation.selectedStudentId;
@@ -488,6 +489,15 @@ export function StudentDetailsTab() {
 
         {/* Tab content */}
         <div className="flex-1 min-w-0">
+          <AdmissionCaseCard
+            key={`${organizationId}:${student.user_id}`}
+            organizationId={organizationId}
+            studentUserId={student.user_id}
+            enabled={!permissionsLoading && student.user_id === studentId && can("students.read") && can("documents.read")}
+            observedAccessKey={JSON.stringify([permissionsLoading,orgRole,adminRole,isOrgOwner,can("students.read"),can("students.write"),can("documents.read"),can("documents.write")])}
+            visible={h.activeTab === "profile" || h.activeTab === "documents"}
+            courseLabels={Object.fromEntries(enrollments.map(enrollment => [enrollment.course_id,enrollment.course_title]))}
+          />
           {activeTabNeedsStudentData && h.isLoading ? (
             <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
           ) : activeTabNeedsStudentData && h.dataLoadError ? (
