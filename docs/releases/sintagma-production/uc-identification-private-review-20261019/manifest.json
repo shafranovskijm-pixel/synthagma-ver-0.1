@@ -1,0 +1,617 @@
+{
+  "release": "uc-identification-private-review-20261019",
+  "preparedOnly": true,
+  "migrationCount": 1,
+  "batchSha256": "aea93befaaf337c1beb016fbd08017c976ff211245988259218fa3087bdb57e1",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261019114000_uc_identification_private_review.sql",
+      "version": "20261019114000",
+      "name": "uc_identification_private_review",
+      "sourceSha256": "58b660bacb07e44714c1a9e368ad772c3c6e59cabe2108c21b03472695672e86",
+      "sourceMd5": "e92a1c9ec0a810fbd92b65e6b48efcf2",
+      "executableMd5": "e92a1c9ec0a810fbd92b65e6b48efcf2"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    },
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a"
+    },
+    {
+      "file": "20261018111000_uc_program_facts.sql",
+      "version": "20261018111000",
+      "name": "uc_program_facts",
+      "sourceMd5": "e78179ae3042db206bd562914c87442d"
+    },
+    {
+      "file": "20261018112000_uc_student_frdo_write_boundaries.sql",
+      "version": "20261018112000",
+      "name": "uc_student_frdo_write_boundaries",
+      "sourceMd5": "c03613825507e6f101503f335ee22813"
+    },
+    {
+      "file": "20261018113000_uc_enrollment_delete_boundaries.sql",
+      "version": "20261018113000",
+      "name": "uc_enrollment_delete_boundaries",
+      "sourceMd5": "b6f69536e3619a3c3fd2084b10447151"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-enrollment-delete-20261019/release-manifest.json",
+    "sourceSha256": "8cd6efec7b172bac889a64f34c269c7afb8d42a0747c97ecf02cff0242aef900"
+  },
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens",
+    "public.org_document_reviews",
+    "public.org_document_review_comments",
+    "public.org_document_review_events",
+    "public.org_document_review_requests",
+    "public.program_fact_states",
+    "public.program_fact_versions",
+    "public.course_program_bindings",
+    "public.group_program_bindings",
+    "public.group_program_enrollment_snapshots",
+    "public.program_fact_events",
+    "public.program_fact_requests",
+    "public.education_document_program_sources",
+    "public.uc_student_frdo_write_contexts",
+    "public.video_identifications",
+    "public.uc_enrollment_delete_witnesses"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)",
+      "definition_md5": "ef4299140c264616b0854e95fea0af2a"
+    },
+    {
+      "signature": "public.account_deletion_storage_write_guard()",
+      "definition_md5": "6df5876891400b3db3f47047e3aa2502"
+    },
+    {
+      "signature": "public.account_deletion_files(uuid)",
+      "definition_md5": "c6fbcb05a1bd18c141980bcf4088472a"
+    },
+    {
+      "signature": "public.account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "ea286986f6a388238464c48dd8a0fde5"
+    },
+    {
+      "signature": "public.account_deletion_erase_data(uuid,text)",
+      "definition_md5": "d0279bdfbfc4d97a1f0b32c47cc475ab"
+    },
+    {
+      "signature": "public.account_deletion_snapshot(uuid)",
+      "definition_md5": "90a1b279ec2d55a922f5097b1cdac0a4"
+    },
+    {
+      "signature": "public.account_deletion_subject_write_guard()",
+      "definition_md5": "cd0003cc49bdf9a3d074c9e624146e46"
+    },
+    {
+      "signature": "public.get_org_staff_permissions(uuid,uuid)",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3"
+    },
+    {
+      "signature": "public.has_org_staff_permission(uuid,uuid,text)",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782"
+    },
+    {
+      "signature": "public.has_role(public.app_role,uuid)",
+      "definition_md5": "20c46f708cc2e7fa51b640290151a59e"
+    },
+    {
+      "signature": "public.has_role(uuid,public.app_role)",
+      "definition_md5": "82a7fa1cd06301bb83b010bc315aee0b"
+    },
+    {
+      "signature": "public.is_org_owner(uuid,uuid)",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2"
+    },
+    {
+      "signature": "public.is_student_profile(uuid,uuid)",
+      "definition_md5": "92c79c1ec4600ef54941dc9590b39aa8"
+    },
+    {
+      "signature": "public.uc_student_frdo_pair_valid(uuid,uuid)",
+      "definition_md5": "ff48411960f670646f98213ad648cb4f"
+    },
+    {
+      "signature": "public.uc_student_frdo_staff_org_allowed(uuid,uuid,text)",
+      "definition_md5": "541b10208fdf1b4788ce4eae588110a6"
+    },
+    {
+      "signature": "public.update_updated_at_column()",
+      "definition_md5": "3210625d1c794f6db7b3c3defc5984dd"
+    },
+    {
+      "signature": "public.uc_student_frdo_staff_can_write(uuid,uuid,uuid,text)",
+      "definition_md5": "5a51f534b77abd13215626afde0b56e7"
+    },
+    {
+      "signature": "public.uc_document_scope_allowed(uuid,uuid,uuid)",
+      "definition_md5": "2a7407e7d178c7561b1d390f0884c6b6"
+    },
+    {
+      "signature": "public.uc_enrollment_delete_has_witness(uuid,uuid,uuid)",
+      "definition_md5": "ee28fb97a36686314030ea24c2635f4d"
+    },
+    {
+      "signature": "public.uc_platform_document_action_allowed(uuid,text)",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d"
+    }
+  ],
+  "unchangedPriorFunctionBodiesExceptReviewed": [
+    "account_deletion_erase_data(uuid,text)",
+    "account_deletion_files(uuid)",
+    "account_deletion_personal_row_counts(uuid)",
+    "account_deletion_storage_write_guard()",
+    "save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)"
+  ],
+  "previousReleaseCompatibility": {
+    "rule": "Only nested previous113 postcheck registration body hash superseded by this reviewed114 body; all frozen historical release sources unchanged.",
+    "oldRegistrationDefinitionMd5": "ef4299140c264616b0854e95fea0af2a",
+    "newRegistrationDefinitionMd5": "a2e0df7e55da97bddc8afc821b62b7df"
+  },
+  "expectedFunctions": [
+    {
+      "signature": "decide_student_identification(uuid,uuid,uuid,text,uuid,bigint,text)",
+      "definition_md5": "a02520fbf76677083d0d63ca45c748aa",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "get_student_identification_state(uuid,uuid[],boolean,uuid)",
+      "definition_md5": "b0e16fbcd8245d3cd467255d4d0e2fb0",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "prepare_own_identification_photo(uuid,uuid,uuid)",
+      "definition_md5": "32ab5606079347324e3d4658895acb96",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_apply_identification_decision(uuid,uuid,uuid,uuid,text,uuid,bigint,text,boolean)",
+      "definition_md5": "4d72a2a2cd8e2bbcb0ce79934f443119",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_capture_identification_cascade()",
+      "definition_md5": "4e22445a20d9aa9896274e49278aa83d",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_cleanup_identification_cascade()",
+      "definition_md5": "2daf4332809b103b3499ae752e2b569f",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_commit_identification_photo(uuid,uuid,uuid,bigint,uuid,uuid,timestamp with time zone,text,bigint)",
+      "definition_md5": "9add071020fa8bf9c35a51651ffb6f0b",
+      "authenticated": false,
+      "anon": false,
+      "service_role": true
+    },
+    {
+      "signature": "uc_erase_identification_data(uuid)",
+      "definition_md5": "dff7e5ada89e7100b59572e5452367b7",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_identification_projection()",
+      "definition_md5": "6c04622438f1a95dec8df15f9f764e93",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_actor_allowed(uuid,boolean)",
+      "definition_md5": "6506ece1c2b3123e5b38276594fca2a2",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_can_read(uuid,uuid,uuid,uuid)",
+      "definition_md5": "1dafcb5e21d55b39ed5ebcfce41b9073",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_can_review(uuid,uuid,uuid,uuid)",
+      "definition_md5": "aa1161deb12343595321a7f3ded0806d",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_can_submit(uuid,uuid,uuid,uuid)",
+      "definition_md5": "db3f0427bc520721ecb5a69b2ce223f9",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_capabilities(uuid,uuid,uuid,uuid,text,uuid,boolean)",
+      "definition_md5": "51ca76e5f13694a7ed36f196b525f5a6",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_event_dto(uuid,uuid)",
+      "definition_md5": "48b396a25c71d7e5fc585afd3777c1ee",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_legacy_dto(uuid,uuid)",
+      "definition_md5": "c71b8e04263ad4239b33ec2c283b9e44",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_lock_mutation(uuid,uuid,uuid)",
+      "definition_md5": "367fd35214762a009d4060d5448e4672",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_media_context(uuid,uuid)",
+      "definition_md5": "28d4781289128c058fbc177388f5f1f3",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_object(uuid)",
+      "definition_md5": "12f1a92570598bcf04a4368c623345b4",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_payload(jsonb)",
+      "definition_md5": "46314298114ccde9a4ffdbe2be0ae2d7",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_projection_read(uuid,uuid,uuid)",
+      "definition_md5": "72cc3a03449f5a779b5a1b1c39631540",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_receipt_result(uuid,uuid)",
+      "definition_md5": "b18a6369cf8c386724ac6141b09bb03a",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_record_dto(uuid,uuid)",
+      "definition_md5": "d4d8cb75c81985a07587a31a8a58c45e",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_scope_allowed(uuid,uuid,uuid,uuid)",
+      "definition_md5": "c2b99b76f0254cc0be69f4c36e5ebfc3",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_storage_allowed(text,text,boolean)",
+      "definition_md5": "433db110442ba7e501d049e63bc3c069",
+      "authenticated": true,
+      "anon": true,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_submit_context(uuid,uuid,bigint,uuid)",
+      "definition_md5": "c27ae1a6e2c24184136ccaab184f69d5",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_identification_target_allowed(uuid,uuid,boolean)",
+      "definition_md5": "68d1c14d8472234a22fd09365ba5bb61",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_registration_identification_claim(uuid,uuid,uuid)",
+      "definition_md5": "6405ef1acda1a2860ee230c162935246",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedChangedFunctions": [
+    {
+      "signature": "account_deletion_erase_data(uuid,text)",
+      "definition_md5": "0195ff3304609fad30cc773b1d7e348b"
+    },
+    {
+      "signature": "account_deletion_files(uuid)",
+      "definition_md5": "5e4638a7fb1a8909b393e94a64d88beb"
+    },
+    {
+      "signature": "account_deletion_personal_row_counts(uuid)",
+      "definition_md5": "b73ea401e57da586acfc0b16ee6c4435"
+    },
+    {
+      "signature": "account_deletion_storage_write_guard()",
+      "definition_md5": "4c34fa5ade42bbd0deeac51e455709ea"
+    },
+    {
+      "signature": "save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)",
+      "definition_md5": "a2e0df7e55da97bddc8afc821b62b7df"
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "uc_identification_records",
+      "schemaMd5": "4f861b7c131a54b804b569020e254344"
+    },
+    {
+      "table": "uc_identification_sources",
+      "schemaMd5": "2ba302eef996173b34923fad5f10257e"
+    },
+    {
+      "table": "uc_identification_events",
+      "schemaMd5": "3f859bae58f281ee10d50bd32287f621"
+    },
+    {
+      "table": "uc_identification_requests",
+      "schemaMd5": "1a93803b58288c605ac48fa5786b90d4"
+    },
+    {
+      "table": "uc_identification_write_contexts",
+      "schemaMd5": "f7e73f5240ecaeb966347139e3f485f4"
+    }
+  ],
+  "expectedPolicies": [
+    {
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "policyname": "uc_identification_projection_delete_boundary",
+      "definition_md5": "99e139d296a1c5250dd4e35999459dd2"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "policyname": "uc_identification_projection_insert_boundary",
+      "definition_md5": "47ba0a532de93a43094575d2108adf07"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "policyname": "uc_identification_projection_select_boundary",
+      "definition_md5": "d10131b3d382ce49fcf19fa92d2283a4"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "policyname": "uc_identification_projection_update_boundary",
+      "definition_md5": "c11c443ae572955361c62ce7dcbea5c1"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_legacy_capture_insert_guard",
+      "definition_md5": "82da9922468fd0248d411691300eb7f3"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_legacy_capture_update_guard",
+      "definition_md5": "7a16dd78d8fd78ad3d8ba3e6deb46763"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_delete_guard",
+      "definition_md5": "68d8066c43033c370ba833d9a9059483"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_insert",
+      "definition_md5": "38438db4f8f28a6958487e29a69bcd7a"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_insert_guard",
+      "definition_md5": "8c21d846be353d1c5174114d53cc0ce4"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_select",
+      "definition_md5": "1e054df2e2982ce79ce24b229c7955b5"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_select_guard",
+      "definition_md5": "1ce2fff7aebabecb604a2acacec2d2e8"
+    },
+    {
+      "schemaname": "storage",
+      "tablename": "objects",
+      "policyname": "uc_identification_media_update_guard",
+      "definition_md5": "f353a1a9505b10c84e9c40895caa67f9"
+    }
+  ],
+  "expectedTriggers": [
+    {
+      "schema_name": "public",
+      "table_name": "enrollments",
+      "name": "uc_identification_cascade_before",
+      "definition_md5": "a56e41011b93bbdf363b321b63771c56",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "enrollments",
+      "name": "zzz_uc_identification_cascade_cleanup",
+      "definition_md5": "ad939ffb70ff171d9332affda354f5b7",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "video_identifications",
+      "name": "uc_identification_projection_guard",
+      "definition_md5": "5d1e8669c66f27208119763b7c1a8aba",
+      "enabled": "O"
+    }
+  ],
+  "productFiles": [],
+  "edgeFunctions": [],
+  "edgeRuntimeGraph": [],
+  "deploymentOrder": [
+    "Read-only preflight: exact100-113 ledger, previous postcheck, authority and captured issuance definitions",
+    "Submit entire114 transaction once; require every postcheck flag true and preservation guards passed",
+    "After SQL acceptance, root deploys exactly two named private identification Edge functions then compatible frontend; no legacy migration or learning grants",
+    "Root-owned rollback-only production QA then real browser acceptance; no PEP, SMTP, real issuance or backfill during release"
+  ]
+}

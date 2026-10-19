@@ -1,3 +1,5 @@
+import { IdentificationPhoto, type useIdentificationState } from "@/hooks/useIdentificationMedia";
+import { identificationAssuranceLabel } from "@/lib/identification/contract";
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -18,12 +20,13 @@ function getStatusBadge(status: string) {
 
 interface LSIdentificationTabProps {
   hasProfile: boolean;
+  identification: ReturnType<typeof useIdentificationState>;
   verifications: LSVerificationRecord[];
   latestVerification: LSVerificationRecord | null;
   handleManualVerification: (verified: boolean) => void;
 }
 
-export function LSIdentificationTab({ hasProfile, verifications, latestVerification, handleManualVerification }: LSIdentificationTabProps) {
+export function LSIdentificationTab({ hasProfile, verifications, latestVerification, handleManualVerification, identification }: LSIdentificationTabProps) {
   if (!hasProfile) {
     return <div className="text-center py-12 text-muted-foreground"><Camera className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Сначала создайте учётную запись</p></div>;
   }
@@ -32,18 +35,20 @@ export function LSIdentificationTab({ hasProfile, verifications, latestVerificat
     <div className="space-y-6">
       <div className="bg-card rounded-2xl border border-border p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2"><Video className="w-5 h-5 text-primary" />Журнал идентификации личности</h3>
-        {verifications.length === 0 ? (
+        {identification.state?.historyTruncated && <p className="text-xs text-muted-foreground mb-3">Показаны последние записи; более ранняя история в этот список не вошла.</p>}
+        {identification.loading ? <p className="text-sm text-muted-foreground">Загрузка статуса…</p> : identification.error ? <p className="text-sm text-destructive">Статус недоступен</p> : verifications.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground"><Camera className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Идентификация не пройдена</p></div>
         ) : (
           <div className="space-y-4">
             {verifications.map(v => (
               <div key={v.id} className="flex items-start gap-4 p-4 rounded-xl bg-muted/50">
-                {v.photo_url && <img src={v.photo_url} alt="Verification" className="w-20 h-20 rounded-xl object-cover" />}
+                <IdentificationPhoto scope={identification.scope} record={v.canonical || null} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     {getStatusBadge(v.status)}
                     <span className="text-xs text-muted-foreground">{format(new Date(v.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}</span>
                   </div>
+                  {v.canonical && <p className="text-xs text-muted-foreground">{identificationAssuranceLabel(v.canonical)}</p>}
                   {v.verified_at && <p className="text-sm text-muted-foreground">Проверено: {format(new Date(v.verified_at), "d MMMM yyyy, HH:mm", { locale: ru })}</p>}
                   {v.rejection_reason && <p className="text-sm text-destructive mt-1">Причина: {v.rejection_reason}</p>}
                 </div>
@@ -59,9 +64,9 @@ export function LSIdentificationTab({ hasProfile, verifications, latestVerificat
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${latestVerification?.status === "verified" ? "bg-green-500/10" : "bg-muted"}`}>
               {latestVerification?.status === "verified" ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Video className="w-5 h-5 text-muted-foreground" />}
             </div>
-            <div><Label className="font-medium cursor-pointer">Видеоидентификация пройдена</Label><p className="text-xs text-muted-foreground">Отметить вручную</p></div>
+            <div><Label className="font-medium cursor-pointer">Видеоидентификация пройдена</Label><p className="text-xs text-muted-foreground">Ручная отметка сотрудника — без фотографии</p></div>
           </div>
-          <Checkbox checked={latestVerification?.status === "verified"} onCheckedChange={checked => handleManualVerification(!!checked)} className="h-5 w-5" />
+          <Checkbox disabled={identification.loading || identification.error || identification.busy || (latestVerification?.status === "verified" ? !latestVerification?.canonical?.capabilities.canReset : !identification.state?.capabilities.canReview)} checked={latestVerification?.status === "verified"} onCheckedChange={checked => handleManualVerification(!!checked)} className="h-5 w-5" />
         </div>
       </div>
     </div>

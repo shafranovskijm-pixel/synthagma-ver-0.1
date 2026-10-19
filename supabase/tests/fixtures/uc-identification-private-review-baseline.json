@@ -1,0 +1,719 @@
+{
+  "buckets": [
+    {
+      "id": "avatars",
+      "limit": null,
+      "mime": null,
+      "public": true
+    },
+    {
+      "id": "final-test-photos",
+      "limit": 5242880,
+      "mime": [
+        "image/jpeg"
+      ],
+      "public": false
+    }
+  ],
+  "functions": [
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_erase_data(p_request_id uuid, p_receipt_hash text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'storage'\nAS $function$\nDECLARE j public.account_deletion_jobs%ROWTYPE; u uuid; r record; v_org uuid; current_snapshot jsonb;\nBEGIN\n SELECT * INTO j FROM public.account_deletion_jobs WHERE id=p_request_id AND receipt_hash=p_receipt_hash FOR UPDATE;\n IF NOT FOUND THEN RETURN jsonb_build_object('code','INVALID_RECEIPT'); END IF;\n IF j.consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;\n IF j.state='deleted' THEN RETURN jsonb_build_object('erased',true); END IF;\n IF j.state<>'cleanup_pending' THEN RETURN jsonb_build_object('code','NOT_CONFIRMED'); END IF;\n u:=j.user_id;\n PERFORM pg_advisory_xact_lock(hashtextextended(u::text,42007));\n IF jsonb_array_length(public.account_deletion_files(u))>0 OR EXISTS(SELECT 1 FROM storage.objects o JOIN jsonb_array_elements(j.files) f ON f->>'bucket'=o.bucket_id AND f->>'path'=o.name) THEN RETURN jsonb_build_object('code','DELETION_UNAVAILABLE'); END IF;\n current_snapshot:=public.account_deletion_snapshot(u);\n IF jsonb_array_length(current_snapshot->'blockers')>0 THEN RETURN jsonb_build_object('code','PLAN_CHANGED'); END IF;\n -- Delete the enrollment before lesson progress: the live progress trigger\n -- then has no enrollment to reset. CSZ/issued/shared cases failed in preview.\n PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n DELETE FROM public.audit_logs WHERE entity_id=u::text OR (entity_type='enrollment' AND entity_id IN(SELECT id::text FROM public.enrollments WHERE user_id=u));\n UPDATE public.audit_logs SET user_id='00000000-0000-0000-0000-000000000000',user_name=NULL,ip_address=NULL,user_agent=NULL WHERE user_id=u;\n UPDATE public.role_audit_log SET performed_by=NULL,performed_by_name=NULL,details=CASE WHEN details->>'from_user_id'=u::text THEN details-'from_user_id' ELSE details END WHERE performed_by=u AND target_user_id IS DISTINCT FROM u;\n UPDATE public.student_deletion_log SET deleted_by=NULL,deleted_by_name=NULL,deleted_by_email=NULL WHERE deleted_by=u AND student_id IS DISTINCT FROM u;\n DELETE FROM public.final_test_photo_challenges WHERE user_id=u;\n DELETE FROM public.test_attempts WHERE user_id=u;\n DELETE FROM public.test_attempt_start_requests WHERE user_id=u;\n DELETE FROM public.test_attempt_sessions WHERE user_id=u;\n DELETE FROM public.homework_submissions WHERE student_id=u;\n DELETE FROM public.journal_entries WHERE user_id=u;\n DELETE FROM public.group_class_journal_marks WHERE user_id=u;\n DELETE FROM public.training_plans WHERE user_id=u;\n DELETE FROM public.student_group_memberships WHERE user_id=u;\n DELETE FROM public.student_roster_removals WHERE user_id=u;\n DELETE FROM public.enrollments WHERE user_id=u;\n DELETE FROM public.lesson_progress WHERE user_id=u;\n -- on_enrollment_delete inserts an event; remove it after that trigger.\n DELETE FROM public.enrollment_history WHERE user_id=u;\n DELETE FROM public.student_deletion_log WHERE student_id=u;\n DELETE FROM public.support_messages WHERE conversation_id IN (SELECT id FROM public.support_conversations WHERE user_id=u) OR sender_user_id=u;\n DELETE FROM public.support_conversations WHERE user_id=u;\n DELETE FROM public.document_signatures WHERE (sender_user_id=u OR recipient_user_id=u) AND signed_at IS NULL AND sender_signed_at IS NULL AND status<>'signed';\n DELETE FROM public.consent_documents WHERE student_user_id=u;\n DELETE FROM public.org_contracts WHERE student_user_id=u AND approved_at IS NULL AND signed_at IS NULL AND status IN ('draft','cancelled');\n FOR r IN SELECT * FROM (VALUES\n  ('admin_org_messages','sender_user_id'),\n  ('admin_staff','user_id'),\n  ('ai_prompt_templates','user_id'),\n  ('ai_tutor_sessions','user_id'),\n  ('ai_usage_log','user_id'),\n  ('call_log_listens','listener_user_id'),\n  ('chat_group_members','user_id'),\n  ('chat_group_messages','sender_user_id'),\n  ('chat_messages','user_id'),\n  ('chat_notification_settings','user_id'),\n  ('client_error_logs','user_id'),\n  ('company_staff','user_id'),\n  ('course_access_log','user_id'),\n  ('course_reminders','user_id'),\n  ('course_requests','user_id'),\n  ('course_review_grants','user_id'),\n  ('data_subject_requests','user_id'),\n  ('exolve_sip_accounts','user_id'),\n  ('final_test_photo_challenges','user_id'),\n  ('module_access_overrides','user_id'),\n  ('notification_preferences','user_id'),\n  ('org_general_messages','sender_user_id'),\n  ('org_notifications','user_id'),\n  ('org_staff','user_id'),\n  ('org_student_messages','sender_user_id'),\n  ('org_student_messages','student_user_id'),\n  ('organization_offer_acceptances','user_id'),\n  ('partner_applications','user_id'),\n  ('pending_enrollments','user_id'),\n  ('pep_agreements','user_id'),\n  ('pipeline_runs','user_id'),\n  ('registration_attempts','user_id'),\n  ('student_consents','user_id'),\n  ('student_frdo_data','user_id'),\n  ('student_identity_documents','user_id'),\n  ('student_login_history','user_id'),\n  ('student_login_tokens','user_id'),\n  ('student_notifications','user_id'),\n  ('support_requests','user_id'),\n  ('testimonials','user_id'),\n  ('user_achievements','user_id'),\n  ('video_identifications','user_id'),\n  ('webinar_participants','user_id')\n ) x(t,c) LOOP\n  EXECUTE format('DELETE FROM public.%I WHERE %I=$1',r.t,r.c) USING u;\n END LOOP;\n -- Nullable author references are attribution, not ownership of client data.\n FOR r IN SELECT * FROM (VALUES\n  ('admin_generated_documents','created_by'),\n  ('ai_settings','updated_by'),\n  ('app_settings','updated_by'),\n  ('company_documents','uploaded_by'),\n  ('consent_documents','created_by'),\n  ('course_review_grants','revoked_by'),\n  ('enrollment_history','performed_by'),\n  ('exolve_sip_accounts','created_by'),\n  ('landing_content','updated_by'),\n  ('marketplace_settings','updated_by'),\n  ('organization_comments','created_by'),\n  ('organization_reminders','created_by'),\n  ('platform_announcements','created_by'),\n  ('sales_tasks','assigned_user_id'),\n  ('skillspace_import_jobs','created_by'),\n  ('staff_invitations','accepted_user_id'),\n  ('student_login_tokens','created_by'),\n  ('video_identifications','verified_by')\n ) x(t,c) LOOP\n  EXECUTE format('UPDATE public.%I SET %I=NULL WHERE %I=$1',r.t,r.c,r.c) USING u;\n END LOOP;\n DELETE FROM public.user_roles WHERE user_id=u;\n DELETE FROM public.profiles WHERE user_id=u;\n -- org_staff DELETE creates a role-audit event: clear it after all staff/profile\n -- triggers; never leave the target UUID hidden in its own account history.\n DELETE FROM public.role_audit_log WHERE target_user_id=u;\n DELETE FROM public.audit_logs WHERE entity_id=u::text;\n IF (j.snapshot->>'emptyOrganization')::boolean THEN\n  v_org:=(j.snapshot->>'organizationId')::uuid;\n  -- Recheck under the organization lock; a concurrent invitation/registration\n  -- must never be swept into this operation.\n  PERFORM 1 FROM public.organizations WHERE id=v_org FOR UPDATE;\n  IF EXISTS(SELECT 1 FROM public.profiles WHERE organization_id=v_org AND user_id<>u) OR EXISTS(SELECT 1 FROM public.org_staff WHERE organization_id=v_org) THEN RAISE EXCEPTION 'Organization changed during deletion'; END IF;\n  DELETE FROM public.organizations WHERE id=v_org;\n END IF;\n IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0) THEN RAISE EXCEPTION 'Personal data erasure is incomplete'; END IF;\n UPDATE public.account_deletion_jobs SET data_erased=true WHERE id=j.id;\n RETURN jsonb_build_object('erased',true);\nEND;$function$\n",
+      "md5": "d0279bdfbfc4d97a1f0b32c47cc475ab",
+      "owner": "postgres",
+      "signature": "account_deletion_erase_data(uuid,text)"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_files(p_user_id uuid)\n RETURNS jsonb\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'storage'\nAS $function$\n SELECT coalesce(jsonb_agg(jsonb_build_object('bucket',o.bucket_id,'path',o.name,'objectId',o.id,'updatedAt',o.updated_at) ORDER BY o.bucket_id,o.name),'[]'::jsonb)\n FROM storage.objects o WHERE\n  (o.bucket_id IN ('avatars','student-documents','final-test-photos') AND split_part(o.name,'/',1)=p_user_id::text)\n  OR (o.bucket_id='student-documents' AND o.name LIKE 'avatars/'||p_user_id::text||'.%')\n  OR (o.bucket_id='chat-attachments' AND split_part(o.name,'/',2)=p_user_id::text\n    AND (EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=p_user_id AND split_part(o.name,'/',1)=p.organization_id::text)\n      OR EXISTS(SELECT 1 FROM public.account_deletion_jobs j WHERE j.user_id=p_user_id AND j.state='cleanup_pending' AND split_part(o.name,'/',1)=j.snapshot->>'organizationId')));\n$function$\n",
+      "md5": "c6fbcb05a1bd18c141980bcf4088472a",
+      "owner": "postgres",
+      "signature": "account_deletion_files(uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_personal_row_counts(p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE r record; n bigint; result jsonb:='[]';\nBEGIN\n FOR r IN SELECT * FROM (VALUES\n  ('admin_org_messages','sender_user_id'),\n  ('admin_staff','user_id'),\n  ('ai_prompt_templates','user_id'),\n  ('ai_tutor_sessions','user_id'),\n  ('ai_usage_log','user_id'),\n  ('call_log_listens','listener_user_id'),\n  ('chat_group_members','user_id'),\n  ('chat_group_messages','sender_user_id'),\n  ('chat_messages','user_id'),\n  ('chat_notification_settings','user_id'),\n  ('client_error_logs','user_id'),\n  ('company_staff','user_id'),\n  ('consent_documents','student_user_id'),\n  ('course_access_log','user_id'),\n  ('course_reminders','user_id'),\n  ('course_requests','user_id'),\n  ('course_review_grants','user_id'),\n  ('data_subject_requests','user_id'),\n  ('document_signatures','recipient_user_id'),\n  ('document_signatures','sender_user_id'),\n  ('enrollment_history','user_id'),\n  ('enrollments','user_id'),\n  ('exolve_sip_accounts','user_id'),\n  ('final_test_photo_challenges','user_id'),\n  ('group_class_journal_marks','user_id'),\n  ('group_completion_decision_history','user_id'),\n  ('group_completion_decisions','user_id'),\n  ('homework_submissions','student_id'),\n  ('journal_entries','user_id'),\n  ('lesson_progress','user_id'),\n  ('module_access_overrides','user_id'),\n  ('notification_preferences','user_id'),\n  ('org_contracts','student_user_id'),\n  ('org_general_messages','sender_user_id'),\n  ('org_notifications','user_id'),\n  ('org_staff','user_id'),\n  ('org_student_messages','sender_user_id'),\n  ('org_student_messages','student_user_id'),\n  ('organization_offer_acceptances','user_id'),\n  ('partner_applications','user_id'),\n  ('pending_enrollments','user_id'),\n  ('pep_agreements','user_id'),\n  ('pipeline_runs','user_id'),\n  ('profiles','user_id'),\n  ('registration_attempts','user_id'),\n  ('role_audit_log','target_user_id'),\n  ('student_consents','user_id'),\n  ('student_deletion_log','student_id'),\n  ('student_frdo_data','user_id'),\n  ('student_group_memberships','user_id'),\n  ('student_identity_documents','user_id'),\n  ('student_login_history','user_id'),\n  ('student_login_tokens','user_id'),\n  ('student_notifications','user_id'),\n  ('student_roster_removals','user_id'),\n  ('support_conversations','user_id'),\n  ('support_messages','sender_user_id'),\n  ('support_requests','user_id'),\n  ('test_attempt_sessions','user_id'),\n  ('test_attempt_start_requests','user_id'),\n  ('test_attempts','user_id'),\n  ('testimonials','user_id'),\n  ('training_plans','user_id'),\n  ('user_achievements','user_id'),\n  ('user_roles','user_id'),\n  ('video_identifications','user_id'),\n  ('webinar_participants','user_id')\n ) x(t,c) LOOP\n  EXECUTE format('SELECT count(*) FROM public.%I WHERE %I=$1',r.t,r.c) INTO n USING p_user_id;\n  IF n>0 THEN result:=result||jsonb_build_array(jsonb_build_object('table',r.t,'column',r.c,'count',n)); END IF;\n END LOOP;\n RETURN result;\nEND;$function$\n",
+      "md5": "ea286986f6a388238464c48dd8a0fde5",
+      "owner": "postgres",
+      "signature": "account_deletion_personal_row_counts(uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_snapshot(p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'storage'\nAS $function$\nDECLARE p public.profiles%ROWTYPE; v_org uuid; v_owner boolean:=false;\n v_blockers jsonb:='[]'; v_categories jsonb:='[]'; v_files jsonb;\n v_count bigint; v_learning bigint; v_docs bigint:=0; v_shared bigint:=0; v_documentary bigint:=0;\n v_org_shared bigint:=0; v_courses bigint:=0; r record; v_fingerprint jsonb;\nBEGIN\n SELECT * INTO p FROM public.profiles WHERE user_id=p_user_id;\n v_org:=p.organization_id;\n IF v_org IS NOT NULL THEN v_owner:=public.is_org_owner(p_user_id,v_org); END IF;\n SELECT count(*) INTO v_learning FROM public.enrollments WHERE user_id=p_user_id;\n v_files:=public.account_deletion_files(p_user_id);\n -- Exact subject/document relationships; JSON checks are read-only detection,\n -- never commands to remove an organization-wide document.\n SELECT\n   (SELECT count(*) FROM public.education_document_records WHERE user_id=p_user_id OR enrollment_id IN (SELECT id FROM public.enrollments WHERE user_id=p_user_id))+\n   (SELECT count(*) FROM public.document_issuance_log WHERE user_id=p_user_id)+\n   (SELECT count(*) FROM public.student_documents WHERE enrollment_id IN (SELECT id FROM public.enrollments WHERE user_id=p_user_id))+\n   (SELECT count(*) FROM public.document_signatures WHERE (recipient_user_id=p_user_id OR sender_user_id=p_user_id) AND (signed_at IS NOT NULL OR sender_signed_at IS NOT NULL OR status='signed'))+\n   (SELECT count(*) FROM public.org_contracts WHERE (student_user_id=p_user_id OR students::text LIKE '%'||p_user_id::text||'%') AND (approved_at IS NOT NULL OR signed_at IS NOT NULL OR status NOT IN ('draft','cancelled')))+\n   (SELECT count(*) FROM public.group_documents WHERE (student_user_id=p_user_id OR variables::text LIKE '%'||p_user_id::text||'%' OR variables_snapshot::text LIKE '%'||p_user_id::text||'%') AND (file_path IS NOT NULL OR doc_status<>'draft'))\n INTO v_docs;\n IF v_docs>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','RETENTION_POLICY_REQUIRED','message','У аккаунта есть оформленные учебные или подписанные документы организации. Для этих записей требуется отдельная проверка возможности удаления; она не заменяется подтверждением удаления аккаунта.')); END IF;\n IF EXISTS(SELECT 1 FROM public.group_completion_decision_history WHERE user_id=p_user_id) OR EXISTS(SELECT 1 FROM public.group_completion_decisions WHERE user_id=p_user_id) THEN\n  v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','PROTECTED_HISTORY_REVIEW_REQUIRED','message','Есть неизменяемая история итоговых решений организации. Их автоматическое удаление сейчас не поддержано без нарушения целостности общей истории; удаление не начато.'));\n END IF;\n -- CSZ preserves accepted homework by a dedicated immutable-history trigger.\n -- Do not bypass that guard just to scrub a personal free-text attachment.\n IF EXISTS(SELECT 1 FROM public.homework_submissions WHERE student_id=p_user_id AND course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a'))\n OR EXISTS(SELECT 1 FROM public.enrollments WHERE user_id=p_user_id AND course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a'))\n OR EXISTS(SELECT 1 FROM public.lesson_progress lp JOIN public.lessons l ON l.id=lp.lesson_id WHERE lp.user_id=p_user_id AND l.course_id IN ('7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a')) THEN\n  v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','PROTECTED_HISTORY_REVIEW_REQUIRED','message','Есть защищённые работы ЦСЗ. Их обработка требует отдельного решения; результаты обучения сейчас не изменяются.'));\n END IF;\n -- These records have other stakeholders or privileged ownership. Never let\n -- Auth FK cascades silently delete client call records, contracts or grants.\n FOR r IN SELECT * FROM (VALUES\n  ('org_crm_clients','student_user_id'),\n  ('ai_avatar_templates','created_by'),\n  ('balance_transactions','performed_by'),\n  ('call_logs','manager_user_id'),\n  ('chat_groups','created_by'),\n  ('checko_search_presets','created_by'),\n  ('checko_search_runs','created_by'),\n  ('commercial_proposals','created_by'),\n  ('commercial_proposals','deleted_by'),\n  ('companies','user_id'),\n  ('company_documents','deleted_by'),\n  ('company_staff','invited_by'),\n  ('course_landing_history','created_by'),\n  ('course_manual_credits','credited_by'),\n  ('course_manual_credits','revoked_by'),\n  ('course_payments','user_id'),\n  ('course_review_grants','created_by'),\n  ('course_review_grants','updated_by'),\n  ('course_snapshots','created_by'),\n  ('data_subject_requests','deleted_by'),\n  ('data_subject_requests','resolved_by'),\n  ('document_issuance_log','deleted_by'),\n  ('document_signatures','deleted_by'),\n  ('driving_audit','user_id'),\n  ('driving_entries','created_by'),\n  ('driving_entry_reversals','created_by'),\n  ('driving_instructors','user_id'),\n  ('driving_invites','created_by'),\n  ('driving_lessons','created_by'),\n  ('driving_memberships','user_id'),\n  ('driving_schools','created_by'),\n  ('driving_students','user_id'),\n  ('education_document_records','deleted_by'),\n  ('email_campaigns','created_by'),\n  ('email_drip_sequences','created_by'),\n  ('email_templates','created_by'),\n  ('enrollment_requests','resolved_by'),\n  ('enrollment_requests','user_id'),\n  ('goreltech_document_operations','actor_id'),\n  ('goreltech_enrollment_orders','actor_id'),\n  ('group_class_journal_marks','updated_by'),\n  ('group_completion_decisions','confirmed_by'),\n  ('group_document_schedules','updated_by'),\n  ('group_documents','created_by'),\n  ('group_documents','student_user_id'),\n  ('homework_submissions','reviewer_id'),\n  ('incoming_documents','deleted_by'),\n  ('labor_safety_enrollment_protocols','created_by'),\n  ('labor_safety_enrollment_protocols','source_user_id'),\n  ('labor_safety_enrollment_protocols','updated_by'),\n  ('labor_safety_profiles','user_id'),\n  ('library_documents','created_by'),\n  ('mailing_deliverability_seeds','created_by'),\n  ('mailing_report_links','created_by'),\n  ('mailing_senders','created_by'),\n  ('marketplace_course_comments','user_id'),\n  ('marketplace_orders','buyer_user_id'),\n  ('org_billing_documents','deleted_by'),\n  ('org_contract_template_versions','created_by'),\n  ('org_custom_roles','created_by'),\n  ('org_document_share_links','created_by'),\n  ('org_documents','deleted_by'),\n  ('org_signatories','created_by'),\n  ('platform_invoice_acts','created_by'),\n  ('platform_updates','created_by'),\n  ('proposal_presets','created_by'),\n  ('referral_attribution_log','user_id'),\n  ('referral_partners','user_id'),\n  ('sales_demo_links','created_by'),\n  ('sales_demo_sessions','user_id'),\n  ('sales_managers','user_id'),\n  ('sales_tasks','created_by'),\n  ('signature_comments','author_user_id'),\n  ('signature_comments','resolved_by'),\n  ('signature_revisions','created_by'),\n  ('training_plans','created_by'),\n  ('webinar_polls','created_by'),\n  ('webinars','created_by'),\n  ('webinars','host_user_id')\n ) x(t,c) LOOP\n  EXECUTE format('SELECT count(*) FROM public.%I WHERE %I=$1',r.t,r.c) INTO v_count USING p_user_id;\n  v_shared:=v_shared+v_count;\n END LOOP;\n v_shared:=v_shared+(SELECT count(*) FROM public.document_signatures WHERE (sender_user_id=p_user_id OR recipient_user_id=p_user_id) AND (sender_user_id IS DISTINCT FROM p_user_id OR recipient_user_id IS DISTINCT FROM p_user_id));\n v_shared:=v_shared+(SELECT count(*) FROM public.org_contracts WHERE student_user_id IS DISTINCT FROM p_user_id AND students::text LIKE '%'||p_user_id::text||'%');\n v_shared:=v_shared+(SELECT count(*) FROM public.group_documents WHERE student_user_id IS DISTINCT FROM p_user_id AND (variables::text LIKE '%'||p_user_id::text||'%' OR variables_snapshot::text LIKE '%'||p_user_id::text||'%'));\n IF v_shared>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','SHARED_DATA_REVIEW_REQUIRED','message','Аккаунт связан с общими рабочими записями. Сначала нужно передать ответственность за них; данные других пользователей не удаляются.')); END IF;\n IF EXISTS(SELECT 1 FROM storage.objects o WHERE (o.owner=p_user_id OR o.owner_id=p_user_id::text)\n   AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_files) f WHERE f->>'bucket'=o.bucket_id AND f->>'path'=o.name)) THEN\n  v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','SHARED_FILES_REVIEW_REQUIRED','message','Есть загруженные аккаунтом файлы вне личных папок. Сначала нужно проверить их принадлежность организации.'));\n END IF;\n IF v_owner THEN\n  -- Locking/revalidation occurs again in begin. A brand-new sole-owner\n  -- organization may be removed with its default welcome course/templates.\n  SELECT count(*) INTO v_org_shared FROM public.profiles WHERE organization_id=v_org AND user_id<>p_user_id;\n  v_org_shared:=v_org_shared+(SELECT count(*) FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id WHERE c.organization_id=v_org);\n  v_org_shared:=v_org_shared+(SELECT count(*) FROM public.organizations WHERE id=v_org AND (balance<>0 OR is_paid OR paid_until IS NOT NULL));\n  FOR r IN SELECT * FROM (VALUES\n  ('org_crm_clients','organization_id'),\n  ('org_crm_deals','organization_id'),\n  ('org_crm_tasks','organization_id'),\n  ('org_crm_activities','organization_id'),\n  ('achievements','organization_id'),\n  ('admin_generated_documents','sent_to_organization_id'),\n  ('admin_org_messages','organization_id'),\n  ('ai_avatar_templates','organization_id'),\n  ('audit_logs','organization_id'),\n  ('balance_transactions','organization_id'),\n  ('chat_groups','organization_id'),\n  ('checko_search_presets','organization_id'),\n  ('commercial_proposals','organization_id'),\n  ('companies','organization_id'),\n  ('company_requests','organization_id'),\n  ('consent_documents','organization_id'),\n  ('course_landing_history','organization_id'),\n  ('course_payments','organization_id'),\n  ('course_reminders','organization_id'),\n  ('course_requests','organization_id'),\n  ('course_snapshots','organization_id'),\n  ('data_subject_requests','organization_id'),\n  ('document_issuance_log','organization_id'),\n  ('document_number_sequences','organization_id'),\n  ('document_signatures','organization_id'),\n  ('driving_audit','organization_id'),\n  ('driving_cars','organization_id'),\n  ('driving_courses','organization_id'),\n  ('driving_entries','organization_id'),\n  ('driving_entry_reversals','organization_id'),\n  ('driving_groups','organization_id'),\n  ('driving_instructors','organization_id'),\n  ('driving_invites','organization_id'),\n  ('driving_lessons','organization_id'),\n  ('driving_memberships','organization_id'),\n  ('driving_operations','organization_id'),\n  ('driving_programs','organization_id'),\n  ('driving_schools','organization_id'),\n  ('driving_shifts','organization_id'),\n  ('driving_students','organization_id'),\n  ('education_document_records','organization_id'),\n  ('email_action_tokens','organization_id'),\n  ('email_campaign_consent_log','organization_id'),\n  ('email_campaigns','organization_id'),\n  ('email_drip_subscribers','organization_id'),\n  ('frdo_signed_documents','organization_id'),\n  ('goreltech_document_operations','organization_id'),\n  ('goreltech_enrollment_orders','organization_id'),\n  ('group_class_journal_marks','organization_id'),\n  ('group_completion_decision_history','organization_id'),\n  ('group_completion_decisions','organization_id'),\n  ('group_document_schedules','organization_id'),\n  ('group_documents','organization_id'),\n  ('homework_submissions','organization_id'),\n  ('incoming_documents','organization_id'),\n  ('journal_instances','organization_id'),\n  ('kinescope_usage_cache','organization_id'),\n  ('knowledge_bank','organization_id'),\n  ('labor_safety_enrollment_protocols','organization_id'),\n  ('labor_safety_groups','organization_id'),\n  ('labor_safety_profiles','organization_id'),\n  ('library_documents','organization_id'),\n  ('library_folders','organization_id'),\n  ('mailing_campaign_ledger','organization_id'),\n  ('mailing_campaign_replies','organization_id'),\n  ('mailing_contacts','organization_id'),\n  ('mailing_deliverability_checks','organization_id'),\n  ('mailing_deliverability_seeds','organization_id'),\n  ('mailing_report_links','organization_id'),\n  ('mailing_seed_ledger','organization_id'),\n  ('mailing_senders','organization_id'),\n  ('marketplace_courses','organization_id'),\n  ('marketplace_orders','buyer_organization_id'),\n  ('ordinary_mail_report_events','organization_id'),\n  ('org_billing_documents','organization_id'),\n  ('org_contract_template_versions','organization_id'),\n  ('org_contract_templates','organization_id'),\n  ('org_contracts','organization_id'),\n  ('org_custom_roles','organization_id'),\n  ('org_document_share_links','organization_id'),\n  ('org_document_versions','organization_id'),\n  ('org_documents','organization_id'),\n  ('org_general_messages','organization_id'),\n  ('org_payers','organization_id'),\n  ('org_services','organization_id'),\n  ('org_signatories','organization_id'),\n  ('org_smtp_settings','organization_id'),\n  ('org_staff','organization_id'),\n  ('org_student_messages','organization_id'),\n  ('organization_comments','organization_id'),\n  ('organization_payment_settings','organization_id'),\n  ('organization_reminders','organization_id'),\n  ('pending_enrollments','organization_id'),\n  ('platform_invoice_acts','organization_id'),\n  ('program_categories','organization_id'),\n  ('program_documents','organization_id'),\n  ('program_folders','organization_id'),\n  ('program_training_plans','organization_id'),\n  ('proposal_presets','organization_id'),\n  ('referral_attribution_log','organization_id'),\n  ('referral_commissions','organization_id'),\n  ('referral_registrations','organization_id'),\n  ('registration_links','organization_id'),\n  ('role_audit_log','organization_id'),\n  ('sales_blacklist','organization_id'),\n  ('sales_companies_db','organization_id'),\n  ('sales_contracts','organization_id'),\n  ('sales_demo_links','organization_id'),\n  ('sales_demo_sessions','organization_id'),\n  ('sales_lead_activities','organization_id'),\n  ('sales_leads','organization_id'),\n  ('sales_tasks','organization_id'),\n  ('service_orders','organization_id'),\n  ('skillspace_import_jobs','organization_id'),\n  ('staff_invitations','organization_id'),\n  ('student_deletion_log','organization_id'),\n  ('student_group_memberships','organization_id'),\n  ('student_groups','organization_id'),\n  ('student_roster_removals','organization_id'),\n  ('subscription_invoices','organization_id'),\n  ('system_diagnostics','organization_id'),\n  ('testimonials','organization_id'),\n  ('training_plans','organization_id'),\n  ('webinars','organization_id')\n  ) x(t,c) LOOP\n   EXECUTE format('SELECT count(*) FROM public.%I WHERE %I=$1',r.t,r.c) INTO v_count USING v_org;\n   v_org_shared:=v_org_shared+v_count;\n  END LOOP;\n  -- Only the audited seeded course is auto-removable in the first release.\n  SELECT count(*) INTO v_courses FROM public.courses WHERE organization_id=v_org;\n  v_org_shared:=v_org_shared+(SELECT count(*) FROM public.courses WHERE organization_id=v_org AND system_key IS DISTINCT FROM 'welcome');\n IF v_org_shared>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','OWNERSHIP_TRANSFER_REQUIRED','message','Организация содержит пользователей, обучение, платежи или рабочие записи. Сначала передайте управление организацией.','actionHref','/organization?tab=staff')); END IF;\n END IF;\n -- PEP is deletable only when it is the person's standalone agreement, not\n -- evidence attached to a document signature (the live FK is SET NULL).\n SELECT count(*) INTO v_documentary FROM public.pep_agreements pa\n WHERE pa.user_id=p_user_id AND EXISTS(SELECT 1 FROM public.document_signatures d WHERE d.pep_agreement_id=pa.id);\n -- An organization's offer acceptance belongs to the organization lifecycle.\n -- Remove it only together with the verified unused sole-owner organization.\n SELECT v_documentary+count(*) INTO v_documentary FROM public.organization_offer_acceptances a\n WHERE a.user_id=p_user_id AND NOT (v_owner AND v_org_shared=0 AND a.organization_id=v_org);\n IF v_documentary>0 THEN v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object('code','DOCUMENTARY_RELATION_REVIEW_REQUIRED','message','Есть соглашение ПЭП, связанное с подписью документа, или акцепт оферты действующей организации. Эти общие документальные записи требуют отдельной обработки; удаление аккаунта не начато.')); END IF;\n v_categories:=jsonb_build_array(\n  jsonb_build_object('key','account','label','Вход в аккаунт, пароль, профиль и личные настройки','count',1,'action','delete'),\n  jsonb_build_object('key','private_files','label','Личные фотографии и загруженные документы','count',jsonb_array_length(v_files),'action','delete'),\n  jsonb_build_object('key','learning_results','label','Назначения курсов, прогресс, попытки, ответы и результаты обучения','count',v_learning,'action','delete'),\n  jsonb_build_object('key','institutional_documents','label','Оформленные документы','count',v_docs,'action',CASE WHEN v_docs>0 THEN 'block' ELSE 'delete' END));\n IF v_documentary>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','documentary_relations','label','Соглашения ПЭП и акцепты оферт, связанные с документами или действующей организацией','count',v_documentary,'action','block')); END IF;\n IF v_owner THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','empty_organization','label','Неиспользованная организация и ознакомительный курс','count',1,'action',CASE WHEN v_org_shared>0 THEN 'block' ELSE 'delete' END)); END IF;\n SELECT count(*) INTO v_count FROM public.audit_logs WHERE user_id=p_user_id;\n IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','common_audit','label','Общие события организации: запись события сохраняется, имя и ссылка на аккаунт удаляются','count',v_count,'action','anonymize')); END IF;\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record','label','Техническая запись запрета старого доступа и квитанция об удалении без имени и контактов','count',1,'action','retain'));\n -- The snapshot is compared atomically just before the first mutation. Counts\n -- and manifest cover additions during the confirmation dialog; no PII stored.\n RETURN jsonb_build_object('organizationId',v_org,'emptyOrganization',v_owner AND v_org_shared=0,'learningCount',v_learning,\n  'categories',v_categories,'blockers',v_blockers,'files',v_files,'sharedCount',v_shared,'personalRows',public.account_deletion_personal_row_counts(p_user_id),\n  'profileRevision',p.updated_at,'role',(SELECT role::text FROM public.user_roles WHERE user_id=p_user_id LIMIT 1));\nEND;$function$\n",
+      "md5": "90a1b279ec2d55a922f5097b1cdac0a4",
+      "owner": "postgres",
+      "signature": "account_deletion_snapshot(uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_storage_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE target_text text; target_id uuid;\nBEGIN\n IF NEW.bucket_id IN ('avatars','student-documents','final-test-photos') THEN\n  target_text:=split_part(NEW.name,'/',1);\n  IF NEW.bucket_id='student-documents' AND target_text='avatars' THEN\n   target_text:=split_part(split_part(NEW.name,'/',2),'.',1);\n  END IF;\n ELSIF NEW.bucket_id='chat-attachments' THEN target_text:=split_part(NEW.name,'/',2);\n ELSE RETURN NEW; END IF;\n IF target_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN RETURN NEW; END IF;\n target_id:=target_text::uuid;\n PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n  RAISE EXCEPTION 'Account personal uploads are closed' USING ERRCODE='42501';\n END IF;\n RETURN NEW;\nEND;$function$\n",
+      "md5": "6df5876891400b3db3f47047e3aa2502",
+      "owner": "postgres",
+      "signature": "account_deletion_storage_write_guard()"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_subject_write_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE column_name text; target_id uuid; targets uuid[]; pep_targets uuid[];\nBEGIN\n -- Sort locks to avoid deadlocks in two-person message rows.\n -- UPDATE may not move a revoked subject's data outside the deletion scope.\n SELECT array_agg(DISTINCT subject_id::uuid ORDER BY subject_id::uuid) INTO targets\n FROM unnest(TG_ARGV) c CROSS JOIN LATERAL (\n  VALUES (to_jsonb(NEW)->>c),\n         (CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD)->>c END)\n ) subjects(subject_id) WHERE subject_id IS NOT NULL;\n -- A signature may refer to a person's PEP agreement even if its party UUIDs\n -- differ. Keep that exact indirect relationship inside the same write fence.\n IF TG_TABLE_NAME='document_signatures' THEN\n  SELECT array_agg(DISTINCT p.user_id) INTO pep_targets FROM public.pep_agreements p\n  WHERE p.user_id IS NOT NULL AND p.id IN (\n   (to_jsonb(NEW)->>'pep_agreement_id')::uuid,\n   CASE WHEN TG_OP='UPDATE' THEN (to_jsonb(OLD)->>'pep_agreement_id')::uuid END);\n  SELECT array_agg(DISTINCT x ORDER BY x) INTO targets\n  FROM unnest(coalesce(targets,'{}'::uuid[])||coalesce(pep_targets,'{}'::uuid[])) x;\n END IF;\n FOREACH target_id IN ARRAY coalesce(targets,'{}'::uuid[]) LOOP\n  PERFORM pg_advisory_xact_lock(hashtextextended(target_id::text,42007));\n  IF EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=target_id) THEN\n   -- Only these two real DELETE-trigger event rows may be generated during\n   -- service cleanup. The same transaction erases them at the tail. The flag\n   -- is transaction-local and never bypasses profile/learning/document writes.\n   IF TG_OP='INSERT' AND TG_TABLE_NAME IN ('enrollment_history','role_audit_log')\n    AND auth.role()='service_role'\n    AND current_setting('sintagma.account_deletion_erase_user',true)=target_id::text THEN CONTINUE; END IF;\n   RAISE EXCEPTION 'Account personal data writes are closed' USING ERRCODE='42501';\n  END IF;\n END LOOP;\n RETURN NEW;\nEND;$function$\n",
+      "md5": "cd0003cc49bdf9a3d074c9e624146e46",
+      "owner": "postgres",
+      "signature": "account_deletion_subject_write_guard()"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_staff_permissions(_user_id uuid, _organization_id uuid)\n RETURNS text[]\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  staff_role text;\n  base_perms text[];\n  override_perms text[];\nBEGIN\n  SELECT role,\n         COALESCE(\n           ARRAY(SELECT jsonb_array_elements_text(sections_access)),\n           ARRAY[]::text[]\n         )\n    INTO staff_role, override_perms\n    FROM public.org_staff\n   WHERE user_id = _user_id AND organization_id = _organization_id\n   LIMIT 1;\n\n  IF staff_role IS NULL THEN\n    RETURN ARRAY[]::text[];\n  END IF;\n\n  base_perms := public.org_role_default_permissions(staff_role);\n\n  -- merge: union of base + overrides (overrides могут только добавлять права)\n  RETURN ARRAY(\n    SELECT DISTINCT unnest(base_perms || override_perms)\n  );\nEND;\n$function$\n",
+      "md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3",
+      "owner": "postgres",
+      "signature": "get_org_staff_permissions(uuid,uuid)"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+      "md5": "3d1fedafe94778fa19dd47acb71a3782",
+      "owner": "postgres",
+      "signature": "has_org_staff_permission(uuid,uuid,text)"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "md5": "20c46f708cc2e7fa51b640290151a59e",
+      "owner": "postgres",
+      "signature": "has_role(app_role,uuid)"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "md5": "82a7fa1cd06301bb83b010bc315aee0b",
+      "owner": "postgres",
+      "signature": "has_role(uuid,app_role)"
+    },
+    {
+      "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_org_owner(_user_id uuid, _organization_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.user_roles ur\n    JOIN public.profiles p ON p.user_id = ur.user_id\n    WHERE ur.user_id = _user_id\n      AND ur.role = 'organization'::public.app_role\n      AND p.organization_id = _organization_id\n      AND NOT EXISTS (\n        SELECT 1\n        FROM public.org_staff os\n        WHERE os.user_id = _user_id\n          AND os.organization_id = _organization_id\n      )\n  )\n$function$\n",
+      "md5": "362aca6afc26c775be594843258b2ab2",
+      "owner": "postgres",
+      "signature": "is_org_owner(uuid,uuid)"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_student_profile(_target_user_id uuid, _org_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _target_user_id IS NOT NULL\n    AND _org_id IS NOT NULL\n    AND NOT EXISTS (\n      SELECT 1 FROM public.user_roles\n      WHERE user_id = _target_user_id\n        AND role IN ('admin', 'organization', 'company', 'sales_manager')\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.org_staff\n      WHERE user_id = _target_user_id\n        AND organization_id = _org_id\n        AND (expires_at IS NULL OR expires_at > now())\n    );\n$function$\n",
+      "md5": "92c79c1ec4600ef54941dc9590b39aa8",
+      "owner": "postgres",
+      "signature": "is_student_profile(uuid,uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.save_student_registration_details(p_organization_id uuid, p_user_id uuid, p_actor_id uuid, p_department text DEFAULT NULL::text, p_snils text DEFAULT NULL::text, p_birth_date date DEFAULT NULL::date, p_confirm_identity boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_role text := COALESCE(NULLIF(auth.jwt()->>'role', ''), NULLIF(current_setting('request.jwt.claim.role', true), ''), '');\n  v_department text := NULLIF(btrim(p_department), '');\n  v_snils text := NULLIF(btrim(p_snils), '');\n  v_profile public.profiles;\n  v_identification public.video_identifications;\n  v_frdo_context uuid;\nBEGIN\n  IF v_role <> 'service_role' THEN\n    RAISE EXCEPTION 'service_role_required' USING ERRCODE = '42501';\n  END IF;\n  IF NOT public.uc_student_frdo_staff_can_write(p_actor_id,p_organization_id,p_user_id,'students.write')\n    OR(p_confirm_identity IS TRUE AND NOT public.uc_student_frdo_staff_can_write(p_actor_id,p_organization_id,p_user_id,'documents.write')) THEN\n    RAISE EXCEPTION 'student_details_access_denied' USING ERRCODE = '42501';\n  END IF;\n  -- Serialize repeated imports/confirmation and prevent a concurrent archive/tenant move.\n  SELECT * INTO v_profile FROM public.profiles WHERE user_id = p_user_id FOR UPDATE;\n  IF NOT FOUND OR v_profile.organization_id IS DISTINCT FROM p_organization_id\n     OR NOT public.is_student_profile(p_user_id, p_organization_id) THEN\n    RAISE EXCEPTION 'student_not_in_organization' USING ERRCODE = '42501';\n  END IF;\n  IF v_profile.archived_at IS NOT NULL THEN\n    RAISE EXCEPTION 'student_archived' USING ERRCODE = '22023';\n  END IF;\n  IF length(v_department) > 200 OR v_department ~ '[[:cntrl:]]' THEN\n    RAISE EXCEPTION 'invalid_department' USING ERRCODE = '22023';\n  END IF;\n  IF v_snils IS NOT NULL THEN\n    IF v_snils !~ '^[0-9[:space:]-]+$' THEN\n      RAISE EXCEPTION 'invalid_snils' USING ERRCODE = '22023';\n    END IF;\n    v_snils := regexp_replace(v_snils, '[[:space:]-]', '', 'g');\n    IF length(v_snils) <> 11 THEN\n      RAISE EXCEPTION 'invalid_snils' USING ERRCODE = '22023';\n    END IF;\n    v_snils := substr(v_snils, 1, 3) || '-' || substr(v_snils, 4, 3) || '-' || substr(v_snils, 7, 3) || ' ' || substr(v_snils, 10, 2);\n  END IF;\n  IF p_birth_date > CURRENT_DATE OR p_birth_date < DATE '0001-01-01' THEN\n    RAISE EXCEPTION 'invalid_birth_date' USING ERRCODE = '22023';\n  END IF;\n\n  IF v_department IS NOT NULL THEN\n    UPDATE public.profiles SET department = v_department WHERE user_id = p_user_id;\n  END IF;\n  IF v_snils IS NOT NULL OR p_birth_date IS NOT NULL THEN\n    IF auth.role() IS DISTINCT FROM 'service_role' OR auth.uid() IS NOT NULL OR NOT public.uc_student_frdo_actor_can_write(p_actor_id,p_organization_id,p_user_id,false) THEN\n      RAISE EXCEPTION 'frdo_write_access_denied' USING ERRCODE='42501';\n    END IF;\n    INSERT INTO public.uc_student_frdo_write_contexts(kind,organization_id,user_id,actor_id)\n    VALUES('registration_details',p_organization_id,p_user_id,p_actor_id) RETURNING id INTO v_frdo_context;\n    INSERT INTO public.student_frdo_data AS existing (user_id, organization_id, snils, birth_date)\n    VALUES (p_user_id, p_organization_id, v_snils, p_birth_date)\n    ON CONFLICT (user_id, organization_id) DO UPDATE SET\n      snils = COALESCE(EXCLUDED.snils, existing.snils),\n      birth_date = COALESCE(EXCLUDED.birth_date, existing.birth_date);\n    DELETE FROM public.uc_student_frdo_write_contexts WHERE id=v_frdo_context;\n  END IF;\n\n  IF p_confirm_identity IS TRUE THEN\n    SELECT * INTO v_identification FROM public.video_identifications\n    WHERE user_id = p_user_id AND organization_id = p_organization_id\n    ORDER BY created_at DESC, id DESC LIMIT 1 FOR UPDATE;\n    IF NOT FOUND THEN\n      INSERT INTO public.video_identifications\n        (user_id, organization_id, status, verified_by, verified_at)\n      VALUES (p_user_id, p_organization_id, 'verified', p_actor_id, now())\n      RETURNING * INTO v_identification;\n    ELSIF v_identification.status <> 'verified' OR v_identification.verified_by IS NULL OR v_identification.verified_at IS NULL THEN\n      UPDATE public.video_identifications SET status = 'verified', verified_by = p_actor_id,\n        verified_at = now(), rejection_reason = NULL\n      WHERE id = v_identification.id RETURNING * INTO v_identification;\n    END IF;\n  END IF;\n  RETURN jsonb_build_object('success', true, 'user_id', p_user_id,\n    'organization_id', p_organization_id, 'identity_confirmed', p_confirm_identity IS TRUE,\n    'identification_id', v_identification.id);\nEND;\n$function$\n",
+      "md5": "ef4299140c264616b0854e95fea0af2a",
+      "owner": "postgres",
+      "signature": "save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_scope_allowed(p_org uuid, p_group uuid DEFAULT NULL::uuid, p_enrollment uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_user uuid;v_course uuid;v_group_course uuid;\nBEGIN\n IF auth.uid() IS NULL OR NOT public.account_deletion_access_allowed() OR p_org IS NULL\n OR NOT EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org) THEN RETURN false; END IF;\n IF p_group IS NOT NULL THEN\n  SELECT course_id INTO v_group_course FROM public.student_groups WHERE id=p_group AND organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF v_group_course IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.courses c WHERE c.id=v_group_course AND c.organization_id=p_org) THEN RETURN false; END IF;\n END IF;\n IF p_enrollment IS NOT NULL THEN\n  SELECT e.user_id,e.course_id INTO v_user,v_course FROM public.enrollments e JOIN public.courses c ON c.id=e.course_id\n   WHERE e.id=p_enrollment AND c.organization_id=p_org;\n  IF NOT FOUND THEN RETURN false; END IF;\n  IF p_group IS NOT NULL AND (v_group_course IS DISTINCT FROM v_course OR NOT EXISTS(\n   SELECT 1 FROM public.student_group_memberships_effective m WHERE m.organization_id=p_org AND m.group_id=p_group AND m.user_id=v_user))\n  THEN RETURN false; END IF;\n END IF;\n IF public.has_role(auth.uid(),'admin'::public.app_role) OR public.is_org_owner(auth.uid(),p_org) THEN RETURN true; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.organization_id=p_org AND s.user_id=auth.uid()\n   AND (s.expires_at IS NULL OR s.expires_at>now())) THEN RETURN false; END IF;\n IF NOT public.uc_document_teacher_limited(p_org) THEN RETURN true; END IF;\n RETURN EXISTS(SELECT 1 FROM public.org_staff s JOIN public.org_staff_document_groups a ON a.staff_id=s.id AND a.organization_id=s.organization_id\n  JOIN public.student_groups g ON g.id=a.group_id AND g.organization_id=a.organization_id\n  WHERE s.organization_id=p_org AND s.user_id=auth.uid() AND (s.expires_at IS NULL OR s.expires_at>now())\n   AND (p_group IS NULL OR g.id=p_group)\n   AND (p_enrollment IS NULL OR (g.course_id=v_course AND EXISTS(SELECT 1 FROM public.student_group_memberships_effective m\n     WHERE m.organization_id=p_org AND m.group_id=g.id AND m.user_id=v_user)))\n   AND (p_group IS NOT NULL OR p_enrollment IS NOT NULL));\nEND;$function$\n",
+      "md5": "2a7407e7d178c7561b1d390f0884c6b6",
+      "owner": "postgres",
+      "signature": "uc_document_scope_allowed(uuid,uuid,uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_document_student_scope_allowed(p_org uuid, p_user uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT auth.uid() IS NOT NULL AND public.account_deletion_access_allowed() AND (\n p_user=auth.uid() OR (NOT public.uc_document_teacher_limited(p_org)) OR EXISTS(\n  SELECT 1 FROM public.student_group_memberships_effective m\n  WHERE m.organization_id=p_org AND m.user_id=p_user AND public.uc_document_scope_allowed(p_org,m.group_id,NULL)));\n$function$\n",
+      "md5": "9f92bb0ec735fb21e62ca5b342c5672c",
+      "owner": "postgres",
+      "signature": "uc_document_student_scope_allowed(uuid,uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_enrollment_delete_has_witness(p_enrollment uuid, p_user uuid, p_course uuid)\n RETURNS boolean\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_enrollment_delete_actor_writable()\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n AND EXISTS(SELECT 1 FROM public.uc_enrollment_delete_witnesses w WHERE w.transaction_id=txid_current() AND w.backend_pid=pg_backend_pid() AND w.actor_id=auth.uid()\n AND w.enrollment_id=p_enrollment AND w.user_id=p_user AND w.course_id=p_course)\n$function$\n",
+      "md5": "ee28fb97a36686314030ea24c2635f4d",
+      "owner": "postgres",
+      "signature": "uc_enrollment_delete_has_witness(uuid,uuid,uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_platform_document_action_allowed(p_user uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_user IS NOT NULL AND p_action IN ('read','write','sign','issue')\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n AND (NOT public.has_role('admin'::public.app_role,p_user)\n  OR NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user)\n  OR EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user AND\n     (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager'))\n     AND (expires_at IS NULL OR expires_at>now()))\n   AND NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user\n     AND (NOT (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager')) OR expires_at<=now())))\n$function$\n",
+      "md5": "e5a1436d0cc46218d379c3ffec8c0d0d",
+      "owner": "postgres",
+      "signature": "uc_platform_document_action_allowed(uuid,text)"
+    },
+    {
+      "acl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_student_frdo_pair_valid(p_org uuid, p_user uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_org IS NOT NULL AND p_user IS NOT NULL\n AND EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org)\n AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=p_user AND p.organization_id=p_org AND p.archived_at IS NULL)\n AND NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=p_user AND p.organization_id IS DISTINCT FROM p_org)\n AND public.is_student_profile(p_user,p_org)\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n$function$\n",
+      "md5": "ff48411960f670646f98213ad648cb4f",
+      "owner": "postgres",
+      "signature": "uc_student_frdo_pair_valid(uuid,uuid)"
+    },
+    {
+      "acl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_student_frdo_staff_can_write(p_actor uuid, p_org uuid, p_user uuid, p_permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_student_frdo_staff_org_allowed(p_actor,p_org,p_permission) AND public.uc_student_frdo_pair_valid(p_org,p_user)\n AND(\n   public.has_role(p_actor,'admin'::public.app_role) OR public.is_org_owner(p_actor,p_org)\n   OR NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.role='teacher')\n   OR EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.organization_id=p_org AND s.role<>'teacher' AND(s.expires_at IS NULL OR s.expires_at>now()))\n   OR EXISTS(SELECT 1 FROM public.org_staff s JOIN public.org_staff_document_groups a ON a.staff_id=s.id AND a.organization_id=s.organization_id\n    JOIN public.student_groups g ON g.id=a.group_id AND g.organization_id=a.organization_id\n    JOIN public.student_group_memberships_effective m ON m.group_id=g.id AND m.organization_id=g.organization_id AND m.user_id=p_user\n    WHERE s.user_id=p_actor AND s.organization_id=p_org AND(s.expires_at IS NULL OR s.expires_at>now())\n     AND(g.course_id IS NULL OR EXISTS(SELECT 1 FROM public.courses c WHERE c.id=g.course_id AND c.organization_id=p_org)))\n  )\n$function$\n",
+      "md5": "5a51f534b77abd13215626afde0b56e7",
+      "owner": "postgres",
+      "signature": "uc_student_frdo_staff_can_write(uuid,uuid,uuid,text)"
+    },
+    {
+      "acl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_student_frdo_staff_org_allowed(p_actor uuid, p_org uuid, p_permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_actor IS NOT NULL AND p_org IS NOT NULL AND p_permission IN('frdo.write','students.write','documents.write')\n AND EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org)\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_actor)\n AND public.uc_platform_document_action_allowed(p_actor,'write')\n  AND NOT public.has_role(p_actor,'sales_manager'::public.app_role)\n  AND NOT EXISTS(SELECT 1 FROM public.admin_staff a WHERE a.user_id=p_actor AND(a.role NOT IN('super_admin','admin') OR a.expires_at<=now()))\n  AND(public.has_role(p_actor,'admin'::public.app_role) OR public.is_org_owner(p_actor,p_org)\n   OR EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.organization_id=p_org AND(s.expires_at IS NULL OR s.expires_at>now()))\n     AND public.has_org_staff_permission(p_actor,p_org,p_permission))\n$function$\n",
+      "md5": "541b10208fdf1b4788ce4eae588110a6",
+      "owner": "postgres",
+      "signature": "uc_student_frdo_staff_org_allowed(uuid,uuid,text)"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n",
+      "md5": "3210625d1c794f6db7b3c3defc5984dd",
+      "owner": "postgres",
+      "signature": "update_updated_at_column()"
+    }
+  ],
+  "ledger113": [
+    {
+      "name": "uc_enrollment_delete_boundaries",
+      "sourceMd5": "b6f69536e3619a3c3fd2084b10447151",
+      "version": "20261018113000"
+    }
+  ],
+  "observedAtUtc": "2026-10-19 02:13:58 UTC",
+  "storageColumns": [
+    {
+      "column": "id",
+      "default": null,
+      "nullable": "NO",
+      "table": "buckets",
+      "type": "text"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "NO",
+      "table": "buckets",
+      "type": "text"
+    },
+    {
+      "column": "owner",
+      "default": null,
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "timestamptz"
+    },
+    {
+      "column": "public",
+      "default": "false",
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "bool"
+    },
+    {
+      "column": "avif_autodetection",
+      "default": "false",
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "bool"
+    },
+    {
+      "column": "file_size_limit",
+      "default": null,
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "int8"
+    },
+    {
+      "column": "allowed_mime_types",
+      "default": null,
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "_text"
+    },
+    {
+      "column": "owner_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "text"
+    },
+    {
+      "column": "type",
+      "default": "'STANDARD'::storage.buckettype",
+      "nullable": "NO",
+      "table": "buckets",
+      "type": "buckettype"
+    },
+    {
+      "column": "versioning_status",
+      "default": "'DISABLED'::text",
+      "nullable": "NO",
+      "table": "buckets",
+      "type": "text"
+    },
+    {
+      "column": "lifecycle_configuration",
+      "default": null,
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "jsonb"
+    },
+    {
+      "column": "lifecycle_configuration_generation",
+      "default": null,
+      "nullable": "YES",
+      "table": "buckets",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "table": "objects",
+      "type": "uuid"
+    },
+    {
+      "column": "bucket_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "text"
+    },
+    {
+      "column": "name",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "text"
+    },
+    {
+      "column": "owner",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "YES",
+      "table": "objects",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "YES",
+      "table": "objects",
+      "type": "timestamptz"
+    },
+    {
+      "column": "last_accessed_at",
+      "default": "now()",
+      "nullable": "YES",
+      "table": "objects",
+      "type": "timestamptz"
+    },
+    {
+      "column": "metadata",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "jsonb"
+    },
+    {
+      "column": "path_tokens",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "_text"
+    },
+    {
+      "column": "version",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "text"
+    },
+    {
+      "column": "owner_id",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "text"
+    },
+    {
+      "column": "user_metadata",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "jsonb"
+    },
+    {
+      "column": "archived_at",
+      "default": null,
+      "nullable": "YES",
+      "table": "objects",
+      "type": "timestamptz"
+    },
+    {
+      "column": "is_delete_marker",
+      "default": "false",
+      "nullable": "NO",
+      "table": "objects",
+      "type": "bool"
+    },
+    {
+      "column": "is_versioned",
+      "default": "false",
+      "nullable": "NO",
+      "table": "objects",
+      "type": "bool"
+    }
+  ],
+  "videoColumns": [
+    {
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO",
+      "type": "uuid"
+    },
+    {
+      "column": "enrollment_id",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "default": null,
+      "nullable": "NO",
+      "type": "uuid"
+    },
+    {
+      "column": "status",
+      "default": "'pending'::text",
+      "nullable": "NO",
+      "type": "text"
+    },
+    {
+      "column": "photo_url",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "video_url",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "verified_by",
+      "default": null,
+      "nullable": "YES",
+      "type": "uuid"
+    },
+    {
+      "column": "verified_at",
+      "default": null,
+      "nullable": "YES",
+      "type": "timestamptz"
+    },
+    {
+      "column": "rejection_reason",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "ip_address",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "user_agent",
+      "default": null,
+      "nullable": "YES",
+      "type": "text"
+    },
+    {
+      "column": "device_info",
+      "default": null,
+      "nullable": "YES",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO",
+      "type": "timestamptz"
+    },
+    {
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO",
+      "type": "timestamptz"
+    }
+  ],
+  "videoPolicies": [
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organizations can create verifications for their students",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id = video_identifications.organization_id))))"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organizations can update identification status",
+      "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id = video_identifications.organization_id))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Organizations can view identifications of their students",
+      "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.user_id = auth.uid()) AND (p.organization_id = video_identifications.organization_id))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can create their own identifications",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can update their own pending identifications",
+      "qual": "((auth.uid() = user_id) AND (status = 'pending'::text))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Students can view their own identifications",
+      "qual": "(auth.uid() = user_id)",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    }
+  ],
+  "videoTriggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.video_identifications FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+      "enabled": "O",
+      "name": "account_deletion_subject_fence"
+    },
+    {
+      "definition": "CREATE TRIGGER update_video_identifications_updated_at BEFORE UPDATE ON public.video_identifications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+      "enabled": "O",
+      "name": "update_video_identifications_updated_at"
+    }
+  ],
+  "personalRowsRead": false,
+  "storageObjectsRead": false,
+  "method": "Read-only pg_catalog/information_schema/bucket metadata and exact113ledger; no person/object rows or bytes.",
+  "columnFingerprint": "36121adb3c985d903da4c96a3f210d0d",
+  "storageTriggers": [
+    {
+      "definition": "CREATE TRIGGER account_deletion_reject_revoked_upload BEFORE INSERT OR UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION account_deletion_storage_write_guard()",
+      "function": "account_deletion_storage_write_guard()",
+      "hash": "6df5876891400b3db3f47047e3aa2502",
+      "name": "account_deletion_reject_revoked_upload"
+    },
+    {
+      "definition": "CREATE TRIGGER protect_objects_delete BEFORE DELETE ON storage.objects FOR EACH STATEMENT EXECUTE FUNCTION storage.protect_delete()",
+      "function": "storage.protect_delete()",
+      "hash": "4371ae544fb1ef704f9c5d42265ac324",
+      "name": "protect_objects_delete"
+    },
+    {
+      "definition": "CREATE TRIGGER update_objects_updated_at BEFORE UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.update_updated_at_column()",
+      "function": "storage.update_updated_at_column()",
+      "hash": "bfecc08a6034296258f0c3e10193076c",
+      "name": "update_objects_updated_at"
+    }
+  ],
+  "videoConstraints": [
+    {
+      "definition": "FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE",
+      "name": "video_identifications_enrollment_id_fkey",
+      "type": "f"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "video_identifications_pkey",
+      "type": "p"
+    },
+    {
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'verified'::text, 'rejected'::text, 'expired'::text])))",
+      "name": "video_identifications_status_check",
+      "type": "c"
+    }
+  ],
+  "videoIndexes": [
+    {
+      "indexdef": "CREATE INDEX idx_video_identifications_user_org_status ON public.video_identifications USING btree (user_id, organization_id, status)",
+      "indexname": "idx_video_identifications_user_org_status",
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX video_identifications_pkey ON public.video_identifications USING btree (id)",
+      "indexname": "video_identifications_pkey",
+      "schemaname": "public",
+      "tablename": "video_identifications",
+      "tablespace": null
+    }
+  ],
+  "videoRelation": {
+    "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+    "forceRls": false,
+    "owner": "postgres",
+    "rls": true
+  },
+  "legacyAvatarPolicies": [
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Avatars list own only",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid() IS NOT NULL) AND ((storage.foldername(name))[1] = (auth.uid())::text)))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete own avatar",
+      "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete their own avatar",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own avatar",
+      "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update their own avatar",
+      "qual": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can upload own avatar",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can upload their own avatar",
+      "qual": null,
+      "roles": [
+        "public"
+      ],
+      "schemaname": "storage",
+      "tablename": "objects",
+      "with_check": "((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1]))"
+    }
+  ]
+}

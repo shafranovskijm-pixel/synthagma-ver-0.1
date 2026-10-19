@@ -6,12 +6,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useVideoIdentification, type VerificationRecord, type FinalTestPhotoChallenge } from "@/hooks/useVideoIdentification";
 
+import { IdentificationPhoto } from '@/hooks/useIdentificationMedia';
+import { identificationAssuranceLabel } from '@/lib/identification/contract';
+
 interface VideoIdentificationProps {
   userId: string;
   userName: string;
   organizationId?: string;
   enrollmentId?: string;
   onVerified?: () => void;
+  onSubmitted?: () => void;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   embedded?: boolean;
@@ -28,9 +32,9 @@ function getStatusBadge(status: string) {
 }
 
 export function VideoIdentification({
-  userId, userName, organizationId, enrollmentId, onVerified, isOpen = false, onOpenChange, embedded = false, finalTestPhoto,
+  userId, userName, organizationId, enrollmentId, onVerified, onSubmitted, isOpen = false, onOpenChange, embedded = false, finalTestPhoto,
 }: VideoIdentificationProps) {
-  const vi = useVideoIdentification({ userId, organizationId, enrollmentId, onVerified, isOpen, embedded, finalTestPhoto });
+  const vi = useVideoIdentification({ userId, organizationId, enrollmentId, onVerified, onSubmitted, isOpen, embedded, finalTestPhoto });
 
   if (vi.isLoading) {
     const loadingContent = (
@@ -51,11 +55,12 @@ export function VideoIdentification({
           <Shield className="w-5 h-5 text-primary" />{finalTestPhoto ? 'Фото перед итоговым тестом' : 'Видеоидентификация (ЭИОС)'}
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          {finalTestPhoto ? 'В настройках курса включено новое фото перед каждой попыткой. Оно сохранится вместе с этой попыткой и будет доступно вашей учебной организации.' : 'Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде'}
+          {finalTestPhoto ? 'В настройках курса включено новое фото перед каждой попыткой. Оно сохранится вместе с этой попыткой и будет доступно вашей учебной организации.' : 'Отправьте фото для проверки сотрудником учебной организации'}
         </p>
       </div>
 
       <div className="py-4">
+        {vi.historyUnavailable && <div className="text-sm text-destructive p-3">Не удалось подтвердить доступ к идентификации. <Button variant="link" onClick={() => void vi.loadVerificationHistory()}>Повторить</Button></div>}
         {vi.verificationHistory.length > 0 && vi.step !== "history" && (
           <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={() => vi.setStep("history")}>
             <History className="w-4 h-4" />История идентификаций ({vi.verificationHistory.length})
@@ -78,15 +83,17 @@ export function VideoIdentification({
 
         {vi.step === "history" && (
           <div className="space-y-4">
+            {vi.historyTruncated && <p className="text-xs text-muted-foreground">Показаны последние записи; более ранняя история в этот список не вошла.</p>}
             <Button variant="ghost" size="sm" onClick={() => vi.setStep("intro")}>← Назад</Button>
             <ScrollArea className="h-80">
               <div className="space-y-3">
                 {vi.verificationHistory.map((record) => (
                   <div key={record.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50">
-                    {record.photo_url && <img src={record.photo_url} alt="Verification" className="w-16 h-16 rounded-lg object-cover" />}
+                    <IdentificationPhoto scope={vi.identificationScope} record={record.canonical || null} className="w-16 h-16 rounded-lg object-cover" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">{getStatusBadge(record.status)}</div>
                       <p className="text-xs text-muted-foreground">{vi.formatDate(record.created_at)}</p>
+                      {record.canonical && <p className="text-xs text-muted-foreground">{identificationAssuranceLabel(record.canonical)}</p>}
                       {record.rejection_reason && <p className="text-xs text-destructive mt-1">Причина: {record.rejection_reason}</p>}
                     </div>
                   </div>
@@ -103,7 +110,7 @@ export function VideoIdentification({
             </div>
             <div>
               <h3 className="font-semibold text-lg mb-2">Подтвердите вашу личность</h3>
-              <p className="text-muted-foreground text-sm">{finalTestPhoto ? 'Сделайте фото с камеры и подтвердите его. Затем начнётся тест. Пока фото не сохранено, попытка не расходуется.' : 'В соответствии с требованиями законодательства РФ об образовании, необходимо подтвердить вашу личность для доступа к электронной информационно-образовательной среде (ЭИОС).'}</p>
+              <p className="text-muted-foreground text-sm">{finalTestPhoto ? 'Сделайте фото с камеры и подтвердите его. Затем начнётся тест. Пока фото не сохранено, попытка не расходуется.' : 'Фото будет отправлено сотруднику организации. Отправка снимка не означает подтверждение личности.'}</p>
             </div>
             {vi.currentVerification && (
               <div className="bg-muted/50 rounded-xl p-4 text-left">
@@ -133,7 +140,7 @@ export function VideoIdentification({
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /><p className="text-sm">{vi.cameraError}</p>
               </div>
             )}
-            <Button className="w-full btn-gradient rounded-xl gap-2" onClick={vi.startCamera}>
+            <Button className="w-full btn-gradient rounded-xl gap-2" onClick={vi.startCamera} disabled={!finalTestPhoto && (!vi.canSubmit || vi.historyUnavailable)}>
               <Camera className="w-4 h-4" />
               {vi.currentVerification?.status === "rejected" ? "Повторить идентификацию" : "Начать идентификацию"}
             </Button>
@@ -196,14 +203,15 @@ export function VideoIdentification({
                 {finalTestPhoto ? 'Фото сохранено' : vi.currentVerification?.status === "verified" ? "Идентификация подтверждена!" : "Фото отправлено на проверку"}
               </h3>
               <p className="text-muted-foreground text-sm">
-                {finalTestPhoto ? 'Подтверждение сохранено для этой попытки теста.' : vi.currentVerification?.status === "verified" ? "Ваша личность подтверждена. Вы можете продолжить обучение." : "Ожидайте подтверждения от организации. Обычно это занимает до 24 часов."}
+                {finalTestPhoto ? 'Подтверждение сохранено для этой попытки теста.' : vi.currentVerification?.status === "verified" ? "Статус сохранён организацией. Подробнее об источнике записи указано ниже." : "Ожидайте проверки сотрудником организации."}
               </p>
             </div>
-            {vi.currentVerification?.photo_url && (
-              <div className="flex justify-center">
-                <img src={vi.currentVerification.photo_url} alt="Verification photo" className={`w-24 h-24 rounded-full object-cover border-4 ${vi.currentVerification.status === "verified" ? "border-green-500/20" : "border-amber-500/20"}`} />
-              </div>
-            )}
+            <div className="flex justify-center">
+              {finalTestPhoto && vi.currentVerification?.photo_url
+                ? <img src={vi.currentVerification.photo_url} alt="Фото перед тестом" className="w-24 h-24 rounded-full object-cover border-4 border-green-500/20" />
+                : <IdentificationPhoto scope={vi.identificationScope} record={vi.currentVerification?.canonical || null} className="w-24 h-24 rounded-full object-cover border-4 border-amber-500/20" />}
+            </div>
+            {vi.currentVerification?.canonical && <p className="text-xs text-muted-foreground">{identificationAssuranceLabel(vi.currentVerification.canonical)}</p>}
             <div className="flex items-center justify-center gap-2">{getStatusBadge(vi.currentVerification?.status || "pending")}</div>
             {vi.currentVerification?.created_at && <p className="text-xs text-muted-foreground">Дата отправки: {vi.formatDate(vi.currentVerification.created_at)}</p>}
             <Button className="w-full rounded-xl" onClick={() => vi.handleClose(onOpenChange)}>Закрыть</Button>

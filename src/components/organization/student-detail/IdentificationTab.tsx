@@ -1,3 +1,5 @@
+import { IdentificationPhoto, type useIdentificationState } from "@/hooks/useIdentificationMedia";
+import { identificationAssuranceLabel } from "@/lib/identification/contract";
 import {
   Video, Camera, CheckCircle2, XCircle, Shield, History, User, Building2,
 } from "lucide-react";
@@ -15,22 +17,24 @@ export function IdentificationTab({ h }: IdentificationTabProps) {
     <div className="space-y-6">
       <div className="bg-card rounded-2xl border border-border p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2"><Video className="w-5 h-5 text-primary" />Журнал идентификации личности</h3>
-        {h.verifications.length === 0 ? (
+        {h.identification.state?.historyTruncated && <p className="text-xs text-muted-foreground mb-3">Показаны последние записи; более ранняя история в этот список не вошла.</p>}
+        {h.identification.loading ? <p className="text-sm text-muted-foreground">Загрузка статуса…</p> : h.identification.error ? <p className="text-sm text-destructive">Статус недоступен. <Button variant="link" onClick={() => void h.identification.refresh()}>Повторить</Button></p> : h.verifications.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground"><Camera className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Идентификация не пройдена</p></div>
         ) : (
           <div className="space-y-4">
             {h.verifications.map((v: any) => (
               <div key={v.id} className="flex items-start gap-4 p-4 rounded-xl bg-muted/50">
-                {v.photo_url && <img src={v.photo_url} alt="Verification" className="w-20 h-20 rounded-xl object-cover" />}
+                <IdentificationPhoto scope={h.identification.scope} record={v.canonical || null} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">{getStatusBadge(v.status)}<span className="text-xs text-muted-foreground">{h.formatDate(v.created_at)}</span></div>
+                  {v.canonical && <p className="text-xs text-muted-foreground">{identificationAssuranceLabel(v.canonical)}</p>}
                   {v.verified_at && <p className="text-sm text-muted-foreground">Проверено: {h.formatDate(v.verified_at)}</p>}
                   {v.rejection_reason && <p className="text-sm text-destructive mt-1">Причина: {v.rejection_reason}</p>}
                 </div>
                 {v.status === "pending" && (
                   <div className="flex gap-2">
-                    <Button size="sm" className="rounded-lg gap-1" onClick={() => h.handleVerifyIdentification(v.id, "verify")}><CheckCircle2 className="w-4 h-4" />Подтвердить</Button>
-                    <Button size="sm" variant="destructive" className="rounded-lg gap-1" onClick={() => { const reason = prompt("Причина отклонения:"); if (reason) h.handleVerifyIdentification(v.id, "reject", reason); }}><XCircle className="w-4 h-4" />Отклонить</Button>
+                    <Button size="sm" disabled={h.identification.busy || !v.canonical?.capabilities.canReview || v.canonical?.assurance !== "submitted"} className="rounded-lg gap-1" onClick={() => h.handleVerifyIdentification(v.id, "verify")}><CheckCircle2 className="w-4 h-4" />Подтвердить</Button>
+                    <Button size="sm" disabled={h.identification.busy || !v.canonical?.capabilities.canReject} variant="destructive" className="rounded-lg gap-1" onClick={() => { const reason = prompt("Причина отклонения:"); if (reason) h.handleVerifyIdentification(v.id, "reject", reason); }}><XCircle className="w-4 h-4" />Отклонить</Button>
                   </div>
                 )}
               </div>
@@ -48,10 +52,10 @@ export function IdentificationTab({ h }: IdentificationTabProps) {
             </div>
             <div>
               <Label htmlFor="manual-verification" className="font-medium cursor-pointer">Видеоидентификация пройдена</Label>
-              <p className="text-xs text-muted-foreground">Отметить вручную</p>
+              <p className="text-xs text-muted-foreground">Ручная отметка сотрудника — без фотографии</p>
             </div>
           </div>
-          <Checkbox id="manual-verification" checked={h.latestVerification?.status === "verified"} onCheckedChange={(checked) => h.handleManualVerification(!!checked)} className="h-5 w-5" />
+          <Checkbox id="manual-verification" disabled={h.identification.loading || h.identification.error || h.identification.busy || (h.latestVerification?.status === "verified" ? !h.latestVerification?.canonical?.capabilities.canReset : !h.identification.state?.capabilities.canReview)} checked={h.latestVerification?.status === "verified"} onCheckedChange={(checked) => h.handleManualVerification(!!checked)} className="h-5 w-5" />
         </div>
       </div>
 

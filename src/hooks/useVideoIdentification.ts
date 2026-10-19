@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { captureOfflineContext, isOfflineActorCurrent } from '@/utils/courseCache';
+import { captureIdentificationScope, prepareIdentification, submitIdentification, readIdentificationStates, type IdentificationScope } from '@/lib/identification/client';
+import { identificationRecords, identificationView, type IdentificationRecord, type IdentificationPreparation } from '@/lib/identification/contract';
 
 export interface VerificationRecord {
   id: string;
@@ -9,6 +12,7 @@ export interface VerificationRecord {
   created_at: string;
   verified_at: string | null;
   rejection_reason: string | null;
+  canonical?: IdentificationRecord;
 }
 
 type Step = "intro" | "camera" | "confirm" | "success" | "history";
@@ -24,18 +28,32 @@ interface UseVideoIdentificationProps {
   organizationId?: string;
   enrollmentId?: string;
   onVerified?: () => void;
+  onSubmitted?: () => void;
   isOpen?: boolean;
   embedded?: boolean;
   finalTestPhoto?: FinalTestPhotoChallenge;
 }
 
 export function useVideoIdentification({
-  userId, organizationId, enrollmentId, onVerified, isOpen = false, embedded = false, finalTestPhoto,
+  userId, organizationId, enrollmentId, onVerified, onSubmitted, isOpen = false, embedded = false, finalTestPhoto,
 }: UseVideoIdentificationProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const generationRef = useRef(0);
+  const actor = captureOfflineContext();
+  const identityKey = JSON.stringify([actor?.actorId, actor?.revision, userId, organizationId, enrollmentId, isOpen, embedded, finalTestPhoto?.challengeId]);
+  const identityRef = useRef(identityKey);
+  if (identityRef.current !== identityKey) { identityRef.current = identityKey; generationRef.current++; }
+  const captureCurrent = () => {
+    const generation = generationRef.current; const context = captureOfflineContext();
+    return () => generationRef.current === generation && (!!finalTestPhoto || (!!context && isOfflineActorCurrent(context.actorId, context.revision)));
+  };
+  const [identificationScope, setIdentificationScope] = useState<IdentificationScope | null>(null);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
+  const [historyTruncated,setHistoryTruncated] = useState(false);
+  const [canSubmit, setCanSubmit] = useState(false);
+  const submissionRef = useRef<{photo: string; prepareRequestId: string; submitRequestId: string; prepared?: IdentificationPreparation} | null>(null);
   const submittedPhotoRef = useRef<string | null>(null);
   const [photoLocked, setPhotoLocked] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -50,6 +68,7 @@ export function useVideoIdentification({
   const [isCameraLoading, setIsCameraLoading] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
+  const [renderIdentity,setRenderIdentity] = useState(identityKey);
 
   const addLog = (msg: string) => {
     setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
@@ -57,6 +76,9 @@ export function useVideoIdentification({
 
   useEffect(() => {
     generationRef.current++;
+    setRenderIdentity(identityKey); setIsUploading(false); setStream(null); setIsVideoReady(false);
+    setIdentificationScope(null); setCanSubmit(false); setHistoryUnavailable(false);setHistoryTruncated(false);
+    if (!finalTestPhoto) { setVerificationHistory([]); setCurrentVerification(null); setCapturedPhoto(null); setStep('intro'); submissionRef.current = null; }
     if (isOpen || embedded) {
       if (finalTestPhoto) {
         setVerificationHistory([]); setCurrentVerification(null); setCapturedPhoto(null);
@@ -65,27 +87,27 @@ export function useVideoIdentification({
       } else { void loadVerificationHistory(); }
     }
     return () => { generationRef.current++; streamRef.current?.getTracks().forEach(track => track.stop()); streamRef.current = null; };
-  }, [isOpen, embedded, userId, finalTestPhoto?.challengeId]);
+  }, [identityKey]);
 
   const loadVerificationHistory = async () => {
-    setIsLoading(true);
+    const current = captureCurrent();
+    setIsLoading(true); setHistoryUnavailable(false);
     try {
-      const { data, error } = await supabase
-        .from("video_identifications").select("*").eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      if (data && data.length > 0) {
-        setVerificationHistory(data as VerificationRecord[]);
-        const latest = data[0] as VerificationRecord;
-        setCurrentVerification(latest);
-        if (latest.status === "verified") setStep("success");
-      }
-    } catch (error) {
-      console.error("Error loading verification history:", error);
-    } finally { setIsLoading(false); }
+      if (!organizationId) throw new Error('Identification context unavailable');
+      const scope = captureIdentificationScope(organizationId,userId,enrollmentId || null,current);
+      const state = (await readIdentificationStates(scope,[userId],true))[0];
+      if (!current()) return;
+      const records = identificationRecords(state).map(identificationView);
+      setIdentificationScope(scope); setCanSubmit(state.capabilities.canSubmit);
+      setHistoryTruncated(state.historyTruncated);
+      setVerificationHistory(records); setCurrentVerification(state.current ? identificationView(state.current) : null);
+      if (state.current?.status === 'verified' || state.current?.status === 'pending') setStep('success');
+    } catch { if (current()) {setVerificationHistory([]);setCurrentVerification(null);setCanSubmit(false);setHistoryUnavailable(true);} }
+    finally { if (current()) setIsLoading(false); }
   };
 
   const startCamera = async () => {
+    if (!finalTestPhoto && (!canSubmit || historyUnavailable)) return;
     setDebugLog([]);
     addLog("Начинаем...");
     setCameraError(null);
@@ -97,11 +119,12 @@ export function useVideoIdentification({
   useEffect(() => {
     if (step !== "camera" || stream) return;
     let cancelled = false;
+    const cameraCurrent = captureCurrent();
 
     const initCamera = async () => {
       addLog("Ждём рендер video элемента...");
       await new Promise(r => setTimeout(r, 100));
-      if (cancelled) return;
+      if (cancelled || !cameraCurrent()) return;
 
       addLog("Проверяем поддержку getUserMedia...");
       if (!navigator.mediaDevices) {
@@ -118,8 +141,8 @@ export function useVideoIdentification({
       addLog("getUserMedia поддерживается. Запрашиваем камеру...");
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        if (cancelled || !cameraCurrent()) { mediaStream.getTracks().forEach(t => t.stop()); return; }
         addLog(`Камера получена! Треков: ${mediaStream.getVideoTracks().length}`);
-        if (cancelled) { mediaStream.getTracks().forEach(t => t.stop()); return; }
 
         const video = videoRef.current;
         addLog(`Video элемент: ${video ? 'найден' : 'НЕ НАЙДЕН!'}`);
@@ -129,22 +152,23 @@ export function useVideoIdentification({
           video.srcObject = mediaStream;
           addLog(`srcObject присвоен: ${video.srcObject ? 'да' : 'нет'}`);
           video.onloadedmetadata = () => {
+            if (cancelled || !cameraCurrent()) return;
             addLog("onloadedmetadata сработал");
-            video.play().then(() => { addLog("play() успешно!"); setIsVideoReady(true); setIsCameraLoading(false); })
-              .catch(e => { addLog(`play() ошибка: ${e.message}`); });
+            video.play().then(() => { if (cancelled || !cameraCurrent()) return; addLog("play() успешно!"); setIsVideoReady(true); setIsCameraLoading(false); })
+              .catch(e => { if (!cancelled && cameraCurrent()) addLog(`play() ошибка: ${e.message}`); });
           };
-          video.onerror = (e) => { addLog(`video onerror: ${JSON.stringify(e)}`); };
+          video.onerror = (e) => { if (!cancelled && cameraCurrent()) addLog(`video onerror: ${JSON.stringify(e)}`); };
           addLog("Пробуем play() сразу...");
-          video.play().then(() => { addLog("Прямой play() успешно!"); setIsVideoReady(true); setIsCameraLoading(false); })
-            .catch(e => { addLog(`Прямой play() ошибка: ${e.message}`); });
+          video.play().then(() => { if (cancelled || !cameraCurrent()) return; addLog("Прямой play() успешно!"); setIsVideoReady(true); setIsCameraLoading(false); })
+            .catch(e => { if (!cancelled && cameraCurrent()) addLog(`Прямой play() ошибка: ${e.message}`); });
         }
 
         setStream(mediaStream);
         streamRef.current = mediaStream;
         setIsCapturing(true);
-        setTimeout(() => { if (!cancelled) { addLog("Fallback таймер сработал"); setIsVideoReady(true); setIsCameraLoading(false); } }, 3000);
+        setTimeout(() => { if (!cancelled && cameraCurrent()) { addLog("Fallback таймер сработал"); setIsVideoReady(true); setIsCameraLoading(false); } }, 3000);
       } catch (err: any) {
-        if (cancelled) return;
+        if (cancelled || !cameraCurrent()) return;
         addLog(`ОШИБКА getUserMedia: ${err.name} - ${err.message}`);
         setStep("intro"); setIsCameraLoading(false);
         setCameraError('Камера недоступна: ' + (err.message || err.name || 'неизвестная ошибка'));
@@ -162,6 +186,7 @@ export function useVideoIdentification({
   }, []);
 
   const capturePhoto = () => {
+    if (!finalTestPhoto && (!canSubmit || historyUnavailable)) return;
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -180,11 +205,13 @@ export function useVideoIdentification({
     stopCamera();
   };
 
-  const retakePhoto = () => { if (finalTestPhoto && submittedPhotoRef.current) return; setCapturedPhoto(null); startCamera(); };
+  const retakePhoto = () => { if (finalTestPhoto && submittedPhotoRef.current) return; submissionRef.current = null; setCapturedPhoto(null); startCamera(); };
 
   const confirmPhoto = async () => {
     if (!capturedPhoto) return;
     const generation = generationRef.current;
+    const current = captureCurrent();
+    if (!current() || isUploading) return;
     if (finalTestPhoto) { submittedPhotoRef.current ??= capturedPhoto; setPhotoLocked(true); }
     const submittedPhoto = finalTestPhoto ? submittedPhotoRef.current! : capturedPhoto;
     setIsUploading(true);
@@ -213,45 +240,33 @@ export function useVideoIdentification({
         onVerified?.();
         return;
       }
-      const fileName = `${userId}/verification_${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, blob, { contentType: "image/jpeg", upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      await supabase.from("profiles").update({ avatar_url: urlData.publicUrl }).eq("user_id", userId);
+      if (!current() || !organizationId || !canSubmit) return;
+      const scope = captureIdentificationScope(organizationId,userId,enrollmentId || null,current);
+      if (!submissionRef.current || submissionRef.current.photo !== submittedPhoto) submissionRef.current = {photo:submittedPhoto,prepareRequestId:crypto.randomUUID(),submitRequestId:crypto.randomUUID()};
+      const submission = submissionRef.current;
+      submission.prepared ??= await prepareIdentification(scope,submission.prepareRequestId);
+      if (!current()) return;
+      const result = await submitIdentification(scope,submission.prepared,blob,submission.submitRequestId);
+      if (!current()) return;
+      setCurrentVerification(identificationView(result.record));
+      setStep('success');
+      toast.success('Фото отправлено на проверку организации');
+      await loadVerificationHistory();
+      if (current()) onSubmitted?.();
 
-      let orgId = organizationId;
-      if (!orgId) {
-        const { data: profileData } = await supabase.from("profiles").select("organization_id").eq("user_id", userId).single();
-        orgId = profileData?.organization_id || "";
-      }
-
-      const { data: verificationData, error: verificationError } = await supabase
-        .from("video_identifications").insert({
-          user_id: userId, organization_id: orgId, enrollment_id: enrollmentId || null,
-          status: "verified", photo_url: urlData.publicUrl, verified_at: new Date().toISOString(),
-          ip_address: "", user_agent: navigator.userAgent,
-          device_info: { platform: navigator.platform, language: navigator.language, screenWidth: window.screen.width, screenHeight: window.screen.height },
-        }).select().single();
-      if (verificationError) throw verificationError;
-
-      setCurrentVerification(verificationData as VerificationRecord);
-      setVerificationHistory(prev => [verificationData as VerificationRecord, ...prev]);
-      setStep("success");
-      toast.success("Идентификация подтверждена! Доступ к курсам открыт.");
-      onVerified?.();
     } catch (error) {
-      if (generationRef.current !== generation) return;
-      console.error("Upload error:", error);
+      if (!current()) return;
       toast.error(/expired/i.test((error as { message?: string })?.message || '')
         ? 'Время подтверждения истекло. Закройте окно и снова нажмите «Начать тест».'
         : "Не удалось сохранить фото. Попробуйте еще раз.");
-    } finally { if (generationRef.current === generation) setIsUploading(false); }
+    } finally { if (current()) setIsUploading(false); }
   };
 
   const handleClose = useCallback((onOpenChange?: (open: boolean) => void) => {
     generationRef.current++;
     stopCamera();
     setCapturedPhoto(null);
+    setIsUploading(false);
     setStep("intro");
     onOpenChange?.(false);
   }, [stopCamera]);
@@ -260,10 +275,10 @@ export function useVideoIdentification({
     new Date(dateStr).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   return {
-    videoRef, canvasRef, stream, isCapturing, capturedPhoto, isUploading,
-    photoLocked,
-    verificationHistory, currentVerification, step, setStep,
-    cameraError, isLoading, isCameraLoading, isVideoReady, debugLog,
+    videoRef, canvasRef, stream, isCapturing, capturedPhoto: renderIdentity === identityKey ? capturedPhoto : null, isUploading,
+    photoLocked, identificationScope, historyUnavailable, historyTruncated, canSubmit, loadVerificationHistory,
+    verificationHistory: renderIdentity === identityKey ? verificationHistory : [], currentVerification: renderIdentity === identityKey ? currentVerification : null, step, setStep,
+    cameraError, isLoading: renderIdentity !== identityKey || isLoading, isCameraLoading, isVideoReady, debugLog: renderIdentity === identityKey ? debugLog : [],
     startCamera, stopCamera, capturePhoto, retakePhoto, confirmPhoto,
     handleClose, formatDate,
   };

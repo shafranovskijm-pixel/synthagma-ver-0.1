@@ -253,7 +253,7 @@ function LearnerDashboard() {
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
-    handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
+    handleLogout, handleRefresh, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
     isAdminView, adminViewStudentName } = useStudentDashboard();
 
   // When viewing a student from admin/org, prefer the target student's id everywhere
@@ -363,14 +363,8 @@ function LearnerDashboard() {
         // Continue through the established published-course flow.
       }
 
-      const course = courses.find(c => c.id === courseId);
-      const needsVerification = course?.skip_video_identification === false && !isVideoIdentified;
-      // Admin/manager preview bypasses the video-identification gate.
-      if (!isAdminView && needsVerification) {
-        toast.error("Требуется видеоидентификация", { description: "Пройдите видеоидентификацию перед началом курса" });
-        setShowVideoIdentification(true);
-        return;
-      }
+      // Course access is rechecked against the actual enrollment by the learning page.
+      // Pending identity evidence never becomes a new learning grant.
       navigate(`/course/${courseId}/learn`);
     } else {
       navigate(`/course/${courseId}/landing`);
@@ -589,7 +583,7 @@ function LearnerDashboard() {
           organizationId={profile?.organization_id || undefined}
           isOpen={showVideoIdentification}
           onOpenChange={setShowVideoIdentification}
-          onVerified={() => setIsVideoIdentified(true)}
+          onSubmitted={() => { void handleRefresh(); }}
         />
       )}
       {showConsentForm && effectiveStudentId && (

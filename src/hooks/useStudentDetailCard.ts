@@ -12,6 +12,9 @@ import { Student } from "@/types/shared";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
+import { useIdentificationState } from '@/hooks/useIdentificationMedia';
+import { identificationRecords, identificationView, type IdentificationRecord } from '@/lib/identification/contract';
+import { identificationScopeCurrent } from '@/lib/identification/client';
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 
 // ─── Dashboard-level useStudentDetailCard() hook removed in phase 4B.1.c.1.
@@ -59,6 +62,7 @@ interface GeneratedConsentRecord {
 }
 
 interface VerificationRecord {
+  canonical?: IdentificationRecord;
   id: string;
   status: string;
   photo_url: string | null;
@@ -158,7 +162,8 @@ export function useStudentDetailCardLogic({
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
   const [pepAgreements, setPepAgreements] = useState<PepAgreementRecord[]>([]);
   const [generatedConsents, setGeneratedConsents] = useState<GeneratedConsentRecord[]>([]);
-  const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
+  const identification = useIdentificationState(organizationId,student?.user_id,null,!!identityKey,actorAccessKey);
+  const verifications = identificationRecords(identification.state).map(identificationView);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [identityDocs, setIdentityDocs] = useState<IdentityDocumentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -230,7 +235,7 @@ export function useStudentDetailCardLogic({
     setConsents([]);
     setPepAgreements([]);
     setGeneratedConsents([]);
-    setVerifications([]);
+
     setDocuments([]);
     setIdentityDocs([]);
     setFrdoData({});
@@ -298,7 +303,7 @@ export function useStudentDetailCardLogic({
       const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes, pepRes, profileRes] = await Promise.all([
         supabase.from("student_consents").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
         supabase.from("consent_documents").select("*").eq("student_user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
-        supabase.from("video_identifications").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
+        Promise.resolve({data: [],error: null}),
         supabase.from("student_documents").select("*, enrollments!inner(user_id, courses!inner(organization_id))").eq("enrollments.user_id", requestUserId).eq("enrollments.courses.organization_id", requestOrganizationId).order("created_at", { ascending: false }),
         supabase.from("student_identity_documents").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", requestUserId).eq("organization_id", requestOrganizationId).maybeSingle(),
@@ -330,7 +335,7 @@ export function useStudentDetailCardLogic({
       }
       setConsents((consentsRes.data || []) as ConsentRecord[]);
       setGeneratedConsents((generatedConsentsRes.data || []) as GeneratedConsentRecord[]);
-      setVerifications((verificationsRes.data || []) as VerificationRecord[]);
+
       setDocuments((documentsRes.data || []) as unknown as DocumentRecord[]);
       setIdentityDocs((identityDocsRes.data || []) as IdentityDocumentRecord[]);
       setFrdoData((frdoRes.data || {}) as Record<string, string | null>);
@@ -803,28 +808,24 @@ export function useStudentDetailCardLogic({
   };
 
   const handleVerifyIdentification = async (id: string, action: "verify" | "reject", reason?: string) => {
-    try {
-      const updates: Record<string, unknown> = { status: action === "verify" ? "verified" : "rejected", verified_at: new Date().toISOString() };
-      if (action === "reject" && reason) updates.rejection_reason = reason;
-      const { error } = await supabase.from("video_identifications").update(updates).eq("id", id);
-      if (error) throw error;
-      await supabase.from("org_notifications").insert({ organization_id: organizationId, user_id: student?.user_id || "", type: "video_identification", title: action === "verify" ? "Идентификация подтверждена" : "Идентификация отклонена", message: action === "verify" ? `Идентификация ${student?.name} подтверждена` : `Идентификация ${student?.name} отклонена: ${reason}`, related_id: id });
-      toast.success(action === "verify" ? "Подтверждено" : "Отклонено"); loadStudentData();
-    } catch (error) { console.error("Verify error:", error); toast.error("Ошибка обновления"); }
+    const record = identificationRecords(identification.state).find(item => item.identificationId === id);
+    const scope = identification.scope;
+    if (!record || !scope) return;
+    const ok = await identification.decide(action,record,reason || null);
+    if (!identificationScopeCurrent(scope)) return;
+    if (ok) {toast.success(action === 'verify' ? 'Подтверждено сотрудником' : 'Отклонено');onStudentUpdated?.();}
+    else toast.error('Решение не подтверждено. Проверьте актуальный статус и права доступа.');
   };
 
   const handleManualVerification = async (verified: boolean) => {
-    if (!student) return;
-    try {
-      if (verified) {
-        if (latestVerification) { const { error } = await supabase.from("video_identifications").update({ status: "verified", verified_at: new Date().toISOString() }).eq("id", latestVerification.id); if (error) throw error; }
-        else { const { error } = await supabase.from("video_identifications").insert({ user_id: student.user_id, organization_id: organizationId, status: "verified", verified_at: new Date().toISOString() }); if (error) throw error; }
-        toast.success("Идентификация пройдена");
-      } else {
-        if (latestVerification) { const { error } = await supabase.from("video_identifications").update({ status: "pending", verified_at: null }).eq("id", latestVerification.id); if (error) throw error; toast.success("Статус сброшен"); }
-      }
-      loadStudentData(); onStudentUpdated?.();
-    } catch (error) { console.error("Manual verify error:", error); toast.error("Ошибка обновления"); }
+    const scope = identification.scope;
+    if (!scope) return;
+    const record = identification.state?.current || null;
+    if (!verified && !record) return;
+    const ok = await identification.decide(verified ? 'manual_verify' : 'reset',verified ? null : record);
+    if (!identificationScopeCurrent(scope)) return;
+    if (ok) {toast.success(verified ? 'Ручная отметка сотрудника сохранена без фотографии' : 'Статус сброшен');onStudentUpdated?.();}
+    else toast.error('Решение не подтверждено. Проверьте актуальный статус и права доступа.');
   };
 
   const handleToggleBlock = async (block: boolean, reason?: string) => {
@@ -869,7 +870,7 @@ export function useStudentDetailCardLogic({
     pepAgreements: currentPepAgreements,
     latestPepAgreement,
     generatedConsents: currentGeneratedConsents,
-    verifications: currentVerifications,
+    verifications: currentVerifications, identification,
     documents: currentDocuments,
     identityDocs: currentIdentityDocs,
     uploadingType, fileInputRef,

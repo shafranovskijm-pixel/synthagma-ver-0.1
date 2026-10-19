@@ -71,7 +71,7 @@ class SyntheticQuery implements PromiseLike<QueryResult> {
         { id: 'lesson-b', course_id: mocks.courseId, title: 'Synthetic test', type: 'test', order_index: 1, module_id: null },
       ], error: null };
       case 'enrollments': return { data: {
-        id: 'enrollment-a', user_id: 'student-a', course_id: mocks.courseId,
+        id: 'enrollment-a', user_id: String(this.request.filters.find(filter => filter.operator === 'eq' && filter.column === 'user_id')?.value || 'student-a'), course_id: mocks.courseId,
         status: 'completed', progress: 100, expires_at: '2020-01-01T00:00:00Z',
       }, error: null };
       case 'profiles': return { data: { organization_id: 'org-a' }, error: null };
