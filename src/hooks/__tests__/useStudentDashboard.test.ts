@@ -129,10 +129,12 @@ describe("useStudentDashboard", () => {
     expect(result.current.showDocumentsUpload).toBe(true);
   });
 
-  it("can update input value", () => {
+  it("masks private input until the AuthProvider and target load confirm the current context", () => {
     const { result } = renderHook(() => useStudentDashboard(), { wrapper: createRouterQueryWrapper() });
     act(() => { result.current.setInputValue("Привет!"); });
-    expect(result.current.inputValue).toBe("Привет!");
+    // This shallow dependency fixture never publishes a validated AuthProvider
+    // actor or target. Loaded, usable chat is exercised by the privacy suite.
+    expect(result.current.inputValue).toBe("");
   });
 
   it("detects preview mode from localStorage", () => {

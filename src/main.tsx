@@ -5,6 +5,7 @@ import { installLegacyProxyBadgeKiller } from "./utils/legacyProxyBadgeKiller";
 import { installErrorReporter } from "./utils/errorReporter";
 import { installNativeDownloads } from "./mobile/nativeDownloads";
 import { nativeStartupUrl } from "./mobile/nativeNavigation";
+import { clearPrivateRuntimeCaches, refreshApplicationCaches, ensurePrivateRuntimePolicy } from './utils/privateRuntimeCacheCleanup';
 
 // Перехватчик fetch для обхода корпоративных блокировок Supabase-доменов
 // через резервные субдомены (api/functions/storage.sintagma.com.ru)
@@ -45,19 +46,15 @@ const currentVersion = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIME
 
 // Skip build-version reload if bootstrap already did a session-guard reload
 const bootstrapJustReloaded = isPreview && sessionStorage.getItem('__purge_preview_session') === '1';
+const privatePolicyReady = !isNative && !isPreview && import.meta.env.PROD ? ensurePrivateRuntimePolicy() : Promise.resolve();
 
 async function purgeAllCaches() {
-  if ('caches' in window) {
-    const names = await caches.keys();
-    await Promise.all(names.map(n => caches.delete(n)));
-  }
-  if ('serviceWorker' in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    for (const reg of regs) await reg.unregister();
-  }
+  await refreshApplicationCaches();
 }
 
 (async () => {
+  await privatePolicyReady;
+  await clearPrivateRuntimeCaches();
   // Legacy login prefill exists only in memory. Defer cache/SW reloads for this
   // document instead of persisting credentials or losing them after a release.
   if ((window as Window & { __sintagmaLegacyLoginEntry?: boolean }).__sintagmaLegacyLoginEntry) return;
@@ -113,9 +110,10 @@ async function purgeAllCaches() {
       });
     }).catch(() => {});
   }
-})();
+})().catch(() => { /* bootstrapApp renders the reconnect boundary. */ });
 
 async function bootstrapApp() {
+  await privatePolicyReady;
   const [{ createRoot }, { default: App }] = await Promise.all([
     import("react-dom/client"),
     import("./App.tsx"),
@@ -125,4 +123,7 @@ async function bootstrapApp() {
   createRoot(root).render(<App />);
 }
 
-void bootstrapApp();
+void bootstrapApp().catch(() => {
+  const root = document.getElementById('root');
+  if (root) root.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center"><p>Подключитесь к Интернету и обновите страницу, чтобы безопасно открыть кабинет.</p><button class="underline" onclick="location.reload()">Обновить страницу</button></div>';
+});

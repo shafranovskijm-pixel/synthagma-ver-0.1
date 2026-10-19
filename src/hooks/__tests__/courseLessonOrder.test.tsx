@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCoursePreview } from '../useCoursePreview';
 import { useCourseLearning } from '../course-learning/useCourseLearningFacade';
 import { COURSE_LESSON_ORDER_VERSION } from '@/lib/courseLessonOrder';
+import { setOfflineAuthActor, rememberOfflineScope, captureOfflineActor } from '@/utils/courseCache';
 
 const COURSE_ID = '7e5bc4e6-0629-4186-9745-a821cbe7255a';
 const expected = ['1.1', 'S1', 'test1', '2.1', 'S2', 'test2', 'final-work', 'final-test'];
@@ -29,7 +30,7 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 vi.mock('@/hooks/useSwipeGesture', () => ({ useSwipeGesture: () => ({ current: null }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
-vi.mock('@/utils/courseCache', () => ({ cacheCourseData: mocks.cache, getCachedCourseData: mocks.cached }));
+vi.mock('@/utils/courseCache', async importOriginal => ({ ...await importOriginal<typeof import('@/utils/courseCache')>(), cacheCourseData: mocks.cache, getCachedCourseData: mocks.cached }));
 vi.mock('@/utils/offlineSync', () => ({ setupOfflineSyncListeners: () => () => {} }));
 vi.mock('@/utils/safeInvoke', () => ({ safeInvoke: vi.fn() }));
 vi.mock('@/utils/limitToast', () => ({ showLimitToast: vi.fn() }));
@@ -65,7 +66,7 @@ class Query {
     if (this.mutation) return { data: null, error: null };
     mocks.reads.push({ table: this.table, filters: this.filters });
     switch (this.table) {
-      case 'courses': return { data: mocks.courseError ? null : course(), error: mocks.courseError ? new Error('Offline fixture') : null };
+      case 'courses': return { data: mocks.courseError ? null : course(), error: mocks.courseError ? new TypeError('Failed to fetch (offline fixture)') : null };
       case 'course_modules': return { data: mocks.modulesError ? null : mocks.modules, error: mocks.modulesError ? new Error('Module read failed') : null };
       case 'lessons': return { data: this.columns === 'content' ? { content: null } : mocks.lessons, error: null };
       case 'enrollments': return { data: { id: 'synthetic-enrollment', status: 'active', expires_at: null }, error: null };
@@ -82,6 +83,7 @@ let client: QueryClient;
 function Wrapper({ children }: PropsWithChildren) { return <QueryClientProvider client={client}>{children}</QueryClientProvider>; }
 const ids = (rows: { id: string }[]) => rows.map(row => row.id);
 beforeEach(() => {
+  setOfflineAuthActor(null); setOfflineAuthActor('synthetic-student');
   vi.clearAllMocks();
   localStorage.clear(); sessionStorage.clear();
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -205,7 +207,8 @@ describe('preview and learner consume the same module order', () => {
     act(() => result.current.goToLesson(4));
     expect(result.current.currentLessonIndex).toBe(0);
     expect(mocks.cache).toHaveBeenCalled();
-    const [id, cachedCourse, lessons] = mocks.cache.mock.calls[0];
+    const [scope, id, cachedCourse, lessons] = mocks.cache.mock.calls[0];
+    expect(scope).toMatchObject({actorId: 'synthetic-student', organizationId: 'synthetic-org', resource: COURSE_ID});
     expect(id).toBe(COURSE_ID);
     expect(cachedCourse._lessonOrderVersion).toBe(COURSE_LESSON_ORDER_VERSION);
     expect(ids(lessons)).toEqual(expected);
@@ -225,7 +228,7 @@ describe('preview and learner consume the same module order', () => {
   it('restores the marked ordered cache after a later offline reload', async () => {
     const online = renderHook(() => useCourseLearning());
     await waitFor(() => expect(mocks.cache).toHaveBeenCalled());
-    const [courseId, cachedCourse, lessons, lessonProgress, lessonAttachments] = mocks.cache.mock.calls[0];
+    const [_scope, courseId, cachedCourse, lessons, lessonProgress, lessonAttachments] = mocks.cache.mock.calls[0];
     online.unmount();
     mocks.courseError = true;
     mocks.cached.mockResolvedValue({ courseId, course: cachedCourse, lessons, lessonProgress, lessonAttachments, cachedAt: 123 });
@@ -238,6 +241,7 @@ describe('preview and learner consume the same module order', () => {
   });
 
   it('refuses an old modular cache whose correct module order is unknowable offline', async () => {
+    rememberOfflineScope({actorId: 'synthetic-student', organizationId: 'synthetic-org', effectiveUserId: 'synthetic-student', mode: 'learner'}, COURSE_ID, captureOfflineActor('synthetic-student'));
     mocks.courseError = true;
     mocks.cached.mockResolvedValue({ course: course(), lessons: mocks.lessons, lessonProgress: [], lessonAttachments: {}, cachedAt: 123 });
     const { result } = renderHook(() => useCourseLearning());
@@ -247,7 +251,8 @@ describe('preview and learner consume the same module order', () => {
     expect(mocks.toast.error).toHaveBeenCalledWith('Подключитесь к Интернету, чтобы обновить порядок модулей курса');
   });
 
-  it('preserves the old offline cache for a legacy course without module IDs', async () => {
+  it('preserves the scoped offline copy for legacy lesson rows without module IDs', async () => {
+    rememberOfflineScope({actorId: 'synthetic-student', organizationId: 'synthetic-org', effectiveUserId: 'synthetic-student', mode: 'learner'}, COURSE_ID, captureOfflineActor('synthetic-student'));
     mocks.courseError = true;
     const legacy = mocks.lessons.map(l => ({ ...l, module_id: null }));
     mocks.cached.mockResolvedValue({ course: course(), lessons: legacy, lessonProgress: [], lessonAttachments: {}, cachedAt: 123 });

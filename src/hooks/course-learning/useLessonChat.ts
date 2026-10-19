@@ -10,6 +10,8 @@ interface ChatMessage {
 }
 
 interface UseLessonChatParams {
+  contextKey: string;
+  isContextCurrent: () => boolean;
   course: Course | null;
   currentLesson: Lesson | undefined;
   contentBlocks: ContentBlock[];
@@ -33,19 +35,29 @@ function extractTextFromBlocks(blocks: ContentBlock[]): string {
   }).filter(Boolean).join('. ');
 }
 
-export function useLessonChat({ course, currentLesson, contentBlocks }: UseLessonChatParams) {
+export function useLessonChat({ contextKey, isContextCurrent, course, currentLesson, contentBlocks }: UseLessonChatParams) {
+  const contextRef = useRef({ key: contextKey, generation: 0 });
+  const liveContextRef = useRef(isContextCurrent);
+  liveContextRef.current = isContextCurrent;
+  if (contextRef.current.key !== contextKey) contextRef.current = { key: contextKey, generation: contextRef.current.generation + 1 };
+  const [loadedKey, setLoadedKey] = useState(contextKey);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setChatMessages([]); setChatInput(''); setIsChatLoading(false); setIsChatOpen(false); setLoadedKey(contextKey);
+  }, [contextKey]);
 
   useEffect(() => {
     if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [chatMessages]);
 
   const sendChatMessage = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
+    const generation = contextRef.current.generation;
+    const current = () => generation === contextRef.current.generation && liveContextRef.current();
+    if (loadedKey !== contextKey || !current() || !chatInput.trim() || isChatLoading) return;
     const userMessage = chatInput.trim();
     setChatInput('');
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
@@ -67,20 +79,23 @@ export function useLessonChat({ course, currentLesson, contentBlocks }: UseLesso
           context: { courseTitle: course?.title || '', lessonTitle: currentLesson?.title || '', lessonType: currentLesson?.type || '', lessonContent }
         }
       });
+      if (!current()) return;
       if (error) throw error;
       if (data?.content) setChatMessages(prev => [...prev, { role: 'assistant', content: data.content! }]);
     } catch (error) {
+      if (!current()) return;
       console.error('Chat error:', error);
       toast.error('Ошибка отправки сообщения');
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Извините, произошла ошибка. Попробуйте позже.' }]);
     } finally {
-      setIsChatLoading(false);
+      if (current()) setIsChatLoading(false);
     }
   };
 
   return {
-    isChatOpen, setIsChatOpen,
-    chatMessages, chatInput, setChatInput,
-    isChatLoading, sendChatMessage, chatScrollRef,
+    isChatOpen: loadedKey === contextKey && isContextCurrent() && isChatOpen, setIsChatOpen,
+    chatMessages: loadedKey === contextKey && isContextCurrent() ? chatMessages : [],
+    chatInput: loadedKey === contextKey && isContextCurrent() ? chatInput : '', setChatInput,
+    isChatLoading: loadedKey === contextKey && isContextCurrent() && isChatLoading, sendChatMessage, chatScrollRef,
   };
 }

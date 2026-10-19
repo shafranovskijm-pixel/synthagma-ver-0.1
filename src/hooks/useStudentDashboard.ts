@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUrlQueryState } from "@/hooks/useUrlNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
-import { cacheDashboardData, getCachedDashboardData } from "@/utils/courseCache";
+import { cacheDashboardData, getCachedDashboardData, captureOfflineActor, isOfflineActorCurrent,
+  rememberOfflineScope, getOfflineScope, forgetOfflineScope, mayUseOfflineFallback } from "@/utils/courseCache";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
@@ -118,7 +119,7 @@ const initialMessages: ChatMessage[] = [
 
 export function useStudentDashboard() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
 
@@ -182,13 +183,29 @@ export function useStudentDashboard() {
   }, []);
 
   const effectiveUserId = targetUserId || user?.id || null;
+  const mode = isAdminView ? 'preview' as const : 'learner' as const;
+  const { data: snapshot, accessDenied: snapshotAccessDenied, unconfirmed: snapshotUnconfirmed } = useStudentDashboardSnapshot(authLoading ? null : effectiveUserId, authLoading ? null : user?.id);
+  const identityKey = JSON.stringify([user?.id, effectiveUserId, mode, !!authLoading, captureOfflineActor(user?.id), !!snapshotAccessDenied, !!snapshotUnconfirmed]);
+  const identityRef = useRef({ key: identityKey, generation: 0 });
+  if (identityRef.current.key !== identityKey) identityRef.current = { key: identityKey, generation: identityRef.current.generation + 1 };
+  const requestRef = useRef(0);
+  const [loadedGeneration, setLoadedGeneration] = useState(-1);
+  const [settledGeneration, setSettledGeneration] = useState(-1);
+  const privateVisible = !!user && !authLoading && !snapshotAccessDenied && !snapshotUnconfirmed && loadedGeneration === identityRef.current.generation;
+  const visibleRef = useRef(privateVisible);
+  visibleRef.current = privateVisible;
+  const captureUiContext = (requireVisible = false) => {
+    const actorId = user?.id;
+    const revision = captureOfflineActor(actorId);
+    const generation = identityRef.current.generation;
+    return () => !!actorId && (!requireVisible || visibleRef.current) && generation === identityRef.current.generation && isOfflineActorCurrent(actorId, revision);
+  };
 
   // ⚡ Быстрый снимок дашборда одним RPC — выставляет данные ДО окончания тяжёлого loadData.
   // Если снапшот пришёл раньше — пользователь видит контент мгновенно, фоновый loadData потом
   // обновит каталог и прочие детали.
-  const { data: snapshot } = useStudentDashboardSnapshot(effectiveUserId);
   useEffect(() => {
-    if (!snapshot) return;
+    if (!snapshot || authLoading || !user || captureOfflineActor(user.id) === null || snapshot.profile?.user_id !== effectiveUserId) return;
     if (snapshot.profile) {
       setProfile(prev => ({
         full_name: snapshot.profile.full_name ?? prev?.full_name ?? null,
@@ -252,16 +269,25 @@ export function useStudentDashboard() {
     }
     // Снимок отдаёт основные данные → можно отключить спиннер сразу
     setLoading(false);
-  }, [snapshot, isAdminView]);
+    setLoadedGeneration(identityRef.current.generation);
+  }, [snapshot, identityKey]);
 
   useEffect(() => {
-    if (effectiveUserId) { loadData(); }
-    if (user && !isAdminView) {
+    setCourses([]); setCatalogCourses([]); setCategories([]); setProfile(null); setBranding(null);
+    setTotalTimeSpent(0); setTotalCompletedLessons(0); setIsVideoIdentified(false);
+    setDocumentsProgress({ completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES });
+    setShowOnboarding(false); setShowVideoIdentification(false); setShowDocumentsUpload(false); setShowConsentForm(false);
+    setMessages(initialMessages); setInputValue(''); setIsAiLoading(false); setLoadedGeneration(-1); setSettledGeneration(-1);
+    if ((snapshotAccessDenied || snapshotUnconfirmed) && user && effectiveUserId) forgetOfflineScope(user.id, effectiveUserId, mode, 'dashboard');
+    if (effectiveUserId && user && !authLoading && !snapshotAccessDenied && !snapshotUnconfirmed) { void loadData(); }
+    else { setLoading(false); setSettledGeneration(identityRef.current.generation); }
+    if (user && !isAdminView && !snapshotAccessDenied && !snapshotUnconfirmed) {
       // fire-and-forget — не блокируем первый рендер
       trackUserVisit();
       checkNewAchievements();
     }
-  }, [effectiveUserId]);
+    return () => { requestRef.current += 1; };
+  }, [identityKey]);
 
   const trackUserVisit = () => {
     if (!user) return;
@@ -273,14 +299,18 @@ export function useStudentDashboard() {
 
   const checkNewAchievements = async () => {
     if (!user || isAdminView) return;
+    const current = captureUiContext();
+    if (!current()) return;
     try {
       const { data: unseenAchievements } = await supabase.from("user_achievements").select("id, achievements (name, description, icon, color, rarity)").eq("user_id", user.id).eq("is_seen", false);
+      if (!current()) return;
       if (unseenAchievements && unseenAchievements.length > 0) {
         const rarityEmoji: Record<string, string> = { common: "⭐", rare: "💎", epic: "🏆", legendary: "👑" };
         unseenAchievements.forEach((ua, index) => {
           const achievement = ua.achievements as any;
           if (!achievement) return;
           setTimeout(() => {
+            if (!current()) return;
             toast.success(`${rarityEmoji[achievement.rarity] || "🎖️"} Новое достижение!`, {
               description: `${achievement.name}: ${achievement.description}`,
               duration: 5000,
@@ -295,13 +325,19 @@ export function useStudentDashboard() {
 
   const loadData = async () => {
     const uid = effectiveUserId;
-    if (!uid) { setLoading(false); return; }
+    if (!uid || !user || authLoading) { setLoading(false); return; }
+    const actorId = user.id;
+    const revision = captureOfflineActor(actorId);
+    if (revision === null) return;
+    const generation = identityRef.current.generation;
+    const request = ++requestRef.current;
+    const current = () => generation === identityRef.current.generation && request === requestRef.current && isOfflineActorCurrent(actorId, revision);
     setLoading(true);
 
 
     // Safety timeout: never show spinner for more than 15 seconds
     const safetyTimer = setTimeout(() => {
-      setLoading(false);
+      if (current()) setLoading(false);
     }, 15000);
 
     try {
@@ -311,6 +347,11 @@ export function useStudentDashboard() {
         supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification, cover_image_url, landing_content)").eq("user_id", uid),
       ]);
+      if (!current()) return;
+      if (profileRes.error) throw profileRes.error;
+      if (laborRes.error) throw laborRes.error;
+      if (enrollmentsRes.error) throw enrollmentsRes.error;
+      if (!profileRes.data && !laborRes.data) throw { status: 403, message: 'Access to the dashboard target is no longer confirmed' };
 
       const profileData = profileRes.data;
       let effectiveOrgId: string | null = profileData?.organization_id || null;
@@ -357,6 +398,7 @@ export function useStudentDashboard() {
       const cachedCoursesData: StudentCourse[] = [];
       let cachedTotalTime = 0;
       let cachedCompletedLessonsTotal = 0;
+      let cachedDocumentsProgress: DocumentsProgress = { completed: 0, total: DEFAULT_REQUIRED_DOCUMENT_TYPES.length, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES };
 
       const enrollments = enrollmentsRes.data;
       if (enrollments) {
@@ -368,12 +410,14 @@ export function useStudentDashboard() {
         const { data: allLessons } = allCourseIds.length > 0
           ? await supabase.from("lessons").select("id, course_id").in("course_id", allCourseIds)
           : { data: [] as { id: string; course_id: string }[] };
+        if (!current()) return;
 
         // Batch fetch: all completed lesson progress for this user in one query
         const allLessonIds = (allLessons || []).map(l => l.id);
         const { data: allProgress } = allLessonIds.length > 0
           ? await supabase.from("lesson_progress").select("lesson_id").eq("user_id", uid).in("lesson_id", allLessonIds).eq("completed", true)
           : { data: [] as { lesson_id: string }[] };
+        if (!current()) return;
 
         // Build lookup maps for O(1) access
         const lessonsByCourse = new Map<string, string[]>();
@@ -410,6 +454,7 @@ export function useStudentDashboard() {
             shell: await fetchCourseLibraryShell(enrollment.course_id),
           })),
         );
+        if (!current()) return;
         for (const result of hiddenCourseShells) {
           if (result.status !== "fulfilled" || !result.value.shell.libraryOnly) continue;
           const { enrollment, shell } = result.value;
@@ -439,6 +484,8 @@ export function useStudentDashboard() {
           supabase.from("course_categories").select("id, name, color, hidden_from_catalog").eq("organization_id", effectiveOrgId),
           supabase.from("enrollment_requests").select("course_id, status").eq("user_id", uid).eq("status", "pending"),
         ]);
+        if (!current()) return;
+        if (coursesRes.error || catsRes.error || pendingRequestsRes.error) throw coursesRes.error || catsRes.error || pendingRequestsRes.error;
         const allOrgCourses = coursesRes.data || [];
         const cats = (catsRes.data || []).filter((c: any) => !c.hidden_from_catalog);
         const hiddenCategoryIds = new Set((catsRes.data || []).filter((c: any) => c.hidden_from_catalog).map((c: any) => c.id));
@@ -452,6 +499,7 @@ export function useStudentDashboard() {
         const { data: lessonCounts } = courseIds.length > 0
           ? await supabase.from("lessons").select("course_id").in("course_id", courseIds)
           : { data: [] as { course_id: string }[] };
+        if (!current()) return;
         const lessonCountMap = new Map<string, number>();
         for (const l of lessonCounts || []) {
           lessonCountMap.set(l.course_id, (lessonCountMap.get(l.course_id) || 0) + 1);
@@ -485,11 +533,14 @@ export function useStudentDashboard() {
           .map(e => e.courses as any)
           .filter(Boolean);
         const requiredTypes = resolveRequiredDocumentTypes(enrolledCoursesForDocs);
+        cachedDocumentsProgress = { completed: 0, total: requiredTypes.length, requiredTypes };
         // Параллельно: identity docs + video identification
         const [identityRes, videoIdRes] = await Promise.all([
           supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId),
           supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
+        if (!current()) return;
+        if (identityRes.error || videoIdRes.error) throw identityRes.error || videoIdRes.error;
         const identityDocs = identityRes.data;
         if (identityDocs) {
           const hasType = (type: RequiredDocumentType) => {
@@ -497,33 +548,36 @@ export function useStudentDashboard() {
             if (type === "education_document") return identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
             return identityDocs.some(d => d.type === type);
           };
-          setDocumentsProgress({ completed: requiredTypes.filter(hasType).length, total: requiredTypes.length, requiredTypes });
+          cachedDocumentsProgress = { completed: requiredTypes.filter(hasType).length, total: requiredTypes.length, requiredTypes };
         }
+        setDocumentsProgress(cachedDocumentsProgress);
         setIsVideoIdentified(!!videoIdRes.data);
       }
 
       // Cache dashboard data for offline fallback using local variables
-      if (uid) {
-        const docsProgress = (() => {
-          if (!effectiveOrgId) return { completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES };
-          return documentsProgress; // already set above via setDocumentsProgress
-        })();
-        cacheDashboardData(uid, {
+      if (uid && effectiveOrgId && current()) {
+        const scope = rememberOfflineScope({ actorId, effectiveUserId: uid, mode, organizationId: effectiveOrgId }, 'dashboard', revision);
+        if (scope) cacheDashboardData(scope, {
           courses: cachedCoursesData,
-          profile: profileData ? { full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id } : null,
+          profile: profileData ? { full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: effectiveOrgId } : null,
           branding: effectiveBranding,
           dashboardSettings: effectiveDashboardSettings,
           totalTimeSpent: cachedTotalTime,
           totalCompletedLessons: cachedCompletedLessonsTotal,
-          documentsProgress: docsProgress,
+          documentsProgress: cachedDocumentsProgress,
         }).catch(() => {});
       }
+      if (current()) setLoadedGeneration(generation);
     } catch (error) {
+      if (!current()) return;
       console.error("Error loading data:", error);
       
       // Try loading from cache as fallback
       if (uid) {
-        const cached = await getCachedDashboardData(uid);
+        if (!mayUseOfflineFallback(error)) forgetOfflineScope(actorId, uid, mode, 'dashboard');
+        const scope = mayUseOfflineFallback(error) ? getOfflineScope(actorId, uid, mode, 'dashboard') : null;
+        const cached = scope ? await getCachedDashboardData(scope) : null;
+        if (!current()) return;
         if (cached) {
           setCourses(cached.courses || []);
           if (cached.profile) setProfile(cached.profile);
@@ -538,32 +592,42 @@ export function useStudentDashboard() {
             requiredTypes: cachedDocs?.requiredTypes ?? DEFAULT_REQUIRED_DOCUMENT_TYPES,
           });
           toast.info('Загружены данные из кеша', { description:"'Данные могут быть устаревшими'" });
+          setLoadedGeneration(generation);
+        } else {
+          setCourses([]); setCatalogCourses([]); setProfile(null); setBranding(null); setLoadedGeneration(-1);
+          toast.error('Подключитесь к Интернету, чтобы подтвердить доступ к кабинету');
         }
       }
-    } finally { clearTimeout(safetyTimer); setLoading(false); }
+    } finally { clearTimeout(safetyTimer); if (current()) { setLoading(false); setSettledGeneration(generation); } }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isAiLoading) return;
+    const current = captureUiContext(true);
+    if (!privateVisible || !current() || !inputValue.trim() || isAiLoading) return;
     const userMessage: ChatMessage = { role: "user", content: inputValue };
     setMessages(prev => [...prev, userMessage]);
     setInputValue("");
     setIsAiLoading(true);
     try {
       const response = await safeInvoke<any>("student-chat", { body: { messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })) } });
+      if (!current()) return;
       if (response.error) throw new Error(response.error.message || "Ошибка ИИ");
       const data = response.data;
       if (data.error) throw new Error(data.error);
       setMessages(prev => [...prev, { role: "assistant" as const, content: data.content }]);
     } catch (error: any) {
+      if (!current()) return;
       console.error("AI chat error:", error);
       setMessages(prev => [...prev, { role: "assistant" as const, content: "Извините, произошла ошибка. Попробуйте ещё раз позже." }]);
-    } finally { setIsAiLoading(false); }
+    } finally { if (current()) setIsAiLoading(false); }
   };
 
-  const handleRefresh = useCallback(async () => { await loadData(); toast.success("Данные обновлены"); }, []);
+  const handleRefresh = useCallback(async () => {
+    const current = captureUiContext(); if (!current()) return;
+    await loadData(); if (current()) toast.success("Данные обновлены");
+  }, [identityKey]);
   const { ref: pullToRefreshRef, pullDistance, isRefreshing, canRefresh } = usePullToRefresh<HTMLElement>({ onRefresh: handleRefresh, threshold: 80, maxPull: 120 });
 
   const totalProgress = courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length) : 0;
@@ -587,14 +651,20 @@ export function useStudentDashboard() {
 
   return {
     user, navigate, isMobile, theme, setTheme,
-    activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
-    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
-    totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
+    activeTab, setActiveTab, messages: privateVisible ? messages : initialMessages,
+    inputValue: privateVisible ? inputValue : '', setInputValue, isAiLoading: privateVisible && isAiLoading, handleSendMessage,
+    courses: privateVisible ? courses : [], catalogCourses: privateVisible ? catalogCourses : [], categories: privateVisible ? categories : [],
+    profile: privateVisible ? profile : null, branding: privateVisible ? branding : null,
+    dashboardSettings: privateVisible ? dashboardSettings : { showLibrary: true, showAchievements: true, showAiChat: true, showRadio: false, showAnnouncements: false, catalogMode: 'catalog' as const, studentTheme: null },
+    loading: !!user && (!!authLoading || loading || settledGeneration !== identityRef.current.generation),
+    totalTimeSpent: privateVisible ? totalTimeSpent : 0, totalCompletedLessons: privateVisible ? totalCompletedLessons : 0,
+    totalProgress: privateVisible ? totalProgress : 0, firstName: privateVisible ? firstName : '', formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
-    documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
+    documentsProgress: privateVisible ? documentsProgress : { completed: 0, total: 3, requiredTypes: DEFAULT_REQUIRED_DOCUMENT_TYPES },
+    isVideoIdentified: privateVisible && isVideoIdentified, setIsVideoIdentified, showOnboarding: privateVisible && showOnboarding, handleOnboardingClose,
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
-    signOut, orgPlan, isAdminView, adminViewStudentName,
+    signOut, orgPlan: privateVisible ? orgPlan : 'free', isAdminView, adminViewStudentName,
   };
 }

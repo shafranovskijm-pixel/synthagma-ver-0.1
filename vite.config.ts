@@ -6,8 +6,9 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { loadMcpPlugin } from "./scripts/mcp-sdk-windows.mjs";
 import { excludeAndroidDownloads } from "./scripts/rustore/exclude-android-downloads.mjs";
+import { privateCleanupWorkerSource, runtimeRequestMatcher } from "./src/lib/pwa/privateCachePolicy";
 
-const pwaCacheVersion = "sintagma-1.0.81";
+const pwaCacheVersion = "sintagma-1.0.82";
 
 // https://vitejs.dev/config/
 export default defineConfig(async ({ mode }): Promise<UserConfig & {
@@ -27,6 +28,12 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
     react(),
     mcpPlugin(),
     mode === "development" && componentTagger(),
+    {
+      name: 'sintagma-private-cache-cleanup',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'sw-private-cache-cleanup.js', source: privateCleanupWorkerSource() });
+      },
+    },
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: null,
@@ -68,52 +75,36 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/downloads\//],
-        additionalManifestEntries: [
-          { url: "/manifest.webmanifest", revision: pwaCacheVersion },
+        importScripts: ['sw-private-cache-cleanup.js'],
+        navigateFallbackDenylist: [
+          /^\/~oauth/, /^\/downloads\//,
+          /\/(?:sb-api|sb-functions|sb-storage|sb-realtime)(?:\/|$)/i,
+          /\/(?:rest|auth|functions|storage)\/v1(?:\/|$)/i,
+          /^\/(?:object|render\/image)\//i,
+          /[%?]/, // Never turn encoded/private or credential-bearing navigation into an offline shell.
+          /[?&](?:access_token|refresh_token|token|signature|sig|apikey|authorization|code|password|session|jwt)=/i,
         ],
         runtimeCaching: [
           {
-            urlPattern: ({request, url}) => request.mode === 'navigate' && !url.pathname.startsWith('/downloads/'),
-            handler: "NetworkFirst",
-            options: {
-              cacheName: `${pwaCacheVersion}-pages-cache`,
-              expiration: { maxAgeSeconds: 60 * 60 },
-            },
+            urlPattern: runtimeRequestMatcher('private'),
+            handler: "NetworkOnly",
           },
           {
-            urlPattern: /^https:\/\/.*supabase.*\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: `${pwaCacheVersion}-api-cache`,
-              expiration: { maxEntries: 50, maxAgeSeconds: 600 },
-            },
-          },
-          {
-            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+            urlPattern: runtimeRequestMatcher('public-lesson'),
             handler: "CacheFirst",
             options: {
-              cacheName: `${pwaCacheVersion}-images-cache`,
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheName: 'sintagma-public-lessons-v1',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
             },
           },
           {
-            urlPattern: /\.(?:js|css|woff2?)$/i,
-            handler: "NetworkFirst",
+            urlPattern: runtimeRequestMatcher('static'),
+            handler: "CacheFirst",
             options: {
               cacheName: `${pwaCacheVersion}-static-cache`,
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: `${pwaCacheVersion}-google-fonts-cache`,
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],

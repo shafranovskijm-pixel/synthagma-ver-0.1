@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCourseLearning } from '../useCourseLearningFacade';
+import { setOfflineAuthActor } from '@/utils/courseCache';
 
 const CSZ_COURSE_ID = '7630559a-6caf-42e7-97f9-1cd0e4598c39';
 const CSZ_34_COURSE_ID = '7e5bc4e6-0629-4186-9745-a821cbe7255a';
@@ -28,7 +29,7 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 vi.mock('@/hooks/useSwipeGesture', () => ({ useSwipeGesture: () => ({ current: null }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
-vi.mock('@/utils/courseCache', () => ({ cacheCourseData: vi.fn().mockResolvedValue(undefined), getCachedCourseData: vi.fn().mockResolvedValue(null) }));
+vi.mock('@/utils/courseCache', async importOriginal => ({ ...await importOriginal<typeof import('@/utils/courseCache')>(), cacheCourseData: vi.fn().mockResolvedValue(undefined), getCachedCourseData: vi.fn().mockResolvedValue(null) }));
 vi.mock('@/utils/offlineSync', () => ({ setupOfflineSyncListeners: () => () => {} }));
 vi.mock('@/utils/safeInvoke', () => ({ safeInvoke: vi.fn() }));
 vi.mock('@/utils/limitToast', () => ({ showLimitToast: vi.fn() }));
@@ -94,6 +95,7 @@ class SyntheticQuery implements PromiseLike<QueryResult> {
 }
 
 beforeEach(() => {
+  setOfflineAuthActor(null); setOfflineAuthActor('student-a');
   vi.clearAllMocks();
   localStorage.clear();
   sessionStorage.clear();

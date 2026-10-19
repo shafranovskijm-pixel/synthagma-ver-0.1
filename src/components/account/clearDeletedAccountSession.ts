@@ -1,6 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { clearPendingDeletion } from "./pendingDeletion";
+import { markOfflineAccountDeleted } from '@/utils/courseCache';
+import { clearPrivateRuntimeCaches } from '@/utils/privateRuntimeCacheCleanup';
 
 function removeIndexedRows(database: string, store: string, belongsToAccount: (row: Record<string, unknown>) => boolean): Promise<void> {
   if (typeof indexedDB === "undefined") return Promise.resolve();
@@ -41,6 +43,7 @@ export function clearDeletedAccountSession(accountId: string, requestId: string,
   const existing = inFlight.get(requestId);
   if (existing) return existing;
   const clearing = (async () => {
+    markOfflineAccountDeleted(accountId);
     let complete = true;
     try { await queryClient.cancelQueries(); queryClient.clear(); } catch { complete = false; }
     try {
@@ -55,19 +58,19 @@ export function clearDeletedAccountSession(accountId: string, requestId: string,
     } catch { complete = false; }
     const cacheResults = await Promise.allSettled([
       removeIndexedRows("sigma-course-cache", "dashboard", row => row.key === accountId),
-      // Course entries have no owner key and may contain a learner's progress. This is a recoverable cache.
-      removeIndexedRows("sigma-course-cache", "courses", () => true),
+      // Old unowned course bytes stay quarantined; never attribute another learner's cache to this account.
+      removeIndexedRows("sigma-course-cache", "courses", row => belongsToOfflineAccount(row, accountId)),
+      removeIndexedRows("sigma-course-cache", "courses_scoped_v2", row => belongsToOfflineAccount(row, accountId)),
+      removeIndexedRows("sigma-course-cache", "dashboard_scoped_v2", row => belongsToOfflineAccount(row, accountId)),
       removeIndexedRows("sigma-test-queue", "pending", row => row.userId === accountId),
-      removeIndexedRows("sigma-offline-sync", "sync_queue", row => !!row.data && typeof row.data === "object" && (row.data as Record<string, unknown>).user_id === accountId),
+      removeIndexedRows("sigma-offline-sync", "sync_queue", row => belongsToOfflineAccount(row, accountId) || !!row.data && typeof row.data === "object" && (row.data as Record<string, unknown>).user_id === accountId),
     ]);
     if (cacheResults.some(result => result.status === "rejected")) complete = false;
     try {
       for (const key of Object.keys(sessionStorage)) {
         if (key.startsWith(`test-draft:${accountId}:`) || key.startsWith(`test-start-request:${accountId}:`)) sessionStorage.removeItem(key);
       }
-      if (typeof caches !== "undefined") {
-        for (const name of await caches.keys()) if (name.endsWith("-api-cache") || name.endsWith("-images-cache")) await caches.delete(name);
-      }
+      if (!await clearPrivateRuntimeCaches()) complete = false;
     } catch { complete = false; }
     if (complete) { try { clearPendingDeletion(requestId); } catch { complete = false; } }
     return complete;
@@ -78,4 +81,9 @@ export function clearDeletedAccountSession(accountId: string, requestId: string,
   }).finally(() => inFlight.delete(requestId));
   inFlight.set(requestId, clearing);
   return clearing;
+}
+
+function belongsToOfflineAccount(row: Record<string, unknown>, accountId: string): boolean {
+  const owner = row.owner as { actorId?: unknown; effectiveUserId?: unknown } | undefined;
+  return !!owner && (owner.actorId === accountId || owner.effectiveUserId === accountId);
 }
