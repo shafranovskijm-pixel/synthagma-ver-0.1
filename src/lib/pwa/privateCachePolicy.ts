@@ -2,7 +2,7 @@
 // Node tsconfig that loads vite.config.ts (no DOM lib there).
 type RequestCredentials = 'omit' | 'same-origin' | 'include';
 interface CacheLike {
-  keys(): Promise<Request[]>;
+  keys(): Promise<readonly Request[]>;
   match(request: Request): Promise<Response | undefined>;
   put(request: Request, response: Response): Promise<void>;
   delete(request: Request): Promise<boolean>;
