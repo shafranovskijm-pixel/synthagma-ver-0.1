@@ -1,0 +1,69 @@
+{
+  "status": "FROZEN_WITH_SQL_SOURCE",
+  "sourceArtifactSha256": "343c4ed3ccdef86d07e564e778fbce7d2cfec2c240e1ddfaba18e70f139bfce1",
+  "fiveOnly": [
+    {
+      "signature": "account_deletion_files(uuid)",
+      "beforeMd5": "5e4638a7fb1a8909b393e94a64d88beb",
+      "anchors": [
+        {
+          "needle": "'avatars','student-documents','final-test-photos','student-identification-media'",
+          "replacement": "'avatars','student-documents','final-test-photos','student-identification-media','admission-case-evidence'"
+        },
+        {
+          "needle": "  OR (o.bucket_id='student-documents' AND o.name LIKE 'avatars/'||p_user_id::text||'.%')",
+          "replacement": "  OR (o.bucket_id='student-documents' AND o.name LIKE 'avatars/'||p_user_id::text||'.%')\n  OR (o.bucket_id='admission-case-evidence'AND split_part(o.name,'/',4)='staging'AND split_part(o.name,'/',5)=p_user_id::text)"
+        }
+      ]
+    },
+    {
+      "signature": "account_deletion_storage_write_guard()",
+      "beforeMd5": "4c34fa5ade42bbd0deeac51e455709ea",
+      "anchors": [
+        {
+          "needle": "'avatars','student-documents','final-test-photos','student-identification-media'",
+          "replacement": "'avatars','student-documents','final-test-photos','student-identification-media','admission-case-evidence'"
+        }
+      ]
+    },
+    {
+      "signature": "account_deletion_personal_row_counts(uuid)",
+      "beforeMd5": "b73ea401e57da586acfc0b16ee6c4435",
+      "anchors": [
+        {
+          "needle": "  ('video_identifications','user_id'),",
+          "replacement": "  ('uc_admission_cases','user_id'),\n  ('uc_admission_cases','responsible_id'),\n  ('uc_admission_rule_sets','user_id'),\n  ('uc_admission_rule_sets','reviewer_id'),\n  ('uc_admission_case_events','user_id'),\n  ('uc_admission_case_events','actor_id'),\n  ('uc_admission_case_evidence','user_id'),\n  ('uc_admission_case_evidence','captured_by'),\n  ('uc_admission_evidence_reservations','user_id'),\n  ('uc_admission_evidence_reservations','actor_id'),\n  ('uc_admission_case_requests','user_id'),\n  ('uc_admission_case_requests','actor_id'),\n  ('video_identifications','user_id'),"
+        },
+        {
+          "needle": " RETURN result;",
+          "replacement": " SELECT count(*)INTO n FROM public.uc_admission_cases WHERE reviews::text LIKE '%'||p_user_id::text||'%'OR decision::text LIKE '%'||p_user_id::text||'%'OR tasks::text LIKE '%'||p_user_id::text||'%';\n IF n>0 THEN result:=result||jsonb_build_array(jsonb_build_object('table','uc_admission_cases','column','review_attribution','count',n));END IF;\n RETURN result;"
+        }
+      ]
+    },
+    {
+      "signature": "account_deletion_erase_data(uuid,text)",
+      "beforeMd5": "0195ff3304609fad30cc773b1d7e348b",
+      "anchors": [
+        {
+          "needle": " PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);",
+          "replacement": " PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n PERFORM public.uc_erase_admission_cases(u);"
+        }
+      ]
+    },
+    {
+      "signature": "account_deletion_snapshot(uuid)",
+      "beforeMd5": "90a1b279ec2d55a922f5097b1cdac0a4",
+      "anchors": [
+        {
+          "needle": " IF v_org_shared>0 THEN v_blockers:=",
+          "replacement": " v_org_shared:=v_org_shared+(SELECT count(*)FROM public.uc_admission_cases WHERE organization_id=v_org);\n IF v_org_shared>0 THEN v_blockers:="
+        },
+        {
+          "needle": " v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'",
+          "replacement": " SELECT count(*)INTO v_count FROM public.uc_admission_cases WHERE user_id=p_user_id;\n IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','admission_cases','label','Личные дела и их индивидуальные копии','count',v_count,'action','delete'));END IF;\n SELECT count(*)INTO v_count FROM public.uc_admission_case_events WHERE actor_id=p_user_id AND user_id<>p_user_id;\n IF v_count>0 THEN v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','admission_review_attribution','label','Атрибуция внутренних проверок: удаляется ссылка на аккаунт и личный текст','count',v_count,'action','anonymize'));END IF;\n v_categories:=v_categories||jsonb_build_array(jsonb_build_object('key','security_record'"
+        }
+      ]
+    }
+  ],
+  "migrationCanonicalLfSha256": "f3efa2ab8c85a168a95db2530099a30763a9cd3a16e6e9f74889bff00a84365e"
+}
