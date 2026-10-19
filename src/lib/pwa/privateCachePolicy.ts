@@ -1,3 +1,12 @@
+// Local stand-ins for DOM worker types so this file also typechecks under the
+// Node tsconfig that loads vite.config.ts (no DOM lib there).
+type RequestCredentials = 'omit' | 'same-origin' | 'include';
+interface CacheStorage {
+  keys(): Promise<string[]>;
+  open(name: string): Promise<Cache>;
+  delete(name: string): Promise<boolean>;
+}
+
 /** This function is serialized into the classic worker. Keep every dependency local. */
 export function classifyRuntimeRequest(input: {
   url: string; origin: string; authorization?: boolean; noStore?: boolean; credentials?: RequestCredentials;
