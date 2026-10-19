@@ -152,24 +152,27 @@
         }
 
 
-        function purgeAll() {
-          var tasks = [];
-          if ('serviceWorker' in navigator) {
-            tasks.push(
-              navigator.serviceWorker.getRegistrations().then(function(regs){
-                return Promise.all(regs.map(function(r){ return r.unregister(); }));
-              })
-            );
-          }
-          if ('caches' in window) {
-            tasks.push(
-              caches.keys().then(function(names){
-                return Promise.all(names.map(function(n){ return caches.delete(n); }));
-              })
-            );
-          }
-          return Promise.all(tasks);
-        }
+        // Same generated policy as SW activation. Never erase all lesson assets.
+        window.__sintagmaRefreshPrivateCaches = function() {
+          var loadPolicy = window.__sintagmaPrivateRuntimeCleanup ? Promise.resolve() : new Promise(function(resolve) {
+            var script = document.createElement('script');
+            var timer = setTimeout(resolve, 3000);
+            script.src = '/sw-private-cache-cleanup.js';
+            script.onload = script.onerror = function(){ clearTimeout(timer); resolve(); };
+            document.head.appendChild(script);
+          });
+          return loadPolicy.then(function(){
+            if (window.__sintagmaPrivateRuntimeCleanup) return window.__sintagmaPrivateRuntimeCleanup(true);
+          }).catch(function(){}).then(function(){
+            if (!('serviceWorker' in navigator)) return;
+            return navigator.serviceWorker.getRegistrations().then(function(regs){
+              return Promise.all(regs.filter(function(r){
+                return r.active && new URL(r.active.scriptURL).pathname === '/sw.js';
+              }).map(function(r){ return r.unregister(); }));
+            });
+          });
+        };
+        function purgeAll() { return window.__sintagmaRefreshPrivateCaches(); }
 
         if (isPreview) {
           var guard = '__purge_preview_session';
@@ -206,19 +209,9 @@
           if (root && root.children.length === 0 && 'serviceWorker' in navigator) {
             if (sessionStorage.getItem(recoveryKey)) return;
             sessionStorage.setItem(recoveryKey, '1');
-            navigator.serviceWorker.getRegistrations().then(function(regs){
-              var p = regs.map(function(r){ return r.unregister(); });
-              Promise.all(p).then(function(){
-                if (typeof caches !== 'undefined') {
-                  caches.keys().then(function(names){
-                    Promise.all(names.map(function(n){ return caches.delete(n); }))
-                      .then(function(){ window.location.reload(); });
-                  });
-                } else {
-                  window.location.reload();
-                }
-              });
-            });
+            var cleanup = window.__sintagmaRefreshPrivateCaches;
+            Promise.resolve(cleanup ? cleanup() : undefined)
+              .then(function(){ window.location.reload(); }, function(){ window.location.reload(); });
           }
         }, 8000);
         window.__swRecoveryTimer = t;

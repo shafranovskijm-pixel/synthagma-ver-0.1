@@ -3,6 +3,8 @@
  * clear all version/guard keys, and do a hard reload.
  */
 
+import { refreshApplicationCaches } from './privateRuntimeCacheCleanup';
+
 const MANUAL_GUARD_KEY = '__manual_refresh_guard';
 
 export async function forceClientRefresh(): Promise<void> {
@@ -12,19 +14,7 @@ export async function forceClientRefresh(): Promise<void> {
     return;
   }
 
-  // Unregister all service workers
-  if ('serviceWorker' in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    for (const reg of regs) {
-      await reg.unregister();
-    }
-  }
-
-  // Clear all Cache Storage entries
-  if ('caches' in window) {
-    const names = await caches.keys();
-    await Promise.all(names.map(n => caches.delete(n)));
-  }
+  await refreshApplicationCaches();
 
   // Clear all version/guard keys used by bootstrap and main.tsx
   localStorage.removeItem('app-version');

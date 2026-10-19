@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCourseLearning } from '../useCourseLearningFacade';
+import { setOfflineAuthActor } from '@/utils/courseCache';
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'student-a' },
@@ -15,7 +16,7 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 vi.mock('@/hooks/useSwipeGesture', () => ({ useSwipeGesture: () => ({ current: null }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
-vi.mock('@/utils/courseCache', () => ({ cacheCourseData: vi.fn().mockResolvedValue(undefined), getCachedCourseData: vi.fn().mockResolvedValue(null) }));
+vi.mock('@/utils/courseCache', async importOriginal => ({ ...await importOriginal<typeof import('@/utils/courseCache')>(), cacheCourseData: vi.fn().mockResolvedValue(undefined), getCachedCourseData: vi.fn().mockResolvedValue(null) }));
 vi.mock('@/utils/offlineSync', () => ({ setupOfflineSyncListeners: () => () => {} }));
 vi.mock('@/utils/safeInvoke', () => ({ safeInvoke: vi.fn().mockResolvedValue({ error: null }) }));
 vi.mock('@/utils/limitToast', () => ({ showLimitToast: vi.fn() }));
@@ -71,6 +72,7 @@ class Query {
 }
 
 beforeEach(() => {
+  setOfflineAuthActor(null); setOfflineAuthActor('student-a');
   vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear();
   mocks.savedLessons.clear(); mocks.savedProgress = 0; mocks.failSave = false; mocks.lockedNext = false; mocks.mutations.length = 0;
   mocks.from.mockImplementation(table => new Query(table));

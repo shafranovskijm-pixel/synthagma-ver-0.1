@@ -6,7 +6,8 @@ import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { cacheCourseData, getCachedCourseData } from "@/utils/courseCache";
+import { cacheCourseData, getCachedCourseData, captureOfflineActor, isOfflineActorCurrent,
+  rememberOfflineScope, getOfflineScope, forgetOfflineScope, mayUseOfflineFallback } from "@/utils/courseCache";
 import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
 import { parseLessonContent } from "@/components/course-builder/block-editor/parsers";
@@ -35,7 +36,7 @@ export function parseContentToBlocks(content: string): ContentBlock[] {
 
 export function useCourseLearning() {
   const { courseId } = useParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -47,6 +48,13 @@ export function useCourseLearning() {
   const adminView = adminViewRef.current;
   const isAdminView = adminView !== null;
   const effectiveUserId = adminView?.userId || user?.id;
+  const identityKey = JSON.stringify([user?.id, effectiveUserId, courseId, isAdminView, !!authLoading, captureOfflineActor(user?.id)]);
+  const identityRef = useRef({ key: identityKey, generation: 0 });
+  if (identityRef.current.key !== identityKey) identityRef.current = { key: identityKey, generation: identityRef.current.generation + 1 };
+  const requestRef = useRef(0);
+  const [loadedGeneration, setLoadedGeneration] = useState(-1);
+  const [settledGeneration, setSettledGeneration] = useState(-1);
+  const privateVisible = !authLoading && !!user && loadedGeneration === identityRef.current.generation;
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -85,7 +93,7 @@ export function useCourseLearning() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackSending, setFeedbackSending] = useState(false);
 
-  const baseLesson = lessons[currentLessonIndex];
+  const baseLesson = privateVisible ? lessons[currentLessonIndex] : undefined;
   // Merge lazy-loaded content into currentLesson so all downstream consumers
   // (TTS, chat, slider viewer) read a normal lesson shape.
   const currentLesson = baseLesson
@@ -116,19 +124,24 @@ export function useCourseLearning() {
   // Lazy fetch lesson content when opened (and prefetch the next one).
   const loadLessonContent = useCallback(async (lessonId: string) => {
     if (!lessonId) return;
+    const generation = identityRef.current.generation;
+    const actorId = user?.id;
+    const actorRevision = captureOfflineActor(actorId);
+    const current = () => generation === identityRef.current.generation && !!actorId && isOfflineActorCurrent(actorId, actorRevision);
     if (contentLoadingRef.current.has(lessonId)) return;
     contentLoadingRef.current.add(lessonId);
     try {
       const { data, error } = await supabase
         .from('lessons').select('content').eq('id', lessonId).maybeSingle();
       if (error) throw error;
+      if (!current()) return;
       setLessonContents(prev => (prev[lessonId] !== undefined ? prev : { ...prev, [lessonId]: (data?.content ?? null) as string | null }));
     } catch (e) {
       console.error('[loadLessonContent] error:', e);
     } finally {
-      contentLoadingRef.current.delete(lessonId);
+      if (current()) contentLoadingRef.current.delete(lessonId);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const cur = lessons[currentLessonIndex];
@@ -242,7 +255,13 @@ export function useCourseLearning() {
     testQuestions: testHook.testQuestions,
   });
 
-  const chatHook = useLessonChat({ course, currentLesson, contentBlocks });
+  const chatGeneration = identityRef.current.generation;
+  const chatActorRevision = captureOfflineActor(user?.id);
+  const chatHook = useLessonChat({
+    contextKey: identityKey,
+    isContextCurrent: () => privateVisible && chatGeneration === identityRef.current.generation && !!user && isOfflineActorCurrent(user.id, chatActorRevision),
+    course: privateVisible ? course : null, currentLesson, contentBlocks,
+  });
 
   const isLessonCompleted = (lessonId: string) => lessonProgress.some(p => p.lesson_id === lessonId && p.completed);
 
@@ -375,7 +394,15 @@ export function useCourseLearning() {
   };
 
   // Data fetching
-  useEffect(() => { if (courseId && user) fetchCourseData(); }, [courseId, user]);
+  useEffect(() => {
+    setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({});
+    setLessonContents({}); setEnrollmentId(null); setCurrentLessonIndex(0);
+    setIsOfflineMode(false); setOfflineCachedAt(undefined); setLoadedGeneration(-1); setSettledGeneration(-1);
+    contentLoadingRef.current = new Set();
+    setLoading(!!user);
+    if (courseId && user && !authLoading) void fetchCourseData();
+    return () => { requestRef.current += 1; };
+  }, [identityKey]);
   useEffect(() => {
     setFeedbackAnswer(''); setFeedbackSent(false);
   }, [currentLesson?.id]);
@@ -385,7 +412,13 @@ export function useCourseLearning() {
       lessonButtonRefs.current[currentLessonIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   }, [currentLessonIndex, isMobile]);
-  useEffect(() => { const cleanup = setupOfflineSyncListeners(); return cleanup; }, []);
+  useEffect(() => {
+    if (!privateVisible || isAdminView) return;
+    const scope = user && effectiveUserId && courseId ? getOfflineScope(user.id, effectiveUserId, 'learner', courseId) : null;
+    if (!scope || !courseId) return;
+    const generation = identityRef.current.generation;
+    const cleanup = setupOfflineSyncListeners(scope, courseId, () => generation === identityRef.current.generation); return cleanup;
+  }, [privateVisible, identityKey, isAdminView]);
 
   // Save time on lesson switch
   const prevLessonIdRef = useRef<string | null>(null);
@@ -419,7 +452,15 @@ export function useCourseLearning() {
   }, [user, enrollmentId, currentLesson?.id, saveLessonTime, isAdminView]);
 
   const fetchCourseData = async () => {
-    if (!courseId) return;
+    if (!courseId || !user || authLoading || !effectiveUserId) return;
+    const generation = identityRef.current.generation;
+    const request = ++requestRef.current;
+    const actorId = user.id;
+    const actorRevision = captureOfflineActor(actorId);
+    if (actorRevision === null) return;
+    const current = () => generation === identityRef.current.generation && request === requestRef.current
+      && isOfflineActorCurrent(actorId, actorRevision);
+    const mode = isAdminView ? 'preview' as const : 'learner' as const;
     const requestedLibraryOnly = typeof window !== "undefined"
       && new URLSearchParams(window.location.search).get("view") === "library";
     try {
@@ -427,6 +468,7 @@ export function useCourseLearning() {
 
       if (requestedLibraryOnly) {
         const shell = await fetchCourseLibraryShell(courseId || "");
+        if (!current()) return;
         setCourse({
           id: shell.courseId,
           title: shell.title,
@@ -439,6 +481,7 @@ export function useCourseLearning() {
         setLessonAttachments({});
         setEnrollmentId(null);
         setIsOfflineMode(false);
+        setLoadedGeneration(generation);
         return;
       }
 
@@ -458,9 +501,11 @@ export function useCourseLearning() {
           : Promise.resolve({ data: null, error: null }),
         supabase.from('course_modules').select('id, order_index').eq('course_id', courseId).order('order_index'),
       ]);
+      if (!current()) return;
       if (courseResult.error) throw courseResult.error;
       if (lessonsResult.error) throw lessonsResult.error;
       if (modulesResult.error) throw modulesResult.error;
+      if (enrollmentResult.error) throw enrollmentResult.error;
       const courseData = courseResult.data;
       setCourse(courseData);
       setIsOfflineMode(false);
@@ -468,8 +513,10 @@ export function useCourseLearning() {
       // Skip the video-identification gate when an admin/manager is previewing.
       if (!isAdminView && courseData.skip_video_identification === false && user) {
         const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+        if (!current()) return;
         if (profileData?.organization_id) {
           const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
+          if (!current()) return;
           if (!videoId) {
             toast.error('Требуется видеоидентификация', { description: 'Пройдите видеоидентификацию перед началом курса' });
             navigate('/student');
@@ -487,6 +534,7 @@ export function useCourseLearning() {
             supabase.from("module_access_schedules" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]),
             supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", lookupUserId),
           ]);
+          if (!current()) return;
           const schedMap = new Map<string, string>();
           ((schedRes.data as any[]) || []).forEach((r) => schedMap.set(r.module_id, r.unlock_at));
           const ovrMap = new Map<string, string | null>();
@@ -502,7 +550,13 @@ export function useCourseLearning() {
       setLessons(lessonsData);
 
       const enrollment = enrollmentResult.data;
+      if (!isAdminView && enrollment && !['active', 'completed'].includes(enrollment.status || '')) {
+        forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
+        setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null); setLoadedGeneration(-1);
+        toast.error('Доступ к курсу не подтверждён'); navigate('/student'); return;
+      }
       if (!enrollment) {
+        forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
         if (isAdminView) {
           // Admin preview: continue without enrollment so admin can browse the course content.
           toast.info('Просмотр курса в режиме администратора', { description: 'Прогресс не сохраняется' });
@@ -516,6 +570,7 @@ export function useCourseLearning() {
       if (!isAdminView && enrollment && (enrollment as Record<string, unknown>).expires_at) {
         const expiresAt = new Date((enrollment as Record<string, unknown>).expires_at as string);
         if (expiresAt < new Date() && enrollment.status !== 'completed') {
+          forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
           toast.error('Доступ к курсу истёк', { description: 'Срок доступа к этому курсу закончился. Обратитесь к администратору.' });
           navigate('/student');
           return;
@@ -527,6 +582,7 @@ export function useCourseLearning() {
         // Don't write access logs in admin preview mode.
         if (!isAdminView && user) {
           const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+          if (!current()) return;
           supabase.from('course_access_log').insert({
             user_id: user.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
           }).then(() => {});
@@ -542,7 +598,9 @@ export function useCourseLearning() {
           supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', lookupUserId).in('lesson_id', courseLessonIds),
           supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
         ]);
-        if (attachmentsResult.error) console.error('Error fetching lesson attachments:', attachmentsResult.error);
+        if (!current()) return;
+        if (progressResult.error) throw progressResult.error;
+        if (attachmentsResult.error) throw attachmentsResult.error;
         progressData = (progressResult.data || []) as LessonProgress[];
         setLessonProgress(progressData);
         for (const a of (attachmentsResult.data || [])) {
@@ -554,10 +612,14 @@ export function useCourseLearning() {
         setLessonProgress([]);
       }
 
-      if (courseId) {
-        cacheCourseData(courseId, { ...courseData, _lessonOrderVersion: COURSE_LESSON_ORDER_VERSION }, lessonsData, progressData, attMap).catch(() => {});
+      if (current()) {
+        const scope = rememberOfflineScope({ actorId, effectiveUserId, mode, organizationId: courseData.organization_id }, courseId, actorRevision);
+        // Preview without an actual target enrollment remains online-only.
+        if (scope && enrollment) cacheCourseData(scope, courseId, { ...courseData, _lessonOrderVersion: COURSE_LESSON_ORDER_VERSION }, lessonsData, progressData, attMap).catch(() => {});
+        setLoadedGeneration(generation);
       }
     } catch (error) {
+      if (!current()) return;
       console.error('Error fetching course:', error);
       if (requestedLibraryOnly) {
         setCourse(null);
@@ -571,7 +633,10 @@ export function useCourseLearning() {
         return;
       }
       if (courseId) {
-        const cached = await getCachedCourseData(courseId);
+        if (!mayUseOfflineFallback(error)) forgetOfflineScope(actorId, effectiveUserId, mode, courseId);
+        const scope = mayUseOfflineFallback(error) ? getOfflineScope(actorId, effectiveUserId, mode, courseId) : null;
+        const cached = scope ? await getCachedCourseData(scope, courseId) : null;
+        if (!current()) return;
         const hasKnownOrder = cached && (
           cached.course?._lessonOrderVersion === COURSE_LESSON_ORDER_VERSION ||
           cached.lessons.every((lesson: Lesson) => !lesson.module_id)
@@ -579,13 +644,18 @@ export function useCourseLearning() {
         if (cached && hasKnownOrder) {
           setCourse(cached.course); setLessons(cached.lessons); setLessonProgress(cached.lessonProgress); setLessonAttachments(cached.lessonAttachments);
           setIsOfflineMode(true); setOfflineCachedAt(cached.cachedAt);
+          setEnrollmentId(null); setLoadedGeneration(generation);
           toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
         } else if (cached) {
           setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null);
           toast.error('Подключитесь к Интернету, чтобы обновить порядок модулей курса');
-        } else { toast.error('Ошибка загрузки курса'); }
+        } else {
+          setCourse(null); setLessons([]); setLessonProgress([]); setLessonAttachments({}); setEnrollmentId(null);
+          setLoadedGeneration(-1);
+          toast.error('Подключитесь к Интернету, чтобы подтвердить доступ к курсу');
+        }
       } else { toast.error('Ошибка загрузки курса'); }
-    } finally { setLoading(false); }
+    } finally { if (current()) { setLoading(false); setSettledGeneration(generation); } }
   };
 
   // Swipe gestures
@@ -609,8 +679,10 @@ export function useCourseLearning() {
   const getLessonIcon = (type: string) => type;
 
   return {
-    course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
-    lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
+    course: privateVisible ? course : null, lessons: privateVisible ? lessons : [], currentLesson: privateVisible ? currentLesson : undefined,
+    currentLessonIndex, loading: !!user && (!!authLoading || loading || settledGeneration !== identityRef.current.generation), enrollmentId: privateVisible ? enrollmentId : null,
+    lessonProgress: privateVisible ? lessonProgress : [], completedCount: privateVisible ? completedCount : 0,
+    progressPercent: privateVisible ? progressPercent : 0, isMobile, user, courseId, lessonAttachments: privateVisible ? lessonAttachments : {},
     isOfflineMode, offlineCachedAt,
     isAdminView, adminViewStudentName: adminView?.name || '',
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
@@ -618,12 +690,13 @@ export function useCourseLearning() {
     markLessonComplete, resetCourseProgress,
     retryCourseCompletion: () => handleCourseCompletion(testHook.testScore ?? undefined),
     ...testHook,
+    ...(!privateVisible ? { testQuestions: [], allBankQuestions: [], answers: {}, testScore: null, testAttemptId: null, testExplanations: {}, testManualCredit: null } : {}),
     feedbackAnswer, setFeedbackAnswer, feedbackSent, feedbackSending, submitFeedback,
     ...videoHook,
     ...ttsHook,
     ...chatHook,
     contentRef, swipeRef, progressBarSwipeRef, progressBarRef,
     lessonButtonRefs, tooltipLesson, setTooltipLesson, longPressTimeoutRef,
-    contentBlocks, getOptionText, getLessonIcon,
+    contentBlocks: privateVisible ? contentBlocks : [], getOptionText, getLessonIcon,
   };
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
+import { refreshApplicationCaches } from '@/utils/privateRuntimeCacheCleanup';
 
 interface SmartLoadingFallbackProps {
   /** Seconds to wait before showing the recovery UI. Default 10. */
@@ -35,18 +36,7 @@ export function SmartLoadingFallback({
   }, [timeoutSec]);
 
   const purgeAndReload = async () => {
-    try {
-      if ("serviceWorker" in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
-      }
-      if ("caches" in window) {
-        const names = await caches.keys();
-        await Promise.all(names.map((n) => caches.delete(n)));
-      }
-    } catch {
-      // ignore
-    }
+    await refreshApplicationCaches();
     try {
       sessionStorage.removeItem("chunk_reload_done");
       sessionStorage.removeItem("__sw_recovery_attempted");

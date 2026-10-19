@@ -1,4 +1,5 @@
 import { lazy, ComponentType } from "react";
+import { refreshApplicationCaches } from './privateRuntimeCacheCleanup';
 
 /**
  * Wrapper around React.lazy that retries failed dynamic imports, then forces
@@ -13,18 +14,7 @@ import { lazy, ComponentType } from "react";
 const RELOAD_FLAG = "chunk_reload_done";
 
 async function purgeCachesAndSW(): Promise<void> {
-  try {
-    if ("serviceWorker" in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
-    }
-    if ("caches" in window) {
-      const names = await caches.keys();
-      await Promise.all(names.map((n) => caches.delete(n)));
-    }
-  } catch {
-    // ignore — best effort
-  }
+  await refreshApplicationCaches();
 }
 
 export function lazyWithRetry<T extends ComponentType<any>>(

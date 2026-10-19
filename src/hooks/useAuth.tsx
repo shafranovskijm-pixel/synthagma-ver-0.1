@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback, Re
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getBaseUrl } from '@/utils/getBaseUrl';
+import { setOfflineAuthActor, observeOfflineAccess } from '@/utils/courseCache';
+import { clearPrivateRuntimeCaches } from '@/utils/privateRuntimeCacheCleanup';
 
 interface AuthContextType {
   user: User | null;
@@ -53,12 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applySession = useCallback((nextSession: Session | null) => {
     const nextUserId = nextSession?.user.id ?? null;
+    setOfflineAuthActor(nextUserId);
     if (authUserId.current !== nextUserId) {
       authRevision.current += 1;
       authUserId.current = nextUserId;
       roleFetchInFlight.current = null;
       setUserRole(null);
       localStorage.removeItem('user_role');
+      void clearPrivateRuntimeCaches();
     }
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
@@ -86,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted.current || authRevision.current !== revision || authUserId.current !== userId) return null;
         if (data && !error) {
           const role = data as AuthContextType['userRole'];
+          observeOfflineAccess(userId, `server-role:${role}`);
           setUserRole(role);
           localStorage.setItem('user_role', role!);
           return role;
@@ -135,6 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'user_role' && authUserId.current) {
         const newRole = e.newValue as AuthContextType['userRole'];
+        // A cross-tab role hint may invalidate old access, never validate a tenant.
+        observeOfflineAccess(authUserId.current, `role-hint:${newRole}`);
         setUserRole(newRole);
       }
     };
@@ -216,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       disposed = true;
+      setOfflineAuthActor(null);
       mounted.current = false;
       authRevision.current += 1;
       roleFetchInFlight.current = null;
@@ -293,8 +301,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Invalidate already-running role/session lookups before the SDK emits logout.
     authRevision.current += 1;
     roleFetchInFlight.current = null;
-    await supabase.auth.signOut();
     applySession(null);
+    try { await supabase.auth.signOut(); }
+    finally { await clearPrivateRuntimeCaches(); }
     // Сбрасываем гостевую сессию виджета поддержки, чтобы после logout
     // не «наследовалась» переписка предыдущего гостя в этом браузере.
     localStorage.removeItem('sintagma_support_guest_token');
