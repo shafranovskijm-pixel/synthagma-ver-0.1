@@ -7,6 +7,7 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { TypewriterText } from "@/components/ui/TypewriterText";
+import { PLATFORM_CONTACTS } from "../../supabase/functions/_shared/platform-support-contacts";
 import missionImg from "/images/about/mission.png";
 import innovationImg from "/images/about/innovation.png";
 import complianceImg from "/images/about/compliance.png";
@@ -254,14 +255,14 @@ const About = () => {
                   <div className="pt-4 border-t border-border space-y-4">
                     <div className="flex items-center gap-3">
                       <Mail className="w-5 h-5 text-muted-foreground" />
-                      <a href="mailto:shafranovskij.m@gmail.com" className="text-primary hover:underline">
-                        shafranovskij.m@gmail.com
+                      <a href={`mailto:${PLATFORM_CONTACTS.ownerEmail}`} className="text-primary hover:underline">
+                        {PLATFORM_CONTACTS.ownerEmail}
                       </a>
                     </div>
                     <div className="flex items-center gap-3">
                       <Phone className="w-5 h-5 text-muted-foreground" />
-                      <a href="tel:89147213424" className="text-primary hover:underline">
-                        +7 (914) 721-34-24
+                      <a href={PLATFORM_CONTACTS.primaryPhone.href} className="text-primary hover:underline">
+                        {PLATFORM_CONTACTS.primaryPhone.internationalDisplay}
                       </a>
                     </div>
                     <div className="flex items-center gap-3">
