@@ -1,0 +1,316 @@
+{
+  "release": "uc-enrollment-delete-20261019",
+  "preparedOnly": true,
+  "migrationCount": 1,
+  "batchSha256": "489f3b3426c183d4632830b77800f88a2d54c3bba49722702f5d077957d88837",
+  "newlineHashNormalization": "CRLF to LF only; executable and ledger store canonical LF source",
+  "migrations": [
+    {
+      "file": "20261018113000_uc_enrollment_delete_boundaries.sql",
+      "version": "20261018113000",
+      "name": "uc_enrollment_delete_boundaries",
+      "sourceSha256": "349e756ae4160eec348c95b914089f0f99b04b41cd9625ee6019487172c1ab71",
+      "sourceMd5": "b6f69536e3619a3c3fd2084b10447151",
+      "executableMd5": "b6f69536e3619a3c3fd2084b10447151"
+    }
+  ],
+  "priorMigrations": [
+    {
+      "file": "20261018100000_uc_document_access_boundaries.sql",
+      "version": "20261018100000",
+      "name": "uc_document_access_boundaries",
+      "sourceMd5": "455f5c4069200f225124bfd58adc948c"
+    },
+    {
+      "file": "20261018101000_uc_signature_integrity.sql",
+      "version": "20261018101000",
+      "name": "uc_signature_integrity",
+      "sourceMd5": "1a7d1d39332388314cc8ebf0eaaef885"
+    },
+    {
+      "file": "20261018102000_uc_document_versions.sql",
+      "version": "20261018102000",
+      "name": "uc_document_versions",
+      "sourceMd5": "485580713e67f5bbf40210836f757a8b"
+    },
+    {
+      "file": "20261018103000_uc_document_cleanup_scheduler.sql",
+      "version": "20261018103000",
+      "name": "uc_document_cleanup_scheduler",
+      "sourceMd5": "5d690c2e4284a79f12901a7deabdf736"
+    },
+    {
+      "file": "20261018104000_uc_document_staff_scope.sql",
+      "version": "20261018104000",
+      "name": "uc_document_staff_scope",
+      "sourceMd5": "c5d0538638fbaf0343612c13e7583510"
+    },
+    {
+      "file": "20261018105000_uc_document_action_permissions.sql",
+      "version": "20261018105000",
+      "name": "uc_document_action_permissions",
+      "sourceMd5": "6563e5305b0ea46bfead8f8098af4e3f"
+    },
+    {
+      "file": "20261018106000_uc_gorel_draft_caller.sql",
+      "version": "20261018106000",
+      "name": "uc_gorel_draft_caller",
+      "sourceMd5": "8e953d5f20050d66ead5454349445b7a"
+    },
+    {
+      "file": "20261018107000_uc_document_reminder_scheduler.sql",
+      "version": "20261018107000",
+      "name": "uc_document_reminder_scheduler",
+      "sourceMd5": "612d9b242bae5289b34b8598fc1361e4"
+    },
+    {
+      "file": "20261018108000_uc_education_compliance_profile.sql",
+      "version": "20261018108000",
+      "name": "uc_education_compliance_profile",
+      "sourceMd5": "a840381f437b4529d13a466636acf512"
+    },
+    {
+      "file": "20261018109000_uc_signature_token_files.sql",
+      "version": "20261018109000",
+      "name": "uc_signature_token_files",
+      "sourceMd5": "f61b7f838928467ae28aa0a6602810c1"
+    },
+    {
+      "file": "20261018110000_uc_document_internal_review.sql",
+      "version": "20261018110000",
+      "name": "uc_document_internal_review",
+      "sourceMd5": "de6de92f55d7d8478133678026097b9a"
+    },
+    {
+      "file": "20261018111000_uc_program_facts.sql",
+      "version": "20261018111000",
+      "name": "uc_program_facts",
+      "sourceMd5": "e78179ae3042db206bd562914c87442d"
+    },
+    {
+      "file": "20261018112000_uc_student_frdo_write_boundaries.sql",
+      "version": "20261018112000",
+      "name": "uc_student_frdo_write_boundaries",
+      "sourceMd5": "c03613825507e6f101503f335ee22813"
+    }
+  ],
+  "previousReleaseManifest": {
+    "path": "docs/releases/sintagma-production/uc-student-frdo-write-20261019/release-manifest.json",
+    "sourceSha256": "4a9418590b780982532519476d5bf095b4fe8665b3a5fd8bca03939a68f15091"
+  },
+  "preservedTables": [
+    "public.org_documents",
+    "public.incoming_documents",
+    "public.education_document_records",
+    "public.document_issuance_log",
+    "public.program_documents",
+    "public.program_folders",
+    "public.program_categories",
+    "public.program_training_plans",
+    "public.frdo_signed_documents",
+    "public.student_documents",
+    "public.student_identity_documents",
+    "public.company_documents",
+    "public.group_documents",
+    "public.document_signatures",
+    "public.signature_revisions",
+    "public.signature_comments",
+    "public.pep_agreements",
+    "public.org_document_versions",
+    "public.document_number_sequences",
+    "public.organizations",
+    "public.profiles",
+    "public.companies",
+    "public.enrollments",
+    "storage.objects",
+    "storage.buckets",
+    "public.org_staff",
+    "public.admin_staff",
+    "public.user_roles",
+    "public.courses",
+    "public.lessons",
+    "public.student_groups",
+    "public.student_group_memberships",
+    "public.enrollment_history",
+    "public.test_attempts",
+    "public.lesson_progress",
+    "public.student_frdo_data",
+    "public.journal_instances",
+    "public.journal_entries",
+    "public.group_class_journal_marks",
+    "public.org_contracts",
+    "public.goreltech_document_operations",
+    "public.org_staff_document_groups",
+    "public.org_staff_document_scopes",
+    "public.org_staff_document_scope_events",
+    "public.uc_goreltech_document_stages",
+    "public.organization_education_profiles",
+    "public.organization_education_profile_history",
+    "public.organization_document_applicability_decisions",
+    "public.organization_document_applicability_history",
+    "public.uc_signature_file_requests",
+    "public.org_document_write_tokens",
+    "public.org_document_reviews",
+    "public.org_document_review_comments",
+    "public.org_document_review_events",
+    "public.org_document_review_requests",
+    "public.program_fact_states",
+    "public.program_fact_versions",
+    "public.course_program_bindings",
+    "public.group_program_bindings",
+    "public.group_program_enrollment_snapshots",
+    "public.program_fact_events",
+    "public.program_fact_requests",
+    "public.education_document_program_sources",
+    "public.uc_student_frdo_write_contexts",
+    "public.video_identifications"
+  ],
+  "dependencies": [
+    {
+      "signature": "public.uc_student_frdo_staff_org_allowed(uuid,uuid,text)",
+      "definition_md5": "541b10208fdf1b4788ce4eae588110a6"
+    },
+    {
+      "signature": "public.uc_document_scope_allowed(uuid,uuid,uuid)",
+      "definition_md5": "2a7407e7d178c7561b1d390f0884c6b6"
+    },
+    {
+      "signature": "public.uc_platform_document_action_allowed(uuid,text)",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d"
+    },
+    {
+      "signature": "public.cancel_course_assignment(uuid,uuid)",
+      "definition_md5": "ef93d58bd6e7904d622035799681bf67"
+    },
+    {
+      "signature": "public.admin_delete_organization(uuid)",
+      "definition_md5": "96cbed53e3ffbf14bea30f6c8be322bc"
+    },
+    {
+      "signature": "public.account_deletion_erase_data(uuid,text)",
+      "definition_md5": "d0279bdfbfc4d97a1f0b32c47cc475ab"
+    },
+    {
+      "signature": "public.csz_guard_enrollment()",
+      "definition_md5": "292b6f3a1e462bd6a2e45689bfc22436"
+    }
+  ],
+  "unchangedPriorFunctionBodiesExceptReviewed": [
+    "public.admin_delete_organization(uuid): add current global write entry fence only; preserve original remainder, owner and ACL"
+  ],
+  "expectedFunctions": [
+    {
+      "signature": "can_delete_course_enrollment(uuid)",
+      "definition_md5": "606c0d6eafe831ad7f98321f84b5df09",
+      "authenticated": true,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_capture_enrollment_delete_parent()",
+      "definition_md5": "92daddb33e07e4f417504fd9d0c6e2c1",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_cleanup_enrollment_delete_parent()",
+      "definition_md5": "589f4dc53bb5bc97130736622025441a",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_enrollment_delete_actor_writable()",
+      "definition_md5": "3f85c6373e60eef5e38fb98e46d5444f",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_enrollment_delete_has_witness(uuid,uuid,uuid)",
+      "definition_md5": "ee28fb97a36686314030ea24c2635f4d",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_enrollment_delete_live_allowed(uuid,uuid,uuid)",
+      "definition_md5": "a27545081731036de4f71afc9e55fba3",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    },
+    {
+      "signature": "uc_guard_enrollment_delete()",
+      "definition_md5": "b81522835dc5b307d084fcf4006a2830",
+      "authenticated": false,
+      "anon": false,
+      "service_role": false
+    }
+  ],
+  "expectedChangedFunctions": [
+    {
+      "signature": "admin_delete_organization(uuid)",
+      "definition_md5": "692c46fc05ff9f1ddcdd7c75e7584ffb"
+    }
+  ],
+  "expectedTables": [
+    {
+      "table": "uc_enrollment_delete_witnesses",
+      "schemaMd5": "71d9b41e51b809a8880e904207c87114"
+    }
+  ],
+  "expectedPolicies": [
+    {
+      "policyname": "uc_enrollment_delete_boundary",
+      "definition_md5": "a31b5cbbfd0c7af286e923762ba1759c"
+    }
+  ],
+  "expectedTriggers": [
+    {
+      "schema_name": "public",
+      "table_name": "courses",
+      "name": "uc_enrollment_delete_parent_before",
+      "definition_md5": "82b665b7659e48a8c543d786d8d1c695",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "courses",
+      "name": "zzz_uc_enrollment_delete_parent_cleanup",
+      "definition_md5": "df18b0094ec83af22f8dc6b7a3ad1c88",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "enrollments",
+      "name": "uc_enrollment_delete_guard",
+      "definition_md5": "dd1cbc2823a43b9e65ac880606b8fc50",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organizations",
+      "name": "uc_enrollment_delete_parent_before",
+      "definition_md5": "38eba9491bc4b6cf464f3d7c89a821d5",
+      "enabled": "O"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "organizations",
+      "name": "zzz_uc_enrollment_delete_parent_cleanup",
+      "definition_md5": "f97103df2bf6a3091368858a669ca911",
+      "enabled": "O"
+    }
+  ],
+  "productFiles": [],
+  "edgeFunctions": [],
+  "edgeRuntimeGraph": [],
+  "deploymentOrder": [
+    "Read-only preflight: exact100-112 ledger, previous postcheck, authority and captured issuance definitions",
+    "Submit entire113 transaction once; require every postcheck flag true and preservation guards passed",
+    "No UI, Edge, file or learning workflow deployment; preserve all old runtime code",
+    "Root-owned rollback-only production QA then real browser acceptance; no PEP, SMTP, real issuance or backfill during release"
+  ]
+}

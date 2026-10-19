@@ -1,0 +1,439 @@
+{
+  "readOnlyProductionMetadata": true,
+  "personalRowsRead": false,
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_erase_data(p_request_id uuid, p_receipt_hash text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'storage'\nAS $function$\nDECLARE j public.account_deletion_jobs%ROWTYPE; u uuid; r record; v_org uuid; current_snapshot jsonb;\nBEGIN\n SELECT * INTO j FROM public.account_deletion_jobs WHERE id=p_request_id AND receipt_hash=p_receipt_hash FOR UPDATE;\n IF NOT FOUND THEN RETURN jsonb_build_object('code','INVALID_RECEIPT'); END IF;\n IF j.consent_version IS DISTINCT FROM 'full-personal-data-v1' THEN RETURN jsonb_build_object('code','CONSENT_REQUIRED'); END IF;\n IF j.state='deleted' THEN RETURN jsonb_build_object('erased',true); END IF;\n IF j.state<>'cleanup_pending' THEN RETURN jsonb_build_object('code','NOT_CONFIRMED'); END IF;\n u:=j.user_id;\n PERFORM pg_advisory_xact_lock(hashtextextended(u::text,42007));\n IF jsonb_array_length(public.account_deletion_files(u))>0 OR EXISTS(SELECT 1 FROM storage.objects o JOIN jsonb_array_elements(j.files) f ON f->>'bucket'=o.bucket_id AND f->>'path'=o.name) THEN RETURN jsonb_build_object('code','DELETION_UNAVAILABLE'); END IF;\n current_snapshot:=public.account_deletion_snapshot(u);\n IF jsonb_array_length(current_snapshot->'blockers')>0 THEN RETURN jsonb_build_object('code','PLAN_CHANGED'); END IF;\n -- Delete the enrollment before lesson progress: the live progress trigger\n -- then has no enrollment to reset. CSZ/issued/shared cases failed in preview.\n PERFORM set_config('sintagma.account_deletion_erase_user',u::text,true);\n DELETE FROM public.audit_logs WHERE entity_id=u::text OR (entity_type='enrollment' AND entity_id IN(SELECT id::text FROM public.enrollments WHERE user_id=u));\n UPDATE public.audit_logs SET user_id='00000000-0000-0000-0000-000000000000',user_name=NULL,ip_address=NULL,user_agent=NULL WHERE user_id=u;\n UPDATE public.role_audit_log SET performed_by=NULL,performed_by_name=NULL,details=CASE WHEN details->>'from_user_id'=u::text THEN details-'from_user_id' ELSE details END WHERE performed_by=u AND target_user_id IS DISTINCT FROM u;\n UPDATE public.student_deletion_log SET deleted_by=NULL,deleted_by_name=NULL,deleted_by_email=NULL WHERE deleted_by=u AND student_id IS DISTINCT FROM u;\n DELETE FROM public.final_test_photo_challenges WHERE user_id=u;\n DELETE FROM public.test_attempts WHERE user_id=u;\n DELETE FROM public.test_attempt_start_requests WHERE user_id=u;\n DELETE FROM public.test_attempt_sessions WHERE user_id=u;\n DELETE FROM public.homework_submissions WHERE student_id=u;\n DELETE FROM public.journal_entries WHERE user_id=u;\n DELETE FROM public.group_class_journal_marks WHERE user_id=u;\n DELETE FROM public.training_plans WHERE user_id=u;\n DELETE FROM public.student_group_memberships WHERE user_id=u;\n DELETE FROM public.student_roster_removals WHERE user_id=u;\n DELETE FROM public.enrollments WHERE user_id=u;\n DELETE FROM public.lesson_progress WHERE user_id=u;\n -- on_enrollment_delete inserts an event; remove it after that trigger.\n DELETE FROM public.enrollment_history WHERE user_id=u;\n DELETE FROM public.student_deletion_log WHERE student_id=u;\n DELETE FROM public.support_messages WHERE conversation_id IN (SELECT id FROM public.support_conversations WHERE user_id=u) OR sender_user_id=u;\n DELETE FROM public.support_conversations WHERE user_id=u;\n DELETE FROM public.document_signatures WHERE (sender_user_id=u OR recipient_user_id=u) AND signed_at IS NULL AND sender_signed_at IS NULL AND status<>'signed';\n DELETE FROM public.consent_documents WHERE student_user_id=u;\n DELETE FROM public.org_contracts WHERE student_user_id=u AND approved_at IS NULL AND signed_at IS NULL AND status IN ('draft','cancelled');\n FOR r IN SELECT * FROM (VALUES\n  ('admin_org_messages','sender_user_id'),\n  ('admin_staff','user_id'),\n  ('ai_prompt_templates','user_id'),\n  ('ai_tutor_sessions','user_id'),\n  ('ai_usage_log','user_id'),\n  ('call_log_listens','listener_user_id'),\n  ('chat_group_members','user_id'),\n  ('chat_group_messages','sender_user_id'),\n  ('chat_messages','user_id'),\n  ('chat_notification_settings','user_id'),\n  ('client_error_logs','user_id'),\n  ('company_staff','user_id'),\n  ('course_access_log','user_id'),\n  ('course_reminders','user_id'),\n  ('course_requests','user_id'),\n  ('course_review_grants','user_id'),\n  ('data_subject_requests','user_id'),\n  ('exolve_sip_accounts','user_id'),\n  ('final_test_photo_challenges','user_id'),\n  ('module_access_overrides','user_id'),\n  ('notification_preferences','user_id'),\n  ('org_general_messages','sender_user_id'),\n  ('org_notifications','user_id'),\n  ('org_staff','user_id'),\n  ('org_student_messages','sender_user_id'),\n  ('org_student_messages','student_user_id'),\n  ('organization_offer_acceptances','user_id'),\n  ('partner_applications','user_id'),\n  ('pending_enrollments','user_id'),\n  ('pep_agreements','user_id'),\n  ('pipeline_runs','user_id'),\n  ('registration_attempts','user_id'),\n  ('student_consents','user_id'),\n  ('student_frdo_data','user_id'),\n  ('student_identity_documents','user_id'),\n  ('student_login_history','user_id'),\n  ('student_login_tokens','user_id'),\n  ('student_notifications','user_id'),\n  ('support_requests','user_id'),\n  ('testimonials','user_id'),\n  ('user_achievements','user_id'),\n  ('video_identifications','user_id'),\n  ('webinar_participants','user_id')\n ) x(t,c) LOOP\n  EXECUTE format('DELETE FROM public.%I WHERE %I=$1',r.t,r.c) USING u;\n END LOOP;\n -- Nullable author references are attribution, not ownership of client data.\n FOR r IN SELECT * FROM (VALUES\n  ('admin_generated_documents','created_by'),\n  ('ai_settings','updated_by'),\n  ('app_settings','updated_by'),\n  ('company_documents','uploaded_by'),\n  ('consent_documents','created_by'),\n  ('course_review_grants','revoked_by'),\n  ('enrollment_history','performed_by'),\n  ('exolve_sip_accounts','created_by'),\n  ('landing_content','updated_by'),\n  ('marketplace_settings','updated_by'),\n  ('organization_comments','created_by'),\n  ('organization_reminders','created_by'),\n  ('platform_announcements','created_by'),\n  ('sales_tasks','assigned_user_id'),\n  ('skillspace_import_jobs','created_by'),\n  ('staff_invitations','accepted_user_id'),\n  ('student_login_tokens','created_by'),\n  ('video_identifications','verified_by')\n ) x(t,c) LOOP\n  EXECUTE format('UPDATE public.%I SET %I=NULL WHERE %I=$1',r.t,r.c,r.c) USING u;\n END LOOP;\n DELETE FROM public.user_roles WHERE user_id=u;\n DELETE FROM public.profiles WHERE user_id=u;\n -- org_staff DELETE creates a role-audit event: clear it after all staff/profile\n -- triggers; never leave the target UUID hidden in its own account history.\n DELETE FROM public.role_audit_log WHERE target_user_id=u;\n DELETE FROM public.audit_logs WHERE entity_id=u::text;\n IF (j.snapshot->>'emptyOrganization')::boolean THEN\n  v_org:=(j.snapshot->>'organizationId')::uuid;\n  -- Recheck under the organization lock; a concurrent invitation/registration\n  -- must never be swept into this operation.\n  PERFORM 1 FROM public.organizations WHERE id=v_org FOR UPDATE;\n  IF EXISTS(SELECT 1 FROM public.profiles WHERE organization_id=v_org AND user_id<>u) OR EXISTS(SELECT 1 FROM public.org_staff WHERE organization_id=v_org) THEN RAISE EXCEPTION 'Organization changed during deletion'; END IF;\n  DELETE FROM public.organizations WHERE id=v_org;\n END IF;\n IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.account_deletion_personal_row_counts(u)) n WHERE (n->>'count')::bigint>0) THEN RAISE EXCEPTION 'Personal data erasure is incomplete'; END IF;\n UPDATE public.account_deletion_jobs SET data_erased=true WHERE id=j.id;\n RETURN jsonb_build_object('erased',true);\nEND;$function$\n",
+      "md5": "d0279bdfbfc4d97a1f0b32c47cc475ab",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "account_deletion_erase_data(uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_delete_organization(_org_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_course_ids uuid[];\n  v_company_ids uuid[];\n  v_mp_course_ids uuid[];\nBEGIN\n  -- Permission check: only global admins\n  IF NOT EXISTS (\n    SELECT 1 FROM public.user_roles\n    WHERE user_id = auth.uid() AND role = 'admin'\n  ) THEN\n    RAISE EXCEPTION 'Only admins can delete organizations';\n  END IF;\n\n  SELECT array_agg(id) INTO v_course_ids FROM public.courses WHERE organization_id = _org_id;\n  SELECT array_agg(id) INTO v_company_ids FROM public.companies WHERE organization_id = _org_id;\n  SELECT array_agg(id) INTO v_mp_course_ids FROM public.marketplace_courses WHERE organization_id = _org_id;\n\n  -- Marketplace orders (org as buyer or via its marketplace courses)\n  DELETE FROM public.marketplace_orders WHERE buyer_organization_id = _org_id;\n  IF v_mp_course_ids IS NOT NULL THEN\n    DELETE FROM public.marketplace_orders WHERE marketplace_course_id = ANY(v_mp_course_ids);\n    DELETE FROM public.marketplace_course_comments WHERE marketplace_course_id = ANY(v_mp_course_ids);\n  END IF;\n\n  -- Course-scoped data (most tables CASCADE on courses but be explicit for safety)\n  IF v_course_ids IS NOT NULL THEN\n    DELETE FROM public.enrollments WHERE course_id = ANY(v_course_ids);\n    DELETE FROM public.course_reminders WHERE course_id = ANY(v_course_ids);\n    DELETE FROM public.course_documents WHERE course_id = ANY(v_course_ids);\n    DELETE FROM public.course_access_log WHERE course_id = ANY(v_course_ids);\n    DELETE FROM public.lessons WHERE course_id = ANY(v_course_ids);\n  END IF;\n\n  -- Company-scoped data\n  IF v_company_ids IS NOT NULL THEN\n    UPDATE public.profiles SET company_id = NULL WHERE company_id = ANY(v_company_ids);\n    DELETE FROM public.company_requests WHERE company_id = ANY(v_company_ids);\n    DELETE FROM public.company_documents WHERE company_id = ANY(v_company_ids);\n    DELETE FROM public.training_plans WHERE company_id = ANY(v_company_ids);\n    DELETE FROM public.company_staff WHERE company_id = ANY(v_company_ids);\n    DELETE FROM public.staff_invitations WHERE company_id = ANY(v_company_ids);\n    DELETE FROM public.role_audit_log WHERE company_id = ANY(v_company_ids);\n    UPDATE public.registration_links SET company_id = NULL WHERE company_id = ANY(v_company_ids);\n    UPDATE public.course_reminders SET company_id = NULL WHERE company_id = ANY(v_company_ids);\n    UPDATE public.webinars SET company_id = NULL WHERE company_id = ANY(v_company_ids);\n    UPDATE public.incoming_documents SET related_company_id = NULL WHERE related_company_id = ANY(v_company_ids);\n    DELETE FROM public.companies WHERE id = ANY(v_company_ids);\n  END IF;\n\n  -- Detach profiles from org\n  UPDATE public.profiles SET organization_id = NULL WHERE organization_id = _org_id;\n\n  -- Tables without CASCADE on organization_id\n  DELETE FROM public.training_plans WHERE organization_id = _org_id;\n  DELETE FROM public.ai_usage_log WHERE organization_id = _org_id;\n\n  -- Final delete (CASCADE handles the rest)\n  DELETE FROM public.organizations WHERE id = _org_id;\nEND;\n$function$\n",
+      "md5": "96cbed53e3ffbf14bea30f6c8be322bc",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "admin_delete_organization(uuid)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.cancel_course_assignment(p_enrollment_id uuid, p_organization_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\n SET lock_timeout TO '3s'\nAS $function$\nDECLARE\n  v_actor uuid := auth.uid();\n  v_enrollment public.enrollments%ROWTYPE;\n  v_deleted_id uuid;\n  v_relation record;\n  v_has_records boolean;\nBEGIN\n  IF v_actor IS NULL OR p_organization_id IS NULL OR NOT coalesce((\n    public.has_role(v_actor, 'admin'::public.app_role)\n    OR public.is_org_owner(v_actor, p_organization_id)\n    OR (\n      EXISTS (SELECT 1 FROM public.org_staff os\n        WHERE os.user_id = v_actor AND os.organization_id = p_organization_id\n          AND (os.expires_at IS NULL OR os.expires_at > now()))\n      AND public.has_org_staff_permission(v_actor, p_organization_id, 'students.write')\n    )\n  ), false) THEN\n    RAISE EXCEPTION 'assignment_forbidden' USING ERRCODE = '42501';\n  END IF;\n  -- Guards must observe writes that completed while waiting for the locks.\n  IF current_setting('transaction_isolation') <> 'read committed' THEN\n    RAISE EXCEPTION 'assignment_requires_read_committed' USING ERRCODE = '25000';\n  END IF;\n  -- These learning tables have no enrollment FK. Briefly prevent concurrent\n  -- inserts/updates while checking them; a busy learner causes a retry, not loss.\n  LOCK TABLE public.lessons, public.lesson_progress, public.test_attempts IN SHARE MODE;\n  FOR v_relation IN\n    SELECT c.oid::regclass AS relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n      WHERE n.nspname = 'public' AND c.relname IN (\n        'test_attempt_sessions', 'homework_submissions', 'course_access_log', 'education_document_records'\n      ) AND c.relkind IN ('r', 'p') ORDER BY c.oid\n  LOOP\n    EXECUTE format('LOCK TABLE %s IN SHARE MODE', v_relation.relation);\n  END LOOP;\n  -- Block concurrent changes to the incoming FK set while inspecting it.\n  LOCK TABLE public.enrollments IN ROW EXCLUSIVE MODE;\n  SELECT e.* INTO v_enrollment FROM public.enrollments e\n    JOIN public.courses c ON c.id = e.course_id\n    JOIN public.profiles p ON p.user_id = e.user_id\n    WHERE e.id = p_enrollment_id AND c.organization_id = p_organization_id\n      AND p.organization_id = p_organization_id\n    FOR UPDATE OF e FOR SHARE OF c, p;\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'assignment_not_found' USING ERRCODE = 'P0002';\n  END IF;\n  -- started_at is the assignment date, populated by DEFAULT now(); it is not\n  -- proof that a learner started studying.\n  IF coalesce(v_enrollment.progress, 0) <> 0 OR coalesce(v_enrollment.time_spent, 0) <> 0\n    OR v_enrollment.status IS DISTINCT FROM 'active' OR v_enrollment.completed_at IS NOT NULL\n    OR EXISTS (SELECT 1 FROM public.lesson_progress lp JOIN public.lessons l ON l.id = lp.lesson_id\n      WHERE lp.user_id = v_enrollment.user_id AND l.course_id = v_enrollment.course_id)\n    OR EXISTS (SELECT 1 FROM public.test_attempts ta JOIN public.lessons l ON l.id = ta.lesson_id\n      WHERE ta.user_id = v_enrollment.user_id AND l.course_id = v_enrollment.course_id) THEN\n    RAISE EXCEPTION 'assignment_has_learning_history' USING ERRCODE = '23514';\n  END IF;\n  FOR v_relation IN\n    SELECT c.oid::regclass AS relation, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n      WHERE n.nspname = 'public' AND c.relname IN ('test_attempt_sessions', 'homework_submissions', 'course_access_log')\n        AND c.relkind IN ('r', 'p') ORDER BY c.oid\n  LOOP\n    IF v_relation.relname = 'test_attempt_sessions' THEN\n      EXECUTE format('SELECT EXISTS (SELECT 1 FROM %s r JOIN public.lessons l ON l.id = r.lesson_id WHERE r.user_id = $1 AND l.course_id = $2)', v_relation.relation)\n        INTO v_has_records USING v_enrollment.user_id, v_enrollment.course_id;\n    ELSIF v_relation.relname = 'homework_submissions' THEN\n      EXECUTE format('SELECT EXISTS (SELECT 1 FROM %s WHERE student_id = $1 AND course_id = $2)', v_relation.relation)\n        INTO v_has_records USING v_enrollment.user_id, v_enrollment.course_id;\n    ELSE\n      EXECUTE format('SELECT EXISTS (SELECT 1 FROM %s WHERE user_id = $1 AND course_id = $2)', v_relation.relation)\n        INTO v_has_records USING v_enrollment.user_id, v_enrollment.course_id;\n    END IF;\n    IF v_has_records THEN\n      RAISE EXCEPTION 'assignment_has_learning_history' USING ERRCODE = '23514';\n    END IF;\n  END LOOP;\n  -- Also preserve historical documents whose enrollment_id was cleared earlier.\n  IF to_regclass('public.education_document_records') IS NOT NULL THEN\n    EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.education_document_records WHERE user_id = $1 AND course_id = $2)'\n      INTO v_has_records USING v_enrollment.user_id, v_enrollment.course_id;\n    IF v_has_records THEN\n      RAISE EXCEPTION 'assignment_has_dependent_records' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  -- Inspect every incoming FK, including SET NULL and future relations. The row\n  -- lock prevents a concurrent child insert from passing its FK check.\n  FOR v_relation IN\n    SELECT con.conkey, con.confkey, ns.nspname, rel.relname, att.attname\n      FROM pg_constraint con\n      JOIN pg_class rel ON rel.oid = con.conrelid\n      JOIN pg_namespace ns ON ns.oid = rel.relnamespace\n      LEFT JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = con.conkey[1]\n      WHERE con.contype = 'f' AND con.confrelid = 'public.enrollments'::regclass\n  LOOP\n    IF cardinality(v_relation.conkey) <> 1 OR cardinality(v_relation.confkey) <> 1\n      OR v_relation.confkey[1] <> (SELECT attnum FROM pg_attribute\n        WHERE attrelid = 'public.enrollments'::regclass AND attname = 'id') THEN\n      RAISE EXCEPTION 'assignment_has_dependent_records' USING ERRCODE = '23514';\n    END IF;\n    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.%I WHERE %I = $1)',\n      v_relation.nspname, v_relation.relname, v_relation.attname)\n      INTO v_has_records USING p_enrollment_id;\n    IF v_has_records THEN\n      RAISE EXCEPTION 'assignment_has_dependent_records' USING ERRCODE = '23514';\n    END IF;\n  END LOOP;\n  DELETE FROM public.enrollments WHERE id = p_enrollment_id RETURNING id INTO v_deleted_id;\n  IF v_deleted_id IS DISTINCT FROM p_enrollment_id OR EXISTS (\n    SELECT 1 FROM public.enrollments WHERE id = p_enrollment_id\n  ) THEN\n    RAISE EXCEPTION 'assignment_verification_failed' USING ERRCODE = 'P0001';\n  END IF;\n  RETURN jsonb_build_object('cancelled', true, 'enrollmentId', v_deleted_id,\n    'organizationId', p_organization_id, 'userId', v_enrollment.user_id, 'courseId', v_enrollment.course_id);\nEND;\n$function$\n",
+      "md5": "ef93d58bd6e7904d622035799681bf67",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "cancel_course_assignment(uuid,uuid)"
+    }
+  ],
+  "authority": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.save_student_registration_details(p_organization_id uuid, p_user_id uuid, p_actor_id uuid, p_department text DEFAULT NULL::text, p_snils text DEFAULT NULL::text, p_birth_date date DEFAULT NULL::date, p_confirm_identity boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_role text := COALESCE(NULLIF(auth.jwt()->>'role', ''), NULLIF(current_setting('request.jwt.claim.role', true), ''), '');\n  v_department text := NULLIF(btrim(p_department), '');\n  v_snils text := NULLIF(btrim(p_snils), '');\n  v_profile public.profiles;\n  v_identification public.video_identifications;\n  v_frdo_context uuid;\nBEGIN\n  IF v_role <> 'service_role' THEN\n    RAISE EXCEPTION 'service_role_required' USING ERRCODE = '42501';\n  END IF;\n  IF NOT public.uc_student_frdo_staff_can_write(p_actor_id,p_organization_id,p_user_id,'students.write')\n    OR(p_confirm_identity IS TRUE AND NOT public.uc_student_frdo_staff_can_write(p_actor_id,p_organization_id,p_user_id,'documents.write')) THEN\n    RAISE EXCEPTION 'student_details_access_denied' USING ERRCODE = '42501';\n  END IF;\n  -- Serialize repeated imports/confirmation and prevent a concurrent archive/tenant move.\n  SELECT * INTO v_profile FROM public.profiles WHERE user_id = p_user_id FOR UPDATE;\n  IF NOT FOUND OR v_profile.organization_id IS DISTINCT FROM p_organization_id\n     OR NOT public.is_student_profile(p_user_id, p_organization_id) THEN\n    RAISE EXCEPTION 'student_not_in_organization' USING ERRCODE = '42501';\n  END IF;\n  IF v_profile.archived_at IS NOT NULL THEN\n    RAISE EXCEPTION 'student_archived' USING ERRCODE = '22023';\n  END IF;\n  IF length(v_department) > 200 OR v_department ~ '[[:cntrl:]]' THEN\n    RAISE EXCEPTION 'invalid_department' USING ERRCODE = '22023';\n  END IF;\n  IF v_snils IS NOT NULL THEN\n    IF v_snils !~ '^[0-9[:space:]-]+$' THEN\n      RAISE EXCEPTION 'invalid_snils' USING ERRCODE = '22023';\n    END IF;\n    v_snils := regexp_replace(v_snils, '[[:space:]-]', '', 'g');\n    IF length(v_snils) <> 11 THEN\n      RAISE EXCEPTION 'invalid_snils' USING ERRCODE = '22023';\n    END IF;\n    v_snils := substr(v_snils, 1, 3) || '-' || substr(v_snils, 4, 3) || '-' || substr(v_snils, 7, 3) || ' ' || substr(v_snils, 10, 2);\n  END IF;\n  IF p_birth_date > CURRENT_DATE OR p_birth_date < DATE '0001-01-01' THEN\n    RAISE EXCEPTION 'invalid_birth_date' USING ERRCODE = '22023';\n  END IF;\n\n  IF v_department IS NOT NULL THEN\n    UPDATE public.profiles SET department = v_department WHERE user_id = p_user_id;\n  END IF;\n  IF v_snils IS NOT NULL OR p_birth_date IS NOT NULL THEN\n    IF auth.role() IS DISTINCT FROM 'service_role' OR auth.uid() IS NOT NULL OR NOT public.uc_student_frdo_actor_can_write(p_actor_id,p_organization_id,p_user_id,false) THEN\n      RAISE EXCEPTION 'frdo_write_access_denied' USING ERRCODE='42501';\n    END IF;\n    INSERT INTO public.uc_student_frdo_write_contexts(kind,organization_id,user_id,actor_id)\n    VALUES('registration_details',p_organization_id,p_user_id,p_actor_id) RETURNING id INTO v_frdo_context;\n    INSERT INTO public.student_frdo_data AS existing (user_id, organization_id, snils, birth_date)\n    VALUES (p_user_id, p_organization_id, v_snils, p_birth_date)\n    ON CONFLICT (user_id, organization_id) DO UPDATE SET\n      snils = COALESCE(EXCLUDED.snils, existing.snils),\n      birth_date = COALESCE(EXCLUDED.birth_date, existing.birth_date);\n    DELETE FROM public.uc_student_frdo_write_contexts WHERE id=v_frdo_context;\n  END IF;\n\n  IF p_confirm_identity IS TRUE THEN\n    SELECT * INTO v_identification FROM public.video_identifications\n    WHERE user_id = p_user_id AND organization_id = p_organization_id\n    ORDER BY created_at DESC, id DESC LIMIT 1 FOR UPDATE;\n    IF NOT FOUND THEN\n      INSERT INTO public.video_identifications\n        (user_id, organization_id, status, verified_by, verified_at)\n      VALUES (p_user_id, p_organization_id, 'verified', p_actor_id, now())\n      RETURNING * INTO v_identification;\n    ELSIF v_identification.status <> 'verified' OR v_identification.verified_by IS NULL OR v_identification.verified_at IS NULL THEN\n      UPDATE public.video_identifications SET status = 'verified', verified_by = p_actor_id,\n        verified_at = now(), rejection_reason = NULL\n      WHERE id = v_identification.id RETURNING * INTO v_identification;\n    END IF;\n  END IF;\n  RETURN jsonb_build_object('success', true, 'user_id', p_user_id,\n    'organization_id', p_organization_id, 'identity_confirmed', p_confirm_identity IS TRUE,\n    'identification_id', v_identification.id);\nEND;\n$function$\n",
+      "md5": "ef4299140c264616b0854e95fea0af2a",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "save_student_registration_details(uuid,uuid,uuid,text,text,date,boolean)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_student_frdo_actor_can_write(p_actor uuid, p_org uuid, p_user uuid, p_allow_self boolean DEFAULT true)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_actor IS NOT NULL AND public.uc_student_frdo_pair_valid(p_org,p_user)\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_actor)\n AND public.uc_platform_document_action_allowed(p_actor,'write')\n AND NOT public.has_role(p_actor,'sales_manager'::public.app_role)\n AND NOT EXISTS(SELECT 1 FROM public.admin_staff a WHERE a.user_id=p_actor AND(a.role NOT IN('super_admin','admin') OR a.expires_at<=now()))\n AND(p_allow_self AND p_actor=p_user OR public.uc_student_frdo_staff_can_write(p_actor,p_org,p_user,'frdo.write'))\n$function$\n",
+      "md5": "ad88cbd07480f10c78e7bf522d6a423a",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "uc_student_frdo_actor_can_write(uuid,uuid,uuid,boolean)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_student_frdo_staff_can_write(p_actor uuid, p_org uuid, p_user uuid, p_permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT public.uc_student_frdo_staff_org_allowed(p_actor,p_org,p_permission) AND public.uc_student_frdo_pair_valid(p_org,p_user)\n AND(\n   public.has_role(p_actor,'admin'::public.app_role) OR public.is_org_owner(p_actor,p_org)\n   OR NOT EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.role='teacher')\n   OR EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.organization_id=p_org AND s.role<>'teacher' AND(s.expires_at IS NULL OR s.expires_at>now()))\n   OR EXISTS(SELECT 1 FROM public.org_staff s JOIN public.org_staff_document_groups a ON a.staff_id=s.id AND a.organization_id=s.organization_id\n    JOIN public.student_groups g ON g.id=a.group_id AND g.organization_id=a.organization_id\n    JOIN public.student_group_memberships_effective m ON m.group_id=g.id AND m.organization_id=g.organization_id AND m.user_id=p_user\n    WHERE s.user_id=p_actor AND s.organization_id=p_org AND(s.expires_at IS NULL OR s.expires_at>now())\n     AND(g.course_id IS NULL OR EXISTS(SELECT 1 FROM public.courses c WHERE c.id=g.course_id AND c.organization_id=p_org)))\n  )\n$function$\n",
+      "md5": "5a51f534b77abd13215626afde0b56e7",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "uc_student_frdo_staff_can_write(uuid,uuid,uuid,text)"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_student_frdo_staff_org_allowed(p_actor uuid, p_org uuid, p_permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_actor IS NOT NULL AND p_org IS NOT NULL AND p_permission IN('frdo.write','students.write','documents.write')\n AND EXISTS(SELECT 1 FROM public.organizations WHERE id=p_org)\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_actor)\n AND public.uc_platform_document_action_allowed(p_actor,'write')\n  AND NOT public.has_role(p_actor,'sales_manager'::public.app_role)\n  AND NOT EXISTS(SELECT 1 FROM public.admin_staff a WHERE a.user_id=p_actor AND(a.role NOT IN('super_admin','admin') OR a.expires_at<=now()))\n  AND(public.has_role(p_actor,'admin'::public.app_role) OR public.is_org_owner(p_actor,p_org)\n   OR EXISTS(SELECT 1 FROM public.org_staff s WHERE s.user_id=p_actor AND s.organization_id=p_org AND(s.expires_at IS NULL OR s.expires_at>now()))\n     AND public.has_org_staff_permission(p_actor,p_org,p_permission))\n$function$\n",
+      "md5": "541b10208fdf1b4788ce4eae588110a6",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "signature": "uc_student_frdo_staff_org_allowed(uuid,uuid,text)"
+    }
+  ],
+  "policies": [
+    {
+      "md5": "e31cb35c15600bcc8506cecb1a8233c3",
+      "policy": {
+        "cmd": "DELETE",
+        "permissive": "PERMISSIVE",
+        "policyname": "Org staff can delete enrollments",
+        "qual": "can_access_course(course_id, 'students.write'::text)",
+        "roles": [
+          "authenticated"
+        ],
+        "schemaname": "public",
+        "tablename": "enrollments",
+        "with_check": null
+      },
+      "policyname": "Org staff can delete enrollments"
+    },
+    {
+      "md5": "1bd42b9d43a787f95c1e8a4c0d84846e",
+      "policy": {
+        "cmd": "DELETE",
+        "permissive": "PERMISSIVE",
+        "policyname": "Org users and admins can delete enrollments",
+        "qual": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+        "roles": [
+          "public"
+        ],
+        "schemaname": "public",
+        "tablename": "enrollments",
+        "with_check": null
+      },
+      "policyname": "Org users and admins can delete enrollments"
+    },
+    {
+      "md5": "2cc11fdbb2bf044ff8e48e7e5c27472a",
+      "policy": {
+        "cmd": "ALL",
+        "permissive": "RESTRICTIVE",
+        "policyname": "account_deletion_no_revoked_access",
+        "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+        "roles": [
+          "authenticated"
+        ],
+        "schemaname": "public",
+        "tablename": "enrollments",
+        "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+      },
+      "policyname": "account_deletion_no_revoked_access"
+    }
+  ],
+  "constraints": [
+    {
+      "definition": "FOREIGN KEY (company_id) REFERENCES companies(id)",
+      "name": "profiles_company_id_fkey",
+      "table": "profiles",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (student_group_id, organization_id) REFERENCES student_groups(id, organization_id) ON DELETE SET NULL (student_group_id) NOT VALID",
+      "name": "profiles_group_organization_registration_fkey",
+      "table": "profiles",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL",
+      "name": "profiles_organization_id_fkey",
+      "table": "profiles",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (student_group_id) REFERENCES student_groups(id) ON DELETE SET NULL",
+      "name": "profiles_student_group_id_fkey",
+      "table": "profiles",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (category_id) REFERENCES course_categories(id) ON DELETE SET NULL",
+      "name": "courses_category_id_fkey",
+      "table": "courses",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "name": "courses_organization_id_fkey",
+      "table": "courses",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (source_course_id) REFERENCES courses(id)",
+      "name": "courses_source_course_id_fkey",
+      "table": "courses",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (source_order_id) REFERENCES marketplace_orders(id)",
+      "name": "courses_source_order_id_fkey",
+      "table": "courses",
+      "type": "f"
+    },
+    {
+      "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+      "name": "enrollments_course_id_fkey",
+      "table": "enrollments",
+      "type": "f"
+    },
+    {
+      "definition": "CHECK ((document_facts_revision >= 0))",
+      "name": "enrollments_document_facts_revision_check",
+      "table": "enrollments",
+      "type": "c"
+    },
+    {
+      "definition": "PRIMARY KEY (id)",
+      "name": "enrollments_pkey",
+      "table": "enrollments",
+      "type": "p"
+    },
+    {
+      "definition": "UNIQUE (user_id, course_id)",
+      "name": "enrollments_user_id_course_id_key",
+      "table": "enrollments",
+      "type": "u"
+    }
+  ],
+  "parentPolicies": [
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can manage all courses",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "courses",
+      "with_check": "has_role('admin'::app_role, auth.uid())"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can delete courses",
+      "qual": "can_access_organization(organization_id, 'courses.write'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "courses",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "courses",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org staff can delete enrollments",
+      "qual": "can_access_course(course_id, 'students.write'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Org users and admins can delete enrollments",
+      "qual": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can delete organizations",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "organizations",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can do everything with organizations",
+      "qual": "has_role('admin'::app_role, auth.uid())",
+      "roles": [
+        "public"
+      ],
+      "schemaname": "public",
+      "tablename": "organizations",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_deletion_no_revoked_access",
+      "qual": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+      "roles": [
+        "authenticated"
+      ],
+      "schemaname": "public",
+      "tablename": "organizations",
+      "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+    }
+  ],
+  "enrollmentTriggers": [
+    {
+      "function_md5": "cd0003cc49bdf9a3d074c9e624146e46",
+      "function_signature": "account_deletion_subject_write_guard()",
+      "tgname": "account_deletion_subject_fence",
+      "trigger_definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')"
+    },
+    {
+      "function_definition": "CREATE OR REPLACE FUNCTION public.auto_audit_log()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user_id uuid;\n  v_user_name text;\n  v_org_id uuid;\n  v_entity_name text;\n  v_action text;\n  v_entity_type text;\n  v_entity_id text;\n  v_details jsonb;\nBEGIN\n  v_user_id := auth.uid();\n  IF v_user_id IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;\n\n  -- Get user name\n  SELECT COALESCE(full_name, email, 'Unknown') INTO v_user_name\n  FROM profiles WHERE user_id = v_user_id LIMIT 1;\n\n  -- Determine action\n  v_action := CASE TG_OP\n    WHEN 'INSERT' THEN 'create'\n    WHEN 'UPDATE' THEN 'update'\n    WHEN 'DELETE' THEN 'delete'\n  END;\n\n  -- Table-specific logic\n  IF TG_TABLE_NAME = 'courses' THEN\n    v_entity_type := 'course';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.title;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.title;\n      IF TG_OP = 'UPDATE' AND OLD.is_published IS DISTINCT FROM NEW.is_published THEN\n        v_action := CASE WHEN NEW.is_published THEN 'update' ELSE 'update' END;\n        v_details := jsonb_build_object('published', NEW.is_published);\n      END IF;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'enrollments' THEN\n    v_entity_type := 'enrollment';\n    IF TG_OP = 'DELETE' THEN\n      v_entity_id := OLD.id::text;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = OLD.course_id LIMIT 1;\n      SELECT COALESCE(p.full_name, p.email) INTO v_entity_name FROM profiles p WHERE p.user_id = OLD.user_id LIMIT 1;\n    ELSE\n      v_entity_id := NEW.id::text;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = NEW.course_id LIMIT 1;\n      SELECT COALESCE(p.full_name, p.email) INTO v_entity_name FROM profiles p WHERE p.user_id = NEW.user_id LIMIT 1;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'profiles' THEN\n    v_entity_type := 'student';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.user_id::text;\n      v_entity_name := COALESCE(OLD.full_name, OLD.email);\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.user_id::text;\n      v_entity_name := COALESCE(NEW.full_name, NEW.email);\n      -- Skip trivial updates (last_visit_at only)\n      IF TG_OP = 'UPDATE' AND OLD.full_name IS NOT DISTINCT FROM NEW.full_name \n         AND OLD.email IS NOT DISTINCT FROM NEW.email\n         AND OLD.login IS NOT DISTINCT FROM NEW.login\n         AND OLD.organization_id IS NOT DISTINCT FROM NEW.organization_id\n         AND OLD.company_id IS NOT DISTINCT FROM NEW.company_id THEN\n        RETURN NEW;\n      END IF;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'companies' THEN\n    v_entity_type := 'company';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.name;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.name;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'course_documents' THEN\n    v_entity_type := 'document';\n    IF TG_OP = 'DELETE' THEN\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.name;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = OLD.course_id LIMIT 1;\n    ELSE\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.name;\n      SELECT organization_id INTO v_org_id FROM courses WHERE id = NEW.course_id LIMIT 1;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'registration_links' THEN\n    v_entity_type := 'link';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.name;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.name;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'journal_instances' THEN\n    v_entity_type := 'journal';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.title;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.title;\n    END IF;\n\n  ELSIF TG_TABLE_NAME = 'education_document_records' THEN\n    v_entity_type := 'document';\n    IF TG_OP = 'DELETE' THEN\n      v_org_id := OLD.organization_id;\n      v_entity_id := OLD.id::text;\n      v_entity_name := OLD.full_name || ' — ' || OLD.document_type;\n    ELSE\n      v_org_id := NEW.organization_id;\n      v_entity_id := NEW.id::text;\n      v_entity_name := NEW.full_name || ' — ' || NEW.document_type;\n    END IF;\n\n  ELSE\n    RETURN COALESCE(NEW, OLD);\n  END IF;\n\n  -- Only log if we have an org_id\n  IF v_org_id IS NOT NULL THEN\n    INSERT INTO audit_logs (organization_id, user_id, user_name, action_type, entity_type, entity_id, entity_name, details, user_agent)\n    VALUES (v_org_id, v_user_id, v_user_name, v_action, v_entity_type, v_entity_id, v_entity_name, v_details, NULL);\n  END IF;\n\n  RETURN COALESCE(NEW, OLD);\nEND;\n$function$\n",
+      "function_md5": "644c3c1683c37b13b25108607fca2421",
+      "function_signature": "auto_audit_log()",
+      "tgname": "audit_enrollments",
+      "trigger_definition": "CREATE TRIGGER audit_enrollments AFTER INSERT OR DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_audit_log()"
+    },
+    {
+      "function_md5": "c69b9d7d8134bdad13d9e368fdc37896",
+      "function_signature": "capture_postpaid_study_activity()",
+      "tgname": "capture_postpaid_study",
+      "trigger_definition": "CREATE TRIGGER capture_postpaid_study AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION capture_postpaid_study_activity()"
+    },
+    {
+      "function_md5": "ce5f063137051d467a9e1ca63059767f",
+      "function_signature": "trg_notify_course_completion()",
+      "tgname": "enrollments_notify_on_complete",
+      "trigger_definition": "CREATE TRIGGER enrollments_notify_on_complete AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (((new.status = 'completed'::text) AND (old.status IS DISTINCT FROM 'completed'::text))) EXECUTE FUNCTION trg_notify_course_completion()"
+    },
+    {
+      "function_md5": "899d26cff0a42be30f7147f2d7e5030c",
+      "function_signature": "update_labor_safety_on_course_completion()",
+      "tgname": "on_course_completion_update_labor_safety",
+      "trigger_definition": "CREATE TRIGGER on_course_completion_update_labor_safety AFTER UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION update_labor_safety_on_course_completion()"
+    },
+    {
+      "function_definition": "CREATE OR REPLACE FUNCTION public.log_enrollment_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    INSERT INTO public.enrollment_history (enrollment_id, user_id, course_id, action, performed_by)\n    VALUES (NEW.id, NEW.user_id, NEW.course_id, 'enrolled', auth.uid());\n    RETURN NEW;\n  ELSIF TG_OP = 'DELETE' THEN\n    INSERT INTO public.enrollment_history (enrollment_id, user_id, course_id, action, performed_by)\n    VALUES (OLD.id, OLD.user_id, OLD.course_id, 'unenrolled', auth.uid());\n    RETURN OLD;\n  END IF;\n  RETURN NULL;\nEND;\n$function$\n",
+      "function_md5": "81e9177e5b4c095a862cef107e358f02",
+      "function_signature": "log_enrollment_change()",
+      "tgname": "on_enrollment_delete",
+      "trigger_definition": "CREATE TRIGGER on_enrollment_delete AFTER DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()"
+    },
+    {
+      "function_definition": "CREATE OR REPLACE FUNCTION public.log_enrollment_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    INSERT INTO public.enrollment_history (enrollment_id, user_id, course_id, action, performed_by)\n    VALUES (NEW.id, NEW.user_id, NEW.course_id, 'enrolled', auth.uid());\n    RETURN NEW;\n  ELSIF TG_OP = 'DELETE' THEN\n    INSERT INTO public.enrollment_history (enrollment_id, user_id, course_id, action, performed_by)\n    VALUES (OLD.id, OLD.user_id, OLD.course_id, 'unenrolled', auth.uid());\n    RETURN OLD;\n  END IF;\n  RETURN NULL;\nEND;\n$function$\n",
+      "function_md5": "81e9177e5b4c095a862cef107e358f02",
+      "function_signature": "log_enrollment_change()",
+      "tgname": "on_enrollment_insert",
+      "trigger_definition": "CREATE TRIGGER on_enrollment_insert AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()"
+    },
+    {
+      "function_md5": "d92f1e42096d6b5e2b79a447f1a03c42",
+      "function_signature": "revoke_manual_credit_on_course_reset()",
+      "tgname": "revoke_manual_credit_on_course_reset",
+      "trigger_definition": "CREATE TRIGGER revoke_manual_credit_on_course_reset AFTER UPDATE OF status, user_id, course_id ON public.enrollments FOR EACH ROW EXECUTE FUNCTION revoke_manual_credit_on_course_reset()"
+    },
+    {
+      "function_md5": "699ef2b847ba195d2db710e7c39591ae",
+      "function_signature": "sync_training_plan_status()",
+      "tgname": "sync_training_plan_on_complete",
+      "trigger_definition": "CREATE TRIGGER sync_training_plan_on_complete AFTER UPDATE OF status ON public.enrollments FOR EACH ROW EXECUTE FUNCTION sync_training_plan_status()"
+    },
+    {
+      "function_md5": "699ef2b847ba195d2db710e7c39591ae",
+      "function_signature": "sync_training_plan_status()",
+      "tgname": "sync_training_plan_on_enroll",
+      "trigger_definition": "CREATE TRIGGER sync_training_plan_on_enroll AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION sync_training_plan_status()"
+    },
+    {
+      "function_md5": "99c246e392e7b56a4ae73670ce4146f0",
+      "function_signature": "calc_enrollment_expires_at()",
+      "tgname": "trg_calc_enrollment_expires",
+      "trigger_definition": "CREATE TRIGGER trg_calc_enrollment_expires BEFORE INSERT OR UPDATE OF access_days, started_at ON public.enrollments FOR EACH ROW EXECUTE FUNCTION calc_enrollment_expires_at()"
+    },
+    {
+      "function_md5": "08189b106fd5f741bb5dfa5958364c04",
+      "function_signature": "create_org_course_completion_notification()",
+      "tgname": "trg_org_course_completion_notify",
+      "trigger_definition": "CREATE TRIGGER trg_org_course_completion_notify AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION create_org_course_completion_notification()"
+    },
+    {
+      "function_md5": "ee6255e3727269da22b3cf547e1c8f6c",
+      "function_signature": "auto_complete_enrollment()",
+      "tgname": "trigger_auto_complete_enrollment",
+      "trigger_definition": "CREATE TRIGGER trigger_auto_complete_enrollment BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_complete_enrollment()"
+    },
+    {
+      "function_md5": "b8cde9babf27dd691f78ce356319e47f",
+      "function_signature": "auto_create_education_document()",
+      "tgname": "trigger_auto_create_education_document",
+      "trigger_definition": "CREATE TRIGGER trigger_auto_create_education_document AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (((new.status = 'completed'::text) AND (old.status IS DISTINCT FROM 'completed'::text))) EXECUTE FUNCTION auto_create_education_document()"
+    },
+    {
+      "function_md5": "587eb7f62b173e4b3b2d34265527ae40",
+      "function_signature": "create_course_reminder_on_completion()",
+      "tgname": "trigger_create_course_reminder",
+      "trigger_definition": "CREATE TRIGGER trigger_create_course_reminder AFTER UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION create_course_reminder_on_completion()"
+    },
+    {
+      "function_md5": "d6f9527f5aa95086c71f3beb44faa9ba",
+      "function_signature": "check_enrollment_achievements()",
+      "tgname": "trigger_enrollment_achievements",
+      "trigger_definition": "CREATE TRIGGER trigger_enrollment_achievements AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION check_enrollment_achievements()"
+    },
+    {
+      "function_md5": "fca7f23c0d51b0a4c03a757fc898e2e6",
+      "function_signature": "bump_enrollment_document_facts_revision()",
+      "tgname": "zz_enrollment_document_facts_revision",
+      "trigger_definition": "CREATE TRIGGER zz_enrollment_document_facts_revision BEFORE INSERT OR UPDATE OF id, user_id, course_id, progress, status, started_at, completed_at, access_days, expires_at, document_facts_revision ON public.enrollments FOR EACH ROW EXECUTE FUNCTION bump_enrollment_document_facts_revision()"
+    },
+    {
+      "function_md5": "2ce633cf62c224ab8cb15171b799d2d3",
+      "function_signature": "uc_capture_program_association_event()",
+      "tgname": "zzz_uc_program_association",
+      "trigger_definition": "CREATE TRIGGER zzz_uc_program_association AFTER INSERT OR UPDATE OF id, user_id, course_id ON public.enrollments FOR EACH ROW EXECUTE FUNCTION uc_capture_program_association_event()"
+    },
+    {
+      "function_definition": "CREATE OR REPLACE FUNCTION public.csz_guard_enrollment()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE v_staff boolean; v_org uuid; v_credit timestamptz; v_total integer; v_done integer; v_ceiling integer;\nBEGIN\n  IF NOT ((TG_OP<>'INSERT' AND OLD.course_id=ANY(ARRAY['7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a']::uuid[]))\n    OR (TG_OP<>'DELETE' AND NEW.course_id=ANY(ARRAY['7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a']::uuid[]))) THEN\n    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\n  END IF;\n  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'S022: READ COMMITTED required' USING ERRCODE='25000'; END IF;\n  PERFORM pg_advisory_xact_lock(7630559,178);\n  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'S022: protected enrollment/history cannot be deleted' USING ERRCODE='42501'; END IF;\n  IF TG_OP='UPDATE' THEN\n    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.user_id IS DISTINCT FROM OLD.user_id OR NEW.course_id IS DISTINCT FROM OLD.course_id THEN\n      RAISE EXCEPTION 'S022: immutable enrollment identity' USING ERRCODE='42501';\n    END IF;\n    -- Executor owns the row lock already; explicit lock documents the shared lock contract.\n    PERFORM 1 FROM public.enrollments WHERE id=OLD.id FOR UPDATE;\n  END IF;\n  SELECT organization_id INTO v_org FROM public.courses WHERE id=NEW.course_id;\n  v_staff:=coalesce(public.can_access_course(NEW.course_id,'students.write'),false);\n  IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.profiles WHERE user_id=NEW.user_id AND organization_id=v_org) THEN\n    RAISE EXCEPTION 'S022: invalid enrollment actor/tenant' USING ERRCODE='42501';\n  END IF;\n  IF TG_OP='INSERT' THEN\n    IF NOT v_staff OR NEW.status<>'active' OR NEW.progress<>0 OR NEW.completed_at IS NOT NULL THEN\n      RAISE EXCEPTION 'S022: only staff may create an initial enrollment' USING ERRCODE='42501';\n    END IF;\n    RETURN NEW;\n  END IF;\n  IF NOT v_staff AND (auth.uid() IS DISTINCT FROM OLD.user_id OR NOT public.can_access_course_as_learner(OLD.course_id)\n    OR NEW.access_days IS DISTINCT FROM OLD.access_days OR NEW.started_at IS DISTINCT FROM OLD.started_at\n    OR NEW.expires_at IS DISTINCT FROM OLD.expires_at) THEN\n    RAISE EXCEPTION 'S022: enrollment identity/access cannot be self-edited' USING ERRCODE='42501';\n  END IF;\n  IF NEW.status='active' AND NEW.progress=0 AND NEW.completed_at IS NULL\n    AND (OLD.status='completed' OR OLD.progress<>0 OR OLD.completed_at IS NOT NULL) THEN\n    IF NOT v_staff OR EXISTS(SELECT 1 FROM public.lesson_progress lp JOIN public.lessons l ON l.id=lp.lesson_id\n      WHERE lp.user_id=NEW.user_id AND l.course_id=NEW.course_id) THEN\n      RAISE EXCEPTION 'S022: staff reset must clear target lesson progress first' USING ERRCODE='42501';\n    END IF;\n    RETURN NEW; -- existing S001 AFTER trigger revokes the active credit\n  END IF;\n  IF NEW.status NOT IN ('active','completed') AND NOT v_staff THEN\n    RAISE EXCEPTION 'S022: learner cannot change enrollment lifecycle' USING ERRCODE='42501';\n  END IF;\n  IF OLD.status='completed' AND NEW.status IS DISTINCT FROM 'completed' THEN\n    RAISE EXCEPTION 'S022: use staff reset to reopen a completed enrollment' USING ERRCODE='42501';\n  END IF;\n  SELECT credited_at INTO v_credit FROM public.course_manual_credits WHERE enrollment_id=NEW.id AND revoked_at IS NULL;\n  SELECT count(*),count(*) FILTER (WHERE lp.completed AND\n    (l.type<>'homework' OR v_credit IS NOT NULL OR public.csz_latest_homework_approved(NEW.user_id,NEW.course_id,l.id)))\n    INTO v_total,v_done FROM public.lessons l\n    LEFT JOIN public.lesson_progress lp ON lp.lesson_id=l.id AND lp.user_id=NEW.user_id WHERE l.course_id=NEW.course_id;\n  v_ceiling:=CASE WHEN v_total=0 THEN 0 ELSE round(v_done*100.0/v_total)::integer END;\n  IF NEW.progress<0 OR NEW.progress>v_ceiling\n    OR ((NEW.progress=100 OR NEW.status='completed') AND (v_total=0 OR v_done<>v_total)) THEN\n    RAISE EXCEPTION 'S022: enrollment exceeds accepted lesson progress' USING ERRCODE='23514';\n  END IF;\n  IF NEW.status='completed' THEN\n    IF OLD.status='completed' THEN NEW.completed_at:=coalesce(OLD.completed_at,v_credit,clock_timestamp());\n    ELSE NEW.completed_at:=coalesce(v_credit,clock_timestamp()); END IF;\n  ELSE NEW.completed_at:=NULL;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+      "function_md5": "292b6f3a1e462bd6a2e45689bfc22436",
+      "function_signature": "csz_guard_enrollment()",
+      "tgname": "zzzz_csz_enrollment_guard",
+      "trigger_definition": "CREATE TRIGGER zzzz_csz_enrollment_guard BEFORE INSERT OR DELETE OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION csz_guard_enrollment()"
+    },
+    {
+      "function_md5": "482a80e76e9fbd143c2fe367e7776683",
+      "function_signature": "csz_guard_protected_truncate()",
+      "tgname": "zzzz_csz_protected_truncate_guard",
+      "trigger_definition": "CREATE TRIGGER zzzz_csz_protected_truncate_guard BEFORE TRUNCATE ON public.enrollments FOR EACH STATEMENT EXECUTE FUNCTION csz_guard_protected_truncate()"
+    }
+  ],
+  "parentExtraForeignKeys": [
+    {
+      "conname": "org_staff_organization_id_fkey",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "table_name": "org_staff"
+    },
+    {
+      "conname": "student_groups_course_id_fkey",
+      "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL",
+      "table_name": "student_groups"
+    },
+    {
+      "conname": "student_groups_course_organization_registration_fkey",
+      "definition": "FOREIGN KEY (course_id, organization_id) REFERENCES courses(id, organization_id) ON DELETE SET NULL (course_id) NOT VALID",
+      "table_name": "student_groups"
+    },
+    {
+      "conname": "student_groups_organization_id_fkey",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+      "table_name": "student_groups"
+    }
+  ]
+}
