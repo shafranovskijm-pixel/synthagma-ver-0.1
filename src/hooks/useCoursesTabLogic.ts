@@ -218,14 +218,14 @@ export function useCoursesTabLogic(organizationId: string) {
 
   const handleOpenCreateCourseDialog = () => {
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); return; }
+    if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
     setShowCreateCourseDialog(true);
   };
 
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); setShowCreateCourseDialog(false); return; }
+    if (!result.allowed) { showLimitToast(result, refetchLimits); setShowCreateCourseDialog(false); return; }
     setIsCreatingCourse(true);
     let categoryId = newCourseCategoryId;
     if (showInlineNewCategory && inlineNewCategoryName.trim()) {
@@ -293,9 +293,9 @@ export function useCoursesTabLogic(organizationId: string) {
 
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => {
     e.stopPropagation();
-    if (setting !== 'hidden_from_catalog' && !hasCourseSettings) {
-      showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
-      return;
+    if (setting !== 'hidden_from_catalog') {
+      const result = checkLimit('course_settings');
+      if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
     }
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
     const newValue = !currentValue;

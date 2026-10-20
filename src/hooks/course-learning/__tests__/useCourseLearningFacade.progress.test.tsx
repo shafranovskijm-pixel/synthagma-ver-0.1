@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   savedLessons: new Set<string>(), savedProgress: 0, failSave: false, lockedNext: false,
   mutations: [] as { table: string; payload: Record<string, unknown> }[],
+  completionCount: { data: 0 as unknown, error: null as unknown },
+  postpaid: false, protocol: vi.fn(),
 }));
 vi.mock('react-router-dom', () => ({ useParams: () => ({ courseId: 'course-a' }), useNavigate: () => mocks.navigate }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
@@ -20,7 +22,8 @@ vi.mock('@/utils/courseCache', async importOriginal => ({ ...await importOrigina
 vi.mock('@/utils/offlineSync', () => ({ setupOfflineSyncListeners: () => () => {} }));
 vi.mock('@/utils/safeInvoke', () => ({ safeInvoke: vi.fn().mockResolvedValue({ error: null }) }));
 vi.mock('@/utils/limitToast', () => ({ showLimitToast: vi.fn() }));
-vi.mock('@/utils/generateAttestationProtocol', () => ({ generateAttestationProtocol: vi.fn().mockResolvedValue(null) }));
+vi.mock('@/utils/generateAttestationProtocol', () => ({ generateAttestationProtocol: mocks.protocol }));
+vi.mock('@/lib/postpaidAccess', () => ({ fetchPostpaidAccessProfile: async () => ({ active: mocks.postpaid }) }));
 vi.mock('@/api/courseLibrary', () => ({ fetchCourseLibraryShell: vi.fn() }));
 vi.mock('@/hooks/course-learning/useLessonVideo', () => ({ useLessonVideo: () => ({ setVideoWatchProgress: vi.fn() }) }));
 vi.mock('@/hooks/course-learning/useLessonTest', () => ({ useLessonTest: () => ({ testQuestions: [], testAttemptId: null, testSubmitted: false, testScore: null }) }));
@@ -59,6 +62,7 @@ class Query {
       ], error: null };
       case 'enrollments': return { data: { id: 'enrollment-a', user_id: 'student-a', course_id: 'course-a', status: 'active', progress: mocks.savedProgress }, error: null };
       case 'profiles': return { data: { organization_id: 'org-a' }, error: null };
+      case 'organizations': return { data: { id: 'org-a', name: 'Synthetic organization', subscription_plan: 'start' }, error: null };
       case 'lesson_progress': return { data: [...mocks.savedLessons].map(lesson_id => ({ lesson_id, completed: true })), error: null };
       case 'lesson_attachments': case 'course_modules': return { data: [], error: null };
       default: throw new Error('Unexpected synthetic query: ' + this.table);
@@ -75,8 +79,12 @@ beforeEach(() => {
   setOfflineAuthActor(null); setOfflineAuthActor('student-a');
   vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear();
   mocks.savedLessons.clear(); mocks.savedProgress = 0; mocks.failSave = false; mocks.lockedNext = false; mocks.mutations.length = 0;
+  mocks.completionCount = { data: 0, error: null }; mocks.postpaid = false;
+  mocks.protocol.mockResolvedValue(null);
   mocks.from.mockImplementation(table => new Query(table));
-  mocks.rpc.mockResolvedValue({ data: null, error: null });
+  mocks.rpc.mockImplementation(async name => name === 'count_org_completions_this_month' ? mocks.completionCount
+    : name === 'complete_own_course_enrollment' ? { data: { id: 'enrollment-a', status: 'completed' }, error: null }
+      : { data: null, error: null });
 });
 afterEach(cleanup);
 
@@ -87,6 +95,50 @@ async function ready(result: { current: ReturnType<typeof useCourseLearning> }) 
 }
 
 describe('sequential learner progress through the actual facade', () => {
+  it.each([
+    { data: 0, error: new Error('count denied') },
+    { data: null, error: null },
+    { data: 'invalid', error: null },
+    { data: '', error: null },
+    { data: -1, error: null },
+    { data: 0.5, error: null },
+  ])('does not complete or generate a protocol for unconfirmed monthly usage %j', async response => {
+    mocks.completionCount = response;
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    await act(async () => { await result.current.retryCourseCompletion(); });
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(1);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment')).toHaveLength(0);
+    expect(mocks.protocol).not.toHaveBeenCalled();
+    expect(result.current.completedCount).toBe(0);
+    const { showLimitToast } = await import('@/utils/limitToast');
+    expect(showLimitToast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ allowed: false, reason: 'verification_error' }));
+  });
+
+  it('rechecks failed usage on an explicit user retry and completes only the confirmed attempt', async () => {
+    mocks.completionCount = { data: null, error: new Error('temporarily unavailable') };
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    await act(async () => { await result.current.retryCourseCompletion(); });
+    expect(mocks.protocol).not.toHaveBeenCalled();
+    mocks.completionCount = { data: 0, error: null };
+    await act(async () => { await result.current.retryCourseCompletion(); });
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(2);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment')).toHaveLength(1);
+    expect(mocks.protocol).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves confirmed postpaid completion without consulting a finite monthly counter', async () => {
+    mocks.postpaid = true;
+    mocks.completionCount = { data: null, error: new Error('must not be requested') };
+    const { result } = renderHook(() => useCourseLearning());
+    await ready(result);
+    await act(async () => { await result.current.retryCourseCompletion(); });
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'count_org_completions_this_month')).toHaveLength(0);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_own_course_enrollment')).toHaveLength(1);
+    expect(mocks.protocol).toHaveBeenCalledTimes(1);
+  });
+
   it('one completion click advances each saved lesson and unlocks the final test', async () => {
     const { result, unmount } = renderHook(() => useCourseLearning());
     await ready(result);

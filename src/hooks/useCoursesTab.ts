@@ -2,12 +2,12 @@ import { useState, useCallback, useMemo } from "react";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { showLimitToast } from "@/utils/limitToast";
+import { showLimitToast, type LimitCheckResult } from "@/utils/limitToast";
 import type { Course, CourseCategory, CourseViewMode } from "@/types";
 
 interface UseCoursesTabOptions {
   organizationId: string;
-  checkLimit: (type: string) => { allowed: boolean; message: string };
+  checkLimit: (type: string) => LimitCheckResult;
   hasCourseSettings: boolean;
   refetchLimits: () => void;
   courses: {
@@ -30,7 +30,7 @@ interface UseCoursesTabOptions {
 
 export function useCoursesTab(opts: UseCoursesTabOptions) {
   const {
-    organizationId, checkLimit, hasCourseSettings, refetchLimits,
+    organizationId, checkLimit, refetchLimits,
     courses, navigate, onCoursesDeleted, menuSettings, setViewMode,
   } = opts;
 
@@ -129,14 +129,14 @@ export function useCoursesTab(opts: UseCoursesTabOptions) {
 
   const handleOpenCreateCourseDialog = () => {
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); return; }
+    if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
     setShowCreateCourseDialog(true);
   };
 
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); setShowCreateCourseDialog(false); return; }
+    if (!result.allowed) { showLimitToast(result, refetchLimits); setShowCreateCourseDialog(false); return; }
     setIsCreatingCourse(true);
     let categoryId = newCourseCategoryId;
     if (showInlineNewCategory && inlineNewCategoryName.trim()) {
@@ -215,7 +215,10 @@ export function useCoursesTab(opts: UseCoursesTabOptions) {
 
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => {
     e.stopPropagation();
-    if (setting !== 'hidden_from_catalog' && !hasCourseSettings) { showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.'); return; }
+    if (setting !== 'hidden_from_catalog') {
+      const result = checkLimit('course_settings');
+      if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
+    }
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
     const newValue = !currentValue;
     courses.updateCourseLocally(course.id, { [setting]: newValue });

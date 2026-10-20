@@ -56,7 +56,7 @@ export function QuickActionChips() {
       run: () => {
         const result = d.checkLimit("course");
         if (!result.allowed) {
-          showLimitToast(result.message);
+          showLimitToast(result, d.subscriptionLimits?.refetch);
           return;
         }
         d.tabNavigation.setActiveTab("courses");
@@ -71,7 +71,7 @@ export function QuickActionChips() {
       run: () => {
         const result = d.checkLimit("student");
         if (!result.allowed) {
-          showLimitToast(result.message);
+          showLimitToast(result, d.subscriptionLimits?.refetch);
           return;
         }
         d.tabNavigation.setActiveTab("students");
@@ -219,6 +219,8 @@ export function QuickActionChips() {
             key={action.id}
             type="button"
             data-testid={`quick-chip-${action.id}`}
+            disabled={d.subscriptionLimits?.loading && ["create-course", "add-student", "import-students"].includes(action.id)}
+            aria-busy={d.subscriptionLimits?.loading && ["create-course", "add-student", "import-students"].includes(action.id)}
             onClick={() => {
               track({ id: action.id, label: action.label });
               action.run?.();

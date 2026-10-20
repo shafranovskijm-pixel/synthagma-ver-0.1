@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { showLimitToast } from "@/utils/limitToast";
 import {
   MarketplacePurchaseError,
   purchaseMarketplaceCourse,
@@ -242,7 +243,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     // authoritative quota decision in the same transaction as course INSERT.
     const limitResult = checkLimit('course');
     if (!limitResult.allowed) {
-      toast.error(limitResult.message);
+      showLimitToast(limitResult, refetchLimits);
       return;
     }
     

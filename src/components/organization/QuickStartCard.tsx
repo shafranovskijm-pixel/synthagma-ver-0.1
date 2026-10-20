@@ -218,7 +218,7 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
         action: () => {
           const result = d.checkLimit("course");
           if (!result.allowed) {
-            showLimitToast(result.message);
+            showLimitToast(result, d.subscriptionLimits?.refetch);
             return;
           }
           d.tabNavigation.setActiveTab("courses" as any);
@@ -235,7 +235,7 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
         action: () => {
           const result = d.checkLimit("student");
           if (!result.allowed) {
-            showLimitToast(result.message);
+            showLimitToast(result, d.subscriptionLimits?.refetch);
             return;
           }
           d.tabNavigation.setActiveTab("students" as any);
@@ -401,6 +401,8 @@ export function QuickStartCard({ courses, isLoadingCourses, onDismiss }: QuickSt
                     type="button"
                     data-testid="quickstart-primary-action"
                     className="shrink-0 gap-1.5 rounded-xl"
+                    disabled={d.subscriptionLimits?.loading && (step.id === "course" || step.id === "student")}
+                    aria-busy={d.subscriptionLimits?.loading && (step.id === "course" || step.id === "student")}
                     onClick={step.action}
                   >
                     {step.cta}

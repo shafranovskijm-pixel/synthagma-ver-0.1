@@ -8,9 +8,10 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 interface CoursesEmptyStateProps {
   onCreateCourse: () => void;
+  accessLoading?: boolean;
 }
 
-export function CoursesEmptyState({ onCreateCourse }: CoursesEmptyStateProps) {
+export function CoursesEmptyState({ onCreateCourse, accessLoading = false }: CoursesEmptyStateProps) {
   let dashboard: ReturnType<typeof useOrgDashboard> | null = null;
   try { dashboard = useOrgDashboard(); } catch {}
 
@@ -55,7 +56,7 @@ export function CoursesEmptyState({ onCreateCourse }: CoursesEmptyStateProps) {
                 </li>
               ))}
             </ul>
-            <Button className="w-full rounded-xl gap-2 mt-2" onClick={onCreateCourse}>
+            <Button className="w-full rounded-xl gap-2 mt-2" onClick={onCreateCourse} disabled={accessLoading} aria-busy={accessLoading}>
               <Plus className="w-4 h-4" />
               Создать курс
             </Button>

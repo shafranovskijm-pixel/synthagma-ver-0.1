@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { showLimitToast, type LimitCheckResult } from "@/utils/limitToast";
 import { generateStrongPassword, isValidEmail } from "@/utils/credentials";
 import { hasStudentRegistrationDetails, normalizeStudentRegistrationDetails } from "../../supabase/functions/_shared/student-registration-details";
 import {
@@ -15,7 +16,8 @@ import {
 interface UseStudentManagementProps {
   organizationId: string | null;
   onRefresh: () => void;
-  checkStudentLimit?: () => { allowed: boolean; message: string };
+  checkStudentLimit?: () => LimitCheckResult;
+  refetchLimits?: () => void;
 }
 
 class StudentGroupPersistenceError extends Error {
@@ -44,6 +46,7 @@ export function useStudentManagement({
   organizationId,
   onRefresh,
   checkStudentLimit,
+  refetchLimits,
 }: UseStudentManagementProps) {
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
@@ -65,7 +68,7 @@ export function useStudentManagement({
     if (checkStudentLimit) {
       const result = checkStudentLimit();
       if (!result.allowed) {
-        toast.error(result.message);
+        showLimitToast(result, refetchLimits);
         return false;
       }
     }
@@ -297,7 +300,7 @@ export function useStudentManagement({
     } finally {
       setIsCreatingStudent(false);
     }
-  }, [organizationId, onRefresh, checkStudentLimit]);
+  }, [organizationId, onRefresh, checkStudentLimit, refetchLimits]);
 
   return {
     showAddStudentDialog,

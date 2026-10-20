@@ -182,10 +182,15 @@ export function useCourseLearning() {
       const planInfo = (await import('@/constants/subscriptionPlans')).getPlanInfo(org.subscription_plan as Parameters<typeof import('@/constants/subscriptionPlans').getPlanInfo>[0]);
       const postpaid = await fetchPostpaidAccessProfile(profile.organization_id);
       if (!postpaid.active && planInfo.limits.maxTrainedPerMonth !== -1) {
-        const { data: countData } = await supabase.rpc('count_org_completions_this_month' as never, { org_id: profile.organization_id } as never);
-        const trainedCount = Number(countData) || 0;
+        const { data: countData, error: countError } = await supabase.rpc('count_org_completions_this_month' as never, { org_id: profile.organization_id } as never);
+        const rawCount: unknown = countData;
+        const trainedCount = typeof rawCount === 'number' || (typeof rawCount === 'string' && rawCount.trim() !== '') ? Number(rawCount) : NaN;
+        if (countError || !Number.isSafeInteger(trainedCount) || trainedCount < 0) {
+          showLimitToast({ allowed: false, reason: "verification_error", message: 'Не удалось проверить ограничения завершения курса. Повторите проверку.' });
+          return;
+        }
         if (trainedCount >= planInfo.limits.maxTrainedPerMonth) {
-          showLimitToast(`Лимит тарифа "${planInfo.name}": ${planInfo.limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`);
+          showLimitToast({ allowed: false, reason: "quota", message: `Лимит тарифа "${planInfo.name}": ${planInfo.limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.` });
           return;
         }
       }

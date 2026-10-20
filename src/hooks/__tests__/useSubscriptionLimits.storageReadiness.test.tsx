@@ -6,6 +6,7 @@ import { useSubscriptionLimits } from "../useSubscriptionLimits";
 
 const mocks = vi.hoisted(() => ({
   organization: vi.fn(), courses: vi.fn(), capacity: vi.fn(), trained: vi.fn(), access: vi.fn(), storage: vi.fn(),
+  realtime: new Map<string, (payload: { new: { subscription_plan: string } }) => void>(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -27,7 +28,13 @@ vi.mock("@/integrations/supabase/client", () => ({
       if (name === "count_org_completions_this_month") return mocks.trained(args.org_id);
       throw new Error(`Unexpected RPC: ${name}`);
     },
-    channel: () => { const channel = { on: () => channel, subscribe: () => channel }; return channel; },
+    channel: () => {
+      const channel = {
+        on: (_event: string, filter: { filter: string }, callback: (payload: { new: { subscription_plan: string } }) => void) => { mocks.realtime.set(filter.filter, callback); return channel; },
+        subscribe: () => channel,
+      };
+      return channel;
+    },
     removeChannel: vi.fn(),
   },
 }));
@@ -59,15 +66,23 @@ function setup() {
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return renderHook(({ organizationId }) => useSubscriptionLimits(organizationId), { wrapper, initialProps: { organizationId: "org-a" as string | null } });
 }
-function expectDenied(state: ReturnType<typeof useSubscriptionLimits>) {
+function expectDenied(state: ReturnType<typeof useSubscriptionLimits>, reason?: "checking" | "verification_error" | "quota") {
   expect(state.canCreateCourse).toBe(false);
   expect(state.canAddStudent).toBe(false);
   expect(state.canCompleteCourse).toBe(false);
-  for (const kind of ["course", "student", "trained"] as const) expect(state.checkLimit(kind).allowed).toBe(false);
+  for (const kind of ["course", "student", "trained"] as const) {
+    expect(state.checkLimit(kind).allowed).toBe(false);
+    if (reason) expect(state.checkLimit(kind).reason).toBe(reason);
+  }
+  if (reason !== "quota") {
+    expect(state.checkLimit("course_settings").allowed).toBe(false);
+    if (reason) expect(state.checkLimit("course_settings").reason).toBe(reason);
+  }
 }
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.realtime.clear();
   mocks.organization.mockResolvedValue(org);
   mocks.courses.mockResolvedValue({ data: null, count: 2, error: null });
   mocks.capacity.mockResolvedValue(success({ current_students: 3 }));
@@ -107,7 +122,7 @@ describe("generic subscription access does not scan file storage", () => {
     const { result } = setup();
     await waitFor(() => expect(result.current.isPostpaid).toBe(true));
     expect(result.current.loading).toBe(true);
-    expectDenied(result.current);
+    expectDenied(result.current, "checking");
     expect(mocks.storage).not.toHaveBeenCalled();
     await act(async () => {
       core.resolve(prerequisite === "organization" ? org : prerequisite === "courses" ? { data: null, count: 2, error: null } : success(prerequisite === "capacity" ? { current_students: 3 } : 4));
@@ -123,7 +138,7 @@ describe("generic subscription access does not scan file storage", () => {
       expect(result.current.error).not.toBeNull();
       expect(result.current.isPostpaid).toBe(true);
     });
-    expectDenied(result.current);
+    expectDenied(result.current, "verification_error");
     expect(mocks.storage).not.toHaveBeenCalled();
   });
 
@@ -133,7 +148,7 @@ describe("generic subscription access does not scan file storage", () => {
     const { result } = setup();
     await waitFor(() => expect(mocks.trained).toHaveBeenCalledWith("org-a"));
     expect(result.current.loading).toBe(true);
-    expectDenied(result.current);
+    expectDenied(result.current, "checking");
     await act(async () => { access.resolve(profile("org-a")); });
     await waitFor(() => expect(result.current.canAddStudent).toBe(true));
   });
@@ -142,7 +157,7 @@ describe("generic subscription access does not scan file storage", () => {
     mocks.access.mockResolvedValue({ data: null, error: new Error("billing unavailable") });
     const { result } = setup();
     await waitFor(() => expect(result.current.error).not.toBeNull());
-    expectDenied(result.current);
+    expectDenied(result.current, "verification_error");
   });
 
   it("keeps confirmed prepaid capacity restrictions without a storage scan", async () => {
@@ -153,7 +168,7 @@ describe("generic subscription access does not scan file storage", () => {
     const { result } = setup();
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
-    expectDenied(result.current);
+    expectDenied(result.current, "quota");
     expect(mocks.storage).not.toHaveBeenCalled();
   });
 
@@ -175,6 +190,57 @@ describe("generic subscription access does not scan file storage", () => {
     expect(result.current.canAddStudent).toBe(true);
     expect(mocks.organization).toHaveBeenCalledTimes(2);
     expect(mocks.storage).not.toHaveBeenCalled();
+  });
+
+  it("does not let a retry from a previous organization invalidate the current verification", async () => {
+    const { result, rerender } = setup();
+    await waitFor(() => expect(result.current.canAddStudent).toBe(true));
+    const oldRetry = result.current.refetch;
+    const currentCore = deferred<Reply>();
+    mocks.organization.mockImplementation((id: string) => id === "org-b" ? currentCore.promise : Promise.resolve(org));
+    rerender({ organizationId: "org-b" });
+    expectDenied(result.current, "checking");
+    await act(async () => { await oldRetry(); });
+    expect(mocks.organization.mock.calls.filter(([id]) => id === "org-a")).toHaveLength(1);
+    await act(async () => { currentCore.resolve(org); });
+    await waitFor(() => expect(result.current.canAddStudent).toBe(true));
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("ignores a captured old-organization realtime event after the new organization is ready", async () => {
+    mocks.access.mockImplementation(async (id: string) => profile(id, false));
+    const { result, rerender } = setup();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const oldEvent = mocks.realtime.get("id=eq.org-a")!;
+    rerender({ organizationId: "org-b" });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.plan).toBe("start");
+    const requests = mocks.organization.mock.calls.length;
+    await act(async () => { oldEvent({ new: { subscription_plan: "maximum" } }); });
+    expect(result.current.plan).toBe("start");
+    expect(result.current.limits.maxCourses).toBe(15);
+    expect(result.current.canCreateCourse).toBe(true);
+    expect(mocks.organization).toHaveBeenCalledTimes(requests);
+  });
+
+  it("ignores a captured realtime event after its subscription is removed", async () => {
+    const { result, unmount } = setup();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const oldEvent = mocks.realtime.get("id=eq.org-a")!;
+    const requests = mocks.organization.mock.calls.length;
+    unmount();
+    await act(async () => { oldEvent({ new: { subscription_plan: "maximum" } }); });
+    expect(mocks.organization).toHaveBeenCalledTimes(requests);
+  });
+
+  it.each([true, false])("classifies course settings only after confirmed %s-postpaid access", async postpaid => {
+    mocks.organization.mockResolvedValue(success({ subscription_plan: "free", custom_enabled_categories: [] }));
+    mocks.access.mockImplementation(async (id: string) => profile(id, postpaid));
+    const { result } = setup();
+    expect(result.current.checkLimit("course_settings")).toMatchObject({ allowed: false, reason: "checking" });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    // Settings are currently included in both the free plan and postpayment.
+    expect(result.current.checkLimit("course_settings")).toMatchObject({ allowed: true });
   });
 
   it("does not multiply storage lists when access checks mount in several editors", async () => {

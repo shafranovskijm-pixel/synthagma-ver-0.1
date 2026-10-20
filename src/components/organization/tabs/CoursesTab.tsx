@@ -41,7 +41,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const navigate = useNavigate();
   const dashboard = useOrgDashboard();
   const { can } = useStaffPermissions();
-  const { checkLimit, hasCourseSettings, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
+  const { checkLimit, hasCourseSettings, loading: accessLoading, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
   
   const {
     courses, categories, isLoading, error: loadError, filter, setFilter,
@@ -266,9 +266,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   const openManualCreateCourseDialog = useCallback(() => {
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); return; }
+    if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
     setShowCreateCourseDialog(true);
-  }, [checkLimit]);
+  }, [checkLimit, refetchLimits]);
 
   const handleOpenCreateCourseDialog = useCallback(() => {
     if (isFirstCourseRun) {
@@ -297,7 +297,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;
     const result = checkLimit('course');
-    if (!result.allowed) { showLimitToast(result.message); return; }
+    if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
     setIsCreatingCourse(true);
     try {
       let categoryId = newCourseCategoryId;
@@ -395,7 +395,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => {
     e.stopPropagation();
-    if (setting !== 'hidden_from_catalog' && !hasCourseSettings) { showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.'); return; }
+    if (setting !== 'hidden_from_catalog') {
+      const result = checkLimit('course_settings');
+      if (!result.allowed) { showLimitToast(result, refetchLimits); return; }
+    }
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
     const newValue = !currentValue;
     updateCourseLocally(course.id, { [setting]: newValue });
@@ -461,10 +464,11 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       {isFirstCourseRun ? (
         showFirstCourseChoice ? (
         <FirstCourseCreationChoice
+          accessLoading={accessLoading}
           onImportMaterials={() => {
             const result = checkLimit("course");
             if (!result.allowed) {
-              showLimitToast(result.message);
+              showLimitToast(result, refetchLimits);
               return;
             }
             navigate(`/course-import?organizationId=${encodeURIComponent(organizationId)}`);
@@ -512,7 +516,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           <Button variant="outline" onClick={refresh} className="gap-2">Попробовать снова</Button>
         </div>
       ) : filteredCourses.length === 0 && courses.length === 0 ? (
-        <CoursesEmptyState onCreateCourse={handleOpenCreateCourseDialog} />
+        <CoursesEmptyState onCreateCourse={handleOpenCreateCourseDialog} accessLoading={accessLoading} />
       ) : filteredCourses.length === 0 ? (
         <div className="py-12 text-center"><p className="text-muted-foreground">Нет курсов, соответствующих фильтрам</p></div>
       ) : folderViewMode === "folders" ? (

@@ -103,6 +103,30 @@ describe("useStudentManagement enrollment release compatibility", () => {
     mocks.ensureEnrollmentVerified.mockResolvedValue(activeCourse("course-2"));
   });
 
+  it.each(["checking", "verification_error", "quota"] as const)("preserves %s student-limit feedback without submitting a student", async reason => {
+    const refetchLimits = vi.fn();
+    const onRefresh = vi.fn();
+    const { result } = renderHook(() => useStudentManagement({
+      organizationId: "org-1", onRefresh, refetchLimits,
+      checkStudentLimit: () => ({ allowed: false, reason, message: "Проверяем право добавления" }),
+    }));
+    let created = true;
+    await act(async () => { created = await result.current.createStudent({ name: "Synthetic learner" }); });
+    expect(created).toBe(false);
+    expect(mocks.safeInvoke).not.toHaveBeenCalled();
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(refetchLimits).not.toHaveBeenCalled();
+    const options = mocks.toastError.mock.calls[0][1];
+    if (reason === "checking") expect(options).not.toHaveProperty("action");
+    if (reason === "quota") expect(options.action.label).toBe("Перейти на тариф");
+    if (reason === "verification_error") {
+      expect(options.action.label).toBe("Повторить проверку");
+      await act(async () => { options.action.onClick(); });
+      expect(refetchLimits).toHaveBeenCalledExactlyOnceWith();
+      expect(mocks.safeInvoke).not.toHaveBeenCalled();
+    }
+  });
+
   it("accepts an older Edge response only after a fresh active enrollment read-back", async () => {
     const onRefresh = vi.fn();
     const { result } = renderHook(() => useStudentManagement({
