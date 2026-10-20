@@ -45,6 +45,20 @@ export function useCourseBuilder(propCourseId?: string) {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestStateRef = useRef({ courseTitle: '', courseDescription: '', lessons: [] as Lesson[] });
+  const importIdentity = JSON.stringify([user?.id, userRole, !!authLoading, organizationId, courseId]);
+  const importIdentityRef = useRef({ key: importIdentity, generation: 0 });
+  if (importIdentityRef.current.key !== importIdentity) {
+    importIdentityRef.current = { key: importIdentity, generation: importIdentityRef.current.generation + 1 };
+  }
+  const importGeneration = importIdentityRef.current.generation;
+  const importRequestRef = useRef(0);
+  const importBusyRef = useRef(false);
+  const importMountedRef = useRef(true);
+  const pendingImportSaveRef = useRef<{ generation: number; organizationId: string; userId: string; userRole: string } | null>(null);
+  useEffect(() => {
+    importMountedRef.current = true;
+    return () => { importMountedRef.current = false; importRequestRef.current++; };
+  }, []);
 
   useEffect(() => { latestStateRef.current = { courseTitle, courseDescription, lessons }; }, [courseTitle, courseDescription, lessons]);
 
@@ -58,13 +72,40 @@ export function useCourseBuilder(propCourseId?: string) {
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
+    if (importBusyRef.current) return;
+    if (!importMountedRef.current || !user || authLoading || !userRole || isLoading || !isDataLoaded || scopeError || !organizationId || importIdentityRef.current.generation !== importGeneration) {
+      toast.error(scopeError || "Сначала дождитесь подтверждения организации и прав на курс");
+      return;
+    }
+    const request = ++importRequestRef.current;
+    const isCurrent = () => importMountedRef.current && importRequestRef.current === request && importIdentityRef.current.generation === importGeneration;
+    const verifyScope = async () => {
+      const scope = await resolveCourseWriteScope({ userId: user.id, userRole, requestedOrganizationId: organizationId });
+      if (!isCurrent() || scope.organizationId !== organizationId) throw new Error("Контекст импорта изменился. Запустите импорт снова в нужной организации");
+      return scope;
+    };
+    importBusyRef.current = true;
     setIsImporting(true);
     try {
-      const totalImported = await importFiles(Array.from(fileList), courseTitle, setCourseTitle, setCourseDescription, setLessons);
-      if (totalImported > 0) { toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`); markAsChanged(); setTimeout(() => { saveCourse(true); }, 500); }
+      const scope = await verifyScope();
+      const totalImported = await importFiles(Array.from(fileList), courseTitle, setCourseTitle, setCourseDescription, setLessons, {
+        scope, isCurrent, verifyBeforeCommit: async () => { await verifyScope(); },
+      });
+      if (!isCurrent()) return;
+      if (totalImported > 0) {
+        pendingImportSaveRef.current = { generation: importGeneration, organizationId, userId: user.id, userRole };
+        toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`);
+        markAsChanged();
+      }
       else toast.warning("Не удалось извлечь уроки из файла");
-    } catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Ошибка импорта файлов'); }
-    finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
+    } catch (error: unknown) { if (isCurrent()) toast.error(error instanceof Error ? error.message : 'Ошибка импорта файлов'); }
+    finally {
+      if (importRequestRef.current === request) {
+        importBusyRef.current = false;
+        if (importMountedRef.current) setIsImporting(false);
+      }
+      if (isCurrent() && fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // Load the course and its content in parallel, but do not expose or mutate it
@@ -254,8 +295,30 @@ export function useCourseBuilder(propCourseId?: string) {
     saveDraftToLocal(courseId, courseTitle, courseDescription, lessons);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     // Уменьшен debounce: 1.5с вместо 3с — данные сохраняются быстрее
-    draftTimerRef.current = setTimeout(() => { saveCourse(true); }, 1500);
-    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+    const saveGeneration = importIdentityRef.current.generation;
+    let cancelled = false;
+    draftTimerRef.current = setTimeout(async () => {
+      const current = () => !cancelled && importMountedRef.current && importIdentityRef.current.generation === saveGeneration;
+      if (!current()) return;
+      const importSave = pendingImportSaveRef.current;
+      if (importSave) {
+        if (importSave.generation !== saveGeneration) return;
+        try {
+          const scope = await resolveCourseWriteScope({ userId: importSave.userId, userRole: importSave.userRole, requestedOrganizationId: importSave.organizationId });
+          if (!current() || pendingImportSaveRef.current !== importSave || scope.organizationId !== importSave.organizationId) return;
+        } catch (error) {
+          if (current()) {
+            setAutoSaveStatus('error');
+            toast.error(error instanceof Error ? error.message : "Не удалось подтвердить организацию перед сохранением импорта");
+          }
+          return;
+        }
+      }
+      if (!current()) return;
+      const saved = await saveCourse(true);
+      if (saved && pendingImportSaveRef.current === importSave) pendingImportSaveRef.current = null;
+    }, 1500);
+    return () => { cancelled = true; if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
   }, [hasUnsavedChanges, courseTitle, courseDescription, lessons]);
 
   // Save draft on unload

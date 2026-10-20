@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { LessonType, TestQuestionLocal, Lesson, LessonAttachmentLocal } from "@/components/course-builder/LessonTypeConfig";
 import type { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 import { supabase } from "@/integrations/supabase/client";
+import type { CourseImportScope } from "@/lib/courseImportScope";
 
 // --- Local draft helpers ---
 const DRAFT_PREFIX = 'course_draft_';
@@ -98,13 +99,26 @@ export function normalizeLessonsFromDB(
 }
 
 // --- File import logic ---
+export interface CourseBuilderImportContext {
+  scope: CourseImportScope;
+  isCurrent: () => boolean;
+  verifyBeforeCommit: () => Promise<void>;
+}
+
 export async function importFiles(
   files: File[],
   courseTitle: string,
   setCourseTitle: (t: string) => void,
   setCourseDescription: (d: string) => void,
-  setLessons: React.Dispatch<React.SetStateAction<Lesson[]>>
+  setLessons: React.Dispatch<React.SetStateAction<Lesson[]>>,
+  context: CourseBuilderImportContext,
 ): Promise<number> {
+  const assertCurrent = () => {
+    if (!context.scope.organizationId.trim() || !context.isCurrent()) {
+      throw new Error("Контекст импорта изменился. Запустите импорт снова в нужной организации");
+    }
+  };
+  assertCurrent();
   const CHUNK_SIZE = 3;
   const allFiles = Array.from(files).sort((a, b) => {
     const na = a.name.match(/(\d+(?:[\.,]\d+)*)/)?.[1];
@@ -114,6 +128,9 @@ export async function importFiles(
   });
 
   let totalImported = 0;
+  let importedTitle: string | undefined;
+  let importedDescription: string | undefined;
+  const pendingLessons: Lesson[] = [];
   const htmlFiles: File[] = [];
   const otherFiles: File[] = [];
 
@@ -123,6 +140,7 @@ export async function importFiles(
       htmlFiles.push(file);
     } else {
       const head = await file.slice(0, 500).text();
+      assertCurrent();
       if (isHtmlContent(head)) htmlFiles.push(file);
       else otherFiles.push(file);
     }
@@ -130,36 +148,47 @@ export async function importFiles(
 
   for (const file of htmlFiles) {
     const text = await file.text();
+    assertCurrent();
     if (isCszStructuredCourseHtml(text)) {
       throw new Error("Пакет ЦСЗ импортируется через раздел «Импорт курса», чтобы сохранить 11 модулей, типы занятий и статус черновика");
     }
     const parsed = parseHtmlCourse(text);
-    if (!courseTitle && parsed.title) setCourseTitle(parsed.title);
-    if (parsed.description) setCourseDescription(parsed.description);
+    if (!courseTitle && parsed.title) importedTitle = parsed.title;
+    if (parsed.description) importedDescription = parsed.description;
     const importedLessons: Lesson[] = parsed.lessons.map(l => ({
       id: l.id, type: l.type, title: l.title, content: l.content,
       blocks: l.blocks, expanded: false, questions: l.questions, testPassingScore: l.testPassingScore,
     }));
     totalImported += importedLessons.length;
-    setLessons(prev => [...prev, ...importedLessons]);
+    pendingLessons.push(...importedLessons);
   }
 
   for (let offset = 0; offset < otherFiles.length; offset += CHUNK_SIZE) {
+    assertCurrent();
     const chunk = otherFiles.slice(offset, offset + CHUNK_SIZE);
     const formData = new FormData();
+    formData.append("organization_id", context.scope.organizationId);
     chunk.forEach((file, i) => formData.append(`file_${offset + i}`, file));
     const { data, error } = await safeInvoke<any>("import-course", { body: formData });
+    assertCurrent();
     if (error) throw new Error(error.message || "Ошибка импорта");
     if (!data.success) throw new Error(data.error || 'Ошибка импорта');
-    if (!courseTitle && data.courseTitle) setCourseTitle(data.courseTitle);
+    if (!courseTitle && data.courseTitle) importedTitle = data.courseTitle;
     const importedLessons: Lesson[] = (data.lessons || []).map((l: any) => {
       const blocks = htmlToBlocks(l.content || "");
       return { id: l.id, type: "text" as LessonType, title: l.title, content: blocksToJson(blocks), blocks, expanded: false };
     });
     totalImported += importedLessons.length;
-    setLessons(prev => [...prev, ...importedLessons]);
+    pendingLessons.push(...importedLessons);
   }
 
+  // Keep every chunk private until the actor and server-backed tenant are
+  // confirmed again. A late response must not append into another editor.
+  await context.verifyBeforeCommit();
+  assertCurrent();
+  if (importedTitle) setCourseTitle(importedTitle);
+  if (importedDescription) setCourseDescription(importedDescription);
+  if (pendingLessons.length) setLessons(prev => context.isCurrent() ? [...prev, ...pendingLessons] : prev);
   return totalImported;
 }
 
