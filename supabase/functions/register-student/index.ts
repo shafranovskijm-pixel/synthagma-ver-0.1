@@ -81,7 +81,7 @@ serve(async (req) => {
     let callerUserId: string | null = null;
     let callerProfile: { organization_id: string | null } | null = null;
     let callerStaffAuthorized = false;
-    let callerClient: typeof supabaseAdmin | null = null;
+    let callerClient: ReturnType<typeof createClient> | null = null;
 
     if (registration_token) {
       const { data: link, error: linkError } = await supabaseAdmin
@@ -276,8 +276,7 @@ serve(async (req) => {
       // Empty normalized fields request no extra FRDO/identity privilege.
       let detailsAllowed = false;
       try {
-        if (!callerClient) throw new Error("Missing authenticated caller client");
-        const { data: allowed, error } = await callerClient.rpc("can_prepare_student_registration_details", {
+        const { data: allowed, error } = await callerClient!.rpc("can_prepare_student_registration_details", {
           p_organization_id: effectiveOrgId,
           p_group_id: effectiveStudentGroupId ?? null,
           p_with_frdo: !!(registrationDetails.snils || registrationDetails.birth_date),

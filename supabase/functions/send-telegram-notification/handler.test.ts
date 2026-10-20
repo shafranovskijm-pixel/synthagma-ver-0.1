@@ -1,11 +1,11 @@
 import { webcrypto } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TELEGRAM_REQUEST_BODY_MAX_BYTES } from "./contract.ts";
+import { TELEGRAM_REQUEST_BODY_MAX_BYTES } from "./contract";
 import {
   createTelegramRelayHandler,
   TELEGRAM_OUTBOUND_TIMEOUT_MS,
   type TelegramRelayDependencies,
-} from "./handler.ts";
+} from "./handler";
 
 const SERVICE_ROLE_KEY = `service-role-${"s".repeat(64)}`;
 const AUTHENTICATED_USER_JWT = `user-jwt-${"u".repeat(64)}`;
