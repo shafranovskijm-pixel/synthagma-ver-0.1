@@ -578,11 +578,15 @@ export function useCourseLearning() {
         setEnrollmentId(enrollment.id);
         // Don't write access logs in admin preview mode.
         if (!isAdminView && user) {
-          const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
-          if (!current()) return;
-          supabase.from('course_access_log').insert({
-            user_id: user.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
-          }).then(() => {});
+          // This is a best-effort audit write, not an access prerequisite.
+          // A slow profile lookup must not hold the authorized lesson screen.
+          void (async () => {
+            const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+            if (!current()) return;
+            await supabase.from('course_access_log').insert({
+              user_id: user.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
+            });
+          })().catch(() => { /* Audit delivery must not break course loading. */ });
         }
       }
 
