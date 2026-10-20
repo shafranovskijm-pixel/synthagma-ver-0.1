@@ -22,6 +22,12 @@ export function CopiesDuplicatesJournal({ organizationId, onClose }: CopiesDupli
   const h = useCopiesDuplicatesJournal(organizationId);
 
   if (h.loading) return <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div>;
+  if (h.error) return (
+    <div className="space-y-6">
+      <Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl"><ArrowLeft className="w-5 h-5" /></Button>
+      <p role="alert" className="text-sm text-muted-foreground">{h.error}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">

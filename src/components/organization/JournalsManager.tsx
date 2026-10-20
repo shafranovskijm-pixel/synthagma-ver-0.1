@@ -1,5 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { useCopiesJournalScope, type CopiesJournalScope } from "@/hooks/useCopiesJournalScope";
+import { COPIES_STORAGE_CHANGED, COPIES_STORAGE_ERROR, copiesJournalKey, readCopiesJournal } from "@/lib/journals/copiesJournalStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -80,6 +82,7 @@ interface JournalsManagerProps {
 }
 
 export function JournalsManager({ organizationId, groupId, courseId, returnToGroupId }: JournalsManagerProps) {
+  const { scope: copyScope, isCurrent: isCurrentCopyScope } = useCopiesJournalScope(organizationId, JSON.stringify([groupId ?? null, returnToGroupId ?? null]));
   const { params: searchParams, updateParams: setSearchParams } = useUrlNavigation();
   const educationDocumentFocus = readEducationDocumentsJournalFocus(searchParams);
   const focusedEducationEnrollmentId = educationDocumentFocus?.enrollmentId ?? null;
@@ -87,7 +90,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const hasEducationDocumentFocus = Boolean(focusedEducationEnrollmentId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean } | null>(null);
+  const [deletingJournal, setDeletingJournal] = useState<{ type: string; title: string; isRequired: boolean; copyScope?: CopiesJournalScope; copySource?: string | null } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
   const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
@@ -95,6 +98,8 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[] | null>(null);
   const [groupStatus, setGroupStatus] = useState<"loading" | "ready" | "error">("loading");
   const [groupError, setGroupError] = useState<string | null>(null);
+
+  useEffect(() => { setDeletingJournal(null); }, [copyScope]);
 
   const journalType = searchParams.get("journalType");
   const journalView = searchParams.get("journalView");
@@ -186,10 +191,31 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
     })();
   }, [organizationId]);
 
+  const requestDeleteJournal = (journal: JournalItem) => {
+    if (journal.id !== "copies_duplicates") {
+      setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required });
+      return;
+    }
+    if (!isCurrentCopyScope()) return;
+    try {
+      const source = readCopiesJournal(copyScope.organizationId);
+      if (isCurrentCopyScope()) setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required, copyScope, copySource: source.raw });
+    } catch { if (isCurrentCopyScope()) toast.error(COPIES_STORAGE_ERROR); }
+  };
+
   const handleDeleteJournals = async () => {
     if (!deletingJournal) return;
     try {
-      if (deletingJournal.type === "copies_duplicates") { localStorage.removeItem(`copies_duplicates_${organizationId}`); toast.success("Журнал очищен"); setDeletingJournal(null); return; }
+      if (deletingJournal.type === "copies_duplicates") {
+        if (!isCurrentCopyScope() || deletingJournal.copyScope !== copyScope) return;
+        let source: ReturnType<typeof readCopiesJournal>;
+        try { source = readCopiesJournal(copyScope.organizationId); }
+        catch { toast.error(COPIES_STORAGE_ERROR); return; }
+        if (source.raw !== deletingJournal.copySource) { toast.error(COPIES_STORAGE_CHANGED); return; }
+        if (!isCurrentCopyScope()) return;
+        localStorage.removeItem(copiesJournalKey(copyScope.organizationId));
+        toast.success("Журнал очищен"); setDeletingJournal(null); return;
+      }
       const { error } = await supabase.from("journal_instances").delete().eq("organization_id", organizationId).eq("journal_type", deletingJournal.type);
       if (error) throw error;
       setJournalCounts((prev) => ({ ...prev, [deletingJournal.type]: 0 }));
@@ -321,7 +347,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
                 <CollapsibleContent>
                   <div className="border-t border-border">
                     {category.journals.map((journal) => (
-                      <JournalRow key={journal.id} journal={journal} onAutoClick={() => openAutoJournal(journal.id)} onManualClick={() => openManualJournal(journal.id, journal.title)} onDeleteClick={() => setDeletingJournal({ type: journal.id, title: journal.title, isRequired: journal.required })} hasAutoMode={!!AUTO_JOURNALS[journal.id]} isSpecial={SPECIAL_JOURNALS.has(journal.id)} inGroupContext={inGroupContext} />
+                      <JournalRow key={journal.id} journal={journal} onAutoClick={() => openAutoJournal(journal.id)} onManualClick={() => openManualJournal(journal.id, journal.title)} onDeleteClick={() => requestDeleteJournal(journal)} hasAutoMode={!!AUTO_JOURNALS[journal.id]} isSpecial={SPECIAL_JOURNALS.has(journal.id)} inGroupContext={inGroupContext} />
                     ))}
                   </div>
                 </CollapsibleContent>
@@ -349,7 +375,7 @@ export function JournalsManager({ organizationId, groupId, courseId, returnToGro
       )}
 
       {/* Delete Dialog */}
-      <AlertDialog open={!!deletingJournal} onOpenChange={() => setDeletingJournal(null)}>
+      <AlertDialog open={!!deletingJournal && (deletingJournal.type !== "copies_duplicates" || deletingJournal.copyScope === copyScope)} onOpenChange={() => setDeletingJournal(null)}>
         <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Удалить журнал?</AlertDialogTitle><AlertDialogDescription>Вы уверены, что хотите удалить все данные журнала <strong>"{deletingJournal?.title}"</strong>?{journalCounts[deletingJournal?.type || ""] > 0 && <> Будет удалено журналов: {journalCounts[deletingJournal?.type || ""]}. </>}Это действие нельзя отменить.</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={handleDeleteJournals} className="bg-destructive hover:bg-destructive/90">Удалить</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>

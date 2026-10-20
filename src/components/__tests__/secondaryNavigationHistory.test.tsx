@@ -3,15 +3,19 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 
-const backend = vi.hoisted(() => ({ profile: null as any, filters: [] as Array<[string, unknown]> }));
+const backend = vi.hoisted(() => ({ profile: null as any, filters: [] as Array<[string, unknown]>,
+  requests: [] as Array<{ table: string; filters: Array<[string, unknown]>; range: [number, number] | null; resolved: boolean }> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: (table: string) => {
+    const request = { table, filters: [] as Array<[string, unknown]>, range: null as [number, number] | null, resolved: false };
+    backend.requests.push(request);
     const result = () => ({ data: table === "profiles" ? backend.profile : [], error: null, count: 0 });
     const query: any = {
-      select: () => query, eq: (key: string, value: unknown) => { backend.filters.push([key, value]); return query; },
+      select: () => query, eq: (key: string, value: unknown) => { backend.filters.push([key, value]); request.filters.push([key, value]); return query; },
       not: () => query, order: () => query,
+      range: (from: number, to: number) => { request.range = [from, to]; return query; },
       maybeSingle: () => Promise.resolve(result()),
-      then: (resolve: any, reject: any) => Promise.resolve(result()).then(resolve, reject),
+      then: (resolve: any, reject: any) => Promise.resolve(result()).then(reply => { request.resolved = true; return resolve(reply); }, reject),
     };
     return query;
   },
@@ -87,7 +91,7 @@ function MarketplaceHarness() {
   return <><h2>Marketplace {h.activeTab}</h2><button onClick={() => h.setActiveTab("orders")}>Open orders</button><button onClick={() => h.setActiveTab("import")}>Open import</button></>;
 }
 
-beforeEach(() => { localStorage.clear(); backend.profile = null; backend.filters = []; });
+beforeEach(() => { localStorage.clear(); backend.profile = null; backend.filters = []; backend.requests = []; });
 afterEach(cleanup);
 
 describe("secondary workspaces retain browser navigation", () => {
@@ -133,7 +137,9 @@ describe("secondary workspaces retain browser navigation", () => {
     view.unmount();
     backend.profile = [];
     await mount(<JournalsManager organizationId="org-1" groupId="group-1" returnToGroupId="group-1" />, "/organization?tab=journals&groupId=group-1&returnToGroupId=group-1&journalView=manual&journalType=attendance");
-    expect(backend.filters).toContainEqual(["student_group_id", "group-1"]);
+    await waitFor(() => expect(backend.requests.filter(request => request.table === "student_group_profiles_effective")).toEqual([{
+      table: "student_group_profiles_effective", filters: [["organization_id", "org-1"], ["group_id", "group-1"]], range: [0, 999], resolved: true,
+    }]));
     expect(screen.queryByRole("heading", { name: "Manual journal attendance" })).not.toBeInTheDocument();
   });
 
