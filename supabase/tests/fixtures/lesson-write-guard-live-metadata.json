@@ -1,0 +1,3454 @@
+{
+  "status": "ACTUAL_PRODUCTION_METADATA_READONLY_CLOSED_FIXTURE_DISCOVERY",
+  "capturedAtUtc": "2026-10-20T08:41:40.232Z",
+  "project_id": "d57ddcdf-2d1b-42ec-8bfb-3484123b5ff2",
+  "functions": [
+    {
+      "body_md5": "ee2986b40ec4269952d1a7a832964ba3",
+      "definition": "CREATE OR REPLACE FUNCTION public._paid_20260922_course_read(p_course_id uuid, p_allow_learner boolean)\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\n SET row_security TO 'off'\nAS $function$\nDECLARE v_course public.courses%ROWTYPE; v_valid boolean;\nBEGIN\n -- Legacy must remain neutral to every existing permissive/restrictive policy.\n IF NOT public._paid_20260922_course_scope(p_course_id) THEN RETURN true; END IF;\n IF auth.uid() IS NULL THEN RETURN false; END IF;\n IF EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id=auth.uid() AND p.blocked_at IS NOT NULL) THEN\n   RETURN false;\n END IF;\n SELECT c.* INTO v_course FROM public.courses c WHERE c.id=p_course_id;\n IF NOT FOUND THEN RETURN false; END IF;\n -- Platform administration retains inspection of pending/invalid deliveries.\n IF public.has_role(auth.uid(),'admin'::public.app_role) THEN RETURN true; END IF;\n IF p_course_id=ANY(public._paid_20260922_original_ids()) THEN\n   RETURN v_course.organization_id='4ac2c05a-d8b5-4e72-ba31-f2c743091d95'::uuid\n      AND COALESCE(public.can_access_course(p_course_id,'courses.read'),false);\n END IF;\n -- Every descendant hop requires its own order tied to that parent listing.\n -- UNION (not UNION ALL) terminates cycles; scoped anchors cannot be reparented.\n WITH RECURSIVE ancestry AS (\n   SELECT c.id,c.organization_id,c.source_course_id,c.source_order_id FROM public.courses c WHERE c.id=p_course_id\n   UNION\n   SELECT p.id,p.organization_id,p.source_course_id,p.source_order_id FROM public.courses p\n   JOIN ancestry a ON p.id=a.source_course_id\n )\n SELECT EXISTS (\n   SELECT 1 FROM ancestry a WHERE a.id=ANY(public._paid_20260922_original_ids())\n     AND a.organization_id='4ac2c05a-d8b5-4e72-ba31-f2c743091d95'::uuid\n     AND a.source_course_id IS NULL AND a.source_order_id IS NULL\n ) AND NOT EXISTS (\n   SELECT 1 FROM ancestry a\n   WHERE NOT a.id=ANY(public._paid_20260922_original_ids())\n     AND NOT EXISTS (\n       SELECT 1 FROM public.marketplace_orders mo\n       JOIN public.marketplace_courses mc ON mc.id=mo.marketplace_course_id\n       JOIN public.courses parent ON parent.id=a.source_course_id\n       WHERE mo.id=a.source_order_id AND mo.buyer_type='organization'\n         AND mo.status IN ('paid','completed') AND mo.paid_at IS NOT NULL\n         AND mo.buyer_organization_id=a.organization_id\n         AND mc.course_id=a.source_course_id\n         AND (mc.organization_id=parent.organization_id OR\n              (mc.organization_id IS NULL AND parent.organization_id='4ac2c05a-d8b5-4e72-ba31-f2c743091d95'::uuid))\n     )\n ) INTO v_valid;\n IF NOT COALESCE(v_valid,false) THEN RETURN false; END IF;\n IF public.can_access_course(p_course_id,'courses.read') THEN RETURN true; END IF;\n RETURN COALESCE(p_allow_learner,false) AND v_course.is_published IS TRUE\n   AND COALESCE(public.can_access_course_as_learner(p_course_id),false);\nEND\n$function$\n",
+      "definition_md5": "6e826c917b69c2e37ef99407c9808ed9",
+      "oid": "249246",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres,anon=X/postgres,authenticated=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public",
+        "row_security=off"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "_paid_20260922_course_read(uuid,boolean)"
+    },
+    {
+      "body_md5": "2a149df11afee7ec3eb89e6a1bdba897",
+      "definition": "CREATE OR REPLACE FUNCTION public._paid_20260922_course_scope(p_course_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\n SET row_security TO 'off'\nAS $function$\n WITH RECURSIVE ancestry(id,source_course_id) AS (\n   SELECT c.id,c.source_course_id FROM public.courses c WHERE c.id=p_course_id\n   UNION\n   SELECT p.id,p.source_course_id FROM public.courses p\n   JOIN ancestry a ON p.id=a.source_course_id\n )\n SELECT COALESCE(p_course_id=ANY(public._paid_20260922_original_ids()),false)\n   OR EXISTS (SELECT 1 FROM ancestry WHERE id=ANY(public._paid_20260922_original_ids()));\n$function$\n",
+      "definition_md5": "77b5addf47ccd0b51e133098b391eb2d",
+      "oid": "249245",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres,anon=X/postgres,authenticated=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public",
+        "row_security=off"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "_paid_20260922_course_scope(uuid)"
+    },
+    {
+      "body_md5": "d4992c64032e5eb61d17608e632abf95",
+      "definition": "CREATE OR REPLACE FUNCTION public._paid_20260922_original_ids()\n RETURNS uuid[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT ARRAY[\n    '8ae9739f-e87b-5397-94a5-86bfe99b0d77'::uuid, -- B01\n    '26e65ccb-609f-5b3d-b59a-f280c9feae5b'::uuid, -- B02\n    '271f5a00-3c75-5bc4-95d3-0bfb571af830'::uuid, -- B03\n    'c54775d6-4fa6-5074-9fe4-0ee0e43e3d20'::uuid, -- B04\n    'eee04ed8-712a-516b-b424-f4d3f2914789'::uuid, -- B07\n    'da8f53b1-aeb3-554a-a6e3-c47cd38bb974'::uuid, -- B08\n    'b17642a3-5640-58d5-88c0-42da3c7993c3'::uuid, -- B09\n    '3ffe2add-d573-5e85-a0d9-e605bfb38cc4'::uuid, -- B10\n    '5b36a622-2bef-55f6-8e07-4e3ed6ac5359'::uuid, -- B11\n    '6956ec2f-a3bf-50fb-a26f-bb34f7d22686'::uuid, -- EDU-01\n    '8f2649d4-7344-571c-b949-d3b17c0b6570'::uuid, -- EDU-02\n    '43875168-01df-5f6e-bab2-05429690b670'::uuid, -- EDU-04\n    '0ee6a051-f5e9-5261-a7c8-50d1c8557c95'::uuid, -- EDU-05\n    '0dd53774-189b-5f79-afe1-e6a2f8ccf670'::uuid, -- EDU-06\n    '556bdc4e-ca55-5e0e-b5bc-aabd06fb70e0'::uuid, -- EDU-07\n    'c227f730-78f1-58e3-b911-a46cf70af792'::uuid, -- EDU-08\n    '28d29085-e03a-53d3-815b-a2c8492b5fae'::uuid, -- REG-01\n    'a49a8b3b-94c2-5741-9a24-bee66feb72d0'::uuid, -- REG-02\n    '9012ac05-33f2-5543-a06c-dff399f718e3'::uuid, -- REG-04\n    'd6cee67d-d16d-56ba-a17d-0ecc4f187fab'::uuid, -- REG-05\n    'f913a85b-8b88-5e6c-9943-ee9fefaeea1f'::uuid, -- REG-06\n    '39d4ed6c-c726-5974-be26-2ed2ae4ce548'::uuid, -- REG-07\n    'ab68a4cb-a24d-56a8-aedb-d797c2185797'::uuid, -- REG-08\n    '88407039-1664-5804-9750-9136c008287c'::uuid, -- REG-09\n    'f09e8ae0-078f-519c-9025-f3c7b98d46f5'::uuid -- REG-11\n ];\n$function$\n",
+      "definition_md5": "cd7bc9e459525c66f1c5cfa5b2b635b6",
+      "oid": "249244",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "i",
+      "signature": "_paid_20260922_original_ids()"
+    },
+    {
+      "body_md5": "6c078d0f1aa1f6b5af15485f0eaccb2a",
+      "definition": "CREATE OR REPLACE FUNCTION public.account_deletion_access_allowed()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=auth.uid());\n$function$\n",
+      "definition_md5": "64b0a90b7db9813950ccca6dff208f3a",
+      "oid": "253133",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "account_deletion_access_allowed()"
+    },
+    {
+      "body_md5": "2db09c3fc855ba90e71d3ae28cfadae3",
+      "definition": "CREATE OR REPLACE FUNCTION auth.jwt()\n RETURNS jsonb\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n    coalesce(\n        nullif(current_setting('request.jwt.claim', true), ''),\n        nullif(current_setting('request.jwt.claims', true), '')\n    )::jsonb\n$function$\n",
+      "definition_md5": "20054548ba2003f61a6bcb472175700b",
+      "oid": "16709",
+      "owner": "supabase_auth_admin",
+      "proacl": "{=X/supabase_auth_admin,postgres=X/supabase_auth_admin,supabase_auth_admin=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+      "proconfig": null,
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16541",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "s",
+      "signature": "auth.jwt()"
+    },
+    {
+      "body_md5": "f31486fed08a7402e89d4aa71b0ad273",
+      "definition": "CREATE OR REPLACE FUNCTION auth.role()\n RETURNS text\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n  coalesce(\n    nullif(current_setting('request.jwt.claim.role', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')\n  )::text\n$function$\n",
+      "definition_md5": "8a3e05459e07e0633d43c6fba2a2cdf4",
+      "oid": "16539",
+      "owner": "supabase_auth_admin",
+      "proacl": "{=X/supabase_auth_admin,supabase_auth_admin=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+      "proconfig": null,
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16541",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "s",
+      "signature": "auth.role()"
+    },
+    {
+      "body_md5": "cdef18c69c4f4cbbced2eaf81e628b49",
+      "definition": "CREATE OR REPLACE FUNCTION auth.uid()\n RETURNS uuid\n LANGUAGE sql\n STABLE\nAS $function$\n  select \n  coalesce(\n    nullif(current_setting('request.jwt.claim.sub', true), ''),\n    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')\n  )::uuid\n$function$\n",
+      "definition_md5": "ea3b41bf29e2ad573067939329aa088e",
+      "oid": "16538",
+      "owner": "supabase_auth_admin",
+      "proacl": "{=X/supabase_auth_admin,supabase_auth_admin=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+      "proconfig": null,
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16541",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "s",
+      "signature": "auth.uid()"
+    },
+    {
+      "body_md5": "ac874288fd237b9a70850c9108d7fbcf",
+      "definition": "CREATE OR REPLACE FUNCTION public.can_access_course_as_learner(_course_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT auth.uid() IS NOT NULL AND EXISTS (\n    SELECT 1\n    FROM public.enrollments e\n    JOIN public.courses c ON c.id = e.course_id\n    JOIN public.profiles p\n      ON p.user_id = e.user_id\n     AND p.organization_id = c.organization_id\n    WHERE e.user_id = auth.uid()\n      AND e.course_id = _course_id\n      AND e.status IN ('active', 'completed')\n      -- Keep the existing SINTAGMA enrollment contract: completion preserves\n      -- course access even when the original access period has elapsed.\n      AND (\n        e.expires_at IS NULL\n        OR e.expires_at > now()\n        OR e.status = 'completed'\n      )\n  )\n$function$\n",
+      "definition_md5": "fff57f8e966305869e67d97b578fee4b",
+      "oid": "222487",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "can_access_course_as_learner(uuid)"
+    },
+    {
+      "body_md5": "624638f46ea9c6a2d31e101601ca8c84",
+      "definition": "CREATE OR REPLACE FUNCTION public.can_access_course(_course_id uuid, _permission text DEFAULT 'courses.read'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.courses c\n    WHERE c.id = _course_id\n      AND public.can_access_organization(c.organization_id, _permission)\n  )\n$function$\n",
+      "definition_md5": "eb3b061167487af99e56919d854a95d1",
+      "oid": "187192",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "can_access_course(uuid,text)"
+    },
+    {
+      "body_md5": "ad720ba20dc32362ed009b2917cc2d9c",
+      "definition": "CREATE OR REPLACE FUNCTION public.can_access_organization(_organization_id uuid, _permission text DEFAULT 'settings.read'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT\n    _organization_id IS NOT NULL\n    AND auth.uid() IS NOT NULL\n    AND (\n      public.has_role(auth.uid(), 'admin'::public.app_role)\n      OR EXISTS (\n        SELECT 1\n        FROM public.user_roles ur\n        JOIN public.profiles p ON p.user_id = ur.user_id\n        WHERE ur.user_id = auth.uid()\n          AND ur.role = 'organization'::public.app_role\n          AND p.organization_id = _organization_id\n          AND NOT EXISTS (\n            SELECT 1\n            FROM public.org_staff os\n            WHERE os.user_id = auth.uid()\n              AND os.organization_id = _organization_id\n          )\n      )\n      OR (\n        _permission IS NOT NULL\n        AND EXISTS (\n          SELECT 1\n          FROM public.org_staff os\n          WHERE os.user_id = auth.uid()\n            AND os.organization_id = _organization_id\n            AND (os.expires_at IS NULL OR os.expires_at > now())\n        )\n        AND public.has_org_staff_permission(auth.uid(), _organization_id, _permission)\n      )\n    )\n$function$\n",
+      "definition_md5": "2e11495f3d3e6ca261af8a08ed874269",
+      "oid": "187191",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "can_access_organization(uuid,text)"
+    },
+    {
+      "body_md5": "68ffb4d0c425f3d7d0a884b88a0e94be",
+      "definition": "CREATE OR REPLACE FUNCTION public.csz_guard_lesson_metadata()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nBEGIN\n  IF NOT ((TG_OP<>'INSERT' AND OLD.course_id=ANY(ARRAY['7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a']::uuid[]))\n    OR (TG_OP<>'DELETE' AND NEW.course_id=ANY(ARRAY['7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a']::uuid[]))) THEN\n    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\n  END IF;\n  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'S022: READ COMMITTED required' USING ERRCODE='25000'; END IF;\n  PERFORM pg_advisory_xact_lock(7630559,178);\n  IF auth.uid() IS NULL OR NOT public.can_access_course(CASE WHEN TG_OP='DELETE' THEN OLD.course_id ELSE NEW.course_id END,'courses.write') THEN\n    RAISE EXCEPTION 'S022: courses.write required for protected lesson metadata' USING ERRCODE='42501';\n  END IF;\n  IF TG_OP='UPDATE' AND (NEW.id IS DISTINCT FROM OLD.id OR NEW.course_id IS DISTINCT FROM OLD.course_id) THEN\n    RAISE EXCEPTION 'S022: protected lesson cannot change identity/scope' USING ERRCODE='42501';\n  END IF;\n  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\nEND;\n$function$\n",
+      "definition_md5": "1eed6d20e468f90b00d2537e00206dbd",
+      "oid": "226971",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "v",
+      "signature": "csz_guard_lesson_metadata()"
+    },
+    {
+      "body_md5": "a6dd3e1e39780e696a3975c654c89cfc",
+      "definition": "CREATE OR REPLACE FUNCTION public.csz_guard_protected_truncate()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nBEGIN\n  -- Statement guard: RLS and row triggers do not protect TRUNCATE (including CASCADE).\n  -- A pre-existing REPEATABLE READ snapshot must not miss a concurrently created anchor.\n  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'S022: READ COMMITTED required for TRUNCATE' USING ERRCODE='25000'; END IF;\n  PERFORM pg_advisory_xact_lock(7630559,178);\n  IF EXISTS(SELECT 1 FROM public.courses WHERE id=ANY(ARRAY['7630559a-6caf-42e7-97f9-1cd0e4598c39','7e5bc4e6-0629-4186-9745-a821cbe7255a']::uuid[])) THEN\n    RAISE EXCEPTION 'S022: TRUNCATE forbidden while protected course exists' USING ERRCODE='42501';\n  END IF;\n  RETURN NULL;\nEND;\n$function$\n",
+      "definition_md5": "482a80e76e9fbd143c2fe367e7776683",
+      "oid": "226975",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "v",
+      "signature": "csz_guard_protected_truncate()"
+    },
+    {
+      "body_md5": "1ff63e18c919fab8dafc9d5ff5298a6d",
+      "definition": "CREATE OR REPLACE FUNCTION public.current_organization_id()\n RETURNS uuid\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_org uuid;\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN NULL;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.profiles\n  WHERE user_id = auth.uid()\n  LIMIT 1;\n\n  IF v_org IS NOT NULL THEN\n    RETURN v_org;\n  END IF;\n\n  SELECT organization_id INTO v_org\n  FROM public.org_staff\n  WHERE user_id = auth.uid()\n    AND (expires_at IS NULL OR expires_at > now())\n  ORDER BY\n    CASE role\n      WHEN 'owner' THEN 1\n      WHEN 'admin' THEN 2\n      WHEN 'school_editor' THEN 3\n      WHEN 'course_editor' THEN 4\n      WHEN 'teacher' THEN 5\n      WHEN 'sales_manager' THEN 6\n      ELSE 10\n    END,\n    created_at ASC\n  LIMIT 1;\n\n  RETURN v_org;\nEND;\n$function$\n",
+      "definition_md5": "59764b65fa49fe9eab47f06d02774888",
+      "oid": "17723",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "current_organization_id()"
+    },
+    {
+      "body_md5": "f8d82709ae27730782dc4f455b35b7de",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_org_staff_permissions(_user_id uuid, _organization_id uuid)\n RETURNS text[]\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  staff_role text;\n  base_perms text[];\n  override_perms text[];\nBEGIN\n  SELECT role,\n         COALESCE(\n           ARRAY(SELECT jsonb_array_elements_text(sections_access)),\n           ARRAY[]::text[]\n         )\n    INTO staff_role, override_perms\n    FROM public.org_staff\n   WHERE user_id = _user_id AND organization_id = _organization_id\n   LIMIT 1;\n\n  IF staff_role IS NULL THEN\n    RETURN ARRAY[]::text[];\n  END IF;\n\n  base_perms := public.org_role_default_permissions(staff_role);\n\n  -- merge: union of base + overrides (overrides могут только добавлять права)\n  RETURN ARRAY(\n    SELECT DISTINCT unnest(base_perms || override_perms)\n  );\nEND;\n$function$\n",
+      "definition_md5": "c0ea40b20bbd1a71aa31cdbcbb7fc0b3",
+      "oid": "139723",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "get_org_staff_permissions(uuid,uuid)"
+    },
+    {
+      "body_md5": "b9c87ca03c3e95a57baf9122753792e2",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_org_staff_permission(_user_id uuid, _organization_id uuid, _permission text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH perms AS (\n    SELECT unnest(public.get_org_staff_permissions(_user_id, _organization_id)) AS permission\n  )\n  SELECT EXISTS (\n    SELECT 1\n    FROM perms\n    WHERE permission = _permission\n       OR permission = public.normalize_org_staff_permission(_permission)\n       OR public.normalize_org_staff_permission(permission) = public.normalize_org_staff_permission(_permission)\n  )\n$function$\n",
+      "definition_md5": "3d1fedafe94778fa19dd47acb71a3782",
+      "oid": "139724",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "has_org_staff_permission(uuid,uuid,text)"
+    },
+    {
+      "body_md5": "5457df2171dee5cee3641e64285928f2",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_role app_role, _user_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\nEND;\n$function$\n",
+      "definition_md5": "20c46f708cc2e7fa51b640290151a59e",
+      "oid": "17722",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "v",
+      "signature": "has_role(app_role,uuid)"
+    },
+    {
+      "body_md5": "4e852b30ef52ba5263c4e11d1aec8cf0",
+      "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n",
+      "definition_md5": "82a7fa1cd06301bb83b010bc315aee0b",
+      "oid": "152175",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "has_role(uuid,app_role)"
+    },
+    {
+      "body_md5": "66e0616822ae9af75f9c191bf3311789",
+      "definition": "CREATE OR REPLACE FUNCTION public.invalidate_marketplace_course_validation()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_old_course_id uuid;\n  v_new_course_id uuid;\n  v_old_lesson_id uuid;\n  v_new_lesson_id uuid;\nBEGIN\n  IF TG_TABLE_NAME = 'courses' THEN\n    v_old_course_id := OLD.id;\n    v_new_course_id := NEW.id;\n  ELSIF TG_TABLE_NAME IN ('course_modules', 'lessons', 'course_documents') THEN\n    IF TG_OP <> 'INSERT' THEN\n      v_old_course_id := OLD.course_id;\n    END IF;\n    IF TG_OP <> 'DELETE' THEN\n      v_new_course_id := NEW.course_id;\n    END IF;\n  ELSIF TG_TABLE_NAME IN ('test_questions', 'lesson_attachments') THEN\n    IF TG_OP <> 'INSERT' THEN\n      v_old_lesson_id := OLD.lesson_id;\n      SELECT l.course_id INTO v_old_course_id\n      FROM public.lessons l\n      WHERE l.id = v_old_lesson_id;\n    END IF;\n    IF TG_OP <> 'DELETE' THEN\n      v_new_lesson_id := NEW.lesson_id;\n      SELECT l.course_id INTO v_new_course_id\n      FROM public.lessons l\n      WHERE l.id = v_new_lesson_id;\n    END IF;\n  END IF;\n\n  UPDATE public.marketplace_courses mc\n  SET is_validated = false\n  WHERE mc.is_validated = true\n    AND mc.course_id IN (v_old_course_id, v_new_course_id);\n\n  IF TG_OP = 'DELETE' THEN\n    RETURN OLD;\n  END IF;\n\n  RETURN NEW;\nEND\n$function$\n",
+      "definition_md5": "b19482763a8cbda7b9df4be01a51ba9d",
+      "oid": "203951",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public, pg_temp"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "v",
+      "signature": "invalidate_marketplace_course_validation()"
+    },
+    {
+      "body_md5": "5894db724b2a3cbc52701cabfb2cf73c",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_org_owner(_user_id uuid, _organization_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.user_roles ur\n    JOIN public.profiles p ON p.user_id = ur.user_id\n    WHERE ur.user_id = _user_id\n      AND ur.role = 'organization'::public.app_role\n      AND p.organization_id = _organization_id\n      AND NOT EXISTS (\n        SELECT 1\n        FROM public.org_staff os\n        WHERE os.user_id = _user_id\n          AND os.organization_id = _organization_id\n      )\n  )\n$function$\n",
+      "definition_md5": "362aca6afc26c775be594843258b2ab2",
+      "oid": "194557",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "is_org_owner(uuid,uuid)"
+    },
+    {
+      "body_md5": "2d47924fe022372f2dc128a979d56a53",
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_org_staff_permission(_permission text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN _permission IS NULL THEN NULL\n    WHEN _permission LIKE '%.view'   THEN regexp_replace(_permission, '\\.view$',   '.read')\n    WHEN _permission LIKE '%.manage' THEN regexp_replace(_permission, '\\.manage$', '.write')\n    ELSE _permission\n  END\n$function$\n",
+      "definition_md5": "bb385c2b288bb966297a8504df1696ea",
+      "oid": "187190",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "i",
+      "signature": "normalize_org_staff_permission(text)"
+    },
+    {
+      "body_md5": "7288dd75edf8cd07e828912465d233a2",
+      "definition": "CREATE OR REPLACE FUNCTION public.org_role_default_permissions(_role text)\n RETURNS text[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE _role\n    WHEN 'owner' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','documents.sign','documents.issue','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read','staff.write',\n      'billing.read','billing.write','settings.read','settings.write',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read','sales.write'\n    ]\n    WHEN 'admin' THEN ARRAY[\n      'courses.read','courses.write','students.read','students.write',\n      'companies.read','companies.write','library.read','library.write',\n      'documents.read','documents.write','documents.sign','documents.issue','journals.read','journals.write',\n      'frdo.read','frdo.write','labor_safety.read','labor_safety.write',\n      'services.read','services.write','staff.read',\n      'billing.read','settings.read',\n      'chats.read','chats.write','homework.read','homework.write',\n      'webinars.read','webinars.write','sales.read'\n    ]\n    WHEN 'school_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','services.read','services.write',\n      'settings.read','webinars.read','webinars.write'\n    ]\n    WHEN 'course_editor' THEN ARRAY[\n      'courses.read','courses.write','library.read','library.write',\n      'documents.read','webinars.read'\n    ]\n    WHEN 'teacher' THEN ARRAY[\n      'courses.read','students.read','library.read','chats.read','chats.write',\n      'homework.read','homework.write','documents.read','journals.read'\n    ]\n    WHEN 'sales_manager' THEN ARRAY[\n      'sales.read','sales.write','companies.read','companies.write',\n      'services.read','documents.read','chats.read','chats.write','students.read'\n    ]\n    ELSE ARRAY[]::text[]\n  END\n$function$\n",
+      "definition_md5": "7aeb1012822cfe0013409ce5b1df1771",
+      "oid": "139722",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "i",
+      "signature": "org_role_default_permissions(text)"
+    },
+    {
+      "body_md5": "66d5c98cf1725e74034967aee1d64a39",
+      "definition": "CREATE OR REPLACE FUNCTION public.uc_platform_document_action_allowed(p_user uuid, p_action text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\n SELECT p_user IS NOT NULL AND p_action IN ('read','write','sign','issue')\n AND NOT EXISTS(SELECT 1 FROM public.account_deletion_revocations WHERE user_id=p_user)\n AND (NOT public.has_role('admin'::public.app_role,p_user)\n  OR NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user)\n  OR EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user AND\n     (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager'))\n     AND (expires_at IS NULL OR expires_at>now()))\n   AND NOT EXISTS(SELECT 1 FROM public.admin_staff WHERE user_id=p_user\n     AND (NOT (role IN ('super_admin','admin') OR p_action='read' AND role IN ('viewer','sales_manager')) OR expires_at<=now())))\n$function$\n",
+      "definition_md5": "e5a1436d0cc46218d379c3ffec8c0d0d",
+      "oid": "258236",
+      "owner": "postgres",
+      "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": true,
+      "provolatile": "s",
+      "signature": "uc_platform_document_action_allowed(uuid,text)"
+    },
+    {
+      "body_md5": "301a884953d37769916294bb60562e05",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n",
+      "definition_md5": "3210625d1c794f6db7b3c3defc5984dd",
+      "oid": "17724",
+      "owner": "postgres",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres}",
+      "proconfig": [
+        "search_path=public"
+      ],
+      "procost": 100,
+      "proisstrict": false,
+      "prokind": "f",
+      "proowner": "16384",
+      "proparallel": "u",
+      "prorows": 0,
+      "prosecdef": false,
+      "provolatile": "v",
+      "signature": "update_updated_at_column()"
+    }
+  ],
+  "relations": [
+    {
+      "columns": [
+        {
+          "default": null,
+          "name": "instance_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "aud",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "role",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "encrypted_password",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email_confirmed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "invited_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "confirmation_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "confirmation_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "recovery_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "recovery_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "email_change_token_new",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email_change",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "email_change_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "last_sign_in_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "raw_app_meta_data",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "raw_user_meta_data",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "is_super_admin",
+          "not_null": false,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "updated_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "NULL::character varying",
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "phone_confirmed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "name": "phone_change",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "''::character varying",
+          "name": "phone_change_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "phone_change_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "LEAST(email_confirmed_at, phone_confirmed_at)",
+          "name": "confirmed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "name": "email_change_token_current",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": "0",
+          "name": "email_change_confirm_status",
+          "not_null": false,
+          "type": "smallint"
+        },
+        {
+          "default": null,
+          "name": "banned_until",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "''::character varying",
+          "name": "reauthentication_token",
+          "not_null": false,
+          "type": "character varying(255)"
+        },
+        {
+          "default": null,
+          "name": "reauthentication_sent_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "name": "is_sso_user",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "deleted_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "name": "is_anonymous",
+          "not_null": true,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))",
+          "name": "users_email_change_confirm_status_check",
+          "type": "c"
+        },
+        {
+          "definition": "UNIQUE (phone)",
+          "name": "users_phone_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "users_pkey",
+          "type": "p"
+        }
+      ],
+      "nspname": "auth",
+      "oid": "16495",
+      "owner": "supabase_auth_admin",
+      "policies": [],
+      "relacl": "{supabase_auth_admin=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin,postgres=ar*wdDxtm/supabase_auth_admin,sandbox_exec_atxwvjxbqjgkbjlhsdch=r/postgres,sandbox_exec=r/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "users",
+      "relowner": "16541",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()",
+          "enabled": "O",
+          "function": "handle_new_user()",
+          "name": "on_auth_user_created"
+        },
+        {
+          "definition": "CREATE TRIGGER on_demo_account_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION assign_demo_role()",
+          "enabled": "O",
+          "function": "assign_demo_role()",
+          "name": "on_demo_account_created"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "clock_timestamp()",
+          "name": "revoked_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (user_id)",
+          "name": "account_deletion_revocations_pkey",
+          "type": "p"
+        }
+      ],
+      "nspname": "public",
+      "oid": "253108",
+      "owner": "postgres",
+      "policies": [],
+      "relacl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "account_deletion_revocations",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": []
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'viewer'::text",
+          "name": "role",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "''::text",
+          "name": "full_name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "''::text",
+          "name": "email",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "admin_staff_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+          "name": "admin_staff_user_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (user_id)",
+          "name": "admin_staff_user_id_key",
+          "type": "u"
+        }
+      ],
+      "nspname": "public",
+      "oid": "126089",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "d",
+          "name": "Admins can delete admin_staff",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "a",
+          "name": "Admins can insert admin_staff",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": null,
+          "with_check": "has_role('admin'::app_role, auth.uid())"
+        },
+        {
+          "command": "w",
+          "name": "Admins can update admin_staff",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Admins can view admin_staff",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "admin_staff",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.admin_staff FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER sync_admin_staff_to_sales_managers_trg AFTER INSERT OR DELETE OR UPDATE OF role ON public.admin_staff FOR EACH ROW EXECUTE FUNCTION sync_admin_staff_to_sales_managers()",
+          "enabled": "O",
+          "function": "sync_admin_staff_to_sales_managers()",
+          "name": "sync_admin_staff_to_sales_managers_trg"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_log_admin_staff_changes AFTER INSERT OR DELETE OR UPDATE ON public.admin_staff FOR EACH ROW EXECUTE FUNCTION log_admin_staff_changes()",
+          "enabled": "O",
+          "function": "log_admin_staff_changes()",
+          "name": "trg_log_admin_staff_changes"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_platform_document_role_guard BEFORE INSERT OR DELETE OR UPDATE ON public.admin_staff FOR EACH ROW EXECUTE FUNCTION uc_guard_platform_document_role_delegation()",
+          "enabled": "O",
+          "function": "uc_guard_platform_document_role_delegation()",
+          "name": "uc_platform_document_role_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER update_admin_staff_updated_at BEFORE UPDATE ON public.admin_staff FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_admin_staff_updated_at"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "category_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "title",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "description",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "duration",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "false",
+          "name": "is_published",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "true",
+          "name": "skip_video_identification",
+          "not_null": false,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "sequential_lessons",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "true",
+          "name": "allow_video_seek",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "frdo_program_type",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_document_type",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_professional_area",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_specialty_group",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_qualification_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_profession_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_qualification_rank",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'Очная'::text",
+          "name": "training_form",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_duration_hours",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "frdo_financing_source",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "frdo_education_form",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "retraining_period_months",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "30",
+          "name": "reminder_advance_days",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "false",
+          "name": "notify_on_completion",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "completion_notify_emails",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "source_order_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "source_course_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "0",
+          "name": "price",
+          "not_null": true,
+          "type": "numeric"
+        },
+        {
+          "default": null,
+          "name": "cover_image_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "landing_content",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "slug",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "accent_color",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "0",
+          "name": "catalog_order",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "true",
+          "name": "allow_materials_download",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "default_access_days",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "true",
+          "name": "require_enrollment_approval",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "false",
+          "name": "hidden_from_catalog",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "generation_progress",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "system_key",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "false",
+          "name": "require_final_test_photo",
+          "not_null": true,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (category_id) REFERENCES course_categories(id) ON DELETE SET NULL",
+          "name": "courses_category_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "courses_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "courses_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "UNIQUE (slug)",
+          "name": "courses_slug_key",
+          "type": "u"
+        },
+        {
+          "definition": "FOREIGN KEY (source_course_id) REFERENCES courses(id)",
+          "name": "courses_source_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (source_order_id) REFERENCES marketplace_orders(id)",
+          "name": "courses_source_order_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK (((system_key IS NULL) OR (system_key = 'welcome'::text)))",
+          "name": "courses_system_key_check",
+          "type": "c"
+        }
+      ],
+      "nspname": "public",
+      "oid": "17555",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "*",
+          "name": "Admins can manage all courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": "has_role('admin'::app_role, auth.uid())"
+        },
+        {
+          "command": "r",
+          "name": "Companies can view org courses",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "(organization_id = ( SELECT c.organization_id\n   FROM companies c\n  WHERE (c.id = current_company_id())))",
+          "with_check": null
+        },
+        {
+          "command": "d",
+          "name": "Org staff can delete courses",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_organization(organization_id, 'courses.write'::text)",
+          "with_check": null
+        },
+        {
+          "command": "a",
+          "name": "Org staff can insert courses",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": null,
+          "with_check": "can_access_organization(organization_id, 'courses.write'::text)"
+        },
+        {
+          "command": "w",
+          "name": "Org staff can update courses",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_organization(organization_id, 'courses.write'::text)",
+          "with_check": "can_access_organization(organization_id, 'courses.write'::text)"
+        },
+        {
+          "command": "r",
+          "name": "Org staff can view courses",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_organization(organization_id, 'courses.read'::text)",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Published courses are viewable by all",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(is_published = true)",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "command": "r",
+          "name": "course_library_unpublished_course_guard",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "((is_published = true) OR (NOT COALESCE((landing_content @> '{\"electronic_library\": {\"enabled\": true}}'::jsonb), false)) OR can_access_course(id, 'courses.read'::text))",
+          "with_check": null
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "courses",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER audit_courses AFTER INSERT OR DELETE OR UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+          "enabled": "O",
+          "function": "auto_audit_log()",
+          "name": "audit_courses"
+        },
+        {
+          "definition": "CREATE TRIGGER enforce_course_insert_limit BEFORE INSERT OR UPDATE OF organization_id, system_key ON public.courses FOR EACH ROW EXECUTE FUNCTION enforce_course_insert_limit()",
+          "enabled": "O",
+          "function": "enforce_course_insert_limit()",
+          "name": "enforce_course_insert_limit"
+        },
+        {
+          "definition": "CREATE TRIGGER guard_course_system_key BEFORE INSERT OR UPDATE OF system_key, organization_id ON public.courses FOR EACH ROW EXECUTE FUNCTION guard_course_system_key()",
+          "enabled": "O",
+          "function": "guard_course_system_key()",
+          "name": "guard_course_system_key"
+        },
+        {
+          "definition": "CREATE TRIGGER invalidate_marketplace_course_on_course_update AFTER UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION invalidate_marketplace_course_validation()",
+          "enabled": "O",
+          "function": "invalidate_marketplace_course_validation()",
+          "name": "invalidate_marketplace_course_on_course_update"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_resolve_pending_enrollments AFTER INSERT ON public.courses FOR EACH ROW EXECUTE FUNCTION resolve_pending_enrollments()",
+          "enabled": "O",
+          "function": "resolve_pending_enrollments()",
+          "name": "trg_resolve_pending_enrollments"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_snapshot_course_landing BEFORE UPDATE OF landing_content ON public.courses FOR EACH ROW EXECUTE FUNCTION snapshot_course_landing()",
+          "enabled": "O",
+          "function": "snapshot_course_landing()",
+          "name": "trg_snapshot_course_landing"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_enrollment_delete_parent_before BEFORE DELETE ON public.courses FOR EACH ROW EXECUTE FUNCTION uc_capture_enrollment_delete_parent()",
+          "enabled": "O",
+          "function": "uc_capture_enrollment_delete_parent()",
+          "name": "uc_enrollment_delete_parent_before"
+        },
+        {
+          "definition": "CREATE TRIGGER update_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_courses_updated_at"
+        },
+        {
+          "definition": "CREATE TRIGGER zzz_uc_enrollment_delete_parent_cleanup AFTER DELETE ON public.courses FOR EACH ROW EXECUTE FUNCTION uc_cleanup_enrollment_delete_parent()",
+          "enabled": "O",
+          "function": "uc_cleanup_enrollment_delete_parent()",
+          "name": "zzz_uc_enrollment_delete_parent_cleanup"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_csz_course_anchor_guard BEFORE INSERT OR DELETE OR UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION csz_guard_course_anchor()",
+          "enabled": "O",
+          "function": "csz_guard_course_anchor()",
+          "name": "zzzz_csz_course_anchor_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_csz_protected_truncate_guard BEFORE TRUNCATE ON public.courses FOR EACH STATEMENT EXECUTE FUNCTION csz_guard_protected_truncate()",
+          "enabled": "O",
+          "function": "csz_guard_protected_truncate()",
+          "name": "zzzz_csz_protected_truncate_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_paid_20260922_lineage_guard BEFORE UPDATE OF id, organization_id, source_course_id, source_order_id ON public.courses FOR EACH ROW EXECUTE FUNCTION _paid_20260922_lineage_guard()",
+          "enabled": "O",
+          "function": "_paid_20260922_lineage_guard()",
+          "name": "zzzz_paid_20260922_lineage_guard"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "0",
+          "name": "progress",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "0",
+          "name": "time_spent",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "'active'::text",
+          "name": "status",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "started_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "completed_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "access_days",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "0",
+          "name": "document_facts_revision",
+          "not_null": true,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+          "name": "enrollments_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK ((document_facts_revision >= 0))",
+          "name": "enrollments_document_facts_revision_check",
+          "type": "c"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "enrollments_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "UNIQUE (user_id, course_id)",
+          "name": "enrollments_user_id_course_id_key",
+          "type": "u"
+        }
+      ],
+      "nspname": "public",
+      "oid": "17593",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "r",
+          "name": "Companies can view employee enrollments",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "(user_id IN ( SELECT p.user_id\n   FROM profiles p\n  WHERE (p.company_id = current_company_id())))",
+          "with_check": null
+        },
+        {
+          "command": "d",
+          "name": "Org staff can delete enrollments",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_course(course_id, 'students.write'::text)",
+          "with_check": null
+        },
+        {
+          "command": "a",
+          "name": "Org staff can insert enrollments",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": null,
+          "with_check": "can_access_course(course_id, 'students.write'::text)"
+        },
+        {
+          "command": "w",
+          "name": "Org staff can update enrollments",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_course(course_id, 'students.write'::text)",
+          "with_check": "can_access_course(course_id, 'students.write'::text)"
+        },
+        {
+          "command": "r",
+          "name": "Org staff can view enrollments",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_course(course_id, 'students.read'::text)",
+          "with_check": null
+        },
+        {
+          "command": "d",
+          "name": "Org users and admins can delete enrollments",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Org users and admins can update enrollments",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Org users and admins can view enrollments for their courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "((user_id = auth.uid()) OR has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))",
+          "with_check": null
+        },
+        {
+          "command": "a",
+          "name": "Users and org users can create enrollments",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": null,
+          "with_check": "((user_id = auth.uid()) OR has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND (c.organization_id = current_organization_id())))))"
+        },
+        {
+          "command": "w",
+          "name": "Users can update own enrollments",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(user_id = auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Users can view own enrollments",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(user_id = auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "command": "r",
+          "name": "uc_document_assigned_read",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = enrollments.course_id) AND uc_document_user_course_scope(c.organization_id, enrollments.user_id, c.id))))",
+          "with_check": null
+        },
+        {
+          "command": "d",
+          "name": "uc_enrollment_delete_boundary",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_delete_course_enrollment(id)",
+          "with_check": null
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "enrollments",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER audit_enrollments AFTER INSERT OR DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+          "enabled": "O",
+          "function": "auto_audit_log()",
+          "name": "audit_enrollments"
+        },
+        {
+          "definition": "CREATE TRIGGER capture_postpaid_study AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION capture_postpaid_study_activity()",
+          "enabled": "O",
+          "function": "capture_postpaid_study_activity()",
+          "name": "capture_postpaid_study"
+        },
+        {
+          "definition": "CREATE TRIGGER enrollments_notify_on_complete AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (((new.status = 'completed'::text) AND (old.status IS DISTINCT FROM 'completed'::text))) EXECUTE FUNCTION trg_notify_course_completion()",
+          "enabled": "O",
+          "function": "trg_notify_course_completion()",
+          "name": "enrollments_notify_on_complete"
+        },
+        {
+          "definition": "CREATE TRIGGER on_course_completion_update_labor_safety AFTER UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION update_labor_safety_on_course_completion()",
+          "enabled": "O",
+          "function": "update_labor_safety_on_course_completion()",
+          "name": "on_course_completion_update_labor_safety"
+        },
+        {
+          "definition": "CREATE TRIGGER on_enrollment_delete AFTER DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()",
+          "enabled": "O",
+          "function": "log_enrollment_change()",
+          "name": "on_enrollment_delete"
+        },
+        {
+          "definition": "CREATE TRIGGER on_enrollment_insert AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION log_enrollment_change()",
+          "enabled": "O",
+          "function": "log_enrollment_change()",
+          "name": "on_enrollment_insert"
+        },
+        {
+          "definition": "CREATE TRIGGER revoke_manual_credit_on_course_reset AFTER UPDATE OF status, user_id, course_id ON public.enrollments FOR EACH ROW EXECUTE FUNCTION revoke_manual_credit_on_course_reset()",
+          "enabled": "O",
+          "function": "revoke_manual_credit_on_course_reset()",
+          "name": "revoke_manual_credit_on_course_reset"
+        },
+        {
+          "definition": "CREATE TRIGGER sync_training_plan_on_complete AFTER UPDATE OF status ON public.enrollments FOR EACH ROW EXECUTE FUNCTION sync_training_plan_status()",
+          "enabled": "O",
+          "function": "sync_training_plan_status()",
+          "name": "sync_training_plan_on_complete"
+        },
+        {
+          "definition": "CREATE TRIGGER sync_training_plan_on_enroll AFTER INSERT ON public.enrollments FOR EACH ROW EXECUTE FUNCTION sync_training_plan_status()",
+          "enabled": "O",
+          "function": "sync_training_plan_status()",
+          "name": "sync_training_plan_on_enroll"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_calc_enrollment_expires BEFORE INSERT OR UPDATE OF access_days, started_at ON public.enrollments FOR EACH ROW EXECUTE FUNCTION calc_enrollment_expires_at()",
+          "enabled": "O",
+          "function": "calc_enrollment_expires_at()",
+          "name": "trg_calc_enrollment_expires"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_org_course_completion_notify AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION create_org_course_completion_notification()",
+          "enabled": "O",
+          "function": "create_org_course_completion_notification()",
+          "name": "trg_org_course_completion_notify"
+        },
+        {
+          "definition": "CREATE TRIGGER trigger_auto_complete_enrollment BEFORE INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION auto_complete_enrollment()",
+          "enabled": "O",
+          "function": "auto_complete_enrollment()",
+          "name": "trigger_auto_complete_enrollment"
+        },
+        {
+          "definition": "CREATE TRIGGER trigger_auto_create_education_document AFTER UPDATE ON public.enrollments FOR EACH ROW WHEN (((new.status = 'completed'::text) AND (old.status IS DISTINCT FROM 'completed'::text))) EXECUTE FUNCTION auto_create_education_document()",
+          "enabled": "O",
+          "function": "auto_create_education_document()",
+          "name": "trigger_auto_create_education_document"
+        },
+        {
+          "definition": "CREATE TRIGGER trigger_create_course_reminder AFTER UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION create_course_reminder_on_completion()",
+          "enabled": "O",
+          "function": "create_course_reminder_on_completion()",
+          "name": "trigger_create_course_reminder"
+        },
+        {
+          "definition": "CREATE TRIGGER trigger_enrollment_achievements AFTER INSERT OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION check_enrollment_achievements()",
+          "enabled": "O",
+          "function": "check_enrollment_achievements()",
+          "name": "trigger_enrollment_achievements"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_enrollment_delete_guard BEFORE DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION uc_guard_enrollment_delete()",
+          "enabled": "O",
+          "function": "uc_guard_enrollment_delete()",
+          "name": "uc_enrollment_delete_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_identification_cascade_before BEFORE DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION uc_capture_identification_cascade()",
+          "enabled": "O",
+          "function": "uc_capture_identification_cascade()",
+          "name": "uc_identification_cascade_before"
+        },
+        {
+          "definition": "CREATE TRIGGER zz_enrollment_document_facts_revision BEFORE INSERT OR UPDATE OF id, user_id, course_id, progress, status, started_at, completed_at, access_days, expires_at, document_facts_revision ON public.enrollments FOR EACH ROW EXECUTE FUNCTION bump_enrollment_document_facts_revision()",
+          "enabled": "O",
+          "function": "bump_enrollment_document_facts_revision()",
+          "name": "zz_enrollment_document_facts_revision"
+        },
+        {
+          "definition": "CREATE TRIGGER zzz_uc_identification_cascade_cleanup AFTER DELETE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION uc_cleanup_identification_cascade()",
+          "enabled": "O",
+          "function": "uc_cleanup_identification_cascade()",
+          "name": "zzz_uc_identification_cascade_cleanup"
+        },
+        {
+          "definition": "CREATE TRIGGER zzz_uc_program_association AFTER INSERT OR UPDATE OF id, user_id, course_id ON public.enrollments FOR EACH ROW EXECUTE FUNCTION uc_capture_program_association_event()",
+          "enabled": "O",
+          "function": "uc_capture_program_association_event()",
+          "name": "zzz_uc_program_association"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_csz_enrollment_guard BEFORE INSERT OR DELETE OR UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION csz_guard_enrollment()",
+          "enabled": "O",
+          "function": "csz_guard_enrollment()",
+          "name": "zzzz_csz_enrollment_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_csz_protected_truncate_guard BEFORE TRUNCATE ON public.enrollments FOR EACH STATEMENT EXECUTE FUNCTION csz_guard_protected_truncate()",
+          "enabled": "O",
+          "function": "csz_guard_protected_truncate()",
+          "name": "zzzz_csz_protected_truncate_guard"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "title",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'text'::text",
+          "name": "type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "content",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "0",
+          "name": "order_index",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "5",
+          "name": "test_questions_count",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "60",
+          "name": "test_passing_score",
+          "not_null": true,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "test_questions_to_show",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "false",
+          "name": "is_locked",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_image_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'Nec_24000'::text",
+          "name": "ai_avatar_voice_id",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_system_prompt",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_greeting",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "ai_avatar_subject",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'friendly'::text",
+          "name": "ai_avatar_style",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "5",
+          "name": "ai_avatar_session_minutes",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "'google/gemini-3-flash-preview'::text",
+          "name": "ai_avatar_model",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'deepgram'::text",
+          "name": "ai_avatar_stt_provider",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'nova-2'::text",
+          "name": "ai_avatar_stt_model",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'openai'::text",
+          "name": "ai_avatar_llm_provider",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'gpt-4o-mini'::text",
+          "name": "ai_avatar_llm_model",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'elevenlabs'::text",
+          "name": "ai_avatar_tts_provider",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'EXAVITQu4vr4xnSDxMaL'::text",
+          "name": "ai_avatar_tts_voice",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'ru'::text",
+          "name": "ai_avatar_language",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "true",
+          "name": "ai_avatar_allow_interruptions",
+          "not_null": false,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "module_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "test_max_attempts",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": "true",
+          "name": "test_show_answers",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "metadata",
+          "not_null": true,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "test_max_attempts_per_day",
+          "not_null": false,
+          "type": "integer"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+          "name": "lessons_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK ((jsonb_typeof(metadata) = 'object'::text))",
+          "name": "lessons_metadata_is_object",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (module_id) REFERENCES course_modules(id) ON DELETE SET NULL",
+          "name": "lessons_module_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "lessons_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK (((test_max_attempts_per_day IS NULL) OR (test_max_attempts_per_day > 0)))",
+          "name": "lessons_test_max_attempts_per_day_positive",
+          "type": "c"
+        }
+      ],
+      "nspname": "public",
+      "oid": "17576",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "r",
+          "name": "Lessons viewable if enrolled or org user or admin",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = lessons.course_id) AND (c.is_published = true)))) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = lessons.course_id) AND (c.organization_id = current_organization_id())))))",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "Org staff can manage lessons",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_course(course_id, 'courses.write'::text)",
+          "with_check": "can_access_course(course_id, 'courses.write'::text)"
+        },
+        {
+          "command": "r",
+          "name": "Org staff can view lessons",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_course(course_id, 'courses.read'::text)",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "Org users and admins can manage lessons",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = lessons.course_id) AND (c.organization_id = current_organization_id())))))",
+          "with_check": "(has_role('admin'::app_role, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM courses c\n  WHERE ((c.id = lessons.course_id) AND (c.organization_id = current_organization_id())))))"
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "command": "r",
+          "name": "paid_20260922_lesson_select",
+          "permissive": false,
+          "roles": [
+            "0"
+          ],
+          "using": "_paid_20260922_course_read(course_id, true)",
+          "with_check": null
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "lessons",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER invalidate_marketplace_course_on_lesson_mutation AFTER INSERT OR DELETE OR UPDATE ON public.lessons FOR EACH ROW EXECUTE FUNCTION invalidate_marketplace_course_validation()",
+          "enabled": "O",
+          "function": "invalidate_marketplace_course_validation()",
+          "name": "invalidate_marketplace_course_on_lesson_mutation"
+        },
+        {
+          "definition": "CREATE TRIGGER update_lessons_updated_at BEFORE UPDATE ON public.lessons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_lessons_updated_at"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_csz_lesson_metadata_guard BEFORE INSERT OR DELETE OR UPDATE ON public.lessons FOR EACH ROW EXECUTE FUNCTION csz_guard_lesson_metadata()",
+          "enabled": "O",
+          "function": "csz_guard_lesson_metadata()",
+          "name": "zzzz_csz_lesson_metadata_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER zzzz_csz_protected_truncate_guard BEFORE TRUNCATE ON public.lessons FOR EACH STATEMENT EXECUTE FUNCTION csz_guard_protected_truncate()",
+          "enabled": "O",
+          "function": "csz_guard_protected_truncate()",
+          "name": "zzzz_csz_protected_truncate_guard"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "0",
+          "name": "price_student",
+          "not_null": true,
+          "type": "numeric"
+        },
+        {
+          "default": "0",
+          "name": "price_organization",
+          "not_null": true,
+          "type": "numeric"
+        },
+        {
+          "default": "true",
+          "name": "is_active",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "description_short",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "preview_image_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "false",
+          "name": "is_validated",
+          "not_null": true,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE",
+          "name": "marketplace_courses_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (course_id)",
+          "name": "marketplace_courses_course_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "marketplace_courses_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "marketplace_courses_pkey",
+          "type": "p"
+        }
+      ],
+      "nspname": "public",
+      "oid": "21877",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "*",
+          "name": "Admins can manage marketplace courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": "has_role('admin'::app_role, auth.uid())"
+        },
+        {
+          "command": "r",
+          "name": "Anyone can view active marketplace courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "((is_active = true) AND (is_validated = true))",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "Org users can manage their marketplace courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))",
+          "with_check": "((organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid()))"
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "marketplace_courses",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER guard_marketplace_course_tenant BEFORE INSERT OR UPDATE OF course_id, organization_id ON public.marketplace_courses FOR EACH ROW EXECUTE FUNCTION guard_marketplace_course_tenant()",
+          "enabled": "O",
+          "function": "guard_marketplace_course_tenant()",
+          "name": "guard_marketplace_course_tenant"
+        },
+        {
+          "definition": "CREATE TRIGGER guard_marketplace_course_validation BEFORE INSERT OR UPDATE OF is_validated, course_id ON public.marketplace_courses FOR EACH ROW EXECUTE FUNCTION guard_marketplace_course_validation()",
+          "enabled": "O",
+          "function": "guard_marketplace_course_validation()",
+          "name": "guard_marketplace_course_validation"
+        },
+        {
+          "definition": "CREATE TRIGGER update_marketplace_courses_updated_at BEFORE UPDATE ON public.marketplace_courses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_marketplace_courses_updated_at"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "marketplace_course_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "buyer_user_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "buyer_organization_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "buyer_type",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'pending'::text",
+          "name": "status",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "price",
+          "not_null": true,
+          "type": "numeric"
+        },
+        {
+          "default": "1",
+          "name": "students_count",
+          "not_null": false,
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "name": "notes",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "payment_method",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "paid_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (buyer_organization_id) REFERENCES organizations(id)",
+          "name": "marketplace_orders_buyer_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK ((buyer_type = ANY (ARRAY['student'::text, 'organization'::text])))",
+          "name": "marketplace_orders_buyer_type_check",
+          "type": "c"
+        },
+        {
+          "definition": "FOREIGN KEY (marketplace_course_id) REFERENCES marketplace_courses(id) ON DELETE CASCADE",
+          "name": "marketplace_orders_marketplace_course_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "CHECK (((payment_method IS NULL) OR (payment_method = ANY (ARRAY['invoice'::text, 'online'::text, 'balance'::text]))))",
+          "name": "marketplace_orders_payment_method_check",
+          "type": "c"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "marketplace_orders_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'paid'::text, 'completed'::text, 'cancelled'::text])))",
+          "name": "marketplace_orders_status_check",
+          "type": "c"
+        }
+      ],
+      "nspname": "public",
+      "oid": "21902",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "r",
+          "name": "Buyers can view own orders",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "((buyer_user_id = auth.uid()) OR (buyer_organization_id = current_organization_id()))",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Sellers can update orders for their courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM marketplace_courses mc\n  WHERE ((mc.id = marketplace_orders.marketplace_course_id) AND ((mc.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Sellers can view orders for their courses",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM marketplace_courses mc\n  WHERE ((mc.id = marketplace_orders.marketplace_course_id) AND ((mc.organization_id = current_organization_id()) OR has_role('admin'::app_role, auth.uid())))))",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=rwdDxtm/postgres,authenticated=rwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "marketplace_orders",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER guard_marketplace_order_delivery BEFORE INSERT OR UPDATE OF status, paid_at ON public.marketplace_orders FOR EACH ROW EXECUTE FUNCTION guard_marketplace_order_delivery()",
+          "enabled": "O",
+          "function": "guard_marketplace_order_delivery()",
+          "name": "guard_marketplace_order_delivery"
+        },
+        {
+          "definition": "CREATE TRIGGER guard_marketplace_order_immutable_fields BEFORE UPDATE ON public.marketplace_orders FOR EACH ROW EXECUTE FUNCTION guard_marketplace_order_immutable_fields()",
+          "enabled": "O",
+          "function": "guard_marketplace_order_immutable_fields()",
+          "name": "guard_marketplace_order_immutable_fields"
+        },
+        {
+          "definition": "CREATE TRIGGER paid_umk_20260922_deliver AFTER INSERT OR UPDATE OF status ON public.marketplace_orders FOR EACH ROW EXECUTE FUNCTION paid_umk_20260922_deliver()",
+          "enabled": "O",
+          "function": "paid_umk_20260922_deliver()",
+          "name": "paid_umk_20260922_deliver"
+        },
+        {
+          "definition": "CREATE TRIGGER update_marketplace_orders_updated_at BEFORE UPDATE ON public.marketplace_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_marketplace_orders_updated_at"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'teacher'::text",
+          "name": "role",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "''::text",
+          "name": "display_name",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bio",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'all'::text",
+          "name": "visibility",
+          "not_null": true,
+          "type": "text"
+        },
+        {
+          "default": "'[]'::jsonb",
+          "name": "sections_access",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "custom_role_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "name": "can_receive_crm_tasks",
+          "not_null": true,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (custom_role_id) REFERENCES org_custom_roles(id) ON DELETE SET NULL",
+          "name": "org_staff_custom_role_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
+          "name": "org_staff_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (organization_id, user_id)",
+          "name": "org_staff_organization_id_user_id_key",
+          "type": "u"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "org_staff_pkey",
+          "type": "p"
+        }
+      ],
+      "nspname": "public",
+      "oid": "121032",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "command": "a",
+          "name": "org_staff_insert",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": null,
+          "with_check": "((role <> 'owner'::text) AND (NOT has_org_ownership_identity(user_id, organization_id)) AND can_access_organization(organization_id, 'staff.write'::text))"
+        },
+        {
+          "command": "r",
+          "name": "org_staff_select",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "((user_id = auth.uid()) OR can_access_organization(organization_id, 'staff.read'::text))",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "org_staff_update",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "can_access_organization(organization_id, 'staff.write'::text)",
+          "with_check": "((role <> 'owner'::text) AND (NOT has_org_ownership_identity(user_id, organization_id)) AND can_access_organization(organization_id, 'staff.write'::text))"
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "org_staff",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER prevent_org_staff_owner_overlap BEFORE INSERT OR UPDATE OF organization_id, user_id, role ON public.org_staff FOR EACH ROW EXECUTE FUNCTION prevent_org_staff_owner_overlap()",
+          "enabled": "O",
+          "function": "prevent_org_staff_owner_overlap()",
+          "name": "prevent_org_staff_owner_overlap"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_log_org_staff_changes AFTER INSERT OR DELETE OR UPDATE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION log_org_staff_changes()",
+          "enabled": "O",
+          "function": "log_org_staff_changes()",
+          "name": "trg_log_org_staff_changes"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_sync_org_staff_to_sales_managers AFTER INSERT OR DELETE OR UPDATE OF role, can_receive_crm_tasks, display_name, expires_at, user_id, organization_id ON public.org_staff FOR EACH ROW EXECUTE FUNCTION sync_org_staff_to_sales_managers()",
+          "enabled": "O",
+          "function": "sync_org_staff_to_sales_managers()",
+          "name": "trg_sync_org_staff_to_sales_managers"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_staff_document_grant_guard BEFORE INSERT OR UPDATE OF role, sections_access, user_id, organization_id ON public.org_staff FOR EACH ROW EXECUTE FUNCTION uc_guard_staff_document_grants()",
+          "enabled": "O",
+          "function": "uc_guard_staff_document_grants()",
+          "name": "uc_staff_document_grant_guard"
+        },
+        {
+          "definition": "CREATE TRIGGER update_org_staff_updated_at BEFORE UPDATE ON public.org_staff FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_org_staff_updated_at"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "organization_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "full_name",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "avatar_url",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": "now()",
+          "name": "updated_at",
+          "not_null": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "company_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "login",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "generated_password",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "now()",
+          "name": "last_visit_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "student_group_id",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": "false",
+          "name": "onboarding_completed",
+          "not_null": true,
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "name": "phone",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "city",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "bio",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "vk_link",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "telegram_link",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "chat_privacy",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "lead_source",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": "'{}'::jsonb",
+          "name": "lead_utm",
+          "not_null": false,
+          "type": "jsonb"
+        },
+        {
+          "default": null,
+          "name": "last_seen_announcement_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "archived_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "blocked_at",
+          "not_null": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "default": null,
+          "name": "blocked_reason",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "blocked_by",
+          "not_null": false,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "region",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "contact_email",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "job_position",
+          "not_null": false,
+          "type": "text"
+        },
+        {
+          "default": null,
+          "name": "department",
+          "not_null": false,
+          "type": "text"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id)",
+          "name": "profiles_company_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "FOREIGN KEY (student_group_id, organization_id) REFERENCES student_groups(id, organization_id) ON DELETE SET NULL (student_group_id) NOT VALID",
+          "name": "profiles_group_organization_registration_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (login)",
+          "name": "profiles_login_key",
+          "type": "u"
+        },
+        {
+          "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL",
+          "name": "profiles_organization_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "profiles_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "FOREIGN KEY (student_group_id) REFERENCES student_groups(id) ON DELETE SET NULL",
+          "name": "profiles_student_group_id_fkey",
+          "type": "f"
+        },
+        {
+          "definition": "UNIQUE (user_id)",
+          "name": "profiles_user_id_key",
+          "type": "u"
+        }
+      ],
+      "nspname": "public",
+      "oid": "17514",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "d",
+          "name": "Admins can delete profiles",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Admins can update all profiles",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Admins can view all profiles",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "r",
+          "name": "Companies can view their employees",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "((company_id IS NOT NULL) AND (company_id = current_company_id()))",
+          "with_check": null
+        },
+        {
+          "command": "d",
+          "name": "Org admins can delete profiles in their org",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Org admins can update profiles in their org",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+          "with_check": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))"
+        },
+        {
+          "command": "r",
+          "name": "Org admins can view profiles in their org",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(((organization_id = current_organization_id()) AND has_role('organization'::app_role, auth.uid())) OR has_role('admin'::app_role, auth.uid()))",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Org staff can update student profiles",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "(can_access_organization(organization_id, 'students.write'::text) AND is_student_profile(user_id, organization_id))",
+          "with_check": "(can_access_organization(organization_id, 'students.write'::text) AND is_student_profile(user_id, organization_id))"
+        },
+        {
+          "command": "r",
+          "name": "Org staff can view student profiles",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "(can_access_organization(organization_id, 'students.read'::text) AND is_student_profile(user_id, organization_id))",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Users can update own profile",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(user_id = auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Users can update own profile organization",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(user_id = auth.uid())",
+          "with_check": "(user_id = auth.uid())"
+        },
+        {
+          "command": "r",
+          "name": "Users can view own profile",
+          "permissive": true,
+          "roles": [
+            "16481"
+          ],
+          "using": "(user_id = auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        },
+        {
+          "command": "r",
+          "name": "uc_document_assigned_read",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "uc_document_student_scope_allowed(organization_id, user_id)",
+          "with_check": null
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "profiles",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER audit_profiles AFTER INSERT OR DELETE OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION auto_audit_log()",
+          "enabled": "O",
+          "function": "auto_audit_log()",
+          "name": "audit_profiles"
+        },
+        {
+          "definition": "CREATE TRIGGER encrypt_profile_password BEFORE INSERT OR UPDATE OF generated_password ON public.profiles FOR EACH ROW EXECUTE FUNCTION trigger_encrypt_profile_password()",
+          "enabled": "O",
+          "function": "trigger_encrypt_profile_password()",
+          "name": "encrypt_profile_password"
+        },
+        {
+          "definition": "CREATE TRIGGER guard_profile_tenant_identity BEFORE UPDATE OF organization_id, company_id, student_group_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_tenant_identity()",
+          "enabled": "O",
+          "function": "guard_profile_tenant_identity()",
+          "name": "guard_profile_tenant_identity"
+        },
+        {
+          "definition": "CREATE TRIGGER sync_profile_group_course_enrollment_trigger AFTER INSERT OR UPDATE OF student_group_id, organization_id, user_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION sync_profile_group_course_enrollment()",
+          "enabled": "O",
+          "function": "sync_profile_group_course_enrollment()",
+          "name": "sync_profile_group_course_enrollment_trigger"
+        },
+        {
+          "definition": "CREATE TRIGGER trg_sync_frdo_name_from_profile AFTER UPDATE OF full_name ON public.profiles FOR EACH ROW EXECUTE FUNCTION sync_frdo_name_from_profile()",
+          "enabled": "O",
+          "function": "sync_frdo_name_from_profile()",
+          "name": "trg_sync_frdo_name_from_profile"
+        },
+        {
+          "definition": "CREATE TRIGGER trigger_profile_achievements AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION check_profile_achievements()",
+          "enabled": "O",
+          "function": "check_profile_achievements()",
+          "name": "trigger_profile_achievements"
+        },
+        {
+          "definition": "CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+          "enabled": "O",
+          "function": "update_updated_at_column()",
+          "name": "update_profiles_updated_at"
+        },
+        {
+          "definition": "CREATE TRIGGER zzz_uc_program_association AFTER INSERT OR UPDATE OF user_id, organization_id, student_group_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION uc_capture_program_association_event()",
+          "enabled": "O",
+          "function": "uc_capture_program_association_event()",
+          "name": "zzz_uc_program_association"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "default": "gen_random_uuid()",
+          "name": "id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": null,
+          "name": "user_id",
+          "not_null": true,
+          "type": "uuid"
+        },
+        {
+          "default": "'student'::app_role",
+          "name": "role",
+          "not_null": true,
+          "type": "app_role"
+        }
+      ],
+      "constraints": [
+        {
+          "definition": "PRIMARY KEY (id)",
+          "name": "user_roles_pkey",
+          "type": "p"
+        },
+        {
+          "definition": "UNIQUE (user_id)",
+          "name": "user_roles_user_id_key",
+          "type": "u"
+        }
+      ],
+      "nspname": "public",
+      "oid": "17531",
+      "owner": "postgres",
+      "policies": [
+        {
+          "command": "*",
+          "name": "Admins can manage all user roles",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "Admins can manage roles",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "w",
+          "name": "Admins can update user roles",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "has_role('admin'::app_role, auth.uid())",
+          "with_check": "has_role('admin'::app_role, auth.uid())"
+        },
+        {
+          "command": "r",
+          "name": "Users can view own role",
+          "permissive": true,
+          "roles": [
+            "0"
+          ],
+          "using": "(user_id = auth.uid())",
+          "with_check": null
+        },
+        {
+          "command": "*",
+          "name": "account_deletion_no_revoked_access",
+          "permissive": false,
+          "roles": [
+            "16481"
+          ],
+          "using": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)",
+          "with_check": "( SELECT account_deletion_access_allowed() AS account_deletion_access_allowed)"
+        }
+      ],
+      "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec_atxwvjxbqjgkbjlhsdch=ar/postgres,sandbox_exec=ar/postgres}",
+      "relforcerowsecurity": false,
+      "relname": "user_roles",
+      "relowner": "16384",
+      "relrowsecurity": true,
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER account_deletion_subject_fence BEFORE INSERT OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION account_deletion_subject_write_guard('user_id')",
+          "enabled": "O",
+          "function": "account_deletion_subject_write_guard()",
+          "name": "account_deletion_subject_fence"
+        },
+        {
+          "definition": "CREATE TRIGGER uc_platform_document_user_role_guard BEFORE INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION uc_guard_platform_document_role_delegation()",
+          "enabled": "O",
+          "function": "uc_guard_platform_document_role_delegation()",
+          "name": "uc_platform_document_user_role_guard"
+        }
+      ]
+    }
+  ],
+  "applicationRowsRead": 0,
+  "productionWrites": 0,
+  "queries": 3,
+  "additional_closure": {
+    "enums": [
+      {
+        "labels": [
+          "admin",
+          "organization",
+          "student",
+          "sales_manager",
+          "company"
+        ],
+        "type": "app_role"
+      }
+    ],
+    "extra_columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "not_null": true,
+        "table": "companies",
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "organization_id",
+        "not_null": true,
+        "table": "companies",
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "name",
+        "not_null": true,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "inn",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "not_null": true,
+        "table": "companies",
+        "type": "timestamp with time zone"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "not_null": true,
+        "table": "companies",
+        "type": "timestamp with time zone"
+      },
+      {
+        "default": null,
+        "name": "kpp",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "ogrn",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "address",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "director",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "stamp_url",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "signature_url",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "email",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "user_id",
+        "not_null": false,
+        "table": "companies",
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "login_email",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "generated_password",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "postal_address",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "phone",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "bank_name",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "bank_account",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "bank_bik",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "bank_corr_account",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "signatory_position",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "signatory_name_genitive",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": null,
+        "name": "signatory_authority_clause",
+        "not_null": false,
+        "table": "companies",
+        "type": "text"
+      },
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "not_null": true,
+        "table": "course_modules",
+        "type": "uuid"
+      },
+      {
+        "default": null,
+        "name": "course_id",
+        "not_null": true,
+        "table": "course_modules",
+        "type": "uuid"
+      },
+      {
+        "default": "'Новый модуль'::text",
+        "name": "title",
+        "not_null": true,
+        "table": "course_modules",
+        "type": "text"
+      },
+      {
+        "default": "0",
+        "name": "order_index",
+        "not_null": true,
+        "table": "course_modules",
+        "type": "integer"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "not_null": true,
+        "table": "course_modules",
+        "type": "timestamp with time zone"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "not_null": true,
+        "table": "course_modules",
+        "type": "timestamp with time zone"
+      }
+    ],
+    "functions": [
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres",
+          "sandbox_exec_atxwvjxbqjgkbjlhsdch=X/postgres"
+        ],
+        "definition": "CREATE OR REPLACE FUNCTION public.current_company_id()\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN (\n    SELECT c.id FROM public.companies c\n    WHERE c.user_id = auth.uid()\n    LIMIT 1\n  );\nEND;\n$function$\n",
+        "definition_md5": "e07990136558adfbdb5848d570fc7686",
+        "owner": "16384",
+        "signature": "current_company_id()"
+      }
+    ],
+    "roles": [
+      {
+        "bypass_rls": false,
+        "inherit": true,
+        "name": "authenticated",
+        "oid": "16481",
+        "superuser": false
+      },
+      {
+        "bypass_rls": false,
+        "inherit": true,
+        "name": "anon",
+        "oid": "16480",
+        "superuser": false
+      },
+      {
+        "bypass_rls": true,
+        "inherit": true,
+        "name": "service_role",
+        "oid": "16482",
+        "superuser": false
+      }
+    ]
+  }
+}
+
