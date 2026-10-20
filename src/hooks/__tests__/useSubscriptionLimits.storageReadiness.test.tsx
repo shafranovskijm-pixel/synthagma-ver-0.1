@@ -67,6 +67,7 @@ function setup() {
   return renderHook(({ organizationId }) => useSubscriptionLimits(organizationId), { wrapper, initialProps: { organizationId: "org-a" as string | null } });
 }
 function expectDenied(state: ReturnType<typeof useSubscriptionLimits>, reason?: "checking" | "verification_error" | "quota") {
+  if (reason !== "quota") expect(state.accessReady).toBe(false);
   expect(state.canCreateCourse).toBe(false);
   expect(state.canAddStudent).toBe(false);
   expect(state.canCompleteCourse).toBe(false);
@@ -104,6 +105,7 @@ describe("generic subscription access does not scan file storage", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
     expect(result.current.isPostpaid).toBe(postpaid);
+    expect(result.current.accessReady).toBe(true);
     expect(result.current.canCreateCourse).toBe(true);
     expect(result.current.canAddStudent).toBe(true);
     expect(result.current.canCompleteCourse).toBe(true);
@@ -259,6 +261,7 @@ describe("generic subscription access does not scan file storage", () => {
     const { result, rerender } = setup();
     await waitFor(() => expect(result.current.canAddStudent).toBe(true));
     rerender({ organizationId: null });
+    expect(result.current.accessReady).toBe(false);
     expectDenied(result.current);
     expect(result.current.usage.storageUsedBytes).toBe(0);
   });

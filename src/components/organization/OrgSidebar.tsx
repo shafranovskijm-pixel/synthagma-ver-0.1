@@ -42,6 +42,7 @@ import {
   organizationTabPath,
 } from "@/lib/organization/workspaceNavigation";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
+import { getOrganizationContextPresentation } from "@/lib/organization/contextPresentation";
 
 export type TabType = 
   | "home"
@@ -186,7 +187,10 @@ export function OrgSidebar() {
     d.subscriptionLimits?.limits.emailCampaignsEnabled,
     d.subscriptionLimits,
   );
-  const mailingAccessUnconfirmed = !d.subscriptionLimits || d.subscriptionLimits.loading !== false || !!d.subscriptionLimits.error;
+  const contextPresentation = getOrganizationContextPresentation({
+    organizationId: d.organizationId, organizationLoading: d.isLoadingCourses, access: d.subscriptionLimits,
+  });
+  const mailingAccessUnconfirmed = !contextPresentation.ready;
   const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : '';
   const { handleLogoUpload, isUploadingLogo } = d.branding;
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -432,7 +436,7 @@ export function OrgSidebar() {
     id: "mailing",
     icon: Send,
     label: "Рассылки",
-    description: d.subscriptionLimits?.error ? "Доступность рассылок пока не подтверждена"
+    description: !contextPresentation.ready && !contextPresentation.loading ? "Доступность рассылок пока не подтверждена"
       : mailingAccessUnconfirmed ? "Проверка доступа к рассылкам…"
       : mailingEnabled
       ? "Кампании, база, шаблоны и отправители"
@@ -559,6 +563,10 @@ export function OrgSidebar() {
         onClick={(event) => {
           if (locked) {
             event.preventDefault();
+            if (!contextPresentation.ready) {
+              toast.info(contextPresentation.billingPlaceholder);
+              return;
+            }
             if (item.tab === "sales" && !can("billing.read")) {
               toast.info("CRM доступна с тарифа «Стандарт». Обратитесь к администратору организации.");
               return;
@@ -890,11 +898,11 @@ export function OrgSidebar() {
           {effectiveExpanded && (
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-foreground leading-tight truncate">
-                {customName || organizationName || "Школа"}
+                {contextPresentation.organizationPlaceholder ?? (customName || organizationName || "Школа")}
               </div>
-              {(isPostpaid || planLabel) && (
+              {(contextPresentation.billingPlaceholder || isPostpaid || planLabel) && (
                 <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                  {isPostpaid ? "Постоплата по договору" : `${planLabel} тариф`}
+                  {contextPresentation.billingPlaceholder ?? (isPostpaid ? "Постоплата по договору" : `${planLabel} тариф`)}
                 </div>
               )}
             </div>

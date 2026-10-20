@@ -27,6 +27,7 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { AccountSettingsMenuItem } from "@/components/account/AccountSettingsLink";
 import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { getOrganizationCoverPresentation } from "@/lib/organization/branding";
+import { getOrganizationContextPresentation } from "@/lib/organization/contextPresentation";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -66,6 +67,9 @@ export function OrgDashboardHeader() {
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
   const planName = d.subscriptionLimits?.plan;
   const isPostpaid = d.subscriptionLimits?.isPostpaid === true;
+  const contextPresentation = getOrganizationContextPresentation({
+    organizationId, organizationLoading: d.isLoadingCourses, access: d.subscriptionLimits,
+  });
   const { user: authUser } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const newIndicators = useOrgNewIndicators(organizationId);
@@ -197,7 +201,7 @@ export function OrgDashboardHeader() {
                 <TooltipContent>{themeControlLabel}</TooltipContent>
               </Tooltip>
             )}
-            <span className="font-display font-bold text-sm hidden sm:inline">{customName || organizationName || "СИНТАГМА"}</span>
+            <span className="font-display font-bold text-sm hidden sm:inline">{contextPresentation.organizationPlaceholder ?? (customName || organizationName || "СИНТАГМА")}</span>
           </div>
         </div>
 
@@ -230,12 +234,13 @@ export function OrgDashboardHeader() {
           {/* Tariff badge with days */}
           <button
             onClick={() => d.tabNavigation.setActiveTab("subscription" as any)}
+            aria-busy={contextPresentation.loading}
             className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors"
           >
             <CreditCard className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold text-primary">
-              {isPostpaid ? "Постоплата" : planLabel}
-              {!isPostpaid && daysRemaining !== null && planName !== 'free' && (
+              {contextPresentation.billingPlaceholder ?? (isPostpaid ? "Постоплата" : planLabel)}
+              {contextPresentation.ready && !isPostpaid && daysRemaining !== null && planName !== 'free' && (
                 <span className="ml-1 text-primary/70">— {daysRemaining} дн.</span>
               )}
             </span>
@@ -361,7 +366,7 @@ export function OrgDashboardHeader() {
                   onClick={() => d.tabNavigation.setActiveTab("home")}
                   className="hover:text-primary transition-colors truncate"
                 >
-                  {customName || organizationName || "Школа"}
+                  {contextPresentation.organizationPlaceholder ?? (customName || organizationName || "Школа")}
                 </button>
                 <span className="opacity-50">›</span>
                 <span className="hidden sm:inline">

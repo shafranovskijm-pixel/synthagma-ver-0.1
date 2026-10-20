@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Upload, BookOpen, Trash2, Search, FileText } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { useAdminMarketplaceImportGuard } from "@/hooks/useAdminMarketplaceImportGuard";
+import { AdminMarketplaceImportError, importAdminMarketplaceFile, type AdminMarketplaceImportOperation } from "@/lib/adminMarketplaceImport";
 
 interface KnowledgeBankEntry {
   id: string;
@@ -19,6 +21,9 @@ interface KnowledgeBankEntry {
 }
 
 export function KnowledgeBankTab() {
+  const guard = useAdminMarketplaceImportGuard();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const readSequence = useRef(0);
   const [entries, setEntries] = useState<KnowledgeBankEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -26,6 +31,9 @@ export function KnowledgeBankTab() {
   const [uploadProgress, setUploadProgress] = useState("");
 
   const fetchEntries = async () => {
+    if (!guard.canStart || !guard.isIdentityCurrent()) return;
+    const request = ++readSequence.current;
+    const isCurrent = () => readSequence.current === request && guard.isIdentityCurrent();
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -33,67 +41,78 @@ export function KnowledgeBankTab() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
+      if (!isCurrent()) return;
       setEntries((data as KnowledgeBankEntry[]) || []);
     } catch (err: any) {
-      toast.error(`Ошибка загрузки: ${err.message}`);
+      if (isCurrent()) toast.error(`Ошибка загрузки: ${err.message}`);
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    readSequence.current++;
+    setEntries([]);
+    setIsLoading(false);
+    setIsUploading(false);
+    setUploadProgress("");
+    if (fileInput.current) fileInput.current.value = "";
     fetchEntries();
-  }, []);
+    return () => { readSequence.current++; };
+  }, [guard.identityKey]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+    const files = Array.from(e.target.files || []);
     if (!files || files.length === 0) return;
-
+    const input = e.target;
+    let operation: AdminMarketplaceImportOperation;
+    try { operation = guard.start(); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось начать импорт"); return; }
     setIsUploading(true);
     let uploaded = 0;
     let failed = 0;
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      setUploadProgress(`${i + 1}/${files.length}: ${file.name}`);
-
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const { data, error } = await supabase.functions.invoke("import-course", {
-          body: formData });
-
-        if (error) throw error;
-
-        const content = data?.text || data?.content || "";
-        const title = file.name.replace(/\.(docx?|pdf|txt)$/i, "").trim();
-
-        // Extract tags from filename and content
-        const tags = extractTags(title, content);
-
-        // Save to knowledge_bank
-        const { error: insertErr } = await supabase.from("knowledge_bank").insert({
-          title,
-          content,
-          source_filename: file.name,
-          tags });
-
-        if (insertErr) throw insertErr;
-        uploaded++;
-      } catch (err: any) {
-        console.error(`Failed to upload ${file.name}:`, err);
-        failed++;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        operation.assertCurrent();
+        const file = files[i];
+        setUploadProgress(`${i + 1}/${files.length}: ${file.name}`);
+        try {
+          if (!/\.(docx?|pdf|txt)$/i.test(file.name) || file.size === 0 || file.size > 20 * 1024 * 1024) {
+            throw new Error("Выберите непустой DOC, DOCX, PDF или TXT размером до 20 МиБ");
+          }
+          const document = await importAdminMarketplaceFile(file, operation);
+          const title = file.name.replace(/\.(docx?|pdf|txt)$/i, "").trim();
+          if (!title) throw new Error("Не удалось определить название файла");
+          const tags = extractTags(title, document.text);
+          await operation.verify();
+          operation.assertCurrent();
+          const { error: insertErr } = await supabase.from("knowledge_bank").insert({
+            title, content: document.content, source_filename: file.name, tags,
+          });
+          operation.assertCurrent();
+          if (insertErr) throw insertErr;
+          uploaded++;
+        } catch (error) {
+          if (error instanceof AdminMarketplaceImportError && error.kind !== "response") throw error;
+          operation.assertCurrent();
+          console.error(`Failed to upload ${file.name}:`, error);
+          failed++;
+        }
       }
+      operation.assertCurrent();
+      if (uploaded > 0) toast.success(`Загружено ${uploaded} файлов${failed > 0 ? `, ошибок: ${failed}` : ""}`);
+      else toast.error(`Файлы не загружены, ошибок: ${failed}`);
+      await fetchEntries();
+    } catch (error) {
+      if (operation.isCurrent()) toast.error(error instanceof Error ? error.message : "Ошибка импорта файлов");
+    } finally {
+      if (operation.isCurrent()) {
+        setIsUploading(false);
+        setUploadProgress("");
+        input.value = "";
+      }
+      operation.finish();
     }
-
-    setIsUploading(false);
-    setUploadProgress("");
-    toast.success(`Загружено ${uploaded} файлов${failed > 0 ? `, ошибок: ${failed}` : ""}`);
-    fetchEntries();
-
-    // Reset input
-    e.target.value = "";
   };
 
   const extractTags = (title: string, content: string): string[] => {
@@ -145,12 +164,13 @@ export function KnowledgeBankTab() {
           {/* Upload area */}
           <div className="border-2 border-dashed rounded-xl p-6 text-center hover:border-primary/50 transition-colors relative">
             <input
+              ref={fileInput}
               type="file"
               accept=".doc,.docx,.pdf,.txt"
               multiple
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={handleFileUpload}
-              disabled={isUploading}
+              disabled={isUploading || guard.isBusy || !guard.canStart}
             />
             {isUploading ? (
               <div className="flex flex-col items-center gap-2">
@@ -164,7 +184,7 @@ export function KnowledgeBankTab() {
                   Перетащите файлы или нажмите для загрузки
                 </p>
                 <p className="text-xs text-muted-foreground/70">
-                  DOC, DOCX, PDF, TXT — до 20 МБ каждый
+                  DOC, DOCX, PDF, TXT — до 20 МиБ каждый
                 </p>
               </div>
             )}

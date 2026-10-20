@@ -9,6 +9,12 @@ const testState = vi.hoisted(() => ({
   coverPosition: "cover",
   activeTab: "home",
   isPostpaid: false,
+  organizationId: "org-1" as string | null,
+  organizationLoading: false,
+  subscriptionReady: true,
+  subscriptionLoading: false,
+  subscriptionError: null as string | null,
+  plan: "start",
   paidUntil: null as string | null,
   setActiveTab: vi.fn(),
   proxiedAssetUrl: vi.fn(),
@@ -17,11 +23,12 @@ const testState = vi.hoisted(() => ({
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
-    organizationId: "org-1",
+    organizationId: testState.organizationId,
+    isLoadingCourses: testState.organizationLoading,
     organizationName: "СГТ",
     branding: { brandingSettings: { customName: "", logoUrl: "", coverUrl: testState.coverUrl, coverPosition: testState.coverPosition } },
     tabNavigation: { activeTab: testState.activeTab, setActiveTab: testState.setActiveTab },
-    subscriptionLimits: { plan: "start", isPostpaid: testState.isPostpaid },
+    subscriptionLimits: { plan: testState.plan, isPostpaid: testState.isPostpaid, loading: testState.subscriptionLoading, error: testState.subscriptionError, accessReady: testState.subscriptionReady && !testState.subscriptionLoading && !testState.subscriptionError },
     user: { email: "admin@example.test" },
     setIsMobileSidebarOpen: vi.fn(),
     handleLogout: vi.fn(),
@@ -58,6 +65,12 @@ beforeEach(() => {
   testState.coverPosition = "cover";
   testState.activeTab = "home";
   testState.isPostpaid = false;
+  testState.organizationId = "org-1";
+  testState.organizationLoading = false;
+  testState.subscriptionReady = true;
+  testState.subscriptionLoading = false;
+  testState.subscriptionError = null;
+  testState.plan = "start";
   testState.paidUntil = null;
   testState.proxiedAssetUrl.mockImplementation((url: string) => url === COVER_URL ? PROXIED_COVER_URL : url || "");
 });
@@ -65,6 +78,52 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("organization dashboard cover", () => {
+  it("keeps the first null-context header neutral instead of claiming a free plan", () => {
+    testState.organizationId = null; testState.organizationLoading = true;
+    testState.subscriptionReady = false; testState.plan = "free";
+    renderHeader();
+    expect(screen.getAllByText("Кабинет загружается…")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Проверяем условия…" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Бесплатный")).not.toBeInTheDocument();
+    expect(screen.queryByText("СГТ")).not.toBeInTheDocument();
+  });
+  it.each(["unverified", "error"])("does not label an unconfirmed free fallback as a plan while %s", mode => {
+    testState.subscriptionReady = false; testState.plan = "free";
+    if (mode === "error") testState.subscriptionError = "unconfirmed";
+    renderHeader();
+    expect(screen.getByRole("button", { name: "Условия не подтверждены" })).toBeInTheDocument();
+    expect(screen.queryByText("Бесплатный")).not.toBeInTheDocument();
+  });
+  it("distinguishes a resolved missing organization from an endless loading state", () => {
+    testState.organizationId = null; testState.subscriptionReady = false;
+    renderHeader();
+    expect(screen.getAllByText("Кабинет организации")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Условия не подтверждены" })).toHaveAttribute("aria-busy", "false");
+  });
+  it("shows verified billing without waiting for the independent courses list", () => {
+    testState.organizationLoading = true;
+    renderHeader();
+    expect(screen.getByRole("button", { name: "Старт" })).toBeInTheDocument();
+    expect(screen.queryByText("Проверяем условия…")).not.toBeInTheDocument();
+  });
+  it("transitions from null context to billing pending and then postpaid without a free badge", () => {
+    testState.organizationId = null; testState.organizationLoading = true;
+    testState.subscriptionReady = false; testState.plan = "free";
+    const view = renderHeader();
+    testState.organizationId = "org-1"; testState.subscriptionLoading = true;
+    view.rerender(<MemoryRouter><TooltipProvider><OrgDashboardHeader /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByRole("button", { name: "Проверяем условия…" })).toBeInTheDocument();
+    testState.subscriptionLoading = false; testState.subscriptionReady = true; testState.isPostpaid = true;
+    view.rerender(<MemoryRouter><TooltipProvider><OrgDashboardHeader /></TooltipProvider></MemoryRouter>);
+    expect(screen.getByRole("button", { name: "Постоплата" })).toBeInTheDocument();
+    expect(screen.queryByText("Бесплатный")).not.toBeInTheDocument();
+  });
+  it("retains the real free label and subscription navigation after verification", () => {
+    testState.plan = "free";
+    renderHeader();
+    fireEvent.click(screen.getByRole("button", { name: "Бесплатный" }));
+    expect(testState.setActiveTab).toHaveBeenCalledWith("subscription");
+  });
   it("replaces the expired prepaid badge when postpaid access becomes active", async () => {
     testState.paidUntil = "2026-02-26T00:00:00Z";
     const { rerender } = renderHeader();

@@ -24,6 +24,7 @@ interface SubscriptionLimitsState {
   hasDocumentChecklist: boolean;
   hasVideoIdentification: boolean;
   storageLimit: number;
+  accessReady: boolean;
   loading: boolean;
   error: string | null;
   isPostpaid: boolean;
@@ -240,6 +241,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     hasDocumentChecklist: limits.documentChecklist,
     hasVideoIdentification: limits.videoIdentification,
     storageLimit: limits.storageBytes,
+    accessReady,
     loading: accessLoading,
     error: accessError,
     isPostpaid,

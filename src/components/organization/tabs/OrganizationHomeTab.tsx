@@ -13,6 +13,7 @@ import { QuickStartCard } from "@/components/organization/QuickStartCard";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { isMailingEnabled } from "@/lib/mailing/mailingAccess";
+import { getOrganizationContextPresentation } from "@/lib/organization/contextPresentation";
 import { organizationMailingPath } from "@/lib/organization/workspaceNavigation";
 import { cn } from "@/lib/utils";
 import { StatsCards } from "./StatsCards";
@@ -77,7 +78,10 @@ export function OrganizationHomeTab() {
     d.subscriptionLimits,
   );
   const canReadCourses = !permissionsLoading && canSeeOrgTab("courses") && can("courses.read");
-  const mailingAccessUnconfirmed = !d.subscriptionLimits || d.subscriptionLimits.loading !== false || !!d.subscriptionLimits.error;
+  const contextPresentation = getOrganizationContextPresentation({
+    organizationId: d.organizationId, organizationLoading: d.isLoadingCourses, access: d.subscriptionLimits,
+  });
+  const mailingAccessUnconfirmed = !contextPresentation.ready;
   const canReadStudents = !permissionsLoading && canSeeOrgTab("students") && can("students.read");
   const canReadCompanies = !permissionsLoading && canSeeOrgTab("organizations") && can("companies.read");
   const canReadDocuments = !permissionsLoading && canSeeOrgTab("documents") && can("documents.read");
@@ -95,7 +99,7 @@ export function OrganizationHomeTab() {
   const showCommunications = canReadChats || canReadMailing;
   const isMailingLocked = !canReadMailing;
   const organizationLabel =
-    d.branding.brandingSettings.customName || d.organizationName || "вашей организации";
+    contextPresentation.organizationPlaceholder ?? (d.branding.brandingSettings.customName || d.organizationName || "вашей организации");
 
   const openTab = (tab: Parameters<typeof d.tabNavigation.setActiveTab>[0]) => {
     d.tabNavigation.setActiveTab(tab);
@@ -203,13 +207,14 @@ export function OrganizationHomeTab() {
               title="Коммуникации"
               description={
                 isMailingLocked
-                  ? mailingAccessUnconfirmed ? "Чаты доступны сейчас. Доступ к email-рассылкам проверяется."
+                  ? !contextPresentation.ready && !contextPresentation.loading ? "Чаты доступны сейчас. Условия доступа к email-рассылкам не подтверждены."
+                    : mailingAccessUnconfirmed ? "Чаты доступны сейчас. Доступ к email-рассылкам проверяется."
                     : "Чаты доступны сейчас. Email-рассылки подключаются с тарифа Старт."
                   : "Чаты, email-рассылки, база контактов, шаблоны и отчёты."
               }
               actionLabel={isMailingLocked ? "Открыть чаты" : "Открыть коммуникации"}
               badge={isMailingLocked && !mailingAccessUnconfirmed ? "Рассылки — от Старт" : undefined}
-              locked={isMailingLocked}
+              locked={isMailingLocked && contextPresentation.ready}
               icon={MessageCircle}
               onOpen={() => {
                 if (canReadChats) openTab("chats");
