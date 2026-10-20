@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { createOrgUserHandler } from "../_shared/create-org-user";
+import { createOrgUserHandler } from "../_shared/create-org-user.ts";
 
 const actor = "00000000-0000-4000-8000-000000000001";
 const created = "00000000-0000-4000-8000-000000000002";
