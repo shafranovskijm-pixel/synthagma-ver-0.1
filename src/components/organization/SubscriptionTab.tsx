@@ -42,6 +42,7 @@ export function SubscriptionTab() {
   const d = useOrgDashboard();
   const commercial = usePlatformCommercialSet(d.organizationId);
   const checkout = useTariffCheckout(s.currentPlan);
+  const storageUsageLabel = s.storageUsageLoading ? "Рассчитываем…" : s.storageUsageError ? "Не удалось рассчитать" : formatStorageSize(s.subscriptionLimits.usage.storageUsedBytes);
 
   const openActFlow = () => {
     if (!canIssueAct(commercial.set)) return;
@@ -56,12 +57,13 @@ export function SubscriptionTab() {
 
   if (s.isPostpaid) return <div className="space-y-6">
     <Card className="border-primary/20 bg-primary/5"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Crown className="h-5 w-5 text-primary" />Постоплата по договору</CardTitle></CardHeader><CardContent className="space-y-4">
-      <p className="text-sm">Счёт формируется после окончания календарного месяца и проверки фактического использования. Тариф определяется по курсам, уникальным обучавшимся и согласованным платным функциям.</p>
-      <div className="grid gap-3 sm:grid-cols-3 text-sm"><div className="rounded-lg border p-3"><strong>Старт · 4 490 ₽</strong><p className="text-xs text-muted-foreground">До 15 курсов и 100 обучавшихся</p></div><div className="rounded-lg border p-3"><strong>Стандарт · 6 990 ₽</strong><p className="text-xs text-muted-foreground">До 30 курсов и 200 обучавшихся; CRM</p></div><div className="rounded-lg border p-3"><strong>Профессиональный · 16 990 ₽</strong><p className="text-xs text-muted-foreground">Выше лимитов; вебинары, Видеосервис+, ФРДО+</p></div></div>
+      <p className="text-sm">Курсы, ученики, завершения обучения, общий объём хранилища и ИИ-генерации — без тарифных лимитов. Счёт формируется после окончания календарного месяца и проверки фактического использования.</p>
+      <p className="text-xs text-muted-foreground">Диапазоны ниже определяют стоимость месяца по курсам, уникальным обучавшимся и согласованным платным функциям. Это не ограничения доступа.</p>
+      <div className="grid gap-3 sm:grid-cols-3 text-sm"><div className="rounded-lg border p-3"><strong>Старт · 4 490 ₽</strong><p className="text-xs text-muted-foreground">До 15 курсов и 100 обучавшихся</p></div><div className="rounded-lg border p-3"><strong>Стандарт · 6 990 ₽</strong><p className="text-xs text-muted-foreground">До 30 курсов и 200 обучавшихся; CRM</p></div><div className="rounded-lg border p-3"><strong>Профессиональный · 16 990 ₽</strong><p className="text-xs text-muted-foreground">Свыше 30 курсов или 200 обучавшихся; вебинары, Видеосервис+, ФРДО+</p></div></div>
       <p className="text-xs text-muted-foreground">За полный месяц доступа без активности — 4 490 ₽. Платные функции учитываются при фактическом использовании после предварительного уведомления и вашего подтверждения. Счёт за октябрь охватывает период с 01.10.2026 до 01.11.2026.</p>
       <Button variant="outline" size="sm" onClick={() => d.tabNavigation.setActiveTab("documents" as any)}>Счета и документы</Button>
     </CardContent></Card>
-    <Card><CardHeader><CardTitle className="text-base">Текущие данные организации</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid gap-3 sm:grid-cols-3 text-sm"><p>Курсы: <strong>{s.subscriptionLimits.usage.coursesCount}</strong></p><p>Активные ученики: <strong>{s.subscriptionLimits.usage.studentsCount}</strong></p><p>Хранилище: <strong>{formatStorageSize(s.subscriptionLimits.usage.storageUsedBytes)}</strong></p></div><p className="text-xs text-muted-foreground">Это текущие показатели кабинета. Итоговый счёт использует отдельный журнал фактического обучения за месяц; количество завершений, ИИ и объём хранилища не повышают тариф.</p></CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base">Текущие данные организации</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid gap-3 sm:grid-cols-3 text-sm"><p>Курсы: <strong>{s.subscriptionLimits.usage.coursesCount}</strong></p><p>Добавлено учеников в этом месяце: <strong>{s.subscriptionLimits.usage.studentsCount}</strong></p><p>Хранилище: <strong>{storageUsageLabel}</strong></p></div><p className="text-xs text-muted-foreground">Это текущие показатели кабинета. Итоговый счёт использует отдельный журнал фактического обучения за месяц; количество завершений, ИИ и объём хранилища не повышают тариф.</p></CardContent></Card>
   </div>;
 
 
@@ -222,7 +224,7 @@ export function SubscriptionTab() {
                 <Card><CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-medium"><HardDrive className="w-4 h-4 text-primary" />Хранилище</div>
-                    <span className="text-sm text-muted-foreground">{formatStorageSize(s.subscriptionLimits.usage.storageUsedBytes)} / {s.subscriptionLimits.limits.storageBytes === -1 ? "∞" : formatStorageSize(s.subscriptionLimits.limits.storageBytes)}</span>
+                    <span className="text-sm text-muted-foreground">{storageUsageLabel} / {s.subscriptionLimits.limits.storageBytes === -1 ? "∞" : formatStorageSize(s.subscriptionLimits.limits.storageBytes)}</span>
                   </div>
                   <Progress value={s.subscriptionLimits.limits.storageBytes === -1 ? 0 : Math.min(100, Math.round((s.subscriptionLimits.usage.storageUsedBytes / s.subscriptionLimits.limits.storageBytes) * 100))} className="h-2" />
                 </CardContent></Card>

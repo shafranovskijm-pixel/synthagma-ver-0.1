@@ -86,15 +86,22 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
 
   const displayCover = themeBannerUrl || coverUrl || defaultCoverImg;
 
-  const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const [billingDate, setBillingDate] = useState<{ organizationId: string; paidUntil: string | null } | null>(null);
   const planName = d.subscriptionLimits?.plan;
+  const isPostpaid = d.subscriptionLimits?.isPostpaid === true;
 
   useEffect(() => {
-    if (!organizationId) return;
+    let active = true;
+    setBillingDate(null);
+    if (!organizationId || isPostpaid) return;
     supabase.from("organizations").select("paid_until").eq("id", organizationId).single()
-      .then(({ data }) => { if (data?.paid_until) setPaidUntil(data.paid_until); });
-  }, [organizationId]);
+      .then(({ data }) => {
+        if (active) setBillingDate({ organizationId, paidUntil: data?.paid_until ?? null });
+      });
+    return () => { active = false; };
+  }, [organizationId, isPostpaid]);
 
+  const paidUntil = billingDate?.organizationId === organizationId ? billingDate.paidUntil : null;
   const daysRemaining = paidUntil ? Math.max(0, differenceInDays(new Date(paidUntil), new Date())) : null;
   const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : 'Тариф';
 
@@ -147,8 +154,8 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
               >
                 <CreditCard className="w-4 h-4 text-primary" />
                 <span className="text-xs font-semibold text-primary">
-                  {planLabel}
-                  {daysRemaining !== null && planName !== 'free' && (
+                  {isPostpaid ? "Постоплата" : planLabel}
+                  {!isPostpaid && daysRemaining !== null && planName !== 'free' && (
                     <span className="ml-1 text-primary/70">— {daysRemaining} дн.</span>
                   )}
                 </span>

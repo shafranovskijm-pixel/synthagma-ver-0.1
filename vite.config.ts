@@ -7,6 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { loadMcpPlugin } from "./scripts/mcp-sdk-windows.mjs";
 import { excludeAndroidDownloads } from "./scripts/rustore/exclude-android-downloads.mjs";
 import { privateCleanupWorkerSource, runtimeRequestMatcher } from "./src/lib/pwa/privateCachePolicy";
+import { createShellPrecache } from "./scripts/pwa/shellPrecache";
 
 const pwaCacheVersion = "sintagma-1.0.82";
 
@@ -15,6 +16,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
   test: { globals: boolean; environment: "jsdom"; include: string[] };
 }> => {
   const mcpPlugin = await loadMcpPlugin(__dirname);
+  const shellPrecache = createShellPrecache({ receiptPath: process.env.PWA_SHELL_RECEIPT_PATH });
   return ({
   // Capacitor serves bundled files at https://localhost, including deep routes.
   // Relative assets would resolve under /documents/assets after ordinary links.
@@ -34,6 +36,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
         this.emitFile({ type: 'asset', fileName: 'sw-private-cache-cleanup.js', source: privateCleanupWorkerSource() });
       },
     },
+    shellPrecache.plugin,
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: null,
@@ -71,7 +74,8 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
       workbox: {
         cacheId: pwaCacheVersion,
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,gif,webp,svg,woff,woff2}"],
+        manifestTransforms: [shellPrecache.manifestTransform],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
@@ -103,7 +107,8 @@ export default defineConfig(async ({ mode }): Promise<UserConfig & {
             handler: "CacheFirst",
             options: {
               cacheName: `${pwaCacheVersion}-static-cache`,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
+              // Match the course TTL; bounded eviction and build refresh still apply.
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [200] },
             },
           },

@@ -6,7 +6,7 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 /** Regression на РЕАЛЬНУЮ вкладку тарифа: клики должны открывать один мастер «Оформление тарифа». */
 
 const setActiveTab = vi.fn();
-const postpaidState = vi.hoisted(() => ({ active: false, loading: false, error: null as Error | null }));
+const postpaidState = vi.hoisted(() => ({ active: false, loading: false, error: null as Error | null, storageLoading: false, storageError: null as string | null }));
 
 vi.mock("@/contexts/OrgDashboardContext", () => ({
   useOrgDashboard: () => ({
@@ -52,6 +52,8 @@ vi.mock("@/hooks/useSubscriptionTab", async () => {
       postpaidAccessLoading: postpaidState.loading,
       postpaidAccessError: postpaidState.error,
       refreshPostpaidAccess: vi.fn(),
+      storageUsageLoading: postpaidState.storageLoading,
+      storageUsageError: postpaidState.storageError,
       subscriptionLimits: {
         plan: "free",
         limits: { maxCourses: 1, maxStudents: 10, maxStorageMb: 100, maxTrainedPerMonth: 5 },
@@ -116,6 +118,8 @@ beforeEach(() => {
   postpaidState.active = false;
   postpaidState.loading = false;
   postpaidState.error = null;
+  postpaidState.storageLoading = false;
+  postpaidState.storageError = null;
 });
 
 describe("SubscriptionTab — открытие мастера", () => {
@@ -123,6 +127,11 @@ describe("SubscriptionTab — открытие мастера", () => {
     postpaidState.active = true;
     renderTab();
     expect(screen.getByText("Постоплата по договору")).toBeInTheDocument();
+    expect(screen.getByText(/Добавлено учеников в этом месяце:/)).toBeInTheDocument();
+    expect(screen.queryByText(/Активные ученики:/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Курсы, ученики, завершения обучения, общий объём хранилища и ИИ-генерации — без тарифных лимитов/)).toBeInTheDocument();
+    expect(screen.getByText(/Диапазоны ниже определяют стоимость месяца.*Это не ограничения доступа/)).toBeInTheDocument();
+    expect(screen.getByText(/Платные функции учитываются при фактическом использовании после предварительного уведомления и вашего подтверждения/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Оформить тариф|Выставить счёт|Перейти/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Бесплатный тариф")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Счета и документы" }));
@@ -134,6 +143,14 @@ describe("SubscriptionTab — открытие мастера", () => {
     postpaidState.error = state === "error" ? new Error("unavailable") : null;
     renderTab();
     expect(screen.queryByRole("button", { name: /Оформить тариф|Выставить счёт|Перейти/ })).not.toBeInTheDocument();
+  });
+
+  it.each(["loading", "error"])("labels the storage measurement as %s rather than a measured zero", state => {
+    postpaidState.active = true;
+    postpaidState.storageLoading = state === "loading";
+    postpaidState.storageError = state === "error" ? "Не удалось рассчитать объём хранилища." : null;
+    renderTab();
+    expect(screen.getByText(state === "loading" ? "Рассчитываем…" : "Не удалось рассчитать")).toBeInTheDocument();
   });
 
   it("сохраняет тариф и счета, но не показывает демо-финансы и T-Bank", () => {
