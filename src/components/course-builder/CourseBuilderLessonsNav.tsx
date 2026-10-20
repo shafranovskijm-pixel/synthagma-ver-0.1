@@ -394,7 +394,8 @@ function NavList(props: Props & { afterAction?: () => void }) {
 
   // Группировка: уроки без модуля + по каждому модулю
   const grouped = useMemo(() => {
-    const orphans = lessons.filter(l => !l.module_id);
+    const moduleIds = new Set(modules.map(m => m.id));
+    const orphans = lessons.filter(l => !l.module_id || !moduleIds.has(l.module_id));
     const byModule = new Map<string, Lesson[]>();
     for (const m of modules) byModule.set(m.id, []);
     for (const l of lessons) {
@@ -436,7 +437,7 @@ function NavList(props: Props & { afterAction?: () => void }) {
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-3">
-          {modules.length === 0 ? (
+          {modules.length === 0 && lessons.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-10 px-4 gap-3">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <FolderPlus className="w-6 h-6 text-primary" />
@@ -449,6 +450,22 @@ function NavList(props: Props & { afterAction?: () => void }) {
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                {grouped.orphans.length > 0 && (
+                  <div className="space-y-0.5">
+                    {modules.length > 0 && (
+                      <p className="px-2.5 py-2 text-xs font-medium text-muted-foreground">Без модуля</p>
+                    )}
+                    {grouped.orphans.map((lesson) => (
+                      <SortableNavRow
+                        key={lesson.id}
+                        lesson={lesson}
+                        index={lessonIndex.get(lesson.id) ?? 0}
+                        isActive={activeLessonId === lesson.id}
+                        onClick={() => handleClick(lesson.id)}
+                      />
+                    ))}
+                  </div>
+                )}
                 {modules.map((m) => {
                   const items = grouped.byModule.get(m.id) ?? [];
                   return (
