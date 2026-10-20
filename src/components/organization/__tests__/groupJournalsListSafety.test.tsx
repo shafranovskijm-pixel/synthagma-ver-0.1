@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" }, userRole: "organization", loading: false }) }));
+
 function makeChain(): any {
   const result = { data: [], error: null, count: 0 };
   const chain: any = new Proxy(
