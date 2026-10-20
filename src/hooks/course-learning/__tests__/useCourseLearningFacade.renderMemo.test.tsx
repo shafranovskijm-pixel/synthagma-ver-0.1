@@ -7,6 +7,8 @@ import { lessonBlocksToSpeechText } from '@/lib/lessonSpeechText';
 const mocks = vi.hoisted(() => ({
   user: { id: 'a' }, authLoading: false, type: 'text', content: 'Legacy lesson text',
   from: vi.fn(), rpc: vi.fn(), navigate: vi.fn(), parse: vi.fn(), tts: vi.fn(), chat: vi.fn(),
+  accessLog: vi.fn(),
+  profileReply: null as Promise<{ data: { organization_id: string } | null; error: unknown }> | null,
 }));
 vi.mock('react-router-dom', () => ({ useParams: () => ({ courseId: 'course' }), useNavigate: () => mocks.navigate }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user, loading: mocks.authLoading }) }));
@@ -33,7 +35,7 @@ class Query {
   select(columns: string) { this.columns = columns; return this; }
   constructor(private table: string) {}
   eq() { return this; } in() { return this; } order() { return this; }
-  insert() { this.mutation = true; return this; }
+  insert(value: unknown) { if (this.table === 'course_access_log') mocks.accessLog(value); this.mutation = true; return this; }
   private response() {
     const data = this.mutation ? null
       : this.table === 'courses' ? { id: 'course', organization_id: 'org', title: 'Synthetic memo course', sequential_lessons: false }
@@ -44,12 +46,13 @@ class Query {
     return { data, error: null };
   }
   single() { return Promise.resolve(this.response()); }
-  maybeSingle() { return Promise.resolve(this.response()); }
+  maybeSingle() { return this.table === 'profiles' && mocks.profileReply ? mocks.profileReply : Promise.resolve(this.response()); }
   then(resolve: (value: ReturnType<Query['response']>) => unknown, reject?: (error: unknown) => unknown) { return Promise.resolve(this.response()).then(resolve, reject); }
 }
 beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear(); setOfflineAuthActor(null); setOfflineAuthActor('a');
   mocks.user = { id: 'a' }; mocks.authLoading = false; mocks.type = 'text'; mocks.content = 'Legacy lesson text';
+  mocks.profileReply = null;
   mocks.from.mockImplementation(table => new Query(table));
 });
 afterEach(() => { cleanup(); setOfflineAuthActor(null); });
@@ -84,5 +87,48 @@ describe('actual course facade render work', () => {
     expect(h.result.current.contentBlocks).toEqual([]); expect(h.result.current.course).toBeNull();
     act(() => { mocks.authLoading = false; h.rerender(); }); await ready(h.result);
     expect(h.result.current.contentBlocks).not.toBe(previous); expect(lessonBlocksToSpeechText(h.result.current.contentBlocks)).toContain('Legacy lesson text');
+  });
+});
+
+describe('best-effort course access audit', () => {
+  it('opens the authorized lesson before a slow logging profile reply, then records the access', async () => {
+    let reply!: (value: { data: { organization_id: string }; error: null }) => void;
+    mocks.profileReply = new Promise(resolve => { reply = resolve; });
+    const h = renderHook(() => useCourseLearning());
+    await ready(h.result);
+    expect(mocks.accessLog).not.toHaveBeenCalled();
+    await act(async () => { reply({ data: { organization_id: 'audit-org' }, error: null }); });
+    await waitFor(() => expect(mocks.accessLog).toHaveBeenCalledTimes(1));
+    expect(mocks.accessLog).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'a', course_id: 'course', organization_id: 'audit-org' }));
+    expect(h.result.current.loading).toBe(false);
+  });
+
+  it('keeps a logging transport rejection out of course loading and offline fallback', async () => {
+    let reject!: (error: Error) => void;
+    mocks.profileReply = new Promise((_, fail) => { reject = fail; });
+    const h = renderHook(() => useCourseLearning());
+    await ready(h.result);
+    await act(async () => { reject(new Error('Synthetic audit connection failure')); });
+    expect(mocks.accessLog).not.toHaveBeenCalled();
+    expect(h.result.current.loading).toBe(false);
+    expect(h.result.current.isOfflineMode).toBe(false);
+    expect(h.result.current.currentLesson.content).toBe(mocks.content);
+  });
+
+  it('does not insert an old actor access after a delayed profile reply', async () => {
+    let oldReply!: (value: { data: { organization_id: string }; error: null }) => void;
+    mocks.profileReply = new Promise(resolve => { oldReply = resolve; });
+    const h = renderHook(() => useCourseLearning());
+    await ready(h.result);
+    act(() => {
+      setOfflineAuthActor('b'); mocks.user = { id: 'b' };
+      mocks.profileReply = Promise.resolve({ data: { organization_id: 'new-org' }, error: null });
+      h.rerender();
+    });
+    await ready(h.result);
+    await waitFor(() => expect(mocks.accessLog).toHaveBeenCalledTimes(1));
+    await act(async () => { oldReply({ data: { organization_id: 'old-org' }, error: null }); });
+    expect(mocks.accessLog).toHaveBeenCalledTimes(1);
+    expect(mocks.accessLog).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'b', organization_id: 'new-org' }));
   });
 });
