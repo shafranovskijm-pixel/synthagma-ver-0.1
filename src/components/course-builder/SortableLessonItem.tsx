@@ -53,13 +53,15 @@ interface SortableLessonProps {
   organizationId?: string;
   generatedQuestions?: GeneratedQuestion[];
   onQuestionsProcessed?: () => void;
+  contentStatus?: "loading" | "error" | "missing" | "conflict";
+  onRetryContent?: () => void;
 }
 
 export function SortableLessonItem({
   lesson, index, onToggle, onUpdate, onDelete,
   courseId, courseTitle, courseDescription,
   organizationId,
-  generatedQuestions, onQuestionsProcessed }: SortableLessonProps) {
+  generatedQuestions, onQuestionsProcessed, contentStatus, onRetryContent }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [skipCompression, setSkipCompression] = useState(false);
@@ -108,6 +110,13 @@ export function SortableLessonItem({
 
       {lesson.expanded && (
         <div className="p-4 pt-0 border-t border-border">
+          {lesson.__contentLoaded === false ? (
+            <div className="space-y-3" role={contentStatus === "loading" || !contentStatus ? "status" : "alert"}>
+              <p className="text-sm text-muted-foreground">{contentStatus === "missing" ? "Урок не найден или больше недоступен. Содержимое не заменено пустым." : contentStatus === "error" ? "Не удалось загрузить содержимое урока. Исходные данные не изменены." : contentStatus === "conflict" ? "Урок изменился во время загрузки. Текущее содержимое сохранено." : "Загрузка содержимого урока…"}</p>
+              {contentStatus && contentStatus !== "loading" && <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={onRetryContent}>Повторить загрузку</Button>}
+            </div>
+          ) : <>
+          {contentStatus === "conflict" && <p role="status" className="text-sm text-muted-foreground">Поздняя загрузка не заменила текущее содержимое урока.</p>}
           {/* Text / Lesson */}
           {(lesson.type === "text" || lesson.type === "lesson" || lesson.type === "practice") && (
             <div className="space-y-3">
@@ -491,6 +500,7 @@ export function SortableLessonItem({
           )}
 
           {/* Прикреплённые файлы перенесены в отдельную вкладку — здесь не дублируем */}
+          </>}
         </div>
       )}
     </div>

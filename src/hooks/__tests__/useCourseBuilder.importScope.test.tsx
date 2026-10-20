@@ -190,17 +190,30 @@ describe("actual builder hook rechecks current import authority", () => {
 
   it("persists the imported lesson through the existing debounce when current authority remains confirmed", async () => {
     const hook = await ready(); vi.useFakeTimers();
+    const expectedScope = { userId: "actor-a", userRole: "organization", requestedOrganizationId: "org-a" };
+    expect(mocks.resolveScope).toHaveBeenCalledTimes(1);
     await act(async () => { await hook.result.current.handleFileImport(event()); });
     expect(hook.result.current.lessons).toHaveLength(1);
+    expect(mocks.resolveScope).toHaveBeenCalledTimes(3);
+    const saveScope = deferred<typeof orgA>();
+    mocks.resolveScope.mockResolvedValueOnce(orgA).mockReturnValueOnce(saveScope.promise);
     await act(async () => { await vi.advanceTimersByTimeAsync(1499); });
+    expect(mocks.resolveScope).toHaveBeenCalledTimes(3);
     expect(mocks.writes).not.toHaveBeenCalled();
     await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    // The import debounce and the shared saver each verify current authority.
+    expect(mocks.resolveScope.mock.calls).toEqual(Array.from({ length: 5 }, () => [expectedScope]));
+    expect(mocks.writes).not.toHaveBeenCalled();
+    expect(hook.result.current.hasUnsavedChanges).toBe(true);
+    await act(async () => { saveScope.resolve(orgA); });
     const persisted = mocks.writes.mock.calls.filter(([table, operation]) => table === "lessons" && operation === "upsert");
     expect(persisted).toHaveLength(1);
     expect(persisted[0][2]).toEqual([expect.objectContaining({
       id: "new-lesson", course_id: "course-a", title: "new-lesson", type: "text", content: "[]",
     })]);
-    expect(mocks.resolveScope).toHaveBeenCalledTimes(4);
+    expect(mocks.writes).toHaveBeenCalledTimes(2);
+    expect(mocks.writes).toHaveBeenNthCalledWith(1, "courses", "update", { title: "Existing title", description: null });
+    expect(mocks.resolveScope.mock.calls).toEqual(Array.from({ length: 5 }, () => [expectedScope]));
     expect(hook.result.current.autoSaveStatus).toBe("saved");
     expect(hook.result.current.hasUnsavedChanges).toBe(false);
   });

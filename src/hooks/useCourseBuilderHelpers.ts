@@ -31,6 +31,53 @@ export function clearDraftFromLocal(courseId: string | undefined) {
   try { localStorage.removeItem(`${DRAFT_PREFIX}${courseId || 'new'}`); } catch {}
 }
 
+export interface BuilderDraftIdentity { actorId: string; organizationId: string; requestedCourseId: string | undefined }
+export interface BuilderDraftReceipt { key: string; raw: string | null }
+export interface ScopedBuilderDraft {
+  version: 2; actorId: string; organizationId: string; requestedCourseId: string | null;
+  courseId: string | null; title: string; description: string; lessons: Lesson[]; savedAt: number;
+}
+const scopedDraftKey = (identity: BuilderDraftIdentity) => `course_builder_draft_v2:${encodeURIComponent(JSON.stringify([identity.actorId, identity.organizationId, identity.requestedCourseId ?? null]))}`;
+function validScopedDraft(value: unknown, identity: BuilderDraftIdentity): value is ScopedBuilderDraft {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const draft = value as ScopedBuilderDraft;
+  return draft.version === 2 && draft.actorId === identity.actorId && draft.organizationId === identity.organizationId
+    && draft.requestedCourseId === (identity.requestedCourseId ?? null)
+    && (draft.courseId === null || typeof draft.courseId === 'string')
+    && (!identity.requestedCourseId || draft.courseId === identity.requestedCourseId)
+    && typeof draft.title === 'string' && typeof draft.description === 'string' && Number.isFinite(draft.savedAt)
+    && Array.isArray(draft.lessons) && draft.lessons.every(lesson => lesson && typeof lesson.id === 'string'
+      && typeof lesson.title === 'string' && ['text', 'video', 'image', 'test', 'audio', 'lesson', 'slider', 'practice', 'feedback', 'homework', 'ai_avatar'].includes(lesson.type) && typeof lesson.content === 'string'
+      && typeof lesson.expanded === 'boolean' && (lesson.__contentLoaded === undefined || typeof lesson.__contentLoaded === 'boolean')
+      && (lesson.blocks === undefined || Array.isArray(lesson.blocks)));
+}
+export function readScopedBuilderDraft(identity: BuilderDraftIdentity): { draft: ScopedBuilderDraft | null; receipt: BuilderDraftReceipt } {
+  const key = scopedDraftKey(identity), raw = localStorage.getItem(key);
+  if (raw === null) return { draft: null, receipt: { key, raw } };
+  const value: unknown = JSON.parse(raw);
+  if (!validScopedDraft(value, identity)) throw new Error('Локальный черновик не удалось подтвердить. Данные сохранены без изменений.');
+  return { draft: value, receipt: { key, raw } };
+}
+export function saveScopedBuilderDraft(identity: BuilderDraftIdentity, data: Pick<ScopedBuilderDraft, 'courseId' | 'title' | 'description' | 'lessons'>, receipt: BuilderDraftReceipt): BuilderDraftReceipt {
+  const source = readScopedBuilderDraft(identity);
+  if (receipt.key !== source.receipt.key || receipt.raw !== source.receipt.raw) throw new Error('Черновик в браузере изменился. Он не перезаписан.');
+  const draft: ScopedBuilderDraft = { version: 2, ...identity, requestedCourseId: identity.requestedCourseId ?? null, ...data, savedAt: Date.now() };
+  if (!validScopedDraft(draft, identity)) throw new Error('Не удалось подтвердить локальный черновик.');
+  const raw = JSON.stringify(draft);
+  localStorage.setItem(receipt.key, raw);
+  return { key: receipt.key, raw };
+}
+export function clearScopedBuilderDraft(receipt: BuilderDraftReceipt): boolean {
+  if (!receipt.key.startsWith('course_builder_draft_v2:')) return false;
+  if (localStorage.getItem(receipt.key) !== receipt.raw) return false;
+  if (receipt.raw !== null) localStorage.removeItem(receipt.key);
+  return true;
+}
+/** Presence only: old unattributed draft contents are not parsed or exposed. */
+export function hasLegacyBuilderDraft(courseId: string | undefined) {
+  return localStorage.getItem(`${DRAFT_PREFIX}${courseId || 'new'}`) !== null;
+}
+
 // --- Lesson data normalization ---
 export function normalizeLessonsFromDB(
   lessonsData: any[],

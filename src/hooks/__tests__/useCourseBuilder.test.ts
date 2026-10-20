@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }));
 
@@ -77,7 +77,9 @@ import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 describe("useCourseBuilder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
+  afterEach(() => cleanup());
 
   it("initializes with empty state for new course", async () => {
     const { result } = renderHook(() => useCourseBuilder());
@@ -108,8 +110,9 @@ describe("useCourseBuilder", () => {
     expect(result.current.courseDescription).toBe("Описание курса");
   });
 
-  it("adds a text lesson", () => {
+  it("adds a text lesson", async () => {
     const { result } = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     act(() => { result.current.addLesson("text"); });
     expect(result.current.lessons).toHaveLength(1);
     expect(result.current.lessons[0].type).toBe("text");
@@ -117,8 +120,9 @@ describe("useCourseBuilder", () => {
     expect(result.current.hasUnsavedChanges).toBe(true);
   });
 
-  it("adds different lesson types", () => {
+  it("adds different lesson types", async () => {
     const { result } = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     act(() => { result.current.addLesson("video"); });
     expect(result.current.lessons[0].type).toBe("video");
     act(() => { result.current.addLesson("test"); });
@@ -130,24 +134,27 @@ describe("useCourseBuilder", () => {
     expect(result.current.lessons).toHaveLength(4);
   });
 
-  it("updates a lesson", () => {
+  it("updates a lesson", async () => {
     const { result } = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     act(() => { result.current.addLesson("text"); });
     const lessonId = result.current.lessons[0].id;
     act(() => { result.current.updateLesson(lessonId, { title: "Обновлённый урок" }); });
     expect(result.current.lessons[0].title).toBe("Обновлённый урок");
   });
 
-  it("deletes a lesson", () => {
+  it("deletes a lesson", async () => {
     const { result } = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     act(() => { result.current.addLesson("text"); });
     const lessonId = result.current.lessons[0].id;
     act(() => { result.current.deleteLesson(lessonId); });
     expect(result.current.lessons).toHaveLength(0);
   });
 
-  it("toggles lesson expanded state", () => {
+  it("toggles lesson expanded state", async () => {
     const { result } = renderHook(() => useCourseBuilder());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     act(() => { result.current.addLesson("text"); });
     const lessonId = result.current.lessons[0].id;
     const initialExpanded = result.current.lessons[0].expanded;
