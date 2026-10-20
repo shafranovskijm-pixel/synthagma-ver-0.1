@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Presentation, FileText, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
   const [reloadKey, setReloadKey] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const loadTimerRef = useRef<number | null>(null);
-  const sliderContent = parseSliderContent(content);
+  const sliderContent = useMemo(() => parseSliderContent(content), [content]);
   const slides = sliderContent.slides;
   const pptxFileUrl = sliderContent.pptxFileUrl;
 

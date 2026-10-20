@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -17,6 +17,7 @@ import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 import { fetchCourseLibraryShell } from "@/api/courseLibrary";
 import { COURSE_LESSON_ORDER_VERSION, orderCourseLessons } from "@/lib/courseLessonOrder";
 import { fetchPostpaidAccessProfile } from "@/lib/postpaidAccess";
+import { buildLessonCompletionIndex, isCourseLessonAccessible } from './lessonAccess';
 
 import type { Lesson, Course, LessonProgress } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
@@ -101,6 +102,10 @@ export function useCourseLearning() {
     : (undefined as unknown as Lesson);
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+  const completionIndex = useMemo(
+    () => buildLessonCompletionIndex(lessons, lessonProgress),
+    [lessons, lessonProgress],
+  );
 
   // Держим completedIdsRef синхронно с lessonProgress: сброс, повторная загрузка,
   // обновления от useLessonTest — всё попадает в ref, из которого читает
@@ -118,8 +123,13 @@ export function useCourseLearning() {
     markInFlightRef.current = new Set();
   }, [enrollmentId]);
 
-  // Parse content blocks
-  const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
+  // TTS/chat consume blocks only for text lessons. In particular, slider JSON
+  // must not be reparsed as legacy markdown on every progress/input render.
+  const contentBlocks = useMemo<ContentBlock[]>(
+    () => currentLesson?.type === 'text' && currentLesson.content
+      ? parseContentToBlocks(currentLesson.content) : [],
+    [identityKey, currentLesson?.id, currentLesson?.type, currentLesson?.content],
+  );
 
   // Lazy fetch lesson content when opened (and prefetch the next one).
   const loadLessonContent = useCallback(async (lessonId: string) => {
@@ -268,21 +278,10 @@ export function useCourseLearning() {
     course: privateVisible ? course : null, currentLesson, contentBlocks,
   });
 
-  const isLessonCompleted = (lessonId: string) => lessonProgress.some(p => p.lesson_id === lessonId && p.completed);
+  const isLessonCompleted = (lessonId: string) => completionIndex.completedIds.has(lessonId);
 
   const isLessonAccessible = (index: number, completedIds?: ReadonlySet<string>): boolean => {
-    const lesson = lessons[index];
-    if (lesson?.is_locked) return false;
-    if (lesson?.locked_until) {
-      const unlockAt = new Date(lesson.locked_until).getTime();
-      if (unlockAt > Date.now()) return false;
-    }
-    if (!course?.sequential_lessons) return true;
-    if (index === 0) return true;
-    for (let i = 0; i < index; i++) {
-      if (!(completedIds ? completedIds.has(lessons[i].id) : isLessonCompleted(lessons[i].id))) return false;
-    }
-    return true;
+    return isCourseLessonAccessible(lessons, index, course?.sequential_lessons, completionIndex, completedIds);
   };
 
   const goToNextLesson = () => {
