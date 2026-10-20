@@ -156,8 +156,8 @@ export default function CourseImport() {
       return;
     }
     
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('Максимальный размер файла — 50 МБ');
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error('Максимальный размер файла — 30 МБ');
       return;
     }
     

@@ -96,7 +96,7 @@ export function UploadStep({
             </div>
             <div>
               <p className="font-medium text-lg">Перетащите файл сюда или нажмите для выбора</p>
-              <p className="text-sm text-muted-foreground mt-1">PPTX, DOCX, TXT, HTML; старый DOC — Beta (до 50 МБ)</p>
+              <p className="text-sm text-muted-foreground mt-1">PPTX, DOCX, TXT, HTML; старый DOC — Beta (до 30 МБ)</p>
             </div>
           </div>
         )}
