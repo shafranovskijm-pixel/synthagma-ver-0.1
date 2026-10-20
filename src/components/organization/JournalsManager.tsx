@@ -44,7 +44,7 @@ const JOURNAL_CATEGORIES: JournalCategory[] = [
   {
     id: "required", title: "Обязательные журналы", icon: ClipboardCheck, color: "text-red-500", bgColor: "bg-red-500/10",
     journals: [
-      { id: "attendance", title: "Журнал учёта посещаемости занятий", description: "Фиксирует явку слушателей на каждое занятие", required: true },
+      { id: "attendance", title: "Журнал учёта посещаемости занятий", description: "Автоматически — завершённые уроки. Ручные записи ведутся отдельно", required: true },
       { id: "current_control", title: "Журнал текущего контроля успеваемости и промежуточной аттестации", description: "Оценки, зачёты, тесты, практические задания по модулям / дисциплинам", required: true },
       { id: "final_attestation", title: "Журнал итоговой аттестации", description: "Результаты экзаменов, зачётов, защиты проектов, состав комиссии", required: true },
       { id: "document_registration", title: "Журнал регистрации входящих и исходящих документов", description: "Фиксация заявлений, договоров, приказов о зачислении/отчислении", required: true },
