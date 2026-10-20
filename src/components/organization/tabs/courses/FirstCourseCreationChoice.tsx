@@ -9,6 +9,7 @@ interface FirstCourseCreationChoiceProps {
   onBack?: () => void;
   onSkip?: () => void;
   hasWelcomeCourse?: boolean;
+  accessLoading?: boolean;
 }
 
 export function FirstCourseCreationChoice({
@@ -18,6 +19,7 @@ export function FirstCourseCreationChoice({
   onBack,
   onSkip,
   hasWelcomeCourse = false,
+  accessLoading = false,
 }: FirstCourseCreationChoiceProps) {
   return (
     <section
@@ -75,7 +77,7 @@ export function FirstCourseCreationChoice({
           <p className="mt-3 text-xs text-muted-foreground">
             Для документов рекомендуем DOCX. Старый формат DOC работает в Beta-режиме и требует проверки результата.
           </p>
-          <Button className="mt-5 w-full gap-2" onClick={onImportMaterials}>
+          <Button className="mt-5 w-full gap-2" onClick={onImportMaterials} disabled={accessLoading} aria-busy={accessLoading}>
             <FileUp className="h-4 w-4" />
             Создать из материалов
           </Button>
@@ -107,7 +109,7 @@ export function FirstCourseCreationChoice({
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold">Создать вручную</h3>
             <p className="mt-1 text-sm text-muted-foreground">Начните с пустого курса и заполните уроки в конструкторе.</p>
-            <Button variant="ghost" className="mt-4 w-full gap-2" onClick={onCreateManually}>
+            <Button variant="ghost" className="mt-4 w-full gap-2" onClick={onCreateManually} disabled={accessLoading} aria-busy={accessLoading}>
               <PenLine className="h-4 w-4" />
               Создать вручную
             </Button>

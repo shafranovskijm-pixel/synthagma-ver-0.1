@@ -563,10 +563,9 @@ async function processZipArchive(file: File): Promise<Array<{ title: string; htm
   
   console.log(`Found ${entries.length} supported files in ZIP`);
   
-  // Limit entries to avoid CPU timeout
+  // Reject before reading any entry: a partial archive would silently lose lessons.
   if (entries.length > MAX_ZIP_ENTRIES) {
-    console.log(`Limiting to ${MAX_ZIP_ENTRIES} entries`);
-    entries.length = MAX_ZIP_ENTRIES;
+    throw new Error(`В ZIP-архиве ${entries.length} поддерживаемых файлов. За один импорт допускается максимум ${MAX_ZIP_ENTRIES}. Разделите архив на части по ${MAX_ZIP_ENTRIES} файлов и загрузите их отдельно.`);
   }
   
   // Sort entries by path for consistent ordering
@@ -747,7 +746,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({
               success: false,
-              error: `Файл "${value.name}" превышает лимит 50МБ (${(value.size / 1024 / 1024).toFixed(1)}МБ)`
+              error: `Файл "${value.name}" превышает лимит ${MAX_FILE_SIZE / 1024 / 1024} МиБ (${(value.size / 1024 / 1024).toFixed(1)} МиБ)`
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -761,7 +760,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({
               success: false,
-              error: `Общий размер файлов превышает лимит 50МБ`
+              error: `Общий размер файлов превышает лимит ${MAX_TOTAL_SIZE / 1024 / 1024} МиБ`
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );

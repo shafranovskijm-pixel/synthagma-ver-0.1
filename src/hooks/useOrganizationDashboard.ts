@@ -229,6 +229,7 @@ export function useOrganizationDashboard() {
     organizationId,
     onRefresh: refreshStudentPopulation,
     checkStudentLimit: () => checkLimit('student'),
+    refetchLimits: subscriptionLimits.refetch,
   });
 
   // Student actions — split into two callbacks:

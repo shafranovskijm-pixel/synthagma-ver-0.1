@@ -4,6 +4,7 @@ import { getPlanInfo, type SubscriptionPlan, type PlanLimits } from "@/constants
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { usePostpaidAccessProfile } from "@/hooks/usePostpaidAccessProfile";
 import { postpaidPlanLimits } from "@/lib/postpaidAccess";
+import type { LimitCheckResult } from "@/utils/limitToast";
 
 interface SubscriptionLimitsState {
   plan: SubscriptionPlan;
@@ -27,7 +28,7 @@ interface SubscriptionLimitsState {
   error: string | null;
   isPostpaid: boolean;
   planName: string;
-  checkLimit: (type: 'course' | 'student' | 'trained') => { allowed: boolean; message: string };
+  checkLimit: (type: 'course' | 'student' | 'trained' | 'course_settings') => LimitCheckResult;
   refetch: () => Promise<void>;
 }
 
@@ -53,6 +54,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
+    if (activeOrganization.current !== organizationId) return;
     const request = ++sequence.current;
     const isCurrent = () => activeOrganization.current === organizationId && sequence.current === request;
     setLoading(!!organizationId);
@@ -128,6 +130,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     // когда старый канал ещё не успел удалиться, а новый пытается переиспользовать имя.
     const uniqueId = `${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase.channel(`org-plan-${uniqueId}`);
+    let active = true;
 
     channel
       .on(
@@ -138,23 +141,22 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           table: 'organizations',
           filter: `id=eq.${organizationId}`,
         },
-        (payload) => {
-          if (payload.new.subscription_plan) {
-            setPlan(payload.new.subscription_plan as SubscriptionPlan);
-          }
-          fetchData();
+        () => {
+          if (!active || activeOrganization.current !== organizationId) return;
+          void fetchData();
         }
       )
       .subscribe();
 
     return () => {
+      active = false;
       try {
         supabase.removeChannel(channel);
       } catch {
         // канал уже удалён — игнорируем
       }
     };
-  }, [organizationId]);
+  }, [organizationId, fetchData]);
 
   const currentData = loadedOrganization === organizationId && !!organizationId;
   const currentPlan = currentData ? plan : 'free';
@@ -192,12 +194,20 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   const canAddStudent = accessReady && (limits.maxStudents === -1 || studentsCount < limits.maxStudents);
   const canCompleteCourse = accessReady && (limits.maxTrainedPerMonth === -1 || trainedThisMonth < limits.maxTrainedPerMonth);
 
-  const checkLimit = useCallback((type: 'course' | 'student' | 'trained') => {
-    if (!accessReady) return { allowed: false, message: accessError || "Проверяем ограничения организации…" };
+  const checkLimit = useCallback((type: 'course' | 'student' | 'trained' | 'course_settings'): LimitCheckResult => {
+    if (!accessReady) return { allowed: false, reason: accessError ? "verification_error" : "checking", message: accessError || "Проверяем ограничения организации…" };
+    if (type === 'course_settings') {
+      return limits.courseSettings ? { allowed: true, message: '' } : {
+        allowed: false,
+        reason: "plan_feature",
+        message: 'Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.',
+      };
+    }
     if (type === 'course') {
       if (canCreateCourse) return { allowed: true, message: '' };
       return {
         allowed: false,
+        reason: "quota",
         message: `Лимит тарифа "${planInfo.name}": ${limits.maxCourses} ${limits.maxCourses === 1 ? 'курс' : 'курсов'}. Перейдите на следующий тариф.`,
       };
     }
@@ -205,12 +215,14 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       if (canCompleteCourse) return { allowed: true, message: '' };
       return {
         allowed: false,
+        reason: "quota",
         message: `Лимит тарифа "${planInfo.name}": ${limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`,
       };
     }
     if (canAddStudent) return { allowed: true, message: '' };
     return {
       allowed: false,
+      reason: "quota",
       message: `Лимит тарифа "${planInfo.name}": ${limits.maxStudents} новых учеников в месяц. Перейдите на следующий тариф.`,
     };
   }, [canCreateCourse, canAddStudent, canCompleteCourse, planInfo.name, limits, accessReady, accessError]);
