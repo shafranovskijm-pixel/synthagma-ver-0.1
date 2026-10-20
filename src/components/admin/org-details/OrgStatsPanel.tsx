@@ -15,6 +15,7 @@ interface OrgStatsPanelProps {
   aiGenerationsPercent: number;
   formatBytes: (bytes: number) => string;
   storageLimit: number;
+  usageLimitsReady: boolean;
 }
 
 const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
@@ -22,7 +23,7 @@ const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
 export function OrgStatsPanel({
   students, courses, usage, usageHistory,
   storageLimitPercent, aiGenerationsLimit, aiGenerationsPercent,
-  formatBytes, storageLimit,
+  formatBytes, storageLimit, usageLimitsReady,
 }: OrgStatsPanelProps) {
   return (
     <div className="space-y-6">
@@ -118,16 +119,16 @@ export function OrgStatsPanel({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">Хранилище (всего)</span>
-                <span className="text-sm font-medium">{formatBytes(usage.storage_bytes)} / {formatBytes(storageLimit)}</span>
+                <span className="text-sm font-medium">{formatBytes(usage.storage_bytes)} / {!usageLimitsReady ? "Проверяем…" : storageLimit === -1 ? "∞" : formatBytes(storageLimit)}</span>
               </div>
               <Progress value={Math.min(storageLimitPercent, 100)} className="h-2" />
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">ИИ-генерации (месяц)</span>
-                <span className="text-sm font-medium">{usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}</span>
+                <span className="text-sm font-medium">{usage.ai_generations_count} / {!usageLimitsReady ? "Проверяем…" : aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}</span>
               </div>
-              <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(aiGenerationsPercent, 100)} className="h-2" />
+              <Progress value={!usageLimitsReady || aiGenerationsLimit === Infinity ? 0 : Math.min(aiGenerationsPercent, 100)} className="h-2" />
             </div>
           </div>
         </CardContent>

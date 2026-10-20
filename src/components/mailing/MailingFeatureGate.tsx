@@ -53,7 +53,7 @@ export function MailingFeatureGate({ children }: MailingFeatureGateProps) {
   const { can, loading: permissionsLoading } = useStaffPermissions();
 
   const loadingOrganization = !organizationId && isLoadingCourses;
-  const loadingSubscription = !subscriptionLimits || subscriptionLimits.loading;
+  const loadingSubscription = !subscriptionLimits || subscriptionLimits.loading !== false;
 
   if (loadingOrganization || (organizationId && (loadingSubscription || permissionsLoading))) {
     return (
@@ -85,8 +85,20 @@ export function MailingFeatureGate({ children }: MailingFeatureGateProps) {
     );
   }
 
+  if (subscriptionLimits.error) {
+    return (
+      <GateCard
+        icon={ShieldAlert}
+        title="Не удалось проверить доступ к рассылкам"
+        description="Условия доступа пока не подтверждены. Повторите проверку."
+        action={<Button onClick={() => { void subscriptionLimits.refetch(); }}>Повторить проверку</Button>}
+        testId="mailing-access-unconfirmed"
+      />
+    );
+  }
+
   const plan = subscriptionLimits.plan;
-  const mailingEnabled = isMailingEnabled(plan, subscriptionLimits.limits.emailCampaignsEnabled);
+  const mailingEnabled = isMailingEnabled(plan, subscriptionLimits.limits.emailCampaignsEnabled, subscriptionLimits);
 
   if (!mailingEnabled) {
     return (

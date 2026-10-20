@@ -184,7 +184,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         <div className="flex-1 min-w-0">
           {vm.activeTab === "overview" && (
             <Suspense fallback={<div className="flex justify-center py-12"><SigmaSpinner /></div>}>
-              <OrgStatsPanel students={vm.students} courses={vm.courses} usage={vm.usage} usageHistory={vm.usageHistory} storageLimitPercent={vm.storageLimitPercent} aiGenerationsLimit={vm.aiGenerationsLimit} aiGenerationsPercent={vm.aiGenerationsPercent} formatBytes={vm.formatBytes} storageLimit={vm.settings.storage_limit_bytes} />
+              <OrgStatsPanel students={vm.students} courses={vm.courses} usage={vm.usage} usageHistory={vm.usageHistory} storageLimitPercent={vm.storageLimitPercent} aiGenerationsLimit={vm.aiGenerationsLimit} aiGenerationsPercent={vm.aiGenerationsPercent} formatBytes={vm.formatBytes} storageLimit={vm.effectiveStorageLimit} usageLimitsReady={vm.usageLimitsReady} />
             </Suspense>
           )}
           {vm.activeTab === "students" && <OrgStudentsPanel students={vm.students} filteredStudents={vm.filteredStudents} searchQuery={vm.searchQuery} setSearchQuery={vm.setSearchQuery} pendingEnrollmentsCount={vm.pendingEnrollmentsCount} organizationName={organization.name} onShowBulkImport={() => vm.setShowStudentBulkImport(true)} />}
@@ -220,7 +220,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           {vm.activeTab === "history" && <OrgAuditLogsTab organizationId={organization.id} />}
           {vm.activeTab === "comments" && <OrgCommentsTab organizationId={organization.id} />}
           {vm.activeTab === "reminders" && <OrgRemindersTab organizationId={organization.id} />}
-          {vm.activeTab === "settings" && <OrgSettingsPanel organizationId={organization.id} organizationEmail={organization.email} settings={vm.settings} setSettings={vm.setSettings} isSaving={vm.isSaving} saveSettings={vm.saveSettings} credentials={vm.credentials} setCredentials={vm.setCredentials} showPassword={vm.showPassword} setShowPassword={vm.setShowPassword} generatingCredentials={vm.generatingCredentials} setGeneratingCredentials={vm.setGeneratingCredentials} resettingPassword={vm.resettingPassword} setResettingPassword={vm.setResettingPassword} />}
+          {vm.activeTab === "settings" && <OrgSettingsPanel organizationId={organization.id} organizationEmail={organization.email} settings={vm.settings} setSettings={vm.setSettings} isSaving={vm.isSaving} saveSettings={vm.saveSettings} accessReady={vm.usageLimitsReady} accessError={vm.usageAccessError} onRetryAccess={vm.retryUsageAccess} credentials={vm.credentials} setCredentials={vm.setCredentials} showPassword={vm.showPassword} setShowPassword={vm.setShowPassword} generatingCredentials={vm.generatingCredentials} setGeneratingCredentials={vm.setGeneratingCredentials} resettingPassword={vm.resettingPassword} setResettingPassword={vm.setResettingPassword} />}
         </div>
       </div>
     </div>

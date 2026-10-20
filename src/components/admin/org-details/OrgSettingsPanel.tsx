@@ -18,6 +18,9 @@ interface OrgSettingsPanelProps {
   setSettings: (s: any) => void;
   isSaving: boolean;
   saveSettings: () => Promise<void>;
+  accessReady: boolean;
+  accessError: string | null;
+  onRetryAccess: () => Promise<void>;
   credentials: { login_email: string; login_password: string } | null;
   setCredentials: (c: any) => void;
   showPassword: boolean;
@@ -31,7 +34,7 @@ interface OrgSettingsPanelProps {
 const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
 
 export function OrgSettingsPanel({
-  organizationId, organizationEmail, settings, setSettings, isSaving, saveSettings,
+  organizationId, organizationEmail, settings, setSettings, isSaving, saveSettings, accessReady, accessError, onRetryAccess,
   credentials, setCredentials, showPassword, setShowPassword,
   generatingCredentials, setGeneratingCredentials, resettingPassword, setResettingPassword }: OrgSettingsPanelProps) {
   return (
@@ -148,7 +151,11 @@ export function OrgSettingsPanel({
         </CardContent>
       </Card>
 
-      <Button onClick={saveSettings} disabled={isSaving} className="w-full md:w-auto" size="lg">
+      {!accessReady && <div className="text-sm text-muted-foreground" role="status">
+        <p>{accessError || "Проверяем условия доступа и использование ресурсов…"}</p>
+        {accessError && <Button variant="outline" size="sm" className="mt-2" onClick={() => { void onRetryAccess(); }}>Повторить проверку</Button>}
+      </div>}
+      <Button onClick={saveSettings} disabled={isSaving || !accessReady} className="w-full md:w-auto" size="lg">
         {isSaving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
         Сохранить все настройки
       </Button>
