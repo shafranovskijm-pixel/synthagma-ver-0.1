@@ -50,6 +50,13 @@ vi.mock("@/hooks/useCourseBuilderHelpers", () => ({
   saveDraftToLocal: mocks.saveDraft,
   loadDraftFromLocal: vi.fn().mockReturnValue(null),
   clearDraftFromLocal: mocks.clearDraft,
+  readScopedBuilderDraft: vi.fn((identity: { actorId: string; organizationId: string; requestedCourseId?: string }) => ({
+    draft: null,
+    receipt: { key: `course_builder_draft_v2:${encodeURIComponent(JSON.stringify([identity.actorId, identity.organizationId, identity.requestedCourseId ?? null]))}`, raw: null },
+  })),
+  saveScopedBuilderDraft: mocks.saveDraft,
+  clearScopedBuilderDraft: mocks.clearDraft,
+  hasLegacyBuilderDraft: vi.fn().mockReturnValue(false),
   normalizeLessonsFromDB: vi.fn().mockReturnValue([]),
   importFiles: vi.fn().mockResolvedValue(0),
   generateAIContent: vi.fn(),
@@ -88,6 +95,7 @@ type PersistedCourse = {
 const ok = { data: null, error: null };
 let persistedCourse: PersistedCourse | null;
 let nextCourseNumber: number;
+let persistedLessons: Map<string, Record<string, unknown>>;
 
 function installSupabaseMock() {
   mocks.from.mockImplementation((table: string) => {
@@ -143,15 +151,38 @@ function installSupabaseMock() {
 
     if (table === "lessons") {
       return {
-        select: () => ({
-          eq: () => ({
+        select: () => {
+          const filters: Record<string, unknown> = {};
+          const chain = {
+            eq: (column: string, value: unknown) => { filters[column] = value; return chain; },
             order: () => Promise.resolve({ data: [], error: null }),
-            maybeSingle: () => Promise.resolve({ data: null, error: null }),
-          }),
-        }),
+            maybeSingle: () => {
+              expect(filters).toHaveProperty("id");
+              expect(filters).toHaveProperty("course_id", persistedCourse?.id);
+              const row = persistedLessons.get(String(filters.id));
+              return Promise.resolve({ data: row?.course_id === filters.course_id ? { ...row } : null, error: null });
+            },
+          };
+          return chain;
+        },
         insert: mocks.lessonInsert,
         upsert: vi.fn().mockResolvedValue(ok),
-        update: () => ({ in: vi.fn().mockResolvedValue(ok) }),
+        update: (payload: Record<string, unknown>) => {
+          const filters: Record<string, unknown> = {};
+          const chain = {
+            in: vi.fn().mockResolvedValue(ok),
+            eq: (column: string, value: unknown) => { filters[column] = value; return chain; },
+            select: (columns: string) => { expect(columns).toBe("id, course_id"); return chain; },
+            single: async () => {
+              const row = persistedLessons.get(String(filters.id));
+              if (!row || row.course_id !== filters.course_id) return { data: null, error: new Error("Synthetic lesson was not matched") };
+              const saved = { ...row, ...payload };
+              persistedLessons.set(String(filters.id), saved);
+              return { data: saved, error: null };
+            },
+          };
+          return chain;
+        },
         delete: () => ({
           eq: () => ({ not: vi.fn().mockResolvedValue(ok) }),
         }),
@@ -187,6 +218,7 @@ async function renderNewCourse() {
   persistedCourse = null;
   const hook = renderHook(() => useCourseBuilder());
   await waitFor(() => expect(hook.result.current.organizationId).toBe("org-1"));
+  await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
   return hook;
 }
 
@@ -194,6 +226,7 @@ describe("useCourseBuilder publication safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     persistedCourse = null;
+    persistedLessons = new Map();
     nextCourseNumber = 1;
     mocks.authRole = "organization";
     mocks.resolveCourseWriteScope.mockResolvedValue({
@@ -201,6 +234,8 @@ describe("useCourseBuilder publication safety", () => {
       source: "current_organization",
     });
     installSupabaseMock();
+    mocks.saveDraft.mockImplementation((_identity: unknown, draft: unknown, receipt: { key: string; raw: string | null }) => ({ ...receipt, raw: JSON.stringify(draft) }));
+    mocks.clearDraft.mockReturnValue(true);
 
     mocks.courseInsert.mockImplementation((payload: Omit<PersistedCourse, "id">) => {
       persistedCourse = {
@@ -214,12 +249,22 @@ describe("useCourseBuilder publication safety", () => {
         }),
       };
     });
-    mocks.courseUpdate.mockImplementation((payload: Partial<PersistedCourse>) => ({
-      eq: () => {
-        if (persistedCourse) persistedCourse = { ...persistedCourse, ...payload };
-        return Promise.resolve(ok);
-      },
-    }));
+    mocks.courseUpdate.mockImplementation((payload: Partial<PersistedCourse>) => {
+      const filters: Record<string, unknown> = {};
+      const chain = {
+        eq: (column: string, value: unknown) => { filters[column] = value; return chain; },
+        select: (columns: string) => { expect(columns).toBe("id, organization_id"); return chain; },
+        single: async () => {
+          expect(filters).toEqual({ id: persistedCourse?.id, organization_id: persistedCourse?.organization_id });
+          if (!persistedCourse || filters.id !== persistedCourse.id || filters.organization_id !== persistedCourse.organization_id) {
+            return { data: null, error: new Error("Synthetic course was not matched") };
+          }
+          persistedCourse = { ...persistedCourse, ...payload };
+          return { data: { id: persistedCourse.id, organization_id: persistedCourse.organization_id }, error: null };
+        },
+      };
+      return chain;
+    });
     mocks.moduleInsert.mockImplementation((payload: Record<string, unknown>) => ({
       select: () => ({
         single: () => Promise.resolve({
@@ -228,7 +273,15 @@ describe("useCourseBuilder publication safety", () => {
         }),
       }),
     }));
-    mocks.lessonInsert.mockResolvedValue(ok);
+    mocks.lessonInsert.mockImplementation((payload: Record<string, unknown>) => ({
+      select: (columns: string) => {
+        expect(columns).toBe("id, course_id");
+        return { single: async () => {
+          persistedLessons.set(String(payload.id), { ...payload });
+          return { data: { ...payload }, error: null };
+        } };
+      },
+    }));
   });
 
   afterEach(() => {
@@ -271,13 +324,14 @@ describe("useCourseBuilder publication safety", () => {
 
   it("uses the verified admin-view organization for a new course and its AI tariff context", async () => {
     mocks.authRole = "admin";
-    mocks.resolveCourseWriteScope.mockResolvedValueOnce({
+    mocks.resolveCourseWriteScope.mockResolvedValue({
       organizationId: "org-admin-view",
       source: "admin_view",
     });
 
     const hook = renderHook(() => useCourseBuilder());
     await waitFor(() => expect(hook.result.current.organizationId).toBe("org-admin-view"));
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
     act(() => hook.result.current.setCourseTitle("Курс клиента"));
 
     await act(async () => {
@@ -288,6 +342,11 @@ describe("useCourseBuilder publication safety", () => {
       userId: "user-1",
       userRole: "admin",
       requestedOrganizationId: null,
+    });
+    expect(mocks.resolveCourseWriteScope).toHaveBeenCalledWith({
+      userId: "user-1",
+      userRole: "admin",
+      requestedOrganizationId: "org-admin-view",
     });
     expect(mocks.courseInsert).toHaveBeenCalledWith(expect.objectContaining({
       organization_id: "org-admin-view",
@@ -387,15 +446,18 @@ describe("useCourseBuilder publication safety", () => {
           await hook.result.current.createModule();
         });
       } else {
-        await act(async () => {
-          await hook.result.current.saveSingleLesson({
+        act(() => {
+          hook.result.current.setLessons([{
             id: "lesson-1",
             title: "Первый урок",
             type: "text",
             content: "",
             expanded: false,
             module_id: null,
-          }, 0);
+          }]);
+        });
+        await act(async () => {
+          await hook.result.current.saveSingleLesson(hook.result.current.lessons[0], 0);
         });
       }
 

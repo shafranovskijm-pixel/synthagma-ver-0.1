@@ -46,10 +46,12 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
-    organizationId, scopeError,
+    organizationId, scopeError, lessonContentStatus, draftStatus, isCurrentContext, getCommittedCourseId,
     activeLessonId, setActiveLessonId, scrollToLesson, loadLessonContent,
     modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
     collapseAllModules, expandAllModules } = useCourseBuilder(embeddedCourseId);
+
+  useEffect(() => { setIsSavingForPreview(false); }, [isCurrentContext]);
 
   // Lazy-load full content of the currently active lesson (list query omits content for perf).
   useEffect(() => {
@@ -130,21 +132,22 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   };
 
   const handlePreview = async () => {
+    if (!isCurrentContext()) return;
     if (resolvedCourseId && !hasUnsavedChanges) {
       navigate(`/course-preview/${resolvedCourseId}`);
       return;
     }
     setIsSavingForPreview(true);
     const success = await saveCourse(true);
+    if (!isCurrentContext()) return;
     setIsSavingForPreview(false);
     if (success) {
-      // resolvedCourseId may have been set during save for new courses
-      // Use a small delay to let state update
+      const committedId = getCommittedCourseId();
       setTimeout(() => {
-        const id = resolvedCourseId || window.location.pathname.split('/course-builder/')[1];
-        if (id) {
+        if (!isCurrentContext()) return;
+        if (committedId && getCommittedCourseId() === committedId) {
           toast.success("Курс сохранён");
-          navigate(`/course-preview/${id}`);
+          navigate(`/course-preview/${committedId}`);
         } else {
           toast.error("Не удалось определить ID курса");
         }
@@ -224,6 +227,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
       )}
 
       <div className={cn(embedded ? "px-0 py-4" : "container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32")}>
+        {draftStatus && <p role="status" className="mb-4 text-sm text-muted-foreground">{draftStatus}</p>}
         <div className="flex gap-4 lg:gap-6 items-start">
           {/* LEFT: sticky lessons navigation (desktop) */}
           <CourseBuilderLessonsNav
@@ -345,6 +349,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     courseTitle={courseTitle}
                     courseDescription={courseDescription}
                     organizationId={organizationId}
+                    contentStatus={lessonContentStatus[activeLesson.id]}
+                    onRetryContent={() => { void loadLessonContent(activeLesson.id); }}
                   />
                 );
               })()}
